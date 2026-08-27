@@ -1,0 +1,221 @@
+{
+  "app": { "title": "Mediary" },
+  "nav": {
+    "movies": "Movies",
+    "series": "Series"
+  },
+  "actions": {
+    "add": "Add movie",
+    "addSeries": "Add series",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "back": "Back",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
+  },
+  "status": {
+    "undecided": "Undecided",
+    "to_watch": "To watch",
+    "watching": "Watching",
+    "watched": "Watched"
+  },
+  "filter": {
+    "all": "All",
+    "favorite": "Favorites",
+    "allGenres": "All genres",
+    "year": "Year",
+    "rating": "Rating",
+    "from": "from",
+    "to": "to",
+    "clear": "Clear",
+    "more": "Filters"
+  },
+  "sort": {
+    "label": "Sort",
+    "added": "Added",
+    "year": "Year",
+    "rating": "Rating",
+    "asc": "Ascending",
+    "desc": "Descending"
+  },
+  "library": {
+    "title": "My collection",
+    "titleSeries": "My series",
+    "empty": "No movies found — add a new one.",
+    "emptySeries": "No series found — add a new one.",
+    "count": "{{count}} movies",
+    "countSeries": "{{count}} series",
+    "tabMine": "My films",
+    "tabSynced": "Synchronized"
+  },
+  "search": { "placeholder": "Search by title…" },
+  "form": {
+    "addTitle": "Add movie",
+    "editTitle": "Edit movie",
+    "addTitleSeries": "Add series",
+    "editTitleSeries": "Edit series",
+    "lookup": "Quick fill — by link or title",
+    "lookupPlaceholder": "Paste a ge.movie/IMDb link or a movie title",
+    "lookupBtn": "Fetch",
+    "lookupPick": "Pick the right film:",
+    "lookupHint": "Auto-fills poster, description, genres and cast from TMDB",
+    "lookupNotFound": "Movie not found",
+    "alreadyAdded": "This movie is already in your collection",
+    "titleField": "Title",
+    "descField": "Description",
+    "title_ka": "Title (Georgian)",
+    "title_en": "Title (English)",
+    "year": "Year",
+    "imdb": "IMDb ID",
+    "imdbHint": "e.g. tt0286106",
+    "ge_url": "Watch link",
+    "ge_urlHint": "Any site — ge.movie, mykadri.ge, etc.",
+    "description_ka": "Description (Georgian)",
+    "description_en": "Description (English)",
+    "rating": "Rating (0–10)",
+    "genres": "Genres",
+    "genresHint": "Comma-separated, e.g. Thriller, Drama",
+    "poster": "Poster",
+    "posterHint": "Choose an image from your computer",
+    "status": "Status",
+    "favorite": "Favorite",
+    "details": "Details",
+    "addSubtitle": "Fill by link/title or by hand",
+    "editSubtitle": "Update fields or re-sync from TMDB"
+  },
+  "detail": {
+    "watch": "Watch",
+    "imdb": "IMDb",
+    "cast": "Cast",
+    "content": "Content",
+    "info": "Info",
+    "rating": "Rating",
+    "seasons": "{{count}} seasons",
+    "episodes": "{{count}} episodes",
+    "sync": "Sync from TMDB",
+    "syncing": "Syncing…",
+    "noDescription": "No description.",
+    "descKa": "Description (Georgian)",
+    "descEn": "Description (English)",
+    "deleteConfirm": "Delete this movie from your collection?"
+  },
+  "actor": {
+    "inCollection": "In your collection",
+    "inCollectionSeries": "Series in your collection",
+    "more": "More films",
+    "moreSeries": "More series",
+    "add": "Add"
+  },
+  "franchise": {
+    "continue": "Continue franchise"
+  },
+  "queue": {
+    "adding": "Adding…",
+    "doneTitle": "Adding finished",
+    "progress": "{{done}}/{{total}} added",
+    "failed": "{{count}} failed",
+    "cancel": "Cancel remaining",
+    "cancelOne": "Cancel",
+    "details": "Details",
+    "queued": "Queued"
+  },
+  "missing": {
+    "label": "Missing:",
+    "genre": "genre",
+    "year": "year",
+    "poster": "poster",
+    "description": "description",
+    "imdb": "IMDb",
+    "watch": "watch link"
+  },
+  "parts": {
+    "title": "Franchise parts",
+    "addAll": "Add all missing",
+    "owned": "In your collection",
+    "watchOrderNote": "Recommended watch order (by release)"
+  },
+  "discover": {
+    "title": "Discover (TMDB)",
+    "button": "Discover",
+    "searchPh": "Search by title…",
+    "refresh": "Refresh from TMDB",
+    "refreshed": "Refreshed",
+    "anyGenre": "Any genre",
+    "yearPh": "Year",
+    "minRatingPh": "Min ★",
+    "sortPopularity": "Popularity",
+    "sortRating": "Rating",
+    "sortYearDesc": "Year: newest",
+    "sortYearAsc": "Year: oldest",
+    "empty": "Nothing found",
+    "added": "Added"
+  },
+  "media": {
+    "redownload": "Download media",
+    "redownloadConfirm": "Re-download all posters and photos?",
+    "redownloadHint": "Posters and cast photos will be re-fetched from TMDB. May take a few minutes for a large library.",
+    "redownloadDone": "Downloaded — {{movies}} movies, {{series}} series"
+  },
+  "api": {
+    "connected": "backend connected",
+    "error": "Could not reach the API",
+    "loading": "Loading…"
+  },
+  "confirm": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteMovieTitle": "Delete movie",
+    "deleteMovieDesc": "“{{title}}” will be permanently removed from your collection. Are you sure?"
+  },
+  "genres": {
+    "manage": "Manage genres",
+    "title": "Manage genres",
+    "add": "Add genre",
+    "edit": "Edit genre",
+    "name_ka": "Name (Georgian)",
+    "name_en": "Name (English)",
+    "nameField": "Name",
+    "switchLang": "Switch language",
+    "moviesCount": "{{count}} movies",
+    "empty": "No genres yet",
+    "save": "Save",
+    "saved": "Genre saved",
+    "deleted": "Genre deleted",
+    "deleteTitle": "Delete genre",
+    "deleteSimple": "Delete the genre “{{name}}”?",
+    "inUse": "This genre has {{count}} movies linked — it can't be deleted as-is. Choose what to do:",
+    "optReassign": "Move the movies to another genre",
+    "optReassignPick": "Pick a genre",
+    "optLeaveEmpty": "Leave them without a genre and delete it"
+  },
+  "bulkStatus": {
+    "manage": "Change status",
+    "title": "Bulk status change",
+    "subtitle": "Change the status of a whole group or specific movies at once.",
+    "whichLabel": "Which movies?",
+    "modeByStatus": "All with a given status",
+    "modeSpecific": "Specific movies",
+    "fromStatusPick": "Pick the source status",
+    "moviesPick": "Pick movies…",
+    "targetLabel": "New status",
+    "targetPick": "Pick the new status",
+    "affected": "{{count}} movies will change",
+    "apply": "Apply",
+    "confirmTitle": "Change status",
+    "confirmDesc": "{{count}} movies will change status to \"{{status}}\". Continue?",
+    "done": "Status changed on {{count}} movies"
+  },
+  "toast": {
+    "deleted": "Movie removed from your collection",
+    "statusChanged": "Status updated",
+    "favorited": "Added to favorites",
+    "unfavorited": "Removed from favorites",
+    "busy": "Wait for the current action to finish",
+    "added": "Movie added to your collection",
+    "error": "Something went wrong"
+  }
+}
