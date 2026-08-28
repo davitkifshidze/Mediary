@@ -38,3 +38,8 @@ export function mediaOf(type: MediaType): MediaDescriptor {
 export function mediaFromPath(pathname: string): MediaType {
   return pathname === '/series' || pathname.startsWith('/series/') ? 'series' : 'movie'
 }
+
+/** ჩანაწერის დეტალური/რედაქტირების გვერდია? (/movies/12, /series/3/edit) */
+export function isDetailPath(path: string): boolean {
+  return /^\/(movies|series)\/\d+/.test(path)
+}

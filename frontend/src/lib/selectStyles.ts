@@ -9,6 +9,8 @@ export interface Option {
  *  single/multi ორივესთვის: `IsMulti` პარამეტრით. */
 export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Option, IsMulti> {
   return {
+    // react-select-ის შიდა ელემენტები default-ად `cursor: default`-ს იყენებს —
+    // ყველა დასაჭერს ცალკე ვუწესებთ pointer-ს
     control: (base, state) => ({
       ...base,
       minHeight: 40,
@@ -16,8 +18,11 @@ export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Optio
       borderColor: state.isFocused ? 'var(--ring)' : 'var(--border)',
       borderRadius: 8,
       boxShadow: state.isFocused ? '0 0 0 2px var(--ring)' : 'none',
+      cursor: 'pointer',
       ':hover': { borderColor: 'var(--ring)' },
     }),
+    dropdownIndicator: (base) => ({ ...base, cursor: 'pointer' }),
+    clearIndicator: (base) => ({ ...base, cursor: 'pointer' }),
     valueContainer: (base) => ({ ...base, padding: '2px 8px', gap: 4 }),
     placeholder: (base) => ({ ...base, color: 'var(--muted-foreground)' }),
     input: (base) => ({ ...base, color: 'var(--foreground)' }),
@@ -33,6 +38,7 @@ export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Optio
       ...base,
       color: 'var(--muted-foreground)',
       borderRadius: 4,
+      cursor: 'pointer',
       ':hover': { backgroundColor: 'var(--destructive)', color: '#fff' },
     }),
     menu: (base) => ({

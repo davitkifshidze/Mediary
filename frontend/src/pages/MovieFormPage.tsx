@@ -62,8 +62,11 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const [lookupErr, setLookupErr] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
 
+  // დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს
+  const tm = (key: string) => t(type === 'series' ? `form.${key}Series` : `form.${key}`)
+
   const movieQ = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!), enabled: editing })
-  const genresQ = useQuery({ queryKey: ['genres'], queryFn: fetchGenres })
+  const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
   useEffect(() => {
     const m = movieQ.data
     if (!m) return
@@ -135,7 +138,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       fillFromDraft(d)
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
-      setLookupErr(e?.response?.data?.message ?? t('form.lookupNotFound'))
+      setLookupErr(e?.response?.data?.message ?? tm('lookupNotFound'))
     },
   })
 
@@ -154,7 +157,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       setLookupErr(null)
       if (!list.length) {
         setCandidates([])
-        setLookupErr(t('form.lookupNotFound'))
+        setLookupErr(tm('lookupNotFound'))
         return
       }
       if (list.length === 1) {
@@ -165,7 +168,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       setCandidates(list)
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
-      setLookupErr(e?.response?.data?.message ?? t('form.lookupNotFound'))
+      setLookupErr(e?.response?.data?.message ?? tm('lookupNotFound'))
     },
   })
 
@@ -196,7 +199,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       setErrors(errs)
       // „უკვე დამატებულია“ (IMDb ID არსებობს) — ლამაზი alert, არა მხოლოდ network-ში
       if (errs.imdb_id) {
-        toast({ title: t('form.alreadyAdded'), variant: 'error' })
+        toast({ title: tm('alreadyAdded'), variant: 'error' })
       }
     },
   })
@@ -269,7 +272,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             <Input
               value={lookupInput}
               onChange={(e) => setLookupInput(e.target.value)}
-              placeholder={t('form.lookupPlaceholder')}
+              placeholder={tm('lookupPlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -291,7 +294,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
           {candidates.length > 0 && (
             <div className="mt-3">
-              <p className="mb-2 text-xs text-muted-foreground">{t('form.lookupPick')}</p>
+              <p className="mb-2 text-xs text-muted-foreground">{tm('lookupPick')}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {candidates.map((c) => (
                   <button

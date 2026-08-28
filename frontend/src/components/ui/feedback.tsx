@@ -108,9 +108,11 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           }}
         >
           <DialogPrimitive.Portal>
-            <DialogPrimitive.Overlay className="fb-overlay fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm" />
+            {/* z-index სხვა დიალოგებზე (z-60/61) და queue-ს ტოსტზე (z-70) მაღლა —
+                დადასტურება მოდალის შიგნიდანაც იძახება (მაგ. ჟანრის ჩანაწერების მართვა) */}
+            <DialogPrimitive.Overlay className="fb-overlay fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm" />
             <DialogPrimitive.Content
-              className="fb-content fixed left-1/2 top-1/2 z-[61] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none"
+              className="fb-content fixed left-1/2 top-1/2 z-[91] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none"
               onEscapeKeyDown={() => settle(false)}
             >
               {confirmState && (

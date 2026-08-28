@@ -7,7 +7,7 @@ use App\Models\Genre;
 use App\Models\Movie;
 use App\Models\Series;
 use App\Services\Tmdb\TmdbClient;
-use App\Services\Translation\Translator;
+use App\Support\Lang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -29,15 +29,28 @@ class DiscoverController extends Controller
         'year_asc' => 'first_air_date.asc',
     ];
 
+    /** default სიღრმე; `max_pages`-ით იმართება (Tasks E3) */
     private const MAX_PAGES = 100;
+
+    /** TMDB-ის მყარი ლიმიტი — `page` > 500 შეცდომას აბრუნებს */
+    private const TMDB_MAX_PAGE = 500;
+
+    /** TMDB თითო გვერდზე ფიქსირებულად 20 ჩანაწერს აბრუნებს */
+    private const TMDB_PAGE_SIZE = 20;
 
     private const CACHE_TTL_HOURS = 6;
 
     /** TMDB discover/search — ჟანრი/წელი/რეიტინგი/სახელი; ქეშირებული; მონიშნავს უკვე დამატებულებს */
-    public function index(Request $request, TmdbClient $tmdb, Translator $translator)
+    public function index(Request $request, TmdbClient $tmdb)
     {
         if (! $tmdb->configured()) {
             return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული.'], 503);
+        }
+
+        // query-string-ში boolean სტრიქონად მოდის ("true"/"1"/"yes") — ვანორმალებთ
+        // ვალიდაციამდე, რომ `boolean` წესმა არ ჩააგდოს
+        if ($request->has('refresh')) {
+            $request->merge(['refresh' => $request->boolean('refresh')]);
         }
 
         $data = $request->validate([
@@ -51,11 +64,18 @@ class DiscoverController extends Controller
             'sort' => ['nullable', 'string'],
             'page' => ['nullable', 'integer'],
             'refresh' => ['nullable', 'boolean'],
+            // E3 — სიღრმე და გვერდის ზომა პარამეტრებიდან
+            'max_pages' => ['nullable', 'integer', 'min:1', 'max:'.self::TMDB_MAX_PAGE],
+            'per_page' => ['nullable', 'integer', 'min:'.self::TMDB_PAGE_SIZE, 'max:100'],
         ]);
 
         $isSeries = ($data['type'] ?? 'movie') === 'series';
         $page = max(1, (int) ($data['page'] ?? 1));
         $query = trim($data['query'] ?? '');
+
+        // ერთი „ჩვენების" გვერდი = `chunk` ცალი TMDB გვერდი (თითო 20 ჩანაწერი)
+        $chunk = max(1, (int) round(((int) ($data['per_page'] ?? self::TMDB_PAGE_SIZE)) / self::TMDB_PAGE_SIZE));
+        $maxPages = min((int) ($data['max_pages'] ?? self::MAX_PAGES), self::TMDB_MAX_PAGE);
 
         // ქეშის გასაღები — მხოლოდ TMDB-ზე მოქმედი პარამეტრები (owned დინამიურია)
         $cacheKey = 'discover:'.md5(json_encode([
@@ -68,6 +88,8 @@ class DiscoverController extends Controller
             'rmax' => $data['rating_max'] ?? null,
             'sort' => $data['sort'] ?? 'popularity',
             'page' => $page,
+            'chunk' => $chunk,
+            'max' => $maxPages,
         ]));
 
         if ($request->boolean('refresh')) {
@@ -78,7 +100,7 @@ class DiscoverController extends Controller
             $payload = Cache::remember(
                 $cacheKey,
                 now()->addHours(self::CACHE_TTL_HOURS),
-                fn () => $this->fetch($tmdb, $translator, $data, $query, $page, $isSeries),
+                fn () => $this->fetch($tmdb, $data, $query, $page, $isSeries, $chunk, $maxPages),
             );
         } catch (Throwable $e) {
             return response()->json(['message' => 'TMDB შეცდომა: '.$e->getMessage()], 502);
@@ -102,74 +124,108 @@ class DiscoverController extends Controller
         ]);
     }
 
-    /** TMDB-ს გამოძახება + ნორმალიზაცია + ka თარგმანი (ეს ინახება ქეშში) */
-    private function fetch(TmdbClient $tmdb, Translator $translator, array $data, string $query, int $page, bool $isSeries): array
+    /**
+     * ერთი „ჩვენების" გვერდი: `chunk` ცალი TMDB გვერდის შერწყმა + ნორმალიზაცია
+     * + ka სახელები. მთელი შედეგი ქეშში ინახება.
+     */
+    private function fetch(TmdbClient $tmdb, array $data, string $query, int $page, bool $isSeries, int $chunk, int $maxPages): array
     {
-        if ($query !== '') {
-            $res = $isSeries ? $tmdb->searchTvPaged($query, $page) : $tmdb->searchMoviesPaged($query, $page);
-        } else {
-            $sorts = $isSeries ? self::TV_SORTS : self::SORTS;
-            $dateKey = $isSeries ? 'first_air_date' : 'primary_release_date';
-            $params = [
-                'page' => $page,
-                'sort_by' => $sorts[$data['sort'] ?? 'popularity'] ?? $sorts['popularity'],
-            ];
-            if (! empty($data['genre'])) {
-                $g = Genre::where('slug', $data['genre'])->whereNotNull('tmdb_id')->first();
-                if ($g) {
-                    $params['with_genres'] = $g->tmdb_id;
-                }
-            }
-            if (! empty($data['year_min'])) {
-                $params["{$dateKey}.gte"] = $data['year_min'].'-01-01';
-            }
-            if (! empty($data['year_max'])) {
-                $params["{$dateKey}.lte"] = $data['year_max'].'-12-31';
-            }
-            if (! empty($data['rating_min'])) {
-                $params['vote_average.gte'] = $data['rating_min'];
-                $params['vote_count.gte'] = 50;
-            }
-            if (! empty($data['rating_max'])) {
-                $params['vote_average.lte'] = $data['rating_max'];
-            }
-            $res = $isSeries ? $tmdb->discoverTv($params) : $tmdb->discover($params);
-        }
-
         $genreMap = Genre::whereNotNull('tmdb_id')->get()->keyBy('tmdb_id');
+        $first = ($page - 1) * $chunk + 1;
+        $tmdbTotal = 1;
         $out = [];
-        foreach ($res['results'] ?? [] as $r) {
-            if (empty($r['poster_path'])) {
-                continue;
-            }
-            $title = $isSeries
-                ? ($r['name'] ?? ($r['original_name'] ?? ''))
-                : ($r['title'] ?? ($r['original_title'] ?? ''));
-            $date = $isSeries ? ($r['first_air_date'] ?? '') : ($r['release_date'] ?? '');
-            $out[] = [
-                'tmdb_id' => $r['id'],
-                'title' => $title,
-                'year' => ! empty($date) ? (int) substr($date, 0, 4) : null,
-                'rating' => isset($r['vote_average']) ? round((float) $r['vote_average'], 1) : null,
-                'poster' => 'https://image.tmdb.org/t/p/w342'.$r['poster_path'],
-                'overview' => $r['overview'] ?? null,
-                'genres' => $this->mapGenres($r['genre_ids'] ?? [], $genreMap),
-            ];
-        }
 
-        if ($out) {
-            $ka = $translator->toGeorgianBatch(array_column($out, 'title'));
-            foreach ($out as $i => &$s) {
-                $s['title_ka'] = $ka[$i] ?? null;
+        for ($i = 0; $i < $chunk; $i++) {
+            $tp = $first + $i;
+            if ($tp > $maxPages) {
+                break;
             }
-            unset($s);
+
+            $res = $this->request($tmdb, $data, $query, $tp, $isSeries, 'en-US');
+            $tmdbTotal = (int) ($res['total_pages'] ?? 1);
+
+            // ქართული სახელები — TMDB-ის იმავე პასუხის ლოკალიზებული ვერსიიდან (`language=ka`).
+            // Translator-ს (EN→KA) აქ აღარ ვიყენებთ: ANTHROPIC_API_KEY-ის გარეშე Google-ის
+            // უფასო endpoint 429-ს აბრუნებს და ინგლისური სახელი ბრუნდებოდა უცვლელად.
+            $kaTitles = [];
+            try {
+                $kaRes = $this->request($tmdb, $data, $query, $tp, $isSeries, 'ka');
+                foreach ($kaRes['results'] ?? [] as $r) {
+                    $kaTitles[$r['id']] = $isSeries ? ($r['name'] ?? null) : ($r['title'] ?? null);
+                }
+            } catch (Throwable $e) {
+                // ka წამოღება არასავალდებულოა — ინგლისურით ვაგრძელებთ
+            }
+
+            foreach ($res['results'] ?? [] as $r) {
+                if (empty($r['poster_path'])) {
+                    continue;
+                }
+                $title = $isSeries
+                    ? ($r['name'] ?? ($r['original_name'] ?? ''))
+                    : ($r['title'] ?? ($r['original_title'] ?? ''));
+                $date = $isSeries ? ($r['first_air_date'] ?? '') : ($r['release_date'] ?? '');
+                $out[] = [
+                    'tmdb_id' => $r['id'],
+                    'title' => $title,
+                    'title_ka' => Lang::georgian($kaTitles[$r['id']] ?? null),
+                    'year' => ! empty($date) ? (int) substr($date, 0, 4) : null,
+                    'rating' => isset($r['vote_average']) ? round((float) $r['vote_average'], 1) : null,
+                    'poster' => 'https://image.tmdb.org/t/p/w342'.$r['poster_path'],
+                    'overview' => $r['overview'] ?? null,
+                    'genres' => $this->mapGenres($r['genre_ids'] ?? [], $genreMap),
+                ];
+            }
+
+            if ($tp >= $tmdbTotal) {
+                break;
+            }
         }
 
         return [
-            'page' => $res['page'] ?? 1,
-            'total_pages' => min($res['total_pages'] ?? 1, self::MAX_PAGES),
+            'page' => $page,
+            'total_pages' => max(1, (int) ceil(min($tmdbTotal, $maxPages) / $chunk)),
             'results' => $out,
         ];
+    }
+
+    /** ერთი TMDB გამოძახება მითითებულ ენაზე (search ან discover) */
+    private function request(TmdbClient $tmdb, array $data, string $query, int $page, bool $isSeries, string $language): array
+    {
+        if ($query !== '') {
+            return $isSeries
+                ? $tmdb->searchTvPaged($query, $page, null, $language)
+                : $tmdb->searchMoviesPaged($query, $page, null, $language);
+        }
+
+        $sorts = $isSeries ? self::TV_SORTS : self::SORTS;
+        $dateKey = $isSeries ? 'first_air_date' : 'primary_release_date';
+        $params = [
+            'page' => $page,
+            'sort_by' => $sorts[$data['sort'] ?? 'popularity'] ?? $sorts['popularity'],
+            'language' => $language,
+        ];
+        if (! empty($data['genre'])) {
+            $g = Genre::where('slug', $data['genre'])->whereNotNull('tmdb_id')->first();
+            if ($g) {
+                $params['with_genres'] = $g->tmdb_id;
+            }
+        }
+        if (! empty($data['year_min'])) {
+            $params["{$dateKey}.gte"] = $data['year_min'].'-01-01';
+        }
+        if (! empty($data['year_max'])) {
+            $params["{$dateKey}.lte"] = $data['year_max'].'-12-31';
+        }
+        if (! empty($data['rating_min'])) {
+            $params['vote_average.gte'] = $data['rating_min'];
+            $params['vote_count.gte'] = 50;
+        }
+        if (! empty($data['rating_max'])) {
+            $params['vote_average.lte'] = $data['rating_max'];
+        }
+
+        return $isSeries ? $tmdb->discoverTv($params) : $tmdb->discover($params);
     }
 
     /** TMDB genre_ids → ლოკალური ჟანრების ორენოვანი სახელები */

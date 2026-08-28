@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Check, Pencil, PlayCircle, Star, Trash2 } from 'lucide-react'
@@ -28,6 +28,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
   const lang = i18n.language
   const qc = useQueryClient()
   const nav = useNavigate()
+  const loc = useLocation()
   const confirm = useConfirm()
   const { toast } = useToast()
   const api = mediaApi(type)
@@ -88,7 +89,12 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
         <Tooltip delayDuration={700}>
           <ContextMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Link to={`${detailBase}/${movie.id}`} className="block">
+              <Link
+                to={`${detailBase}/${movie.id}`}
+                // საიდან შემოვედით — წაშლის/დაბრუნების შემდეგ ამ გვერდზე ვბრუნდებით
+                state={{ from: loc.pathname + loc.search }}
+                className="block"
+              >
                 <div className="relative overflow-hidden rounded-lg bg-muted shadow-sm ring-1 ring-border transition duration-300 group-hover:shadow-lg group-hover:ring-foreground/30">
                   <div className="aspect-[2/3]">
                     <PosterImage

@@ -115,9 +115,12 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+/* ცენტრირებას Tailwind v4 ცალკე `translate:` თვისებით აკეთებს (-translate-x/y-1/2),
+   ამიტომ აქ მხოლოდ scale — თუ transform-ში translate(-50%,-50%) დავამატებთ,
+   ის ზემოდან დაეშტაბელება და დიალოგი ჯერ მარცხნივ-ზემოთ გამოჩნდება, მერე ხტება */
 @keyframes fb-pop-in {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 @keyframes fb-toast-in {
   from { opacity: 0; transform: translateX(1.5rem); }

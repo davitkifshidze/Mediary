@@ -55,7 +55,9 @@ class MovieController extends Controller
             $query->where('rating', '<=', $request->float('rating_max'));
         }
 
-        match ($request->string('sort')->toString()) {
+        $sort = $request->string('sort')->toString();
+
+        match ($sort) {
             'added_asc' => $query->orderBy('id'),
             'year_desc' => $query->orderByDesc('year'),
             'year_asc' => $query->orderBy('year'),
@@ -67,18 +69,31 @@ class MovieController extends Controller
         $movies = $query->get();
         Movie::annotateFranchise($movies);
 
-        return MovieListResource::collection($this->clusterByFranchise($movies));
+        // ჯგუფის (ფრანჩაიზის) გათვალისწინება — default ჩართული.
+        // `group=0` → სუფთა დალაგება, ფრანჩაიზის ნაწილები დაიშლება (Tasks D1).
+        if ($request->has('group') && ! $request->boolean('group')) {
+            return MovieListResource::collection($movies);
+        }
+
+        return MovieListResource::collection($this->clusterByFranchise($movies, $sort));
     }
 
     /**
      * ფრანჩაიზის ნაწილები გვერდიგვერდ — კლასტერი დგება მისი პირველი (sort-ით)
-     * ნაწილის პოზიციაზე; შიგნით ნაწილები წლის მიხედვით. უკოლექციო ფილმი ადგილზე რჩება.
+     * ნაწილის პოზიციაზე, ე.ი. ახალი ნაწილის მქონე ჯგუფი year_desc-ზე თავში წამოვა.
+     * უკოლექციო ფილმი ადგილზე რჩება.
+     *
+     * ჯგუფის შიგნით (Tasks D2): default-ად ახალი მარცხნივ, კლებადობით მარჯვნივ;
+     * ზრდადი დალაგების არჩევისას მიმართულებას ვუსწორებთ, თორემ ჯგუფი სიის
+     * მიმართულებას ეწინააღმდეგება.
      */
-    private function clusterByFranchise($movies)
+    private function clusterByFranchise($movies, string $sort = '')
     {
+        $dir = str_ends_with($sort, '_asc') ? 'asc' : 'desc';
+
         $byCollection = $movies
             ->filter(fn ($m) => $m->tmdb_collection_id)
-            ->sortBy([['year', 'asc'], ['id', 'asc']])
+            ->sortBy([['year', $dir], ['id', $dir]])
             ->groupBy('tmdb_collection_id');
 
         $emitted = [];

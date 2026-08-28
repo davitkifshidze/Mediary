@@ -80,19 +80,20 @@ class TmdbClient
     }
 
     /** სახელით ძებნა — გვერდებით (discover-ის name-search რეჟიმისთვის) */
-    public function searchMoviesPaged(string $query, int $page = 1, ?int $year = null): array
+    public function searchMoviesPaged(string $query, int $page = 1, ?int $year = null, string $language = 'en-US'): array
     {
         return $this->get('/search/movie', array_filter([
             'query' => $query,
             'year' => $year,
             'page' => $page,
             'include_adult' => 'false',
+            'language' => $language,
         ]));
     }
 
-    public function details(int $id): array
+    public function details(int $id, string $language = 'en-US'): array
     {
-        return $this->get("/movie/{$id}", ['language' => 'en-US']);
+        return $this->get("/movie/{$id}", ['language' => $language]);
     }
 
     public function credits(int $id): array
@@ -100,10 +101,10 @@ class TmdbClient
         return $this->get("/movie/{$id}/credits");
     }
 
-    /** მსახიობის ფილმოგრაფია */
-    public function personCredits(int $personId): array
+    /** მსახიობის ფილმოგრაფია (`language` — ლოკალიზებული სახელებისთვის, მაგ. 'ka') */
+    public function personCredits(int $personId, string $language = 'en-US'): array
     {
-        return $this->get("/person/{$personId}/movie_credits", ['language' => 'en-US']);
+        return $this->get("/person/{$personId}/movie_credits", ['language' => $language]);
     }
 
     /** ფრანჩაიზის (კოლექციის) ნაწილები */
@@ -160,20 +161,21 @@ class TmdbClient
     }
 
     /** სახელით ძებნა — გვერდებით (discover-ის name-search რეჟიმისთვის) */
-    public function searchTvPaged(string $query, int $page = 1, ?int $year = null): array
+    public function searchTvPaged(string $query, int $page = 1, ?int $year = null, string $language = 'en-US'): array
     {
         return $this->get('/search/tv', array_filter([
             'query' => $query,
             'first_air_date_year' => $year,
             'page' => $page,
             'include_adult' => 'false',
+            'language' => $language,
         ]));
     }
 
     /** სერიალის დეტალები (imdb_id external_ids-ში მოდის) */
-    public function tvDetails(int $id): array
+    public function tvDetails(int $id, string $language = 'en-US'): array
     {
-        return $this->get("/tv/{$id}", ['language' => 'en-US', 'append_to_response' => 'external_ids']);
+        return $this->get("/tv/{$id}", ['language' => $language, 'append_to_response' => 'external_ids']);
     }
 
     public function tvCredits(int $id): array
@@ -181,10 +183,10 @@ class TmdbClient
         return $this->get("/tv/{$id}/credits");
     }
 
-    /** მსახიობის სერიალოგრაფია */
-    public function personTvCredits(int $personId): array
+    /** მსახიობის სერიალოგრაფია (`language` — ლოკალიზებული სახელებისთვის, მაგ. 'ka') */
+    public function personTvCredits(int $personId, string $language = 'en-US'): array
     {
-        return $this->get("/person/{$personId}/tv_credits", ['language' => 'en-US']);
+        return $this->get("/person/{$personId}/tv_credits", ['language' => $language]);
     }
 
     /** სერიალების აღმოჩენა ფილტრებით */

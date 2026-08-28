@@ -15,7 +15,8 @@ import { useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
 import { PosterImage } from './PosterImage'
 import { AddCardHover } from './AddCardHover'
-import { genreName } from '@/lib/display'
+import { genreName, tmdbSubtitle, tmdbTitle } from '@/lib/display'
+import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 export function DiscoverModal({
@@ -34,6 +35,7 @@ export function DiscoverModal({
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const { settings } = useSettings()
   const { enqueue, isQueued } = useQueue()
   const { detailBase } = mediaOf(type)
   const [queryInput, setQueryInput] = useState('')
@@ -75,6 +77,9 @@ export function DiscoverModal({
     rating_max: searching ? undefined : num(ratingMax),
     sort: searching ? undefined : sort,
     page,
+    // E3 — სიღრმე/გვერდის ზომა პარამეტრებიდან
+    max_pages: settings.discoverMaxPages,
+    per_page: settings.discoverPerPage,
   }
 
   const q = useQuery({
@@ -231,7 +236,8 @@ export function DiscoverModal({
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
               {q.data.results.map((r) => {
                 const busy = isQueued(r.tmdb_id, type)
-                const title = i18n.language === 'ka' ? r.title_ka || r.title : r.title
+                const title = tmdbTitle(r, i18n.language)
+                const alt = tmdbSubtitle(r, i18n.language)
                 const inner = (
                   <>
                     <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-border">
@@ -269,6 +275,8 @@ export function DiscoverModal({
                       )}
                     </div>
                     <div className="mt-1.5 truncate text-xs font-medium">{title}</div>
+                    {/* მეორე ენის სახელიც (ka ↔ en) */}
+                    {alt && <div className="truncate text-[11px] text-muted-foreground">{alt}</div>}
                     <div className="text-[11px] text-muted-foreground">{r.year ?? '—'}</div>
                   </>
                 )

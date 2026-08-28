@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { genreName } from '@/lib/display'
+import type { MediaType } from '@/lib/media'
 import type { Genre } from '@/api/types'
 
 const TINTS = [
@@ -23,10 +24,13 @@ export function GenreChips({
   genres,
   active,
   onChange,
+  type = 'movie',
 }: {
   genres: Genre[]
   active: string | null
   onChange: (slug: string | null) => void
+  /** რომელი დომენის რაოდენობა ჩანდეს ჩიპზე */
+  type?: MediaType
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -58,7 +62,9 @@ export function GenreChips({
   return (
     <div className="flex flex-wrap gap-2">
       {chip(t('filter.allGenres'), null, 0)}
-      {genres.map((g, i) => chip(genreName(g, lang), g.slug, i, g.movies_count))}
+      {genres.map((g, i) =>
+        chip(genreName(g, lang), g.slug, i, type === 'series' ? g.series_count : g.movies_count),
+      )}
     </div>
   )
 }
