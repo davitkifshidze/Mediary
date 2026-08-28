@@ -44,4 +44,13 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
     ],
 
+    /*
+     | YouTube Data API v3 — არასავალდებულო (Tasks K2).
+     | გასაღების გარეშე ვიდეოს სათაური და thumbnail oEmbed-ით მოდის;
+     | გასაღებით დამატებით ხანგრძლივობა და ტეგებიც.
+     */
+    'youtube' => [
+        'key' => env('YOUTUBE_API_KEY'),
+    ],
+
 ];
