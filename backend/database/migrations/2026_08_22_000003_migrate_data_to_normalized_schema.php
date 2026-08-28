@@ -79,7 +79,10 @@ return new class extends Migration
 
         // --- ძველი სვეტების/ცხრილების წაშლა ---
         Schema::table('movies', function (Blueprint $table) {
-            $table->dropFullText(['title_ka', 'title_en']);
+            // fullText მხოლოდ MySQL-ზე დაიდო (იხ. create_movies_table)
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                $table->dropFullText(['title_ka', 'title_en']);
+            }
             $table->dropColumn([
                 'title_ka', 'title_en',
                 'description_ka', 'description_en',

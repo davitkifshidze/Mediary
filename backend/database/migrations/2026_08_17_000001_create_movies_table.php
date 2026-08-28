@@ -50,7 +50,10 @@ return new class extends Migration
             $table->index('year');
             $table->index('tmdb_id');
             $table->index('is_favorite');
-            $table->fullText(['title_ka', 'title_en']);
+            // fullText მხოლოდ MySQL-ზე — ტესტები sqlite :memory:-ზე გადის
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                $table->fullText(['title_ka', 'title_en']);
+            }
         });
     }
 

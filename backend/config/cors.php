@@ -10,7 +10,7 @@ return [
     | ამიტომ API-ს CORS სჭირდება. FRONTEND_URL იკითხება .env-იდან.
     */
 
-    'paths' => ['api/*', 'storage/*', 'up'],
+    'paths' => ['api/*', 'storage/*', 'up', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
@@ -26,6 +26,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Sanctum-ის SPA (cookie) რეჟიმი — სესიის ქუქი cross-origin უნდა გაიგზავნოს
+    'supports_credentials' => true,
 
 ];

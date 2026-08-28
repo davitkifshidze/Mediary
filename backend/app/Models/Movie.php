@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -9,6 +10,9 @@ use Illuminate\Support\Str;
 
 class Movie extends Model
 {
+    /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება (I1) */
+    use BelongsToUser;
+
     protected $guarded = ['id'];
 
     protected $with = ['translations'];

@@ -3,23 +3,32 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ApprovalRequestResource;
 use App\Http\Resources\GenreResource;
+use App\Models\ApprovalRequest;
 use App\Models\Genre;
+use App\Services\Genres\GenreRemover;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class GenreController extends Controller
 {
-    /** ჟანრები ფილმების რაოდენობით */
-    public function index()
+    /**
+     * ჟანრები ორივე დომენის რაოდენობით (movies_count + series_count).
+     * `type=movie|series` მხოლოდ დალაგებაზე მოქმედებს — რომელი რაოდენობით
+     * დაიხარისხოს; ორივე რიცხვი ყოველთვის ბრუნდება და ფრონტი ირჩევს.
+     */
+    public function index(Request $request)
     {
+        $sortKey = $request->input('type') === 'series' ? 'series_count' : 'movies_count';
+
         $genres = Genre::query()
-            ->withCount('movies')
+            ->withCount(['movies', 'series'])
             ->get()
             // name_en თარგმანის accessor-ია — დალაგება კოლექციაზე
             ->sortBy([
-                ['movies_count', 'desc'],
+                [$sortKey, 'desc'],
                 ['name_en', 'asc'],
             ])
             ->values();
@@ -47,7 +56,7 @@ class GenreController extends Controller
         $genre->setTranslation('en', $data['name_en'] ?? $data['name_ka']);
         $genre->setTranslation('ka', $data['name_ka'] ?? null);
 
-        return (new GenreResource($genre->loadCount('movies')))->response()->setStatusCode(201);
+        return (new GenreResource($genre->loadCount(['movies', 'series'])))->response()->setStatusCode(201);
     }
 
     /** რედაქტირება — მხოლოდ სახელები (slug უცვლელი რჩება TMDB-სინქრონის სტაბილურობისთვის) */
@@ -68,42 +77,69 @@ class GenreController extends Controller
             }
         }
 
-        return new GenreResource($genre->loadCount('movies'));
+        return new GenreResource($genre->loadCount(['movies', 'series']));
     }
 
     /**
      * წაშლა.
-     * თუ ფილმებია მიბმული — 409, სანამ არ მიეთითება:
-     *   - reassign_to=<genre_id>  → მიბმული ფილმები გადავა ამ ჟანრზე,
-     *   - force=1                 → უბრალოდ მოეხსნება (ფილმები დარჩება უჟანროდ).
+     * თუ ჩანაწერებია მიბმული (ფილმები **ან** სერიალები) — 409, სანამ არ მიეთითება:
+     *   - reassign_to=<genre_id>  → მიბმული ჩანაწერები გადავა ამ ჟანრზე,
+     *   - force=1                 → უბრალოდ მოეხსნება (ჩანაწერები დარჩება უჟანროდ).
+     *
+     * ⚠️ ჟანრი **გლობალურია**: ჩვეულებრივი მომხმარებლის წაშლა პირდაპირ არ სრულდება,
+     * არამედ ადმინთან მიდის დასადასტურებლად (202 + მოთხოვნა). super_admin — მაშინვე.
      */
-    public function destroy(Request $request, Genre $genre)
+    public function destroy(Request $request, Genre $genre, GenreRemover $remover)
     {
-        $count = $genre->movies()->count();
+        $reassignTo = $request->filled('reassign_to') ? (int) $request->input('reassign_to') : null;
+        $force = $request->boolean('force');
 
-        if ($count > 0) {
-            $reassignTo = $request->input('reassign_to');
-            $force = $request->boolean('force');
-
-            if ($reassignTo) {
-                $target = Genre::where('id', $reassignTo)->where('id', '!=', $genre->id)->first();
-                if (! $target) {
-                    return response()->json(['message' => 'invalid_reassign_target'], 422);
-                }
-                $movieIds = $genre->movies()->pluck('movies.id')->all();
-                $target->movies()->syncWithoutDetaching($movieIds);
-            } elseif (! $force) {
-                return response()->json([
-                    'message' => 'genre_in_use',
-                    'movies_count' => $count,
-                ], 409);
-            }
+        if (! $request->user()->isSuperAdmin()) {
+            return $this->requestDeletion($request, $genre, $remover, $reassignTo, $force);
         }
 
-        // genre_movie.genre_id აქვს cascadeOnDelete — pivot-ი თავად წაიშლება
-        $genre->delete();
+        $result = $remover->remove($genre, $reassignTo, $force);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'message' => $result['reason'],
+                'movies_count' => $result['movies_count'] ?? 0,
+                'series_count' => $result['series_count'] ?? 0,
+            ], $result['reason'] === 'genre_in_use' ? 409 : 422);
+        }
 
         return response()->noContent();
+    }
+
+    /** user-ის წაშლის თხოვნა → ApprovalRequest (pending) */
+    private function requestDeletion(Request $request, Genre $genre, GenreRemover $remover, ?int $reassignTo, bool $force)
+    {
+        $existing = ApprovalRequest::where('user_id', $request->user()->id)
+            ->where('type', ApprovalRequest::TYPE_GENRE_DELETE)
+            ->where('genre_id', $genre->id)
+            ->pending()
+            ->first();
+
+        $counts = $remover->globalCounts($genre);
+
+        $req = $existing ?: ApprovalRequest::create([
+            'user_id' => $request->user()->id,
+            'type' => ApprovalRequest::TYPE_GENRE_DELETE,
+            'genre_id' => $genre->id,
+            'message' => $request->input('message'),
+            'status' => 'pending',
+            'payload' => [
+                'reassign_to' => $reassignTo,
+                'force' => $force,
+                'name_ka' => $genre->name_ka,
+                'name_en' => $genre->name_en,
+            ] + $counts,
+        ]);
+
+        return response()->json([
+            'message' => 'approval_required',
+            'request' => new ApprovalRequestResource($req->load(['genre'])),
+        ], 202);
     }
 
     private function validateNames(Request $request): array

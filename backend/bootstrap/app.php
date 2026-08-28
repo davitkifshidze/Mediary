@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,7 +15,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // SPA cookie ავტორიზაცია: stateful დომენებიდან (SANCTUM_STATEFUL_DOMAINS)
+        // მოსულ /api/* რექვესთს სესია + CSRF ემატება, დანარჩენი token-ით მუშაობს.
+        $middleware->statefulApi();
+
+        $middleware->alias([
+            'module' => EnsureModuleEnabled::class,
+            'super_admin' => EnsureSuperAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

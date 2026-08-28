@@ -60,7 +60,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['series_id', 'locale']);
-            $table->fullText('title');
+            // fullText მხოლოდ MySQL-ზე — ტესტები sqlite :memory:-ზე გადის
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                $table->fullText('title');
+            }
         });
     }
 
