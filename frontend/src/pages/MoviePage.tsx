@@ -1,9 +1,9 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ExternalLink, Loader2, Pencil, Play, Plus, RefreshCw, Star, Trash2 } from 'lucide-react'
 import { fetchMovieCollection, mediaApi } from '@/api/media'
-import { mediaOf, type MediaType } from '@/lib/media'
+import { isDetailPath, mediaOf, type MediaType } from '@/lib/media'
 import type { Status } from '@/api/types'
 import { PosterImage } from '@/components/PosterImage'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -25,7 +25,13 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const { toast } = useToast()
   const { enqueue, isQueued } = useQueue()
   const api = mediaApi(type)
+  const loc = useLocation()
   const { detailBase, libraryPath } = mediaOf(type)
+
+  // საიდან შემოვედით (MovieCard-ი state-ში წერს). სხვა ჩანაწერის გვერდზე არასოდეს
+  // ვბრუნდებით — ფრანჩაიზის/შემოთავაზების ბმულიდან მოსვლისას ბიბლიოთეკა გვჭირდება.
+  const from = (loc.state as { from?: string } | null)?.from
+  const backTo = from && !isDetailPath(from) ? from : libraryPath
 
   const { data: m, isLoading } = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!) })
   const collectionQ = useQuery({
@@ -46,7 +52,8 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [type] })
       toast({ title: t('toast.deleted'), variant: 'success' })
-      nav(libraryPath)
+      // replace — წაშლილი ჩანაწერის URL ისტორიაში არ დარჩეს (Back მკვდარ გვერდს ხსნიდა)
+      nav(backTo, { replace: true })
     },
   })
 
@@ -84,7 +91,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6">
           <Link
-            to={libraryPath}
+            to={backTo}
             className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
@@ -129,13 +136,16 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
               {m.genres.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
+                  {/* ჟანრზე დაჭერა → ბიბლიოთეკა ამ ჟანრის ფილტრით (Tasks K9) */}
                   {m.genres.map((g) => (
-                    <span
+                    <Link
                       key={g.id}
-                      className="rounded-md border border-border bg-card/60 px-3 py-1.5 text-sm font-medium"
+                      to={`${libraryPath}?genre=${encodeURIComponent(g.slug)}`}
+                      title={t('genres.filterBy', { name: genreName(g, lang) })}
+                      className="rounded-md border border-border bg-card/60 px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary hover:bg-secondary"
                     >
                       {genreName(g, lang)}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -184,12 +194,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <Pencil className="size-4" />
                   {t('actions.edit')}
                 </Link>
-                <Button
-                  variant="outline"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={askDelete}
-                  disabled={delMut.isPending}
-                >
+                <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
                   <Trash2 className="size-4" />
                   {t('actions.delete')}
                 </Button>

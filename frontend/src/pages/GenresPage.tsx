@@ -1,14 +1,17 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Languages, Pencil, Plus, Trash2 } from 'lucide-react'
-import { createGenre, deleteGenre, fetchGenres, updateGenre } from '@/api/movies'
+import { createGenre, deleteGenre, fetchGenres, updateGenre, updateGenreItems } from '@/api/movies'
 import type { Genre } from '@/api/types'
+import type { MediaType } from '@/lib/media'
+import { GenreItemsManager, GenreItemsPicker, type GenreSection } from '@/components/GenreItemsManager'
+import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { GenreSingleSelect } from '@/components/GenreSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/components/ui/feedback'
@@ -18,7 +21,7 @@ import { cn } from '@/lib/utils'
 export function GenresPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
-  const genresQ = useQuery({ queryKey: ['genres'], queryFn: fetchGenres })
+  const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
   const [editing, setEditing] = useState<Genre | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Genre | null>(null)
 
@@ -58,9 +61,15 @@ export function GenresPage() {
                   {lang === 'ka' ? g.name_en : g.name_ka || '—'}
                 </div>
               </div>
-              <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                {t('genres.moviesCount', { count: g.movies_count ?? 0 })}
-              </span>
+              {/* ორი მთვლელი ერთმანეთის ქვეშ, თითო თავის ჩარჩოში, ერთი სიგანით (Tasks K10) */}
+              <div className="flex w-28 shrink-0 flex-col gap-1">
+                <span className="rounded-[5px] border border-border bg-muted/60 px-2 py-0.5 text-center text-xs text-muted-foreground">
+                  {t('genres.moviesCount', { count: g.movies_count ?? 0 })}
+                </span>
+                <span className="rounded-[5px] border border-border bg-muted/60 px-2 py-0.5 text-center text-xs text-muted-foreground">
+                  {t('genres.seriesCount', { count: g.series_count ?? 0 })}
+                </span>
+              </div>
               <button
                 onClick={() => setEditing(g)}
                 aria-label={t('genres.edit')}
@@ -80,7 +89,13 @@ export function GenresPage() {
         </ul>
       )}
 
-      {editing && <GenreFormDialog genre={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && (
+        <GenreFormDialog
+          genre={editing === 'new' ? null : editing}
+          allGenres={genres}
+          onClose={() => setEditing(null)}
+        />
+      )}
       {deleting && (
         <GenreDeleteDialog genre={deleting} allGenres={genres} onClose={() => setDeleting(null)} />
       )}
@@ -89,7 +104,15 @@ export function GenresPage() {
 }
 
 /* ---------- Add / edit dialog ---------- */
-function GenreFormDialog({ genre, onClose }: { genre: Genre | null; onClose: () => void }) {
+function GenreFormDialog({
+  genre,
+  allGenres,
+  onClose,
+}: {
+  genre: Genre | null
+  allGenres: Genre[]
+  onClose: () => void
+}) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -97,16 +120,28 @@ function GenreFormDialog({ genre, onClose }: { genre: Genre | null; onClose: () 
   const [nameEn, setNameEn] = useState(genre?.name_en ?? '')
   const [lang, setLang] = useState<'ka' | 'en'>(i18n.language === 'en' ? 'en' : 'ka')
   const [error, setError] = useState<string | null>(null)
+  // C2 — ახალ ჟანრში მაშინვე მიბმული ჩანაწერები (ჟანრი ჯერ არ არსებობს)
+  const [attach, setAttach] = useState<Record<MediaType, number[]>>({ movie: [], series: [] })
+  const [tab, setTab] = useState<GenreSection>('names')
 
   const mut = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload = { name_ka: nameKa.trim(), name_en: nameEn.trim() }
-      return genre ? updateGenre(genre.id, payload) : createGenre(payload)
+      if (genre) return updateGenre(genre.id, payload)
+
+      // შექმნა → მონიშნული ჩანაწერების მიბმა (ორივე დომენი, თუ არჩეულია)
+      const created = await createGenre(payload)
+      for (const type of ['movie', 'series'] as MediaType[]) {
+        if (attach[type].length) {
+          await updateGenreItems(created.id, { type, action: 'attach', ids: attach[type] })
+        }
+      }
+      return created
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['genres'] })
-      qc.invalidateQueries({ queryKey: ['movie'] })
-      qc.invalidateQueries({ queryKey: ['series'] })
+      ;['genres', 'genre-items', 'genre-attach-pool', 'movie', 'series'].forEach((k) =>
+        qc.invalidateQueries({ queryKey: [k] }),
+      )
       toast({ title: t('genres.saved'), variant: 'success' })
       onClose()
     },
@@ -116,49 +151,70 @@ function GenreFormDialog({ genre, onClose }: { genre: Genre | null; onClose: () 
     },
   })
 
+  // K1 — რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ტაბებად დაიყო.
+  // ახალი ჟანრი მარტივია (სახელი + წინასწარი მონიშვნა), იქ ტაბები არ გვჭირდება.
+  const TABS: TabItem<GenreSection>[] = [
+    { value: 'names', label: t('genres.tabNames') },
+    { value: 'items', label: t('genres.tabItems') },
+    { value: 'add', label: t('genres.tabAdd') },
+    { value: 'actions', label: t('genres.tabActions') },
+  ]
+
   return (
-    <ModalShell title={genre ? t('genres.edit') : t('genres.add')} onClose={onClose}>
-      <div className="mt-4 space-y-4">
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <Label className="mb-0">
-              {t('genres.nameField')}
-              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                {lang === 'ka' ? 'ქართული' : 'English'}
-              </span>
-            </Label>
-            <button
-              type="button"
-              onClick={() => setLang((l) => (l === 'ka' ? 'en' : 'ka'))}
-              className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Languages className="size-3.5" />
-              {t('genres.switchLang')}
-            </button>
-          </div>
-          {lang === 'ka' ? (
-            <Input
-              key="ka"
-              value={nameKa}
-              onChange={(e) => setNameKa(e.target.value)}
-              autoFocus
-            />
-          ) : (
-            <Input
-              key="en"
-              value={nameEn}
-              onChange={(e) => setNameEn(e.target.value)}
-              autoFocus
-            />
-          )}
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+    <ModalShell title={genre ? t('genres.edit') : t('genres.add')} onClose={onClose} wide>
+      {genre && <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />}
+
+      <div className="mt-4">
+        {tab === 'names' && (
+          <>
+            <TabInfo>{t('genres.infoNames')}</TabInfo>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <Label className="mb-0">
+                  {t('genres.nameField')}
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    {lang === 'ka' ? 'ქართული' : 'English'}
+                  </span>
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setLang((l) => (l === 'ka' ? 'en' : 'ka'))}
+                  className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Languages className="size-3.5" />
+                  {t('genres.switchLang')}
+                </button>
+              </div>
+              {lang === 'ka' ? (
+                <Input key="ka" value={nameKa} onChange={(e) => setNameKa(e.target.value)} autoFocus />
+              ) : (
+                <Input key="en" value={nameEn} onChange={(e) => setNameEn(e.target.value)} autoFocus />
+              )}
+            </div>
+            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+            {/* C2 — ახალ ჟანრზე ჩანაწერების წინასწარი მონიშვნა (ტაბები აქ არ არის) */}
+            {!genre && <GenreItemsPicker value={attach} onChange={setAttach} />}
+          </>
+        )}
+
+        {tab === 'items' && <TabInfo>{t('genres.infoItems')}</TabInfo>}
+        {tab === 'add' && <TabInfo>{t('genres.infoAdd')}</TabInfo>}
+        {tab === 'actions' && <TabInfo>{t('genres.infoActions')}</TabInfo>}
+
+        {/* C1 — ყოველთვის დამონტაჟებული, რომ მონიშვნა ტაბებს შორის არ დაიკარგოს */}
+        {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
       </div>
-      <div className="mt-6 flex justify-end gap-2">
+
+      <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
         <Button variant="outline" onClick={onClose}>
           {t('confirm.cancel')}
         </Button>
-        <Button onClick={() => mut.mutate()} disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}>
+        <Button
+          onClick={() => mut.mutate()}
+          disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
+          title={t('genres.saveNamesHint')}
+        >
           {t('genres.save')}
         </Button>
       </div>
@@ -182,7 +238,9 @@ function GenreDeleteDialog({
   const lang = i18n.language
   const qc = useQueryClient()
   const { toast } = useToast()
-  const count = genre.movies_count ?? 0
+  // ჟანრი გაზიარებულია — სერიალებიც უნდა ჩაითვალოს, თორემ „უჟანროდ" დარჩენა
+  // შეუმჩნევლად წაშლიდა სერიალების მიბმას
+  const count = (genre.movies_count ?? 0) + (genre.series_count ?? 0)
   const others = allGenres.filter((g) => g.id !== genre.id)
   const [mode, setMode] = useState<DeleteMode>('reassign')
   const [reassignTo, setReassignTo] = useState<string>('')
@@ -193,11 +251,17 @@ function GenreDeleteDialog({
       if (mode === 'reassign' && reassignTo) return deleteGenre(genre.id, { reassign_to: Number(reassignTo) })
       return deleteGenre(genre.id, { force: true })
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['genres'] })
       qc.invalidateQueries({ queryKey: ['movie'] })
       qc.invalidateQueries({ queryKey: ['series'] })
-      toast({ title: t('genres.deleted'), variant: 'success' })
+      qc.invalidateQueries({ queryKey: ['my-requests'] })
+      // ჟანრი გლობალურია — არაადმინის წაშლა ადმინთან მიდის დასადასტურებლად (I7)
+      toast(
+        res?.approvalRequired
+          ? { title: t('genres.deleteRequested'), description: t('genres.deleteRequestedHint'), variant: 'info' }
+          : { title: t('genres.deleted'), variant: 'success' },
+      )
       onClose()
     },
     onError: () => toast({ title: t('toast.error'), variant: 'error' }),
@@ -266,31 +330,3 @@ function GenreDeleteDialog({
   )
 }
 
-/* ---------- shared compact modal ---------- */
-function ModalShell({
-  title,
-  onClose,
-  destructive,
-  children,
-}: {
-  title: string
-  onClose: () => void
-  destructive?: boolean
-  children: ReactNode
-}) {
-  return (
-    <DialogPrimitive.Root open onOpenChange={(o) => !o && onClose()}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fb-overlay fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fb-content fixed left-1/2 top-1/2 z-[61] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none">
-          <DialogPrimitive.Title
-            className={cn('font-display text-lg font-semibold tracking-tight', destructive && 'text-destructive')}
-          >
-            {title}
-          </DialogPrimitive.Title>
-          {children}
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
-  )
-}

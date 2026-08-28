@@ -18,6 +18,11 @@ export interface MediaFilters {
   year_max?: number
   rating_min?: number
   rating_max?: number
+  /**
+   * ფრანჩაიზის დაჯგუფება (მხოლოდ ფილმებს ეხება, Tasks D1).
+   * `false` → სუფთა დალაგება, ჯგუფი დაიშლება. undefined → backend-ის default (ჩართული).
+   */
+  group?: boolean
 }
 
 export interface BulkStatusInput {
@@ -83,27 +88,88 @@ export function mediaApi(type: MediaType): MediaApi {
   return type === 'series' ? seriesApi : moviesApi
 }
 
-/* ---------- მედიის ხელახლა ჩამოტვირთვა TMDB-დან ---------- */
+/* ---------- მასობრივი სინქრონი TMDB-დან — სათითაოდ (Tasks J2/J3/J4) ---------- */
 
-export interface RedownloadResult {
-  movies: { ok: number; failed: number }
-  series: { ok: number; failed: number }
+export interface SyncPlanFilters {
+  /** დომენები; ცარიელი = ორივე */
+  types?: MediaType[]
+  status?: string
+  favorite?: boolean
+  /** ჟანრების slug-ები */
+  genres?: string[]
+  /** კონკრეტული ჩანაწერები დომენების მიხედვით */
+  ids?: Partial<Record<MediaType, number[]>>
+  /** მხოლოდ ისინი, ვისაც პოსტერი ან მსახიობის ფოტო აკლია */
+  missing_media_only?: boolean
 }
 
-/**
- * ყველა (ან type-ით გაფილტრული) ჩანაწერის პოსტერი + მსახიობთა ფოტოები TMDB-დან
- * ხელახლა ჩამოტვირთვა — ახალ მანქანაზე, სადაც storage/ ცარიელია.
- * timeout: 0 — ბევრ ჩანაწერზე დიდხანს გრძელდება.
- */
-export async function redownloadMedia(type?: MediaType): Promise<RedownloadResult> {
-  const { data } = await api.post('/media/redownload', type ? { type } : {}, { timeout: 0 })
-  return data.result as RedownloadResult
+export interface SyncPlanItem {
+  type: MediaType
+  id: number
+  title: string
+  year: number | null
+}
+
+export interface SyncPlan {
+  items: SyncPlanItem[]
+  count: number
+  eta_seconds: number
+  /** tmdb_id-ის გარეშე ჩანაწერები — მათი სინქრონი შეუძლებელია */
+  skipped_without_tmdb: number
+}
+
+/** ფილტრები → დასამუშავებელი რიგი (გაშვებამდე ჩვენებისთვის) */
+export async function fetchSyncPlan(filters: SyncPlanFilters): Promise<SyncPlan> {
+  const { data } = await api.post('/media/sync/plan', filters)
+  return data
+}
+
+export type SyncField = 'title' | 'description' | 'year' | 'rating' | 'genres' | 'cast' | 'details'
+
+export const SYNC_FIELDS: SyncField[] = [
+  'title',
+  'description',
+  'year',
+  'rating',
+  'genres',
+  'cast',
+  'details',
+]
+
+export interface SyncOptions {
+  /** პოსტერი + მსახიობთა ფოტოები */
+  media?: boolean
+  /** მედია მხოლოდ მაშინ, თუ ფაილი აკლია */
+  only_missing?: boolean
+  /** false (default) — მხოლოდ ცარიელი ველები; true — TMDB-ს მონაცემი ჩაანაცვლებს */
+  overwrite?: boolean
+  fields?: SyncField[]
+}
+
+export interface SyncItemResult {
+  ok: boolean
+  skipped: boolean
+  changed: string[]
+  error: string | null
+  title: string
+}
+
+/** ერთი ჩანაწერის სინქრონი — მოკლე რექვესთი, გაუქმებადი `signal`-ით */
+export async function syncItem(
+  type: MediaType,
+  id: number,
+  opts: SyncOptions,
+  signal?: AbortSignal,
+): Promise<SyncItemResult> {
+  const { data } = await api.post(`/media/sync/${type}/${id}`, opts, { signal })
+  return data
 }
 
 /* ---------- ჟანრები (გაზიარებული) ---------- */
 
-export async function fetchGenres(): Promise<Genre[]> {
-  const { data } = await api.get('/genres')
+/** ჟანრები — ორივე რაოდენობით; `type` მხოლოდ დალაგებაზე მოქმედებს */
+export async function fetchGenres(type?: MediaType): Promise<Genre[]> {
+  const { data } = await api.get('/genres', { params: type ? { type } : undefined })
   return data.data
 }
 
@@ -122,12 +188,55 @@ export async function updateGenre(id: number, payload: GenrePayload): Promise<Ge
   return data.data
 }
 
-/** წაშლა — reassign_to (გადაბმა სხვა ჟანრზე) ან force (უჟანროდ დატოვება) */
+/* ---------- ჟანრზე მიბმული ჩანაწერები (Tasks C1/C2) ---------- */
+
+export interface GenreItems {
+  movies: MovieListItem[]
+  series: MovieListItem[]
+  movies_count: number
+  series_count: number
+}
+
+/** ჟანრზე მიბმული ჩანაწერები — ორივე დომენი ერთ პასუხში */
+export async function fetchGenreItems(id: number): Promise<GenreItems> {
+  const { data } = await api.get(`/genres/${id}/items`)
+  return data
+}
+
+export type GenreItemAction = 'attach' | 'detach' | 'move' | 'replace'
+
+export interface GenreItemsInput {
+  type: MediaType
+  action: GenreItemAction
+  /** კონკრეტული ჩანაწერები; `all`-თან ერთად არ არის საჭირო */
+  ids?: number[]
+  /** attach → ბიბლიოთეკის ყველა ჩანაწერი; დანარჩენზე → ჟანრზე მიბმული ყველა */
+  all?: boolean
+  /** move/replace-ისთვის სავალდებულო */
+  target_genre_id?: number
+}
+
+/** ჟანრის მიბმა/ჩახსნა/გადატანა/ჩანაცვლება — აბრუნებს შეხებული ჩანაწერების რაოდენობას */
+export async function updateGenreItems(
+  id: number,
+  input: GenreItemsInput,
+): Promise<{ affected: number; genre: Genre }> {
+  const { data } = await api.post(`/genres/${id}/items`, input)
+  return data
+}
+
+/**
+ * წაშლა — reassign_to (გადაბმა სხვა ჟანრზე) ან force (უჟანროდ დატოვება).
+ *
+ * ჟანრი **გლობალურია**: ჩვეულებრივი მომხმარებლის წაშლა პირდაპირ არ სრულდება —
+ * backend აბრუნებს 202-ს და მოთხოვნა ადმინთან მიდის (I7). super_admin-ზე — 204.
+ */
 export async function deleteGenre(
   id: number,
   opts?: { reassign_to?: number; force?: boolean },
-): Promise<void> {
-  await api.delete(`/genres/${id}`, { data: opts })
+): Promise<{ approvalRequired: boolean }> {
+  const res = await api.delete(`/genres/${id}`, { data: opts })
+  return { approvalRequired: res.status === 202 }
 }
 
 /* ---------- Lookup (type-ით: movie|series) ---------- */
@@ -213,11 +322,19 @@ export interface DiscoverFilters {
   sort?: string
   page?: number
   refresh?: boolean
+  /** რამდენ TMDB გვერდამდე მივყვეთ (E3); TMDB-ის ლიმიტი 500 */
+  max_pages?: number
+  /** ჩანაწერი გვერდზე — TMDB-ის 20-ის ჯერადი (E3) */
+  per_page?: number
 }
 
 /** TMDB discover — ფილტრებით აღმოჩენა (movie ან series) */
 export async function discover(filters: DiscoverFilters, type: MediaType = 'movie'): Promise<DiscoverResponse> {
-  const { data } = await api.get('/discover', { params: { ...filters, type } })
+  // boolean query-პარამეტრი 1/0-ად — axios `true`-ს "true"-დ სერიალიზაციას უკეთებს,
+  // რასაც Laravel-ის `boolean` წესი არ იღებს
+  const { refresh, ...rest } = filters
+  const params = { ...rest, type, ...(refresh ? { refresh: 1 } : {}) }
+  const { data } = await api.get('/discover', { params })
   return data
 }
 
@@ -261,6 +378,10 @@ export interface Suggestion {
   poster: string | null
   overview?: string | null
   genres?: GenreName[]
+  /** უკვე ჩემს კოლექციაშია — სიიდან არ ვშლით, ვნიშნავთ (იხ. Tasks B3) */
+  owned: boolean
+  /** ლოკალური ჩანაწერის id, თუ owned */
+  movie_id: number | null
 }
 
 export interface ActorPageData {

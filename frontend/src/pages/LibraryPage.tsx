@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, DownloadCloud, Loader2, Plus, Search, SlidersHorizontal, Sparkles } from 'lucide-react'
-import { fetchGenres, mediaApi, redownloadMedia, type MediaFilters } from '@/api/media'
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronLeft, ChevronRight, Layers, Plus, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { fetchGenres, mediaApi, type MediaFilters } from '@/api/media'
 import { mediaOf, type MediaType } from '@/lib/media'
+import { useSettings } from '@/lib/settings'
 import { MovieGrid } from '@/components/MovieGrid'
 import { GenreChips } from '@/components/GenreChips'
 import { DiscoverModal } from '@/components/DiscoverModal'
-import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -16,20 +16,26 @@ import { cn } from '@/lib/utils'
 
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { t } = useTranslation()
+  const { settings } = useSettings()
   const [params] = useSearchParams()
   const api = mediaApi(type)
   const { detailBase } = mediaOf(type)
   const view = params.get('view') ?? 'all'
-  const [genre, setGenre] = useState<string | null>(null)
+  // ჟანრი URL-იდანაც მოდის (ჩანაწერის გვერდზე ჟანრზე დაჭერა — Tasks K9)
+  const genreParam = params.get('genre')
+  const [genre, setGenre] = useState<string | null>(genreParam)
   const [q, setQ] = useState('')
   const [sortField, setSortField] = useState<'added' | 'year' | 'rating'>('added')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [showFilters, setShowFilters] = useState(false)
+  // ფრანჩაიზის დაჯგუფება — მხოლოდ ფილმებს აქვს კოლექცია (Tasks D1)
+  const [grouped, setGrouped] = useState(true)
   const [yearMin, setYearMin] = useState('')
   const [yearMax, setYearMax] = useState('')
   const [ratingMin, setRatingMin] = useState('')
   const [ratingMax, setRatingMax] = useState('')
   const [discoverOpen, setDiscoverOpen] = useState(false)
+  const [page, setPage] = useState(1)
 
   const num = (v: string) => (v.trim() !== '' && !Number.isNaN(Number(v)) ? Number(v) : undefined)
 
@@ -48,6 +54,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     year_max: num(yearMax),
     rating_min: num(ratingMin),
     rating_max: num(ratingMax),
+    group: type === 'movie' ? grouped : undefined,
   }
 
   const hasRangeFilters = [yearMin, yearMax, ratingMin, ratingMax].some((v) => v.trim() !== '')
@@ -59,33 +66,25 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   }
 
   const moviesQ = useQuery({ queryKey: [type, 'list', filters], queryFn: () => api.list(filters) })
-  const genresQ = useQuery({ queryKey: ['genres'], queryFn: fetchGenres })
+  const genresQ = useQuery({ queryKey: ['genres', type], queryFn: () => fetchGenres(type) })
   const movies = moviesQ.data ?? []
 
-  // მედიის ხელახლა ჩამოტვირთვა TMDB-დან (ახალ მანქანაზე, სადაც სურათები ცარიელია)
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  const confirm = useConfirm()
-  const redownloadMut = useMutation({
-    mutationFn: () => redownloadMedia(),
-    onSuccess: (r) => {
-      toast({
-        title: t('media.redownloadDone', { movies: r.movies.ok, series: r.series.ok }),
-        variant: 'success',
-      })
-      qc.invalidateQueries({ queryKey: [type, 'list'] })
-    },
-    onError: () => toast({ title: t('toast.error'), variant: 'error' }),
-  })
-  const onRedownload = async () => {
-    const ok = await confirm({
-      title: t('media.redownloadConfirm'),
-      description: t('media.redownloadHint'),
-      confirmText: t('media.redownload'),
-      cancelText: t('confirm.cancel'),
-    })
-    if (ok) redownloadMut.mutate()
-  }
+  // გვერდის ზომა პარამეტრებიდან; 0 = ყველა ერთ გვერდზე (E2)
+  const pageSize = settings.libraryPageSize
+  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(movies.length / pageSize)) : 1
+  const current = Math.min(page, pageCount)
+  const visible = pageSize > 0 ? movies.slice((current - 1) * pageSize, current * pageSize) : movies
+
+  // ფილტრის/დალაგების ცვლილებაზე პირველ გვერდზე ვბრუნდებით
+  useEffect(() => {
+    setPage(1)
+  }, [q, genre, view, sortValue, yearMin, yearMax, ratingMin, ratingMax, grouped, pageSize])
+
+  // ?genre=… მისამართიდან (ჟანრზე დაჭერა ჩანაწერის გვერდზე). ჩიპებით შემდგომი
+  // ცვლილება ლოკალურ state-შია, ამიტომ მხოლოდ პარამეტრის ცვლილებას ვუსმენთ.
+  useEffect(() => {
+    if (genreParam) setGenre(genreParam)
+  }, [genreParam])
 
   const allTitle = type === 'series' ? t('library.titleSeries') : t('library.title')
   const heading =
@@ -135,6 +134,20 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               )}
             </Button>
           </div>
+          {/* ფრანჩაიზის დაჯგუფების ტოგლი — სერიალებს კოლექცია არ აქვს */}
+          {type === 'movie' && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setGrouped((g) => !g)}
+              title={grouped ? t('sort.groupOn') : t('sort.groupOff')}
+              aria-label={t('sort.groupLabel')}
+              aria-pressed={grouped}
+              className={cn(grouped && 'border-primary text-primary')}
+            >
+              <Layers className="size-4" />
+            </Button>
+          )}
           {/* ფილტრების გამომჩენი აიქონი */}
           <Button
             variant="outline"
@@ -153,21 +166,17 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
             <Sparkles className="size-4" />
             {t('discover.button')}
           </Button>
-          <Button
-            variant="outline"
-            onClick={onRedownload}
-            disabled={redownloadMut.isPending}
-            title={t('media.redownloadHint')}
-          >
-            {redownloadMut.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <DownloadCloud className="size-4" />
-            )}
-            {t('media.redownload')}
-          </Button>
+          {/* „მედიის ჩამოტვირთვა" გადავიდა პარამეტრების გვერდზე (Tasks J1) */}
         </div>
       </div>
+
+      {/* დაჯგუფება გამორთულია — ვხსნით, რას ნიშნავს (Tasks D1) */}
+      {type === 'movie' && !grouped && (
+        <p className="mb-5 flex items-start gap-2 rounded-xl border border-dashed border-border bg-card/40 px-4 py-2.5 text-sm text-muted-foreground">
+          <Layers className="mt-0.5 size-4 shrink-0" />
+          {t('sort.groupOffHint')}
+        </p>
+      )}
 
       {/* დიაპაზონის ფილტრები — ჩნდება მხოლოდ ფილტრის აიქონზე დაჭერით */}
       {showFilters && (
@@ -220,25 +229,48 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               className="h-9 w-24"
             />
           </div>
-          {hasRangeFilters && (
-            <button
-              onClick={clearRanges}
-              className="cursor-pointer text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-            >
-              {t('filter.clear')}
-            </button>
-          )}
+          {/* გასუფთავება — საერთო `destructiveOutline` ვარიანტი (Tasks K11) */}
+          <Button
+            variant="destructiveOutline"
+            size="sm"
+            onClick={clearRanges}
+            disabled={!hasRangeFilters}
+            className="ml-auto"
+          >
+            <X className="size-4" />
+            {t('filter.clear')}
+          </Button>
         </div>
       )}
 
       <div className="mb-7">
-        <GenreChips genres={genresQ.data ?? []} active={genre} onChange={setGenre} />
+        <GenreChips genres={genresQ.data ?? []} active={genre} onChange={setGenre} type={type} />
       </div>
 
       {moviesQ.isLoading ? (
         <div className="text-muted-foreground">{t('api.loading')}</div>
       ) : movies.length ? (
-        <MovieGrid movies={movies} type={type} />
+        <>
+          <MovieGrid movies={visible} type={type} />
+          {pageCount > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <Button variant="outline" size="sm" disabled={current <= 1} onClick={() => setPage(current - 1)}>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {current} / {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={current >= pageCount}
+                onClick={() => setPage(current + 1)}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="rounded-xl border border-dashed border-border p-16 text-center">
           <p className="text-muted-foreground">{type === 'series' ? t('library.emptySeries') : t('library.empty')}</p>

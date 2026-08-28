@@ -12,10 +12,13 @@ const buttonVariants = cva(
         outline: 'border border-border bg-transparent hover:bg-muted',
         ghost: 'hover:bg-muted',
         destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
+        // „გასუფთავება"/„მოხსნა" ტიპის ქმედებები — მოწითალო კონტური, არა სავსე წითელი
+        destructiveOutline:
+          'border border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',
       },
       size: {
         default: 'h-10 px-4 py-2',
-        sm: 'h-9 px-3',
+        sm: 'h-9 px-3.5',
         lg: 'h-11 px-6',
         icon: 'h-10 w-10',
       },

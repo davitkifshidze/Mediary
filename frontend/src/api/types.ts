@@ -6,6 +6,7 @@ export interface Genre {
   name_ka: string | null
   slug: string
   movies_count?: number
+  series_count?: number
 }
 
 export interface CastMember {
