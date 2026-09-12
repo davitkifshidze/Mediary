@@ -78,7 +78,7 @@ class AnimeController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return AnimeListResource::collection($query->get());
+        return AnimeListResource::collection($this->paginated($request, $query));
     }
 
     /** ერთი ანიმე დეტალურად */

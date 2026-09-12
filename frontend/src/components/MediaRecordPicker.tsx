@@ -62,7 +62,8 @@ function OneDomain({
      პიქერი ზუსტად იმავე სიას კითხულობს, ე.ი. ორივე ერთ ქეშს იზიარებს. */
   const q = useQuery({
     queryKey: ['genre-attach-pool', type],
-    queryFn: () => mediaApi(type).list(),
+    // ⚠️ `all` — ამრჩევში ყველა ჩანაწერი უნდა ჩანდეს (სკოუპი „კონკრეტული“)
+    queryFn: () => mediaApi(type).list({ all: true }).then((p) => p.items),
     enabled,
   })
 

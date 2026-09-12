@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   Dices,
   ExternalLink,
@@ -120,9 +122,17 @@ export function BoardGamesPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['board-games', filters], queryFn: () => fetchBoardGames(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['board-games', filters, limit],
+    queryFn: () => fetchBoardGames({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const genresQ = useQuery({ queryKey: ['board-game-genres'], queryFn: fetchBoardGameGenres })
-  const games = useMemo(() => query.data ?? [], [query.data])
+  const games = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -211,7 +221,7 @@ export function BoardGamesPage() {
       <PageHeader
         module="board_game"
         title={heading}
-        subtitle={t('boardGames.count', { count: games.length })}
+        subtitle={t('boardGames.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -422,6 +432,8 @@ export function BoardGamesPage() {
               )
             })}
           </ul>
+
+          <ShowMore shown={games.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

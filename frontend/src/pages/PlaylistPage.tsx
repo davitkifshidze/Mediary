@@ -55,7 +55,12 @@ export function PlaylistPage() {
   })
 
   // დამატების აუზი — ჩემი სიმღერები; მოთხოვნა მხოლოდ პანელის გახსნაზე
-  const poolQ = useQuery({ queryKey: ['songs', 'playlist-pool'], queryFn: () => fetchSongs(), enabled: adding })
+  // ⚠️ `all` — პლეილისტში დასამატებელი ავზი მთელი ბიბლიოთეკაა
+  const poolQ = useQuery({
+    queryKey: ['songs', 'playlist-pool'],
+    queryFn: () => fetchSongs({ all: true }).then((p) => p.items),
+    enabled: adding,
+  })
 
   const songs = playlist?.songs ?? []
   const songIds = useMemo(() => songs.map((s) => s.id), [songs])

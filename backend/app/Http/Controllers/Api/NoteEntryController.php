@@ -64,7 +64,7 @@ class NoteEntryController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return NoteEntryResource::collection($query->get());
+        return NoteEntryResource::collection($this->paginated($request, $query));
     }
 
     public function show(NoteEntry $note)

@@ -1,4 +1,5 @@
 import { API_URL, api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
 
 /* ============================================================
@@ -161,7 +162,7 @@ export async function reorderVideoTypes(ids: number[]): Promise<VideoType[]> {
 
 /* ---------- ვიდეოები ---------- */
 
-export interface VideoFilters {
+export interface VideoFilters extends ListParams {
   q?: string
   platform?: string
   favorite?: boolean
@@ -228,16 +229,17 @@ export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
   return data
 }
 
-export async function fetchVideos(filters: VideoFilters = {}): Promise<Video[]> {
-  const { favorite, downloaded, ...rest } = filters
+export async function fetchVideos(filters: VideoFilters = {}): Promise<Page<Video>> {
+  const { favorite, downloaded, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
   const params = {
     ...rest,
     ...(favorite ? { favorite: 1 } : {}),
     ...(downloaded ? { downloaded: 1 } : {}),
+    ...(all ? { all: 1 } : {}),
   }
   const { data } = await api.get('/videos', { params })
-  return data.data
+  return readPage<Video>(data)
 }
 
 /* ---------- §7.1 — ლოკალური ასლი (`yt-dlp`) ----------

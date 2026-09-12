@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, Paperclip, Pencil, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
 import {
   SONG_MAX_RATING,
@@ -105,6 +107,24 @@ export function SongsPage() {
   // §7.2 — დაკვრა გლობალურ ზოლშია: სიმღერაზე დაჭერა **მთელ გაფილტრულ სიას**
   // აგდებს რიგში, ე.ი. დამთავრებისას შემდეგი თავისით ჩაირთვება.
   const player = usePlayer()
+
+  /* §7.2 — დასაკრავი რიგი **მთელი გაფილტრული სიაა** და არა ჩატვირთული გვერდი.
+     ⚠️ ეს წესი გვერდებად დაყოფამდე არსებობდა და განზრახ უცვლელი რჩება:
+     500 სიმღერიან ფილტრზე „დაკვრა" 60-ზე არ უნდა გაჩერდეს. დამატებითი
+     მოთხოვნა მხოლოდ **ცხად დაჭერაზე** ხდება (და ქეშდება), და არა სექციის
+     გახსნაზე — სწორედ ის იყო ძვირი. წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ:
+     დუმილი უარესი პასუხია. */
+  const playFrom = async (index: number) => {
+    try {
+      const full = await qc.fetchQuery({
+        queryKey: ['songs', filters, 'queue'],
+        queryFn: () => fetchSongs({ ...filters, all: true }),
+      })
+      player.play(full.items.map(songItem), index, t('songs.title'))
+    } catch {
+      player.play(songs.map(songItem), index, t('songs.title'))
+    }
+  }
   // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.
   const [material, setMaterial] = useState<Song | null>(null)
@@ -126,9 +146,17 @@ export function SongsPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['songs', filters], queryFn: () => fetchSongs(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['songs', filters, limit],
+    queryFn: () => fetchSongs({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const genresQ = useQuery({ queryKey: ['song-genres'], queryFn: fetchSongGenres })
-  const songs = useMemo(() => query.data ?? [], [query.data])
+  const songs = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -197,7 +225,7 @@ export function SongsPage() {
       <PageHeader
         module="song"
         title={heading}
-        subtitle={t('songs.count', { count: songs.length })}
+        subtitle={t('songs.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -288,7 +316,7 @@ export function SongsPage() {
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <button
-                    onClick={() => player.play(songs.map(songItem), i, t('songs.title'))}
+                    onClick={() => playFrom(i)}
                     aria-label={t('songs.play')}
                     className="group relative grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
                   >
@@ -423,6 +451,8 @@ export function SongsPage() {
               )
             })}
           </ul>
+
+          <ShowMore shown={songs.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

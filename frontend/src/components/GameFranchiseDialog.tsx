@@ -64,7 +64,8 @@ export function GameFranchiseDialog({
   /* ნაწილები — მხოლოდ მაშინ, როცა სახელი მართლა არსებობს ბიბლიოთეკაში */
   const parts = useQuery({
     queryKey: ['games', { franchise: trimmed }],
-    queryFn: () => fetchGames({ franchise: trimmed }),
+    // ⚠️ `all` — ფრანჩაიზის ყველა ნაწილი ერთ სიაში უნდა ჩანდეს
+    queryFn: () => fetchGames({ franchise: trimmed, all: true }).then((p) => p.items),
     enabled: trimmed.length > 0,
   })
 

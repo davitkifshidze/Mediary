@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { VideoMetadata, VideoPlatform } from '@/api/videos'
 
 /* ============================================================
@@ -52,7 +53,7 @@ export interface Song {
   created_at: string | null
 }
 
-export interface SongFilters {
+export interface SongFilters extends ListParams {
   q?: string
   platform?: string
   favorite?: boolean
@@ -108,12 +109,12 @@ export async function fetchSongMetadata(url: string): Promise<VideoMetadata> {
   return data
 }
 
-export async function fetchSongs(filters: SongFilters = {}): Promise<Song[]> {
-  const { favorite, ...rest } = filters
+export async function fetchSongs(filters: SongFilters = {}): Promise<Page<Song>> {
+  const { favorite, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
-  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}) }
+  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}), ...(all ? { all: 1 } : {}) }
   const { data } = await api.get('/songs', { params })
-  return data.data
+  return readPage<Song>(data)
 }
 
 export async function fetchSong(id: number): Promise<Song> {

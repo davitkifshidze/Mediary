@@ -41,7 +41,8 @@ export type GenreSection = 'names' | 'items' | 'add'
 function useAttachPool(type: MediaType, attached: MovieListItem[]) {
   const q = useQuery({
     queryKey: ['genre-attach-pool', type],
-    queryFn: () => mediaApi(type).list(),
+    // ⚠️ `all` — ჟანრის მიბმა მთელ ბიბლიოთეკაზე ითვლება
+    queryFn: () => mediaApi(type).list({ all: true }).then((p) => p.items),
   })
   const attachedIds = useMemo(() => new Set(attached.map((m) => m.id)), [attached])
 
@@ -319,7 +320,11 @@ function DomainPicker({
   onChange: (ids: number[]) => void
 }) {
   const { t } = useTranslation()
-  const q = useQuery({ queryKey: ['genre-attach-pool', type], queryFn: () => mediaApi(type).list() })
+  // ⚠️ `all` — მისამაგრებელი ავზი მთელი ბიბლიოთეკაა
+  const q = useQuery({
+    queryKey: ['genre-attach-pool', type],
+    queryFn: () => mediaApi(type).list({ all: true }).then((p) => p.items),
+  })
   const all = q.data ?? []
 
   return (

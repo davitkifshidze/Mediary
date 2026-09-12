@@ -36,7 +36,11 @@ export function VideoBulkPanel() {
   const { toast } = useToast()
   const confirm = useConfirm()
 
-  const videosQ = useQuery({ queryKey: ['videos', 'bulk'], queryFn: () => fetchVideos() })
+  // ⚠️ `all` — მასობრივი ცვლილება მთელ სიაზე მოქმედებს
+  const videosQ = useQuery({
+    queryKey: ['videos', 'bulk'],
+    queryFn: () => fetchVideos({ all: true }).then((p) => p.items),
+  })
   const typesQ = useQuery({ queryKey: ['video-types'], queryFn: fetchVideoTypes })
   const videos = useMemo(() => videosQ.data ?? [], [videosQ.data])
   const types = useMemo(() => typesQ.data ?? [], [typesQ.data])

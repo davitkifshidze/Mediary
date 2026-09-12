@@ -77,7 +77,7 @@ class BookController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return BookResource::collection($query->get());
+        return BookResource::collection($this->paginated($request, $query));
     }
 
     public function show(Book $book)

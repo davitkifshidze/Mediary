@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -58,7 +59,7 @@ export interface Book {
   created_at: string | null
 }
 
-export interface BookFilters {
+export interface BookFilters extends ListParams {
   q?: string
   status?: string
   format?: string
@@ -136,12 +137,12 @@ function toFormData(input: BookInput): FormData {
   return fd
 }
 
-export async function fetchBooks(filters: BookFilters = {}): Promise<Book[]> {
-  const { favorite, ...rest } = filters
+export async function fetchBooks(filters: BookFilters = {}): Promise<Page<Book>> {
+  const { favorite, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
-  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}) }
+  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}), ...(all ? { all: 1 } : {}) }
   const { data } = await api.get('/books', { params })
-  return data.data
+  return readPage<Book>(data)
 }
 
 export async function fetchBook(id: number): Promise<Book> {

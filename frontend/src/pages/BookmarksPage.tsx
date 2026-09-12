@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   ExternalLink,
   Globe,
@@ -123,9 +125,17 @@ export function BookmarksPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['bookmarks', filters], queryFn: () => fetchBookmarks(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['bookmarks', filters, limit],
+    queryFn: () => fetchBookmarks({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const categoriesQ = useQuery({ queryKey: ['bookmark-categories'], queryFn: fetchBookmarkCategories })
-  const bookmarks = useMemo(() => query.data ?? [], [query.data])
+  const bookmarks = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -208,7 +218,7 @@ export function BookmarksPage() {
       <PageHeader
         module="bookmark"
         title={heading}
-        subtitle={t('bookmarks.count', { count: bookmarks.length })}
+        subtitle={t('bookmarks.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -414,6 +424,8 @@ export function BookmarksPage() {
               )
             })}
           </ul>
+
+          <ShowMore shown={bookmarks.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         <FilterPanel

@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
 
 /* ============================================================
@@ -42,7 +43,7 @@ export interface NoteEntry {
   updated_at: string | null
 }
 
-export interface NoteFilters {
+export interface NoteFilters extends ListParams {
   q?: string
   status?: string
   favorite?: boolean
@@ -66,16 +67,17 @@ export interface NoteInput {
   visibility?: 'private' | 'public'
 }
 
-export async function fetchNotes(filters: NoteFilters = {}): Promise<NoteEntry[]> {
-  const { favorite, overdue, ...rest } = filters
+export async function fetchNotes(filters: NoteFilters = {}): Promise<Page<NoteEntry>> {
+  const { favorite, overdue, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
   const params = {
     ...rest,
     ...(favorite ? { favorite: 1 } : {}),
     ...(overdue ? { overdue: 1 } : {}),
+    ...(all ? { all: 1 } : {}),
   }
   const { data } = await api.get('/notes', { params })
-  return data.data
+  return readPage<NoteEntry>(data)
 }
 
 export async function fetchNote(id: number): Promise<NoteEntry> {

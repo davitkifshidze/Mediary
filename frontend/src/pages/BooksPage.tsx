@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   BookOpen,
   ExternalLink,
@@ -115,9 +117,17 @@ export function BooksPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['books', filters], queryFn: () => fetchBooks(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['books', filters, limit],
+    queryFn: () => fetchBooks({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const genresQ = useQuery({ queryKey: ['book-genres'], queryFn: fetchBookGenres })
-  const books = useMemo(() => query.data ?? [], [query.data])
+  const books = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -200,7 +210,7 @@ export function BooksPage() {
       <PageHeader
         module="book"
         title={heading}
-        subtitle={t('books.count', { count: books.length })}
+        subtitle={t('books.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -420,6 +430,8 @@ export function BooksPage() {
               )
             })}
           </ul>
+
+          <ShowMore shown={books.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

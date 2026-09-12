@@ -67,7 +67,10 @@ class VideoController extends Controller
         // თანაბარ relevance-ზე არჩეული სორტირება რჩება ძალაში.
         $q = $request->string('q')->toString();
 
-        return VideoResource::collection($q === '' ? $query->get() : $search->search($query, $q));
+        return VideoResource::collection($this->paginated(
+            $request,
+            $q === '' ? $query : $search->search($query, $q),
+        ));
     }
 
     /**

@@ -73,7 +73,7 @@ class SongController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return SongResource::collection($query->get());
+        return SongResource::collection($this->paginated($request, $query));
     }
 
     public function show(Song $song)

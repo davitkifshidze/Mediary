@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -93,7 +94,7 @@ export interface Game {
   created_at: string | null
 }
 
-export interface GameFilters {
+export interface GameFilters extends ListParams {
   q?: string
   status?: string
   favorite?: boolean
@@ -200,12 +201,12 @@ function toFormData(input: GameInput): FormData {
   return fd
 }
 
-export async function fetchGames(filters: GameFilters = {}): Promise<Game[]> {
-  const { favorite, ...rest } = filters
+export async function fetchGames(filters: GameFilters = {}): Promise<Page<Game>> {
+  const { favorite, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
-  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}) }
+  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}), ...(all ? { all: 1 } : {}) }
   const { data } = await api.get('/games', { params })
-  return data.data
+  return readPage<Game>(data)
 }
 
 export async function fetchGame(id: number): Promise<Game> {

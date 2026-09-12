@@ -70,7 +70,7 @@ class SeriesController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return SeriesListResource::collection($query->get());
+        return SeriesListResource::collection($this->paginated($request, $query));
     }
 
     /** ერთი სერიალი დეტალურად */

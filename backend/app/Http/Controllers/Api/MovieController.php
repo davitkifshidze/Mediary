@@ -13,6 +13,7 @@ use App\Services\Enrichment\MovieEnricher;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 class MovieController extends Controller
@@ -73,16 +74,26 @@ class MovieController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        $movies = $query->get();
+        /* ⚠️ ფრანჩაიზა **გვერდის შიგნით** იკრიბება და არა მთელ ბიბლიოთეკაზე.
+           ფრონტი ყოველთვის პირველ გვერდს ითხოვს და `per_page`-ს ზრდის
+           („მეტის ჩვენება“), ე.ი. ჩატვირთული პრეფიქსი ყოველთვის სრულია და
+           კლასტერი მასზე სწორად დგება. `annotateFranchise()` ბეჯს ისედაც
+           ცალკე query-ით ითვლის, ე.ი. ქვესიმრავლეზეც მუშაობს. */
+        $page = $this->paginated($request, $query);
+        $movies = $page instanceof LengthAwarePaginator ? $page->getCollection() : $page;
         Movie::annotateFranchise($movies);
 
         // ჯგუფის (ფრანჩაიზის) გათვალისწინება — default ჩართული.
         // `group=0` → სუფთა დალაგება, ფრანჩაიზის ნაწილები დაიშლება (Tasks D1).
         if ($request->has('group') && ! $request->boolean('group')) {
-            return MovieListResource::collection($movies);
+            return MovieListResource::collection($page);
         }
 
-        return MovieListResource::collection($this->clusterByFranchise($movies, $sort));
+        $clustered = $this->clusterByFranchise($movies, $sort);
+
+        return MovieListResource::collection(
+            $page instanceof LengthAwarePaginator ? $page->setCollection($clustered) : $clustered,
+        );
     }
 
     /**

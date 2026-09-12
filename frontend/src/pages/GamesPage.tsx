@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   Clock,
   ExternalLink,
@@ -124,9 +126,17 @@ export function GamesPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['games', filters], queryFn: () => fetchGames(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['games', filters, limit],
+    queryFn: () => fetchGames({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const genresQ = useQuery({ queryKey: ['game-genres'], queryFn: fetchGameGenres })
-  const games = useMemo(() => query.data ?? [], [query.data])
+  const games = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -196,7 +206,7 @@ export function GamesPage() {
       <PageHeader
         module="game"
         title={heading}
-        subtitle={t('games.count', { count: games.length })}
+        subtitle={t('games.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -412,6 +422,8 @@ export function GamesPage() {
               )
             })}
           </ul>
+
+          <ShowMore shown={games.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

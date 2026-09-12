@@ -100,7 +100,8 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
   const confirm = useConfirm()
   const api = mediaApi(type)
 
-  const moviesQ = useQuery({ queryKey: [type, 'bulk'], queryFn: () => api.list() })
+  // ⚠️ `all` — მასობრივი სტატუსი მთელ სიაზე მოქმედებს
+  const moviesQ = useQuery({ queryKey: [type, 'bulk'], queryFn: () => api.list({ all: true }).then((p) => p.items) })
   const movies = useMemo(() => moviesQ.data ?? [], [moviesQ.data])
 
   const [mode, setMode] = useState<Mode>('by_status')

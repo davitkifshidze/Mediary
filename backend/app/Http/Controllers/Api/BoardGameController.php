@@ -77,7 +77,7 @@ class BoardGameController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return BoardGameResource::collection($query->get());
+        return BoardGameResource::collection($this->paginated($request, $query));
     }
 
     public function show(BoardGame $boardGame)

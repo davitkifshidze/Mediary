@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
 
 /* ============================================================
@@ -40,7 +41,7 @@ export interface Bookmark {
   created_at: string | null
 }
 
-export interface BookmarkFilters {
+export interface BookmarkFilters extends ListParams {
   q?: string
   status?: string
   favorite?: boolean
@@ -99,12 +100,12 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   return data
 }
 
-export async function fetchBookmarks(filters: BookmarkFilters = {}): Promise<Bookmark[]> {
-  const { favorite, ...rest } = filters
+export async function fetchBookmarks(filters: BookmarkFilters = {}): Promise<Page<Bookmark>> {
+  const { favorite, all, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
-  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}) }
+  const params = { ...rest, ...(favorite ? { favorite: 1 } : {}), ...(all ? { all: 1 } : {}) }
   const { data } = await api.get('/bookmarks', { params })
-  return data.data
+  return readPage<Bookmark>(data)
 }
 
 export async function fetchBookmark(id: number): Promise<Bookmark> {

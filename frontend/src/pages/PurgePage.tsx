@@ -211,19 +211,44 @@ export function PurgePage() {
     enabled: byDictionary,
   })
   const dictionary = dictQ.data ?? []
+  /* ⚠️ ექვსივე `all: true`-ით. `/purge` სკოუპს **ცხადად** აგებს (`mode` +
+     პარამეტრები), ე.ი. ამრჩევსა და ტეგების შემოთავაზებას გვერდებად დაჭრილი
+     სია არ გამოადგება: მე-2 გვერდზე დარჩენილი ჩანაწერი სიიდან ჩუმად
+     ამოვარდებოდა და წასაშლელის სია მცდარი იქნებოდა. */
   const poolQ = useQuery({
     queryKey: ['purge-pool', domain],
-    queryFn: () => (byDictionary ? Promise.resolve([]) : mediaApi(domain as 'movie' | 'series').list()),
+    queryFn: () =>
+      byDictionary
+        ? Promise.resolve([])
+        : mediaApi(domain as 'movie' | 'series')
+            .list({ all: true })
+            .then((p) => p.items),
     enabled: mode === 'ids' && !byDictionary,
   })
   // ტეგების შემოთავაზება — ბიბლიოთეკაში უკვე არსებული ტეგები
-  const videosQ = useQuery({ queryKey: ['videos', 'purge'], queryFn: () => fetchVideos(), enabled: isVideo })
-  const songsQ = useQuery({ queryKey: ['songs', 'purge'], queryFn: () => fetchSongs(), enabled: isSong })
-  const booksQ = useQuery({ queryKey: ['books', 'purge'], queryFn: () => fetchBooks(), enabled: isBook })
-  const notesQ = useQuery({ queryKey: ['notes', 'purge'], queryFn: () => fetchNotes(), enabled: isNote })
+  const videosQ = useQuery({
+    queryKey: ['videos', 'purge'],
+    queryFn: () => fetchVideos({ all: true }).then((p) => p.items),
+    enabled: isVideo,
+  })
+  const songsQ = useQuery({
+    queryKey: ['songs', 'purge'],
+    queryFn: () => fetchSongs({ all: true }).then((p) => p.items),
+    enabled: isSong,
+  })
+  const booksQ = useQuery({
+    queryKey: ['books', 'purge'],
+    queryFn: () => fetchBooks({ all: true }).then((p) => p.items),
+    enabled: isBook,
+  })
+  const notesQ = useQuery({
+    queryKey: ['notes', 'purge'],
+    queryFn: () => fetchNotes({ all: true }).then((p) => p.items),
+    enabled: isNote,
+  })
   const bookmarksQ = useQuery({
     queryKey: ['bookmarks', 'purge'],
-    queryFn: () => fetchBookmarks(),
+    queryFn: () => fetchBookmarks({ all: true }).then((p) => p.items),
     enabled: isBookmark,
   })
   const knownTags = useMemo(

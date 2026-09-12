@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   BellRing,
   CalendarClock,
@@ -121,9 +123,17 @@ export function NotesPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['notes', filters], queryFn: () => fetchNotes(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['notes', filters, limit],
+    queryFn: () => fetchNotes({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const categoriesQ = useQuery({ queryKey: ['note-categories'], queryFn: fetchNoteCategories })
-  const notes = useMemo(() => query.data ?? [], [query.data])
+  const notes = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -210,7 +220,7 @@ export function NotesPage() {
       <PageHeader
         module="note"
         title={heading}
-        subtitle={t('notes.count', { count: notes.length })}
+        subtitle={t('notes.count', { count: total })}
         actions={
           <>
             <Tooltip>
@@ -420,6 +430,8 @@ export function NotesPage() {
               </li>
             ))}
           </ul>
+
+          <ShowMore shown={notes.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

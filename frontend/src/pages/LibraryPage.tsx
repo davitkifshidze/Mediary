@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowDownWideNarrow,
@@ -194,9 +196,26 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     group: type === 'movie' ? grouped : undefined,
   }
 
-  const moviesQ = useQuery({ queryKey: [type, 'list', filters], queryFn: () => api.list(filters) })
+  /* გვერდის ზომა პარამეტრებიდან; 0 = ერთი გრძელი სია (E2).
+     ⚠️ **ორივე რეჟიმში სერვერი მხოლოდ საჭიროს აბრუნებს.** დანომრილ
+     გვერდებზე ვითხოვთ იმ **პრეფიქსს**, რომელიც მიმდინარე გვერდს ფარავს
+     (და არა მარტო მას): ფრანჩაიზის კლასტერი და სექციებად დაჯგუფება
+     ჩატვირთულ სიაზე ითვლება, ე.ი. გატეხილი პრეფიქსი ჯგუფის ჯამებს
+     სიას ააცდენდა. ერთი გრძელი სიის რეჟიმში ლიმიტი „მეტის ჩვენებით" იზრდება. */
+  const pageSize = settings.libraryPageSize
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const perPage = pageSize > 0 ? pageSize * page : limit
+
+  const moviesQ = useQuery({
+    queryKey: [type, 'list', filters, perPage],
+    queryFn: () => api.list({ ...filters, per_page: perPage }),
+    // გვერდის გადართვაზე ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const genresQ = useQuery({ queryKey: ['genres', type], queryFn: () => fetchGenres(type) })
-  const movies = moviesQ.data ?? []
+  const movies = moviesQ.data?.items ?? []
+  /** ⚠️ **გაფილტრული სიის** ჯამი — გვერდების რაოდენობაც ამით ითვლება */
+  const total = moviesQ.data?.total ?? 0
 
   // ჟანრები კონტენტის ენაზე დალაგებული (პანელში სია გრძელია)
   const genreList = useMemo(() => {
@@ -204,9 +223,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     return list.sort((a, b) => genreName(a, lang).localeCompare(genreName(b, lang), lang))
   }, [genresQ.data, lang])
 
-  // გვერდის ზომა პარამეტრებიდან; 0 = ყველა ერთ გვერდზე (E2)
-  const pageSize = settings.libraryPageSize
-  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(movies.length / pageSize)) : 1
+  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1
   const current = Math.min(page, pageCount)
   const visible = pageSize > 0 ? movies.slice((current - 1) * pageSize, current * pageSize) : movies
 
@@ -224,7 +241,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
       : view === 'favorite'
         ? t('filter.favorite')
         : statusName(statusByKey(statuses, view), lang) || view
-  const countLabel = t(mediaKey('library.count', type), { count: movies.length })
+  const countLabel = t(mediaKey('library.count', type), { count: total })
 
   return (
     <PageContainer>
@@ -349,6 +366,11 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           ) : movies.length ? (
             <>
               <MovieGrid movies={visible} type={type} groupBy={groupBy} />
+              {/* ერთი გრძელი სიის რეჟიმი (`libraryPageSize = 0`) — დანომრილი
+                  გვერდები არაა, ამიტომ სია „მეტის ჩვენებით" იზრდება */}
+              {pageSize === 0 && (
+                <ShowMore shown={movies.length} total={total} onMore={showMore} loading={moviesQ.isFetching} />
+              )}
               {pageCount > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-3">
                   <Button variant="outline" size="sm" disabled={current <= 1} onClick={() => setPage(current - 1)}>

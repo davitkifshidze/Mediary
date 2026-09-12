@@ -2340,5 +2340,9 @@
     },
     "isDefault": "Default",
     "isDefaultHint": "New records are created with this status."
+  },
+  "list": {
+    "showMore": "Show more",
+    "shown": "Showing {{shown}} of {{total}}"
   }
 }

@@ -84,7 +84,7 @@ class GameController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return GameResource::collection($query->get());
+        return GameResource::collection($this->paginated($request, $query));
     }
 
     /**

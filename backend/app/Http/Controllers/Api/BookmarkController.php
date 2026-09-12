@@ -71,7 +71,7 @@ class BookmarkController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return BookmarkResource::collection($query->get());
+        return BookmarkResource::collection($this->paginated($request, $query));
     }
 
     public function show(Bookmark $bookmark)

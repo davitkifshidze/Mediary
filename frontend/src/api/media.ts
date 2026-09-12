@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { MEDIA, type MediaType } from '@/lib/media'
 import type { Genre, Movie, MovieListItem } from './types'
 
@@ -7,7 +8,7 @@ import type { Genre, Movie, MovieListItem } from './types'
    საერთო რესურსები (genres, lookup, discover, actor) type-პარამეტრით.
    ============================================================ */
 
-export interface MediaFilters {
+export interface MediaFilters extends ListParams {
   status?: string
   genre?: string
   favorite?: boolean
@@ -35,9 +36,11 @@ export interface BulkStatusInput {
 /** დომენზე მიბმული CRUD/სტატუსი/რჩეული/სინქრონი */
 export function createMediaApi(base: string) {
   return {
-    list: async (filters: MediaFilters = {}): Promise<MovieListItem[]> => {
-      const { data } = await api.get(base, { params: filters })
-      return data.data
+    list: async (filters: MediaFilters = {}): Promise<Page<MovieListItem>> => {
+      const { all, ...rest } = filters
+      const params = { ...rest, ...(all ? { all: 1 } : {}) }
+      const { data } = await api.get(base, { params })
+      return readPage<MovieListItem>(data)
     },
     get: async (id: number | string): Promise<Movie> => {
       const { data } = await api.get(`${base}/${id}`)

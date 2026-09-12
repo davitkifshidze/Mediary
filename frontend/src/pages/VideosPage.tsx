@@ -3,7 +3,9 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useListLimit } from '@/lib/paged'
+import { ShowMore } from '@/components/ui/show-more'
 import {
   Clock,
   Download,
@@ -147,18 +149,45 @@ export function VideosPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const query = useQuery({ queryKey: ['videos', filters], queryFn: () => fetchVideos(filters) })
+  const { limit, showMore } = useListLimit(JSON.stringify(filters))
+  const query = useQuery({
+    queryKey: ['videos', filters, limit],
+    queryFn: () => fetchVideos({ ...filters, per_page: limit }),
+    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
+    placeholderData: keepPreviousData,
+  })
   const typesQ = useQuery({ queryKey: ['video-types'], queryFn: fetchVideoTypes })
   // `?? []` ყოველ რენდერზე ახალ მასივს აბრუნებდა და ქვემოთ useEffect/useMemo-ს ამუშავებდა
-  const videos = useMemo(() => query.data ?? [], [query.data])
+  const videos = useMemo(() => query.data?.items ?? [], [query.data])
+  /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
+  const total = query.data?.total ?? 0
   const allTypes = useMemo(() => typesQ.data ?? [], [typesQ.data])
 
-  /* §7.2 — დასაკრავი რიგი **გაფილტრული სიაა**: რასაც ხედავ, ის ჩაირთვება
-     რიგრიგობით. ტიპის სახელი შიგთავსის ენაზეა, ამიტომ აქ ითარგმნება. */
+  /* §7.2 — დასაკრავი რიგი **გაფილტრული სიაა** და ჩაირთვება რიგრიგობით.
+     ტიპის სახელი შიგთავსის ენაზეა, ამიტომ აქ ითარგმნება. */
   const queueItems = useMemo(
     () => videos.map((v) => videoItem(v, v.type ? videoTypeName(v.type, lang) : null)),
     [videos, lang],
   )
+
+  /* ⚠️ დაკვრაზე **მთელი** გაფილტრული სია ჩამოდის და არა ჩატვირთული გვერდი —
+     წესი გვერდებად დაყოფამდე ასეთი იყო და უცვლელი რჩება. მოთხოვნა მხოლოდ
+     ცხად დაჭერაზე ხდება (და ქეშდება); წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ. */
+  const playFrom = async (index: number) => {
+    try {
+      const full = await qc.fetchQuery({
+        queryKey: ['videos', filters, 'queue'],
+        queryFn: () => fetchVideos({ ...filters, all: true }),
+      })
+      player.play(
+        full.items.map((v) => videoItem(v, v.type ? videoTypeName(v.type, lang) : null)),
+        index,
+        t('videos.title'),
+      )
+    } catch {
+      player.play(queueItems, index, t('videos.title'))
+    }
+  }
 
   // საიდბარის „დამატება" → `?new=1`
   useEffect(() => {
@@ -274,7 +303,7 @@ export function VideosPage() {
       <PageHeader
         module="video"
         title={heading}
-        subtitle={t('videos.count', { count: videos.length })}
+        subtitle={t('videos.count', { count: total })}
         actions={
           <>
             {/* ძებნა — Tasks 4: განმარტება tooltip-ია და არა `title` */}
@@ -314,7 +343,7 @@ export function VideosPage() {
             {videos.length > 0 && (
               <Button
                 variant="outline"
-                onClick={() => player.play(queueItems, 0, t('videos.title'))}
+                onClick={() => playFrom(0)}
               >
                 <ListVideo className="size-4" />
                 {t('playback.playAll')}
@@ -479,7 +508,7 @@ export function VideosPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => player.play(queueItems, i, t('videos.title'))}
+                        onClick={() => playFrom(i)}
                         aria-label={t('playback.playFromHere')}
                         title={t('playback.playFromHere')}
                       >
@@ -573,6 +602,8 @@ export function VideosPage() {
               )
             })}
           </div>
+
+          <ShowMore shown={videos.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>
 
         {/* ---------- ფილტრები (5.2) ---------- */}
