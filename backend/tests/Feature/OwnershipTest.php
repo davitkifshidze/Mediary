@@ -6,6 +6,7 @@ use App\Models\ApprovalRequest;
 use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +34,7 @@ class OwnershipTest extends TestCase
         $this->alice = $this->makeUser('alice', ['movie', 'series']);
         $this->bob = $this->makeUser('bob', ['movie', 'series']);
         $this->admin = $this->makeUser('admin', []);
-        $this->admin->forceFill(['role' => 'super_admin'])->save();
+        $this->admin->assignRole('super_admin')->save();
     }
 
     private function makeUser(string $name, array $modules): User
@@ -45,7 +46,11 @@ class OwnershipTest extends TestCase
             'password' => 'password',
         ]);
 
-        $ids = Module::whereIn('key', $modules)->pluck('id')->all();
+        // `enabled_at`-ით — ისე, როგორც `AdminUserController::syncModules` ანიჭებს
+        $ids = Module::whereIn('key', $modules)
+            ->pluck('id')
+            ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])
+            ->all();
         $user->modules()->sync($ids);
 
         return $user->refresh();
@@ -208,5 +213,138 @@ class OwnershipTest extends TestCase
     {
         $this->actingAs($this->alice)->getJson('/api/admin/users')->assertStatus(403);
         $this->actingAs($this->admin)->getJson('/api/admin/users')->assertOk();
+    }
+
+    /* ---------- Tasks 1.6 — ადმინის სექციები როლის უფლებით ---------- */
+
+    /** როლს შეიძლება მიეცეს ცალკეული სექცია, მთელი super_admin-ის გარეშე */
+    public function test_role_can_grant_a_single_admin_section(): void
+    {
+        $role = Role::create([
+            'key' => 'moderator',
+            'name_ka' => 'მოდერატორი',
+            'name_en' => 'Moderator',
+            'permissions' => ['admin:requests' => ['view', 'update']],
+        ]);
+        $this->alice->forceFill(['role_id' => $role->id])->save();
+        $alice = $this->alice->refresh();
+
+        // მიცემული სექცია იხსნება…
+        $this->actingAs($alice)->getJson('/api/admin/requests')->assertOk();
+        // …დანარჩენი კი არა
+        $this->actingAs($alice)->getJson('/api/admin/users')->assertStatus(403);
+        $this->actingAs($alice)->getJson('/api/admin/roles')->assertStatus(403);
+
+        $this->assertSame(['requests'], $alice->adminResources());
+    }
+
+    /**
+     * ⚠️ **მთავარი უსაფრთხოების წესი:** `"*"` („ყველა მოდული") ადმინის
+     * სექციას **არ** ხსნის. სხვაგვარად ჩვეულებრივი როლი, რომელსაც ყველა
+     * მოდულზე უფლება აქვს, ჩუმად მიიღებდა მომხმარებლების მართვას.
+     */
+    public function test_wildcard_module_permission_never_opens_the_admin_zone(): void
+    {
+        $role = Role::create([
+            'key' => 'power-user',
+            'name_ka' => 'გაძლიერებული',
+            'name_en' => 'Power user',
+            'permissions' => ['*' => ['view', 'create', 'update', 'delete']],
+        ]);
+        $this->alice->forceFill(['role_id' => $role->id])->save();
+        $alice = $this->alice->refresh();
+
+        foreach (['users', 'roles', 'requests'] as $section) {
+            $this->actingAs($alice)->getJson("/api/admin/{$section}")->assertStatus(403);
+        }
+
+        $this->assertSame([], $alice->adminResources());
+        // მოდულის უფლება კი მართლა აქვს — ე.ი. `*` თავის საქმეს აკეთებს
+        $this->assertTrue($alice->hasPermission('movie', 'delete'));
+    }
+
+    /**
+     * ⚠️ **გლობალური და დესტრუქციული ოპერაციები `super_admin`-ზე რჩება**:
+     * მოდულის გამორთვა ყველა ანგარიშს ეხება, purge კი სხვისი ბიბლიოთეკის
+     * წაშლაა — ეს ერთი სექციის უფლებით არ უნდა იხსნებოდეს.
+     */
+    public function test_admin_sections_do_not_unlock_global_operations(): void
+    {
+        $role = Role::create([
+            'key' => 'staff',
+            'name_ka' => 'პერსონალი',
+            'name_en' => 'Staff',
+            'permissions' => [
+                'admin:users' => ['view', 'update', 'delete'],
+                'admin:roles' => ['view', 'update'],
+                'admin:requests' => ['view', 'update'],
+            ],
+        ]);
+        $this->alice->forceFill(['role_id' => $role->id])->save();
+        $alice = $this->alice->refresh();
+
+        $this->actingAs($alice)->getJson('/api/admin/users')->assertOk();
+
+        $this->actingAs($alice)->getJson('/api/admin/modules')->assertStatus(403);
+        $this->actingAs($alice)->postJson('/api/admin/purge/plan', ['target' => 'movie', 'mode' => 'all'])
+            ->assertStatus(403);
+    }
+
+    /** სექციის შიგნით მოქმედებაც ცალკეა: ნახვა ≠ წაშლა */
+    public function test_admin_section_actions_are_separate(): void
+    {
+        $role = Role::create([
+            'key' => 'viewer',
+            'name_ka' => 'დამკვირვებელი',
+            'name_en' => 'Viewer',
+            'permissions' => ['admin:users' => ['view']],
+        ]);
+        $this->alice->forceFill(['role_id' => $role->id])->save();
+        $alice = $this->alice->refresh();
+
+        $this->actingAs($alice)->getJson('/api/admin/users')->assertOk();
+        $this->actingAs($alice)->deleteJson("/api/admin/users/{$this->bob->id}")->assertStatus(403);
+    }
+
+    /** L4 — სიაშივე სრული ინფო: შიგთავსი, რჩეულები, ბოლო აქტივობა, ადგილი */
+    public function test_admin_user_list_carries_full_info(): void
+    {
+        $this->makeMovie($this->alice, 'Alice movie')->forceFill(['is_favorite' => true])->save();
+        $this->makeMovie($this->alice, 'Another');
+
+        $row = collect(
+            $this->actingAs($this->admin)->getJson('/api/admin/users')->assertOk()->json('data')
+        )->firstWhere('id', $this->alice->id);
+
+        $this->assertSame(2, $row['movies_count']);
+        $this->assertSame(1, $row['favorites_count']);
+        $this->assertSame(['movie', 'series'], $row['modules']);
+        $this->assertSame([], $row['hidden_modules']);
+        $this->assertArrayHasKey('last_activity', $row);
+        // 17.1 — ადმინის ხედში ფაილების ჯამი + ლიმიტი და დაქეშილი მრიცხველი
+        $this->assertSame(0, $row['storage']['files']);
+        $this->assertSame(0, $row['storage']['bytes']);
+        $this->assertSame(0, $row['storage']['used']);
+        $this->assertSame(1073741824, $row['storage']['quota']);
+    }
+
+    /** L3 — „ვის აქვს ჩართული": თვითონ გამორთულიც სიაშია, ოღონდ მონიშნული */
+    public function test_admin_module_list_shows_holders_with_state(): void
+    {
+        // alice თვითონ გამორთავს ფილმებს — უფლება რჩება (K13)
+        $this->actingAs($this->alice)->patchJson('/api/modules/movie', ['enabled' => false])->assertOk();
+
+        $movie = collect(
+            $this->actingAs($this->admin)->getJson('/api/admin/modules')->assertOk()->json('data')
+        )->firstWhere('key', 'movie');
+
+        $holders = collect($movie['users']);
+
+        // ჩართულად ითვლება bob + admin (ავტომატურად), alice — არა
+        $this->assertSame(2, $movie['users_count']);
+        $this->assertTrue($holders->firstWhere('id', $this->alice->id)['hidden_by_user']);
+        $this->assertFalse($holders->firstWhere('id', $this->bob->id)['hidden_by_user']);
+        $this->assertTrue($holders->firstWhere('id', $this->admin->id)['implicit']);
+        $this->assertNotNull($holders->firstWhere('id', $this->bob->id)['enabled_at']);
     }
 }
