@@ -7,13 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ადმინთან გასაგზავნი მოთხოვნა — მოდულის ჩართვა ან გლობალური ჟანრის წაშლა.
+ * ადმინთან გასაგზავნი მოთხოვნა — მოდულის ჩართვა, გლობალური ჟანრის წაშლა
+ * ან საცავის ლიმიტის გაზრდა (17.4).
+ *
+ * ტიპების ნაკრები **აქ ცხოვრობს** და არა ბაზის enum-ში: ახალი ტიპი =
+ * ერთი კონსტანტა + ერთი handler `AdminRequestController::approve()`-ში.
  */
 class ApprovalRequest extends Model
 {
     public const TYPE_MODULE = 'module_access';
 
     public const TYPE_GENRE_DELETE = 'genre_delete';
+
+    /** 17.4 — `payload.requested_bytes` = **სასურველი სრული ლიმიტი** და არა მატება */
+    public const TYPE_STORAGE = 'storage_increase';
 
     protected $guarded = ['id'];
 

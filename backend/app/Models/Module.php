@@ -15,7 +15,6 @@ class Module extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'is_sensitive' => 'boolean',
         'enabled_by_default' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',

@@ -3,6 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasCustomFields;
+use App\Models\Concerns\HasGallery;
+use App\Models\Concerns\HasStatus;
+use App\Services\Storage\StorageMeter;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -13,9 +18,18 @@ class Movie extends Model
     /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება (I1) */
     use BelongsToUser;
 
+    /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
+    use HasCustomFields;
+
+    /** Tasks 10 — გალერეის ფოტოები (`gallery_images`) */
+    use HasGallery;
+
+    /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
+    use HasStatus;
+
     protected $guarded = ['id'];
 
-    protected $with = ['translations'];
+    protected $with = ['translations', 'status'];
 
     protected $casts = [
         'year' => 'integer',
@@ -31,24 +45,33 @@ class Movie extends Model
 
     /**
      * „გააგრძელე ფრანჩაიზი“ badge — ერთ query-ში მონიშვნა (N+1-ის გარეშე).
-     * true, თუ ნაწილი ჯერ არ დაწყებულა (undecided/to_watch), მაგრამ ფრანჩაიზის
-     * სხვა ნაწილი უკვე watching/watched-ია.
+     * true, თუ ნაწილი ჯერ არ დაწყებულა, მაგრამ ფრანჩაიზის სხვა ნაწილი უკვე
+     * მიმდინარეობს ან დასრულებულია.
+     *
+     * ⚠️ **კრიტერიუმი `role`-ია და არა სახელი** (§6.4): სტატუსები ახლა
+     * per-user ლექსიკონია, ე.ი. `'watched'` აქ ჩაწერილი მხოლოდ იმ ანგარიშზე
+     * იმუშავებდა, რომელსაც ნაგულისხმევი ნაკრები არ შეუცვლია — დანარჩენებზე
+     * ბეჯი **ჩუმად ჩაქრებოდა**.
      */
     public static function annotateFranchise(iterable $movies): void
     {
-        $colIds = collect($movies)->pluck('tmdb_collection_id')->filter()->unique();
+        // სტატუსის კავშირი ერთხელ იტვირთოს — `status_role` თითოზე query იქნებოდა
+        $rows = EloquentCollection::make($movies)->loadMissing('status');
+
+        $colIds = $rows->pluck('tmdb_collection_id')->filter()->unique();
         $active = $colIds->isEmpty()
             ? collect()
             : static::whereIn('tmdb_collection_id', $colIds)
-                ->whereIn('status', ['watching', 'watched'])
+                ->statusRole(['doing', 'done'])
                 ->pluck('tmdb_collection_id')
                 ->unique()
                 ->flip();
 
-        foreach ($movies as $m) {
+        foreach ($rows as $m) {
             $m->franchise_next = $m->tmdb_collection_id
                 && isset($active[$m->tmdb_collection_id])
-                && in_array($m->status, ['undecided', 'to_watch'], true);
+                // სტატუსის გარეშე ჩანაწერიც „ჯერ არ დაწყებულია“
+                && in_array($m->status_role, ['todo', null], true);
         }
     }
 
@@ -58,7 +81,31 @@ class Movie extends Model
         static::deleting(function (Movie $movie) {
             $movie->genres()->detach();
             $movie->cast()->detach();
+            // Tasks 10 — გალერეის ფოტოებიც (ფაილიც და კვოტაც `GalleryImage`-ზეა)
+            $movie->deleteGalleryMedia();
+            $movie->deletePoster();
         });
+    }
+
+    /**
+     * **ხელით ატვირთული პოსტერის მოშორება** (17.1).
+     *
+     * ⚠️ **მოდელშია და არა კონტროლერში.** `DELETE /api/movies/{id}` მას ისედაც
+     * იძახებდა, მაგრამ ჩანაწერს კონტროლერის გარეშეც შლიან — `PurgeService`
+     * (Tasks 20) პირდაპირ `$record->delete()`-ს აკეთებს **სწორედ იმიტომ, რომ
+     * ივენთები გაისროლოს**. ე.ი. აქამდე მასობრივი წაშლა პოსტერს დისკზე ტოვებდა
+     * და კვოტას არ ათავისუფლებდა, თანაც `plan()` იმ ბაიტებს „გათავისუფლებულში"
+     * ითვლიდა — ციფრი ცრუობდა. წიგნი/თამაში/ბორდგეიმი თავიდანვე ასე იქცეოდა.
+     *
+     * ⚠️ **მხოლოდ `upload`.** TMDB-ის პოსტერი საერთო ფაილია (იმავე slug-ით სხვა
+     * ანგარიშსაც აქვს) და 19.4/B-ით კვოტაშიც არ ითვლება — მისი წაშლა სხვისთვის
+     * სურათს გატეხავდა.
+     */
+    public function deletePoster(): void
+    {
+        if ($this->poster_path && $this->poster_source === 'upload') {
+            app(StorageMeter::class)->deleteUpload($this->user_id, $this->poster_path);
+        }
     }
 
     /* ---------- relations ---------- */

@@ -12,18 +12,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Str;
 
-class Series extends Model
+/**
+ * ანიმე — მესამე მედია-დომენი (Tasks §7.1).
+ *
+ * ⚠️ **სერიალის ასლია და არა მისი ქვეტიპი** (შენი მითითება: „ყველაფერი
+ * თავისი ჰქონდეს"): საკუთარი ცხრილი, კონტროლერი, რესურსი და გამამდიდრებელი.
+ * ერთი `type` სვეტი `series`-ზე ყოველ query-ს ჩუმ განშტოებას მოუტანდა.
+ *
+ * ⚠️ **ჟანრები/მსახიობები გლობალურია** (`genres`/`cast_members`, morph alias
+ * `anime`) — ისინი ლექსიკონებია და მათი დუბლირება პიქერს ორად გაყოფდა.
+ */
+class Anime extends Model
 {
-    /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება (I1) */
+    /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება */
     use BelongsToUser;
 
     /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
-    /** Tasks 10 — გალერეის ფოტოები (`gallery_images`) */
+    /** §10 — გალერეის ფოტოები (`gallery_images`) */
     use HasGallery;
-
-    protected $table = 'series';
 
     /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
@@ -48,17 +56,16 @@ class Series extends Model
     /** morphs() FK-cascade-ს არ ქმნის — polymorphic pivot-ები ხელით უნდა მოიხსნას წაშლისას */
     protected static function booted(): void
     {
-        static::deleting(function (Series $series) {
-            $series->genres()->detach();
-            $series->cast()->detach();
-            // Tasks 10 — გალერეის ფოტოებიც (ფაილიც და კვოტაც `GalleryImage`-ზეა)
-            $series->deleteGalleryMedia();
-            $series->deletePoster();
+        static::deleting(function (Anime $anime) {
+            $anime->genres()->detach();
+            $anime->cast()->detach();
+            $anime->deleteGalleryMedia();
+            $anime->deletePoster();
         });
     }
 
     /**
-     * **ხელით ატვირთული პოსტერის მოშორება** (17.1) — იგივე წესი, რაც
+     * **ხელით ატვირთული პოსტერის მოშორება** (§17.1) — იგივე წესი, რაც
      * `Movie::deletePoster()`-ს აქვს: მოდელშია, რომ `PurgeService`-ის
      * `$record->delete()`-მაც გაათავისუფლოს ადგილი, და **მხოლოდ `upload`**
      * იშლება (TMDB-ის პოსტერი საერთო ფაილია და კვოტაშიც არ ითვლება).
@@ -74,7 +81,7 @@ class Series extends Model
 
     public function translations(): HasMany
     {
-        return $this->hasMany(SeriesTranslation::class);
+        return $this->hasMany(AnimeTranslation::class);
     }
 
     public function genres(): MorphToMany
@@ -91,7 +98,7 @@ class Series extends Model
 
     /* ---------- translation accessors (API-ს ფორმა movies-ის იდენტური) ---------- */
 
-    private function tr(string $locale): ?SeriesTranslation
+    private function tr(string $locale): ?AnimeTranslation
     {
         return $this->translations->firstWhere('locale', $locale);
     }
@@ -126,7 +133,7 @@ class Series extends Model
         return $this->tr('en')?->source;
     }
 
-    /** თარგმანის ჩაწერა/განახლება — მხოლოდ გადმოცემული ველები. */
+    /** თარგმანის ჩაწერა/განახლება — მხოლოდ გადმოცემული ველები */
     public function setTranslation(string $locale, array $attrs): void
     {
         $attrs = array_filter($attrs, fn ($v) => $v !== null);
@@ -142,7 +149,7 @@ class Series extends Model
     /** ფაილის სახელისთვის უსაფრთხო slug */
     public function slugForFile(): string
     {
-        return Str::slug($this->title_en ?: $this->title_ka ?: '') ?: 'series-'.$this->id;
+        return Str::slug($this->title_en ?: $this->title_ka ?: '') ?: 'anime-'.$this->id;
     }
 
     /** რომელი ველები აკლია (ბარათის გამაფრთხილებელი ნიშნისთვის) */

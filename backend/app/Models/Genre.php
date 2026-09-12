@@ -33,6 +33,12 @@ class Genre extends Model
         return $this->morphedByMany(Series::class, 'genreable');
     }
 
+    /** §7.1 — ჟანრი გლობალურია, ე.ი. ანიმესაც იმავე pivot-ით ეკიდება */
+    public function animes(): MorphToMany
+    {
+        return $this->morphedByMany(Anime::class, 'genreable');
+    }
+
     /* ---------- translation accessors ---------- */
 
     private function tr(string $locale): ?GenreTranslation

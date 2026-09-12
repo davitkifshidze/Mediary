@@ -9,8 +9,7 @@ class VideoPolicy
 {
     public function view(User $user, Video $video): bool
     {
-        return $video->user_id === $user->id
-            && (! $video->is_adult || $user->hasModule('video_adult'));
+        return $video->user_id === $user->id;
     }
 
     public function update(User $user, Video $video): bool
