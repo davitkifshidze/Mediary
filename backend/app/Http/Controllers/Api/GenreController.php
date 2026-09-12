@@ -15,16 +15,21 @@ use Illuminate\Validation\ValidationException;
 class GenreController extends Controller
 {
     /**
-     * ჟანრები ორივე დომენის რაოდენობით (movies_count + series_count).
-     * `type=movie|series` მხოლოდ დალაგებაზე მოქმედებს — რომელი რაოდენობით
-     * დაიხარისხოს; ორივე რიცხვი ყოველთვის ბრუნდება და ფრონტი ირჩევს.
+     * ჟანრები **ყველა** მედია-დომენის რაოდენობით (`movies_count`,
+     * `series_count`, `animes_count`). `type` მხოლოდ დალაგებაზე მოქმედებს —
+     * რომელი რაოდენობით დაიხარისხოს; სამივე რიცხვი ყოველთვის ბრუნდება.
      */
     public function index(Request $request)
     {
-        $sortKey = $request->input('type') === 'series' ? 'series_count' : 'movies_count';
+        // ⚠️ სვეტის სახელი **რელაციისაა** და არა დომენის (`anime` → `animes_count`)
+        $sortKey = match ($request->input('type')) {
+            'series' => 'series_count',
+            'anime' => 'animes_count',
+            default => 'movies_count',
+        };
 
         $genres = Genre::query()
-            ->withCount(['movies', 'series'])
+            ->withCount(['movies', 'series', 'animes'])
             ->get()
             // name_en თარგმანის accessor-ია — დალაგება კოლექციაზე
             ->sortBy([
@@ -56,7 +61,7 @@ class GenreController extends Controller
         $genre->setTranslation('en', $data['name_en'] ?? $data['name_ka']);
         $genre->setTranslation('ka', $data['name_ka'] ?? null);
 
-        return (new GenreResource($genre->loadCount(['movies', 'series'])))->response()->setStatusCode(201);
+        return (new GenreResource($genre->loadCount(['movies', 'series', 'animes'])))->response()->setStatusCode(201);
     }
 
     /** რედაქტირება — მხოლოდ სახელები (slug უცვლელი რჩება TMDB-სინქრონის სტაბილურობისთვის) */
@@ -77,7 +82,7 @@ class GenreController extends Controller
             }
         }
 
-        return new GenreResource($genre->loadCount(['movies', 'series']));
+        return new GenreResource($genre->loadCount(['movies', 'series', 'animes']));
     }
 
     /**

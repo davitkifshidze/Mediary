@@ -4,49 +4,58 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoResource;
+use App\Models\Status;
 use App\Models\Video;
+use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
+use App\Services\Video\VideoSearch;
+use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 /**
  * ვიდეოს მოდული (I5).
  *
  * მფლობელობა — `BelongsToUser` global scope (სხვისი ჩანაწერი 404).
- * adult ჩანაწერი დამატებით `video_adult` მოდულს მოითხოვს: მისი გარეშე
- * არც ჩანს (scopeVisibleTo) და არც იქმნება.
  */
 class VideoController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(private StorageMeter $meter) {}
+
+    public function index(Request $request, VideoSearch $search)
     {
         $query = Video::query()
-            ->visibleTo($request->user())
+            ->with('type')
             ->withCount(['images', 'documents', 'notes']);
 
-        if ($q = $request->string('q')->toString()) {
-            $query->where(fn ($w) => $w->where('title', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%"));
-        }
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);
         }
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        if ($tag = $request->string('tag')->toString()) {
+        /* §7.1 — „ჩამოწერილები" ცალკე სექციაა.
+           ⚠️ პირობა `download_status`-ზეა და არა `download_path`-ზე: მიმდინარე
+           ჩამოწერას ჯერ გზა არ აქვს, სექციაში კი უნდა ჩანდეს — თორემ ღილაკზე
+           დაჭერის შემდეგ ვიდეო სიიდან ქრებოდა და „სად წავიდა" ისმებოდა. */
+        if ($request->boolean('downloaded')) {
+            $query->whereIn('download_status', [Video::DOWNLOAD_READY, Video::DOWNLOAD_RUNNING]);
+        }
+        // ტეგები — მძიმით გამოყოფილი სია; თითოეული ცალკე პირობაა, ე.ი. ფილტრი ვიწროვდება (5.2)
+        foreach ($this->slugList($request->string('tag')->toString()) as $tag) {
             $query->whereJsonContains('tags', $tag);
         }
-        // ტიპი — საიდბარის სექციები „მედია" / „ინფორმაციული" (K7)
-        if ($kind = $request->string('kind')->toString()) {
-            $query->where('kind', $kind);
+        // ტიპი — საიდბარის სექციები მართვადი ლექსიკონიდან (Tasks 5.1);
+        // მძიმით გამოყოფილი სია ფილტრების პანელს ემსახურება (5.2)
+        if ($types = $this->slugList($request->string('type_id')->toString())) {
+            $query->whereIn('type_id', array_map('intval', $types));
         }
-        // „მხოლოდ 18+" — ცალკე ჩვენება იმისთვის, ვისაც მოდული აქვს
-        if ($request->boolean('adult_only')) {
-            $query->where('is_adult', true);
+        /* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა. საიდბარის სექციაც
+           `?status=<key>`-ით მოდის, ე.ი. ფილმის/სერიალის იგივე ნიმუშია. */
+        foreach ($this->slugList($request->string('status')->toString()) as $key) {
+            $query->statusKey($key);
         }
-
         match ($request->string('sort')->toString()) {
             'title' => $query->orderBy('title'),
             'oldest' => $query->orderBy('id'),
@@ -54,14 +63,30 @@ class VideoController extends Controller
             default => $query->orderByDesc('id'),
         };
 
-        return VideoResource::collection($query->get());
+        // ძებნა ბოლოს: ყველა ველზე + „ახლო სიტყვებზე", relevance-ით დალაგებული (K4).
+        // თანაბარ relevance-ზე არჩეული სორტირება რჩება ძალაში.
+        $q = $request->string('q')->toString();
+
+        return VideoResource::collection($q === '' ? $query->get() : $search->search($query, $q));
     }
 
-    public function show(Request $request, Video $video)
+    /**
+     * „მსგავსი ვიდეოები" (K4) — მხოლოდ **ჩემი ბიბლიოთეკიდან**: საერთო ტეგები,
+     * სათაურის მსგავსება, იგივე პლატფორმა/ტიპი. (YouTube-ის related API გაუქმებულია.)
+     */
+    public function similar(Video $video, VideoSearch $search)
     {
-        $this->assertVisible($request, $video);
+        $base = Video::query()
+            ->whereKeyNot($video->getKey())
+            ->with('type')
+            ->withCount(['images', 'documents', 'notes']);
 
-        return new VideoResource($video);
+        return VideoResource::collection($search->similar($base, $video));
+    }
+
+    public function show(Video $video)
+    {
+        return new VideoResource($video->load('type'));
     }
 
     /**
@@ -85,66 +110,47 @@ class VideoController extends Controller
         $this->apply($video, $request, $data);
         $video->save();
 
-        // ბაზის default-ები (is_adult/is_favorite/watch_count) მოდელზე ჯერ არ ასახულა
-        return (new VideoResource($video->refresh()))->response()->setStatusCode(201);
+        // ბაზის default-ები (is_favorite/watch_count) მოდელზე ჯერ არ ასახულა
+        return (new VideoResource($video->refresh()->load('type')))->response()->setStatusCode(201);
     }
 
     public function update(Request $request, Video $video)
     {
-        $this->assertVisible($request, $video);
         $data = $this->validated($request, $video);
 
         $this->apply($video, $request, $data);
         $video->save();
 
-        return new VideoResource($video);
+        return new VideoResource($video->load('type'));
     }
 
-    public function destroy(Request $request, Video $video)
+    public function destroy(Video $video)
     {
-        $this->assertVisible($request, $video);
-        $video->deleteThumbnail();
+        // ⚠️ თამბნეილს `Video::booted()` შლის — ერთი წყარო, რომელიც
+        // მასობრივ წაშლაზეც (Tasks 20) მუშაობს
         $video->delete();
 
         return response()->noContent();
     }
 
     /** რჩეულის გადართვა */
-    public function toggleFavorite(Request $request, Video $video)
+    public function toggleFavorite(Video $video)
     {
-        $this->assertVisible($request, $video);
         $video->is_favorite = ! $video->is_favorite;
         $video->save();
 
-        return new VideoResource($video);
+        return new VideoResource($video->load('type'));
     }
 
     /** „ვნახე" — მთვლელი + თარიღი */
-    public function markWatched(Request $request, Video $video)
+    public function markWatched(Video $video)
     {
-        $this->assertVisible($request, $video);
         $video->forceFill([
             'watch_count' => $video->watch_count + 1,
             'watched_at' => now(),
         ])->save();
 
-        return new VideoResource($video);
-    }
-
-    /**
-     * private thumbnail-ის გაცემა (adult) — `/storage/*` ავტორიზაციას არ ამოწმებს,
-     * ამიტომ sensitive ფაილი მხოლოდ ამ route-იდან გადის.
-     */
-    public function thumb(Request $request, Video $video)
-    {
-        $this->assertVisible($request, $video);
-
-        abort_unless($video->thumbnail_path, 404);
-
-        $disk = Storage::disk($video->thumbnailDisk());
-        abort_unless($disk->exists($video->thumbnail_path), 404);
-
-        return $disk->response($video->thumbnail_path);
+        return new VideoResource($video->load('type'));
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -156,11 +162,18 @@ class VideoController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
             'url' => [$video ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'kind' => ['nullable', 'in:media,info'],
+            // ტიპი მხოლოდ **საკუთარი** ლექსიკონიდან (5.1)
+            'type_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+            ],
+            // §6.4 — სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
+            'status' => ['nullable', 'string', Status::rule('video')],
+            'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'duration' => ['nullable', 'integer', 'min:0', 'max:864000'],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
-            'is_adult' => ['nullable', 'boolean'],
             'is_favorite' => ['nullable', 'boolean'],
             'thumbnail' => ['nullable', 'image', 'max:4096'],
             'remove_thumbnail' => ['nullable', 'boolean'],
@@ -174,21 +187,21 @@ class VideoController extends Controller
                 $video->{$field} = $data[$field] ?: null;
             }
         }
-        if (! empty($data['kind'])) {
-            $video->kind = $data['kind'];
+        if (array_key_exists('type_id', $data)) {
+            $video->type_id = $data['type_id'] ?: null;
+        }
+        if (! empty($data['status'])) {
+            $video->applyStatusKey($data['status']);
+        }
+        if (! empty($data['visibility'])) {
+            $video->visibility = $data['visibility'];
         }
         if (array_key_exists('tags', $data)) {
-            $video->tags = array_values(array_filter(array_map('trim', $data['tags'] ?? [])));
+            // დუბლის მოჭრა (Tasks 5.3) — ერთი წყარო მოდელზეა, bulk-იც იმას იყენებს
+            $video->tags = Video::normalizeTags($data['tags'] ?? []);
         }
         if ($request->has('is_favorite')) {
             $video->is_favorite = $request->boolean('is_favorite');
-        }
-
-        if ($request->has('is_adult')) {
-            $adult = $request->boolean('is_adult');
-            // adult ჩანაწერს მხოლოდ `video_adult` მოდულის მქონე ქმნის/ნიშნავს
-            abort_if($adult && ! $request->user()->hasModule('video_adult'), 403, 'adult_module_required');
-            $video->is_adult = $adult;
         }
 
         if (array_key_exists('url', $data)) {
@@ -213,15 +226,13 @@ class VideoController extends Controller
         if ($request->boolean('remove_thumbnail')) {
             $video->deleteThumbnail();
             $video->thumbnail_path = null;
-            $video->thumbnail_disk = null;
         }
 
         if ($request->hasFile('thumbnail')) {
+            // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
             $video->deleteThumbnail();
-            // sensitive ჩანაწერის ფაილი private დისკზე (storage/app/private)
-            $disk = $video->is_adult ? 'local' : 'public';
-            $video->thumbnail_path = $request->file('thumbnail')->store('videos', $disk);
-            $video->thumbnail_disk = $disk;
+            $video->thumbnail_path = $this->meter
+                ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::VIDEO_THUMBNAILS);
             $video->thumbnail_url = null;
         }
     }
@@ -260,11 +271,5 @@ class VideoController extends Controller
         if (! $video->thumbnail_path && ! $video->thumbnail_url && $meta['thumbnail_url']) {
             $video->thumbnail_url = $meta['thumbnail_url'];
         }
-    }
-
-    /** adult ჩანაწერი მოდულის გარეშე — 404 (არსებობაც არ უნდა გამჟღავნდეს) */
-    private function assertVisible(Request $request, Video $video): void
-    {
-        abort_if($video->is_adult && ! $request->user()->hasModule('video_adult'), 404);
     }
 }

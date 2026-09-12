@@ -16,25 +16,38 @@ use Illuminate\Http\Request;
 class AdminModuleController extends Controller
 {
     /**
-     * K14: „N მომხმარებელი"-ს ნაცვლად ჩანს, **ვის** აქვს ჩართული.
-     * super_admin-ებიც ითვლებიან — მათ არა-sensitive მოდული pivot-ის გარეშეც აქვთ.
+     * K14/L3: „N მომხმარებელი"-ს ნაცვლად ჩანს, **ვის** აქვს ჩართული.
+     * super_admin-ებიც ითვლებიან — მათ მოდული pivot-ის გარეშეც აქვთ.
+     *
+     * სიაში ხვდება ყველა, ვისაც **უფლება** აქვს (`isGrantedModule`), მათ შორის
+     * ისინიც, ვინც თვითონ გამორთო (K13) — ისინი `hidden_by_user`-ით აღინიშნება.
+     * `users_count` კი მხოლოდ **რეალურად ჩართულებს** ითვლის.
      */
     public function index()
     {
-        $users = User::orderBy('id')->get();
+        // pivot-ები წინასწარ — `enabled_at`/`is_hidden` მეხსიერებიდან იკითხება
+        $users = User::with('modules')->orderBy('id')->get();
 
         $modules = Module::orderBy('sort_order')->orderBy('id')->get()->each(function (Module $m) use ($users) {
-            $holders = $users->filter(fn (User $u) => $u->hasModule($m->key));
+            $holders = $users->filter(fn (User $u) => $u->isGrantedModule($m->key));
 
-            $m->users_count = $holders->count();
-            $m->users_list = $holders->map(fn (User $u) => [
-                'id' => $u->id,
-                'display_name' => $u->displayName(),
-                'is_super_admin' => $u->isSuperAdmin(),
-                // ავტომატურად აქვს (super_admin, არა-sensitive) თუ ადმინმა ჩართო
-                'implicit' => $u->isSuperAdmin() && ! $m->is_sensitive
-                    && ! $u->modules()->where('modules.id', $m->id)->exists(),
-            ])->values();
+            $m->users_count = $holders->filter(fn (User $u) => $u->hasModule($m->key))->count();
+            $m->users_list = $holders->map(function (User $u) use ($m) {
+                $pivot = $u->modules->firstWhere('id', $m->id)?->pivot;
+
+                return [
+                    'id' => $u->id,
+                    'display_name' => $u->displayName(),
+                    'avatar_path' => $u->avatar_path,
+                    'role' => $u->roleKey(),
+                    'is_super_admin' => $u->isSuperAdmin(),
+                    // ავტომატურად აქვს (super_admin, pivot-ის გარეშე), თუ ადმინმა ჩართო
+                    'implicit' => $u->isSuperAdmin() && ! $pivot,
+                    // თვითონ გამორთო — უფლება რჩება, მაგრამ ჩართული არაა (K13)
+                    'hidden_by_user' => (bool) $pivot?->is_hidden,
+                    'enabled_at' => $pivot?->enabled_at,
+                ];
+            })->values();
         });
 
         return ModuleResource::collection($modules);
@@ -48,8 +61,10 @@ class AdminModuleController extends Controller
             'description_ka' => ['nullable', 'string', 'max:255'],
             'description_en' => ['nullable', 'string', 'max:255'],
             'icon' => ['sometimes', 'required', 'string', 'max:64'],
+            // Tasks §2.1 — ჰედერის ფონი. ⚠️ `nullable` + hex-ის regex: ნებისმიერი
+            // სტრიქონი CSS-ში ჩასმულ მნიშვნელობად გადადიოდა
+            'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'is_active' => ['sometimes', 'boolean'],
-            'is_sensitive' => ['sometimes', 'boolean'],
             'enabled_by_default' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0', 'max:9999'],
         ]);

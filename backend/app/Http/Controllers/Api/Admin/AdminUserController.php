@@ -7,11 +7,14 @@ use App\Http\Resources\ApprovalRequestResource;
 use App\Http\Resources\UserResource;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
+use App\Models\Role;
 use App\Models\User;
+use App\Services\Storage\StorageMeter;
+use App\Support\PublicDomain;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -21,6 +24,13 @@ use Illuminate\Validation\Rule;
  */
 class AdminUserController extends Controller
 {
+    public function __construct(private StorageMeter $meter) {}
+
+    /**
+     * L4: სია იმავე ინფოს იძლევა, რასაც შიდა გვერდი — შიგთავსის სტატისტიკა,
+     * ბოლო აქტივობა და დაკავებული ადგილი — რომ ყოველი წვრილმანისთვის
+     * `/admin/users/:id`-ზე შესვლა არ დასჭირდეს.
+     */
     public function index()
     {
         $users = User::query()
@@ -28,10 +38,26 @@ class AdminUserController extends Controller
                 'movies' => fn ($q) => $q->withoutGlobalScope('owner'),
                 'series' => fn ($q) => $q->withoutGlobalScope('owner'),
                 'videos' => fn ($q) => $q->withoutGlobalScope('owner'),
+                'movies as favorite_movies_count' => fn ($q) => $q->withoutGlobalScope('owner')->where('is_favorite', true),
+                'series as favorite_series_count' => fn ($q) => $q->withoutGlobalScope('owner')->where('is_favorite', true),
             ])
-            ->with('modules')
+            ->with('modules', 'role')
             ->orderBy('id')
             ->get();
+
+        // ბოლო აქტივობა ერთი grouped query-ით (და არა თითო user-ზე)
+        $activity = DB::table('sessions')
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->pluck(DB::raw('max(last_activity)'), 'user_id');
+
+        foreach ($users as $user) {
+            $user->favorites_count = $user->favorite_movies_count + $user->favorite_series_count;
+            $user->storage_usage = $this->storageUsage($user);
+            $user->last_activity = ($ts = $activity->get($user->id))
+                ? Carbon::createFromTimestamp($ts)->toIso8601String()
+                : null;
+        }
 
         return UserResource::collection($users);
     }
@@ -57,7 +83,6 @@ class AdminUserController extends Controller
             'name_ka' => $m->name_ka,
             'name_en' => $m->name_en,
             'icon' => $m->icon,
-            'is_sensitive' => $m->is_sensitive,
             'is_active' => $m->is_active,
             'granted' => $user->isGrantedModule($m->key),
             'enabled' => isset($enabled[$m->id]),
@@ -69,16 +94,22 @@ class AdminUserController extends Controller
         $lastActivity = DB::table('sessions')->where('user_id', $user->id)->max('last_activity');
 
         return response()->json([
-            'user' => new UserResource($user->load('modules')),
+            'user' => new UserResource($user->load('modules', 'role')),
             'content' => [
                 'movies' => $user->movies_count,
                 'series' => $user->series_count,
                 'videos' => $user->videos_count,
-                'videos_adult' => $user->videos()->withoutGlobalScope('owner')->where('is_adult', true)->count(),
                 'favorites' => $user->movies()->withoutGlobalScope('owner')->where('is_favorite', true)->count()
                     + $user->series()->withoutGlobalScope('owner')->where('is_favorite', true)->count(),
             ],
             'storage' => $this->storageUsage($user),
+            // 1.3 — ატვირთული ფაილების სია (ნახვა/გადმოწერა ადმინიდან).
+            // ყველაზე მძიმეები თავში, რომ „რა ჭამს ადგილს" მაშინვე ჩანდეს.
+            'files' => $this->meter->files($user)
+                ->sortByDesc('size')
+                ->take(200)
+                ->values()
+                ->all(),
             'last_activity' => $lastActivity ? Carbon::createFromTimestamp($lastActivity)->toIso8601String() : null,
             'modules' => $modules,
             'requests' => ApprovalRequestResource::collection(
@@ -92,51 +123,42 @@ class AdminUserController extends Controller
     }
 
     /**
-     * ამ user-ის ატვირთული ფაილები (ავატარი, ხელით ატვირთული პოსტერები,
-     * ვიდეოს thumbnail-ები). TMDB-დან ჩამოტვირთული მედია გაზიარებულია
-     * (`posters/<slug>.jpg`), ამიტომ კონკრეტულ user-ს არ ეთვლება.
+     * დაკავებული ადგილი. „რა ითვლება" **`StorageMeter`-ის განმარტებაა** (19.4/B),
+     * რომ ადმინის ხედი და user-ის მრიცხველი ერთი და იმავე რიცხვს აჩვენებდეს.
      */
     private function storageUsage(User $user): array
     {
-        $files = [];
+        $files = $this->meter->files($user);
 
-        if ($user->avatar_path) {
-            $files[] = ['public', $user->avatar_path];
-        }
-
-        foreach (['movies', 'series'] as $relation) {
-            $paths = $user->{$relation}()
-                ->withoutGlobalScope('owner')
-                ->where('poster_source', 'upload')
-                ->whereNotNull('poster_path')
-                ->pluck('poster_path');
-
-            foreach ($paths as $path) {
-                $files[] = ['public', $path];
-            }
-        }
-
-        foreach ($user->videos()->withoutGlobalScope('owner')->whereNotNull('thumbnail_path')->get() as $video) {
-            $files[] = [$video->thumbnailDisk(), $video->thumbnail_path];
-        }
-
-        $bytes = 0;
-        foreach ($files as [$disk, $path]) {
-            try {
-                $bytes += Storage::disk($disk)->size($path);
-            } catch (\Throwable) {
-                // ფაილი აღარ არსებობს — ჯამში არ ითვლება
-            }
-        }
-
-        return ['files' => count($files), 'bytes' => $bytes];
+        return [
+            // `used` = **დაქეშილი** მრიცხველი, `bytes` = დისკიდან გადათვლილი.
+            // ორის განსხვავება ნიშნავს, რომ `mediary:storage-recalc` სჭირდება.
+            ...$this->meter->usage($user),
+            'files' => $files->count(),
+            'bytes' => (int) $files->sum('size'),
+            'modules' => $files->groupBy('module')
+                ->map(fn (Collection $group) => (int) $group->sum('size'))
+                ->all(),
+        ];
     }
 
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'role' => ['sometimes', Rule::in(['super_admin', 'user'])],
+            // Tasks 1.6 — როლი ცხრილიდან აირჩევა და არა enum-იდან
+            'role_id' => ['sometimes', 'integer', Rule::exists('roles', 'id')],
             'is_active' => ['sometimes', 'boolean'],
+            // 17.1 — კვოტა ადმინის მიერ ცვლადია (min 10 MB, max 1 TB)
+            'storage_quota_bytes' => ['sometimes', 'integer', 'min:10485760', 'max:1099511627776'],
+            /*
+             * Tasks 1.3 (🔗 16) — **იძულებითი დაპრივატება abuse-ის შემთხვევაში.**
+             * ⚠️ ეს განზრახ ორმხრივი გადამრთველია და არა მხოლოდ „ჩაკეტვა":
+             * შემთხვევით დაპრივატებულის უკან დაბრუნება ადმინს უნდა შეეძლოს,
+             * თორემ user-ის მხრიდან ჩართვა ერთადერთი გზა იქნებოდა.
+             * მოდულების და ჩანაწერების არჩევანს ეს არ ეხება — ისინი ხელუხლებელი
+             * რჩება, ე.ი. პროფილის უკან ჩართვა ძველ სურათს აღადგენს.
+             */
+            'profile_visibility' => ['sometimes', Rule::in(PublicDomain::VALUES)],
         ]);
 
         // ბოლო super_admin-ის ჩამოქვეითება/გათიშვა აკრძალულია
@@ -150,7 +172,7 @@ class AdminUserController extends Controller
 
         $user->forceFill($data)->save();
 
-        return new UserResource($user->load('modules'));
+        return new UserResource($user->load('modules', 'role'));
     }
 
     /** მოდულების ჩართვა/გამორთვა კონკრეტულ user-ზე */
@@ -168,7 +190,7 @@ class AdminUserController extends Controller
 
         $user->modules()->sync($ids);
 
-        return new UserResource($user->load('modules'));
+        return new UserResource($user->load('modules', 'role'));
     }
 
     public function destroy(Request $request, User $user)
@@ -177,13 +199,12 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'cannot_delete_self'], 422);
         }
 
-        if ($this->wouldOrphanAdmins($user, ['role' => 'user'])) {
+        // წაშლა = ადმინის დაკარგვა; 0 = „აღარაა super_admin"
+        if ($this->wouldOrphanAdmins($user, ['role_id' => 0])) {
             return response()->json(['message' => 'last_super_admin'], 422);
         }
 
-        if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
-        }
+        $this->meter->deleteUpload($user->id, $user->avatar_path);
 
         // movies/series — cascadeOnDelete (მათი genreables/castables პივოტები
         // Movie::booted()-ს არ გაივლის, ამიტომ ხელით ვასუფთავებთ)
@@ -203,20 +224,22 @@ class AdminUserController extends Controller
         return response()->noContent();
     }
 
-    /** დარჩება თუ არა სისტემა სუპერ-ადმინის გარეშე */
+    /** დარჩება თუ არა სისტემა სუპერ-ადმინის გარეშე (1.6 — როლი ცხრილშია) */
     private function wouldOrphanAdmins(User $user, array $data): bool
     {
         if (! $user->isSuperAdmin()) {
             return false;
         }
 
-        $losesAdmin = (array_key_exists('role', $data) && $data['role'] !== 'super_admin')
+        $adminRoleId = Role::where('key', 'super_admin')->value('id');
+
+        $losesAdmin = (array_key_exists('role_id', $data) && (int) $data['role_id'] !== (int) $adminRoleId)
             || (array_key_exists('is_active', $data) && ! $data['is_active']);
 
         if (! $losesAdmin) {
             return false;
         }
 
-        return User::where('role', 'super_admin')->where('is_active', true)->count() <= 1;
+        return User::where('role_id', $adminRoleId)->where('is_active', true)->count() <= 1;
     }
 }

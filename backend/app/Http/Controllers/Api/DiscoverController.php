@@ -8,6 +8,7 @@ use App\Models\Movie;
 use App\Models\Series;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
+use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -54,7 +55,7 @@ class DiscoverController extends Controller
         }
 
         $data = $request->validate([
-            'type' => ['nullable', 'in:movie,series'],
+            'type' => ['nullable', MediaDomain::rule()],
             'query' => ['nullable', 'string'],
             'genre' => ['nullable', 'string'],
             'year_min' => ['nullable', 'integer'],
@@ -69,7 +70,10 @@ class DiscoverController extends Controller
             'per_page' => ['nullable', 'integer', 'min:'.self::TMDB_PAGE_SIZE, 'max:100'],
         ]);
 
-        $isSeries = ($data['type'] ?? 'movie') === 'series';
+        $type = $data['type'] ?? 'movie';
+        // ⚠️ TMDB-ის `/tv/*`-ზე **ორი** დომენი ზის (§7.1): სერიალიც და ანიმეც,
+        // ე.ი. „სერიალია თუ არა" აღარაა იგივე, რაც „TV-ა თუ არა"
+        $isSeries = MediaDomain::isTv($type);
         $page = max(1, (int) ($data['page'] ?? 1));
         $query = trim($data['query'] ?? '');
 
@@ -79,7 +83,10 @@ class DiscoverController extends Controller
 
         // ქეშის გასაღები — მხოლოდ TMDB-ზე მოქმედი პარამეტრები (owned დინამიურია)
         $cacheKey = 'discover:'.md5(json_encode([
-            'type' => $isSeries ? 'series' : 'movie',
+            // ⚠️ ქეშის გასაღებში **დომენი** წერია და არა „tv/movie": ანიმესა და
+            // სერიალს TMDB-ის იგივე პასუხი აქვთ, მაგრამ `owned` სხვადასხვა
+            // ცხრილიდან მოდის — საერთო გასაღები ერთს მეორის ბიბლიოთეკას აჩვენებდა
+            'type' => $type,
             'q' => $query,
             'genre' => $data['genre'] ?? null,
             'ymin' => $data['year_min'] ?? null,
@@ -107,7 +114,7 @@ class DiscoverController extends Controller
         }
 
         // owned სტატუსი — ქეშის გარეთ, ყოველ ჯერზე ახალი
-        $owned = ($isSeries ? Series::query() : Movie::query())
+        $owned = MediaDomain::query($type)
             ->whereNotNull('tmdb_id')->pluck('id', 'tmdb_id');
         $results = array_map(function ($r) use ($owned) {
             $oid = $owned[$r['tmdb_id']] ?? null;

@@ -10,19 +10,24 @@ use App\Http\Resources\MovieResource;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
+use App\Services\Storage\StorageMeter;
+use App\Support\StorageFolder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MovieController extends Controller
 {
+    public function __construct(private StorageMeter $meter) {}
+
     /** ფილმების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
         $query = Movie::query()->with('genres');
 
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+        // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
+        // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
+        foreach ($this->slugList($request->string('status')->toString()) as $key) {
+            $query->statusKey($key);
         }
 
         if ($request->boolean('favorite')) {
@@ -33,8 +38,10 @@ class MovieController extends Controller
             $query->where('sync_status', 'synced');
         }
 
-        if ($genre = $request->string('genre')->toString()) {
-            $query->whereHas('genres', fn ($q) => $q->where('slug', $genre));
+        // ჟანრი მძიმით გამოყოფილი სიაც შეიძლება (2.2-ის პანელი მრავალს ნიშნავს):
+        // თითოეული მონიშნული ჟანრი **ცალკე** whereHas-ია, ე.ი. ფილტრი ვიწროვდება.
+        foreach ($this->slugList($request->string('genre')->toString()) as $slug) {
+            $query->whereHas('genres', fn ($q) => $q->where('slug', $slug));
         }
 
         if ($q = $request->string('q')->toString()) {
@@ -190,9 +197,8 @@ class MovieController extends Controller
     /** წაშლა */
     public function destroy(Movie $movie)
     {
-        if ($movie->poster_source === 'upload' && $movie->poster_path) {
-            Storage::disk('public')->delete($movie->poster_path);
-        }
+        // ⚠️ პოსტერს `Movie::booted()` შლის და არა აქაური კოდი — ერთი წყარო,
+        // რომელიც მასობრივ წაშლაზეც (Tasks 20) მუშაობს
         $movie->delete();
 
         return response()->noContent();
@@ -203,7 +209,7 @@ class MovieController extends Controller
     private function applyData(Movie $movie, Request $request): void
     {
         // translation ველები (title_*, description_*) ცალკე მუშავდება — იხ. applyTranslations()
-        foreach (['year', 'ge_url', 'rating', 'runtime'] as $field) {
+        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'runtime'] as $field) {
             if ($request->has($field)) {
                 $movie->{$field} = $request->input($field) ?: null;
             }
@@ -215,33 +221,39 @@ class MovieController extends Controller
             $movie->imdb_url = $imdb ? "https://www.imdb.com/title/{$imdb}/" : null;
         }
 
+        /* §6.4 — სტატუსსაც და `watched_at`-საც **ერთი ადგილი** წერს
+           (`HasStatus::applyStatusKey()`): ორი ასლი მაშინვე დაშორდებოდა,
+           რადგან „დასრულებულის“ კრიტერიუმი ახლა `role`-ია და არა სახელი. */
         if ($request->filled('status')) {
-            $movie->status = $request->string('status')->toString();
-            if ($movie->status === 'watched' && ! $movie->watched_at) {
-                $movie->watched_at = now();
-            }
-            if ($movie->status !== 'watched') {
-                $movie->watched_at = null;
-            }
+            $movie->applyStatusKey($request->string('status')->toString());
         }
 
         if ($request->has('is_favorite')) {
             $movie->is_favorite = $request->boolean('is_favorite');
         }
 
+        // Tasks 16.1 — ხილვადობა. ⚠️ `filled` და არა `has`: multipart-ზე ველი
+        // შეიძლება ცარიელი მოვიდეს, რაც „არ შეცვალო"-ს ნიშნავს და არა `private`-ს.
+        if ($request->filled('visibility')) {
+            $movie->visibility = $request->string('visibility')->toString();
+        }
+
+        // 17.1 — მხოლოდ **ხელით ატვირთული** პოსტერი ითვლება კვოტაში (19.4/B),
+        // ამიტომ წაშლაც `deleteUpload()`-ით ხდება, TMDB-ის ფაილი კი ხელუხლებელია
         if ($request->boolean('remove_poster')) {
-            if ($movie->poster_source === 'upload' && $movie->poster_path) {
-                Storage::disk('public')->delete($movie->poster_path);
+            if ($movie->poster_source === 'upload') {
+                $this->meter->deleteUpload($movie->user_id, $movie->poster_path);
             }
             $movie->poster_path = null;
             $movie->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            if ($movie->poster_source === 'upload' && $movie->poster_path) {
-                Storage::disk('public')->delete($movie->poster_path);
+            if ($movie->poster_source === 'upload') {
+                $this->meter->deleteUpload($movie->user_id, $movie->poster_path);
             }
-            $movie->poster_path = $request->file('poster')->store('posters', 'public');
+            $movie->poster_path = $this->meter
+                ->storeUpload($request->user(), $request->file('poster'), StorageFolder::MOVIE_POSTERS);
             $movie->poster_source = 'upload';
         }
     }
@@ -257,9 +269,24 @@ class MovieController extends Controller
             if ($request->has("description_$loc")) {
                 $attrs['description'] = $request->input("description_$loc") ?: null;
             }
-            if ($attrs) {
-                $movie->translations()->updateOrCreate(['locale' => $loc], $attrs);
+            if (! $attrs) {
+                continue;
             }
+
+            $existing = $movie->translations->firstWhere('locale', $loc);
+
+            /* ⚠️ **ხელით გადაწერილი აღწერა `manual`-ია** (Tasks §7).
+               უამისოდ ჩანაწერი „Claude-ის თარგმანად" რჩებოდა მას შემდეგაც,
+               რაც user თვითონ გადაწერდა — ბარათზე მითითებული წყარო ტყუოდა.
+               ⚠️ ვნიშნავთ **მხოლოდ მაშინ, როცა ტექსტი მართლა შეიცვალა**:
+               ფორმის უბრალო შენახვა TMDB-ის ტექსტს „ხელით დაწერილად"
+               არ უნდა აქცევდეს. */
+            if (array_key_exists('description', $attrs)
+                && $attrs['description'] !== ($existing->description ?? null)) {
+                $attrs['source'] = 'manual';
+            }
+
+            $movie->translations()->updateOrCreate(['locale' => $loc], $attrs);
         }
         $movie->load('translations');
     }

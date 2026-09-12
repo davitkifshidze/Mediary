@@ -3,31 +3,29 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\Enrichment\MovieEnricher;
-use App\Services\Enrichment\SeriesEnricher;
+use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Throwable;
 
 class LookupController extends Controller
 {
-    public function __construct(
-        private MovieEnricher $movieEnricher,
-        private SeriesEnricher $seriesEnricher,
-    ) {}
-
-    /** type=movie|series → შესაბამისი enricher */
-    private function enricher(Request $request): MovieEnricher|SeriesEnricher
+    /**
+     * `type=movie|series|anime` → შესაბამისი enricher.
+     *
+     * ⚠️ **რუკა `MediaDomain`-შია** და აქ აღარაა `if`: მესამე დომენის (§7.1)
+     * დამატებისას ეს მეთოდი ჩუმად ფილმს დააბრუნებდა და ანიმეს ძებნა
+     * ფილმებში წავიდოდა.
+     */
+    private function enricher(Request $request): object
     {
-        return $request->string('type')->toString() === 'series'
-            ? $this->seriesEnricher
-            : $this->movieEnricher;
+        return MediaDomain::enricher($request->string('type')->toString());
     }
 
     /** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) */
     public function candidates(Request $request)
     {
         $data = $request->validate([
-            'type' => ['nullable', 'in:movie,series'],
+            'type' => ['nullable', MediaDomain::rule()],
             'url' => ['nullable', 'string'],
             'imdb' => ['nullable', 'string'],
             'query' => ['nullable', 'string'],
@@ -56,7 +54,7 @@ class LookupController extends Controller
     public function lookup(Request $request)
     {
         $data = $request->validate([
-            'type' => ['nullable', 'in:movie,series'],
+            'type' => ['nullable', MediaDomain::rule()],
             'tmdb_id' => ['nullable', 'integer'],
             'url' => ['nullable', 'string'],
             'imdb' => ['nullable', 'string'],

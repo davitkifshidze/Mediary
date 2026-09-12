@@ -67,6 +67,55 @@ class ApprovalRequestController extends Controller
             ->response()->setStatusCode(201);
     }
 
+    /**
+     * 17.4 — საცავის ლიმიტის გაზრდის მოთხოვნა.
+     *
+     * ⚠️ `requested_bytes` **სასურველი სრული ლიმიტია** და არა მატება: ასე
+     * დამტკიცება დეტერმინისტულია — ადმინი რომც შუალედში შეცვალოს კვოტა,
+     * შედეგი ერთი და იგივე რიცხვია. მატება რომ გვეწერა, ორი დამტკიცება
+     * ერთმანეთს დაუჯამდებოდა.
+     */
+    public function storeStorageRequest(Request $request)
+    {
+        $user = $request->user();
+        $current = (int) $user->storage_quota_bytes;
+
+        $data = $request->validate([
+            // ჭერი იგივეა, რაც ადმინის ხელით ცვლილებაზე (`AdminUserController::update`)
+            'requested_bytes' => ['required', 'integer', 'min:10485760', 'max:1099511627776'],
+            'message' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if ($data['requested_bytes'] <= $current) {
+            return response()->json(['message' => 'storage_request_not_an_increase'], 422);
+        }
+
+        $existing = ApprovalRequest::where('user_id', $user->id)
+            ->where('type', ApprovalRequest::TYPE_STORAGE)
+            ->pending()
+            ->first();
+
+        // ერთ user-ს ერთდროულად ერთი ღია მოთხოვნა აქვს — მეორეს ვერ დააგროვებს
+        if ($existing) {
+            return response()->json(['message' => 'storage_request_pending'], 422);
+        }
+
+        $req = ApprovalRequest::create([
+            'user_id' => $user->id,
+            'type' => ApprovalRequest::TYPE_STORAGE,
+            // კონტექსტი მოთხოვნის მომენტისთვის — ადმინი ხედავს, რას ეყრდნობოდა
+            'payload' => [
+                'requested_bytes' => (int) $data['requested_bytes'],
+                'current_bytes' => $current,
+                'used_bytes' => (int) $user->storage_used_bytes,
+            ],
+            'message' => $data['message'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        return (new ApprovalRequestResource($req))->response()->setStatusCode(201);
+    }
+
     /** მოთხოვნის გაუქმება (მხოლოდ საკუთარი, მხოლოდ pending) */
     public function destroy(Request $request, ApprovalRequest $approvalRequest)
     {

@@ -21,7 +21,8 @@ class MovieFavoriteController extends Controller
         if ($movie->is_favorite && $movie->tmdb_collection_id) {
             Movie::where('tmdb_collection_id', $movie->tmdb_collection_id)
                 ->where('id', '!=', $movie->id)
-                ->where('status', '!=', 'watched')
+                // §6.4 — „ნანახი" per-user სახელია; მნიშვნელობას მხოლოდ `role` ატარებს
+                ->whereDoesntHave('status', fn ($q) => $q->where('role', 'done'))
                 ->update(['is_favorite' => true]);
         }
 

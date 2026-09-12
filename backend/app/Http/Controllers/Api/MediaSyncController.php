@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Movie;
-use App\Models\Series;
 use App\Services\Sync\ItemSyncer;
+use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -27,8 +26,11 @@ class MediaSyncController extends Controller
     {
         $data = $request->validate([
             'types' => ['nullable', 'array'],
-            'types.*' => ['in:movie,series'],
-            'status' => ['nullable', 'in:undecided,to_watch,watching,watched'],
+            'types.*' => [MediaDomain::rule()],
+            /* §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. მისი სია კოდში აღარ დგას.
+               ფილტრი **გასაღებით** მოდის; უცნობი გასაღები უბრალოდ ცარიელ
+               შედეგს იძლევა (ეს ფილტრია და არა წაშლის სკოუპი). */
+            'status' => ['nullable', 'string', 'max:60'],
             'favorite' => ['nullable', 'boolean'],
             'genres' => ['nullable', 'array'],
             'genres.*' => ['string'],
@@ -38,10 +40,7 @@ class MediaSyncController extends Controller
 
         // მხოლოდ ჩართული მოდულების დომენები (I3) — გეგმა ორივე დომენს ერთდროულად ეხება,
         // ამიტომ route-ზე `module:` middleware არ დგას და ფილტრი აქ ხდება
-        $types = array_values(array_filter(
-            $data['types'] ?? ['movie', 'series'],
-            fn ($type) => $request->user()->hasModule($type),
-        ));
+        $types = MediaDomain::enabledFor($request->user(), $data['types'] ?? null);
         $ids = $data['ids'] ?? [];
         $missingOnly = $request->boolean('missing_media_only');
 
@@ -49,10 +48,10 @@ class MediaSyncController extends Controller
         $withoutTmdb = 0;
 
         foreach ($types as $type) {
-            $query = $type === 'series' ? Series::query() : Movie::query();
+            $query = MediaDomain::query($type);
 
             if (! empty($data['status'])) {
-                $query->where('status', $data['status']);
+                $query->statusKey($data['status']);
             }
             if ($request->boolean('favorite')) {
                 $query->where('is_favorite', true);
@@ -100,7 +99,7 @@ class MediaSyncController extends Controller
      */
     public function item(Request $request, string $type, int $id, ItemSyncer $syncer)
     {
-        if (! in_array($type, ['movie', 'series'], true)) {
+        if (! MediaDomain::has($type)) {
             return response()->json(['message' => 'invalid_type'], 422);
         }
 
@@ -116,7 +115,7 @@ class MediaSyncController extends Controller
             'fields.*' => ['in:'.implode(',', ItemSyncer::FIELDS)],
         ]);
 
-        $item = $type === 'series' ? Series::find($id) : Movie::find($id);
+        $item = MediaDomain::model($type)::find($id);
         if (! $item) {
             return response()->json(['message' => 'not_found'], 404);
         }

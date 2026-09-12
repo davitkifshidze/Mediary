@@ -16,6 +16,9 @@ class GenreResource extends JsonResource
             'slug' => $this->slug,
             'movies_count' => $this->whenCounted('movies'),
             'series_count' => $this->whenCounted('series'),
+            // §7.1 — მესამე მედია-დომენი; `whenCounted` მას მხოლოდ მაშინ აჩენს,
+            // როცა `withCount`-ში ითხოვეს, ე.ი. ძველი პასუხები არ იბერება
+            'animes_count' => $this->whenCounted('animes'),
         ];
     }
 }

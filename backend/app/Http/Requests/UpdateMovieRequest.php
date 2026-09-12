@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Status;
+use App\Support\PublicDomain;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,15 +26,22 @@ class UpdateMovieRequest extends FormRequest
                 Rule::unique('movies', 'imdb_id')->ignore($this->route('movie')),
             ],
             'ge_url' => ['nullable', 'url', 'max:500'],
+            // ტრეილერი (Tasks 9) — ხელით ჩასმაც შეიძლება, TMDB-ს არ ველოდებით
+            'trailer_url' => ['nullable', 'url', 'max:500'],
             'description_ka' => ['nullable', 'string'],
             'description_en' => ['nullable', 'string'],
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
             'runtime' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            'status' => ['nullable', Rule::in(['undecided', 'to_watch', 'watching', 'watched'])],
+            /* Tasks §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
+               ⚠️ გასაღები **ამ ანგარიშის** ლექსიკონში უნდა არსებობდეს, თორემ
+               უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */
+            'status' => ['nullable', 'string', Status::rule('movie')],
             'is_favorite' => ['nullable', 'boolean'],
             'genres' => ['nullable', 'array'],
             'genres.*' => ['string', 'max:100'],
             'poster' => ['nullable', 'image', 'max:8192'],
+            // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)
+            'visibility' => ['nullable', Rule::in(PublicDomain::VALUES)],
         ];
     }
 

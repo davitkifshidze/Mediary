@@ -1,0 +1,123 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\NoteEntryFileResource;
+use App\Models\NoteEntry;
+use App\Models\NoteEntryFile;
+use App\Services\Storage\StorageMeter;
+use App\Support\StorageFolder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * ჩანაწერზე მიმაგრებული ფაილები (Tasks §13.1) — სქრინშოტი/ფოტო (`image`),
+ * ვიდეო (`video`) და დოკუმენტი (`doc`).
+ *
+ * ⚠️ **ატვირთვა კვოტაზე გადის** (§13.1 → 17.1): ჯერ მთელ პაკეტს ვამოწმებთ
+ * (`guard`), მერე თითოეულს `storeUpload()`-ით ვწერთ — ე.ი. მრიცხველი
+ * ვერასდროს აცდება.
+ *
+ * ⚠️ **ფაილები პრივატულ დისკზეა (Tasks §17.5, გაკეთდა 2026-09-05).** ეს
+ * მოდული პირად დოკუმენტებს ინახავს, ე.ი. `/storage/*`-ით ხელმისაწვდომობა
+ * (URL-ის გამოცნობით) მიუღებელი იყო. ფაილი მხოლოდ `show()`-დან გაიცემა,
+ * სადაც მფლობელობა ცხადად მოწმდება.
+ */
+class NoteEntryFileController extends Controller
+{
+    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx,zip';
+
+    private const VIDEO_MIMES = 'mp4,webm,mov,m4v';
+
+    /** ვიდეო ერთეულზე ყველაზე მძიმეა — 1 GB კვოტაზე 100 MB რეალისტური ჭერია */
+    private const VIDEO_MAX_KB = 102400;
+
+    public function __construct(private StorageMeter $meter) {}
+
+    public function index(Request $request, NoteEntry $note)
+    {
+        $files = $note->files()
+            ->when($request->string('kind')->toString(), fn ($q, $kind) => $q->where('kind', $kind))
+            ->get();
+
+        return NoteEntryFileResource::collection($files);
+    }
+
+    public function store(Request $request, NoteEntry $note)
+    {
+        $kind = $request->input('kind', 'doc');
+
+        $data = $request->validate([
+            'kind' => ['required', 'in:image,video,doc'],
+            'files' => ['required', 'array', 'max:20'],
+            'files.*' => match ($kind) {
+                'image' => ['file', 'image', 'max:8192'],
+                'video' => ['file', 'max:'.self::VIDEO_MAX_KB, 'mimes:'.self::VIDEO_MIMES],
+                default => ['file', 'max:20480', 'mimes:'.self::DOC_MIMES],
+            },
+        ]);
+
+        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
+        $files = $request->file('files');
+        $this->meter->guard($request->user(), array_sum(array_map(
+            fn ($file) => (int) $file->getSize(),
+            $files,
+        )));
+
+        $folder = StorageFolder::noteFiles($data['kind']);
+        $next = (int) $note->files()->max('sort_order');
+
+        $created = [];
+        foreach ($files as $file) {
+            $created[] = $note->files()->create([
+                'user_id' => $request->user()->id,
+                'kind' => $data['kind'],
+                'path' => $this->meter->storeUpload($request->user(), $file, $folder),
+                'original_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'sort_order' => ++$next,
+            ]);
+        }
+
+        return NoteEntryFileResource::collection(collect($created))
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    /**
+     * **ფაილის გაცემა (Tasks §17.5).** ერთადერთი გზა, რომლითაც პრივატული
+     * დისკის შიგთავსი გარეთ გადის.
+     *
+     * ⚠️ **მფლობელობა აქ ცხადად მოწმდება** და არა მარტო global scope-ით:
+     * `owner` scope `Auth::id()`-ზეა დამოკიდებული და მისი ჩუმად გამორთვა
+     * (მაგ. მომავალი ადმინის კონტექსტი) ამ შემოწმებას არ უნდა შლიდეს.
+     *
+     * ⚠️ **`inline` და არა `attachment`**: სურათი/ვიდეო ჩანაწერშივე უნდა
+     * გამოჩნდეს. ჩამოტვირთვას ფრონტი თვითონ აწყობს blob-იდან.
+     */
+    public function show(Request $request, NoteEntryFile $noteEntryFile)
+    {
+        abort_unless($noteEntryFile->user_id === $request->user()->id, 404);
+
+        $disk = Storage::disk(StorageFolder::diskFor((string) $noteEntryFile->path));
+
+        abort_unless($disk->fileExists($noteEntryFile->path), 404);
+
+        return $disk->response(
+            $noteEntryFile->path,
+            $noteEntryFile->original_name,
+            array_filter(['Content-Type' => $noteEntryFile->mime]),
+            'inline',
+        );
+    }
+
+    public function destroy(NoteEntryFile $noteEntryFile)
+    {
+        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია
+        $noteEntryFile->delete();
+
+        return response()->noContent();
+    }
+}

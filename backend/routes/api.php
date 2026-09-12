@@ -1,16 +1,44 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminAuditController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
+use App\Http\Controllers\Api\Admin\AdminPurgeController;
 use App\Http\Controllers\Api\Admin\AdminRequestController;
+use App\Http\Controllers\Api\Admin\AdminRoleController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\AnimeController;
+use App\Http\Controllers\Api\AnimeFavoriteController;
+use App\Http\Controllers\Api\AnimeStatusController;
+use App\Http\Controllers\Api\AnimeSyncController;
 use App\Http\Controllers\Api\ApprovalRequestController;
-use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BoardGameController;
+use App\Http\Controllers\Api\BoardGameFileController;
+use App\Http\Controllers\Api\BoardGameGenreController;
+use App\Http\Controllers\Api\BoardGameNoteController;
+use App\Http\Controllers\Api\BookController;
+use App\Http\Controllers\Api\BookFileController;
+use App\Http\Controllers\Api\BookGenreController;
+use App\Http\Controllers\Api\BookmarkCategoryController;
+use App\Http\Controllers\Api\BookmarkController;
+use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
+use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\CustomFieldController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DiscoverController;
+use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\GalleryVideoController;
+use App\Http\Controllers\Api\GameController;
+use App\Http\Controllers\Api\GameFileController;
+use App\Http\Controllers\Api\GameGenreController;
+use App\Http\Controllers\Api\GameNoteController;
+use App\Http\Controllers\Api\GameVideoController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\GenreItemController;
 use App\Http\Controllers\Api\LookupController;
+use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaSyncController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\MovieCollectionController;
@@ -18,12 +46,36 @@ use App\Http\Controllers\Api\MovieController;
 use App\Http\Controllers\Api\MovieFavoriteController;
 use App\Http\Controllers\Api\MovieStatusController;
 use App\Http\Controllers\Api\MovieSyncController;
-use App\Http\Controllers\Api\NoteController;
+use App\Http\Controllers\Api\NoteCategoryController;
+use App\Http\Controllers\Api\NoteEntryController;
+use App\Http\Controllers\Api\NoteEntryFileController;
+use App\Http\Controllers\Api\NoteReminderController;
+use App\Http\Controllers\Api\PlaylistController;
+use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
 use App\Http\Controllers\Api\SeriesSyncController;
+use App\Http\Controllers\Api\SongController;
+use App\Http\Controllers\Api\SongFileController;
+use App\Http\Controllers\Api\SongGenreController;
+use App\Http\Controllers\Api\SongNoteController;
+use App\Http\Controllers\Api\StatusController;
+use App\Http\Controllers\Api\StorageController;
+use App\Http\Controllers\Api\TranslationController;
+use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
+use App\Http\Controllers\Api\VideoDownloadController;
+use App\Http\Controllers\Api\VideoFileController;
+use App\Http\Controllers\Api\VideoNoteController;
+use App\Http\Controllers\Api\VideoStatusController;
+use App\Http\Controllers\Api\VideoTypeController;
+use App\Http\Controllers\Api\VisibilityController;
+use App\Http\Controllers\Api\WebSearchController;
+use App\Support\CustomFields;
+use App\Support\MediaDomain;
+use App\Support\PublicDomain;
+use App\Support\StatusDomain;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -50,6 +102,14 @@ Route::get('/health', function () {
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+/* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
+   ⚠️ **ერთადერთი დომენური endpoint-ები `auth:sanctum`-ის გარეთ.** ორივე
+   read-only-ია და სამივე ფენას ერთდროულად ითხოვს (პროფილი → მოდული →
+   ჩანაწერი), ყველა default-ით `private`. მთელი მექანიზმი ერთი ცვლადით
+   ითიშება: `PUBLIC_PROFILES=false`. დეტალები `PublicProfileController`-ში. */
+Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show']);
+Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     /* ---------- ანგარიში ---------- */
@@ -59,17 +119,93 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/auth/password', [AuthController::class, 'updatePassword']);
     Route::put('/auth/settings', [AuthController::class, 'updateSettings']);
 
+    /* ---------- საცავი (Tasks 17.1/17.3) — მოდულებად დაშლა და გადათვლა ----------
+       მსუბუქი ჯამი `GET /auth/me`-ზეც მოდის (`UserResource.storage`). */
+    Route::get('/storage', [StorageController::class, 'show']);
+    Route::post('/storage/recalculate', [StorageController::class, 'recalculate']);
+    // 17.2 — ლიმიტების გადანაწილება მოდულებზე (`null` = ლიმიტის მოხსნა)
+    Route::put('/storage/allocations', [StorageController::class, 'setAllocations']);
+    // 17.5 — „ყველაზე დიდი ფაილები" + ერთეულოვანი წაშლა (`path` სხეულში)
+    Route::get('/storage/files', [StorageController::class, 'files']);
+    Route::delete('/storage/files', [StorageController::class, 'destroyFile']);
+    /* §6.2 — მონიშნულების/ყველას ჩამოტვირთვა zip-ად. `POST`, რადგან
+       მონიშვნა ასეულ გზას შეიძლება შეიცავდეს. */
+    Route::post('/storage/files/download', [StorageController::class, 'downloadFiles']);
+    // ობოლი ფაილები **გლობალურია** (მფლობელი აღარ აქვს) → მხოლოდ super_admin
+    Route::middleware('super_admin')->group(function () {
+        Route::get('/storage/orphans', [StorageController::class, 'orphans']);
+        Route::post('/storage/orphans/clean', [StorageController::class, 'cleanOrphans']);
+    });
+
+    /* ---------- ძებნა ვებში (Tasks §7.5/§7.6) ----------
+       ⚠️ **`/serp/*` განზრახ არ ჰქვია:** წყარო ერთი არ არის — უფასო
+       კატალოგი (Wikimedia) და SerpApi-ის engine-ები ერთ სიაშია, ერთი
+       ინტერფეისით; SerpApi მხოლოდ **ერთ-ერთი** მათგანია.
+       ⚠️ **მოდულის ჯგუფის გარეთ განზრახ:** ვებძებნა მოდული არ არის, წყაროა
+       (TMDB/RAWG/BGG-ის რიგში) — არც `modules` რიგი აქვს, არც საიდბარის
+       სექცია. ოთხივე საძიებო მარშრუტი **`GET`-ია**: ძებნა კითხვაა, და POST-ის
+       შემთხვევაში `EnsureModulePermission` მას `create`-ად წაიკითხავდა
+       (`GET /board-games/shops`-ის იგივე მიზეზი).
+       ⚠️ `status` **უფასოა** — `GET /account` კვოტას არ ხარჯავს. */
+    Route::get('/web/status', [WebSearchController::class, 'status']);
+    Route::get('/web/images', [WebSearchController::class, 'images']);
+    Route::get('/web/videos', [WebSearchController::class, 'videos']);
+    Route::get('/web/video', [WebSearchController::class, 'video']);
+    /* ⚠️ **ეს ერთი `POST`-ია და განზრახ:** აქ მართლა იქმნება ჩანაწერი
+       (`gallery_images`-ის რიგი + ფაილი დისკზე), ძებნა კი კითხვა იყო. */
+    Route::post('/web/import', [WebSearchController::class, 'import']);
+
+    /* ---------- აუდიტ-ლოგი: სექციაში შესვლა (Tasks §4.1) ----------
+       SPA-ს მარშრუტის შეცვლა HTTP რექვესთი არ არის, ე.ი. სიგნალი ცხადად
+       მოდის. მოდულის middleware-ის გარეთ — იხ. `AuditController`. */
+    Route::post('/audit/visit', [AuditController::class, 'visit']);
+
+    /* ---------- დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები ----------
+       მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+
     /* ---------- მოდულები და მოთხოვნები ---------- */
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::put('/modules/{key}/settings', [ModuleController::class, 'updateSettings']);
+    // §6 (ფაზა 1) — რომელი არჩევითი ველი ჩანს მოდულის ფორმაზე.
+    // `PUT`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა.
+    Route::get('/modules/{key}/fields', [ModuleController::class, 'fields']);
+    Route::put('/modules/{key}/fields', [ModuleController::class, 'updateFields']);
+    /* §6 (ფაზა 3) — **მორგებული** ველები: განსაზღვრებები მოდულზე,
+       მნიშვნელობები ჩანაწერზე. ერთი endpoint რვავე მოდულზე —
+       `/visibility/{domain}/{id}`-ის იგივე ნიმუში. */
+    Route::get('/modules/{key}/custom-fields', [CustomFieldController::class, 'index']);
+    Route::put('/modules/{key}/custom-fields', [CustomFieldController::class, 'update']);
+    Route::get('/custom-fields/{module}/{id}', [CustomFieldController::class, 'values'])
+        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+    Route::put('/custom-fields/{module}/{id}', [CustomFieldController::class, 'setValues'])
+        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+    /* §6 (ფაზა 4b) — `ფაილი` ტიპის ველი. ⚠️ **ატვირთვა ცალკე endpoint-ია**:
+       მნიშვნელობების `PUT` მთელ მონახაზს იღებს და ფაილს ცარიელ მნიშვნელობად
+       წაშლიდა. გაცემა **მხოლოდ აქედან** ხდება — `notes/fields` პრივატულ
+       დისკზეა (§17.5) და `/storage/*` მას ვერ ხედავს. */
+    Route::post('/custom-fields/{module}/{id}/file', [CustomFieldController::class, 'storeFile'])
+        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+    /* §7.3 — ⚠️ **`{file}` არჩევითია**: ერთ ველზე ახლა რამდენიმე ფაილი ჯდება,
+       მისი გარეშე მისამართი კი ძველებურად მუშაობს (გაცემაზე — პირველი,
+       წაშლაზე — ველის ყველა ფაილი). */
+    Route::get('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'showFile'])
+        ->whereIn('module', CustomFields::modules())->whereNumber('id')->whereNumber('file');
+    Route::delete('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'destroyFile'])
+        ->whereIn('module', CustomFields::modules())->whereNumber('id')->whereNumber('file');
+    // 16.1 — ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე (`PUT`: POST-ს
+    // `permission:` middleware `create`-ად წაიკითხავდა)
+    Route::put('/modules/{key}/public', [ModuleController::class, 'setPublic']);
     // საკუთარი თავისთვის ჩართვა/გამორთვა (K13) — ჩართვა მხოლოდ უკვე მინიჭებულზე
     Route::patch('/modules/{key}', [ModuleController::class, 'setEnabled']);
     Route::get('/requests', [ApprovalRequestController::class, 'index']);
     Route::post('/requests/module', [ApprovalRequestController::class, 'storeModuleRequest']);
+    // 17.4 — ლიმიტის გაზრდის მოთხოვნა (იმავე ცხრილში, ახალი ტიპით)
+    Route::post('/requests/storage', [ApprovalRequestController::class, 'storeStorageRequest']);
     Route::delete('/requests/{approvalRequest}', [ApprovalRequestController::class, 'destroy']);
 
     /* ---------- ფილმები (module: movie) ---------- */
-    Route::middleware('module:movie')->group(function () {
+    Route::middleware(['module:movie', 'permission:movie'])->group(function () {
         Route::get('/movies', [MovieController::class, 'index']);
         Route::post('/movies', [MovieController::class, 'store']);
         Route::post('/movies/from-tmdb', [MovieController::class, 'storeFromTmdb']);
@@ -85,7 +221,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* ---------- სერიალები (module: series) ---------- */
-    Route::middleware('module:series')->group(function () {
+    Route::middleware(['module:series', 'permission:series'])->group(function () {
         Route::get('/series', [SeriesController::class, 'index']);
         Route::post('/series', [SeriesController::class, 'store']);
         Route::post('/series/from-tmdb', [SeriesController::class, 'storeFromTmdb']);
@@ -99,35 +235,342 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/series/{series}/resync', [SeriesSyncController::class, 'resync']);
     });
 
-    /* ---------- ვიდეოები (module: video; 18+ ჩანაწერები — `video_adult`) ---------- */
-    Route::middleware('module:video')->group(function () {
+    /* ---------- ანიმეები (module: anime, Tasks §7.1) ----------
+       ⚠️ **სერიალის ზუსტი სარკე**: მესამე მედია-დომენს „ზუსტად იგივე
+       ფუნქციონალი" აქვს, რაც ფილმებსა და სერიალებს. გაზიარებული endpoint-ები
+       (`/lookup`, `/discover`, `/media/sync/{type}/{id}`, `/gallery/{type}/{id}`,
+       `/translations/{type}/{id}`) მას `MediaDomain::TYPES`-ის წყალობით
+       ავტომატურად ცნობენ. */
+    Route::middleware(['module:anime', 'permission:anime'])->group(function () {
+        Route::get('/anime', [AnimeController::class, 'index']);
+        Route::post('/anime', [AnimeController::class, 'store']);
+        Route::post('/anime/from-tmdb', [AnimeController::class, 'storeFromTmdb']);
+        // ⚠️ `{anime}`-ზე **ზემოთ**, თორემ „bulk-status" id-ად წაიკითხება
+        Route::post('/anime/bulk-status', [AnimeStatusController::class, 'bulkUpdate']);
+        Route::get('/anime/{anime}', [AnimeController::class, 'show']);
+        Route::match(['put', 'patch'], '/anime/{anime}', [AnimeController::class, 'update']);
+        Route::delete('/anime/{anime}', [AnimeController::class, 'destroy']);
+
+        Route::patch('/anime/{anime}/status', [AnimeStatusController::class, 'update']);
+        Route::patch('/anime/{anime}/favorite', [AnimeFavoriteController::class, 'update']);
+        Route::post('/anime/{anime}/resync', [AnimeSyncController::class, 'resync']);
+    });
+
+    /* ---------- ვიდეოები (module: video) ---------- */
+    Route::middleware(['module:video', 'permission:video'])->group(function () {
+        /* ვიდეოს ტიპები — მართვადი ლექსიკონი (Tasks 5.1).
+           `/reorder` ცალკე POST-ია, ე.ი. `store`-ს არ ეჯახება. */
+        Route::get('/video-types', [VideoTypeController::class, 'index']);
+        Route::post('/video-types', [VideoTypeController::class, 'store']);
+        Route::post('/video-types/reorder', [VideoTypeController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/video-types/{videoType}', [VideoTypeController::class, 'update']);
+        Route::delete('/video-types/{videoType}', [VideoTypeController::class, 'destroy']);
+
         Route::get('/videos', [VideoController::class, 'index']);
         // ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის
         Route::post('/videos/metadata', [VideoController::class, 'metadata']);
+        /* §7.1 — „ჩამოწერა შესაძლებელია?" (yt-dlp არის თუ არა ამ მანქანაზე).
+           ⚠️ `{video}`-ზე **ზემოთ** უნდა იდგეს, თორემ „download-status" id-ად
+           წაიკითხება — იგივე წესი, რაც `videos/bulk`-ს და `gallery/groups`-ს. */
+        Route::get('/videos/download-status', [VideoDownloadController::class, 'status']);
         Route::post('/videos', [VideoController::class, 'store']);
+        // მასობრივი ოპერაცია (Tasks 4 / 19.9): ტიპი · ტეგის დამატება/მოხსნა.
+        // `{video}`-ზე ზემოთ უნდა იყოს, თორემ „bulk" id-ად წაიკითხება.
+        Route::post('/videos/bulk', [VideoBulkController::class, 'update']);
+        /* §6.4 — ვიდეოს სტატუსი. **ახალი ველი**: ამ მოდულს სტატუსი აქამდე
+           არ ჰქონდა. ⚠️ `{video}`-ზე ზემოთ, თორემ „bulk-status" id-ად წაიკითხება. */
+        Route::post('/videos/bulk-status', [VideoStatusController::class, 'bulkUpdate']);
         Route::get('/videos/{video}', [VideoController::class, 'show']);
         Route::match(['put', 'patch'], '/videos/{video}', [VideoController::class, 'update']);
         Route::delete('/videos/{video}', [VideoController::class, 'destroy']);
+        // „მსგავსი ვიდეოები" — ჩემი ბიბლიოთეკიდან (K4)
+        Route::get('/videos/{video}/similar', [VideoController::class, 'similar']);
         Route::patch('/videos/{video}/favorite', [VideoController::class, 'toggleFavorite']);
         Route::post('/videos/{video}/watched', [VideoController::class, 'markWatched']);
-        // private (18+) thumbnail — /storage/* ავტორიზაციას არ ამოწმებს
-        Route::get('/videos/{video}/thumb', [VideoController::class, 'thumb'])->name('videos.thumb');
+        Route::patch('/videos/{video}/status', [VideoStatusController::class, 'update']);
 
-        /* მიმაგრებული ფაილები და ჩანიშვნები (K3) — polymorphic, დღეს ვიდეოებზე */
-        Route::get('/videos/{video}/attachments', [AttachmentController::class, 'index']);
-        Route::post('/videos/{video}/attachments', [AttachmentController::class, 'store']);
-        Route::delete('/attachments/{attachment}', [AttachmentController::class, 'destroy']);
-        Route::get('/attachments/{attachment}/file', [AttachmentController::class, 'file'])
-            ->name('attachments.file');
+        /* §7.1 — ლოკალური ასლი: ერთი მისამართი, სამი ზმნა (დაწყება · მიწოდება ·
+           წაშლა). ⚠️ ფაილი **პრივატულ დისკზეა**, ე.ი. `/storage/*`-ით არ
+           იხსნება — მხოლოდ ეს `GET` გამოიტანს მას, მფლობელობის შემოწმებით. */
+        Route::post('/videos/{video}/download', [VideoDownloadController::class, 'store']);
+        Route::get('/videos/{video}/download', [VideoDownloadController::class, 'show']);
+        Route::delete('/videos/{video}/download', [VideoDownloadController::class, 'destroy']);
 
-        Route::get('/videos/{video}/notes', [NoteController::class, 'index']);
-        Route::post('/videos/{video}/notes', [NoteController::class, 'store']);
-        Route::match(['put', 'patch'], '/notes/{note}', [NoteController::class, 'update']);
-        Route::delete('/notes/{note}', [NoteController::class, 'destroy']);
+        /* მიმაგრებული ფაილები და ჩანიშვნები (K3) — ცხრილიც და მისამართიც
+           **სექციისაა** (`video_files` / `video_notes`, გადაწყვეტილება 2026-09-03) */
+        Route::get('/videos/{video}/files', [VideoFileController::class, 'index']);
+        Route::post('/videos/{video}/files', [VideoFileController::class, 'store']);
+        Route::delete('/video-files/{videoFile}', [VideoFileController::class, 'destroy']);
+
+        Route::get('/videos/{video}/notes', [VideoNoteController::class, 'index']);
+        Route::post('/videos/{video}/notes', [VideoNoteController::class, 'store']);
+        Route::match(['put', 'patch'], '/video-notes/{videoNote}', [VideoNoteController::class, 'update']);
+        Route::delete('/video-notes/{videoNote}', [VideoNoteController::class, 'destroy']);
+    });
+
+    /* ---------- ბორდგეიმები (module: board_game) — Tasks §14 ----------
+       წყარო BoardGameGeek-ია (XML API 2, კლავიშის გარეშე). გალერეა
+       `board_game_files.kind = 'image'`-შია — იხ. `BoardGameFileController`. */
+    Route::middleware(['module:board_game', 'permission:board_game'])->group(function () {
+        Route::get('/board-game-genres', [BoardGameGenreController::class, 'index']);
+        Route::post('/board-game-genres', [BoardGameGenreController::class, 'store']);
+        Route::post('/board-game-genres/reorder', [BoardGameGenreController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/board-game-genres/{boardGameGenre}', [BoardGameGenreController::class, 'update']);
+        Route::delete('/board-game-genres/{boardGameGenre}', [BoardGameGenreController::class, 'destroy']);
+
+        Route::get('/board-games', [BoardGameController::class, 'index']);
+        // ⚠️ `{boardGame}`-ზე ზემოთ, თორემ „lookup" id-ად წაიკითხება
+        Route::post('/board-games/lookup/candidates', [BoardGameController::class, 'candidates']);
+        Route::post('/board-games/lookup', [BoardGameController::class, 'lookup']);
+        // ქართული მაღაზიები (§7.2) — GET, რადგან ძებნაა: POST-ზე უფლება `create`-ად
+        // წაიკითხებოდა და რედაქტირებისას (update) 403 დაბრუნდებოდა
+        Route::get('/board-games/shops', [BoardGameController::class, 'shops']);
+        Route::post('/board-games', [BoardGameController::class, 'store']);
+        Route::get('/board-games/{boardGame}', [BoardGameController::class, 'show']);
+        Route::match(['put', 'patch'], '/board-games/{boardGame}', [BoardGameController::class, 'update']);
+        Route::delete('/board-games/{boardGame}', [BoardGameController::class, 'destroy']);
+        Route::patch('/board-games/{boardGame}/favorite', [BoardGameController::class, 'toggleFavorite']);
+        Route::patch('/board-games/{boardGame}/status', [BoardGameController::class, 'setStatus']);
+
+        /* წესების PDF, გალერეის ფოტოები და ჩანიშვნები — სექციის ცხრილები */
+        Route::get('/board-games/{boardGame}/files', [BoardGameFileController::class, 'index']);
+        Route::post('/board-games/{boardGame}/files', [BoardGameFileController::class, 'store']);
+        Route::delete('/board-game-files/{boardGameFile}', [BoardGameFileController::class, 'destroy']);
+
+        Route::get('/board-games/{boardGame}/notes', [BoardGameNoteController::class, 'index']);
+        Route::post('/board-games/{boardGame}/notes', [BoardGameNoteController::class, 'store']);
+        Route::match(['put', 'patch'], '/board-game-notes/{boardGameNote}', [BoardGameNoteController::class, 'update']);
+        Route::delete('/board-game-notes/{boardGameNote}', [BoardGameNoteController::class, 'destroy']);
+    });
+
+    /* ---------- თამაშები (module: game) — Tasks §11 ----------
+       წყარო RAWG-ია (§11.4, ერთი უფასო კლავიში). ჟანრი **pivot-ია** და არა
+       სვეტი — 11.1 „ჟანრებს" მრავლობითში წერს. RAWG-ის სქრინშოტები
+       `gallery_images`-ში ხვდება, user-ის ატვირთული კი `game_files`-ში. */
+    Route::middleware(['module:game', 'permission:game'])->group(function () {
+        Route::get('/game-genres', [GameGenreController::class, 'index']);
+        Route::post('/game-genres', [GameGenreController::class, 'store']);
+        Route::post('/game-genres/reorder', [GameGenreController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/game-genres/{gameGenre}', [GameGenreController::class, 'update']);
+        Route::delete('/game-genres/{gameGenre}', [GameGenreController::class, 'destroy']);
+
+        Route::get('/games', [GameController::class, 'index']);
+        // ⚠️ `{game}`-ზე ზემოთ, თორემ „lookup"/„franchises" id-ად წაიკითხება
+        Route::get('/games/franchises', [GameController::class, 'franchises']);
+        Route::post('/games/lookup/candidates', [GameController::class, 'candidates']);
+        Route::post('/games/lookup', [GameController::class, 'lookup']);
+        Route::post('/games', [GameController::class, 'store']);
+        Route::get('/games/{game}', [GameController::class, 'show']);
+        Route::match(['put', 'patch'], '/games/{game}', [GameController::class, 'update']);
+        Route::delete('/games/{game}', [GameController::class, 'destroy']);
+        Route::patch('/games/{game}/favorite', [GameController::class, 'toggleFavorite']);
+        Route::patch('/games/{game}/status', [GameController::class, 'setStatus']);
+
+        /* §11.2 — walkthrough და სხვა ვიდეოები (საკუთარი ცხრილი `game_videos`) */
+        Route::get('/games/{game}/videos', [GameVideoController::class, 'index']);
+        Route::post('/games/{game}/videos', [GameVideoController::class, 'store']);
+        Route::post('/games/{game}/videos/reorder', [GameVideoController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/game-videos/{gameVideo}', [GameVideoController::class, 'update']);
+        Route::delete('/game-videos/{gameVideo}', [GameVideoController::class, 'destroy']);
+
+        /* ატვირთული სქრინშოტები/დოკუმენტები და ჩანიშვნები — სექციის ცხრილები */
+        Route::get('/games/{game}/files', [GameFileController::class, 'index']);
+        Route::post('/games/{game}/files', [GameFileController::class, 'store']);
+        Route::delete('/game-files/{gameFile}', [GameFileController::class, 'destroy']);
+
+        Route::get('/games/{game}/notes', [GameNoteController::class, 'index']);
+        Route::post('/games/{game}/notes', [GameNoteController::class, 'store']);
+        Route::match(['put', 'patch'], '/game-notes/{gameNote}', [GameNoteController::class, 'update']);
+        Route::delete('/game-notes/{gameNote}', [GameNoteController::class, 'destroy']);
+    });
+
+    /* ---------- ჩანაწერები (module: note) — Tasks §13 ----------
+       გარე წყარო არ არსებობს: ეს user-ის საკუთარი ინფორმაციაა. ცხრილები
+       `note_entries`/`note_entry_files`/`note_reminders`-ია — უნივერსალური
+       `notes` 2026-09-03-ის წესით აღარ არსებობს. */
+    Route::middleware(['module:note', 'permission:note'])->group(function () {
+        /* კატეგორიები („რას ეხება") — per-user ლექსიკონი */
+        Route::get('/note-categories', [NoteCategoryController::class, 'index']);
+        Route::post('/note-categories', [NoteCategoryController::class, 'store']);
+        Route::post('/note-categories/reorder', [NoteCategoryController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/note-categories/{noteCategory}', [NoteCategoryController::class, 'update']);
+        Route::delete('/note-categories/{noteCategory}', [NoteCategoryController::class, 'destroy']);
+
+        /* ⚠️ `{noteReminder}`-ის მარშრუტი არ არსებობს GET-ზე, ე.ი. „due"
+           კონფლიქტს არ ქმნის; მაინც ზემოთ წერია, რომ წესი თვალსაჩინო იყოს */
+        Route::get('/note-reminders/due', [NoteReminderController::class, 'due']);
+        Route::match(['put', 'patch'], '/note-reminders/{noteReminder}', [NoteReminderController::class, 'update']);
+        Route::delete('/note-reminders/{noteReminder}', [NoteReminderController::class, 'destroy']);
+        // „ვნახე" — PATCH განზრახ: POST-ს `permission:` middleware `create`-ად წაიკითხავდა
+        /* §8.2 — შეხსენებების **ჟურნალი**. ელფოსტის არხი ამოღებულია, ე.ი.
+           „აპი დახურული მქონდა" აღარ ნიშნავს დაკარგულ შეხსენებას: ყოველი
+           გასროლა აქ წერია. ⚠️ `due` ამის ნაცვლად რიგს აბრუნებს (რაც უნდა
+           ამოხტეს), აქ კი ისტორიაა. */
+        Route::get('/note-notifications', [NoteReminderController::class, 'notifications']);
+        Route::patch('/note-notifications/{noteNotification}', [NoteReminderController::class, 'markRead']);
+
+        Route::get('/notes', [NoteEntryController::class, 'index']);
+        Route::post('/notes', [NoteEntryController::class, 'store']);
+        Route::get('/notes/{note}', [NoteEntryController::class, 'show']);
+        Route::match(['put', 'patch'], '/notes/{note}', [NoteEntryController::class, 'update']);
+        Route::delete('/notes/{note}', [NoteEntryController::class, 'destroy']);
+        Route::patch('/notes/{note}/favorite', [NoteEntryController::class, 'toggleFavorite']);
+        Route::patch('/notes/{note}/status', [NoteEntryController::class, 'setStatus']);
+
+        /* ატვირთვები (სქრინშოტი/ვიდეო/დოკუმენტი) — კვოტაზე გადის */
+        Route::get('/notes/{note}/files', [NoteEntryFileController::class, 'index']);
+        Route::post('/notes/{note}/files', [NoteEntryFileController::class, 'store']);
+        /* ⚠️ §17.5 — ფაილი **პრივატულ დისკზეა** და მხოლოდ აქედან გაიცემა:
+           `/storage/*` მას აღარ ხედავს, ე.ი. URL-ის გამოცნობა არაფერს იძლევა */
+        Route::get('/note-files/{noteEntryFile}', [NoteEntryFileController::class, 'show']);
+        Route::delete('/note-files/{noteEntryFile}', [NoteEntryFileController::class, 'destroy']);
+
+        /* შეხსენებები (§13.2) */
+        Route::get('/notes/{note}/reminders', [NoteReminderController::class, 'index']);
+        Route::post('/notes/{note}/reminders', [NoteReminderController::class, 'store']);
+    });
+
+    /* ---------- წიგნები (module: book) — Tasks §12 ----------
+       გამამდიდრებელი წყარო Open Library-ია: კლავიშს არ ითხოვს, ე.ი. `.env`-ში
+       არაფერი ემატება. ნაკადი TMDB-ის იდენტურია — ჯერ კანდიდატები, მერე დრაფტი. */
+    Route::middleware(['module:book', 'permission:book'])->group(function () {
+        /* წიგნის ჟანრები — per-user ლექსიკონი */
+        Route::get('/book-genres', [BookGenreController::class, 'index']);
+        Route::post('/book-genres', [BookGenreController::class, 'store']);
+        Route::post('/book-genres/reorder', [BookGenreController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/book-genres/{bookGenre}', [BookGenreController::class, 'update']);
+        Route::delete('/book-genres/{bookGenre}', [BookGenreController::class, 'destroy']);
+
+        Route::get('/books', [BookController::class, 'index']);
+        // ⚠️ `{book}`-ზე ზემოთ, თორემ „lookup" id-ად წაიკითხება
+        Route::post('/books/lookup/candidates', [BookController::class, 'candidates']);
+        Route::post('/books/lookup', [BookController::class, 'lookup']);
+        Route::post('/books', [BookController::class, 'store']);
+        Route::get('/books/{book}', [BookController::class, 'show']);
+        Route::match(['put', 'patch'], '/books/{book}', [BookController::class, 'update']);
+        Route::delete('/books/{book}', [BookController::class, 'destroy']);
+        Route::patch('/books/{book}/favorite', [BookController::class, 'toggleFavorite']);
+        Route::patch('/books/{book}/status', [BookController::class, 'setStatus']);
+        Route::patch('/books/{book}/progress', [BookController::class, 'setProgress']);
+
+        /* ფაილები (pdf/epub) და ჩანიშვნები/ციტატები — სექციის ცხრილები */
+        Route::get('/books/{book}/files', [BookFileController::class, 'index']);
+        Route::post('/books/{book}/files', [BookFileController::class, 'store']);
+        Route::delete('/book-files/{bookFile}', [BookFileController::class, 'destroy']);
+
+        Route::get('/books/{book}/notes', [BookNoteController::class, 'index']);
+        Route::post('/books/{book}/notes', [BookNoteController::class, 'store']);
+        Route::match(['put', 'patch'], '/book-notes/{bookNote}', [BookNoteController::class, 'update']);
+        Route::delete('/book-notes/{bookNote}', [BookNoteController::class, 'destroy']);
+    });
+
+    /* ---------- სიმღერები (module: song) ----------
+       2026-09-03-მდე სიმღერა `videos`-ის რიგი იყო; ახლა საკუთარი მოდულია —
+       საიდბარის სექცია, ადმინის გადამრთველი და როლების უფლებები მასზეც. */
+    Route::middleware(['module:song', 'permission:song'])->group(function () {
+        /* მუსიკის ჟანრები — per-user ლექსიკონი (`video-types`-ის ანალოგი) */
+        Route::get('/song-genres', [SongGenreController::class, 'index']);
+        Route::post('/song-genres', [SongGenreController::class, 'store']);
+        Route::post('/song-genres/reorder', [SongGenreController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/song-genres/{songGenre}', [SongGenreController::class, 'update']);
+        Route::delete('/song-genres/{songGenre}', [SongGenreController::class, 'destroy']);
+
+        Route::get('/songs', [SongController::class, 'index']);
+        // ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის
+        Route::post('/songs/metadata', [SongController::class, 'metadata']);
+        Route::post('/songs', [SongController::class, 'store']);
+        Route::get('/songs/{song}', [SongController::class, 'show']);
+        Route::match(['put', 'patch'], '/songs/{song}', [SongController::class, 'update']);
+        Route::delete('/songs/{song}', [SongController::class, 'destroy']);
+        Route::patch('/songs/{song}/favorite', [SongController::class, 'toggleFavorite']);
+        Route::post('/songs/{song}/played', [SongController::class, 'markPlayed']);
+
+        /* §7.4 — ტექსტი, ნოტები, ფოტოები და ჩანიშვნები. სექციის ცხრილები
+           (`song_files`/`song_notes`), ზუსტად ვიდეოს ფორმაზე. */
+        Route::get('/songs/{song}/files', [SongFileController::class, 'index']);
+        Route::post('/songs/{song}/files', [SongFileController::class, 'store']);
+        Route::delete('/song-files/{songFile}', [SongFileController::class, 'destroy']);
+
+        Route::get('/songs/{song}/notes', [SongNoteController::class, 'index']);
+        Route::post('/songs/{song}/notes', [SongNoteController::class, 'store']);
+        Route::match(['put', 'patch'], '/song-notes/{songNote}', [SongNoteController::class, 'update']);
+        Route::delete('/song-notes/{songNote}', [SongNoteController::class, 'destroy']);
+
+        /* პლეილისტები — მუსიკის ერთეულია, ე.ი. `song` მოდულში ცხოვრობს */
+        Route::get('/playlists', [PlaylistController::class, 'index']);
+        Route::post('/playlists', [PlaylistController::class, 'store']);
+        // `{playlist}`-ზე ზემოთ, თორემ „reorder" id-ად წაიკითხება
+        Route::post('/playlists/reorder', [PlaylistController::class, 'reorder']);
+        Route::get('/playlists/{playlist}', [PlaylistController::class, 'show']);
+        Route::match(['put', 'patch'], '/playlists/{playlist}', [PlaylistController::class, 'update']);
+        Route::delete('/playlists/{playlist}', [PlaylistController::class, 'destroy']);
+        // ⚠️ `PUT` განზრახ — POST-ზე `permission:` middleware `create`-ს გამოიყვანდა
+        Route::put('/playlists/{playlist}/songs', [PlaylistController::class, 'setSongs']);
+        Route::put('/songs/{song}/playlists', [PlaylistController::class, 'setForSong']);
+    });
+
+    /* ---------- ბუკმარკები (module: bookmark) — Tasks §18 ----------
+       გამამდიდრებელი წყარო არ არსებობს: ერთადერთი probe `POST /bookmarks/metadata`-ა,
+       რომელიც თვითონ გვერდის `<head>`-ს კითხულობს (`LinkMetadata`). */
+    Route::middleware(['module:bookmark', 'permission:bookmark'])->group(function () {
+        /* კატეგორიები — per-user ლექსიკონი */
+        Route::get('/bookmark-categories', [BookmarkCategoryController::class, 'index']);
+        Route::post('/bookmark-categories', [BookmarkCategoryController::class, 'store']);
+        Route::post('/bookmark-categories/reorder', [BookmarkCategoryController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/bookmark-categories/{bookmarkCategory}', [BookmarkCategoryController::class, 'update']);
+        Route::delete('/bookmark-categories/{bookmarkCategory}', [BookmarkCategoryController::class, 'destroy']);
+
+        Route::get('/bookmarks', [BookmarkController::class, 'index']);
+        // ⚠️ `{bookmark}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება
+        Route::post('/bookmarks/metadata', [BookmarkController::class, 'metadata']);
+        Route::post('/bookmarks', [BookmarkController::class, 'store']);
+        Route::get('/bookmarks/{bookmark}', [BookmarkController::class, 'show']);
+        Route::match(['put', 'patch'], '/bookmarks/{bookmark}', [BookmarkController::class, 'update']);
+        Route::delete('/bookmarks/{bookmark}', [BookmarkController::class, 'destroy']);
+        Route::patch('/bookmarks/{bookmark}/favorite', [BookmarkController::class, 'toggleFavorite']);
+        Route::patch('/bookmarks/{bookmark}/status', [BookmarkController::class, 'setStatus']);
+        // ⚠️ „visited" `EnsureModulePermission::UPDATE_ENDPOINTS`-შიც უნდა იყოს,
+        // თორემ POST-იდან `create` გამოვიდოდა და view+update უფლება 403-ს მიიღებდა
+        Route::post('/bookmarks/{bookmark}/visited', [BookmarkController::class, 'markVisited']);
+    });
+
+    /* ---------- გალერეა (module: gallery, Tasks 10) ----------
+       ფოტოები ფილმებსა და სერიალებს ჰკიდია, ამიტომ კონტროლერი დამატებით
+       `hasModule($type)`-საც ამოწმებს — გალერეა ჩართული, ფილმები კი არა,
+       სავსებით შესაძლებელი მდგომარეობაა. */
+    Route::middleware(['module:gallery', 'permission:gallery'])->group(function () {
+        /* §8.3 — მოდულის ფესვი **შეჯამებაა** და აღარ არის „ჩანაწერების სია
+           ჩამოსატვირთად": ხაზით გაყოფილი „მასობრივი ჩამოტვირთვის" ბლოკი
+           მოიხსნა (user-ის მითითება), ე.ი. იმ სიას გამომძახებელი აღარ ჰყავს. */
+        Route::get('/gallery', [GalleryController::class, 'summary']);
+        // Tasks §3.2/§3.3 — გალერეა ნამდვილი გვერდია: ჯგუფები და ფოტოები.
+        // ⚠️ ყველა `{type}/{id}`-ზე **ზემოთაა**, თორემ „groups"/„photos" ტიპად წაიკითხება.
+        Route::get('/gallery/groups', [GalleryController::class, 'groups']);
+        Route::get('/gallery/photos', [GalleryController::class, 'photos']);
+        // §8.3 — სხვა მოდულების საკუთარი ფოტოები (ყდები, თამბნეილები, ატვირთულები)
+        Route::get('/gallery/module-photos', [GalleryController::class, 'modulePhotos']);
+        Route::post('/gallery/plan', [GalleryController::class, 'plan']);
+
+        /* §8.1 — ვიდეო-ბმულები იმავე მშობლებზე. ⚠️ `{type}/{id}`-ზე **ზემოთ**
+           უნდა იდგეს, თორემ „videos" ტიპად წაიკითხება (იგივე წესი, რაც
+           „groups"/„photos"-ს აქვს). */
+        Route::get('/gallery/videos', [GalleryVideoController::class, 'index']);
+        Route::post('/gallery/videos', [GalleryVideoController::class, 'store']);
+        Route::delete('/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'destroy']);
+        // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
+        Route::delete('/gallery/images/{galleryImage}', [GalleryController::class, 'destroyImage']);
+        Route::post('/gallery/images/{galleryImage}/primary', [GalleryController::class, 'setPrimary']);
+        // მსახიობის გალერეა — მშობელი მსახიობია, ე.ი. ფოტო მის გვერდზეც ჩანს
+        Route::get('/gallery/cast/{castMember}', [GalleryController::class, 'castShow']);
+        Route::post('/gallery/cast/{castMember}', [GalleryController::class, 'castFetch']);
+        Route::get('/gallery/{type}/{id}', [GalleryController::class, 'show'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+        Route::post('/gallery/{type}/{id}', [GalleryController::class, 'fetch'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
     });
 
     /* ---------- გაზიარებული: დომენი `type` პარამეტრიდან (`module:@type`) ---------- */
-    Route::middleware('module:@type')->group(function () {
+    Route::middleware(['module:@type', 'permission:@type'])->group(function () {
         Route::post('/lookup/candidates', [LookupController::class, 'candidates']);
         Route::post('/lookup', [LookupController::class, 'lookup']);
         Route::get('/discover', [DiscoverController::class, 'index']);
@@ -136,6 +579,89 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // sync-ის გეგმა ორივე დომენს ერთდროულად ეხება — ფილტრი თავად ითვალისწინებს
     Route::post('/media/sync/plan', [MediaSyncController::class, 'plan']);
+
+    /* ---------- თარგმანები (Tasks 7) ----------
+       გეგმა და ჰედერის მრიცხველი ორივე დომენს ერთდროულად ეხება, ჟანრები კი
+       გლობალური ლექსიკონია — ამიტომ სამივე `module:` ჯგუფის გარეთ დგას და
+       ჩართული მოდულების ფილტრს კონტროლერი თვითონ აკეთებს. */
+    Route::get('/translations/summary', [TranslationController::class, 'summary']);
+    Route::post('/translations/plan', [TranslationController::class, 'plan']);
+    // ერთი ჩანაწერის თარგმნა — ჯგუფის გარეთ, რადგან POST-ია, მაგრამ **არსებულს ცვლის**:
+    // მოქმედება ცხადად `update`-ია (მისამართის ბოლო სეგმენტი id-ია, ე.ი.
+    // `UPDATE_ENDPOINTS`-ის ავტომატური ცნობა აქ არ მუშაობს და `create` გამოვიდოდა).
+    Route::post('/translations/{type}/{id}', [TranslationController::class, 'item'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    Route::post('/translations/genres', [TranslationController::class, 'genres']);
+
+    /* ---------- დამთხვევები (Tasks 16.2) ----------
+       ⚠️ საჯარო პროფილისგან განსხვავებით **ავტორიზებულია**: შედარებას მეორე
+       მხარე სჭირდება და ის მიმდინარე user-ია. ორივე პროფილი საჯარო უნდა იყოს
+       (არასაჯარო ჩემი მხარე → 409 `profile_not_public`). */
+    // „ვისთან ჰგავს ჩემი გემოვნება" — საჯარო პროფილების კატალოგი რეიტინგით.
+    // `{username}`-ზე ზემოთ არაა საჭირო (სეგმენტების რაოდენობა სხვაა), მაგრამ
+    // აზრობრივად ჯერ სია მოდის და მერე კონკრეტული პროფილი.
+    Route::get('/matches', [MatchController::class, 'index']);
+    Route::get('/matches/{username}', [MatchController::class, 'show']);
+    Route::get('/matches/{username}/{domain}', [MatchController::class, 'items'])
+        ->whereIn('domain', PublicDomain::matchable());
+
+    /* ---------- ჩატი (Tasks §16.3) ----------
+       ⚠️ `module:` middleware განზრახ არ ეწერება — ჩატი მოდული არაა და
+       ბიბლიოთეკის შიგთავს არ ეკითხება. წვდომას **მონაწილეობა** წჿვეტს
+       (კონტროლერში, ცხადად), მიწერის უფლებას კი `ChatService`:
+       ორივე პროფილი საჯარო + არავინ არავინ დაუბლოკავს. */
+    Route::get('/chat', [ChatController::class, 'index']);
+    Route::get('/chat/unread', [ChatController::class, 'unread']);
+    // `{conversation}`-ზე ზემოთ, თორემ „unread"/„with" id-ად წაიკითხება
+    Route::post('/chat/with/{username}', [ChatController::class, 'open']);
+    Route::put('/chat/block/{username}', [ChatController::class, 'block']);
+    /* მედია (§16.3) — ფაილი **პრივატულ დისკზეა** და მხოლოდ ამ გზით გადის
+       გარეთ; მონაწილეობას კონტროლერი ამოწმებს, სხვისი ფაილი 404-ია. */
+    Route::get('/chat/files/{message}', [ChatController::class, 'file']);
+    Route::delete('/chat/files/{message}', [ChatController::class, 'deleteFile']);
+    /* წერილის წაშლა (§4.6) — `scope=self|both`. ⚠️ **რიგი ბაზაში რჩება**
+       (აღდგენისთვის), ე.ი. ეს „დამალვაა" და არა `delete`. */
+    Route::delete('/chat/messages/{message}', [ChatController::class, 'deleteMessage']);
+    Route::get('/chat/{conversation}', [ChatController::class, 'messages']);
+    Route::post('/chat/{conversation}', [ChatController::class, 'send']);
+    // ⚠️ `PATCH` — POST-ს `permission:` middleware `create`-ად წაიკითხავდა
+    Route::patch('/chat/{conversation}/read', [ChatController::class, 'read']);
+
+    /* ---------- ერთი ჩანაწერის ხილვადობა (Tasks 16.1) ----------
+       ერთი endpoint რვავე დომენზე. `module:@type`/`permission:@type` აქ
+       განზრახ არ ეწერება — `playlist` მოდული არაა (ის `song`-ის შიგნითაა),
+       ამიტომ ორივე შემოწმებას კონტროლერი თვითონ აკეთებს `PublicDomain`-ის
+       რუკით. `PATCH`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა. */
+    Route::patch('/visibility/{domain}/{id}', [VisibilityController::class, 'update'])
+        ->whereIn('domain', PublicDomain::keys())->whereNumber('id');
+
+    /* §6.1 — ხილვადობა **პროფილიდან** იმართება და აღარ ჩანაწერიდან, ე.ი.
+       სია და მასობრივი გადართვა სჭირდება. ⚠️ `PATCH /{domain}` (მასობრივი) და
+       `PATCH /{domain}/{id}` (ერთი) სხვადასხვა სიგრძის გზებია, ე.ი. არ ერევა
+       ერთმანეთში — მაგრამ **ორივე `PATCH`-ია** იმავე მიზეზით: `POST`-იდან
+       `EnsureModulePermission` `create`-ს გამოიყვანდა. */
+    Route::get('/visibility/{domain}', [VisibilityController::class, 'index'])
+        ->whereIn('domain', PublicDomain::keys());
+    Route::patch('/visibility/{domain}', [VisibilityController::class, 'bulk'])
+        ->whereIn('domain', PublicDomain::keys());
+
+    /* ---------- სტატუსების ლექსიკონი (Tasks §6.2/§6.4) ----------
+       ერთი endpoint ექვსივე დომენზე — `/visibility/{domain}`-ის ნიმუში.
+       ⚠️ `module:@type`/`permission:@type` აქ არ ეწერება: პარამეტრი
+       `{domain}`-ია და შემოწმებას (მოდული ჩართულია + უფლება) კონტროლერი
+       ცხადად აკეთებს `StatusDomain`-ის რუკით.
+       ⚠️ `reorder` **`{id}`-ზე ზემოთაა**, თორემ „reorder" id-ად წაიკითხება. */
+    Route::get('/statuses/{domain}', [StatusController::class, 'index'])
+        ->whereIn('domain', StatusDomain::keys());
+    Route::post('/statuses/{domain}/reorder', [StatusController::class, 'reorder'])
+        ->whereIn('domain', StatusDomain::keys());
+    Route::post('/statuses/{domain}', [StatusController::class, 'store'])
+        ->whereIn('domain', StatusDomain::keys());
+    Route::match(['put', 'patch'], '/statuses/{domain}/{id}', [StatusController::class, 'update'])
+        ->whereIn('domain', StatusDomain::keys())->whereNumber('id');
+    Route::delete('/statuses/{domain}/{id}', [StatusController::class, 'destroy'])
+        ->whereIn('domain', StatusDomain::keys())->whereNumber('id');
 
     /* ---------- გაზიარებული ლექსიკონები ---------- */
     Route::get('/genres', [GenreController::class, 'index']);
@@ -147,22 +673,72 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/genres/{genre}/items', [GenreItemController::class, 'update']);
 
     Route::get('/cast/{castMember}', [CastController::class, 'show']);
+    /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
+       ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
+       ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */
+    Route::put('/cast/{castMember}/tags', [CastController::class, 'updateTags']);
+    /* §8.1 — პიროვნების მონაცემები TMDB-დან (ბიოგრაფია, IMDb, ბმულები).
+       ⚠️ **`resync` და არა `sync`**: `EnsureModulePermission::UPDATE_ENDPOINTS`
+       სწორედ ამ სიტყვას იცნობს, ე.ი. მარშრუტის მოდულის ჯგუფში გადატანა
+       მომავალში update-ის უფლებით მოსულს 403-ს არ დაუბრუნებს. */
+    Route::post('/cast/{castMember}/resync', [CastController::class, 'resync']);
 
-    /* ---------- სუპერ-ადმინი ---------- */
+    /* ---------- ადმინის ზონა ----------
+       Tasks 1.6 — სამი სექცია (`users`/`roles`/`requests`) **როლის უფლებაზეა**
+       და აღარ არის მყარად `super_admin`-ზე მიბმული; `super_admin` ისედაც
+       ყველგან გადის.
+
+       ⚠️ **დანარჩენი განზრახ `super_admin`-ზე რჩება**: `admin/modules`
+       (მოდულის გამორთვა **ყველა** ანგარიშს ეხება) და `admin/purge`
+       (სხვისი ბიბლიოთეკის წაშლა) ერთი ანგარიშის საზღვრებს სცდება. */
+    Route::prefix('admin')->group(function () {
+        Route::middleware('admin_access:users')->group(function () {
+            Route::get('/users', [AdminUserController::class, 'index']);
+            // მომხმარებლის შიდა გვერდი — უფლებები, შიგთავსი, დაკავებული ადგილი (K14)
+            Route::get('/users/{user}', [AdminUserController::class, 'show']);
+            Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+            Route::put('/users/{user}/modules', [AdminUserController::class, 'syncModules']);
+            Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
+        });
+
+        Route::middleware('admin_access:roles')->group(function () {
+            /* როლები და უფლებები (Tasks 1.6) */
+            Route::get('/roles', [AdminRoleController::class, 'index']);
+            Route::post('/roles', [AdminRoleController::class, 'store']);
+            Route::match(['put', 'patch'], '/roles/{role}', [AdminRoleController::class, 'update']);
+            Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy']);
+        });
+
+        /* **აუდიტ-ლოგი (Tasks §4.4/§4.7)** — ნახვა და **ხელით** გასუფთავება.
+           ⚠️ წაშლა `DELETE`-ია, ე.ი. `EnsureAdminAccess` მას `delete`
+           მოქმედებად კითხულობს: როლს შეიძლება ნახვა ჰქონდეს და წაშლა — არა. */
+        Route::middleware('admin_access:audit')->group(function () {
+            Route::get('/audit', [AdminAuditController::class, 'index']);
+            Route::get('/audit/meta', [AdminAuditController::class, 'meta']);
+            // ⚠️ **`GET` და არა `POST`**: გეგმა კითხვაა, POST-ს კი
+            // `EnsureAdminAccess` `create`-ად წაიკითხავდა და მხოლოდ-ნახვის
+            // როლი ცრუ 403-ს მიიღებდა (იგივე ხაფანგი, რაც `permission:`-ს აქვს)
+            Route::get('/audit/plan', [AdminAuditController::class, 'plan']);
+            Route::delete('/audit', [AdminAuditController::class, 'destroy']);
+        });
+
+        Route::middleware('admin_access:requests')->group(function () {
+            Route::get('/requests', [AdminRequestController::class, 'index']);
+            Route::get('/requests/pending-count', [AdminRequestController::class, 'pendingCount']);
+            Route::post('/requests/{approvalRequest}/approve', [AdminRequestController::class, 'approve']);
+            Route::post('/requests/{approvalRequest}/reject', [AdminRequestController::class, 'reject']);
+        });
+    });
+
+    /* ---------- სუპერ-ადმინი (გლობალური და დესტრუქციული) ---------- */
     Route::middleware('super_admin')->prefix('admin')->group(function () {
-        Route::get('/users', [AdminUserController::class, 'index']);
-        // მომხმარებლის შიდა გვერდი — უფლებები, შიგთავსი, დაკავებული ადგილი (K14)
-        Route::get('/users/{user}', [AdminUserController::class, 'show']);
-        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
-        Route::put('/users/{user}/modules', [AdminUserController::class, 'syncModules']);
-        Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
-
         Route::get('/modules', [AdminModuleController::class, 'index']);
         Route::patch('/modules/{module}', [AdminModuleController::class, 'update']);
 
-        Route::get('/requests', [AdminRequestController::class, 'index']);
-        Route::get('/requests/pending-count', [AdminRequestController::class, 'pendingCount']);
-        Route::post('/requests/{approvalRequest}/approve', [AdminRequestController::class, 'approve']);
-        Route::post('/requests/{approvalRequest}/reject', [AdminRequestController::class, 'reject']);
+        /* მასობრივი წაშლა (Tasks 20) — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
+        Route::post('/purge/plan', [AdminPurgeController::class, 'plan']);
+        Route::post('/purge', [AdminPurgeController::class, 'run']);
+        /* რიგის ერთი ნაბიჯი (20.2) — ფრონტი ციკლს queue-თი ატარებს */
+        Route::post('/purge/item', [AdminPurgeController::class, 'item']);
     });
 });

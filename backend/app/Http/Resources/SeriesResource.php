@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\VideoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,6 +20,9 @@ class SeriesResource extends JsonResource
             'imdb_url' => $this->imdb_url,
             'tmdb_id' => $this->tmdb_id,
             'ge_url' => $this->ge_url,
+            // ტრეილერი (Tasks 9): ბმული + allowlist-ით აწყობილი embed
+            'trailer_url' => $this->trailer_url,
+            'trailer_embed_url' => $this->trailer_url ? VideoUrl::parse($this->trailer_url)['embed_url'] : null,
             'description_ka' => $this->description_ka,
             'description_en' => $this->description_en,
             'description_ka_source' => $this->description_ka_source,
@@ -29,8 +33,14 @@ class SeriesResource extends JsonResource
             'episodes' => $this->episodes,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,
             'poster_source' => $this->poster_source,
-            'status' => $this->status,
+            /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
+               სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
+               (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი
+               ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
+            'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
+            // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)
+            'visibility' => $this->visibility,
             'watched_at' => $this->watched_at,
             'sync_status' => $this->sync_status,
             // TV-ს ფრანჩაიზი არ აქვს — ფრონტენდის generic ბარათთან თავსებადობისთვის.

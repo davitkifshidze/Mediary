@@ -3,34 +3,67 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AnimeListResource;
 use App\Http\Resources\GenreResource;
 use App\Http\Resources\MovieListResource;
 use App\Http\Resources\SeriesListResource;
 use App\Models\Genre;
-use App\Models\Movie;
 use App\Models\Series;
+use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
  * ჟანრზე მიბმული ჩანაწერების მართვა (Tasks C1/C2).
  * ჟანრები გაზიარებულია დომენებს შორის (polymorphic `genreables`), ამიტომ
- * ყველა ოპერაცია `type=movie|series`-ით პარამეტრიზებულია.
+ * ყველა ოპერაცია `type`-ით პარამეტრიზებულია.
+ *
+ * ⚠️ **დომენების სია `MediaDomain`-შია** (§7.1) და აქ აღარაა ჩამოწერილი:
+ * მესამე დომენის დამატებისას პასუხს ერთი bucket დააკლდებოდა და გვერდი
+ * მას ჩუმად არ აჩვენებდა.
  */
 class GenreItemController extends Controller
 {
+    /** დომენი → `Genre`-ის რელაციის სახელი (`series` მხოლობითი რჩება) */
+    private const RELATIONS = [
+        'movie' => 'movies',
+        'series' => 'series',
+        'anime' => 'animes',
+    ];
+
+    /** დომენი → პასუხის გასაღები. ⚠️ ფრონტი სწორედ ამ სახელებს კითხულობს */
+    private const BUCKETS = [
+        'movie' => 'movies',
+        'series' => 'series',
+        'anime' => 'animes',
+    ];
+
+    /** @var array<string, class-string> */
+    private const RESOURCES = [
+        'movie' => MovieListResource::class,
+        'series' => SeriesListResource::class,
+        'anime' => AnimeListResource::class,
+    ];
+
+    private function relation(Genre $genre, string $type)
+    {
+        return $genre->{self::RELATIONS[$type] ?? 'movies'}();
+    }
+
     /** ჟანრზე მიბმული ჩანაწერები — ორივე დომენი ერთ პასუხში */
     public function index(Genre $genre)
     {
-        $movies = $genre->movies()->with('genres')->orderByDesc('year')->get();
-        $series = $genre->series()->with('genres')->orderByDesc('year')->get();
+        $out = [];
 
-        return response()->json([
-            'movies' => MovieListResource::collection($movies),
-            'series' => SeriesListResource::collection($series),
-            'movies_count' => $movies->count(),
-            'series_count' => $series->count(),
-        ]);
+        foreach (MediaDomain::TYPES as $type) {
+            $rows = $this->relation($genre, $type)->with('genres')->orderByDesc('year')->get();
+            $key = self::BUCKETS[$type];
+
+            $out[$key] = self::RESOURCES[$type]::collection($rows);
+            $out[$key.'_count'] = $rows->count();
+        }
+
+        return response()->json($out);
     }
 
     /**
@@ -43,7 +76,7 @@ class GenreItemController extends Controller
     public function update(Request $request, Genre $genre)
     {
         $data = $request->validate([
-            'type' => ['required', 'in:movie,series'],
+            'type' => ['required', MediaDomain::rule()],
             'action' => ['required', 'in:attach,detach,move,replace'],
             'ids' => ['nullable', 'array'],
             'ids.*' => ['integer'],
@@ -51,10 +84,10 @@ class GenreItemController extends Controller
             'target_genre_id' => ['nullable', 'integer'],
         ]);
 
-        $isSeries = $data['type'] === 'series';
-        $model = $isSeries ? Series::class : Movie::class;
+        $type = $data['type'];
+        $model = MediaDomain::model($type);
         $table = (new $model)->getTable();
-        $rel = fn (Genre $g) => $isSeries ? $g->series() : $g->movies();
+        $rel = fn (Genre $g) => $this->relation($g, $type);
 
         $ids = $this->resolveIds($request, $data, $genre, $model, $table, $rel);
 
@@ -87,7 +120,7 @@ class GenreItemController extends Controller
 
         return response()->json([
             'affected' => count($ids),
-            'genre' => new GenreResource($genre->loadCount(['movies', 'series'])),
+            'genre' => new GenreResource($genre->loadCount(array_values(self::RELATIONS))),
         ]);
     }
 

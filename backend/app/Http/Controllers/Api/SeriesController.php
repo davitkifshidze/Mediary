@@ -10,19 +10,24 @@ use App\Http\Resources\SeriesResource;
 use App\Models\Genre;
 use App\Models\Series;
 use App\Services\Enrichment\SeriesEnricher;
+use App\Services\Storage\StorageMeter;
+use App\Support\StorageFolder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SeriesController extends Controller
 {
+    public function __construct(private StorageMeter $meter) {}
+
     /** სერიალების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
         $query = Series::query()->with('genres');
 
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+        // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
+        // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
+        foreach ($this->slugList($request->string('status')->toString()) as $key) {
+            $query->statusKey($key);
         }
 
         if ($request->boolean('favorite')) {
@@ -33,8 +38,9 @@ class SeriesController extends Controller
             $query->where('sync_status', 'synced');
         }
 
-        if ($genre = $request->string('genre')->toString()) {
-            $query->whereHas('genres', fn ($q) => $q->where('slug', $genre));
+        // მძიმით გამოყოფილი ჟანრები — იგივე ლოგიკა, რაც ფილმებზე (2.2)
+        foreach ($this->slugList($request->string('genre')->toString()) as $slug) {
+            $query->whereHas('genres', fn ($q) => $q->where('slug', $slug));
         }
 
         if ($q = $request->string('q')->toString()) {
@@ -139,9 +145,7 @@ class SeriesController extends Controller
     /** წაშლა */
     public function destroy(Series $series)
     {
-        if ($series->poster_source === 'upload' && $series->poster_path) {
-            Storage::disk('public')->delete($series->poster_path);
-        }
+        // ⚠️ პოსტერს `Series::booted()` შლის — იხ. `Movie::deletePoster()`
         $series->delete();
 
         return response()->noContent();
@@ -152,7 +156,7 @@ class SeriesController extends Controller
     private function applyData(Series $series, Request $request): void
     {
         // translation ველები (title_*, description_*) ცალკე მუშავდება — იხ. applyTranslations()
-        foreach (['year', 'ge_url', 'rating', 'runtime', 'seasons', 'episodes'] as $field) {
+        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'runtime', 'seasons', 'episodes'] as $field) {
             if ($request->has($field)) {
                 $series->{$field} = $request->input($field) ?: null;
             }
@@ -164,33 +168,39 @@ class SeriesController extends Controller
             $series->imdb_url = $imdb ? "https://www.imdb.com/title/{$imdb}/" : null;
         }
 
+        /* §6.4 — სტატუსსაც და `watched_at`-საც **ერთი ადგილი** წერს
+           (`HasStatus::applyStatusKey()`): ორი ასლი მაშინვე დაშორდებოდა,
+           რადგან „დასრულებულის“ კრიტერიუმი ახლა `role`-ია და არა სახელი. */
         if ($request->filled('status')) {
-            $series->status = $request->string('status')->toString();
-            if ($series->status === 'watched' && ! $series->watched_at) {
-                $series->watched_at = now();
-            }
-            if ($series->status !== 'watched') {
-                $series->watched_at = null;
-            }
+            $series->applyStatusKey($request->string('status')->toString());
         }
 
         if ($request->has('is_favorite')) {
             $series->is_favorite = $request->boolean('is_favorite');
         }
 
+        // Tasks 16.1 — ხილვადობა. ⚠️ `filled` და არა `has`: multipart-ზე ველი
+        // შეიძლება ცარიელი მოვიდეს, რაც „არ შეცვალო"-ს ნიშნავს და არა `private`-ს.
+        if ($request->filled('visibility')) {
+            $series->visibility = $request->string('visibility')->toString();
+        }
+
+        // 17.1 — იხ. `MovieController`-ის იგივე ბლოკი: კვოტაში მხოლოდ ხელით
+        // ატვირთული პოსტერი ითვლება (19.4/B)
         if ($request->boolean('remove_poster')) {
-            if ($series->poster_source === 'upload' && $series->poster_path) {
-                Storage::disk('public')->delete($series->poster_path);
+            if ($series->poster_source === 'upload') {
+                $this->meter->deleteUpload($series->user_id, $series->poster_path);
             }
             $series->poster_path = null;
             $series->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            if ($series->poster_source === 'upload' && $series->poster_path) {
-                Storage::disk('public')->delete($series->poster_path);
+            if ($series->poster_source === 'upload') {
+                $this->meter->deleteUpload($series->user_id, $series->poster_path);
             }
-            $series->poster_path = $request->file('poster')->store('posters', 'public');
+            $series->poster_path = $this->meter
+                ->storeUpload($request->user(), $request->file('poster'), StorageFolder::SERIES_POSTERS);
             $series->poster_source = 'upload';
         }
     }
@@ -206,9 +216,24 @@ class SeriesController extends Controller
             if ($request->has("description_$loc")) {
                 $attrs['description'] = $request->input("description_$loc") ?: null;
             }
-            if ($attrs) {
-                $series->translations()->updateOrCreate(['locale' => $loc], $attrs);
+            if (! $attrs) {
+                continue;
             }
+
+            $existing = $series->translations->firstWhere('locale', $loc);
+
+            /* ⚠️ **ხელით გადაწერილი აღწერა `manual`-ია** (Tasks §7).
+               უამისოდ ჩანაწერი „Claude-ის თარგმანად" რჩებოდა მას შემდეგაც,
+               რაც user თვითონ გადაწერდა — ბარათზე მითითებული წყარო ტყუოდა.
+               ⚠️ ვნიშნავთ **მხოლოდ მაშინ, როცა ტექსტი მართლა შეიცვალა**:
+               ფორმის უბრალო შენახვა TMDB-ის ტექსტს „ხელით დაწერილად"
+               არ უნდა აქცევდეს. */
+            if (array_key_exists('description', $attrs)
+                && $attrs['description'] !== ($existing->description ?? null)) {
+                $attrs['source'] = 'manual';
+            }
+
+            $series->translations()->updateOrCreate(['locale' => $loc], $attrs);
         }
         $series->load('translations');
     }

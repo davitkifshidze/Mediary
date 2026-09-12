@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ModuleResource;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
+use App\Services\Modules\FieldSettings;
+use App\Support\PublicDomain;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * მოდულების სია მიმდინარე მომხმარებლისთვის (I3).
@@ -18,10 +21,10 @@ class ModuleController extends Controller
     {
         $user = $request->user();
 
-        // pivot-ის settings ყველა შემთხვევაში (super_admin-საც შეიძლება ჰქონდეს, მაგ. 18+ consent)
+        // pivot-ის settings ყველა შემთხვევაში (super_admin-საც შეიძლება ჰქონდეს)
         $pivots = $user->modules()->get()->keyBy('id');
 
-        // super_admin-ს ყველა არა-sensitive მოდული ავტომატურად აქვს (იხ. User::enabledModules)
+        // super_admin-ს ყველა აქტიური მოდული ავტომატურად აქვს (იხ. User::enabledModules)
         $enabledIds = $user->enabledModules()->pluck('id')->flip();
 
         $requests = ApprovalRequest::where('user_id', $user->id)
@@ -41,6 +44,10 @@ class ModuleController extends Controller
                 $m->granted = $user->isGrantedModule($m->key);
                 $m->request_status = $requests->get($m->id)?->first()?->status;
                 $m->user_settings = json_decode($pivots->get($m->id)?->pivot?->settings ?? '', true) ?: [];
+                // Tasks 16.1 — საჯარო პროფილი. `shareable = false` ნიშნავს, რომ
+                // გადამრთველიც არ უნდა დაიხატოს (`note` — 16.5-ის მკაცრი წესი).
+                $m->shareable = (bool) PublicDomain::forModule($m->key);
+                $m->is_public = (bool) ($pivots->get($m->id)?->pivot?->is_public);
             });
 
         return ModuleResource::collection($modules);
@@ -71,8 +78,58 @@ class ModuleController extends Controller
     }
 
     /**
-     * per-user per-module პარამეტრები (`module_user.settings`) —
-     * მაგ. 18+ მოდულის consent (`consent_at`).
+     * **Tasks 16.1 — პერ-მოდულური ხილვადობა საჯარო პროფილზე.**
+     *
+     * ⚠️ `PUT` და არა `POST` — `EnsureModulePermission` POST-იდან `create`-ს
+     * გამოიყვანდა (იგივე მიზეზი, რაც პლეილისტების pivot-endpoint-ებზე).
+     *
+     * ⚠️ **მოდულის ჩამონათვალში ყოფნა აუცილებელია** (`PublicDomain`): `note`
+     * იქ განზრახ არაა (16.5), ე.ი. მისი გასაჯაროება საერთოდ არ მოითხოვება —
+     * და `422` სჯობს ჩუმად უეფექტო `true`-ს.
+     */
+    public function setPublic(Request $request, string $key)
+    {
+        $module = Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        $user = $request->user();
+
+        abort_unless($user->hasModule($key), 403, 'module_disabled');
+
+        if (! PublicDomain::forModule($key)) {
+            return response()->json([
+                'message' => 'module_not_shareable',
+                'errors' => ['module' => ['ეს მოდული საჯარო პროფილზე არ გამოდის.']],
+            ], 422);
+        }
+
+        $data = $request->validate(['is_public' => ['required', 'boolean']]);
+
+        $attrs = ['is_public' => $data['is_public']];
+        // `enabled_at` მხოლოდ პირველად — super_admin-ს pivot-ი შეიძლება არ ჰქონდეს
+        if (! $user->modules()->where('modules.id', $module->id)->exists()) {
+            $attrs['enabled_at'] = now();
+        }
+
+        $user->modules()->syncWithoutDetaching([$module->id => $attrs]);
+
+        return response()->json(['key' => $key, 'is_public' => $data['is_public']]);
+    }
+
+    /**
+     * per-user per-module პარამეტრები (`module_user.settings`).
+     *
+     * ⚠️ **ჩაწერა შერწყმაა და არა ჩანაცვლება.** ერთ JSON-ბლობში რამდენიმე
+     * სხვადასხვა ფენა ცხოვრობს: გალერეის ჩამოტვირთვის არჩევანი, ჩანაწერების
+     * შეხსენების არხები (`NoteChannelSettings`), ველების კონსტრუქტორის
+     * გადახრები (`fields`) და მორგებული ველების აღწერები (`custom_fields`).
+     * `json_encode($data['settings'])` მთელ ბლობს გადააწერდა, ე.ი. „შეინახე
+     * შეხსენების არხი" **ჩუმად შლიდა** ამ მოდულის ველების კონფიგს (და
+     * პირიქით). `FieldSettings::save()` სწორედ ამიტომ კითხულობს ბლობს,
+     * მხოლოდ `fields`-ს ცვლის და მთელს უკან წერს — ეს endpoint იმავე წესს
+     * მიჰყვება ახლა.
+     *
+     * ⚠️ **გასაღების წაშლა ამ გზით არ ხდება** და არც სჭირდება: ყოველი
+     * გამომძახებელი თავისი ფენის **სრულ** ნაკრებს აგზავნის (გალერეა ცხრა
+     * ველს, არხები ოთხს), ე.ი. მოძველებული მნიშვნელობა ისედაც გადაიწერება.
      */
     public function updateSettings(Request $request, string $key)
     {
@@ -82,7 +139,15 @@ class ModuleController extends Controller
 
         $data = $request->validate(['settings' => ['required', 'array']]);
 
-        $attrs = ['settings' => json_encode($data['settings'])];
+        // ⚠️ `DB::table` განზრახ: pivot-ის JSON-ს Eloquent არ cast-ავს (CLAUDE.md)
+        $current = json_decode((string) DB::table('module_user')
+            ->where('user_id', $request->user()->getKey())
+            ->where('module_id', $module->id)
+            ->value('settings'), true) ?: [];
+
+        $merged = [...$current, ...$data['settings']];
+
+        $attrs = ['settings' => json_encode($merged)];
         // `enabled_at` მხოლოდ პირველად (super_admin-ს pivot-ი შეიძლება საერთოდ არ ჰქონდეს)
         if (! $request->user()->modules()->where('modules.id', $module->id)->exists()) {
             $attrs['enabled_at'] = now();
@@ -90,6 +155,57 @@ class ModuleController extends Controller
 
         $request->user()->modules()->syncWithoutDetaching([$module->id => $attrs]);
 
-        return response()->json(['settings' => $data['settings']]);
+        // ⚠️ პასუხი **შერწყმულს** აბრუნებს და არა მოსულს — კლიენტმა უნდა
+        // დაინახოს, რა ჩაიწერა მართლა
+        return response()->json(['settings' => $merged]);
+    }
+
+    /**
+     * **ველების კონფიგი (Tasks §6, ფაზა 1)** — რომელი არჩევითი ველი ჩანს
+     * ამ მოდულის ფორმაზე. დეტალები: `docs/6-field-builder.md`.
+     */
+    public function fields(Request $request, string $key, FieldSettings $fields)
+    {
+        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        abort_unless($request->user()->hasModule($key), 403);
+
+        return response()->json(['fields' => $fields->for($request->user(), $key)]);
+    }
+
+    /**
+     * ⚠️ **`PUT` და არა `POST`** — `permission:` middleware POST-იდან
+     * `create`-ს გამოიყვანდა და მხოლოდ რედაქტირების უფლების მქონე user-ს
+     * ცრუ 403 დაუბრუნდებოდა (იგივე წესი, რაც `/modules/{key}/settings`-ს).
+     */
+    public function updateFields(Request $request, string $key, FieldSettings $fields)
+    {
+        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        abort_unless($request->user()->hasModule($key), 403);
+
+        $data = $request->validate([
+            'fields' => ['present', 'array'],
+            'fields.*.enabled' => ['nullable', 'boolean'],
+            // ⚠️ `required` **ფორმის დისციპლინაა და არა სქემის შეზღუდვა** —
+            // ველი კატალოგში სწორედ იმიტომ არის, რომ ბაზაზე არჩევითია.
+            // ამიტომ მას ფორმა იცავს და არა backend-ის ვალიდაცია.
+            'fields.*.required' => ['nullable', 'boolean'],
+            // §6 ფაზა 4 → §16 — ჩანს თუ არა ველი საჯარო ბარათზე.
+            // ⚠️ ყოველი ახალი ატრიბუტი **აქაც** უნდა ჩაიწეროს: `validate()`
+            // მხოლოდ დადასტურებულ გასაღებებს აბრუნებს და ჩაუწერელი ატრიბუტი
+            // მთელ `fields`-ს პასუხიდან აგდებს.
+            'fields.*.public' => ['nullable', 'boolean'],
+            /* ⚠️ §6.5 — `sort_order` **აღარ არის** დაშვებული ატრიბუტი: რიგის
+               UI მოიხსნა და თანმიმდევრობა კატალოგისაა. `validate()` მას
+               ისედაც ჩამოაგდებდა, ე.ი. ძველი ფრონტის რექვესთი არ ტყდება —
+               მხოლოდ რიგი აღარ იცვლება. */
+            'fields.*.label_ka' => ['nullable', 'string', 'max:120'],
+            'fields.*.label_en' => ['nullable', 'string', 'max:120'],
+            'fields.*.placeholder_ka' => ['nullable', 'string', 'max:120'],
+            'fields.*.placeholder_en' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return response()->json([
+            'fields' => $fields->save($request->user(), $key, $data['fields'] ?? []),
+        ]);
     }
 }

@@ -43,6 +43,7 @@ class AdminRequestController extends Controller
         $result = match ($approvalRequest->type) {
             ApprovalRequest::TYPE_MODULE => $this->approveModule($approvalRequest),
             ApprovalRequest::TYPE_GENRE_DELETE => $this->approveGenreDelete($approvalRequest, $remover),
+            ApprovalRequest::TYPE_STORAGE => $this->approveStorage($approvalRequest, $request),
             default => ['ok' => false, 'reason' => 'unknown_type'],
         };
 
@@ -91,6 +92,31 @@ class AdminRequestController extends Controller
         $req->user->modules()->syncWithoutDetaching([
             $req->module_id => ['enabled_at' => now()],
         ]);
+
+        return ['ok' => true];
+    }
+
+    /**
+     * 17.4 — ლიმიტის გაზრდა. ადმინს შეუძლია **სხვა რიცხვზე** დათანხმდეს
+     * (`granted_bytes`) — მოთხოვნილი 5 GB-ის ნაცვლად 2 GB-ის მიცემა უარი
+     * არაა და ცალკე ნაკადს არ იმსახურებს. რეალურად მინიჭებული payload-შივე
+     * ჩაიწერება, რომ ისტორიაში ორივე რიცხვი ჩანდეს.
+     */
+    private function approveStorage(ApprovalRequest $req, Request $request): array
+    {
+        if (! $req->user) {
+            return ['ok' => false, 'reason' => 'user_missing'];
+        }
+
+        $payload = $req->payload ?? [];
+        $granted = (int) ($request->input('granted_bytes') ?: ($payload['requested_bytes'] ?? 0));
+
+        if ($granted < 10485760 || $granted > 1099511627776) {
+            return ['ok' => false, 'reason' => 'storage_request_out_of_range'];
+        }
+
+        $req->user->forceFill(['storage_quota_bytes' => $granted])->save();
+        $req->payload = [...$payload, 'granted_bytes' => $granted];
 
         return ['ok' => true];
     }

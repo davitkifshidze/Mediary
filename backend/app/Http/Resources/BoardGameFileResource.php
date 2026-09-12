@@ -5,17 +5,16 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class AttachmentResource extends JsonResource
+/** ბორდგეიმზე მიმაგრებული ფაილი (`board_game_files`) — წესები, ფოტო, დოკუმენტი */
+class BoardGameFileResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
             'kind' => $this->kind,
-            // public → storage-ის გზა (ფრონტი `storageUrl()`-ით აწყობს);
-            // private (18+) → policy-ით დაცული route
-            'url' => $this->isPrivate() ? route('attachments.file', $this->id) : $this->path,
-            'is_private' => $this->isPrivate(),
+            // storage-ის გზა — ფრონტი `storageUrl()`-ით აწყობს სრულ URL-ს
+            'url' => $this->path,
             'original_name' => $this->original_name,
             'mime' => $this->mime,
             'size' => $this->size,

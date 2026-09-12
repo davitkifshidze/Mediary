@@ -1,0 +1,248 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\StatusResource;
+use App\Models\Status;
+use App\Support\StatusDomain;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+/**
+ * **სტატუსების ლექსიკონი (Tasks §6.2/§6.4)** — დამატება · გადარქმევა ·
+ * წაშლა · სორტირება, ექვსივე დომენზე.
+ *
+ * ⚠️ **ერთი კონტროლერი და არა ექვსი** (`/visibility/{domain}`-ის ნიმუში):
+ * `statuses` ერთი ცხრილია, განსხვავება მხოლოდ `module` სვეტია. ექვსი
+ * კონტროლერი ექვს ადგილს ნიშნავდა, სადაც წესი შეიძლება დაშორდეს.
+ *
+ * ⚠️ **`module:@type`/`permission:@type` middleware განზრახ არ ეწერება.**
+ * დომენი აქ `{domain}` პარამეტრია და არა `{type}`, და თვითონ შემოწმებაც
+ * ორმაგია (მოდული ჩართულია + უფლება) — `VisibilityController` ზუსტად ასე
+ * იქცევა, ამიტომ ერთი ნიმუშია და არა ორი.
+ */
+class StatusController extends Controller
+{
+    /**
+     * სია — მთვლელებით („რამდენი ჩანაწერია ამ სტატუსზე").
+     *
+     * ⚠️ **`?user_id=` მხოლოდ super_admin-ს ეძლევა.** ის `/purge`-ისთვისაა:
+     * მასობრივი წაშლა სხვისი ბიბლიოთეკიდან შლის, ე.ი. სტატუსების სიაც
+     * **მისი** ლექსიკონიდან უნდა დაიხატოს — ჩემი გადარქმეული „ნანახი"
+     * იქ არაფერს ნიშნავს.
+     */
+    public function index(Request $request, string $domain)
+    {
+        $this->guard($request, $domain, 'view');
+
+        $data = $request->validate([
+            'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+        ]);
+
+        $userId = (int) ($data['user_id'] ?? $request->user()->id);
+
+        abort_unless($userId === (int) $request->user()->id || $request->user()->isSuperAdmin(), 403);
+
+        return StatusResource::collection($this->ordered($domain, $userId));
+    }
+
+    public function store(Request $request, string $domain)
+    {
+        $this->guard($request, $domain, 'create');
+
+        $data = $this->validated($request);
+        $userId = (int) $request->user()->id;
+
+        // ⚠️ ლენივი დეფაულტები ჯერ — თორემ პირველი ხელით დამატებული სტატუსი
+        // ნაკრებს „დაასწრებდა" და ანგარიში მხოლოდ მისით დარჩებოდა
+        Status::ensureDefaults($userId, $domain);
+
+        $status = Status::create([
+            'module' => $domain,
+            'key' => Status::makeKey($userId, $domain, $data['name_en'] ?: $data['name_ka']),
+            'name_ka' => $data['name_ka'],
+            'name_en' => $data['name_en'],
+            'role' => $data['role'],
+            'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? null,
+            'sort_order' => (int) Status::forDomain($domain)->max('sort_order') + 1,
+        ]);
+
+        if ($request->boolean('is_default')) {
+            $this->makeDefault($status);
+        }
+
+        return (new StatusResource($status))->response()->setStatusCode(201);
+    }
+
+    public function update(Request $request, string $domain, int $id)
+    {
+        $this->guard($request, $domain, 'update');
+
+        $status = $this->find($domain, $id);
+        $data = $this->validated($request);
+
+        /* ⚠️ **`key` არ იცვლება** — გადარქმევა სახელს ეხება. გასაღები
+           აკავშირებს ლექსიკონს ძველ ბმულებთან (`?view=watched`) და
+           ნაგულისხმევებთან, ე.ი. მისი ცვლა მათ ჩუმად გაწყვეტდა. */
+        $status->fill([
+            'name_ka' => $data['name_ka'],
+            'name_en' => $data['name_en'],
+            'role' => $data['role'],
+            'icon' => $data['icon'] ?? $status->icon,
+            'color' => $data['color'] ?? $status->color,
+        ])->save();
+
+        if ($request->has('is_default') && $request->boolean('is_default')) {
+            $this->makeDefault($status);
+        }
+
+        return new StatusResource($status->refresh());
+    }
+
+    /**
+     * წაშლა. `move_to` — რომელ სტატუსზე გადავიდნენ ეს ჩანაწერები;
+     * მითითების გარეშე სტატუსის გარეშე რჩებიან (`status_id = null`).
+     *
+     * ⚠️ **ბოლო სტატუსიც იშლება** — „ყველაფერი იშლება" მომხმარებლის
+     * ცხადი პასუხია (2026-09-12). ცარიელ ლექსიკონზე ახალი ჩანაწერი
+     * უბრალოდ სტატუსის გარეშე იქმნება (`Status::defaultFor()` → `null`).
+     */
+    public function destroy(Request $request, string $domain, int $id)
+    {
+        $this->guard($request, $domain, 'delete');
+
+        $status = $this->find($domain, $id);
+
+        $data = $request->validate([
+            'move_to' => [
+                'nullable',
+                'integer',
+                Rule::exists('statuses', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('module', $domain),
+            ],
+        ]);
+
+        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $status->id
+            ? (int) $data['move_to']
+            : null;
+
+        $model = StatusDomain::model($domain);
+        $moved = $model::query()->where('status_id', $status->id)->update(['status_id' => $moveTo]);
+
+        $wasDefault = $status->is_default;
+        $status->delete();
+
+        // ნაგულისხმევი წაიშალა → პირველივე დარჩენილი იკავებს მის ადგილს,
+        // თორემ ახალი ჩანაწერი ჩუმად სტატუსის გარეშე დარჩებოდა
+        if ($wasDefault && ($next = Status::forDomain($domain)->ordered()->first())) {
+            $this->makeDefault($next);
+        }
+
+        return response()->json(['moved' => $moved]);
+    }
+
+    /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */
+    public function reorder(Request $request, string $domain)
+    {
+        $this->guard($request, $domain, 'update');
+
+        $data = $request->validate([
+            'ids' => ['present', 'array'],
+            'ids.*' => [
+                'integer',
+                Rule::exists('statuses', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('module', $domain),
+            ],
+        ]);
+
+        foreach ($data['ids'] as $i => $id) {
+            Status::whereKey($id)->update(['sort_order' => $i + 1]);
+        }
+
+        return StatusResource::collection($this->ordered($domain, (int) $request->user()->id));
+    }
+
+    /* ---------- დამხმარეები ---------- */
+
+    /**
+     * ორმაგი შემოწმება — მოდული ჩართულია და უფლებაც აქვს.
+     *
+     * ⚠️ 404 და არა 403 უცნობ დომენზე: `{domain}`-ის `whereIn` მას ისედაც
+     * ჭრის, ეს კი მეორე ხაზია (`VisibilityController::guard()`-ის წესი).
+     */
+    private function guard(Request $request, string $domain, string $action): void
+    {
+        abort_unless(StatusDomain::usesDictionary($domain), 404);
+
+        $module = StatusDomain::module($domain);
+        $user = $request->user();
+
+        abort_unless($user?->hasModule($module), 403, 'module_not_enabled');
+        abort_unless($user->hasPermission($module, $action), 403, 'forbidden_permission');
+    }
+
+    private function find(string $domain, int $id): Status
+    {
+        return Status::forDomain($domain)->whereKey($id)->firstOrFail();
+    }
+
+    /**
+     * დალაგებული სია + „რამდენი ჩანაწერია".
+     *
+     * ⚠️ მთვლელი **ერთი დაჯგუფებული query-თია** და არა `withCount()`:
+     * კავშირი დომენზეა დამოკიდებული (`statuses.module`), ე.ი. Eloquent-ს
+     * ცარიელ მოდელზე ვერ ავაგებინებთ.
+     */
+    private function ordered(string $domain, int $userId)
+    {
+        Status::ensureDefaults($userId, $domain);
+
+        $statuses = Status::withoutGlobalScope('owner')
+            ->where('user_id', $userId)
+            ->forDomain($domain)
+            ->ordered()
+            ->get();
+
+        /** @var class-string<Model> $model */
+        $model = StatusDomain::model($domain);
+
+        $counts = $model::withoutGlobalScope('owner')
+            ->where('user_id', $userId)
+            ->whereNotNull('status_id')
+            ->selectRaw('status_id, count(*) as aggregate')
+            ->groupBy('status_id')
+            ->pluck('aggregate', 'status_id');
+
+        foreach ($statuses as $status) {
+            $status->records_count = (int) ($counts[$status->id] ?? 0);
+        }
+
+        return $statuses;
+    }
+
+    /** ნაგულისხმევი ერთია — ახლის დანიშვნა ძველს ხსნის */
+    private function makeDefault(Status $status): void
+    {
+        Status::forDomain($status->module)->where('id', '!=', $status->id)->update(['is_default' => false]);
+
+        $status->forceFill(['is_default' => true])->save();
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'name_ka' => ['required', 'string', 'max:80'],
+            'name_en' => ['required', 'string', 'max:80'],
+            // ⚠️ სავალდებულოა: სამი სერვისი მნიშვნელობას ეკითხება და არა სახელს
+            'role' => ['required', Rule::in(StatusDomain::ROLES)],
+            'icon' => ['nullable', 'string', 'max:60'],
+            'color' => ['nullable', 'string', 'max:20'],
+            'is_default' => ['nullable', 'boolean'],
+        ]);
+    }
+}
