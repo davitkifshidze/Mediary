@@ -32,13 +32,10 @@ return new class extends Migration
             // thumbnail: ან დისკზე ატვირთული, ან პლატფორმის URL
             $table->string('thumbnail_path')->nullable();
             $table->string('thumbnail_url', 1000)->nullable();
-            $table->string('thumbnail_disk', 20)->nullable(); // public | local (adult → private)
 
             $table->unsignedInteger('duration')->nullable();  // წამები
             $table->json('tags')->nullable();
 
-            // adult კონტენტი — ცალკე მოდულით ირთვება (`video_adult`)
-            $table->boolean('is_adult')->default(false);
             $table->boolean('is_favorite')->default(false);
             $table->unsignedInteger('watch_count')->default(0);
             $table->timestamp('watched_at')->nullable();
@@ -46,7 +43,6 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['user_id', 'is_adult']);
             $table->index(['user_id', 'is_favorite']);
             $table->index('platform');
         });

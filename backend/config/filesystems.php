@@ -47,6 +47,27 @@ return [
             'report' => false,
         ],
 
+        /*
+         * **პრივატული ატვირთვები (Tasks §17.5).**
+         *
+         * ⚠️ `public`-ისგან განსხვავებით ეს დისკი `/storage/*`-ით **არ**
+         * იხსნება და `url()` არ აქვს: ფაილი მხოლოდ policy-ით დაცული
+         * route-იდან გაიცემა (მაგ. `GET /api/note-files/{id}`). ეს
+         * §16.3-ის (ჩატი) და §13-ის (პირადი დოკუმენტები) წინაპირობაა.
+         *
+         * ⚠️ ფესვი განზრახ **არ არის** `app/private` — ჩაშენებულ `local`
+         * დისკს ის უკვე უჭირავს და მას `'serve' => true` აქვს, ე.ი.
+         * იმავე ფესვში ჩაწერილი ფაილი Laravel-ის route-იდან გაიცემოდა.
+         */
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private-uploads'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

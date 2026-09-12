@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'module' => EnsureModuleEnabled::class,
+            // მოდულის შიდა CRUD უფლება (Tasks 1.6) — `module`-ი წვდომაა, ეს კი უფლება
+            'permission' => EnsureModulePermission::class,
+            // ადმინის სექციაზე წვდომა როლიდან (Tasks 1.6) — `super_admin` ისედაც გადის
+            'admin_access' => EnsureAdminAccess::class,
             'super_admin' => EnsureSuperAdmin::class,
         ]);
     })

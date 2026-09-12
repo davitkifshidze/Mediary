@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Schema;
  * K7 — ვიდეოს ტიპი საიდბარის სექციებისთვის:
  *   media — გასართობი (მუსიკა, კლიპი, ფილმი)
  *   info  — ინფორმაციული (გაკვეთილი, ლექცია, მიმოხილვა)
- * 18+ ცალკე დროშაა (`is_adult`), ტიპს არ ცვლის.
  */
 return new class extends Migration
 {

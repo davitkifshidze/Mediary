@@ -22,7 +22,6 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->morphs('attachable');                       // attachable_type + attachable_id
             $table->enum('kind', ['image', 'doc'])->default('image');
-            $table->string('disk', 20)->default('public');      // public | local (18+ → private)
             $table->string('path');
             $table->string('original_name')->nullable();
             $table->string('mime', 120)->nullable();

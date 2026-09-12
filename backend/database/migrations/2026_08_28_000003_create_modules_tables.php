@@ -23,7 +23,6 @@ return new class extends Migration
             $table->string('route_base');                    // '/' | '/series'
             $table->string('api_base');                      // '/movies' | '/series'
             $table->string('morph_alias')->nullable();       // polymorphic pivot-ების alias
-            $table->boolean('is_sensitive')->default(false); // adult — ცალკე gate, default off
             $table->boolean('enabled_by_default')->default(false);
             $table->boolean('is_active')->default(true);     // ადმინს შეუძლია მთლიანად გამორთოს
             $table->unsignedSmallInteger('sort_order')->default(0);
