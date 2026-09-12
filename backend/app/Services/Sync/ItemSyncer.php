@@ -8,6 +8,8 @@ use App\Models\Series;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
+use App\Support\MediaDomain;
+use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -23,7 +25,7 @@ use Throwable;
 class ItemSyncer
 {
     /** არჩევადი ველები (`fields`) */
-    public const FIELDS = ['title', 'description', 'year', 'rating', 'genres', 'cast', 'details'];
+    public const FIELDS = ['title', 'description', 'year', 'rating', 'genres', 'cast', 'details', 'trailer'];
 
     private const CAST_LIMIT = 12;
 
@@ -62,7 +64,9 @@ class ItemSyncer
             return $this->result(true, true, [], null);
         }
 
-        $isSeries = $item instanceof Series;
+        // ⚠️ **`instanceof Series` აღარ გამოდგება** (§7.1): TMDB-ის `/tv/*`-ზე
+        // ორი დომენი ზის — სერიალი და ანიმე. რუკა ერთია.
+        $isSeries = MediaDomain::isTv(MediaDomain::typeOf($item));
         $changed = [];
 
         try {
@@ -90,6 +94,10 @@ class ItemSyncer
                 $this->applyTranslations($item, $d, $dka, $fields, $overwrite, $isSeries),
             );
 
+            // ტრეილერი ცალკე რექვესთია (`/videos`), ამიტომ მხოლოდ არჩევისას (Tasks 9)
+            if (in_array('trailer', $fields, true) && $this->applyTrailer($item, $overwrite, $isSeries)) {
+                $changed[] = 'trailer';
+            }
             if (in_array('genres', $fields, true) && $this->applyGenres($item, $d, $overwrite)) {
                 $changed[] = 'genres';
             }
@@ -164,6 +172,33 @@ class ItemSyncer
         }
 
         return $changed;
+    }
+
+    /**
+     * ოფიციალური ტრეილერი (Tasks 9) — ka→en კასკადი.
+     * `overwrite=false`-ზე არსებულ ბმულს არ ეხება; ჩავარდნა ჩუმად ითმენს.
+     */
+    private function applyTrailer(Model $item, bool $overwrite, bool $isSeries): bool
+    {
+        if (! $overwrite && filled($item->trailer_url)) {
+            return false;
+        }
+
+        try {
+            $url = $isSeries
+                ? Trailer::pick($this->tmdb->tvVideos($item->tmdb_id, 'ka'), $this->tmdb->tvVideos($item->tmdb_id))
+                : Trailer::pick($this->tmdb->videos($item->tmdb_id, 'ka'), $this->tmdb->videos($item->tmdb_id));
+        } catch (Throwable) {
+            return false;
+        }
+
+        if (! $url || $url === $item->trailer_url) {
+            return false;
+        }
+
+        $item->trailer_url = $url;
+
+        return true;
     }
 
     /** სათაური/აღწერა ორ ენაზე (ka — TMDB-ის ლოკალიზებული პასუხიდან) */
@@ -263,6 +298,10 @@ class ItemSyncer
         foreach (array_slice($credits['cast'] ?? [], 0, self::CAST_LIMIT) as $i => $c) {
             $member = CastMember::firstOrNew(['tmdb_person_id' => $c['id']]);
             $member->name = $c['name'];
+            // Tasks 10 — სქესი გალერეის „ქალი/კაცი მსახიობები" ფილტრს სჭირდება
+            if (isset($c['gender'])) {
+                $member->gender = (int) $c['gender'];
+            }
             if ($withPhotos && ! empty($c['profile_path']) && $this->needsPhoto($member, $onlyMissing)) {
                 if ($photo = $this->media->profile($c['profile_path'], $c['id'])) {
                     $member->photo_path = $photo;
@@ -315,7 +354,7 @@ class ItemSyncer
             return false;
         }
 
-        $path = $this->media->poster($d['poster_path'], $item->slugForFile());
+        $path = $this->media->poster($d['poster_path'], $item->slugForFile(), $item->getMorphClass());
         if (! $path) {
             return false;
         }

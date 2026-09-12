@@ -4,15 +4,30 @@ namespace App\Services\Enrichment;
 
 use App\Models\CastMember;
 use App\Models\Genre;
-use App\Models\Movie;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\Translator;
 use App\Support\Trailer;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class MovieEnricher
+/**
+ * **TMDB-ის `/tv/*`-ზე დაფუძნებული გამამდიდრებელი** — `MovieEnricher`-ის
+ * TV-ეკვივალენტი. TV-ს ველები განსხვავებულია: `name` / `first_air_date` /
+ * `number_of_seasons` / `external_ids.imdb_id`.
+ *
+ * ⚠️ **აბსტრაქტულია, რადგან TV-დომენი ორია** — `series` და `anime` (§7.1).
+ * ორივეს **თავისი** ცხრილი, კონტროლერი და გამამდიდრებელი აქვს, მაგრამ
+ * TMDB-სთან საუბარი ერთი და იგივეა: მისი მეორედ დაწერა 300 ხაზის ასლს
+ * ნიშნავდა და ერთი შესწორება ერთ ასლში ოდესმე დარჩებოდა. განსხვავება
+ * ერთადერთია — **პოსტერის morph alias** (`MediaDownloader::poster()`),
+ * რომელიც ბრტყელ საქაღალდეში ორ დომენს ერთმანეთზე გადააწერინებდა.
+ */
+abstract class TvEnricher
 {
+    /** `movie`/`series`/`anime` — პოსტერის საქაღალდეს ეს წყვეტს */
+    abstract protected function morphAlias(): string;
+
     private string $img = 'https://image.tmdb.org/t/p';
 
     public function __construct(
@@ -41,7 +56,7 @@ class MovieEnricher
     private function queryFrom(array $in): ?string
     {
         $query = $in['query'] ?? null;
-        if (! $query && ! empty($in['url']) && preg_match('~/movie/\d+/([^/?#]+)~', $in['url'], $m)) {
+        if (! $query && ! empty($in['url']) && preg_match('~/(?:movie|tv|series)/\d+/([^/?#]+)~', $in['url'], $m)) {
             $slug = preg_replace('/-?qartulad-?.*$/', '', $m[1]);
             $query = trim(str_replace('-', ' ', $slug));
         }
@@ -49,18 +64,18 @@ class MovieEnricher
         return $query ?: null;
     }
 
-    /** input → TMDB movie id */
+    /** input → TMDB tv id */
     public function resolveTmdbId(array $in): ?int
     {
         if ($imdb = $this->imdbFrom($in)) {
-            if ($id = $this->tmdb->findByImdb($imdb)) {
+            if ($id = $this->tmdb->findTvByImdb($imdb)) {
                 return $id;
             }
         }
 
         $query = $this->queryFrom($in);
 
-        return $query ? $this->tmdb->search($query, $in['year'] ?? null) : null;
+        return $query ? $this->tmdb->searchTv($query, $in['year'] ?? null) : null;
     }
 
     /** კანდიდატების სია (ასარჩევად) */
@@ -68,8 +83,8 @@ class MovieEnricher
     {
         // IMDb → ზუსტი ერთი
         if ($imdb = $this->imdbFrom($in)) {
-            if ($id = $this->tmdb->findByImdb($imdb)) {
-                return [$this->normalizeCandidate($this->tmdb->details($id))];
+            if ($id = $this->tmdb->findTvByImdb($imdb)) {
+                return [$this->normalizeCandidate($this->tmdb->tvDetails($id))];
             }
         }
 
@@ -78,7 +93,7 @@ class MovieEnricher
             return [];
         }
 
-        $results = array_slice($this->tmdb->searchAll($query), 0, 8);
+        $results = array_slice($this->tmdb->searchAllTv($query), 0, 8);
 
         return array_map(fn ($r) => $this->normalizeCandidate($r), $results);
     }
@@ -87,8 +102,8 @@ class MovieEnricher
     {
         return [
             'tmdb_id' => $r['id'],
-            'title_en' => $r['title'] ?? ($r['original_title'] ?? ''),
-            'year' => ! empty($r['release_date']) ? (int) substr($r['release_date'], 0, 4) : null,
+            'title_en' => $r['name'] ?? ($r['original_name'] ?? ''),
+            'year' => ! empty($r['first_air_date']) ? (int) substr($r['first_air_date'], 0, 4) : null,
             'rating' => isset($r['vote_average']) ? round((float) $r['vote_average'], 1) : null,
             'poster' => ! empty($r['poster_path']) ? $this->img.'/w185'.$r['poster_path'] : null,
         ];
@@ -102,19 +117,22 @@ class MovieEnricher
         return $id ? $this->draftFromId($id) : null;
     }
 
-    /** კონკრეტული TMDB id-ის დრაფტი */
+    /** კონკრეტული TMDB tv id-ის დრაფტი */
     public function draftFromId(int $id): array
     {
-        $d = $this->tmdb->details($id);
-        $credits = $this->tmdb->credits($id);
+        $d = $this->tmdb->tvDetails($id);
+        $credits = $this->tmdb->tvCredits($id);
 
         return [
             'tmdb_id' => $id,
-            'imdb_id' => $d['imdb_id'] ?? null,
-            'title_en' => $d['title'] ?? null,
-            'title_ka' => $this->translator->toGeorgian($d['title'] ?? null),
+            'imdb_id' => $d['external_ids']['imdb_id'] ?? null,
+            'title_en' => $d['name'] ?? null,
+            'title_ka' => $this->translator->toGeorgian($d['name'] ?? null),
             'year' => $this->year($d),
             'rating' => isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null,
+            'runtime' => $this->runtime($d),
+            'seasons' => $d['number_of_seasons'] ?? null,
+            'episodes' => $d['number_of_episodes'] ?? null,
             'description_en' => $d['overview'] ?? null,
             'description_ka' => $this->translator->toGeorgian($d['overview'] ?? null),
             'genres' => array_map(fn ($g) => $g['name'], $d['genres'] ?? []),
@@ -129,71 +147,70 @@ class MovieEnricher
 
     /**
      * ოფიციალური ტრეილერი TMDB-დან, ka→en კასკადით (Tasks 9).
-     * ჩავარდნაზე `null` — ტრეილერის უქონლობა გამდიდრებას არ უნდა შეაჩეროს.
+     * ჩავარდნაზე `null` — ტრეილერის უქონლობა გამდიდრებას არ აჩერებს.
      */
     private function trailer(int $id): ?string
     {
         try {
-            return Trailer::pick($this->tmdb->videos($id, 'ka'), $this->tmdb->videos($id));
+            return Trailer::pick($this->tmdb->tvVideos($id, 'ka'), $this->tmdb->tvVideos($id));
         } catch (\Throwable) {
             return null;
         }
     }
 
-    /** არსებული ფილმის გამდიდრება — ჩამოტვირთვა + შევსება + genres/cast */
-    public function enrichMovie(Movie $movie): bool
+    /** არსებული ჩანაწერის გამდიდრება — ჩამოტვირთვა + შევსება + genres/cast */
+    public function enrich(Model $series): bool
     {
-        $id = $movie->tmdb_id ?: $this->resolveTmdbId([
-            'imdb' => $movie->imdb_id,
-            'url' => $movie->ge_url,
-            'query' => $movie->title_en ?: $movie->title_ka,
-            'year' => $movie->year,
+        $id = $series->tmdb_id ?: $this->resolveTmdbId([
+            'imdb' => $series->imdb_id,
+            'url' => $series->ge_url,
+            'query' => $series->title_en ?: $series->title_ka,
+            'year' => $series->year,
         ]);
 
         if (! $id) {
-            $movie->sync_status = 'failed';
-            $movie->save();
+            $series->sync_status = 'failed';
+            $series->save();
 
             return false;
         }
 
-        $d = $this->tmdb->details($id);
-        $credits = $this->tmdb->credits($id);
+        $d = $this->tmdb->tvDetails($id);
+        $credits = $this->tmdb->tvCredits($id);
 
         // არსებული თარგმანები (მხოლოდ ცარიელს ვავსებთ — user-ის მონაცემი არ იშლება)
-        $curTitleEn = $movie->title_en;
-        $curTitleKa = $movie->title_ka;
-        $curDescEn = $movie->description_en;
-        $curDescKa = $movie->description_ka;
-        $curDescEnSrc = $movie->description_en_source;
-        $curDescKaSrc = $movie->description_ka_source;
+        $curTitleEn = $series->title_en;
+        $curTitleKa = $series->title_ka;
+        $curDescEn = $series->description_en;
+        $curDescKa = $series->description_ka;
+        $curDescEnSrc = $series->description_en_source;
+        $curDescKaSrc = $series->description_ka_source;
 
         // --- არა-translation ველები ---
-        $movie->tmdb_id = $id;
-        $movie->year = $movie->year ?: $this->year($d);
-        $movie->imdb_id = $movie->imdb_id ?: ($d['imdb_id'] ?? null);
-        if ($movie->imdb_id) {
-            $movie->imdb_url = "https://www.imdb.com/title/{$movie->imdb_id}/";
+        $series->tmdb_id = $id;
+        $series->year = $series->year ?: $this->year($d);
+        $series->imdb_id = $series->imdb_id ?: ($d['external_ids']['imdb_id'] ?? null);
+        if ($series->imdb_id) {
+            $series->imdb_url = "https://www.imdb.com/title/{$series->imdb_id}/";
         }
-        $movie->rating = $movie->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
-        // ტრეილერი (Tasks 9) — მხოლოდ ცარიელზე, ე.ი. ხელით ჩასმულს არ ვაბათილებთ
-        $movie->trailer_url = $movie->trailer_url ?: $this->trailer($id);
-        if (! empty($d['belongs_to_collection'])) {
-            $movie->tmdb_collection_id = $d['belongs_to_collection']['id'] ?? null;
-            $movie->collection_name = $d['belongs_to_collection']['name'] ?? null;
-        }
-        $movie->sync_status = 'synced';
-        $movie->save();
+        $series->rating = $series->rating ?: (isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null);
+        // ტრეილერი (Tasks 9) — მხოლოდ ცარიელზე
+        $series->trailer_url = $series->trailer_url ?: $this->trailer($id);
+        $series->runtime = $series->runtime ?: $this->runtime($d);
+        $series->seasons = $series->seasons ?: ($d['number_of_seasons'] ?? null);
+        $series->episodes = $series->episodes ?: ($d['number_of_episodes'] ?? null);
+        $series->sync_status = 'synced';
+        $series->save();
 
         // --- EN translation ---
-        $titleEn = $curTitleEn ?: ($d['title'] ?? null);
+        $titleEn = $curTitleEn ?: ($d['name'] ?? null);
         $descEn = $curDescEn;
         $descEnSrc = $curDescEnSrc;
         if (! $curDescEn && ! empty($d['overview'])) {
             $descEn = $d['overview'];
             $descEnSrc = 'tmdb';
         }
-        $movie->setTranslation('en', ['title' => $titleEn, 'description' => $descEn, 'source' => $descEnSrc]);
+        $series->setTranslation('en', ['title' => $titleEn, 'description' => $descEn, 'source' => $descEnSrc]);
 
         // --- KA translation (ავტომატური თარგმანი, თუ ცარიელია) ---
         $titleKa = $curTitleKa ?: ($titleEn ? $this->translator->toGeorgian($titleEn) : null);
@@ -205,15 +222,15 @@ class MovieEnricher
                 $descKaSrc = 'translated';
             }
         }
-        $movie->setTranslation('ka', ['title' => $titleKa, 'description' => $descKa, 'source' => $descKaSrc]);
+        $series->setTranslation('ka', ['title' => $titleKa, 'description' => $descKa, 'source' => $descKaSrc]);
 
         // --- პოსტერი (title_en უკვე ხელმისაწვდომია slug-ისთვის) ---
         if (! empty($d['poster_path'])) {
-            $path = $this->media->poster($d['poster_path'], $movie->slugForFile(), 'movie');
+            $path = $this->media->poster($d['poster_path'], $series->slugForFile(), $this->morphAlias());
             if ($path) {
-                $movie->poster_path = $path;
-                $movie->poster_source = 'tmdb';
-                $movie->save();
+                $series->poster_path = $path;
+                $series->poster_source = 'tmdb';
+                $series->save();
             }
         }
 
@@ -234,7 +251,7 @@ class MovieEnricher
             $genreIds[] = $genre->id;
         }
         if ($genreIds) {
-            $movie->genres()->sync($genreIds);
+            $series->genres()->sync($genreIds);
         }
 
         // მსახიობები + ფოტოები
@@ -255,7 +272,7 @@ class MovieEnricher
             $sync[$member->id] = ['character' => $c['character'] ?? '', 'billing_order' => $i];
         }
         if ($sync) {
-            $movie->cast()->sync($sync);
+            $series->cast()->sync($sync);
         }
 
         return true;
@@ -266,22 +283,22 @@ class MovieEnricher
      * თარგმანს/ჟანრებს/cast-ის ბმულებს არ ცვლის. საჭიროა tmdb_id.
      * გამოიყენება „მედიის ხელახლა ჩამოტვირთვის" ღილაკიდან ახალ მანქანაზე კლონის შემდეგ.
      */
-    public function redownloadMedia(Movie $movie): bool
+    public function redownload(Model $series): bool
     {
-        if (! $movie->tmdb_id) {
+        if (! $series->tmdb_id) {
             return false;
         }
 
-        $d = $this->tmdb->details($movie->tmdb_id);
+        $d = $this->tmdb->tvDetails($series->tmdb_id);
         if (! empty($d['poster_path'])) {
-            if ($path = $this->media->poster($d['poster_path'], $movie->slugForFile(), 'movie')) {
-                $movie->poster_path = $path;
-                $movie->poster_source = 'tmdb';
-                $movie->save();
+            if ($path = $this->media->poster($d['poster_path'], $series->slugForFile(), $this->morphAlias())) {
+                $series->poster_path = $path;
+                $series->poster_source = 'tmdb';
+                $series->save();
             }
         }
 
-        $credits = $this->tmdb->credits($movie->tmdb_id);
+        $credits = $this->tmdb->tvCredits($series->tmdb_id);
         foreach (array_slice($credits['cast'] ?? [], 0, 12) as $c) {
             if (empty($c['profile_path'])) {
                 continue;
@@ -301,6 +318,12 @@ class MovieEnricher
 
     private function year(array $details): ?int
     {
-        return ! empty($details['release_date']) ? (int) substr($details['release_date'], 0, 4) : null;
+        return ! empty($details['first_air_date']) ? (int) substr($details['first_air_date'], 0, 4) : null;
+    }
+
+    /** ეპიზოდის საშ. ხანგრძლივობა (episode_run_time მასივის პირველი) */
+    private function runtime(array $details): ?int
+    {
+        return ! empty($details['episode_run_time'][0]) ? (int) $details['episode_run_time'][0] : null;
     }
 }

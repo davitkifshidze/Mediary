@@ -101,6 +101,91 @@ class TmdbClient
         return $this->get("/movie/{$id}/credits");
     }
 
+    /**
+     * ჟანრების ოფიციალური სია მოცემულ ენაზე (Tasks 7).
+     *
+     * ქართული ჟანრის სახელი TMDB-ს **უკვე აქვს** — ე.ი. მისი თარგმნა Claude-ით
+     * არც საჭიროა და არც სასურველი: აქედან წამოღებული სახელი ავტორიტეტულია
+     * და უფასო. ჟანრებს `tmdb_id`-ით ვამთხვევთ (slug ლათინურია, ka-ზე არ დაჯდება).
+     *
+     * @return array<int, string> tmdb_id => სახელი
+     */
+    public function genreList(string $language = 'en-US', bool $tv = false): array
+    {
+        $path = $tv ? '/genre/tv/list' : '/genre/movie/list';
+        $out = [];
+        foreach ($this->get($path, ['language' => $language])['genres'] ?? [] as $g) {
+            if (isset($g['id'], $g['name'])) {
+                $out[(int) $g['id']] = (string) $g['name'];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * ფილმის ვიდეოები — ტრეილერისთვის (Tasks 9).
+     *
+     * ⚠️ `language=` აქ **არ** გამოგვადგა: TMDB ვიდეოს ზუსტი ლოკალით ჭრის და
+     * `en-US`-ზე ბევრი ჩანაწერი ცარიელს აბრუნებდა (ვიდეო `en`-ითაა ან
+     * ლოკალის გარეშე). `include_video_language`-ს კი სია ეძლევა — `null`
+     * სწორედ „ლოკალის გარეშე" ვიდეოებს ნიშნავს.
+     */
+    public function videos(int $id, string $videoLanguages = 'en,null'): array
+    {
+        return $this->get("/movie/{$id}/videos", ['include_video_language' => $videoLanguages]);
+    }
+
+    /**
+     * ფილმის სურათები — გალერეისთვის (Tasks 10): `backdrops`, `posters`, `logos`.
+     *
+     * ⚠️ `include_image_language`-ის გარეშე TMDB **მხოლოდ** მიმდინარე ლოკალის
+     * სურათებს აბრუნებს და ბევრ ჩანაწერზე სია ცარიელია. `null` = ტექსტის
+     * გარეშე გადაღებული კადრი, რაც ზუსტად „ოფიციალური კადრებია".
+     */
+    public function images(int $id, string $imageLanguages = 'en,null'): array
+    {
+        return $this->get("/movie/{$id}/images", ['include_image_language' => $imageLanguages]);
+    }
+
+    /** მსახიობის/პირის ფოტოები — გალერეის „მსახიობები" ნაწილი (Tasks 10) */
+    public function personImages(int $personId): array
+    {
+        return $this->get("/person/{$personId}/images");
+    }
+
+    /**
+     * **პიროვნების მონაცემები + გარე id-ები (Tasks §8.1).**
+     *
+     * ⚠️ **ერთი გამოძახება და არა ორი**: `external_ids` `append_to_response`-ით
+     * მოდის, ე.ი. IMDb-ის `nm…`, Instagram-ი და Wikidata იმავე პასუხშია.
+     * სწორედ ეს ქმნის „ოფიციალურ საიტებზე" გასვლას მსახიობის გვერდიდან.
+     */
+    public function person(int $personId, string $language = 'en-US'): array
+    {
+        return $this->get("/person/{$personId}", [
+            'language' => $language,
+            'append_to_response' => 'external_ids',
+        ]);
+    }
+
+    /**
+     * **პიროვნებაზე „მონიშნული" სურათები (Tasks §8.1)** —
+     * იმ ფილმების/სერიალების კადრები და პოსტერები, სადაც ეს მსახიობია.
+     *
+     * ⚠️ **ეს არის პასუხი იმაზე, რომ „TMDB-ზე მსახიობს სამი ფოტო აქვს".**
+     * `/person/{id}/images` მხოლოდ პორტრეტებია (`profiles`, ხშირად 3–5 ცალი),
+     * `tagged_images` კი ათეულობით — ოღონდ სხვა ფორმით: თითო რიგს აქვს
+     * `image_type` (`poster|backdrop|still`) და `media` (რომელი ფილმიდანაა).
+     *
+     * ⚠️ **გვერდიანია** (20 ცალი გვერდზე) — `profiles`-ისგან განსხვავებით,
+     * რომელიც ერთ სიას აბრუნებს. ამიტომ გამომძახებელი გვერდს ცხადად ითხოვს.
+     */
+    public function personTaggedImages(int $personId, int $page = 1): array
+    {
+        return $this->get("/person/{$personId}/tagged_images", ['page' => $page]);
+    }
+
     /** მსახიობის ფილმოგრაფია (`language` — ლოკალიზებული სახელებისთვის, მაგ. 'ka') */
     public function personCredits(int $personId, string $language = 'en-US'): array
     {
@@ -181,6 +266,18 @@ class TmdbClient
     public function tvCredits(int $id): array
     {
         return $this->get("/tv/{$id}/credits");
+    }
+
+    /** სერიალის ვიდეოები — ტრეილერისთვის (Tasks 9). იხ. `videos()`-ის შენიშვნა. */
+    public function tvVideos(int $id, string $videoLanguages = 'en,null'): array
+    {
+        return $this->get("/tv/{$id}/videos", ['include_video_language' => $videoLanguages]);
+    }
+
+    /** სერიალის სურათები — გალერეისთვის (Tasks 10). იხ. `images()`-ის შენიშვნა. */
+    public function tvImages(int $id, string $imageLanguages = 'en,null'): array
+    {
+        return $this->get("/tv/{$id}/images", ['include_image_language' => $imageLanguages]);
     }
 
     /** მსახიობის სერიალოგრაფია (`language` — ლოკალიზებული სახელებისთვის, მაგ. 'ka') */

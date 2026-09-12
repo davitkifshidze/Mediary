@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Movie;
-use App\Models\Series;
 use App\Models\User;
 use App\Services\Sync\ItemSyncer;
+use App\Support\MediaDomain;
 use Illuminate\Console\Command;
 
 /**
@@ -20,7 +19,7 @@ use Illuminate\Console\Command;
 class RedownloadMediaCommand extends Command
 {
     protected $signature = 'media:redownload
-        {--type= : movie ან series (ცარიელი = ორივე)}
+        {--type= : movie | series | anime (ცარიელი = ყველა)}
         {--missing : მხოლოდ დაკარგული ფაილები}
         {--user= : მხოლოდ ამ user id-ის ჩანაწერები (ცარიელი = ყველა მომხმარებელი)}';
 
@@ -35,8 +34,8 @@ class RedownloadMediaCommand extends Command
         }
 
         $type = $this->option('type');
-        if ($type !== null && ! in_array($type, ['movie', 'series'], true)) {
-            $this->error('--type უნდა იყოს movie ან series.');
+        if ($type !== null && ! MediaDomain::has($type)) {
+            $this->error('--type უნდა იყოს '.implode(' | ', MediaDomain::TYPES).'.');
 
             return self::FAILURE;
         }
@@ -56,7 +55,9 @@ class RedownloadMediaCommand extends Command
         $opts = ['media' => true, 'only_missing' => (bool) $this->option('missing')];
         $totals = [];
 
-        foreach (['movie' => Movie::class, 'series' => Series::class] as $domain => $model) {
+        foreach (MediaDomain::TYPES as $domain) {
+            $model = MediaDomain::model($domain);
+
             if ($type !== null && $type !== $domain) {
                 continue;
             }

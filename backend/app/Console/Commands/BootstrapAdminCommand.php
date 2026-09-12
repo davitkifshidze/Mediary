@@ -36,7 +36,7 @@ class BootstrapAdminCommand extends Command
         }
 
         if ($existing) {
-            $existing->update(['role' => 'super_admin', 'is_active' => true]);
+            $existing->assignRole('super_admin')->forceFill(['is_active' => true])->save();
             $this->attachModules($existing);
             $this->info("✔ {$email} გახდა super_admin (id={$existing->id}).");
 
@@ -71,7 +71,7 @@ class BootstrapAdminCommand extends Command
             'username' => $username,
             'password' => Hash::make($password),
         ]);
-        $user->forceFill(['role' => 'super_admin', 'is_active' => true])->save();
+        $user->assignRole('super_admin')->forceFill(['is_active' => true])->save();
 
         $this->attachModules($user);
 
