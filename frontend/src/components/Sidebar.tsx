@@ -30,7 +30,7 @@ import { useSettings } from '@/lib/settings'
 import { fetchPendingCount } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
-import { GALLERY_CUTS } from '@/pages/GalleryPage'
+import { GALLERY_CUTS } from '@/lib/galleryCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useStatusMap } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'

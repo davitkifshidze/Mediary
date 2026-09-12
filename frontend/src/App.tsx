@@ -1,53 +1,68 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
-import { LibraryPage } from '@/pages/LibraryPage'
-import { MoviePage } from '@/pages/MoviePage'
-import { MovieFormPage } from '@/pages/MovieFormPage'
-import { ActorPage } from '@/pages/ActorPage'
-import { GenresPage } from '@/pages/GenresPage'
-import { StatusBulkPage } from '@/pages/StatusBulkPage'
-import { SettingsPage } from '@/pages/SettingsPage'
-import { SyncPage } from '@/pages/SyncPage'
-import { TranslationsPage } from '@/pages/TranslationsPage'
-import { LoginPage } from '@/pages/LoginPage'
-import { RegisterPage } from '@/pages/RegisterPage'
-import { ProfilePage } from '@/pages/ProfilePage'
-import { PublicProfilePage } from '@/pages/PublicProfilePage'
-import { PeoplePage } from '@/pages/PeoplePage'
-import { ChatPage } from '@/pages/ChatPage'
-import { ModulesPage } from '@/pages/ModulesPage'
-import { ModulePage } from '@/pages/ModulePage'
-import { UsersPage } from '@/pages/UsersPage'
-import { UserPage } from '@/pages/UserPage'
-import { RequestsPage } from '@/pages/RequestsPage'
-import { RolesPage } from '@/pages/RolesPage'
-import { RolePage } from '@/pages/RolePage'
-import { VideosPage } from '@/pages/VideosPage'
-import { SongsPage } from '@/pages/SongsPage'
-import { BooksPage } from '@/pages/BooksPage'
-import { BoardGamesPage } from '@/pages/BoardGamesPage'
-import { GamesPage } from '@/pages/GamesPage'
-import { NotesPage } from '@/pages/NotesPage'
-import { BookmarksPage } from '@/pages/BookmarksPage'
-import { DICTIONARIES } from '@/lib/dictionaries'
-import { DictionariesPage } from '@/pages/DictionariesPage'
-import { PlaylistsPage } from '@/pages/PlaylistsPage'
-import { PlaylistPage } from '@/pages/PlaylistPage'
-import { DashboardPage } from '@/pages/DashboardPage'
-import { GalleryPage } from '@/pages/GalleryPage'
-import { GalleryRecordPage } from '@/pages/GalleryRecordPage'
-import { PurgePage } from '@/pages/PurgePage'
-import { AuditPage } from '@/pages/AuditPage'
 import { PlayerBar } from '@/components/PlayerBar'
+import { DICTIONARIES } from '@/lib/dictionaries'
 import { useAuth } from '@/lib/auth'
 import { useVisitTracker } from '@/lib/audit'
 import { PlayerProvider } from '@/lib/player'
 import { ModulesProvider, useModules } from '@/lib/modules'
 import { useNoteReminderWatcher } from '@/lib/noteReminders'
 import { MEDIA, type MediaType } from '@/lib/media'
+
+/* ============================================================
+   მარშრუტების დონეზე დაყოფა (Tasks §4).
+
+   ⚠️ **`lazy()` სახელიან ექსპორტს `default`-ად გადაათარგმნინებს.** ეს
+   `.then()` მოსაწყენია, მაგრამ განზრახ ხელითაა დაწერილი: ზოგადი დამხმარე
+   (`lazyPage(load, name)`) props-ების ტიპს კარგავს, ე.ი. `<LibraryPage
+   type={type} />` აღარ შემოწმდებოდა — ზუსტად ის, რასაც `tsc` აქ იჭერს.
+
+   ⚠️ **`Suspense` `<main>`-ის შიგნითაა**, ე.ი. ჩანაწერის ჩატვირთვისას
+   ჰედერი, საიდბარი და **დამკვრელი ადგილზე რჩება**. მთელ გვერდზე
+   გადაფარებული ლოდერი დაკვრას აწყვეტდა-არა, მაგრამ ყოველ ნავიგაციაზე
+   აპლიკაციას „თავიდან დაწყებულად" აჩვენებდა.
+   ============================================================ */
+const LibraryPage = lazy(() => import('@/pages/LibraryPage').then((m) => ({ default: m.LibraryPage })))
+const MoviePage = lazy(() => import('@/pages/MoviePage').then((m) => ({ default: m.MoviePage })))
+const MovieFormPage = lazy(() => import('@/pages/MovieFormPage').then((m) => ({ default: m.MovieFormPage })))
+const ActorPage = lazy(() => import('@/pages/ActorPage').then((m) => ({ default: m.ActorPage })))
+const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ default: m.GenresPage })))
+const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
+const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
+const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
+const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })))
+const PeoplePage = lazy(() => import('@/pages/PeoplePage').then((m) => ({ default: m.PeoplePage })))
+const ChatPage = lazy(() => import('@/pages/ChatPage').then((m) => ({ default: m.ChatPage })))
+const ModulesPage = lazy(() => import('@/pages/ModulesPage').then((m) => ({ default: m.ModulesPage })))
+const ModulePage = lazy(() => import('@/pages/ModulePage').then((m) => ({ default: m.ModulePage })))
+const UsersPage = lazy(() => import('@/pages/UsersPage').then((m) => ({ default: m.UsersPage })))
+const UserPage = lazy(() => import('@/pages/UserPage').then((m) => ({ default: m.UserPage })))
+const RequestsPage = lazy(() => import('@/pages/RequestsPage').then((m) => ({ default: m.RequestsPage })))
+const RolesPage = lazy(() => import('@/pages/RolesPage').then((m) => ({ default: m.RolesPage })))
+const RolePage = lazy(() => import('@/pages/RolePage').then((m) => ({ default: m.RolePage })))
+const VideosPage = lazy(() => import('@/pages/VideosPage').then((m) => ({ default: m.VideosPage })))
+const SongsPage = lazy(() => import('@/pages/SongsPage').then((m) => ({ default: m.SongsPage })))
+const BooksPage = lazy(() => import('@/pages/BooksPage').then((m) => ({ default: m.BooksPage })))
+const BoardGamesPage = lazy(() => import('@/pages/BoardGamesPage').then((m) => ({ default: m.BoardGamesPage })))
+const GamesPage = lazy(() => import('@/pages/GamesPage').then((m) => ({ default: m.GamesPage })))
+const NotesPage = lazy(() => import('@/pages/NotesPage').then((m) => ({ default: m.NotesPage })))
+const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
+const DictionariesPage = lazy(() => import('@/pages/DictionariesPage').then((m) => ({ default: m.DictionariesPage })))
+const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage').then((m) => ({ default: m.PlaylistsPage })))
+const PlaylistPage = lazy(() => import('@/pages/PlaylistPage').then((m) => ({ default: m.PlaylistPage })))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const GalleryPage = lazy(() => import('@/pages/GalleryPage').then((m) => ({ default: m.GalleryPage })))
+const GalleryRecordPage = lazy(() => import('@/pages/GalleryRecordPage').then((m) => ({ default: m.GalleryRecordPage })))
+const PurgePage = lazy(() => import('@/pages/PurgePage').then((m) => ({ default: m.PurgePage })))
+const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
+
 
 /**
  * `/gallery/actors/:id` → `/actors/:id` (§8.5).
@@ -65,6 +80,15 @@ function Splash() {
   return (
     <div className="grid min-h-screen place-items-center bg-background">
       <Loader2 className="size-6 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
+
+/** გვერდის ნაჭრის ჩატვირთვა — გარსი ადგილზე რჩება */
+function PageFallback() {
+  return (
+    <div className="grid place-items-center py-24">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
     </div>
   )
 }
@@ -153,6 +177,7 @@ function AppShell() {
         {/* §7.2 — ქვედა ზოლი გვერდს არ უნდა ფარავდეს; სიმაღლეს თვითონ
             დამკვრელი წერს `--player-h`-ში (დახურულზე ცვლადი საერთოდ არ არის) */}
         <main className="min-w-0 flex-1 pb-[var(--player-h,0px)]">
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Tasks 2 — `/` დეშბორდია და არა ფილმების ბიბლიოთეკა */}
           <Route path="" element={<DashboardPage />} />
@@ -205,7 +230,6 @@ function AppShell() {
             <Route path="playlists/:id" element={<PlaylistPage />} />
           )}
 
-
           {/* გაზიარებული */}
           {mediaModules.length > 0 && <Route path="actors/:id" element={<ActorPage />} />}
           {mediaModules.length > 0 && <Route path="genres" element={<GenresPage />} />}
@@ -248,6 +272,7 @@ function AppShell() {
           {/* არარსებული/მიუწვდომელი მისამართი → დეშბორდი (ის ყოველთვის არსებობს) */}
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+        </Suspense>
         </main>
       </div>
       {/* §7.2 — ერთი დამკვრელი მთელ აპზე. მარშრუტების **გარეთაა**: გვერდის
@@ -260,6 +285,9 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
+      {/* გარე მარშრუტები (login · register · საჯარო პროფილი) გარსის გარეთაა,
+          ე.ი. საკუთარი fallback სჭირდებათ — აქ მთელი ეკრანი კანონიერია */}
+      <Suspense fallback={<Splash />}>
       <Routes>
         <Route
           path="/login"
@@ -295,6 +323,7 @@ export default function App() {
           }
         />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

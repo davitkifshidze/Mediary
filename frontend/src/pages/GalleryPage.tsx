@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { GALLERY_CUTS, type GalleryCut } from '@/lib/galleryCuts'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Boxes, DownloadCloud, Film, Images, Radio, Users, Video } from 'lucide-react'
+import { DownloadCloud } from 'lucide-react'
 import { updateModuleSettings } from '@/api/account'
 import {
   fetchGallerySummary,
@@ -40,18 +41,6 @@ import { VideosCut } from '@/components/gallery/VideosCut'
    `groups` მოთხოვნა იმავეს რომ ეკეთებინა, ქვე-მენიუს დახატვა სამ სრულ
    სიას ჩამოტვირთავდა.
    ============================================================ */
-
-export type GalleryCut = 'all' | 'records' | 'actors' | 'videos' | 'sources' | 'modules'
-
-/** ჭრილი → მისამართი და ხატულა. **ერთი რუკა** — საიდბარიც აქედან იკვებება. */
-export const GALLERY_CUTS = [
-  { key: 'all', path: '/gallery', icon: Images },
-  { key: 'records', path: '/gallery/records', icon: Film },
-  { key: 'actors', path: '/gallery/actors', icon: Users },
-  { key: 'videos', path: '/gallery/videos', icon: Video },
-  { key: 'sources', path: '/gallery/sources', icon: Radio },
-  { key: 'modules', path: '/gallery/modules', icon: Boxes },
-] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown }[]
 
 export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
   const { t } = useTranslation()
