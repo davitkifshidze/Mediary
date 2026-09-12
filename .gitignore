@@ -28,3 +28,7 @@ Thumbs.db
 
 # ── graphify generated knowledge graph (regenerate with /graphify) ──
 /graphify-out/
+
+# ── temp helpers (i18n merge scripts, python caches) ──
+/frontend/.tmp-i18n/
+__pycache__/
