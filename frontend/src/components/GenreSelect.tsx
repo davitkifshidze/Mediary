@@ -1,8 +1,9 @@
 import Select from 'react-select'
 import { useTranslation } from 'react-i18next'
 import { genreName } from '@/lib/display'
-import { reactSelectStyles, type Option } from '@/lib/selectStyles'
+import { reactSelectPortal, reactSelectStyles, type Option } from '@/lib/selectStyles'
 import type { Genre } from '@/api/types'
+import { useContentLang } from '@/lib/settings'
 
 const multiStyles = reactSelectStyles<true>()
 const singleStyles = reactSelectStyles<false>()
@@ -20,7 +21,8 @@ export function GenreSingleSelect({
   placeholder?: string
 }) {
   const { i18n } = useTranslation()
-  const options: Option[] = genres.map((g) => ({ value: String(g.id), label: genreName(g, i18n.language) }))
+  const lang = useContentLang(i18n.language)
+  const options: Option[] = genres.map((g) => ({ value: String(g.id), label: genreName(g, lang) }))
   const selected = options.find((o) => o.value === value) ?? null
 
   return (
@@ -33,6 +35,7 @@ export function GenreSingleSelect({
       styles={singleStyles}
       classNamePrefix="rs"
       menuPlacement="auto"
+      {...reactSelectPortal}
     />
   )
 }
@@ -47,7 +50,8 @@ export function GenreSelect({
   onChange: (v: string[]) => void
 }) {
   const { t, i18n } = useTranslation()
-  const options: Option[] = genres.map((g) => ({ value: g.slug, label: genreName(g, i18n.language) }))
+  const lang = useContentLang(i18n.language)
+  const options: Option[] = genres.map((g) => ({ value: g.slug, label: genreName(g, lang) }))
   const selected = options.filter((o) => value.includes(o.value))
 
   return (
@@ -60,6 +64,7 @@ export function GenreSelect({
       noOptionsMessage={() => '—'}
       styles={multiStyles}
       classNamePrefix="rs"
+      {...reactSelectPortal}
     />
   )
 }

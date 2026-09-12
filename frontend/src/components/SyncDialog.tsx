@@ -1,16 +1,17 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useContentLang } from '@/lib/settings'
+import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Play } from 'lucide-react'
 import {
   fetchGenres,
   fetchSyncPlan,
-  mediaApi,
   SYNC_FIELDS,
   type SyncField,
   type SyncPlanFilters,
 } from '@/api/media'
-import type { MediaType } from '@/lib/media'
+import { MEDIA_NAV_KEY, emptyMediaIds, type MediaType } from '@/lib/media'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -18,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenreSelect } from '@/components/GenreSelect'
-import { MovieMultiSelect } from '@/components/MovieMultiSelect'
+import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -29,20 +30,22 @@ import { cn } from '@/lib/utils'
    თვითონ ციკლს queue ატარებს (J3).
    ============================================================ */
 
-const STATUSES = ['undecided', 'to_watch', 'watching', 'watched'] as const
 type Scope = 'all' | 'status' | 'favorite' | 'genre' | 'specific'
 
 export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const { enqueueSync, isBusy } = useQueue()
 
   // --- სკოუპი ---
   const [types, setTypes] = useState<MediaType[]>(['movie', 'series'])
+  const lang = useContentLang(i18n.language)
+  // §6.4 — სტატუსების სია არჩეულ დომენებს მიჰყვება
+  const statuses = useMergedStatuses(types)
   const [scope, setScope] = useState<Scope>('all')
   const [status, setStatus] = useState<string>('')
   const [genres, setGenres] = useState<string[]>([])
-  const [ids, setIds] = useState<Record<MediaType, number[]>>({ movie: [], series: [] })
+  const [ids, setIds] = useState<Record<MediaType, number[]>>(emptyMediaIds)
 
   // --- რა განახლდეს ---
   const [media, setMedia] = useState(true)
@@ -72,16 +75,6 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   })
 
   // კონკრეტული ჩანაწერების ასარჩევად სრული სიები
-  const moviesQ = useQuery({
-    queryKey: ['genre-attach-pool', 'movie'],
-    queryFn: () => mediaApi('movie').list(),
-    enabled: open && scope === 'specific' && types.includes('movie'),
-  })
-  const seriesQ = useQuery({
-    queryKey: ['genre-attach-pool', 'series'],
-    queryFn: () => mediaApi('series').list(),
-    enabled: open && scope === 'specific' && types.includes('series'),
-  })
 
   const toggleType = (v: MediaType) =>
     setTypes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
@@ -115,7 +108,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               {(['movie', 'series'] as MediaType[]).map((d) => (
                 <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
                   <Checkbox checked={types.includes(d)} onCheckedChange={() => toggleType(d)} />
-                  {t(d === 'series' ? 'nav.series' : 'nav.movies')}
+                  {t(MEDIA_NAV_KEY[d])}
                 </label>
               ))}
             </div>
@@ -132,9 +125,10 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                     <SelectValue placeholder={t('sync.statusPick')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {t(`status.${s}`)}
+                    {/* §6.4 — სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
+                    {statuses.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>
+                        {statusName(s, lang)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -145,24 +139,12 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 <GenreSelect genres={genresQ.data ?? []} value={genres} onChange={setGenres} />
               </ScopeRow>
               <ScopeRow value="specific" active={scope} label={t('sync.scopeSpecific')}>
-                <div className="space-y-2">
-                  {types.includes('movie') && (
-                    <MovieMultiSelect
-                      movies={moviesQ.data ?? []}
-                      value={ids.movie}
-                      onChange={(v) => setIds((c) => ({ ...c, movie: v }))}
-                      placeholder={moviesQ.isLoading ? t('api.loading') : t('nav.movies')}
-                    />
-                  )}
-                  {types.includes('series') && (
-                    <MovieMultiSelect
-                      movies={seriesQ.data ?? []}
-                      value={ids.series}
-                      onChange={(v) => setIds((c) => ({ ...c, series: v }))}
-                      placeholder={seriesQ.isLoading ? t('api.loading') : t('nav.series')}
-                    />
-                  )}
-                </div>
+                <MediaRecordPicker
+                  types={types}
+                  ids={ids}
+                  enabled={open && scope === 'specific'}
+                  onChange={(type, next) => setIds((c) => ({ ...c, [type]: next }))}
+                />
               </ScopeRow>
             </RadioGroup>
           </div>

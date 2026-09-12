@@ -1,28 +1,28 @@
 import Select from 'react-select'
 import { useTranslation } from 'react-i18next'
 import { movieTitle } from '@/lib/display'
-import { reactSelectStyles, type Option } from '@/lib/selectStyles'
+import { reactSelectPortal, reactSelectStyles, type Option } from '@/lib/selectStyles'
 import type { MovieListItem } from '@/api/types'
+import { useContentLang } from '@/lib/settings'
 
 const styles = reactSelectStyles<true>()
 
-/** ფილმების მრავალარჩევანი (value = movie id-ების მასივი) — ძებნადი/სქროლადი. */
-export function MovieMultiSelect({
-  movies,
+/**
+ * id-ების მრავალარჩევანი — ძებნადი/სქროლადი. დომენს არ იცნობს, ე.ი.
+ * ფილმებზეც, სერიალებზეც და ვიდეოებზეც ერთი და იგივე კონტროლია (Tasks 4).
+ */
+export function IdMultiSelect({
+  items,
   value,
   onChange,
   placeholder,
 }: {
-  movies: MovieListItem[]
+  items: { id: number; label: string }[]
   value: number[]
   onChange: (v: number[]) => void
   placeholder?: string
 }) {
-  const { i18n } = useTranslation()
-  const options: Option[] = movies.map((m) => {
-    const title = movieTitle(m, i18n.language)
-    return { value: String(m.id), label: m.year ? `${title} (${m.year})` : title }
-  })
+  const options: Option[] = items.map((i) => ({ value: String(i.id), label: i.label }))
   const selected = options.filter((o) => value.includes(Number(o.value)))
 
   return (
@@ -36,6 +36,29 @@ export function MovieMultiSelect({
       styles={styles}
       classNamePrefix="rs"
       closeMenuOnSelect={false}
+      {...reactSelectPortal}
     />
   )
+}
+
+/** ფილმების/სერიალების მრავალარჩევანი (value = id-ების მასივი) */
+export function MovieMultiSelect({
+  movies,
+  value,
+  onChange,
+  placeholder,
+}: {
+  movies: MovieListItem[]
+  value: number[]
+  onChange: (v: number[]) => void
+  placeholder?: string
+}) {
+  const { i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+  const items = movies.map((m) => {
+    const title = movieTitle(m, lang)
+    return { id: m.id, label: m.year ? `${title} (${m.year})` : title }
+  })
+
+  return <IdMultiSelect items={items} value={value} onChange={onChange} placeholder={placeholder} />
 }

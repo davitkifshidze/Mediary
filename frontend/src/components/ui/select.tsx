@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LAYER_POPUP } from '@/lib/layers'
 
 const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
@@ -36,7 +37,8 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'z-50 min-w-32 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+        LAYER_POPUP,
+        'min-w-32 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md',
         position === 'popper' && 'data-[side=bottom]:translate-y-1',
         className,
       )}

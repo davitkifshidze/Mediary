@@ -16,7 +16,11 @@ export function ModalShell({
   title: string
   onClose: () => void
   destructive?: boolean
-  /** ჩანაწერების მართვას (C1) ვიწრო დიალოგი არ ჰყოფნის */
+  /**
+   * ფორმებსა და ჩანაწერების მართვას (C1) ვიწრო დიალოგი არ ჰყოფნის.
+   * Tasks 2.3 — `wide` აშკარად განიერია, რომ ველები ორ სვეტად დაეწყოს
+   * და მოდალი მაღალი „მილივით" აღარ გამოიყურებოდეს.
+   */
   wide?: boolean
   children: ReactNode
 }) {
@@ -27,7 +31,7 @@ export function ModalShell({
         <DialogPrimitive.Content
           className={cn(
             'fb-content fixed left-1/2 top-1/2 z-[61] max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none',
-            wide ? 'max-w-xl' : 'max-w-md',
+            wide ? 'max-w-3xl' : 'max-w-lg',
           )}
         >
           <DialogPrimitive.Title

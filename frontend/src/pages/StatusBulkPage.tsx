@@ -3,37 +3,115 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
-import { bulkSetStatus, fetchMovies } from '@/api/movies'
-import type { Status } from '@/api/types'
+import { mediaApi } from '@/api/media'
+import { type MediaType } from '@/lib/media'
+import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { PageContainer } from '@/components/ui/page'
+import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
+import { VideoBulkPanel } from '@/components/VideoBulkPanel'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { statusName, useStatuses } from '@/lib/statuses'
+import { useContentLang } from '@/lib/settings'
 
-const STATUSES: Status[] = ['undecided', 'to_watch', 'watching', 'watched']
 type Mode = 'by_status' | 'specific'
+/** დომენი: მედია-ტიპი ან ვიდეოები (ვიდეოს თავისი პანელი აქვს — ტიპი და ტეგებიც) */
+type Domain = MediaType | 'video'
+
+/* ============================================================
+   მასობრივი ოპერაციები (Tasks 4).
+   ერთი გვერდი ყველა დომენზე — გადამრთველი გვერდზევეა:
+   · მედია (ფილმები/სერიალები/ანიმე) → სტატუსის შეცვლა
+   · ვიდეოები → სტატუსი, ტიპი და ტეგები (19.9 → §6.4: სტატუსი ვიდეოსაც აქვს)
+   ============================================================ */
 
 export function StatusBulkPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { mediaModules, enabled } = useModules()
+
+  // ჩართული დომენები; ერთის შემთხვევაში გადამრთველი არ ჩანს
+  const domains = useMemo(
+    () => [
+      ...mediaModules.map((m) => ({ key: m.key, label: moduleName(m, i18n.language), domain: m.type as Domain })),
+      ...enabled
+        .filter((m) => m.key === 'video')
+        .map((m) => ({ key: m.key, label: moduleName(m, i18n.language), domain: 'video' as Domain })),
+    ],
+    [mediaModules, enabled, i18n.language],
+  )
+
+  const [domain, setDomain] = useState<Domain>(domains[0]?.domain ?? 'movie')
+  // მოდულების ჩატვირთვამდე `domains` ცარიელია — პირველივე ხელმისაწვდომზე გადავდივართ
+  const active = domains.some((d) => d.domain === domain) ? domain : (domains[0]?.domain ?? domain)
+
+  return (
+    <PageContainer>
+      <Link
+        to="/"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        {t('actions.back')}
+      </Link>
+
+      <PageHeader
+        title={t('bulkStatus.title')}
+        subtitle={t(active === 'video' ? 'bulkVideo.subtitle' : 'bulkStatus.subtitle')}
+      />
+
+      {/* დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) */}
+      {domains.length > 1 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {domains.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setDomain(d.domain)}
+              className={cn(
+                'inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                active === d.domain
+                  ? 'border-primary bg-secondary font-medium'
+                  : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {active === 'video' ? <VideoBulkPanel /> : <MediaBulkPanel type={active} />}
+    </PageContainer>
+  )
+}
+
+/** სტატუსის მასობრივი შეცვლა — ფილმები და სერიალები */
+function MediaBulkPanel({ type }: { type: MediaType }) {
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+  // §6.4 — სია ლექსიკონიდან; ორივე გადამრჩევი (საიდან/სად) იმავეს ხატავს
+  const { data: statuses = [] } = useStatuses(type)
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const api = mediaApi(type)
 
-  const moviesQ = useQuery({ queryKey: ['movies', 'bulk'], queryFn: () => fetchMovies() })
+  const moviesQ = useQuery({ queryKey: [type, 'bulk'], queryFn: () => api.list() })
   const movies = useMemo(() => moviesQ.data ?? [], [moviesQ.data])
 
   const [mode, setMode] = useState<Mode>('by_status')
-  const [fromStatus, setFromStatus] = useState<Status | ''>('')
+  const [fromStatus, setFromStatus] = useState('')
   const [ids, setIds] = useState<number[]>([])
-  const [target, setTarget] = useState<Status | ''>('')
+  const [target, setTarget] = useState('')
 
   const affectedCount =
     mode === 'by_status'
       ? fromStatus
-        ? movies.filter((m) => m.status === fromStatus).length
+        ? movies.filter((m) => m.status?.key === fromStatus).length
         : 0
       : ids.length
 
@@ -44,13 +122,14 @@ export function StatusBulkPage() {
 
   const mut = useMutation({
     mutationFn: () =>
-      bulkSetStatus(
+      api.bulkStatus(
         mode === 'by_status'
-          ? { status: target as Status, from_status: fromStatus as Status }
-          : { status: target as Status, ids },
+          ? { status: target, from_status: fromStatus }
+          : { status: target, ids },
       ),
     onSuccess: (updated) => {
-      qc.invalidateQueries({ queryKey: ['movie'] })
+      qc.invalidateQueries({ queryKey: [type] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
       toast({ title: t('bulkStatus.done', { count: updated }), variant: 'success' })
       setIds([])
       setFromStatus('')
@@ -65,7 +144,7 @@ export function StatusBulkPage() {
       title: t('bulkStatus.confirmTitle'),
       description: t('bulkStatus.confirmDesc', {
         count: affectedCount,
-        status: t(`status.${target}`),
+        status: statusName(statuses.find((s) => s.key === target), lang),
       }),
       confirmText: t('confirm.confirm'),
       cancelText: t('confirm.cancel'),
@@ -74,101 +153,89 @@ export function StatusBulkPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-8">
-      <Link
-        to="/"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        {t('actions.back')}
-      </Link>
+    <div className="space-y-6 rounded-xl border border-border bg-card p-5">
+      {/* რას ვცვლით */}
+      <div>
+        <Label className="mb-2 block">{t('bulkStatus.whichLabel')}</Label>
+        <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="gap-3">
+          <div
+            className={cn(
+              'rounded-lg border p-3 transition-colors',
+              mode === 'by_status' ? 'border-primary bg-secondary/50' : 'border-border',
+            )}
+          >
+            <label className="flex cursor-pointer items-center gap-3">
+              <RadioGroupItem value="by_status" />
+              <span className="text-sm font-medium">{t('bulkStatus.modeByStatus')}</span>
+            </label>
+            {mode === 'by_status' && (
+              <div className="mt-3 pl-8">
+                <Select value={fromStatus} onValueChange={setFromStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('bulkStatus.fromStatusPick')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((s) => (
+                      <SelectItem key={s.id} value={s.key}>
+                        {statusName(s, lang)} ({movies.filter((m) => m.status?.id === s.id).length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">{t('bulkStatus.title')}</h1>
-      <p className="mb-6 text-sm text-muted-foreground">{t('bulkStatus.subtitle')}</p>
-
-      <div className="space-y-6 rounded-xl border border-border bg-card p-5">
-        {/* რას ვცვლით */}
-        <div>
-          <Label className="mb-2 block">{t('bulkStatus.whichLabel')}</Label>
-          <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="gap-3">
-            <div
-              className={cn(
-                'rounded-lg border p-3 transition-colors',
-                mode === 'by_status' ? 'border-primary bg-secondary/50' : 'border-border',
-              )}
-            >
-              <label className="flex cursor-pointer items-center gap-3">
-                <RadioGroupItem value="by_status" />
-                <span className="text-sm font-medium">{t('bulkStatus.modeByStatus')}</span>
-              </label>
-              {mode === 'by_status' && (
-                <div className="mt-3 pl-8">
-                  <Select value={fromStatus} onValueChange={(v) => setFromStatus(v as Status)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('bulkStatus.fromStatusPick')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {t(`status.${s}`)} ({movies.filter((m) => m.status === s).length})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={cn(
-                'rounded-lg border p-3 transition-colors',
-                mode === 'specific' ? 'border-primary bg-secondary/50' : 'border-border',
-              )}
-            >
-              <label className="flex cursor-pointer items-center gap-3">
-                <RadioGroupItem value="specific" />
-                <span className="text-sm font-medium">{t('bulkStatus.modeSpecific')}</span>
-              </label>
-              {mode === 'specific' && (
-                <div className="mt-3 pl-8">
-                  <MovieMultiSelect
-                    movies={movies}
-                    value={ids}
-                    onChange={setIds}
-                    placeholder={moviesQ.isLoading ? t('api.loading') : t('bulkStatus.moviesPick')}
-                  />
-                </div>
-              )}
-            </div>
-          </RadioGroup>
-        </div>
-
-        {/* ახალი სტატუსი */}
-        <div>
-          <Label className="mb-2 block">{t('bulkStatus.targetLabel')}</Label>
-          <Select value={target} onValueChange={(v) => setTarget(v as Status)}>
-            <SelectTrigger>
-              <SelectValue placeholder={t('bulkStatus.targetPick')} />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {t(`status.${s}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-          <span className="text-sm text-muted-foreground">
-            {t('bulkStatus.affected', { count: affectedCount })}
-          </span>
-          <Button onClick={apply} disabled={!canApply || mut.isPending}>
-            {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}
-          </Button>
-        </div>
+          <div
+            className={cn(
+              'rounded-lg border p-3 transition-colors',
+              mode === 'specific' ? 'border-primary bg-secondary/50' : 'border-border',
+            )}
+          >
+            <label className="flex cursor-pointer items-center gap-3">
+              <RadioGroupItem value="specific" />
+              <span className="text-sm font-medium">{t('bulkStatus.modeSpecific')}</span>
+            </label>
+            {mode === 'specific' && (
+              <div className="mt-3 pl-8">
+                <MovieMultiSelect
+                  movies={movies}
+                  value={ids}
+                  onChange={setIds}
+                  placeholder={moviesQ.isLoading ? t('api.loading') : t('bulkStatus.moviesPick')}
+                  key={type}
+                />
+              </div>
+            )}
+          </div>
+        </RadioGroup>
       </div>
-    </main>
+
+      {/* ახალი სტატუსი */}
+      <div>
+        <Label className="mb-2 block">{t('bulkStatus.targetLabel')}</Label>
+        <Select value={target} onValueChange={setTarget}>
+          <SelectTrigger>
+            <SelectValue placeholder={t('bulkStatus.targetPick')} />
+          </SelectTrigger>
+          <SelectContent>
+            {statuses.map((s) => (
+              <SelectItem key={s.id} value={s.key}>
+                {statusName(s, lang)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+        <span className="text-sm text-muted-foreground">
+          {t('bulkStatus.affected', { count: affectedCount })}
+        </span>
+        <Button onClick={apply} disabled={!canApply || mut.isPending}>
+          {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}
+        </Button>
+      </div>
+    </div>
   )
 }

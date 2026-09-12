@@ -3,13 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import {
+  GENRE_ITEM_BUCKET,
   fetchGenreItems,
   mediaApi,
   updateGenreItems,
   type GenreItemsInput,
 } from '@/api/media'
 import type { Genre, MovieListItem } from '@/api/types'
-import type { MediaType } from '@/lib/media'
+import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -18,12 +19,15 @@ import { GenreSingleSelect } from '@/components/GenreSelect'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { useContentLang } from '@/lib/settings'
 
 /* ============================================================
    ჟანრზე მიბმული ჩანაწერების მართვა (Tasks C1) — ჟანრი გაზიარებულია
    ფილმებსა და სერიალებს შორის, ამიტომ დომენი ტაბებით ირჩევა.
 
-   K1: მოდალის შიგნით სამ სექციად დაიყო (ჩანაწერები / დამატება / ქმედებები).
+   K1: მოდალის შიგნით სექციებად დაიყო. L5: „ჩანაწერები" და „ქმედებები"
+   **ერთ სექციად გაერთიანდა** — მონიშვნა და მასზე შესასრულებელი ქმედება ერთ
+   ეკრანზეა (ადრე ერთ ტაბზე ნიშნავდი, ქმედებას მეორეზე ეძებდი).
    კომპონენტი ყოველთვის დამონტაჟებულია — მონიშვნა და დომენი სექციებს შორის
    გადართვისას არ იკარგება.
    ============================================================ */
@@ -31,7 +35,7 @@ import { cn } from '@/lib/utils'
 const DOMAINS: MediaType[] = ['movie', 'series']
 
 /** რომელი სექცია ჩანს; `names` — სახელების ტაბია, აქ არაფერი იხატება */
-export type GenreSection = 'names' | 'items' | 'add' | 'actions'
+export type GenreSection = 'names' | 'items' | 'add'
 
 /** ბიბლიოთეკის სია ჟანრში დასამატებლად (მხოლოდ ისინი, რაც ჟანრზე არ არის) */
 function useAttachPool(type: MediaType, attached: MovieListItem[]) {
@@ -57,6 +61,7 @@ export function GenreItemsManager({
   section: GenreSection
 }) {
   const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
@@ -67,7 +72,7 @@ export function GenreItemsManager({
   const [addIds, setAddIds] = useState<number[]>([])
 
   const itemsQ = useQuery({ queryKey: ['genre-items', genre.id], queryFn: () => fetchGenreItems(genre.id) })
-  const items = (type === 'series' ? itemsQ.data?.series : itemsQ.data?.movies) ?? []
+  const items = (itemsQ.data?.[GENRE_ITEM_BUCKET[type]] as MovieListItem[] | undefined) ?? []
   const { pool, isLoading: poolLoading } = useAttachPool(type, items)
   const others = allGenres.filter((g) => g.id !== genre.id)
   const targetGenre = others.find((g) => String(g.id) === target)
@@ -114,7 +119,7 @@ export function GenreItemsManager({
       title: t('genres.replaceConfirm'),
       description: t('genres.replaceConfirmDesc', {
         count: selected.length,
-        name: genreName(targetGenre, i18n.language),
+        name: genreName(targetGenre, lang),
       }),
       confirmText: t('genres.actReplace'),
       cancelText: t('confirm.cancel'),
@@ -122,7 +127,7 @@ export function GenreItemsManager({
     if (ok) mut.mutate({ type, action: 'replace', ids: selected, target_genre_id: targetGenre.id })
   }
 
-  const count = type === 'series' ? itemsQ.data?.series_count ?? 0 : itemsQ.data?.movies_count ?? 0
+  const count = (itemsQ.data?.[`${GENRE_ITEM_BUCKET[type]}_count`] as number | undefined) ?? 0
   const busy = mut.isPending
   const noSelection = selected.length === 0 || busy
 
@@ -148,7 +153,7 @@ export function GenreItemsManager({
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
-              {t(d === 'series' ? 'nav.series' : 'nav.movies')}
+              {t(MEDIA_NAV_KEY[d])}
               <span className="ml-1.5 opacity-70">
                 {d === 'series' ? (itemsQ.data?.series_count ?? 0) : (itemsQ.data?.movies_count ?? 0)}
               </span>
@@ -157,38 +162,95 @@ export function GenreItemsManager({
         </div>
       </div>
 
-      {/* ---------- ჩანაწერები: მიბმულთა სია მონიშვნით ---------- */}
-      {section === 'items' &&
-        (itemsQ.isLoading ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">{t('genres.itemsLoading')}</div>
-        ) : items.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-            {t('genres.itemsEmpty')}
-          </div>
-        ) : (
-          <>
-            <label className="flex cursor-pointer items-center gap-2.5 border-b border-border px-1 pb-2 text-sm font-medium">
-              <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-              {t('genres.selectAll')}
-              <span className="text-muted-foreground">({count})</span>
-            </label>
-            <div className="max-h-72 overflow-y-auto">
-              {items.map((m) => (
-                <label
-                  key={m.id}
-                  className="flex cursor-pointer items-center gap-2.5 px-1 py-1.5 text-sm hover:bg-muted/50"
-                >
-                  <Checkbox checked={selected.includes(m.id)} onCheckedChange={() => toggle(m.id)} />
-                  <span className="min-w-0 flex-1 truncate">{movieTitle(m, i18n.language)}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{m.year ?? '—'}</span>
-                </label>
-              ))}
+      {/* ---------- ჩანაწერები: სია მონიშვნით + ქმედებები იმავე ეკრანზე (L5) ---------- */}
+      {section === 'items' && (
+        <>
+          {itemsQ.isLoading ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">{t('genres.itemsLoading')}</div>
+          ) : items.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
+              {t('genres.itemsEmpty')}
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {t('genres.selectedCount', { count: selected.length })}
-            </p>
-          </>
-        ))}
+          ) : (
+            <>
+              <label className="flex cursor-pointer items-center gap-2.5 border-b border-border px-1 pb-2 text-sm font-medium">
+                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                {t('genres.selectAll')}
+                <span className="text-muted-foreground">({count})</span>
+              </label>
+              <div className="max-h-64 overflow-y-auto">
+                {items.map((m) => (
+                  <label
+                    key={m.id}
+                    className="flex cursor-pointer items-center gap-2.5 px-1 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    <Checkbox checked={selected.includes(m.id)} onCheckedChange={() => toggle(m.id)} />
+                    <span className="min-w-0 flex-1 truncate">{movieTitle(m, lang)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{m.year ?? '—'}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* ქმედებები მონიშნულებზე — ჩახსნა / გადატანა / ჩანაცვლება */}
+              <div className="mt-4 space-y-3 border-t border-border pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
+                  <span className="text-sm">
+                    {t('genres.selectedCount', { count: selected.length })}
+                    {selected.length === 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {t('genres.actNeedSelection')}
+                      </span>
+                    )}
+                  </span>
+                  <Button variant="destructiveOutline" size="sm" onClick={detach} disabled={noSelection}>
+                    {t('genres.actDetach')}
+                  </Button>
+                </div>
+
+                <div>
+                  <span className="mb-1.5 block text-xs text-muted-foreground">{t('genres.actTarget')}</span>
+                  <GenreSingleSelect
+                    genres={others}
+                    value={target}
+                    onChange={setTarget}
+                    placeholder={t('genres.optReassignPick')}
+                  />
+                </div>
+
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">{t('genres.actHintMove')}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() =>
+                        targetGenre &&
+                        mut.mutate({ type, action: 'move', ids: selected, target_genre_id: targetGenre.id })
+                      }
+                      disabled={noSelection || !targetGenre}
+                    >
+                      {t('genres.actMove')}
+                    </Button>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 border-t border-border pt-2">
+                    <p className="text-xs text-destructive">{t('genres.actHintReplace')}</p>
+                    <Button
+                      variant="destructiveOutline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={replace}
+                      disabled={noSelection || !targetGenre}
+                    >
+                      {t('genres.actReplace')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       {/* ---------- დამატება: ჟანრზე არმიბმულები ---------- */}
       {section === 'add' && (
@@ -213,61 +275,6 @@ export function GenreItemsManager({
         </div>
       )}
 
-      {/* ---------- ქმედებები მონიშნულებზე ---------- */}
-      {section === 'actions' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2">
-            <span className="text-sm">
-              {t('genres.selectedCount', { count: selected.length })}
-              {selected.length === 0 && (
-                <span className="ml-2 text-xs text-muted-foreground">{t('genres.actNeedSelection')}</span>
-              )}
-            </span>
-            <Button variant="destructiveOutline" size="sm" onClick={detach} disabled={noSelection}>
-              {t('genres.actDetach')}
-            </Button>
-          </div>
-
-          <div>
-            <span className="mb-1.5 block text-xs text-muted-foreground">{t('genres.actTarget')}</span>
-            <GenreSingleSelect
-              genres={others}
-              value={target}
-              onChange={setTarget}
-              placeholder={t('genres.optReassignPick')}
-            />
-          </div>
-
-          <div className="space-y-2 rounded-lg border border-border p-3">
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-xs text-muted-foreground">{t('genres.actHintMove')}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() =>
-                  targetGenre && mut.mutate({ type, action: 'move', ids: selected, target_genre_id: targetGenre.id })
-                }
-                disabled={noSelection || !targetGenre}
-              >
-                {t('genres.actMove')}
-              </Button>
-            </div>
-            <div className="flex items-start justify-between gap-3 border-t border-border pt-2">
-              <p className="text-xs text-destructive">{t('genres.actHintReplace')}</p>
-              <Button
-                variant="destructiveOutline"
-                size="sm"
-                className="shrink-0"
-                onClick={replace}
-                disabled={noSelection || !targetGenre}
-              >
-                {t('genres.actReplace')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -319,7 +326,7 @@ function DomainPicker({
     <div className="mb-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">
-          {t(type === 'series' ? 'nav.series' : 'nav.movies')}
+          {t(MEDIA_NAV_KEY[type])}
         </span>
         <div className="flex gap-1">
           <button

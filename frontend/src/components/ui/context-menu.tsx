@@ -2,13 +2,16 @@ import * as React from 'react'
 import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LAYER_POPUP } from '@/lib/layers'
 
 export const ContextMenu = ContextMenuPrimitive.Root
 export const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 export const ContextMenuSub = ContextMenuPrimitive.Sub
 
-const contentCls =
-  'z-50 min-w-44 overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md'
+const contentCls = cn(
+  LAYER_POPUP,
+  'min-w-44 overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md',
+)
 const itemCls =
   'flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
 

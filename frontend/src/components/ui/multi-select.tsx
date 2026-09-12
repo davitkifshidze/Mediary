@@ -2,6 +2,7 @@ import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import { Check, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LAYER_POPUP } from '@/lib/layers'
 
 export interface MultiSelectOption {
   value: string
@@ -60,7 +61,10 @@ export function MultiSelect({
         <Popover.Content
           align="start"
           sideOffset={4}
-          className="z-50 max-h-72 w-[var(--radix-popover-trigger-width)] overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          className={cn(
+            LAYER_POPUP,
+            'max-h-72 w-[var(--radix-popover-trigger-width)] overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md',
+          )}
         >
           {options.map((o) => {
             const checked = value.includes(o.value)

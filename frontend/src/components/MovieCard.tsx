@@ -16,22 +16,24 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { mediaApi } from '@/api/media'
-import { mediaOf, type MediaType } from '@/lib/media'
+import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { cn } from '@/lib/utils'
 import { genreName, movieTitle } from '@/lib/display'
-import type { MovieListItem, Status } from '@/api/types'
-
-const STATUSES: Status[] = ['undecided', 'to_watch', 'watching', 'watched']
+import type { MovieListItem } from '@/api/types'
+import { useContentLang } from '@/lib/settings'
+import { statusName, useStatuses } from '@/lib/statuses'
 
 export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
   const { t, i18n } = useTranslation()
-  const lang = i18n.language
+  const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const nav = useNavigate()
   const loc = useLocation()
   const confirm = useConfirm()
   const { toast } = useToast()
   const api = mediaApi(type)
+  // §6.4 — სტატუსების სია ლექსიკონიდან (ქეში ერთია, ე.ი. ბარათზე დამატებითი მოთხოვნა არაა)
+  const { data: statuses = [] } = useStatuses(type)
   const { detailBase } = mediaOf(type)
   const missing = movie.missing ?? []
   const desc = lang === 'ka' ? movie.description_ka || movie.description_en : movie.description_en || movie.description_ka
@@ -40,20 +42,21 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
     qc.invalidateQueries({ queryKey: [type] })
     qc.invalidateQueries({ queryKey: [type, 'detail', String(movie.id)] })
   }
-  const statusMut = useMutation({ mutationFn: (s: Status) => api.setStatus(movie.id, s), onSuccess: inval })
+  const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(movie.id, s), onSuccess: inval })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(movie.id), onSuccess: inval })
   const delMut = useMutation({
     mutationFn: () => api.remove(movie.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [type] })
-      toast({ title: t('toast.deleted'), variant: 'success' })
+      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
+      toast({ title: t(mediaKey('toast.deleted', type)), variant: 'success' })
     },
   })
 
   const askDelete = async () => {
     const ok = await confirm({
-      title: t('confirm.deleteMovieTitle'),
-      description: t('confirm.deleteMovieDesc', { title: movieTitle(movie, lang) }),
+      title: t(mediaKey('confirm.deleteRecord', type)),
+      description: t('confirm.deleteRecordDesc', { name: movieTitle(movie, lang) }),
       confirmText: t('confirm.delete'),
       cancelText: t('confirm.cancel'),
       variant: 'destructive',
@@ -158,10 +161,10 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
         <ContextMenuSub>
           <ContextMenuSubTrigger>{t('form.status')}</ContextMenuSubTrigger>
           <ContextMenuSubContent>
-            {STATUSES.map((s) => (
-              <ContextMenuItem key={s} onSelect={() => statusMut.mutate(s)}>
-                <Check className={cn('size-3.5', movie.status === s ? 'opacity-100' : 'opacity-0')} />
-                {t(`status.${s}`)}
+            {statuses.map((s) => (
+              <ContextMenuItem key={s.id} onSelect={() => statusMut.mutate(s.key)}>
+                <Check className={cn('size-3.5', movie.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
+                {statusName(s, lang)}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>

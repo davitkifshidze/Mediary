@@ -1,29 +1,33 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Plus, Trash2, Upload } from 'lucide-react'
+import { Download, FileText, Play, Plus, Trash2, Upload } from 'lucide-react'
 import {
-  createNote,
-  deleteAttachment,
-  deleteNote,
-  fetchAttachments,
-  fetchNotes,
-  updateNote,
-  uploadAttachments,
+  createVideoNote,
+  deleteVideoFile,
+  deleteVideoNote,
+  fetchVideoFiles,
+  fetchVideoNotes,
+  fetchSimilarVideos,
+  updateVideoNote,
+  uploadVideoFiles,
   type Video,
 } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
+import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { PhotoGrid } from '@/components/ui/photo-grid'
+import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
    ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · ჩანიშვნები · დოკუმენტები.
-   ფაილები polymorphic `attachments`-შია, ე.ი. იგივე UI მომავალ მოდულებსაც გამოადგება.
+   ფაილები `video_files`-შია, ჩანიშვნები `video_notes`-ში — ცხრილი სექციისაა.
    ============================================================ */
 
 type Tab = 'video' | 'images' | 'notes' | 'docs'
@@ -35,7 +39,16 @@ function bytes(n: number): string {
   return `${(n / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
-export function VideoDetail({ video, onClose }: { video: Video; onClose: () => void }) {
+export function VideoDetail({
+  video,
+  onClose,
+  onOpen,
+}: {
+  video: Video
+  onClose: () => void
+  /** „მსგავს ვიდეოზე" გადასვლა (K4) — მშობელი წყვეტს, რას აკეთებს */
+  onOpen?: (video: Video) => void
+}) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -44,18 +57,18 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
   const [noteBody, setNoteBody] = useState('')
   const [editing, setEditing] = useState<{ id: number; body: string } | null>(null)
 
-  const attachmentsQ = useQuery({
-    queryKey: ['video-attachments', video.id],
-    queryFn: () => fetchAttachments(video.id),
+  const filesQ = useQuery({
+    queryKey: ['video-files', video.id],
+    queryFn: () => fetchVideoFiles(video.id),
   })
-  const notesQ = useQuery({ queryKey: ['video-notes', video.id], queryFn: () => fetchNotes(video.id) })
+  const notesQ = useQuery({ queryKey: ['video-notes', video.id], queryFn: () => fetchVideoNotes(video.id) })
 
-  const images = (attachmentsQ.data ?? []).filter((a) => a.kind === 'image')
-  const docs = (attachmentsQ.data ?? []).filter((a) => a.kind === 'doc')
+  const images = (filesQ.data ?? []).filter((a) => a.kind === 'image')
+  const docs = (filesQ.data ?? []).filter((a) => a.kind === 'doc')
   const notes = notesQ.data ?? []
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['video-attachments', video.id] })
+    qc.invalidateQueries({ queryKey: ['video-files', video.id] })
     qc.invalidateQueries({ queryKey: ['video-notes', video.id] })
     qc.invalidateQueries({ queryKey: ['videos'] })
   }
@@ -63,13 +76,13 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
 
   const upload = useMutation({
     mutationFn: ({ kind, files }: { kind: 'image' | 'doc'; files: File[] }) =>
-      uploadAttachments(video.id, kind, files),
+      uploadVideoFiles(video.id, kind, files),
     onSuccess: refresh,
     onError: fail,
   })
-  const removeAttachment = useMutation({ mutationFn: deleteAttachment, onSuccess: refresh, onError: fail })
+  const removeFile = useMutation({ mutationFn: deleteVideoFile, onSuccess: refresh, onError: fail })
   const addNote = useMutation({
-    mutationFn: (body: string) => createNote(video.id, body),
+    mutationFn: (body: string) => createVideoNote(video.id, body),
     onSuccess: () => {
       setNoteBody('')
       refresh()
@@ -77,14 +90,14 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
     onError: fail,
   })
   const saveNote = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: string }) => updateNote(id, body),
+    mutationFn: ({ id, body }: { id: number; body: string }) => updateVideoNote(id, body),
     onSuccess: () => {
       setEditing(null)
       refresh()
     },
     onError: fail,
   })
-  const removeNote = useMutation({ mutationFn: deleteNote, onSuccess: refresh, onError: fail })
+  const removeNote = useMutation({ mutationFn: deleteVideoNote, onSuccess: refresh, onError: fail })
 
   const pick = (kind: 'image' | 'doc') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -115,6 +128,13 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
 
   return (
     <ModalShell title={video.title} onClose={onClose} wide>
+      {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
+          `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
+      <div className="mt-4 flex justify-end">
+        {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+        <VisibilityBadge value={video.visibility} />
+      </div>
+
       <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />
 
       <div className="mt-4">
@@ -133,6 +153,7 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
                 ))}
               </p>
             )}
+            <SimilarVideos video={video} onOpen={onOpen} />
           </>
         )}
 
@@ -140,28 +161,19 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
           <>
             <TabInfo>{t('videos.imagesInfo')}</TabInfo>
             <div className="mb-3">{uploadButton('image')}</div>
-            {images.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                {t('videos.noImages')}
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {images.map((a) => (
-                  <div key={a.id} className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
-                    <a href={storageUrl(a.url) ?? '#'} target="_blank" rel="noopener noreferrer">
-                      <img src={storageUrl(a.url) ?? ''} alt="" className="size-full object-cover" loading="lazy" />
-                    </a>
-                    <button
-                      onClick={() => removeAttachment.mutate(a.id)}
-                      aria-label={t('actions.delete')}
-                      className="absolute right-1 top-1 hidden cursor-pointer rounded-md bg-black/70 p-1 text-white group-hover:block"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* საერთო `PhotoGrid` (§2.9) — ადრე თვითნაკეთი ბადე იყო, სადაც
+                დაჭერა ფოტოს **ახალ ჩანართში** ხსნიდა; ახლა lightbox-ია,
+                მონიშვნებით და „რამდენი გამოჩნდეს" არჩევანით. */}
+            <PhotoGrid
+              items={images.map((a) => ({
+                id: a.id,
+                src: a.url,
+                title: a.original_name,
+                size: a.size,
+              }))}
+              emptyText={t('videos.noImages')}
+              onDelete={(ids) => ids.forEach((id) => removeFile.mutate(id))}
+            />
           </>
         )}
 
@@ -229,7 +241,7 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
                           <button
                             onClick={async () => {
                               const ok = await confirm({
-                                title: t('videos.deleteNote'),
+                                title: t('videos.deleteVideoNote'),
                                 variant: 'destructive',
                               })
                               if (ok) removeNote.mutate(n.id)
@@ -274,7 +286,7 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
                       <Download className="size-4" />
                     </a>
                     <button
-                      onClick={() => removeAttachment.mutate(a.id)}
+                      onClick={() => removeFile.mutate(a.id)}
                       aria-label={t('actions.delete')}
                       className="shrink-0 cursor-pointer text-destructive hover:opacity-80"
                     >
@@ -288,5 +300,78 @@ export function VideoDetail({ video, onClose }: { video: Video; onClose: () => v
         )}
       </div>
     </ModalShell>
+  )
+}
+
+/* ---------- მსგავსი ვიდეოები (K4) ---------- */
+
+/**
+ * შემოთავაზება **ჩემი ბიბლიოთეკიდან** — საერთო ტეგები, სათაურის მსგავსება,
+ * იგივე პლატფორმა/ტიპი (backend: `VideoSearch::similar()`).
+ * YouTube-ის „related videos" API 2023-იდან აღარ არსებობს.
+ */
+function SimilarVideos({ video, onOpen }: { video: Video; onOpen?: (video: Video) => void }) {
+  const { t } = useTranslation()
+  const { data } = useQuery({
+    queryKey: ['video-similar', video.id],
+    queryFn: () => fetchSimilarVideos(video.id),
+    staleTime: 60_000,
+  })
+
+  const similar = data ?? []
+  if (!similar.length) return null
+
+  return (
+    <section className="mt-6 border-t border-border pt-4">
+      <h3 className="mb-3 text-sm font-semibold">{t('videos.similar')}</h3>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {similar.map((v) => {
+          const thumb = storageUrl(v.thumbnail)
+          const inner = (
+            <>
+              <span className="relative block aspect-video overflow-hidden rounded-lg bg-muted">
+                {thumb ? (
+                  <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="grid size-full place-items-center text-muted-foreground">
+                    <Play className="size-6" />
+                  </span>
+                )}
+                {v.duration && (
+                  <span className="absolute bottom-1 right-1 rounded-[4px] bg-black/75 px-1 py-0.5 text-[10px] text-white">
+                    {formatDuration(v.duration)}
+                  </span>
+                )}
+              </span>
+              <span className="mt-1.5 block truncate text-xs font-medium" title={v.title}>
+                {v.title}
+              </span>
+              <span className="block truncate text-[11px] capitalize text-muted-foreground">
+                {v.platform}
+                {v.tags.length > 0 && ` · #${v.tags.slice(0, 2).join(' #')}`}
+              </span>
+            </>
+          )
+
+          return (
+            <li key={v.id}>
+              {onOpen ? (
+                <button
+                  type="button"
+                  onClick={() => onOpen(v)}
+                  className="w-full cursor-pointer text-left hover:opacity-90"
+                >
+                  {inner}
+                </button>
+              ) : (
+                <a href={v.url} target="_blank" rel="noopener noreferrer" className="block hover:opacity-90">
+                  {inner}
+                </a>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }

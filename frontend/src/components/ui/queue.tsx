@@ -2,21 +2,42 @@ import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, SkipForward, X } from 'lucide-react'
+import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
+import {
+  fetchActorGalleryImages,
+  fetchGalleryItem,
+  type GalleryOptions,
+  type GalleryPlanItem,
+} from '@/api/gallery'
 import { mediaApi, syncItem, type SyncOptions, type SyncPlanItem } from '@/api/media'
+import { translateGenres, translateItem, type TranslationPlanItem } from '@/api/translations'
 import type { MediaType } from '@/lib/media'
+import { isMediaKey } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   Queue — ფონური, არაბლოკირებადი რიგი ორი სახის სამუშაოსთვის:
-     • `add`  — TMDB id-ით ჩანაწერის დამატება (აღმოაჩინე / მსახიობის გვერდი);
-     • `sync` — არსებული ჩანაწერის სინქრონი (Tasks J3) — თითო ჩანაწერი = თითო
-       მოკლე რექვესთი, ამიტომ სერვერი არ იბლოკება და გაჩერებაც შესაძლებელია.
+   Queue — ფონური, არაბლოკირებადი რიგი სამი სახის სამუშაოსთვის:
+     • `add`     — TMDB id-ით ჩანაწერის დამატება (აღმოაჩინე / მსახიობის გვერდი);
+     • `sync`    — არსებული ჩანაწერის სინქრონი (Tasks J3) — თითო ჩანაწერი = თითო
+       მოკლე რექვესთი, ამიტომ სერვერი არ იბლოკება და გაჩერებაც შესაძლებელია;
+     • `gallery` — ფოტოების ჩამოტვირთვა (Tasks 10), იმავე per-item მოდელით;
+     • `translate` — ნაკლული თარგმანების შევსება (Tasks 7). ჟანრების ლექსიკონი
+       აქ **ერთი ერთეულია** (`genresDict`) — ის გლობალურია და ერთ რექვესთში მუშავდება.
+     • `purge`   — მასობრივი წაშლა (Tasks 20.2). ⚠️ დესტრუქციულია, ამიტომ
+       რიგში მხოლოდ `/purge`-ის ცხადი დადასტურების შემდეგ ჯდება.
    ნავიგაცია არ იბლოკება (რიგი გლობალურია); refresh/close კი აფრთხილებს.
    ============================================================ */
 
 type QStatus = 'pending' | 'running' | 'done' | 'error'
-type QKind = 'add' | 'sync'
+type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge'
+
+/** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
+export interface PurgeQueueOptions {
+  target: PurgeTarget
+  media_type?: 'movie' | 'series'
+  user_id?: number
+}
 
 interface QItem {
   id: number
@@ -26,9 +47,24 @@ interface QItem {
   status: QStatus
   /** add — TMDB id */
   tmdbId?: number
-  /** sync — ლოკალური ჩანაწერის id + პარამეტრები */
+  /** sync/gallery — ლოკალური ჩანაწერის id + პარამეტრები */
   itemId?: number
   opts?: SyncOptions
+  /** gallery — რა ჩამოვიდეს (Tasks 10) */
+  galleryOpts?: GalleryOptions
+  /**
+   * gallery — ერთეული **მსახიობია** და არა ჩანაწერი.
+   *
+   * ⚠️ ცალკე დროშა და არა `mediaType: 'actor'`: `mediaType` ქეშის
+   * გასუფთავებას ემსახურება და `MediaType`-ია, ხოლო მსახიობი მედია-დომენი
+   * არ არის. დუბლის გასაღებშიც ეს გვჭირდება — მსახიობის id-ს და ფილმის
+   * id-ს ერთი და იგივე რიცხვი შეიძლება ჰქონდეს.
+   */
+  galleryActor?: boolean
+  /** translate — ჟანრების ლექსიკონი (ჩანაწერი არ აქვს, `itemId` ცარიელია) */
+  genresDict?: boolean
+  /** purge — რა სამიზნეზე და ვისთან იშლება (20.2) */
+  purgeOpts?: PurgeQueueOptions
   /** ჩავარდნის მიზეზი (J5) ან 'cancelled' */
   error?: string
   /** შესრულების დრო — დარჩენილი დროის შესაფასებლად */
@@ -41,6 +77,12 @@ interface QueueApi {
   enqueue: (items: { tmdbId: number; title: string }[], mediaType?: MediaType) => void
   /** სინქრონის რიგში ჩაყრა — `plan`-ის ჩანაწერები + ერთი და იგივე პარამეტრები */
   enqueueSync: (items: SyncPlanItem[], opts: SyncOptions) => void
+  /** გალერეის ჩამოტვირთვა (Tasks 10) — იგივე მოდელი, რაც სინქრონზე */
+  enqueueGallery: (items: GalleryPlanItem[], opts: GalleryOptions) => void
+  /** თარგმანების შევსება (Tasks 7); `genres` — ლექსიკონიც ერთ ერთეულად */
+  enqueueTranslate: (items: TranslationPlanItem[], genres?: boolean) => void
+  /** ⚠️ მასობრივი წაშლა (20.2) — მხოლოდ დადასტურებული სკოუპით */
+  enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
   isQueued: (tmdbId: number, mediaType?: MediaType) => boolean
   active: number
   isBusy: boolean
@@ -51,6 +93,9 @@ interface QueueApi {
 const QueueContext = React.createContext<QueueApi>({
   enqueue: () => {},
   enqueueSync: () => {},
+  enqueueGallery: () => {},
+  enqueueTranslate: () => {},
+  enqueuePurge: () => {},
   isQueued: () => false,
   active: 0,
   isBusy: false,
@@ -63,6 +108,18 @@ export function useQueue() {
 
 let nextId = 1
 
+/**
+ * რიგის სათაური სახეობის მიხედვით. ერთი ცხრილი ღრმა ternary-ს ნაცვლად —
+ * ახალი სახეობის დამატება ერთი რიგია.
+ */
+const HEADLINES: Record<QKind, { busy: string; done: string }> = {
+  purge: { busy: 'queue.purging', done: 'queue.purgeDone' },
+  gallery: { busy: 'queue.galleryRunning', done: 'queue.galleryDone' },
+  translate: { busy: 'queue.translating', done: 'queue.translateDone' },
+  sync: { busy: 'queue.syncing', done: 'queue.syncDone' },
+  add: { busy: 'queue.adding', done: 'queue.doneTitle' },
+}
+
 export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<QItem[]>([])
   const [expanded, setExpanded] = React.useState(false)
@@ -72,8 +129,23 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings()
   const runningRef = React.useRef(false)
   const abortRef = React.useRef<AbortController | null>(null)
-  const delayRef = React.useRef(settings.syncDelayMs)
-  delayRef.current = settings.syncDelayMs
+
+  /**
+   * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
+   * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Claude-ის
+   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery` — TMDB.
+   */
+  const paceOf = React.useCallback(
+    (kind: QKind) =>
+      kind === 'add' || kind === 'purge'
+        ? 0
+        : kind === 'translate'
+          ? settings.translateDelayMs
+          : settings.syncDelayMs,
+    [settings.translateDelayMs, settings.syncDelayMs],
+  )
+  const paceRef = React.useRef(paceOf)
+  paceRef.current = paceOf
 
   /** ახალი პარტიის დაწყებამდე — ჩაკეცვა + წინა (დასრულებული) პარტიის გასუფთავება */
   const freshBase = (cur: QItem[]) => {
@@ -131,6 +203,103 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  /**
+   * გალერეის ჩამოტვირთვა — **ერთეული ან ჩანაწერია, ან მსახიობი**
+   * (`item.type === 'actor'`). ერთი მეთოდი განზრახ: სახეობა თვითონ
+   * ერთეულზეა დაწერილი, ე.ი. შერეული პარტიაც (ჩანაწერები + მსახიობები)
+   * ერთ რიგში ჯდება და პროგრესიც ერთია.
+   */
+  const enqueueGallery = React.useCallback((toFetch: GalleryPlanItem[], opts: GalleryOptions) => {
+    setExpanded(true) // ჩამოტვირთვა გრძელია — პროგრესი მაშინვე ჩანს
+    setItems((cur) => {
+      const base = freshBase(cur)
+      const busy = new Set(
+        cur
+          .filter((i) => i.kind === 'gallery' && (i.status === 'pending' || i.status === 'running'))
+          .map((i) => `${i.galleryActor ? 'actor' : i.mediaType}:${i.itemId}`),
+      )
+      const fresh = toFetch
+        .filter((g) => !busy.has(`${g.type}:${g.id}`))
+        .map((g) => ({
+          id: nextId++,
+          kind: 'gallery' as QKind,
+          itemId: g.id,
+          title: g.year ? `${g.title} (${g.year})` : g.title,
+          // მსახიობი მედია-დომენი არ არის — `mediaType` მხოლოდ ქეშის გასუფთავებაა
+          mediaType: (isMediaKey(g.type) ? g.type : 'movie') as MediaType,
+          galleryActor: g.type === 'actor',
+          status: 'pending' as QStatus,
+          galleryOpts: opts,
+        }))
+      return fresh.length ? [...base, ...fresh] : base
+    })
+  }, [])
+
+  const enqueueTranslate = React.useCallback((toRun: TranslationPlanItem[], genres = false) => {
+    setExpanded(true) // თარგმანი გრძელია — პროგრესი მაშინვე ჩანს
+    setItems((cur) => {
+      const base = freshBase(cur)
+      const busy = new Set(
+        cur
+          .filter((i) => i.kind === 'translate' && (i.status === 'pending' || i.status === 'running'))
+          .map((i) => (i.genresDict ? 'genres' : `${i.mediaType}:${i.itemId}`)),
+      )
+      const fresh: QItem[] = toRun
+        .filter((r) => !busy.has(`${r.type}:${r.id}`))
+        .map((r) => ({
+          id: nextId++,
+          kind: 'translate' as QKind,
+          itemId: r.id,
+          title: r.year ? `${r.title} (${r.year})` : r.title,
+          mediaType: r.type,
+          status: 'pending' as QStatus,
+        }))
+      // ჟანრები ბოლოს — ერთი რექვესთი მთელ ლექსიკონზე
+      if (genres && !busy.has('genres')) {
+        fresh.push({
+          id: nextId++,
+          kind: 'translate' as QKind,
+          title: t('genres.title'),
+          mediaType: 'movie',
+          status: 'pending' as QStatus,
+          genresDict: true,
+        })
+      }
+      return fresh.length ? [...base, ...fresh] : base
+    })
+  }, [t])
+
+  /**
+   * ⚠️ მასობრივი წაშლა (20.2). დადასტურება `/purge`-ზე უკვე მოხდა, აქ
+   * მხოლოდ ციკლს ვატარებთ — id-ები `plan`-იდან მოვიდა და აღარ გადაითვლება.
+   */
+  const enqueuePurge = React.useCallback((toPurge: PurgePlanItem[], opts: PurgeQueueOptions) => {
+    setExpanded(true) // წაშლა დესტრუქციულია — პროგრესი მაშინვე ჩანს
+    setItems((cur) => {
+      const base = freshBase(cur)
+      // დუბლის გასაღები **სამიზნეზეა** და არა `mediaType`-ზე: ვიდეოსა და
+      // ფილმს ერთი და იგივე id შეიძლება ჰქონდეს
+      const busy = new Set(
+        cur
+          .filter((i) => i.kind === 'purge' && (i.status === 'pending' || i.status === 'running'))
+          .map((i) => `${i.purgeOpts?.target}:${i.itemId}`),
+      )
+      const fresh = toPurge
+        .filter((p) => !busy.has(`${opts.target}:${p.id}`))
+        .map((p) => ({
+          id: nextId++,
+          kind: 'purge' as QKind,
+          itemId: p.id,
+          title: p.year ? `${p.title} (${p.year})` : p.title,
+          // ⚠️ ვიდეო `MediaType` არ არის — ის მხოლოდ ქეშის გასუფთავებას ემსახურება
+          mediaType: (isMediaKey(p.type) ? p.type : 'movie') as MediaType,
+          status: 'pending' as QStatus,
+          purgeOpts: opts,
+        }))
+      return fresh.length ? [...base, ...fresh] : base
+    })
+  }, [])
+
   const cancelPending = React.useCallback(() => {
     setItems((cur) => cur.filter((i) => i.status !== 'pending'))
     abortRef.current?.abort()
@@ -159,22 +328,73 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
-    const job: Promise<{ ok: boolean; error?: string; skipped?: boolean }> =
-      next.kind === 'add'
+    const job: Promise<{
+      ok: boolean
+      error?: string
+      skipped?: boolean
+    }> = next.kind === 'add'
         ? mediaApi(next.mediaType)
             .addFromTmdb(next.tmdbId!)
             .then(() => ({ ok: true }))
-        : syncItem(next.mediaType, next.itemId!, next.opts ?? {}, ctrl.signal).then((r) => ({
-            ok: r.ok,
-            error: r.error ?? undefined,
-            skipped: r.skipped,
-          }))
+        : next.kind === 'gallery'
+          ? (next.galleryActor
+              ? // მსახიობის ფოტოები ჩანაწერზე არ გადის — თავისი endpoint-ია
+                fetchActorGalleryImages(
+                  next.itemId!,
+                  {
+                    per_actor: next.galleryOpts?.per_actor,
+                    // ⚠️ პორტრეტს თავისი ზომა აქვს (§3.2) — უამისოდ რიგი
+                    // ყოველთვის ნაგულისხმევს ჩამოწერდა და ტაბის არჩევანი
+                    // ჩუმად იკარგებოდა
+                    cast_size: next.galleryOpts?.cast_size,
+                    /* §8.2 — წყაროც არჩევანია (პორტრეტები · კადრები ფილმებიდან);
+                       მისი გამოტოვება ტაბის არჩევანს ჩუმად კარგავდა, ზუსტად
+                       ისე, როგორც ადრე `cast_size`-ს კარგავდა */
+                    cast_source: next.galleryOpts?.cast_source,
+                  },
+                  ctrl.signal,
+                )
+              : fetchGalleryItem(next.mediaType, next.itemId!, next.galleryOpts ?? {}, ctrl.signal)
+            ).then((r) => ({
+              ok: r.ok,
+              error: r.error ?? undefined,
+              // ახალი ფოტო არ მოვიდა (ყველა უკვე გვქონდა) — „გამოტოვებულია"
+              skipped: r.added === 0,
+            }))
+          : next.kind === 'translate'
+            ? (next.genresDict
+                ? translateGenres(ctrl.signal)
+                : translateItem(next.mediaType, next.itemId!, ctrl.signal)
+              ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped }))
+            : next.kind === 'purge'
+              ? purgeItem(next.purgeOpts!, next.itemId!, ctrl.signal).then((r) => ({
+                  ok: r.ok,
+                  error: r.error ?? undefined,
+                  skipped: r.skipped,
+                }))
+              : syncItem(next.mediaType, next.itemId!, next.opts ?? {}, ctrl.signal).then((r) => ({
+                  ok: r.ok,
+                  error: r.error ?? undefined,
+                  skipped: r.skipped,
+                }))
 
     job
       .then(({ ok, error, skipped }) => {
-        ;[next.mediaType, 'discover', 'actor', 'collection', 'genres', 'genre-items'].forEach((k) =>
-          qc.invalidateQueries({ queryKey: [k] }),
-        )
+        ;[
+          next.mediaType,
+          'discover',
+          'actor',
+          'collection',
+          'genres',
+          'genre-items',
+          'gallery',
+          'storage',
+          'translations',
+          // წაშლა ყველა მოდულს ეხება და დეშბორდის მრიცხველებსაც (20.2)
+          ...(next.kind === 'purge'
+            ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan']
+            : []),
+        ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         setItems((cur) =>
           cur.map((i) =>
             i.id === next.id
@@ -189,25 +409,30 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ),
         )
       })
-      .catch((e: { code?: string; message?: string }) => {
+      .catch((e: { code?: string; message?: string; response?: { status?: number } }) => {
         const cancelled = ctrl.signal.aborted || e?.code === 'ERR_CANCELED'
+        // 17.3 — კვოტა გავსდა: ნაკადი **ჩერდება** და არ აგრძელებს ცდას
+        const quotaFull = e?.response?.status === 413
+        if (quotaFull) qc.invalidateQueries({ queryKey: ['storage'] })
         setItems((cur) =>
-          cur.map((i) =>
-            i.id === next.id
-              ? {
-                  ...i,
-                  status: 'error',
-                  error: cancelled ? 'cancelled' : e?.message,
-                  ms: performance.now() - started,
-                }
-              : i,
-          ),
+          cur
+            .filter((i) => !(quotaFull && i.status === 'pending'))
+            .map((i) =>
+              i.id === next.id
+                ? {
+                    ...i,
+                    status: 'error',
+                    error: quotaFull ? 'quota' : cancelled ? 'cancelled' : e?.message,
+                    ms: performance.now() - started,
+                  }
+                : i,
+            ),
         )
       })
       .finally(() => {
         abortRef.current = null
-        // TMDB-ის rate-limit — პაუზა ჩანაწერებს შორის (პარამეტრებიდან, J5)
-        const delay = next.kind === 'sync' ? delayRef.current : 0
+        // rate-limit — პაუზა ჩანაწერებს შორის (პარამეტრებიდან, J5 / Tasks 7)
+        const delay = paceRef.current(next.kind)
         if (delay > 0) {
           window.setTimeout(() => {
             runningRef.current = false
@@ -258,24 +483,52 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   )
 
   const api = React.useMemo<QueueApi>(
-    () => ({ enqueue, enqueueSync, isQueued, active, isBusy, cancelPending }),
-    [enqueue, enqueueSync, isQueued, active, isBusy, cancelPending],
+    () => ({
+      enqueue,
+      enqueueSync,
+      enqueueGallery,
+      enqueueTranslate,
+      enqueuePurge,
+      isQueued,
+      active,
+      isBusy,
+      cancelPending,
+    }),
+    [
+      enqueue,
+      enqueueSync,
+      enqueueGallery,
+      enqueueTranslate,
+      enqueuePurge,
+      isQueued,
+      active,
+      isBusy,
+      cancelPending,
+    ],
   )
 
   const total = items.length
   const done = items.filter((i) => i.status === 'done').length
   const errors = items.filter((i) => i.status === 'error').length
   const running = items.find((i) => i.status === 'running')
-  const isSync = items.some((i) => i.kind === 'sync')
+  /** სათაურის სახეობა — შერეულ რიგში ყველაზე „ხმამაღალი" იმარჯვებს */
+  const headlineKind: QKind =
+    (['purge', 'gallery', 'translate', 'sync'] as QKind[]).find((k) => items.some((i) => i.kind === k)) ?? 'add'
 
-  // დარჩენილი დრო — დასრულებულების საშუალო × დარჩენილი (+ პაუზა)
+  /**
+   * დარჩენილი დრო — დასრულებულების საშუალო × დარჩენილი + **თითოეულის პაუზა**.
+   * პაუზა სახეობაზეა მიბმული (`paceOf`), ე.ი. შერეული რიგიც სწორად ითვლება:
+   * თარგმანი შეიძლება 5 წმ-ზე იდგეს, სინქრონი — 0.2-ზე.
+   */
   const remaining = React.useMemo(() => {
     const timed = items.filter((i) => i.ms != null)
     if (!timed.length || !active) return null
     const avg = timed.reduce((s, i) => s + (i.ms ?? 0), 0) / timed.length
-    const perItem = avg + (isSync ? settings.syncDelayMs : 0)
-    return Math.round((perItem * active) / 1000)
-  }, [items, active, isSync, settings.syncDelayMs])
+    const ms = items
+      .filter((i) => i.status === 'pending' || i.status === 'running')
+      .reduce((s, i) => s + avg + paceOf(i.kind), 0)
+    return Math.round(ms / 1000)
+  }, [items, active, paceOf])
 
   const fmt = (s: number) => (s < 60 ? `${s}${t('queue.sec')}` : `${Math.round(s / 60)}${t('queue.min')}`)
 
@@ -283,8 +536,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     <QueueContext.Provider value={api}>
       {children}
 
+      {/* ⚠️ `--player-h` — დამკვრელის ზოლი (§7.2) ქვემოთ დგას; ცვლადი მხოლოდ
+          მაშინ არსებობს, როცა რამე უკრავს, სხვა დროს `bottom-4` რჩება. */}
       {total > 0 && (
-        <div className="fb-toast pointer-events-auto fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        <div className="fb-toast pointer-events-auto fixed bottom-[calc(1rem+var(--player-h,0px))] right-4 z-[70] w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-lg">
           {/* header — ერთ ხაზზე; მთელი ზოლი ჩაკეცვა/ამოკეცვის ტოგლია */}
           <div className="flex items-center gap-2 pr-2">
             <button
@@ -305,13 +560,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
               </span>
               <span className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
-                  {isBusy
-                    ? isSync
-                      ? t('queue.syncing')
-                      : t('queue.adding')
-                    : isSync
-                      ? t('queue.syncDone')
-                      : t('queue.doneTitle')}
+                  {t(HEADLINES[headlineKind][isBusy ? 'busy' : 'done'])}
                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                     {done}/{total}
                     {errors > 0 && ` · ${t('queue.failed', { count: errors })}`}
@@ -368,7 +617,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     {/* ჩავარდნის მიზეზი — რომ ბრმად არ ვცადოთ ხელახლა (J5) */}
                     {it.status === 'error' && (
                       <span className="block truncate text-xs text-destructive">
-                        {it.error === 'cancelled' ? t('queue.cancelled') : it.error || t('toast.error')}
+                        {it.error === 'cancelled'
+                          ? t('queue.cancelled')
+                          : it.error === 'quota'
+                            ? t('queue.quotaStopped')
+                            : it.error || t('toast.error')}
                       </span>
                     )}
                   </span>

@@ -9,6 +9,11 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { PublicProfileCard } from '@/components/PublicProfileCard'
+import { StorageFilesCard } from '@/components/StorageFilesCard'
+import { PageContainer } from '@/components/ui/page'
+import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
 
 /** პროფილი (F4): სახელი/გვარი/username/მეილი/ავატარი + პაროლის ცვლილება */
@@ -22,6 +27,8 @@ export function ProfilePage() {
     last_name: user?.last_name ?? '',
     username: user?.username ?? '',
     email: user?.email ?? '',
+    // Tasks 16.1 — ბიო საჯარო პროფილის თავშია; ინახება იმავე ფორმით
+    bio: user?.bio ?? '',
   })
   const [avatar, setAvatar] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -36,7 +43,7 @@ export function ProfilePage() {
 
   const field = (key: keyof typeof form) => ({
     value: form[key],
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value })),
   })
 
@@ -102,7 +109,7 @@ export function ProfilePage() {
   const avatarUrl = preview ?? storageUrl(user.avatar_path)
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-8">
+    <PageContainer>
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -111,10 +118,14 @@ export function ProfilePage() {
         {t('actions.back')}
       </Link>
 
-      <h1 className="text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">
-        {user.email} · {t(`roles.${user.role}`)}
-      </p>
+      <PageHeader
+        title={t('profile.title')}
+        subtitle={
+          <>
+            {user.email} · {t(`roles.${user.role}`)}
+          </>
+        }
+      />
 
       {/* ---------- ძირითადი ინფორმაცია ---------- */}
       <form onSubmit={saveProfile} className="mb-6 rounded-xl border border-border bg-card p-5">
@@ -163,6 +174,12 @@ export function ProfilePage() {
             <Input id="email" type="email" {...field('email')} />
             {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="bio">{t('profile.bio')}</Label>
+            <Textarea id="bio" rows={3} maxLength={1000} {...field('bio')} />
+            <p className="mt-1 text-xs text-muted-foreground">{t('profile.bioHint')}</p>
+            {errors.bio && <p className="mt-1 text-xs text-destructive">{errors.bio}</p>}
+          </div>
         </div>
 
         <div className="mt-4 flex justify-end">
@@ -172,6 +189,15 @@ export function ProfilePage() {
           </Button>
         </div>
       </form>
+
+      {/* ---------- საჯარო პროფილი (Tasks 16.1 + §6.1) ---------- */}
+      <PublicProfileCard />
+
+      {/* ---------- ატვირთული ფაილები (§6.2) ----------
+          პარამეტრებიდან აქ გადავიდა: „რა ავტვირთე" ანგარიშის ფაქტია და არა
+          პარამეტრი. ლიმიტი, მოდულებზე გადანაწილება და ობოლი ფაილები
+          `/settings`-ზე დარჩა. */}
+      <StorageFilesCard />
 
       {/* ---------- პაროლი ---------- */}
       <form onSubmit={savePassword} className="rounded-xl border border-border bg-card p-5">
@@ -223,6 +249,6 @@ export function ProfilePage() {
           </Button>
         </div>
       </form>
-    </main>
+    </PageContainer>
   )
 }

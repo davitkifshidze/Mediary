@@ -16,7 +16,7 @@ import { useQueue } from '@/components/ui/queue'
 import { PosterImage } from './PosterImage'
 import { AddCardHover } from './AddCardHover'
 import { genreName, tmdbSubtitle, tmdbTitle } from '@/lib/display'
-import { useSettings } from '@/lib/settings'
+import { useContentLang, useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 export function DiscoverModal({
@@ -33,6 +33,7 @@ export function DiscoverModal({
   type?: MediaType
 }) {
   const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const { toast } = useToast()
   const { settings } = useSettings()
@@ -142,7 +143,7 @@ export function DiscoverModal({
               <SelectItem value="any">{t('discover.anyGenre')}</SelectItem>
               {genres.map((g) => (
                 <SelectItem key={g.slug} value={g.slug}>
-                  {genreName(g, i18n.language)}
+                  {genreName(g, lang)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -236,8 +237,8 @@ export function DiscoverModal({
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
               {q.data.results.map((r) => {
                 const busy = isQueued(r.tmdb_id, type)
-                const title = tmdbTitle(r, i18n.language)
-                const alt = tmdbSubtitle(r, i18n.language)
+                const title = tmdbTitle(r, lang)
+                const alt = tmdbSubtitle(r, lang)
                 const inner = (
                   <>
                     <div className="relative overflow-hidden rounded-lg bg-muted ring-1 ring-border">
@@ -297,7 +298,7 @@ export function DiscoverModal({
                 return (
                   <Tooltip key={r.tmdb_id} delayDuration={600}>
                     <TooltipTrigger asChild>{card}</TooltipTrigger>
-                    <AddCardHover title={title} genres={r.genres} overview={r.overview} lang={i18n.language} />
+                    <AddCardHover title={title} genres={r.genres} overview={r.overview} lang={lang} />
                   </Tooltip>
                 )
               })}

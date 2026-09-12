@@ -11,21 +11,26 @@ import {
   type Candidate,
   type LookupDraft,
 } from '@/api/media'
+import { useModuleFields } from '@/lib/fields'
 import { mediaOf, type MediaType } from '@/lib/media'
-import type { Status } from '@/api/types'
+import { useSettings } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
+import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { FieldLabel } from '@/components/ui/field-label'
 import { Switch } from '@/components/ui/switch'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PosterImage } from '@/components/PosterImage'
 import { PosterUploader } from '@/components/PosterUploader'
+import { PageContainer } from '@/components/ui/page'
 import { GenreSelect } from '@/components/GenreSelect'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
-
-const STATUSES: Status[] = ['undecided', 'to_watch', 'watching', 'watched']
+import { statusName, statusTone, useStatuses } from '@/lib/statuses'
+import { useContentLang } from '@/lib/settings'
 
 const EMPTY = {
   title_ka: '',
@@ -33,11 +38,15 @@ const EMPTY = {
   year: '',
   imdb_id: '',
   ge_url: '',
+  trailer_url: '',
   description_ka: '',
   description_en: '',
   rating: '',
+  // §2.5 — ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
+  runtime: '',
   genres: [] as string[],
-  status: 'undecided' as Status,
+  /** §6.4 — ლექსიკონის **გასაღები**; ცარიელი = „როგორც არის" (ახალზე ნაგულისხმევი) */
+  status: '',
   is_favorite: false,
 }
 
@@ -49,6 +58,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const api = mediaApi(type)
+  const lang = useContentLang(i18n.language)
+  // §6.4 — სტატუსების ლექსიკონი დომენისაა
+  const { data: statuses = [] } = useStatuses(type)
+  const { settings } = useSettings()
   const { detailBase, libraryPath } = mediaOf(type)
   const backTo = editing ? `${detailBase}/${id}` : libraryPath
 
@@ -62,8 +75,15 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const [lookupErr, setLookupErr] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
 
+  // §6 — რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
+  const fields = useModuleFields(type)
+
   // დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს
-  const tm = (key: string) => t(type === 'series' ? `form.${key}Series` : `form.${key}`)
+  /* დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს.
+     ⚠️ **სუფიქსი დომენიდან იგება** (`Series` / `Anime`) და ფილმი უსუფიქსოა:
+     ასე მესამე დომენის (§7.1) დამატება ერთი i18n-წყვილია და არა `if`. */
+  const tm = (key: string) =>
+    t(type === 'movie' ? `form.${key}` : `form.${key}${type === 'series' ? 'Series' : 'Anime'}`)
 
   const movieQ = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!), enabled: editing })
   const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
@@ -76,11 +96,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       year: m.year ? String(m.year) : '',
       imdb_id: m.imdb_id ?? '',
       ge_url: m.ge_url ?? '',
+      trailer_url: m.trailer_url ?? '',
       description_ka: m.description_ka ?? '',
       description_en: m.description_en ?? '',
       rating: m.rating ?? '',
+      runtime: m.runtime ? String(m.runtime) : '',
       genres: m.genres.map((g) => g.slug),
-      status: m.status,
+      status: m.status?.key ?? '',
       is_favorite: m.is_favorite,
     })
     if (m.poster) setPreview(m.poster)
@@ -96,10 +118,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     if (form.year) fd.append('year', form.year)
     if (form.imdb_id) fd.append('imdb_id', form.imdb_id)
     if (form.ge_url) fd.append('ge_url', form.ge_url)
+    if (form.trailer_url) fd.append('trailer_url', form.trailer_url)
     fd.append('description_ka', form.description_ka)
     fd.append('description_en', form.description_en)
     if (form.rating) fd.append('rating', form.rating)
-    fd.append('status', form.status)
+    if (form.runtime) fd.append('runtime', form.runtime)
+    // ცარიელი გასაღები საერთოდ არ იგზავნება — backend ნაგულისხმევს დაუყენებს
+    if (form.status) fd.append('status', form.status)
     fd.append('is_favorite', form.is_favorite ? '1' : '0')
     const nameBySlug = new Map((genresQ.data ?? []).map((g) => [g.slug, g.name_en]))
     form.genres.forEach((slug) => {
@@ -179,7 +204,9 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       const saved = editing
         ? await api.update(Number(id), buildFormData())
         : await api.create(buildFormData())
-      if (lookupTmdbId) {
+      // 18 — ავტომატური resync გამორთვადია: მედიის ჩამოტვირთვა შენახვას
+      // აყოვნებს, ხოლო `/sync` იმავეს მოგვიანებით და მასობრივად აკეთებს.
+      if (lookupTmdbId && settings.autoResync) {
         try {
           return await api.resync(saved.id)
         } catch {
@@ -191,7 +218,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     onSuccess: (m) => {
       qc.invalidateQueries({ queryKey: [type] })
       qc.invalidateQueries({ queryKey: ['genres'] })
-      if (!editing) toast({ title: t('toast.added'), variant: 'success' })
+      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი დაემატა" ეწერა
+      if (!editing) {
+        toast({ title: t(type === 'series' ? 'toast.addedSeries' : 'toast.added'), variant: 'success' })
+      }
       nav(`${detailBase}/${m.id}`)
     },
     onError: (e: { response?: { data?: { errors?: Record<string, string[]> } } }) => {
@@ -230,7 +260,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     errors[field] ? <p className="mt-1 text-xs text-destructive">{errors[field][0]}</p> : null
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-5 sm:py-8">
+    <PageContainer width="narrow">
       <Link
         to={backTo}
         className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -327,20 +357,63 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           <div className="mb-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {t('detail.content')} · {i18n.language === 'ka' ? 'ქართული' : 'English'}
           </div>
+          {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა,
+              ე.ი. `fields.shows('title')`-ს შემოწმებას აზრი არ აქვს — backend
+              მას მაინც `true`-ს დაუბრუნებს. */}
           {i18n.language === 'ka' ? (
             <>
-              <Label>{t('form.titleField')}</Label>
-              <Input value={form.title_ka} onChange={(e) => set('title_ka', e.target.value)} />
-              <Label className="mt-4">{t('form.descField')}</Label>
-              <Textarea value={form.description_ka} onChange={(e) => set('description_ka', e.target.value)} />
+              <FieldLabel required hint={t('form.requiredEitherLang')}>
+                {fields.label('title')}
+              </FieldLabel>
+              <Input
+                value={form.title_ka}
+                placeholder={fields.placeholder('title')}
+                onChange={(e) => set('title_ka', e.target.value)}
+              />
+              {fields.shows('description') && (
+                <>
+                  <FieldLabel
+                    className="mt-4"
+                    required={fields.required('description')}
+                    hint={fields.hint('description')}
+                  >
+                    {fields.label('description')}
+                  </FieldLabel>
+                  <Textarea
+                    value={form.description_ka}
+                    placeholder={fields.placeholder('description')}
+                    onChange={(e) => set('description_ka', e.target.value)}
+                  />
+                </>
+              )}
             </>
           ) : (
             <>
-              <Label>{t('form.titleField')}</Label>
-              <Input value={form.title_en} onChange={(e) => set('title_en', e.target.value)} />
+              <FieldLabel required hint={t('form.requiredEitherLang')}>
+                {fields.label('title')}
+              </FieldLabel>
+              <Input
+                value={form.title_en}
+                placeholder={fields.placeholder('title')}
+                onChange={(e) => set('title_en', e.target.value)}
+              />
               {err('title_en')}
-              <Label className="mt-4">{t('form.descField')}</Label>
-              <Textarea value={form.description_en} onChange={(e) => set('description_en', e.target.value)} />
+              {fields.shows('description') && (
+                <>
+                  <FieldLabel
+                    className="mt-4"
+                    required={fields.required('description')}
+                    hint={fields.hint('description')}
+                  >
+                    {fields.label('description')}
+                  </FieldLabel>
+                  <Textarea
+                    value={form.description_en}
+                    placeholder={fields.placeholder('description')}
+                    onChange={(e) => set('description_en', e.target.value)}
+                  />
+                </>
+              )}
             </>
           )}
         </div>
@@ -351,8 +424,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             {t('form.details')}
           </div>
           <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="shrink-0">
-              <Label>{t('form.poster')}</Label>
+            <div className={fields.shows('poster') ? 'shrink-0' : 'hidden'}>
+              <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
+                {fields.label('poster')}
+              </FieldLabel>
               <PosterUploader
                 preview={preview}
                 onSelect={(f) => {
@@ -369,38 +444,89 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             </div>
 
             <div className="grid flex-1 grid-cols-2 gap-4">
-              <div>
-                <Label>{t('form.year')}</Label>
-                <Input type="number" value={form.year} onChange={(e) => set('year', e.target.value)} />
-                {err('year')}
-              </div>
-              <div>
-                <Label>{t('detail.rating')}</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="10"
-                  value={form.rating}
-                  onChange={(e) => set('rating', e.target.value)}
-                />
-              </div>
+              {fields.shows('year') && (
+                <div>
+                  <FieldLabel required={fields.required('year')} hint={fields.hint('year')}>
+                    {fields.label('year')}
+                  </FieldLabel>
+                  <Input
+                    type="number"
+                    value={form.year}
+                    placeholder={fields.placeholder('year')}
+                    onChange={(e) => set('year', e.target.value)}
+                  />
+                  {err('year')}
+                </div>
+              )}
+              {fields.shows('rating') && (
+                <div>
+                  <FieldLabel required={fields.required('rating')} hint={fields.hint('rating')}>
+                    {fields.label('rating')}
+                  </FieldLabel>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    placeholder={fields.placeholder('rating')}
+                    value={form.rating}
+                    onChange={(e) => set('rating', e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          <div>
-            <Label>{t('form.ge_url')}</Label>
-            <Input
-              value={form.ge_url}
-              onChange={(e) => set('ge_url', e.target.value)}
-              placeholder="https://…"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">{t('form.ge_urlHint')}</p>
-            {err('ge_url')}
-          </div>
+          {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
+          {fields.shows('runtime') && (
+            <div>
+              <FieldLabel required={fields.required('runtime')} hint={fields.hint('runtime')}>
+                {fields.label('runtime')}
+              </FieldLabel>
+              <DurationInput
+                unit="minutes"
+                value={form.runtime ? Number(form.runtime) : null}
+                onChange={(v) => set('runtime', v == null ? '' : String(v))}
+              />
+              {err('runtime')}
+            </div>
+          )}
 
-          <div>
-            <Label>{t('form.genres')}</Label>
+          {fields.shows('ge_url') && (
+            <div>
+              <FieldLabel required={fields.required('ge_url')} hint={fields.hint('ge_url')}>
+                {fields.label('ge_url')}
+              </FieldLabel>
+              <Input
+                value={form.ge_url}
+                onChange={(e) => set('ge_url', e.target.value)}
+                placeholder={fields.placeholder('ge_url') ?? 'https://…'}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">{t('form.ge_urlHint')}</p>
+              {err('ge_url')}
+            </div>
+          )}
+
+          {/* ტრეილერი (Tasks 9) — ცარიელზე სინქრონი TMDB-დან თვითონ მოიტანს */}
+          {fields.shows('trailer_url') && (
+            <div>
+              <FieldLabel required={fields.required('trailer_url')} hint={fields.hint('trailer_url')}>
+                {fields.label('trailer_url')}
+              </FieldLabel>
+              <Input
+                value={form.trailer_url}
+                onChange={(e) => set('trailer_url', e.target.value)}
+                placeholder={fields.placeholder('trailer_url') ?? 'https://www.youtube.com/watch?v=…'}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">{t('form.trailer_urlHint')}</p>
+              {err('trailer_url')}
+            </div>
+          )}
+
+          <div className={fields.shows('genres') ? undefined : 'hidden'}>
+            <FieldLabel required={fields.required('genres')} hint={fields.hint('genres')}>
+              {fields.label('genres')}
+            </FieldLabel>
             <GenreSelect
               genres={genresQ.data ?? []}
               value={form.genres}
@@ -409,32 +535,42 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
-            <div>
-              <Label>{t('form.status')}</Label>
+            <div className={fields.shows('status') ? undefined : 'hidden'}>
+              <FieldLabel required={fields.required('status')} hint={fields.hint('status')}>
+                {fields.label('status')}
+              </FieldLabel>
               <div className="flex flex-wrap gap-1.5">
-                {STATUSES.map((s) => (
+                {/* §6.4 — სია ლექსიკონიდან; ცარიელზე backend ნაგულისხმევს დაადებს */}
+                {statuses.map((s) => (
                   <button
-                    key={s}
+                    key={s.id}
                     type="button"
-                    onClick={() => set('status', s)}
+                    onClick={() => set('status', s.key)}
                     className={cn(
                       'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                      form.status === s ? STATUS_ACTIVE[s] : STATUS_INACTIVE[s],
+                      form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
                   >
-                    {t(`status.${s}`)}
+                    {statusName(s, lang)}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-6">
-              <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
-              <Label htmlFor="fav" className="mb-0 cursor-pointer text-sm">
-                {t('form.favorite')}
-              </Label>
-            </div>
+            {fields.shows('is_favorite') && (
+              <div className="flex items-center gap-2 pt-6">
+                <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
+                <Label htmlFor="fav" className="mb-0 cursor-pointer text-sm">
+                  {fields.label('is_favorite')}
+                </Label>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* §6 ფაზა 3 — მორგებული ველები. ⚠️ ბარათი **თვითონ ინახავს თავს**
+            (მნიშვნელობები ცალკე ცხრილშია), ამიტომ მისი ღილაკი `type="button"`-ია
+            და ამ ფორმის submit-ს არ უშვებს. */}
+        <CustomFieldsCard module={type} recordId={editing ? Number(id) : null} />
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={mut.isPending}>
@@ -463,6 +599,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           </Link>
         </div>
       </form>
-    </main>
+    </PageContainer>
   )
 }

@@ -1,14 +1,18 @@
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { fetchActor, type Suggestion } from '@/api/media'
 import { mediaOf, type MediaType } from '@/lib/media'
 import { tmdbSubtitle, tmdbTitle } from '@/lib/display'
-import { useSettings } from '@/lib/settings'
+import { useContentLang, useSettings } from '@/lib/settings'
+import { PageContainer } from '@/components/ui/page'
 import { PosterImage } from '@/components/PosterImage'
 import { MovieGrid } from '@/components/MovieGrid'
+import { ActorGallery } from '@/components/RecordGallery'
+import { ActorHero } from '@/components/ActorHero'
+import { ActorWebPhotos } from '@/components/ActorWebPhotos'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { useQueue } from '@/components/ui/queue'
@@ -29,6 +33,7 @@ function SuggestionSection({
   perPage: number
 }) {
   const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const { enqueue, isQueued } = useQueue()
   const { detailBase } = mediaOf(mediaType)
   const [page, setPage] = useState(1)
@@ -45,8 +50,8 @@ function SuggestionSection({
       <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {items.slice((current - 1) * perPage, current * perPage).map((s) => {
           const busy = isQueued(s.tmdb_id, mediaType)
-          const label = tmdbTitle(s, i18n.language)
-          const alt = tmdbSubtitle(s, i18n.language)
+          const label = tmdbTitle(s, lang)
+          const alt = tmdbSubtitle(s, lang)
           const inner = (
             <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted shadow-sm ring-1 ring-transparent transition-all duration-300 group-hover/sug:-translate-y-1 group-hover/sug:shadow-xl group-hover/sug:ring-primary/40">
               <PosterImage
@@ -112,7 +117,7 @@ function SuggestionSection({
           return (
             <Tooltip key={s.tmdb_id} delayDuration={600}>
               <TooltipTrigger asChild>{card}</TooltipTrigger>
-              <AddCardHover title={label} genres={s.genres} overview={s.overview} lang={i18n.language} />
+              <AddCardHover title={label} genres={s.genres} overview={s.overview} lang={lang} />
             </Tooltip>
           )
         })}
@@ -135,32 +140,89 @@ function SuggestionSection({
   )
 }
 
+/**
+ * 19.3 — „owned შემოთავაზების დუბლი".
+ *
+ * ბიბლიოთეკაში უკვე არსებული ჩანაწერი ორჯერ ჩანდა: „ჩემს კოლექციაში"
+ * სექციაშიც და შემოთავაზებებშიც. backend განზრახ **არ** ჭრის მათ სიიდან
+ * (`CastController`) — თუ დამატებისთანავე გაქრებოდა, კარტი თითის ქვეშ
+ * გაუჩინარდებოდა და „დაემატა" ნიშანს ვერავინ დაინახავდა.
+ *
+ * ⚠️ ამიტომ ჭრა **ფრონტზეა და დროზეა მიბმული**: ვმალავთ მხოლოდ იმას, რაც
+ * გვერდის გახსნის მომენტისთვის უკვე გვქონდა. ამ სესიაზე დამატებული
+ * ჩანაწერი ადგილზე რჩება, „დაემატა" ნიშნით — ე.ი. დუბლიც ქრება და
+ * დამატების უკუკავშირიც რჩება.
+ */
+function useAlreadyOwned(actorId: string | undefined, data: { suggestions: Suggestion[]; series_suggestions: Suggestion[] } | undefined) {
+  const owned = useRef<{ actorId?: string; ids: Set<number> }>({ ids: new Set() })
+
+  useEffect(() => {
+    if (!data) return
+    // ერთხელ, თითო მსახიობზე — refetch-ი (დამატების შემდეგ) სიას აღარ ცვლის
+    if (owned.current.actorId === actorId) return
+    owned.current = {
+      actorId,
+      ids: new Set(
+        [...data.suggestions, ...data.series_suggestions]
+          .filter((s) => s.owned)
+          .map((s) => s.tmdb_id),
+      ),
+    }
+  }, [actorId, data])
+
+  return owned.current.actorId === actorId ? owned.current.ids : new Set<number>()
+}
+
 export function ActorPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const { settings } = useSettings()
   const { data, isLoading } = useQuery({ queryKey: ['actor', id], queryFn: () => fetchActor(id!) })
 
+  const alreadyOwned = useAlreadyOwned(id, data)
+  const movieSuggestions = useMemo(
+    () => (data?.suggestions ?? []).filter((s) => !alreadyOwned.has(s.tmdb_id)),
+    [data?.suggestions, alreadyOwned],
+  )
+  const seriesSuggestions = useMemo(
+    () => (data?.series_suggestions ?? []).filter((s) => !alreadyOwned.has(s.tmdb_id)),
+    [data?.series_suggestions, alreadyOwned],
+  )
+
   if (isLoading || !data) {
-    return <div className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">{t('api.loading')}</div>
+    return <PageContainer><p className="text-muted-foreground">{t('api.loading')}</p></PageContainer>
   }
 
   const a = data.actor
-  const name = i18n.language === 'ka' ? a.name_ka || a.name : a.name
+  const name = lang === 'ka' ? a.name_ka || a.name : a.name
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8">
-      <Link
-        to="/"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+    <PageContainer>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-5 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         {t('actions.back')}
-      </Link>
+      </button>
 
-      <div className="mb-8 flex items-center gap-4">
-        <PosterImage src={a.photo} alt={name} className="size-24 rounded-full ring-1 ring-border" />
-        <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
+      {/* §8.1 — **შიდა გვერდის თავი**: ბიოგრაფია, დაბადება, ოფიციალური
+          ბმულები (IMDb · Instagram · Wikidata) და TMDB-დან განახლების ღილაკი.
+          ⚠️ ადრე აქ მხოლოდ ავატარი და სახელი იდო — ე.ი. „შიდა გვერდი"
+          სათაურის მეტს არაფერს ამბობდა. */}
+      <ActorHero actor={a} name={name} />
+
+      {/* §7.5 — ტეგები + ვებიდან ძებნა. TMDB-ზე მსახიობს ხშირად სამი ფოტო
+          აქვს, ე.ი. „მხოლოდ TMDB არ იკმარებს" სწორედ აქ ხსნება. */}
+      <ActorWebPhotos actorId={Number(id)} actorName={name} tags={a.tags ?? []} />
+
+      {/* გალერეა (Tasks 10 → §8) — ფოტოები, ვიდეო-ბმულები და ჩამოტვირთვა
+          იმავე დიალოგით, რაც გალერეაშია (ამ მსახიობზე მიბმული). */}
+      <div className="mb-10">
+        <ActorGallery castId={Number(id)} actorName={name} />
       </div>
 
       {data.movies.length > 0 && (
@@ -177,23 +239,32 @@ export function ActorPage() {
         </section>
       )}
 
-      {data.suggestions.length > 0 && (
+      {/* §7.1 — მესამე მედია-დომენი; შემოთავაზება ცალკე არ აქვს (იხ. `CastController`) */}
+      {data.animes.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-4 text-lg font-semibold">{t('actor.inCollectionAnime')}</h2>
+          <MovieGrid movies={data.animes} type="anime" />
+        </section>
+      )}
+
+      {/* 19.3 — უკვე კოლექციაში მყოფი ჩანაწერი აქ აღარ მეორდება (იხ. `useAlreadyOwned`) */}
+      {movieSuggestions.length > 0 && (
         <SuggestionSection
           title={t('actor.more')}
-          items={data.suggestions}
+          items={movieSuggestions}
           mediaType="movie"
           perPage={settings.actorMoviesPerPage}
         />
       )}
 
-      {data.series_suggestions.length > 0 && (
+      {seriesSuggestions.length > 0 && (
         <SuggestionSection
           title={t('actor.moreSeries')}
-          items={data.series_suggestions}
+          items={seriesSuggestions}
           mediaType="series"
           perPage={settings.actorSeriesPerPage}
         />
       )}
-    </main>
+    </PageContainer>
   )
 }

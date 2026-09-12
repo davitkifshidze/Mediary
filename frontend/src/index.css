@@ -187,3 +187,36 @@
     scrollbar-color: var(--muted-foreground) var(--muted);
   }
 }
+
+/* react-day-picker (Tasks §2.8) — თემის ცვლადებზე მიბმა.
+   ⚠️ ბიბლიოთეკის CSS `--rdp-*`-ზეა აწყობილი, ე.ი. ერთი ბლოკი ყოფნის და
+   თითო კლასის გადაწერა (და ორ თემად გაორება) არ სჭირდება. */
+.fb-rdp {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: color-mix(in oklab, var(--primary) 18%, transparent);
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-border-radius: 8px;
+  --rdp-nav_button-height: 1.75rem;
+  --rdp-nav_button-width: 1.75rem;
+  --rdp-months-gap: 1.25rem;
+  --rdp-range_start-color: var(--primary-foreground);
+  --rdp-range_end-color: var(--primary-foreground);
+  font-size: 0.875rem;
+}
+.fb-rdp .rdp-selected .rdp-day_button {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.fb-rdp .rdp-day_button:hover:not([disabled]) {
+  background-color: var(--muted);
+}
+
+/* yet-another-react-lightbox (Tasks §2.9) — ჩვენს „სართულებზე" მიბმა.
+   ⚠️ ბიბლიოთეკის ნაგულისხმევი 9999-ია, ე.ი. ჩამოსაშლელი (z-100) მის **ქვევით**
+   დარჩებოდა და §1.2-ის ბაგი lightbox-ში დაბრუნდებოდა (იხ. `lib/layers.ts`). */
+:root {
+  --yarl__portal_zindex: 80;
+}

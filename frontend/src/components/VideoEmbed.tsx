@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Video } from '@/api/videos'
+import { isAllowedEmbed } from '@/lib/embed'
 
 /**
  * ვიდეოს ჩვენება (I5).
@@ -8,20 +9,20 @@ import type { Video } from '@/api/videos'
  * ⚠️ უსაფრთხოება: iframe **მხოლოდ** backend-ის allowlist-იდან მოსულ `embed_url`-ს
  * იღებს (და აქვე ხელახლა მოწმდება ჰოსტი) — თვითნებური HTML არსად ირენდერება.
  * პირდაპირი ფაილი `<video>`-შია; უცნობი წყარო — უბრალოდ ბმული.
+ *
+ * ⚠️ allowlist-ის ასლი აქ **აღარ არის** — `lib/embed.ts`-შია, იმავეს რომ
+ * კითხულობდეს ერთიანი დამკვრელიც (§7.2).
  */
-const ALLOWED_EMBED_HOSTS = ['www.youtube-nocookie.com', 'player.vimeo.com', 'geo.dailymotion.com']
 
-function isAllowedEmbed(url: string | null): boolean {
-  if (!url) return false
-  try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'https:' && ALLOWED_EMBED_HOSTS.includes(parsed.host)
-  } catch {
-    return false
-  }
+/**
+ * ვიწრო ფორმა — მთელი `Video` საჭირო არაა.
+ * Tasks 9-ის ტრეილერიც ამ სახით გადმოეცემა (`trailer_url`/`trailer_embed_url`).
+ */
+export type Embeddable = Pick<Video, 'url' | 'embed_url' | 'title'> & {
+  platform?: Video['platform']
 }
 
-export function VideoEmbed({ video }: { video: Video }) {
+export function VideoEmbed({ video }: { video: Embeddable }) {
   const { t } = useTranslation()
 
   if (isAllowedEmbed(video.embed_url)) {

@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
@@ -11,16 +10,56 @@ import { ActorPage } from '@/pages/ActorPage'
 import { GenresPage } from '@/pages/GenresPage'
 import { StatusBulkPage } from '@/pages/StatusBulkPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { SyncPage } from '@/pages/SyncPage'
+import { TranslationsPage } from '@/pages/TranslationsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { PublicProfilePage } from '@/pages/PublicProfilePage'
+import { PeoplePage } from '@/pages/PeoplePage'
+import { ChatPage } from '@/pages/ChatPage'
 import { ModulesPage } from '@/pages/ModulesPage'
-import { AdminPage } from '@/pages/AdminPage'
-import { AdminUserPage } from '@/pages/AdminUserPage'
+import { ModulePage } from '@/pages/ModulePage'
+import { UsersPage } from '@/pages/UsersPage'
+import { UserPage } from '@/pages/UserPage'
+import { RequestsPage } from '@/pages/RequestsPage'
+import { RolesPage } from '@/pages/RolesPage'
+import { RolePage } from '@/pages/RolePage'
 import { VideosPage } from '@/pages/VideosPage'
+import { SongsPage } from '@/pages/SongsPage'
+import { BooksPage } from '@/pages/BooksPage'
+import { BoardGamesPage } from '@/pages/BoardGamesPage'
+import { GamesPage } from '@/pages/GamesPage'
+import { NotesPage } from '@/pages/NotesPage'
+import { BookmarksPage } from '@/pages/BookmarksPage'
+import { DICTIONARIES } from '@/lib/dictionaries'
+import { DictionariesPage } from '@/pages/DictionariesPage'
+import { PlaylistsPage } from '@/pages/PlaylistsPage'
+import { PlaylistPage } from '@/pages/PlaylistPage'
+import { DashboardPage } from '@/pages/DashboardPage'
+import { GalleryPage } from '@/pages/GalleryPage'
+import { GalleryRecordPage } from '@/pages/GalleryRecordPage'
+import { PurgePage } from '@/pages/PurgePage'
+import { AuditPage } from '@/pages/AuditPage'
+import { PlayerBar } from '@/components/PlayerBar'
 import { useAuth } from '@/lib/auth'
+import { useVisitTracker } from '@/lib/audit'
+import { PlayerProvider } from '@/lib/player'
 import { ModulesProvider, useModules } from '@/lib/modules'
+import { useNoteReminderWatcher } from '@/lib/noteReminders'
 import { MEDIA, type MediaType } from '@/lib/media'
+
+/**
+ * `/gallery/actors/:id` → `/actors/:id` (§8.5).
+ *
+ * ⚠️ **მსახიობს ერთი გვერდი აქვს.** გალერეის სია მასზე გადაგიყვანს და არა
+ * მის ასლზე — ორი გვერდი ერთ დღეს სხვადასხვა შიგთავსს აჩვენებდა.
+ */
+function ActorRedirect() {
+  const { id } = useParams()
+
+  return <Navigate to={`/actors/${id}`} replace />
+}
 
 function Splash() {
   return (
@@ -40,7 +79,7 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-/** login/register — უკვე შესულს ბიბლიოთეკაზე ვაბრუნებთ */
+/** login/register — უკვე შესულს დეშბორდზე ვაბრუნებთ */
 function GuestOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <Splash />
@@ -54,6 +93,20 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
  */
 const MODULE_PAGES: Record<string, React.ReactNode> = {
   video: <VideosPage />,
+  // 2026-09-03 — სიმღერები ცალკე მოდულია (ადრე ვიდეოს ქვე-სექცია იყო)
+  song: <SongsPage />,
+  // Tasks §12 — წიგნები
+  book: <BooksPage />,
+  // Tasks §14 — ბორდგეიმები
+  board_game: <BoardGamesPage />,
+  // Tasks §11 — თამაშები
+  game: <GamesPage />,
+  // Tasks §13 — ჩანაწერები (key `note`, ცხრილი `note_entries`)
+  note: <NotesPage />,
+  // Tasks §18 — ბუკმარკები (`DECISIONS.md` §10)
+  bookmark: <BookmarksPage />,
+  // Tasks 10 — გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
+  gallery: <GalleryPage />,
 }
 
 /** ერთი მედია-დომენის მარშრუტები (მოდული ჩართული უნდა იყოს) */
@@ -75,26 +128,35 @@ function mediaRoutes(type: MediaType) {
  * ჩაურთველი მოდულის მისამართი საერთოდ არ არსებობს.
  */
 function AppShell() {
-  const { t } = useTranslation()
-  const { mediaModules, pageModules, loading } = useModules()
-  const { user } = useAuth()
+  const { mediaModules, pageModules, has, loading } = useModules()
+  const { canAdmin } = useAuth()
   // უჯრის მდგომარეობა აქ არის — ჰედერის ჰამბურგერიც და საიდბარიც იყენებს (K12)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // მასობრივი ოპერაციები (Tasks 4) — მედია-დომენებზე სტატუსი, ვიდეოებზე ტიპი/ტეგები
+  const bulkAvailable = mediaModules.length > 0 || has('video')
+
+  // §13.3 — შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
+  // მუშაობდეს და არა მხოლოდ `/notes`-ზე. მოდულის გარეშე polling არ ირთვება.
+  useNoteReminderWatcher(has('note'))
+
+  // Tasks §4.1 — „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
+  // მარშრუტი დაიფაროს და არა მხოლოდ ის, ვინც გამოძახებას დაიმახსოვრებს.
+  useVisitTracker()
 
   if (loading) return <Splash />
-
-  const hasMovie = mediaModules.some((m) => m.type === 'movie')
-  const home = mediaModules[0]
-    ? MEDIA[mediaModules[0].type].libraryPath
-    : (pageModules[0]?.route_base ?? '/modules')
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Header onMenu={() => setDrawerOpen(true)} />
       <div className="flex flex-1 flex-col lg:flex-row">
         <Sidebar drawerOpen={drawerOpen} onDrawerChange={setDrawerOpen} />
-        <main className="min-w-0 flex-1">
+        {/* §7.2 — ქვედა ზოლი გვერდს არ უნდა ფარავდეს; სიმაღლეს თვითონ
+            დამკვრელი წერს `--player-h`-ში (დახურულზე ცვლადი საერთოდ არ არის) */}
+        <main className="min-w-0 flex-1 pb-[var(--player-h,0px)]">
         <Routes>
+          {/* Tasks 2 — `/` დეშბორდია და არა ფილმების ბიბლიოთეკა */}
+          <Route path="" element={<DashboardPage />} />
+
           {mediaModules.flatMap((m) => mediaRoutes(m.type))}
 
           {/* არა-მედია მოდულები საკუთარი გვერდით (I5) */}
@@ -102,42 +164,95 @@ function AppShell() {
             <Route key={m.key} path={m.route_base.replace(/^\//, '')} element={MODULE_PAGES[m.key]} />
           ))}
 
-          {/* ფილმების მოდული გამორთულია → „/" პირველ ხელმისაწვდომ დომენზე გადადის */}
-          {!hasMovie && <Route path="" element={<Navigate to={home} replace />} />}
+          {/* ---------- ლექსიკონები: ერთი გვერდი, გადამრჩევით (§6.3) ----------
+              ⚠️ **ძველი შვიდი მისამართი ცოცხალი რჩება** და ახალზე
+              გადამისამართდება: საიდბარის ბმულები, „უკან" ბმულები და
+              ბრაუზერის შენახული ჩანართები არ უნდა გატყდეს. */}
+          <Route path="dictionaries" element={<DictionariesPage />} />
+          <Route path="dictionaries/:key" element={<DictionariesPage />} />
+          {DICTIONARIES.map((d) => (
+            <Route
+              key={d.key}
+              path={d.key}
+              element={<Navigate to={`/dictionaries/${d.key}`} replace />}
+            />
+          ))}
+
+          {/* ---------- გალერეის ქვე-გვერდები (Tasks §8.5) ----------
+              ⚠️ **გალერეა ერთი გვერდიდან ხუთ ჭრილად გაიშალა**: ყველა ფოტო ·
+              ჩანაწერები · მსახიობები · ვიდეოები · წყაროები · მოდულები.
+              ერთ სქროლზე ეს ყველაფერი (და ჩამოტვირთვის ბლოკიც) იმიტომ იყო
+              ცუდი, რომ ერთმანეთს ფარავდა.
+
+              ⚠️ `/gallery/actors/:id` **გადამისამართებაა** — მსახიობს
+              **ერთი** გვერდი აქვს (`/actors/:id`); ორი ასლი ერთ დღეს
+              სხვადასხვას აჩვენებდა. */}
+          {has('gallery') && <Route path="gallery/records" element={<GalleryPage cut="records" />} />}
+          {has('gallery') && (
+            <Route path="gallery/records/:type/:id" element={<GalleryRecordPage />} />
+          )}
+          {has('gallery') && <Route path="gallery/actors" element={<GalleryPage cut="actors" />} />}
+          {has('gallery') && <Route path="gallery/actors/:id" element={<ActorRedirect />} />}
+          {has('gallery') && <Route path="gallery/videos" element={<GalleryPage cut="videos" />} />}
+          {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
+          {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}
+
+          {/* სიმღერების ქვე-გვერდები: პლეილისტები (ჟანრები ლექსიკონებშია) */}
+          {pageModules.some((m) => m.key === 'song') && (
+            <Route path="playlists" element={<PlaylistsPage />} />
+          )}
+          {pageModules.some((m) => m.key === 'song') && (
+            <Route path="playlists/:id" element={<PlaylistPage />} />
+          )}
+
 
           {/* გაზიარებული */}
           {mediaModules.length > 0 && <Route path="actors/:id" element={<ActorPage />} />}
           {mediaModules.length > 0 && <Route path="genres" element={<GenresPage />} />}
-          {mediaModules.length > 0 && <Route path="status" element={<StatusBulkPage />} />}
+          {/* Tasks 4 — მასობრივი ოპერაციები ვიდეოებსაც ეხება, ე.ი. მედია-მოდულის გარეშეც ჩანს */}
+          {bulkAvailable && <Route path="status" element={<StatusBulkPage />} />}
+          {/* L2 — სინქრონი ქმედებაა და ცალკე გვერდზეა; TMDB მხოლოდ მედია-დომენებს ეხება */}
+          {mediaModules.length > 0 && <Route path="sync" element={<SyncPage />} />}
+          {/* Tasks 7 — თარგმანები; ორენოვანი სქემა მედია-დომენებზეა */}
+          {mediaModules.length > 0 && <Route path="translations" element={<TranslationsPage />} />}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება": საჯარო პროფილების
+              კატალოგი. მოდულზე დამოკიდებული არაა — გვერდი თვითონ ამბობს,
+              თუ ჩემი პროფილი ჯერ დახურულია. */}
+          <Route path="people" element={<PeoplePage />} />
+          {/* Tasks §16.3 — ჩატი. მოდულზე დამოკიდებული არაა; გვერდი თვითონ
+              ამბობს, თუ პროფილი ჯერ საჯარო არაა. */}
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="chat/:id" element={<ChatPage />} />
+          {/* Tasks 1.4 — მოდულები ერთი სექციაა, ქარდი → შიდა გვერდი */}
           <Route path="modules" element={<ModulesPage />} />
-          {user?.is_super_admin && <Route path="admin" element={<AdminPage />} />}
-          {user?.is_super_admin && <Route path="admin/users/:id" element={<AdminUserPage />} />}
+          <Route path="modules/:key" element={<ModulePage />} />
+          {/* Tasks 20 — მასობრივი წაშლა (გვერდი თვითონ ამოწმებს super_admin-ს) */}
+          <Route path="purge" element={<PurgePage />} />
+          {/* Tasks 1.5 — მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}
+          <Route path="requests" element={<RequestsPage />} />
 
-          {/* არარსებული/მიუწვდომელი მისამართი */}
-          <Route
-            path="*"
-            element={
-              mediaModules.length ? (
-                <Navigate to={home} replace />
-              ) : (
-                <div className="mx-auto max-w-lg px-5 py-16 text-center">
-                  <h1 className="text-xl font-semibold">{t('modules.emptyTitle')}</h1>
-                  <p className="mt-2 text-sm text-muted-foreground">{t('modules.emptyHint')}</p>
-                  <a
-                    href="/modules"
-                    className="mt-4 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-                  >
-                    {t('modules.title')}
-                  </a>
-                </div>
-              )
-            }
-          />
+          {/* Tasks 1.1 — ადმინის ტაბები ცალკე სექციებად დაიშალა */}
+          {/* Tasks 1.6 — წვდომა როლიდანაც შეიძლება მოვიდეს და არა მარტო super_admin-ისგან */}
+          {canAdmin('users') && <Route path="users" element={<UsersPage />} />}
+          {canAdmin('users') && <Route path="users/:id" element={<UserPage />} />}
+          {canAdmin('roles') && <Route path="roles" element={<RolesPage />} />}
+          {canAdmin('roles') && <Route path="roles/:id" element={<RolePage />} />}
+          {/* Tasks §4.4 — აუდიტ-ლოგი; გვერდი თვითონაც ამოწმებს უფლებას */}
+          {canAdmin('audit') && <Route path="audit" element={<AuditPage />} />}
+          {/* ძველი მისამართები არ ტყდება */}
+          <Route path="admin" element={<Navigate to="/users" replace />} />
+          <Route path="admin/users/:id" element={<Navigate to="/users" replace />} />
+
+          {/* არარსებული/მიუწვდომელი მისამართი → დეშბორდი (ის ყოველთვის არსებობს) */}
+          <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
+      {/* §7.2 — ერთი დამკვრელი მთელ აპზე. მარშრუტების **გარეთაა**: გვერდის
+          შეცვლა დაკვრას არ წყვეტს, ე.ი. პლეილისტი ბოლომდე ჟღერს. */}
+      <PlayerBar />
     </div>
   )
 }
@@ -162,12 +277,19 @@ export default function App() {
             </GuestOnly>
           }
         />
+        {/* Tasks §16.1 — საჯარო პროფილი. ⚠️ **განზრახ `Protected`-ის გარეთაა**:
+            გაზიარებადი ბმული ავტორიზაციის გარეშეც უნდა იხსნებოდეს. დაცვა
+            backend-შია — სამი ფენა, ყველა default-ით `private`. */}
+        <Route path="/u/:username" element={<PublicProfilePage />} />
         <Route
           path="/*"
           element={
             <Protected>
               <ModulesProvider>
-                <AppShell />
+                {/* §7.2 — რიგი მარშრუტებზე მაღლა ცხოვრობს */}
+                <PlayerProvider>
+                  <AppShell />
+                </PlayerProvider>
               </ModulesProvider>
             </Protected>
           }

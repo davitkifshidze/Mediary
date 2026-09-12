@@ -3,28 +3,34 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ExternalLink, Loader2, Pencil, Play, Plus, RefreshCw, Star, Trash2 } from 'lucide-react'
 import { fetchMovieCollection, mediaApi } from '@/api/media'
-import { isDetailPath, mediaOf, type MediaType } from '@/lib/media'
-import type { Status } from '@/api/types'
+import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { PosterImage } from '@/components/PosterImage'
+import { RecordGallery } from '@/components/RecordGallery'
+import { VideoEmbed } from '@/components/VideoEmbed'
+import { VisibilityBadge } from '@/components/VisibilityToggle'
+import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { castName, genreName, movieSubtitle, movieTitle } from '@/lib/display'
+import { useContentLang } from '@/lib/settings'
+import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 
-const STATUSES: Status[] = ['undecided', 'to_watch', 'watching', 'watched']
 
 export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const { id } = useParams()
   const nav = useNavigate()
   const qc = useQueryClient()
   const { t, i18n } = useTranslation()
-  const lang = i18n.language
+  const lang = useContentLang(i18n.language)
   const confirm = useConfirm()
   const { toast } = useToast()
   const { enqueue, isQueued } = useQueue()
   const api = mediaApi(type)
+  // §6.4 — სტატუსების ლექსიკონი დომენისაა (ფილმი/სერიალი/ანიმე ცალ-ცალკე)
+  const { data: statuses = [] } = useStatuses(type)
   const loc = useLocation()
   const { detailBase, libraryPath } = mediaOf(type)
 
@@ -44,14 +50,15 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     qc.setQueryData([type, 'detail', id], data)
     qc.invalidateQueries({ queryKey: [type] })
   }
-  const statusMut = useMutation({ mutationFn: (s: Status) => api.setStatus(Number(id), s), onSuccess: onMutated })
+  const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(Number(id), s), onSuccess: onMutated })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(Number(id)), onSuccess: onMutated })
   const resyncMut = useMutation({ mutationFn: () => api.resync(Number(id)), onSuccess: onMutated })
   const delMut = useMutation({
     mutationFn: () => api.remove(Number(id)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [type] })
-      toast({ title: t('toast.deleted'), variant: 'success' })
+      // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი წაიშალა" ეწერა
+      toast({ title: t(mediaKey('toast.deleted', type)), variant: 'success' })
       // replace — წაშლილი ჩანაწერის URL ისტორიაში არ დარჩეს (Back მკვდარ გვერდს ხსნიდა)
       nav(backTo, { replace: true })
     },
@@ -59,8 +66,9 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
   const askDelete = async () => {
     const ok = await confirm({
-      title: t('confirm.deleteMovieTitle'),
-      description: t('confirm.deleteMovieDesc', { title: m ? movieTitle(m, lang) : '' }),
+      title: t(mediaKey('confirm.deleteRecord', type)),
+      // აღწერაში დომენი არ იხსენიება („«X» სამუდამოდ წაიშლება…"), ე.ი. ორივეს უხდება
+      description: t('confirm.deleteRecordDesc', { name: m ? movieTitle(m, lang) : '' }),
       confirmText: t('confirm.delete'),
       cancelText: t('confirm.cancel'),
       variant: 'destructive',
@@ -69,10 +77,21 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   }
 
   if (isLoading || !m) {
-    return <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 text-muted-foreground">{t('api.loading')}</div>
+    return <div className={pageContainer('wide', 'py-10 text-muted-foreground')}>{t('api.loading')}</div>
   }
 
   const description = lang === 'ka' ? m.description_ka || m.description_en : m.description_en || m.description_ka
+  /* Tasks §7 — საიდან მოვიდა ეს ტექსტი. ⚠️ წყარო **იმ ენისაა, რომელიც
+     მართლა გამოჩნდა**: ka-ს ცარიელობაზე en-ის ტექსტი ჩანს და მისი
+     წყაროც უნდა ეწეროს, თორემ ბარათი სხვა ენის წყაროს დაასახელებდა. */
+  const descriptionSource =
+    lang === 'ka'
+      ? m.description_ka
+        ? m.description_ka_source
+        : m.description_en_source
+      : m.description_en
+        ? m.description_en_source
+        : m.description_ka_source
   const parts = collectionQ.data?.parts ?? []
   const missingParts = parts
     .filter((p) => !p.owned)
@@ -89,7 +108,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-6">
+        <div className={pageContainer('wide', 'pt-6')}>
           <Link
             to={backTo}
             className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -152,16 +171,17 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
               {/* status + favorite */}
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                {STATUSES.map((s) => (
+                {/* §6.4 — სტატუსები per-user ლექსიკონიდან და არა კოდიდან */}
+                {statuses.map((s) => (
                   <button
-                    key={s}
-                    onClick={() => statusMut.mutate(s)}
+                    key={s.id}
+                    onClick={() => statusMut.mutate(s.key)}
                     className={cn(
                       'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                      m.status === s ? STATUS_ACTIVE[s] : STATUS_INACTIVE[s],
+                      m.status?.id === s.id ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
                   >
-                    {t(`status.${s}`)}
+                    {statusName(s, lang)}
                   </button>
                 ))}
                 <button
@@ -176,6 +196,11 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 >
                   <Star className={cn('size-4', m.is_favorite && 'fill-current')} />
                 </button>
+
+                {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
+                    `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
+                {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+                <VisibilityBadge value={m.visibility} />
               </div>
 
               {/* actions */}
@@ -205,7 +230,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
       </div>
 
       {/* ===== BODY ===== */}
-      <div className="mx-auto max-w-6xl space-y-8 px-8 pb-12">
+      <div className={pageContainer('wide', 'space-y-8 pb-12')}>
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-3 font-mono text-sm uppercase tracking-wider text-muted-foreground">
             {t('detail.content')}
@@ -213,7 +238,38 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           <p className="whitespace-pre-line leading-relaxed text-foreground/90">
             {description || t('detail.noDescription')}
           </p>
+
+          {/* Tasks §7 — „საიდან მოვიდა ტექსტი". ხელით გადაწერა `manual`-ს ნიშნავს,
+              ე.ი. ნიშანი აღარ ტყუის მას შემდეგ, რაც თვითონ შეასწორე. */}
+          {description && descriptionSource && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {t(`detail.source.${descriptionSource}`, {
+                defaultValue: t('detail.sourceUnknown'),
+              })}
+            </p>
+          )}
         </section>
+
+        {/* ===== ტრეილერი (Tasks 9) ===== */}
+        {m.trailer_url && (
+          <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <h2 className="mb-3 font-mono text-sm uppercase tracking-wider text-muted-foreground">
+              {t('detail.trailer')}
+            </h2>
+            {/* დამკვრელი ვიდეოს მოდულიდან — allowlist ერთია და HTML არსად ინახება */}
+            <VideoEmbed
+              video={{
+                url: m.trailer_url,
+                embed_url: m.trailer_embed_url,
+                title: movieTitle(m, lang),
+              }}
+            />
+          </section>
+        )}
+
+        {/* ===== გალერეა (Tasks 10) — ტრეილერის ქვემოთ, user-ის მოთხოვნით =====
+            სექცია თვითონ ჩუმდება, თუ `gallery` მოდული ჩართული არ არის. */}
+        <RecordGallery type={type} id={m.id} />
 
         {parts.length > 1 && (
           <section>

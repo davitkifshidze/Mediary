@@ -5,15 +5,18 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Languages, Pencil, Plus, Trash2 } from 'lucide-react'
 import { createGenre, deleteGenre, fetchGenres, updateGenre, updateGenreItems } from '@/api/movies'
 import type { Genre } from '@/api/types'
-import type { MediaType } from '@/lib/media'
+import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { GenreItemsManager, GenreItemsPicker, type GenreSection } from '@/components/GenreItemsManager'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { PageContainer } from '@/components/ui/page'
+import { PageHeader } from '@/components/ui/page-header'
 import { GenreSingleSelect } from '@/components/GenreSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/feedback'
 import { genreName } from '@/lib/display'
 import { cn } from '@/lib/utils'
@@ -28,7 +31,7 @@ export function GenresPage() {
   const genres = genresQ.data ?? []
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-8">
+    <PageContainer>
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -37,13 +40,15 @@ export function GenresPage() {
         {t('actions.back')}
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('genres.title')}</h1>
-        <Button onClick={() => setEditing('new')}>
-          <Plus className="size-4" />
-          {t('genres.add')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('genres.title')}
+        actions={
+          <Button onClick={() => setEditing('new')}>
+            <Plus className="size-4" />
+            {t('genres.add')}
+          </Button>
+        }
+      />
 
       {genresQ.isLoading ? (
         <div className="text-muted-foreground">{t('api.loading')}</div>
@@ -99,7 +104,7 @@ export function GenresPage() {
       {deleting && (
         <GenreDeleteDialog genre={deleting} allGenres={genres} onClose={() => setDeleting(null)} />
       )}
-    </main>
+    </PageContainer>
   )
 }
 
@@ -121,7 +126,7 @@ function GenreFormDialog({
   const [lang, setLang] = useState<'ka' | 'en'>(i18n.language === 'en' ? 'en' : 'ka')
   const [error, setError] = useState<string | null>(null)
   // C2 — ახალ ჟანრში მაშინვე მიბმული ჩანაწერები (ჟანრი ჯერ არ არსებობს)
-  const [attach, setAttach] = useState<Record<MediaType, number[]>>({ movie: [], series: [] })
+  const [attach, setAttach] = useState<Record<MediaType, number[]>>(emptyMediaIds)
   const [tab, setTab] = useState<GenreSection>('names')
 
   const mut = useMutation({
@@ -152,12 +157,12 @@ function GenreFormDialog({
   })
 
   // K1 — რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ტაბებად დაიყო.
+  // L5 — „ჩანაწერები" და „ქმედებები" ერთ ტაბადაა: მონიშვნა და ქმედება ერთ ეკრანზე.
   // ახალი ჟანრი მარტივია (სახელი + წინასწარი მონიშვნა), იქ ტაბები არ გვჭირდება.
   const TABS: TabItem<GenreSection>[] = [
     { value: 'names', label: t('genres.tabNames') },
     { value: 'items', label: t('genres.tabItems') },
     { value: 'add', label: t('genres.tabAdd') },
-    { value: 'actions', label: t('genres.tabActions') },
   ]
 
   return (
@@ -200,7 +205,6 @@ function GenreFormDialog({
 
         {tab === 'items' && <TabInfo>{t('genres.infoItems')}</TabInfo>}
         {tab === 'add' && <TabInfo>{t('genres.infoAdd')}</TabInfo>}
-        {tab === 'actions' && <TabInfo>{t('genres.infoActions')}</TabInfo>}
 
         {/* C1 — ყოველთვის დამონტაჟებული, რომ მონიშვნა ტაბებს შორის არ დაიკარგოს */}
         {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
@@ -210,13 +214,20 @@ function GenreFormDialog({
         <Button variant="outline" onClick={onClose}>
           {t('confirm.cancel')}
         </Button>
-        <Button
-          onClick={() => mut.mutate()}
-          disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
-          title={t('genres.saveNamesHint')}
-        >
-          {t('genres.save')}
-        </Button>
+        {/* Tasks 4 — განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={() => mut.mutate()}
+              disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
+            >
+              {t('genres.save')}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-sm">
+            {t('genres.saveNamesHint')}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </ModalShell>
   )
