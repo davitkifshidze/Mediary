@@ -1,6 +1,6 @@
 import { api } from '@/lib/api'
 import { MEDIA, type MediaType } from '@/lib/media'
-import type { Genre, Movie, MovieListItem, Status } from './types'
+import type { Genre, Movie, MovieListItem } from './types'
 
 /* ============================================================
    Generic მედია-API — movie/series ერთი factory-ით.
@@ -26,9 +26,10 @@ export interface MediaFilters {
 }
 
 export interface BulkStatusInput {
-  status: Status
+  /** ⚠️ §6.4 — ლექსიკონის **გასაღები** (`watched`), და არა თვითონ რიგი */
+  status: string
   ids?: number[]
-  from_status?: Status
+  from_status?: string
 }
 
 /** დომენზე მიბმული CRUD/სტატუსი/რჩეული/სინქრონი */
@@ -54,7 +55,7 @@ export function createMediaApi(base: string) {
     remove: async (id: number): Promise<void> => {
       await api.delete(`${base}/${id}`)
     },
-    setStatus: async (id: number, status: Status): Promise<Movie> => {
+    setStatus: async (id: number, status: string): Promise<Movie> => {
       const { data } = await api.patch(`${base}/${id}/status`, { status })
       return data.data
     },
@@ -83,9 +84,20 @@ export type MediaApi = ReturnType<typeof createMediaApi>
 
 export const moviesApi = createMediaApi(MEDIA.movie.apiBase)
 export const seriesApi = createMediaApi(MEDIA.series.apiBase)
+export const animeApi = createMediaApi(MEDIA.anime.apiBase)
+
+/**
+ * ⚠️ **რუკა და არა ტერნარი** (§7.1): `type === 'series' ? … : …` მესამე
+ * დომენს ჩუმად ფილმების endpoint-ზე გაუშვებდა.
+ */
+const MEDIA_APIS: Record<MediaType, MediaApi> = {
+  movie: moviesApi,
+  series: seriesApi,
+  anime: animeApi,
+}
 
 export function mediaApi(type: MediaType): MediaApi {
-  return type === 'series' ? seriesApi : moviesApi
+  return MEDIA_APIS[type] ?? moviesApi
 }
 
 /* ---------- მასობრივი სინქრონი TMDB-დან — სათითაოდ (Tasks J2/J3/J4) ---------- */
@@ -124,7 +136,16 @@ export async function fetchSyncPlan(filters: SyncPlanFilters): Promise<SyncPlan>
   return data
 }
 
-export type SyncField = 'title' | 'description' | 'year' | 'rating' | 'genres' | 'cast' | 'details'
+export type SyncField =
+  | 'title'
+  | 'description'
+  | 'year'
+  | 'rating'
+  | 'genres'
+  | 'cast'
+  | 'details'
+  /** ოფიციალური ტრეილერი TMDB-დან (Tasks 9) — ცალკე რექვესთია, ამიტომ არჩევადი */
+  | 'trailer'
 
 export const SYNC_FIELDS: SyncField[] = [
   'title',
@@ -134,6 +155,7 @@ export const SYNC_FIELDS: SyncField[] = [
   'genres',
   'cast',
   'details',
+  'trailer',
 ]
 
 export interface SyncOptions {
@@ -193,11 +215,24 @@ export async function updateGenre(id: number, payload: GenrePayload): Promise<Ge
 export interface GenreItems {
   movies: MovieListItem[]
   series: MovieListItem[]
+  animes: MovieListItem[]
   movies_count: number
   series_count: number
+  animes_count: number
 }
 
-/** ჟანრზე მიბმული ჩანაწერები — ორივე დომენი ერთ პასუხში */
+/**
+ * დომენი → პასუხის bucket.
+ * ⚠️ backend-ის `GenreItemController::BUCKETS`-ის სარკეა; `series` მხოლობითი
+ * რჩება, ანიმე კი `animes`-ია (რელაციის სახელი).
+ */
+export const GENRE_ITEM_BUCKET = {
+  movie: 'movies',
+  series: 'series',
+  anime: 'animes',
+} as const satisfies Record<MediaType, keyof GenreItems>
+
+/** ჟანრზე მიბმული ჩანაწერები — ყველა მედია-დომენი ერთ პასუხში */
 export async function fetchGenreItems(id: number): Promise<GenreItems> {
   const { data } = await api.get(`/genres/${id}/items`)
   return data
@@ -367,6 +402,31 @@ export interface Actor {
   name: string
   name_ka: string | null
   photo: string | null
+  /**
+   * §7.5 — საძიებო ტეგები ვებიდან ფოტოს მოსატანად.
+   * ⚠️ **ესენი ჩემია და არა გლობალური:** `cast_members` საერთო ლექსიკონია
+   * (ერთი მსახიობი ყველა ანგარიშზე ერთი რიგია), ტეგები კი ცალკე ცხრილშია,
+   * მომხმარებელზე მიბმული.
+   */
+  tags: string[]
+
+  /* §8.1 — პიროვნების მონაცემები TMDB-დან. ⚠️ ეს **ფაქტებია** და ამიტომ
+     გლობალურ ლექსიკონში ზის (სახელისა და სქესის რიგში); ჩემი მხოლოდ
+     ტეგები და ფოტოებია. */
+  gender?: number | null
+  has_tmdb?: boolean
+  tmdb_person_id?: number | null
+  imdb_id?: string | null
+  birthday?: string | null
+  deathday?: string | null
+  place_of_birth?: string | null
+  biography?: string | null
+  known_for?: string | null
+  popularity?: number | null
+  homepage?: string | null
+  /** instagram_id · twitter_id · facebook_id · tiktok_id · youtube_id · wikidata_id */
+  profile_links?: Record<string, string> | null
+  details_synced_at?: string | null
 }
 
 export interface Suggestion {
@@ -388,12 +448,39 @@ export interface ActorPageData {
   actor: Actor
   movies: MovieListItem[]
   series: MovieListItem[]
+  /** §7.1 — მესამე მედია-დომენი; ცალკე შემოთავაზება მას განზრახ არ აქვს */
+  animes: MovieListItem[]
   suggestions: Suggestion[]
   series_suggestions: Suggestion[]
 }
 
-/** მსახიობის გვერდი — ფილმოგრაფია + სერიალოგრაფია (კოლექცია + TMDB შემოთავაზება) */
+/** მსახიობის გვერდი — ფილმები + სერიალები + ანიმეები (კოლექცია + TMDB შემოთავაზება) */
 export async function fetchActor(id: number | string): Promise<ActorPageData> {
   const { data } = await api.get(`/cast/${id}`)
+  return data
+}
+
+/**
+ * მსახიობის საძიებო ტეგები (§7.5) — მთელი ნაკრების ჩანაცვლება.
+ * ⚠️ **`PUT`-ია და არა `POST`**: POST-ს ნებართვების middleware `create`-ად
+ * კითხულობს, ე.ი. update-ის უფლებით მომხმარებელი 403-ს მიიღებდა.
+ */
+export async function updateActorTags(id: number | string, tags: string[]): Promise<string[]> {
+  const { data } = await api.put<{ tags: string[] }>(`/cast/${id}/tags`, { tags })
+  return data.tags
+}
+
+/**
+ * **მსახიობის მონაცემების განახლება TMDB-დან (§8.1)** — ბიოგრაფია,
+ * დაბადების თარიღი, IMDb-ის id, ოფიციალური ბმულები.
+ *
+ * ⚠️ **ცხადი ღილაკია და არა ავტომატური შევსება ყოველ გახსნაზე**: TMDB-ის
+ * ლიმიტი საერთოა, მსახიობის გვერდი კი ხშირად იხსნება.
+ *
+ * ⚠️ **`resync` და არა `sync`** — `EnsureModulePermission::UPDATE_ENDPOINTS`
+ * სწორედ ამ სიტყვას იცნობს (არსებული ხაფანგი: POST-იდან `create` გამოდის).
+ */
+export async function resyncActor(id: number | string): Promise<{ updated: boolean; actor: Actor }> {
+  const { data } = await api.post(`/cast/${id}/resync`)
   return data
 }

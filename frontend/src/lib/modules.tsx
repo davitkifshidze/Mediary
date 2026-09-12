@@ -30,12 +30,8 @@ interface ModulesApi {
   loading: boolean
 }
 
-/**
- * არა-მედია მოდულები, რომლებსაც საკუთარი გვერდი აქვთ (`App.tsx`-ის რეესტრი).
- * `video_adult` აქ არაა: ის ცალკე გვერდი კი არა, `video`-ს შიგნით 18+ ჩანაწერების
- * გამხსნელი დროშაა.
- */
-export const PAGE_MODULE_KEYS = ['video'] as const
+/** არა-მედია მოდულები, რომლებსაც საკუთარი გვერდი აქვთ (`App.tsx`-ის რეესტრი) */
+export const PAGE_MODULE_KEYS = ['video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'gallery'] as const
 
 const ModulesContext = React.createContext<ModulesApi>({
   all: [],

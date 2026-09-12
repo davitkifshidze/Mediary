@@ -1,4 +1,5 @@
-import { api } from '@/lib/api'
+import { API_URL, api } from '@/lib/api'
+import type { Status } from '@/api/types'
 
 /* ============================================================
    ვიდეოს მოდული (I5) — ბმულები ნებისმიერი წყაროდან.
@@ -10,110 +11,181 @@ export interface Video {
   id: number
   title: string
   description: string | null
-  kind: VideoKind
+  /** მართვადი ტიპი (Tasks 5.1) — `kind` enum-ი აღარ არსებობს */
+  type_id: number | null
+  type?: VideoType | null
+  /** §6.4 — მართვადი სტატუსი; ამ მოდულს ის აქამდე არ ჰქონდა */
+  status: Status | null
+  /** 5.6/16.5 — საჯარო პროფილის წინაპირობა */
+  visibility: 'private' | 'public'
   url: string
   platform: VideoPlatform
   external_id: string | null
   /** sanitized iframe src — backend-ის allowlist-ით აწყობილი (თვითნებური HTML არასდროს) */
   embed_url: string | null
-  /** storage-ის გზა, სრული URL, ან private thumb-ის route */
+  /** storage-ის გზა ან პლატფორმის სრული URL */
   thumbnail: string | null
-  thumbnail_is_private: boolean
   duration: number | null
   tags: string[]
-  is_adult: boolean
   is_favorite: boolean
   watch_count: number
   watched_at: string | null
   created_at: string | null
+  /**
+   * §7.1 — ლოკალური ასლი (`yt-dlp`).
+   *
+   * ⚠️ სამი სხვადასხვა ფაქტია და ერთ boolean-ში არ ეტევა: `null` — არასდროს
+   * გვიცდია · `running` — მიმდინარეობს · `failed` + `download_error` — ვცადეთ
+   * და ვერ გამოვიდა · `ready` — ფაილი გვაქვს. ⚠️ **გზა აქ არ მოდის**: ფაილი
+   * პრივატულ დისკზეა და მხოლოდ `videoDownloadUrl()`-ით იხსნება.
+   */
+  download_status: 'running' | 'ready' | 'failed' | null
+  download_size: number
+  download_format: string | null
+  download_name: string | null
+  download_error: string | null
+  downloaded_at: string | null
   /** მიმაგრებული შიგთავსი (K3) */
   images_count?: number
   documents_count?: number
   notes_count?: number
 }
 
-/* ---------- მიმაგრებული ფაილები და ჩანიშვნები (K3) ---------- */
+/* ---------- მიმაგრებული ფაილები და ჩანიშვნები (K3) ----------
+   ⚠️ ცხრილიც და მისამართიც **სექციისაა** (`video_files` / `video_notes`),
+   უნივერსალური `attachments`/`notes` აღარ არსებობს (2026-09-03). */
 
-export interface Attachment {
+export interface VideoFile {
   id: number
   kind: 'image' | 'doc'
-  /** public → storage-ის გზა; private (18+) → სრული URL policy-ით დაცულ route-ზე */
+  /** storage-ის გზა (ფრონტი `storageUrl()`-ით აწყობს) */
   url: string
-  is_private: boolean
   original_name: string | null
   mime: string | null
   size: number
   created_at: string | null
 }
 
-export interface Note {
+export interface VideoNote {
   id: number
   body: string
   created_at: string | null
   updated_at: string | null
 }
 
-export async function fetchAttachments(videoId: number): Promise<Attachment[]> {
-  const { data } = await api.get(`/videos/${videoId}/attachments`)
+export async function fetchVideoFiles(videoId: number): Promise<VideoFile[]> {
+  const { data } = await api.get(`/videos/${videoId}/files`)
   return data.data
 }
 
-export async function uploadAttachments(
+export async function uploadVideoFiles(
   videoId: number,
   kind: 'image' | 'doc',
   files: File[],
-): Promise<Attachment[]> {
+): Promise<VideoFile[]> {
   const fd = new FormData()
   fd.append('kind', kind)
   files.forEach((f) => fd.append('files[]', f))
-  const { data } = await api.post(`/videos/${videoId}/attachments`, fd)
+  const { data } = await api.post(`/videos/${videoId}/files`, fd)
   return data.data
 }
 
-export async function deleteAttachment(id: number): Promise<void> {
-  await api.delete(`/attachments/${id}`)
+export async function deleteVideoFile(id: number): Promise<void> {
+  await api.delete(`/video-files/${id}`)
 }
 
-export async function fetchNotes(videoId: number): Promise<Note[]> {
+export async function fetchVideoNotes(videoId: number): Promise<VideoNote[]> {
   const { data } = await api.get(`/videos/${videoId}/notes`)
   return data.data
 }
 
-export async function createNote(videoId: number, body: string): Promise<Note> {
+export async function createVideoNote(videoId: number, body: string): Promise<VideoNote> {
   const { data } = await api.post(`/videos/${videoId}/notes`, { body })
   return data.data
 }
 
-export async function updateNote(id: number, body: string): Promise<Note> {
-  const { data } = await api.patch(`/notes/${id}`, { body })
+export async function updateVideoNote(id: number, body: string): Promise<VideoNote> {
+  const { data } = await api.patch(`/video-notes/${id}`, { body })
   return data.data
 }
 
-export async function deleteNote(id: number): Promise<void> {
-  await api.delete(`/notes/${id}`)
+export async function deleteVideoNote(id: number): Promise<void> {
+  await api.delete(`/video-notes/${id}`)
 }
 
-/** ვიდეოს ტიპი — საიდბარის სექციები (K7) */
-export type VideoKind = 'media' | 'info'
+/* ---------- ვიდეოს ტიპები — მართვადი ლექსიკონი (Tasks 5.1) ---------- */
+
+export interface VideoType {
+  id: number
+  key: string
+  name_ka: string
+  name_en: string
+  icon: string | null
+  sort_order: number
+  videos_count?: number
+}
+
+export interface VideoTypeInput {
+  name_ka: string
+  name_en: string
+  icon?: string | null
+}
+
+export async function fetchVideoTypes(): Promise<VideoType[]> {
+  const { data } = await api.get('/video-types')
+  return data.data
+}
+
+export async function createVideoType(input: VideoTypeInput): Promise<VideoType> {
+  const { data } = await api.post('/video-types', input)
+  return data.data
+}
+
+export async function updateVideoType(id: number, input: VideoTypeInput): Promise<VideoType> {
+  const { data } = await api.patch(`/video-types/${id}`, input)
+  return data.data
+}
+
+/** წაშლა; `moveTo` — რომელ ტიპზე გადავიდეს ეს ვიდეოები (null = ტიპის გარეშე) */
+export async function deleteVideoType(id: number, moveTo?: number | null): Promise<number> {
+  const { data } = await api.delete(`/video-types/${id}`, {
+    data: { move_to: moveTo ?? null },
+  })
+  return data.moved as number
+}
+
+export async function reorderVideoTypes(ids: number[]): Promise<VideoType[]> {
+  const { data } = await api.post('/video-types/reorder', { ids })
+  return data.data
+}
+
+/* ---------- ვიდეოები ---------- */
 
 export interface VideoFilters {
   q?: string
   platform?: string
   favorite?: boolean
+  /** ტეგები — მძიმით გამოყოფილი სია (5.2) */
   tag?: string
-  adult_only?: boolean
-  kind?: VideoKind
+  /** ტიპები — მძიმით გამოყოფილი id-ები (5.2) */
+  type_id?: string
+  /** §7.1 — მხოლოდ ლოკალურად ჩამოწერილები (მიმდინარეებიც) */
+  downloaded?: boolean
+  /** §6.4 — სტატუსის **გასაღები** (მძიმით გამოყოფილი სიაც შეიძლება) */
+  status?: string
   sort?: string
 }
 
 export interface VideoInput {
   title: string
   url: string
-  kind?: VideoKind
+  type_id?: number | null
+  /** §6.4 — ლექსიკონის გასაღები; `undefined` = „არ შეცვალო" */
+  status?: string
+  visibility?: 'private' | 'public'
   description?: string
   duration?: number | null
   tags?: string[]
-  is_adult?: boolean
   /** ატვირთული thumbnail; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
   remove_thumbnail?: boolean
@@ -124,10 +196,11 @@ function toFormData(input: VideoInput): FormData {
   fd.append('title', input.title)
   fd.append('url', input.url)
   fd.append('description', input.description ?? '')
-  fd.append('kind', input.kind ?? 'media')
+  if (input.type_id != null) fd.append('type_id', String(input.type_id))
+  if (input.status) fd.append('status', input.status)
+  if (input.visibility) fd.append('visibility', input.visibility)
   if (input.duration != null) fd.append('duration', String(input.duration))
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
-  fd.append('is_adult', input.is_adult ? '1' : '0')
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)
   if (input.remove_thumbnail) fd.append('remove_thumbnail', '1')
   return fd
@@ -156,14 +229,60 @@ export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
 }
 
 export async function fetchVideos(filters: VideoFilters = {}): Promise<Video[]> {
-  const { favorite, adult_only, ...rest } = filters
+  const { favorite, downloaded, ...rest } = filters
   // boolean-ები 1/0-ად — Laravel-ის `boolean` წესი "true"-ს არ იღებს
   const params = {
     ...rest,
     ...(favorite ? { favorite: 1 } : {}),
-    ...(adult_only ? { adult_only: 1 } : {}),
+    ...(downloaded ? { downloaded: 1 } : {}),
   }
   const { data } = await api.get('/videos', { params })
+  return data.data
+}
+
+/* ---------- §7.1 — ლოკალური ასლი (`yt-dlp`) ----------
+   ⚠️ ერთი მისამართი, სამი ზმნა: დაწყება · მიწოდება · წაშლა. */
+
+export interface VideoDownloadStatus {
+  /** `yt-dlp` ამ მანქანაზეა? false-ზე ღილაკი ჩანს, მაგრამ ამბობს, რატომ არა */
+  available: boolean
+  version: string | null
+  /** ⚠️ ffmpeg-ის გარეშე „საუკეთესო" ერთფაილიან ვარიანტამდე ეცემა */
+  ffmpeg: boolean
+}
+
+export async function fetchVideoDownloadStatus(): Promise<VideoDownloadStatus> {
+  const { data } = await api.get('/videos/download-status')
+  return data
+}
+
+/** ჩამოწერის დაწყება — ბრუნდება მაშინვე, სამუშაო ფონურად მიდის (202) */
+export async function startVideoDownload(id: number): Promise<Video> {
+  const { data } = await api.post(`/videos/${id}/download`)
+  return data.data
+}
+
+export async function deleteVideoDownload(id: number): Promise<Video> {
+  const { data } = await api.delete(`/videos/${id}/download`)
+  return data.data
+}
+
+/**
+ * ლოკალური ფაილის მისამართი.
+ *
+ * ⚠️ **`/storage/*` აქ არ გამოდგება**: ფაილი პრივატულ დისკზეა (§17.5-ის წესი),
+ * ე.ი. მას მხოლოდ ეს ავტორიზებული API-მარშრუტი გამოიტანს.
+ */
+export function videoDownloadUrl(id: number): string {
+  return `${API_URL}/api/videos/${id}/download`
+}
+
+/**
+ * „მსგავსი ვიდეოები" (K4) — backend ითვლის **ჩემი ბიბლიოთეკიდან**
+ * (საერთო ტეგები + სათაურის მსგავსება + იგივე პლატფორმა/ტიპი).
+ */
+export async function fetchSimilarVideos(id: number): Promise<Video[]> {
+  const { data } = await api.get(`/videos/${id}/similar`)
   return data.data
 }
 
@@ -176,6 +295,12 @@ export async function updateVideo(id: number, input: VideoInput): Promise<Video>
   const fd = toFormData(input)
   fd.append('_method', 'PATCH') // multipart-safe method spoofing
   const { data } = await api.post(`/videos/${id}`, fd)
+  return data.data
+}
+
+/** §6.4 — სტატუსის შეცვლა ცალკე endpoint-ია (მედია-დომენების ანალოგი) */
+export async function setVideoStatus(id: number, status: string): Promise<Video> {
+  const { data } = await api.patch(`/videos/${id}/status`, { status })
   return data.data
 }
 
@@ -193,7 +318,29 @@ export async function markVideoWatched(id: number): Promise<Video> {
   return data.data
 }
 
-/** per-user per-module პარამეტრები (18+ consent) */
+/* ---------- მასობრივი ოპერაცია (Tasks 4 / 19.9) ---------- */
+
+/** ვიდეოს სტატუსი არ აქვს, ამიტომ მასობრივად ტიპი და ტეგები იცვლება */
+export type VideoBulkAction = 'type' | 'tags_add' | 'tags_remove'
+
+export interface VideoBulkInput {
+  action: VideoBulkAction
+  /** კონკრეტული ვიდეოები; ცარიელზე `from_type_id` მოქმედებს */
+  ids?: number[]
+  /** „ამ ტიპის ყველა ვიდეო"; `0` = ტიპის გარეშე */
+  from_type_id?: number
+  /** action=type: null = ტიპის მოხსნა */
+  type_id?: number | null
+  tags?: string[]
+}
+
+/** @returns რამდენი ვიდეო **ნამდვილად** შეიცვალა */
+export async function bulkUpdateVideos(input: VideoBulkInput): Promise<number> {
+  const { data } = await api.post('/videos/bulk', input)
+  return data.updated as number
+}
+
+/** per-user per-module პარამეტრები (`module_user.settings`) */
 export async function saveModuleSettings(key: string, settings: Record<string, unknown>): Promise<void> {
   await api.put(`/modules/${key}/settings`, { settings })
 }

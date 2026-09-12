@@ -30,8 +30,24 @@ export async function ensureCsrfCookie(): Promise<void> {
 /** 401-ზე მთელი აპლიკაცია login-ზე უნდა დაბრუნდეს — AuthProvider უსმენს */
 export const UNAUTHENTICATED_EVENT = 'mediary:unauthenticated'
 
+/**
+ * საცავის მრიცხველი შეიცვალა (17.3) — AuthProvider უსმენს და `['me']`/`['storage']`-ს
+ * ანულებს, რომ ჰედერის ინდიკატორი არ ჩამორჩეს.
+ *
+ * წესი განზრახ **ფართოა**: ყველა multipart მუტაცია (ატვირთვა ყოველთვის FormData-ია)
+ * და ყველა DELETE. ასე ახალი ატვირთვის წერტილს ამის დამატება არ სჭირდება; ფასი —
+ * იშვიათი ზედმეტი მსუბუქი GET.
+ */
+export const STORAGE_CHANGED_EVENT = 'mediary:storage-changed'
+
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    const method = (r.config.method ?? 'get').toLowerCase()
+    if (r.config.data instanceof FormData || method === 'delete') {
+      window.dispatchEvent(new Event(STORAGE_CHANGED_EVENT))
+    }
+    return r
+  },
   (error) => {
     const status = error?.response?.status
     const url: string = error?.config?.url ?? ''
