@@ -367,7 +367,7 @@ Current backlog lives in `Tasks.md` (repo root) — **read it at the start of ev
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
-Current state (2026-09-12): **4389 nodes, 9505 edges, 353 communities**. Dated backups of previous graphs sit in `graphify-out/<date>/`.
+Current state (2026-09-12): **4482 nodes, 9633 edges, 367 communities**. Dated backups of previous graphs sit in `graphify-out/<date>/`.
 
 ⚠️ **Invoke it as `python -m graphify <cmd>`.** The bare `graphify` name resolves to an extensionless path Bash cannot execute (`Permission denied`), and `graphify.exe` is blocked by this machine's Application Control policy. `python -m graphify.cli` is the wrong module (exit 255).
 
