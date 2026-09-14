@@ -7,6 +7,8 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\GalleryImage;
+use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
@@ -25,7 +27,15 @@ use Illuminate\Http\Request;
  */
 class DashboardController extends Controller
 {
-    /** მოდულის key → მოდელი, რომლის ჩანაწერებსაც ითვლის */
+    /**
+     * მოდულის key → მოდელი (ან მოდელების სია), რომლის ჩანაწერებსაც ითვლის.
+     *
+     * ⚠️ **სია მხოლოდ `gallery`-ს სჭირდება** და ეს განზრახაა: მისი შიგთავსი
+     * ორ ცხრილშია (`gallery_images` + `gallery_videos`, §8.1), ერთი კი
+     * მეორეს დამალავდა — მხოლოდ ფოტოების თვლისას ვიდეოებიანი და
+     * ფოტოების გარეშე დარჩენილი ბიბლიოთეკა „0"-ს აჩვენებდა, ე.ი. იგივე
+     * ჩუმი ხარვეზი, რასაც ეს ბარათი ახლა ასწორებს.
+     */
     private const COUNTERS = [
         'movie' => Movie::class,
         'series' => Series::class,
@@ -39,6 +49,12 @@ class DashboardController extends Controller
         // იხატებოდა (`count: null`). შეცდომა ჩუმია: მოდული ჩანს, რიცხვი კი არა.
         'note' => NoteEntry::class,
         'bookmark' => Bookmark::class,
+        /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
+           გალერეა ფოტოებით სავსეა (ნანახი 2026-09-14). მიზეზი დაშვება იყო,
+           რომ „გალერეას საკუთარი ჩანაწერი არ აქვს" — აქვს: `gallery_images`
+           სწორედ მისი ცხრილია (ერთადერთი გაზიარებული, იხ. `CLAUDE.md`).
+           ორივე მოდელი `BelongsToUser`-ია, ე.ი. `owner` scope თვითონ ჭრის. */
+        'gallery' => [GalleryImage::class, GalleryVideo::class],
     ];
 
     public function index(Request $request)
@@ -58,7 +74,7 @@ class DashboardController extends Controller
                 continue;
             }
 
-            $model = self::COUNTERS[$module->key] ?? null;
+            $models = self::COUNTERS[$module->key] ?? null;
 
             $cards[] = [
                 'key' => $module->key,
@@ -67,10 +83,20 @@ class DashboardController extends Controller
                 'icon' => $module->icon,
                 'route_base' => $module->route_base,
                 // მოდული მთვლელის გარეშე (ჯერ არ აქვს მოდელი) — `null`, არა 0
-                'count' => $model ? $model::count() : null,
+                'count' => $models === null ? null : $this->countOf($models),
             ];
         }
 
         return response()->json(['data' => $cards]);
+    }
+
+    /**
+     * ერთი ან რამდენიმე ცხრილის ჯამი.
+     *
+     * @param  class-string|array<int, class-string>  $models
+     */
+    private function countOf(string|array $models): int
+    {
+        return collect((array) $models)->sum(fn (string $model) => $model::count());
     }
 }

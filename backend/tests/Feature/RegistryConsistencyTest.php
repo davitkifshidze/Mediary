@@ -244,8 +244,14 @@ class RegistryConsistencyTest extends TestCase
      * იხატება, უბრალოდ რიცხვის ნაცვლად `null` მოდის. ზუსტად ასე გამოგვეპარა
      * `note` (§13-იდან 2026-09-07-მდე) და `bookmark`-იც იმავე გზას გაჰყვებოდა.
      *
-     * წყაროდ `TARGET_MODES` ვიღებთ (გალერეის გარეშე — მას საკუთარი ჩანაწერი
-     * არ აქვს), რადგან სწორედ ის ნიშნავს „ამ მოდულს თავისი ცხრილი აქვს".
+     * წყაროდ `TARGET_MODES` ვიღებთ, რადგან სწორედ ის ნიშნავს „ამ მოდულს
+     * თავისი ცხრილი აქვს".
+     *
+     * ⚠️ **`gallery` აქედან გამორიცხული იყო და სწორედ ეს იყო ხარვეზი**
+     * (ნანახი 2026-09-14: ბარათი `—`-ს აჩვენებდა ფოტოებით სავსე გალერეაზე).
+     * დაშვება — „გალერეას საკუთარი ჩანაწერი არ აქვს" — მცდარია: `gallery_images`
+     * **მისი** ცხრილია, უბრალოდ პოლიმორფული. ე.ი. სია ახლა სრულია და
+     * გამონაკლისი აღარ არსებობს.
      */
     public function test_every_record_module_has_a_dashboard_counter(): void
     {
@@ -256,7 +262,7 @@ class RegistryConsistencyTest extends TestCase
         // გამოვიდოდა და ტესტი **ცრუდ ჩავარდებოდა/გაივლიდა** (იგივე წესი, რაც ზემოთ)
         $this->assertContains('movie', $counters, '`COUNTERS`-ის წაკითხვა გატყდა');
 
-        $expected = array_values(array_diff(array_keys(PurgeService::TARGET_MODES), ['gallery']));
+        $expected = array_keys(PurgeService::TARGET_MODES);
 
         $missing = array_values(array_diff($expected, $counters));
 
