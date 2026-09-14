@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookmarkCategoryResource;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
+use App\Support\DictionaryRecords;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -59,24 +60,27 @@ class BookmarkCategoryController extends Controller
     /** წაშლა; `move_to` — რომელ კატეგორიაზე გადავიდნენ ეს ბუკმარკები */
     public function destroy(Request $request, BookmarkCategory $bookmarkCategory)
     {
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
-            ],
-        ]);
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
+        ));
 
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $bookmarkCategory->id
-            ? (int) $data['move_to']
-            : null;
+        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete(Bookmark::where('category_id', $bookmarkCategory->id));
+            $bookmarkCategory->delete();
+
+            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+        }
+
+        $moveTo = DictionaryRecords::moveTarget($data, $bookmarkCategory->id);
 
         $moved = Bookmark::where('category_id', $bookmarkCategory->id)
             ->update(['category_id' => $moveTo]);
 
         $bookmarkCategory->delete();
 
-        return response()->json(['moved' => $moved]);
+        return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */

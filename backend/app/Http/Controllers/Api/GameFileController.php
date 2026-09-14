@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\GameFile;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
@@ -20,8 +21,6 @@ use Illuminate\Http\Request;
  */
 class GameFileController extends Controller
 {
-    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx,zip';
-
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request, Game $game)
@@ -41,8 +40,8 @@ class GameFileController extends Controller
             'kind' => ['required', 'in:image,doc'],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => $kind === 'doc'
-                ? ['file', 'max:20480', 'mimes:'.self::DOC_MIMES]
-                : ['file', 'image', 'max:8192'],
+                ? UploadLimits::rule('doc')
+                : UploadLimits::rule('image'),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე

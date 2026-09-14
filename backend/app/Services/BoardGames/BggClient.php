@@ -187,9 +187,8 @@ class BggClient
             'complexity' => $stats ? $this->round($this->attr($stats->averageweight ?? null, true), 2) : null,
             'bgg_rating' => $stats ? $this->round($this->attr($stats->average ?? null, true), 1) : null,
             'image_url' => isset($item->image) ? (string) $item->image : null,
-            // BGG-ის „link" ერთ კვანძში აერთიანებს კატეგორიას, მექანიკას, დიზაინერს…
+            // BGG-ის „link" ერთ კვანძში აერთიანებს კატეგორიას, დიზაინერს…
             'genre' => $this->links($item, 'boardgamecategory')[0] ?? null,
-            'mechanics' => array_slice($this->links($item, 'boardgamemechanic'), 0, 10),
             'designer' => $this->links($item, 'boardgamedesigner')[0] ?? null,
             'publisher' => $this->links($item, 'boardgamepublisher')[0] ?? null,
         ];

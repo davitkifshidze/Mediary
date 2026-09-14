@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -325,11 +326,12 @@ export async function updateBookGenre(id: number, input: BookGenreInput): Promis
 }
 
 /** წაშლა; `moveTo` — რომელ ჟანრზე გადავიდეს ეს წიგნები (null = ჟანრის გარეშე) */
-export async function deleteBookGenre(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/book-genres/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteBookGenre(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/book-genres/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderBookGenres(ids: number[]): Promise<BookGenre[]> {

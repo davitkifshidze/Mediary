@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 import type { Status, StatusRole } from '@/api/types'
 
 /* ============================================================
@@ -56,19 +57,43 @@ export async function updateStatus(
   return data.data
 }
 
-/** `moveTo: null` — ჩანაწერები სტატუსის გარეშე რჩება (და **არ იშლება**) */
+/**
+ * გადატანა · ცარიელად დატოვება · **ჩანაწერების წაშლაც** (ეტაპი 8) —
+ * ტანი `api/dictionary.ts`-ში იწყობა, რვავე ლექსიკონის ერთ ფორმით.
+ */
 export async function deleteStatus(
   domain: StatusDomain,
   id: number,
-  moveTo?: number | null,
-): Promise<number> {
-  const { data } = await api.delete(`/statuses/${domain}/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/statuses/${domain}/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderStatuses(domain: StatusDomain, ids: number[]): Promise<Status[]> {
   const { data } = await api.post(`/statuses/${domain}/reorder`, { ids })
   return data.data
+}
+
+/* ---------- საიდბარის განლაგება (ეტაპი 8) ---------- */
+
+/** ფსევდო-განყოფილების ადგილი: `start` · `end` · მეზობელ სტატუსის `key` */
+export interface SectionPlacement {
+  id: string
+  at: string
+}
+
+export interface SectionsLayout {
+  /** საიდბარში დამალული — სტატუსის `key` ან `all`/`favorite`/`downloaded` */
+  hidden: string[]
+  placement: SectionPlacement[]
+}
+
+/** ⚠️ `PUT` — `module_user.settings.status_sections`-ში ჯდება (იხ. `lib/statusSections.ts`) */
+export async function saveStatusSections(
+  domain: StatusDomain,
+  layout: SectionsLayout,
+): Promise<SectionsLayout> {
+  const { data } = await api.put(`/statuses/${domain}/sections`, layout)
+  return data.status_sections
 }

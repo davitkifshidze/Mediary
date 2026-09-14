@@ -24,7 +24,7 @@ export interface Settings {
   syncDelayMs: number
   /**
    * პაუზა **თარგმანის** ჩანაწერებს შორის, ms (Tasks 7).
-   * განზრახ ცალკეა `syncDelayMs`-ისგან: თარგმანი Claude-ს ურეკავს და
+   * განზრახ ცალკეა `syncDelayMs`-ისგან: თარგმანი Gemini-ს ურეკავს და
    * მისი rate-limit TMDB-ისას არ ემთხვევა.
    */
   translateDelayMs: number
@@ -95,7 +95,7 @@ export const DEFAULT_SETTINGS: Settings = {
   discoverMaxPages: 100,
   discoverPerPage: 20,
   syncDelayMs: 200,
-  translateDelayMs: 1000,
+  translateDelayMs: 4000,
   defaultSortField: 'added',
   defaultSortDir: 'desc',
   defaultView: 'all',
@@ -124,8 +124,10 @@ export const DISCOVER_PER_PAGE_OPTIONS = [20, 40, 60, 80, 100]
 export const LIBRARY_PAGE_SIZE_OPTIONS = [0, 24, 48, 60, 96, 120]
 export const ACTOR_PER_PAGE_OPTIONS = [5, 10, 15, 20, 30, 50]
 export const SYNC_DELAY_OPTIONS = [0, 200, 500, 1000, 2000]
-/** თარგმანის პაუზა — Claude-ის ლიმიტი TMDB-ისაზე მკაცრია, ე.ი. ჭერიც მაღალია */
-export const TRANSLATE_DELAY_OPTIONS = [0, 500, 1000, 2000, 5000]
+/* თარგმანის პაუზა — Gemini-ის ლიმიტი TMDB-ისაზე მკაცრია, ე.ი. ჭერიც მაღალია.
+   ⚠️ ნაგულისხმევი 4000 ms-ია, რადგან Gemini-ის უფასო დონე წუთში ~15 მოთხოვნას
+   უშვებს — 1000 ms წუთში 60-ს ნიშნავდა და რიგი 429-ებში ჩავარდებოდა. */
+export const TRANSLATE_DELAY_OPTIONS = [0, 500, 1000, 2000, 4000, 5000]
 
 const KEY = 'mediary.settings.v1'
 

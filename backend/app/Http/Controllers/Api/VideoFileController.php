@@ -8,6 +8,7 @@ use App\Models\Video;
 use App\Models\VideoFile;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
@@ -20,8 +21,6 @@ use Illuminate\Http\Request;
 class VideoFileController extends Controller
 {
     /** დოკუმენტების დაშვებული ტიპები — თვითნებური ფაილი არ აიტვირთება */
-    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx';
-
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Video $video)
@@ -35,8 +34,8 @@ class VideoFileController extends Controller
             'kind' => ['required', 'in:image,doc'],
             'files' => ['required', 'array', 'max:50'],
             'files.*' => $request->input('kind') === 'doc'
-                ? ['file', 'max:20480', 'mimes:'.self::DOC_MIMES]
-                : ['file', 'image', 'max:8192'],
+                ? UploadLimits::rule('doc')
+                : UploadLimits::rule('image'),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** მოწმდება ჩაწერამდე, რომ ატვირთვა

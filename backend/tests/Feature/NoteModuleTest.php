@@ -186,7 +186,7 @@ class NoteModuleTest extends TestCase
         $next = $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'daily',
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'timezone' => 'Asia/Tbilisi',
                 'channels' => ['browser'],
             ])
@@ -235,7 +235,7 @@ class NoteModuleTest extends TestCase
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'weekly',
                 'weekdays' => [1, 3],
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'timezone' => 'UTC',
             ])
             ->assertStatus(201)
@@ -244,6 +244,93 @@ class NoteModuleTest extends TestCase
         $this->assertSame('2026-09-07T09:00:00+00:00', Carbon::parse($next)->utc()->toIso8601String());
 
         Carbon::setTestNow();
+    }
+
+    /**
+     * **ეტაპი 11.2 — ყველა შეხსენება ერთ სიაში, ბმით ჩანაწერზე.**
+     *
+     * შეხსენებებს თავისი გვერდი გაუჩნდა (`/notes/reminders`), ე.ი. სჭირდება
+     * „რა მელის საერთოდ". ⚠️ თითო რიგს **ჩანაწერი თან უნდა მოჰყვებოდეს** —
+     * „ყოველდღე 09:00" არაფერს ამბობს, სანამ არ ჩანს, *რას* ეხება.
+     * ⚠️ სხვისი შეხსენება `owner` scope-ით იჭრება და არა ხელით `where`-ით.
+     */
+    public function test_all_reminders_come_with_their_note_and_only_mine(): void
+    {
+        $noteId = $this->makeNote(['title' => 'პასპორტი']);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+            ])
+            ->assertStatus(201);
+
+        // სხვისი ჩანაწერი და სხვისი შეხსენება — ჩემ სიაში არ უნდა იყოს
+        $other = $this->makeUser('otto', ['note']);
+        $otherNote = $this->actingAs($other)
+            ->postJson('/api/notes', ['title' => 'სხვისი'])
+            ->assertStatus(201)
+            ->json('data.id');
+        $this->actingAs($other)
+            ->postJson("/api/notes/{$otherNote}/reminders", ['mode' => 'daily', 'times_of_day' => ['10:00']])
+            ->assertStatus(201);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/note-reminders')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.note.id', $noteId)
+            ->assertJsonPath('data.0.note.title', 'პასპორტი');
+
+        // ერთი ჩანაწერის სიაში `note` ზედმეტია — იქ რელაცია არ იტვირთება
+        $this->actingAs($this->user)
+            ->getJson("/api/notes/{$noteId}/reminders")
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.note');
+    }
+
+    /**
+     * **ეტაპი 7 — ჩასწორება მეორე შეხსენებას არ ქმნის.**
+     *
+     * ⚠️ ზუსტად ის შემთხვევა, რომელიც აღიწერა: შეხსენებას ამატებ, მერე
+     * ჩასწორება ვერსად ჩანს და კვლავ „დამატებას" აჭერ — ე.ი. ორი შეხსენება
+     * ერთი და იმავე ჩანაწერზე. არსებული `id` **`PATCH`-ს ირჩევს** და არა
+     * `POST`-ს; რიცხვი აქ ერთი უნდა დარჩეს.
+     */
+    public function test_editing_a_reminder_updates_it_instead_of_creating_a_second(): void
+    {
+        $noteId = $this->makeNote();
+
+        $id = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'timezone' => 'Asia/Tbilisi',
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->actingAs($this->user)
+            ->patchJson("/api/note-reminders/{$id}", [
+                'mode' => 'weekly',
+                'times_of_day' => ['21:30'],
+                'weekdays' => [3],
+                'timezone' => 'Asia/Tbilisi',
+            ])
+            ->assertOk()
+            // იგივე რიგია და არა ახალი
+            ->assertJsonPath('data.id', $id)
+            ->assertJsonPath('data.mode', 'weekly')
+            ->assertJsonPath('data.times_of_day', ['21:30']);
+
+        $this->assertSame(1, NoteReminder::withoutGlobalScope('owner')
+            ->where('note_entry_id', $noteId)->count());
+
+        // სიაც იმავეს ამბობს — ბეჯის რიცხვი სწორედ აქედან მოდის
+        $this->actingAs($this->user)
+            ->getJson("/api/notes/{$noteId}/reminders")
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
     }
 
     /**
@@ -258,7 +345,7 @@ class NoteModuleTest extends TestCase
         $id = $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'daily',
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'weekdays' => [],
             ])
             ->assertStatus(201)
@@ -267,7 +354,7 @@ class NoteModuleTest extends TestCase
         $this->actingAs($this->user)
             ->patchJson("/api/note-reminders/{$id}", [
                 'mode' => 'daily',
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'weekdays' => [],
                 'is_active' => false,
             ])
@@ -278,7 +365,7 @@ class NoteModuleTest extends TestCase
         $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'weekly',
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'weekdays' => [],
             ])
             ->assertStatus(422)
@@ -298,8 +385,8 @@ class NoteModuleTest extends TestCase
         $next = $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'monthly',
-                'day_of_month' => 31,
-                'time_of_day' => '09:00',
+                'days_of_month' => [31],
+                'times_of_day' => ['09:00'],
                 'timezone' => 'UTC',
             ])
             ->assertStatus(201)
@@ -322,8 +409,8 @@ class NoteModuleTest extends TestCase
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'yearly',
                 'month' => 3,
-                'day_of_month' => 15,
-                'time_of_day' => '08:30',
+                'days_of_month' => [15],
+                'times_of_day' => ['08:30'],
                 'timezone' => 'UTC',
             ])
             ->assertStatus(201)
@@ -332,6 +419,164 @@ class NoteModuleTest extends TestCase
         $this->assertSame('2027-03-15T08:30:00+00:00', Carbon::parse($next)->utc()->toIso8601String());
 
         Carbon::setTestNow();
+    }
+
+    /**
+     * **ეტაპი 7 — დღეში რამდენიმე დრო.** „ყოველ დღე 08:00-ზე და 20:00-ზე"
+     * ერთი შეხსენებაა და უახლოეს დროს ირჩევს, არა პირველ ჩაწერილს.
+     */
+    public function test_daily_reminder_takes_the_nearest_of_several_times(): void
+    {
+        Carbon::setTestNow('2026-09-04 12:00:00');
+
+        $noteId = $this->makeNote();
+
+        $next = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                // განზრახ არეული რიგით — ნორმალიზება ჩვენი საქმეა
+                'times_of_day' => ['20:00', '08:00'],
+                'timezone' => 'UTC',
+            ])
+            ->assertStatus(201);
+
+        // 12:00-ზე დღევანდელი 08:00 გასულია, 20:00 კი ჯერ არა
+        $this->assertSame(
+            '2026-09-04T20:00:00+00:00',
+            Carbon::parse($next->json('data.next_at'))->utc()->toIso8601String(),
+        );
+
+        // ბაზაში სია დალაგებული ჯდება (`NoteReminderController::sortedList()`)
+        $this->assertSame(['08:00', '20:00'], $next->json('data.times_of_day'));
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * **ეტაპი 7 — თვეში რამდენიმე რიცხვი.** „1-ში, 15-ში და 25-ში" ერთი
+     * შეხსენებაა; 20-ში ვდგავართ, ე.ი. უახლოესი ამ თვის 25-ია.
+     */
+    public function test_monthly_reminder_takes_the_nearest_of_several_days(): void
+    {
+        Carbon::setTestNow('2026-09-20 12:00:00');
+
+        $noteId = $this->makeNote();
+
+        $next = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'monthly',
+                'days_of_month' => [25, 1, 15],
+                'times_of_day' => ['09:00'],
+                'timezone' => 'UTC',
+            ])
+            ->assertStatus(201)
+            ->json('data.next_at');
+
+        $this->assertSame('2026-09-25T09:00:00+00:00', Carbon::parse($next)->utc()->toIso8601String());
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * **ეტაპი 7 — მოქმედების ფანჯარა: დასაწყისი.** „ამ დიაპაზონში" ნიშნავს,
+     * რომ გახსნამდე არაფერი ისვრის — პირველი გასროლა ფანჯრის შიგნით ჯდება.
+     *
+     * ⚠️ ინტერვალზე **გახსნის მომენტი თვითონაა** პირველი გასროლა: „ოქტომბრის
+     * 1-დან ყოველ საათში" 01:00-ზე კი არ უნდა დაიწყოს, 00:00-ზე.
+     */
+    public function test_a_window_start_delays_the_first_firing(): void
+    {
+        Carbon::setTestNow('2026-09-04 12:00:00');
+
+        $noteId = $this->makeNote();
+
+        $daily = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'timezone' => 'UTC',
+                'starts_at' => '2026-10-01T00:00:00+00:00',
+            ])
+            ->assertStatus(201)
+            ->json('data.next_at');
+
+        $this->assertSame('2026-10-01T09:00:00+00:00', Carbon::parse($daily)->utc()->toIso8601String());
+
+        $interval = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'interval',
+                'interval_minutes' => 60,
+                'starts_at' => '2026-10-01T00:00:00+00:00',
+            ])
+            ->assertStatus(201)
+            ->json('data.next_at');
+
+        $this->assertSame('2026-10-01T00:00:00+00:00', Carbon::parse($interval)->utc()->toIso8601String());
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * **ეტაპი 7 — მოქმედების ფანჯარა: დასასრული.** ბოლო გასროლის შემდეგ
+     * შეხსენება **ითიშება**, და არა რჩება „აქტიურად" ცარიელი `next_at`-ით:
+     * „აღარ ისვრის" და „აღარაა აქტიური" ერთი და იგივე ფაქტია
+     * (`NoteReminder::nextStateAfterSending()`).
+     */
+    public function test_a_window_end_stops_the_reminder(): void
+    {
+        Carbon::setTestNow('2026-09-04 08:00:00');
+
+        $noteId = $this->makeNote();
+
+        $reminderId = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'timezone' => 'UTC',
+                'ends_at' => '2026-09-04T23:00:00+00:00',
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $dispatcher = app(ReminderDispatcher::class);
+
+        // ფანჯრის შიგნით — ჩვეულებრივ ისვრის
+        Carbon::setTestNow('2026-09-04 09:00:00');
+        $this->assertSame(1, $dispatcher->run($this->user));
+
+        // ხვალინდელი 09:00 ფანჯარას სცდება → აღარ ისვრის და ითიშება
+        $reminder = NoteReminder::withoutGlobalScope('owner')->find($reminderId);
+        $this->assertNull($reminder->next_at);
+        $this->assertFalse((bool) $reminder->is_active);
+
+        Carbon::setTestNow();
+    }
+
+    /** ფანჯრის დასასრული დასაწყისამდე — ვალიდაციის შეცდომა და არა ჩუმი უაზრობა */
+    public function test_a_window_must_end_after_it_starts(): void
+    {
+        $noteId = $this->makeNote();
+
+        $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'starts_at' => '2026-10-10T00:00:00+00:00',
+                'ends_at' => '2026-10-01T00:00:00+00:00',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('ends_at');
+
+        // ⚠️ მხოლოდ დასასრული (დასაწყისის გარეშე) სრულიად ვალიდურია —
+        // `after:starts_at` პირობით ირთვება, თორემ ცარიელ `starts_at`-ს
+        // წესი თარიღად კითხულობდა და მოთხოვნა უმიზეზოდ ვარდებოდა.
+        $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'ends_at' => '2026-10-01T00:00:00+00:00',
+            ])
+            ->assertStatus(201);
     }
 
     /**
@@ -543,7 +788,7 @@ class NoteModuleTest extends TestCase
         $this->actingAs($this->user)
             ->postJson("/api/notes/{$noteId}/reminders", [
                 'mode' => 'daily',
-                'time_of_day' => '09:00',
+                'times_of_day' => ['09:00'],
                 'channels' => ['email'],
             ])
             ->assertStatus(422);

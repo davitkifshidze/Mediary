@@ -72,7 +72,6 @@ class BoardGameModuleTest extends TestCase
                 'designer' => 'Isaac Childres',
                 'publisher' => 'Cephalofair Games',
                 'genre_id' => $genreId,
-                'mechanics' => ['Hand Management', 'Hand Management', ' Cooperative '],
                 'players_min' => 1,
                 'players_max' => 4,
                 'age_min' => 14,
@@ -99,8 +98,8 @@ class BoardGameModuleTest extends TestCase
             ->assertJsonPath('data.links.0.currency', 'USD')
             // 16.5 — ხილვადობა default-ად პირადია
             ->assertJsonPath('data.visibility', 'private')
-            // მექანიკების დუბლი რეგისტრისა და სივრცის მიუხედავად იჭრება
-            ->assertJsonPath('data.mechanics', ['Hand Management', 'Cooperative']);
+            // ეტაპი 8 — მექანიკები სრულად მოიხსნა: ველი პასუხში აღარ არსებობს
+            ->assertJsonMissingPath('data.mechanics');
     }
 
     /** მოთამაშეთა რაოდენობით ფილტრი — დიაპაზონში მოხვედრა და არა ზუსტი დამთხვევა */
@@ -116,6 +115,57 @@ class BoardGameModuleTest extends TestCase
 
         sort($titles);
         $this->assertSame(['Mid', 'Party'], $titles);
+    }
+
+    /**
+     * **ეტაპი 8 — რამდენიმე რაოდენობა ერთდროულად, OR-ით.**
+     *
+     * ⚠️ „1 **ან** 10 მოთამაშეს უდგება" და არა „ორივეს ერთდროულად": AND
+     * დიაპაზონურ ველზე თითქმის ყოველთვის ცარიელ პასუხს იძლეოდა.
+     */
+    public function test_players_filter_takes_several_counts_with_or(): void
+    {
+        $this->makeGame(['title' => 'Solo only', 'players_min' => 1, 'players_max' => 1]);
+        $this->makeGame(['title' => 'Party', 'players_min' => 4, 'players_max' => 10]);
+        $this->makeGame(['title' => 'Mid', 'players_min' => 2, 'players_max' => 5]);
+
+        $titles = $this->actingAs($this->user)->getJson('/api/board-games?players=1,10')
+            ->assertOk()
+            ->json('data.*.title');
+
+        sort($titles);
+        $this->assertSame(['Party', 'Solo only'], $titles);
+    }
+
+    /**
+     * ⚠️ **დიაპაზონის გარეშე ჩანაწერი ფილტრში არ ხვდება** — „უცნობია" და
+     * „ნებისმიერს უდგება" ერთი არაა. აქამდე `whereNull`-ის შტო მას ყველა
+     * რიცხვზე აჩვენებდა, ე.ი. შედეგი ცრუდ ფართოვდებოდა.
+     */
+    public function test_a_game_without_a_range_is_out_of_the_players_filter(): void
+    {
+        $this->makeGame(['title' => 'Unknown', 'players_min' => null, 'players_max' => null]);
+        $this->makeGame(['title' => 'Mid', 'players_min' => 2, 'players_max' => 5]);
+
+        $this->assertSame(['Mid'], $this->actingAs($this->user)
+            ->getJson('/api/board-games?players=3')
+            ->assertOk()
+            ->json('data.*.title'));
+    }
+
+    /**
+     * ⚠️ **არარიცხვი 422-ია და არა ცარიელი სია** — თორემ `?players=abc`
+     * ისე გამოიყურებოდა, თითქოს ბიბლიოთეკაში არაფერია.
+     */
+    public function test_a_non_numeric_players_filter_is_rejected(): void
+    {
+        $this->actingAs($this->user)
+            ->getJson('/api/board-games?players=abc')
+            ->assertStatus(422);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/board-games?players=99')
+            ->assertStatus(422);
     }
 
     /** ⚠️ `bgg_id` უნიკალურია **user-ზე**: ორ ანგარიშს ერთი თამაში უნდა შეეძლოს */

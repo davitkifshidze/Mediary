@@ -198,10 +198,26 @@ class BookController extends Controller
         if (! empty($data['isbn'])) {
             $one = $this->openLibrary->byIsbn($data['isbn']);
 
-            return response()->json(['results' => $one ? [$one] : []]);
+            return $this->blocked() ?? response()->json(['results' => $one ? [$one] : []]);
         }
 
-        return response()->json(['results' => $this->openLibrary->search($data['query'])]);
+        $results = $this->openLibrary->search($data['query']);
+
+        return $this->blocked() ?? response()->json(['results' => $results]);
+    }
+
+    /**
+     * წყაროს ჩავარდნა → **503**, და არა ცარიელი სია.
+     *
+     * ⚠️ ამასთანავე ეს **500-ის ჩანაცვლებაცაა**: `OpenLibraryClient`-ს try/catch
+     * არ ჰქონდა და `cURL error 28` გამონაკლისით ამოვიდა — ე.ი. წიგნის
+     * დამატების დროს ეკრანზე გამონაკლისის ტექსტი ადგებოდა.
+     */
+    private function blocked()
+    {
+        return $this->openLibrary->blocked()
+            ? response()->json(['message' => 'openlibrary_unavailable'], 503)
+            : null;
     }
 
     /** არჩეული კანდიდატის დრაფტი ფორმის შესავსებად — ჩანაწერს **არ ქმნის** */
@@ -212,7 +228,8 @@ class BookController extends Controller
         $draft = $this->openLibrary->details($data['key']);
 
         if (! $draft) {
-            return response()->json(['message' => 'not_found'], 404);
+            // ⚠️ „წყარო არ პასუხობს" და „ასეთი წიგნი არ არსებობს" სხვა ფაქტებია
+            return $this->blocked() ?? response()->json(['message' => 'not_found'], 404);
         }
 
         return response()->json(['draft' => $draft]);

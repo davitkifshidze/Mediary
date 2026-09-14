@@ -42,9 +42,17 @@ export function ActionMenu({
         <PopoverPrimitive.Content
           align="end"
           sideOffset={4}
+          /* ⚠️ **სიგანე შიგთავსისაა და არა ფიქსირებული** (შენი მითითება,
+             2026-09-14). `w-44` (176px) ქართულ პუნქტს — „მსახიობის გვერდი",
+             „მოხსნა ჩანაწერიდან" — **სიტყვა-სიტყვით** შლიდა სამ ხაზად, ე.ი.
+             სამპუნქტიანი მენიუ ცხრა ხაზად იხატებოდა. `w-max` + `min-w` ერთ
+             ხაზზე ტოვებს (`actionItemClass`-ს `whitespace-nowrap` აქვს), ხოლო
+             `max-w` ვიწრო ეკრანზე გადმოღვრას აჩერებს.
+             ⚠️ შესწორება **აქ** კეთდება და არა მსახიობის კოდში: იგივე მენიუ
+             ცხრილების რიგებსაც ემსახურება, ე.ი. პრობლემა იქაც იყო. */
           className={cn(
             LAYER_POPUP,
-            'fb-content w-44 rounded-xl border border-border bg-card p-1.5 shadow-xl focus:outline-none',
+            'fb-content w-max min-w-44 max-w-[min(20rem,90vw)] rounded-xl border border-border bg-card p-1.5 shadow-xl focus:outline-none',
           )}
         >
           {children}
@@ -57,7 +65,8 @@ export function ActionMenu({
 /** მენიუს ერთი პუნქტი — `asChild`-ით `<Link>`-საც იტევს */
 export function actionItemClass(variant?: 'destructive') {
   return cn(
-    'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
+    // ⚠️ `whitespace-nowrap` — პუნქტი ერთ ხაზზეა; სიგანეს `ActionMenu` იღებს შიგთავსიდან
+    'flex w-full cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm transition-colors',
     variant === 'destructive'
       ? 'text-destructive hover:bg-destructive/10'
       : 'text-muted-foreground hover:bg-muted hover:text-foreground',

@@ -59,7 +59,7 @@ export function PosterUploader({
           type="button"
           onClick={onClear}
           aria-label="remove"
-          className="absolute right-1.5 top-1.5 grid size-7 cursor-pointer place-items-center rounded-full bg-black/60 text-white shadow transition-colors hover:bg-destructive"
+          className="absolute right-1.5 top-1.5 grid size-7 cursor-pointer place-items-center rounded-md bg-black/60 text-white shadow transition-colors hover:bg-destructive"
         >
           <X className="size-4" />
         </button>

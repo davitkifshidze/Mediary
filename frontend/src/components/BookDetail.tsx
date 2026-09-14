@@ -14,6 +14,7 @@ import {
   type BookFile,
 } from '@/api/books'
 import { storageUrl } from '@/lib/api'
+import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -142,9 +143,9 @@ function ProgressCard({ book }: { book: Book }) {
         </span>
       </div>
 
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-md bg-muted">
         <div
-          className="h-full rounded-full bg-primary transition-[width]"
+          className="h-full rounded-md bg-primary transition-[width]"
           style={{ width: `${book.progress_percent ?? 0}%` }}
         />
       </div>
@@ -189,6 +190,10 @@ function FilesCard({ book }: { book: Book }) {
   })
 
   const remove = useMutation({ mutationFn: deleteBookFile, onSuccess: done, onError: fail })
+  /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+  const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
+
 
   return (
     <div>
@@ -247,7 +252,15 @@ function FilesCard({ book }: { book: Book }) {
             ) : (
               <FileText className="size-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="min-w-0 flex-1 truncate">{file.original_name ?? file.url}</span>
+            {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
+            <button
+              type="button"
+              onClick={() => viewer.open(file)}
+              className="min-w-0 flex-1 cursor-pointer truncate text-left hover:underline"
+              title={t('files.viewerOpen')}
+            >
+              {file.original_name ?? file.url}
+            </button>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {formatBytes(file.size)}
             </span>
@@ -280,6 +293,9 @@ function FilesCard({ book }: { book: Book }) {
           </li>
         ))}
       </ul>
+
+      {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
+      {viewer.node}
     </div>
   )
 }

@@ -152,8 +152,9 @@ class DiscoverController extends Controller
             $tmdbTotal = (int) ($res['total_pages'] ?? 1);
 
             // ქართული სახელები — TMDB-ის იმავე პასუხის ლოკალიზებული ვერსიიდან (`language=ka`).
-            // Translator-ს (EN→KA) აქ აღარ ვიყენებთ: ANTHROPIC_API_KEY-ის გარეშე Google-ის
-            // უფასო endpoint 429-ს აბრუნებს და ინგლისური სახელი ბრუნდებოდა უცვლელად.
+            // Translator-ს (EN→KA) აქ განზრახ არ ვიძახებთ: აღმოჩენის სია ათეულია
+            // და თითო სათაურზე თითო მოთხოვნა Gemini-ს დღიურ ლიმიტს უაზროდ გახარჯავდა.
+            // თარგმანი ცალკე გვერდის (`/translations`) საქმეა და იქ ცხადად ირთვება.
             $kaTitles = [];
             try {
                 $kaRes = $this->request($tmdb, $data, $query, $tp, $isSeries, 'ka');

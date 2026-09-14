@@ -6,11 +6,13 @@ import {
   fetchAuditLogs,
   fetchAuditMeta,
   fetchAuditPlan,
+  fetchAuditSummary,
   purgeAuditLogs,
   type AuditEntry,
   type AuditFilters,
 } from '@/api/audit'
 import { useAuth } from '@/lib/auth'
+import { AuditScope } from '@/components/audit/AuditScope'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
@@ -38,6 +40,11 @@ import { useToast } from '@/components/ui/feedback'
    ორივე ერთსა და იმავე ფილტრზე დგას, ე.ი. ვერასდროს გასცდება ნაჩვენებს.
 
    ⚠️ **წაშლა შეუქცევადია** — `purge`-ის სტილით, სიტყვის ჩაწერით.
+
+   ⚠️ **მოდულისა და მოქმედების ჭრილები `components/audit/AuditScope.tsx`-შია**
+   (ეტაპი 10) — ტაბები და ფერადი ბარათები, თითოეული თავისი რიცხვით და
+   ცალკე „ყველათი". აქ დარჩა ის სამი, რაც ჭრილი არ არის და ჭრილის
+   **შიგნით** მუშაობს: ვისი · რა პერიოდის · ტექსტური ძებნა.
    ============================================================ */
 
 const CONFIRM_WORD = 'DELETE'
@@ -81,6 +88,14 @@ export function AuditPage() {
     enabled: allowed,
   })
 
+  /** ჭრილების რიცხვები — იმავე ფილტრზე, `page`-ის გარეშე (ეტაპი 10) */
+  const { data: summary } = useQuery({
+    queryKey: ['audit-summary', filters],
+    queryFn: () => fetchAuditSummary(filters),
+    enabled: allowed,
+    placeholderData: keepPreviousData,
+  })
+
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['audit', filters, page],
     queryFn: () => fetchAuditLogs(filters, page, PER_PAGE),
@@ -99,6 +114,7 @@ export function AuditPage() {
     onSuccess: (deleted) => {
       qc.invalidateQueries({ queryKey: ['audit'] })
       qc.invalidateQueries({ queryKey: ['audit-plan'] })
+      qc.invalidateQueries({ queryKey: ['audit-summary'] })
       setSelected([])
       setConfirming(null)
       setConfirmWord('')
@@ -121,11 +137,6 @@ export function AuditPage() {
     setSelected([])
   }
 
-  const toggle = (list: string[] | undefined, value: string) => {
-    const current = list ?? []
-    return current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
-  }
-
   const moduleName = (key: string) => {
     const found = meta?.modules.find((m) => m.key === key)
     if (!found) return key
@@ -140,8 +151,16 @@ export function AuditPage() {
     <PageContainer>
       <PageHeader title={t('audit.title')} subtitle={t('audit.subtitle')} />
 
-      {/* ---------- ფილტრები (§4.7-ის სამი ჭრილი) ---------- */}
-      <section className="mb-6 space-y-4 rounded-xl border border-border bg-card/40 p-4">
+      {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
+      <AuditScope
+        meta={meta}
+        summary={summary}
+        filters={filters}
+        onChange={(next) => apply(next)}
+      />
+
+      {/* ---------- ჭრილის შიგნით: ვისი · როდის · ძებნა ---------- */}
+      <section className="mb-6 rounded-xl border border-border bg-card/40 p-4">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="audit-user">{t('audit.filters.user')}</Label>
@@ -186,46 +205,6 @@ export function AuditPage() {
                 <Search className="size-4" />
               </Button>
             </div>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>{t('audit.filters.actions')}</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {(meta?.actions ?? []).map((action) => (
-              <button
-                key={action}
-                onClick={() => apply({ actions: toggle(filters.actions, action) })}
-                className={cn(
-                  'cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors',
-                  filters.actions?.includes(action)
-                    ? 'bg-secondary font-medium'
-                    : 'text-muted-foreground hover:bg-muted',
-                )}
-              >
-                {t(`audit.actions.${action}`, action)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>{t('audit.filters.modules')}</Label>
-          <div className="fb-scroll flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
-            {(meta?.modules ?? []).map((m) => (
-              <button
-                key={m.key}
-                onClick={() => apply({ modules: toggle(filters.modules, m.key) })}
-                className={cn(
-                  'cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors',
-                  filters.modules?.includes(m.key)
-                    ? 'bg-secondary font-medium'
-                    : 'text-muted-foreground hover:bg-muted',
-                )}
-              >
-                {moduleName(m.key)}
-              </button>
-            ))}
           </div>
         </div>
       </section>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GalleryImageResource;
 use App\Http\Resources\GalleryVideoResource;
+use App\Http\Resources\StatusResource;
 use App\Models\CastMember;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -128,11 +129,24 @@ class GalleryController extends Controller
             ->distinct()
             ->count('imageable_id');
 
+        /* ⚠️ **კატეგორიები რეალური რიცხვებიდან და არა ხელით დაწერილი სიიდან.**
+           „ყველა · კადრი · პოსტერი · ლოგო · მსახიობი" ფრონტში კონსტანტა იყო,
+           ამიტომ „ლოგო" მაშინაც ჩანდა, როცა ბიბლიოთეკაში **არცერთი ლოგო**
+           არ არის (გაზომილი: actor 103 · backdrop 14 · poster 4 · logo 0).
+           ნულიან კატეგორიას ჩიპი აღარ ეხატება. */
+        $categories = GalleryImage::query()
+            ->selectRaw('category, count(*) as photos')
+            ->groupBy('category')
+            ->pluck('photos', 'category')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
         return response()->json([
             'photos' => (int) ($images->photos ?? 0),
             'bytes' => (int) ($images->bytes ?? 0),
             'records' => (int) $records,
             'actors' => (int) $actors,
+            'categories' => (object) $categories,
             'videos' => GalleryVideo::query()->count(),
             // სხვა მოდულების ფოტოები — ცალკე ჭრილია, ე.ი. ცალკე მთვლელიც
             'module_groups' => count($this->moduleImages->groups($user, 1)),
@@ -163,11 +177,27 @@ class GalleryController extends Controller
     {
         $data = $request->validate([
             'by' => ['nullable', 'in:record,actor,source,provider,module'],
-            'type' => ['nullable', MediaDomain::rule()],
+            /* ⚠️ **`type` აღარ არის მხოლოდ მედია-დომენი** (ეტაპი 2): ჩანაწერების
+               ჭრილში ტაბებად ყველა მშობელი დგას — სიმღერაც, წიგნიც, თამაშიც —
+               ე.ი. `MediaDomain::rule()` მათ 422-ს აძლევდა. */
+            'type' => ['nullable', GalleryParent::recordRule()],
             'q' => ['nullable', 'string', 'max:200'],
             /* §3.2 — მსახიობების ჭრილი სქესითაც უნდა იყოფოდეს („ქალი/კაცი,
                თითო მსახიობი ცალკე"). TMDB-ის კოდირება: 1 = ქალი, 2 = კაცი. */
             'gender' => ['nullable', 'in:female,male'],
+            /* ეტაპი 2 — „ფილმების გალერეა, სადაც მსახიობებიც შიგნითაა":
+               მსახიობების ჯგუფები **დომენით** იჭრება (ვინც ამ დომენში თამაშობს). */
+            'from' => ['nullable', MediaDomain::rule()],
+            /* ეტაპი 2 — „ფოტოიანი/უფოტო". ⚠️ `without` სწორედ ის ჭრილია,
+               რომლისთვისაც ჩამოტვირთვა არსებობს: აქამდე ჯგუფების სია
+               `has('galleryImages')`-ით იწყებოდა, ე.ი. „რომელ ფილმს **არ**
+               აქვს ფოტო" კითხვას გალერეაში პასუხი საერთოდ არ ჰქონდა. */
+            'have' => ['nullable', 'in:with,without,all'],
+            'genre' => ['nullable', 'string', 'max:400'],
+            'status' => ['nullable', 'string', 'max:200'],
+            'year_min' => ['nullable', 'integer', 'min:1800', 'max:2200'],
+            'year_max' => ['nullable', 'integer', 'min:1800', 'max:2200'],
+            'favorite' => ['nullable', 'boolean'],
             'previews' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_PREVIEWS],
         ]);
 
@@ -218,6 +248,14 @@ class GalleryController extends Controller
                 'gender',
                 $gender === 'female' ? CastMember::GENDER_FEMALE : CastMember::GENDER_MALE,
             ))
+            /* ეტაპი 2 — დომენის ტაბი: „ფილმების გალერეაში" მხოლოდ ფილმების
+               მსახიობები. ⚠️ `whereHas` მედია-მოდელზე `owner` scope-ს
+               იმემკვიდრეობს, ე.ი. ეს **ამ user-ის** ბიბლიოთეკაა და არა
+               ყველა ანგარიშის (იგივე წესი, რაც `sourceQuery()`-ს აქვს). */
+            ->when(
+                $data['from'] ?? null,
+                fn ($query, $from) => $query->whereHas(MediaDomain::castRelation($from)),
+            )
             ->get()
             ->keyBy('id');
 
@@ -263,6 +301,7 @@ class GalleryController extends Controller
     private function recordGroups($user, array $data, ?string $q, int $previews)
     {
         $groups = collect();
+        $have = $data['have'] ?? 'with';
 
         foreach (GalleryParent::recordKeys() as $type) {
             if (($data['type'] ?? null) && $data['type'] !== $type) {
@@ -277,11 +316,26 @@ class GalleryController extends Controller
 
             $query = $model::query()
                 ->withCount('galleryImages as photos')
-                ->withSum('galleryImages as photo_bytes', 'size')
-                ->has('galleryImages');
+                ->withSum('galleryImages as photo_bytes', 'size');
+
+            /* ⚠️ **„უფოტო" ცალკე შეკითხვაა და არა გაფილტრული სია.** `photos = 0`
+               `withCount`-ის შედეგია, ე.ი. `where`-ში ვერ შევა (HAVING-ს კი
+               ექვსი დომენის გაერთიანებაზე აზრი არ აქვს) — ამიტომ დარჩა `doesntHave`. */
+            match ($have) {
+                'without' => $query->doesntHave('galleryImages'),
+                'all' => null,
+                default => $query->has('galleryImages'),
+            };
 
             if ($q) {
                 $this->applyTitleSearch($query, $type, $model, $q);
+            }
+
+            $this->applyRecordFilters($query, $type, $data);
+
+            // ჟანრი ბარათზეც გამოდის (შიდა დაჯგუფებისთვის), ე.ი. ერთხელ იტვირთება
+            if (MediaDomain::has($type)) {
+                $query->with('genres');
             }
 
             foreach ($query->get() as $row) {
@@ -294,10 +348,36 @@ class GalleryController extends Controller
                     'photos' => (int) $row->photos,
                     'bytes' => (int) $row->photo_bytes,
                     'has_tmdb' => (bool) ($row->tmdb_id ?? null),
+                    /* ---- ეტაპი 2: შიდა დაჯგუფებისა და დალაგების საკვები ----
+                       ⚠️ **დაჯგუფებას ბარათი თვითონ ვერ უპასუხებდა.** „ჟანრი /
+                       წელი / სტატუსი" ფრონტზე ისე იყოფა, როგორც `MovieGrid`-ში
+                       — ე.ი. სამივე ფაქტი ჯგუფშივე უნდა მოვიდეს, თორემ თითო
+                       ბარათზე ცალკე მოთხოვნა დასჭირდებოდა. */
+                    'year' => is_numeric($row->year ?? null) ? (int) $row->year : null,
+                    'favorite' => (bool) ($row->is_favorite ?? false),
+                    /* ⚠️ სტატუსი **ობიექტია და არა სტრიქონი** (§6.4): სახელი
+                       მფლობელის ლექსიკონშია და გასაღები მარტო არ იკითხება.
+                       არა-მედია მშობლებზე `null` — წიგნს/თამაშს ისევ enum აქვს,
+                       სიმღერას კი სტატუსი საერთოდ არ აქვს. */
+                    'status' => MediaDomain::has($type) ? StatusResource::brief($row->status) : null,
+                    'genres' => MediaDomain::has($type)
+                        ? $row->genres->map(fn ($genre) => [
+                            'slug' => $genre->slug,
+                            'name_ka' => $genre->name_ka,
+                            'name_en' => $genre->name_en,
+                        ])->values()->all()
+                        : [],
                 ]);
             }
         }
 
+        /* ⚠️ **დალაგება backend-ზე მხოლოდ ფოტოებითაა და ეს განზრახაა.**
+           „სახელით" დალაგება იმ ენაზე უნდა მოხდეს, რომელიც **ეკრანზე** წერია
+           (`contentLang`), ე.ი. სერვერი მას ვერ იცნობს და ორივე მხარეს
+           დაწერილი წესი ერთ დღეს გაშორდებოდა. სია სრულად ბრუნდება (გვერდები
+           აქ არ არის), ამიტომ ფრონტი მას უბრალოდ თავიდან ალაგებს.
+           ესკიზები კი სწორედ ფოტოიან ჯგუფებს სჭირდება, ე.ი. ეს რიგი მათ
+           სწორად არჩევს. */
         $groups = $groups->sortByDesc('photos')->values();
 
         return response()->json([
@@ -305,6 +385,47 @@ class GalleryController extends Controller
             'groups' => $groups,
             'previews' => $this->previews($groups, null, $previews),
         ]);
+    }
+
+    /**
+     * ჩანაწერების ჭრილის ფილტრები (ეტაპი 2).
+     *
+     * ⚠️ **ჟანრი/წელი/სტატუსი მხოლოდ მედია-დომენებზე მოქმედებს და
+     * ინტერფეისიც მხოლოდ იქ ხატავს მათ.** სამი მშობელს სამნაირი ჟანრი აქვს
+     * (გლობალური პოლიმორფული `genres`, `song_genres`/`game_genres` pivot-ით,
+     * წიგნს კი ერთი `genre_id`), სტატუსი კი მედიაზე ლექსიკონია, წიგნზე/
+     * თამაშზე enum, სიმღერაზე კი საერთოდ არ არსებობს. ერთ საერთო
+     * `where`-ად ჩაწერა SQL-ის შეცდომა იქნებოდა — იგივე წესი, რაც
+     * `applyTitleSearch()`-ს აქვს.
+     */
+    private function applyRecordFilters($query, string $type, array $data): void
+    {
+        if (! empty($data['favorite'])) {
+            $query->where('is_favorite', true);
+        }
+
+        if (! MediaDomain::has($type)) {
+            return;
+        }
+
+        // ⚠️ სია **AND**-ით იჭრება (`?genre=drama,comedy` = ორივე) — იგივე წესი,
+        // რაც ბიბლიოთეკის სიას აქვს (`MovieController::index`)
+        foreach ($this->slugList($data['genre'] ?? null) as $slug) {
+            $query->whereHas('genres', fn ($genre) => $genre->where('slug', $slug));
+        }
+
+        // ⚠️ სტატუსები კი **OR** — ერთი ჩანაწერი ორ სტატუსში ვერ იქნება
+        if ($keys = $this->slugList($data['status'] ?? null)) {
+            $query->statusKey($keys);
+        }
+
+        if (! empty($data['year_min'])) {
+            $query->where('year', '>=', (int) $data['year_min']);
+        }
+
+        if (! empty($data['year_max'])) {
+            $query->where('year', '<=', (int) $data['year_max']);
+        }
     }
 
     /**
@@ -493,6 +614,12 @@ class GalleryController extends Controller
         }
 
         foreach ($groups->take(120) as $group) {
+            // „უფოტო" ჭრილში ესკიზი ვერ იქნება — თითო ჯგუფზე
+            // ცარიელი მოთხოვნის გაშვება მხოლოდ დროს ჭამს
+            if (($group['photos'] ?? 0) < 1) {
+                continue;
+            }
+
             $type = $morph ?? $group['kind'];
             $out[$group['kind'].':'.$group['id']] = GalleryImage::where('imageable_type', $type)
                 ->where('imageable_id', $group['id'])
@@ -856,12 +983,18 @@ class GalleryController extends Controller
 
         $items = [];
         $withoutTmdb = 0;
+        $withPhotos = 0;
         $recordIds = [];
 
         foreach ($types as $type) {
             $query = GalleryScope::query($type, $data);
 
             if ($request->boolean('skip_with_photos')) {
+                /* ⚠️ **გამოტოვებული ცხადად ითვლება.** უამისოდ „ჩანაწერი 0"
+                   ორ სრულიად სხვადასხვა მდგომარეობას ნიშნავდა — „სკოუპში
+                   არაფერია" და „ყველას ფოტოები უკვე აქვს" — და მეორე
+                   შემთხვევაში ინტერფეისი ჩუმად ცარიელ გეგმას ხატავდა. */
+                $withPhotos += (clone $query)->has('galleryImages')->count();
                 $query->doesntHave('galleryImages');
             }
 
@@ -892,6 +1025,7 @@ class GalleryController extends Controller
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
             'skipped_without_tmdb' => $withoutTmdb,
+            'skipped_with_photos' => $withPhotos,
             // ⚠️ ზედა ზღვარია და არა ზუსტი რიცხვი — იხ. `GalleryFetcher::AVG_BYTES`
             'estimated_bytes' => $estimate,
             'storage' => $usage,
@@ -988,8 +1122,16 @@ class GalleryController extends Controller
             $photos = $photos->union($this->castPhotoCounts($chosen->pluck('id')->all()));
         }
 
+        /* ⚠️ **რამდენი მოიჭრა, ითვლება.** სწორედ ეს ფილტრი აბრუნებდა
+           „მსახიობი 0"-ს იქ, სადაც ერთი კონკრეტული მსახიობი იყო მონიშნული
+           და ფოტოები უკვე ჰქონდა — ჩამრთველი კი ამ დროს ეკრანზე არ იყო.
+           რიცხვი პასუხში იმისთვისაა, რომ ნული თავის მიზეზს ატარებდეს. */
+        $withPhotos = 0;
+
         if ($request->boolean('skip_with_photos')) {
+            $before = $chosen->count();
             $chosen = $chosen->filter(fn (CastMember $m) => ($photos[$m->id] ?? 0) === 0);
+            $withPhotos = $before - $chosen->count();
         }
 
         // „კონკრეტული" ჩამონათვალი ჭერს არ ექვემდებარება — ხელით მონიშნულია
@@ -1014,6 +1156,7 @@ class GalleryController extends Controller
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
             'skipped_without_tmdb' => $withoutTmdb,
+            'skipped_with_photos' => $withPhotos,
             'estimated_bytes' => $estimate,
             'storage' => $usage,
             'fits' => $estimate <= $usage['remaining'],

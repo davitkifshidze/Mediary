@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PublicProfileCard } from '@/components/PublicProfileCard'
-import { StorageFilesCard } from '@/components/StorageFilesCard'
+import { StorageCard } from '@/components/StorageCard'
+import { WebQuotaCard } from '@/components/WebQuotaCard'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
@@ -193,11 +194,18 @@ export function ProfilePage() {
       {/* ---------- საჯარო პროფილი (Tasks 16.1 + §6.1) ---------- */}
       <PublicProfileCard />
 
-      {/* ---------- ატვირთული ფაილები (§6.2) ----------
-          პარამეტრებიდან აქ გადავიდა: „რა ავტვირთე" ანგარიშის ფაქტია და არა
-          პარამეტრი. ლიმიტი, მოდულებზე გადანაწილება და ობოლი ფაილები
-          `/settings`-ზე დარჩა. */}
-      <StorageFilesCard />
+      {/* ---------- ჩემი საცავი (ეტაპი 5) ----------
+          ჯამი და ზოლი · მოდულებად დაშლა · თავიდან დათვლა · **ატვირთული
+          ფაილების ბიბლიოთეკა გაშლილი** · ლიმიტის გაზრდის მოთხოვნა · ობოლი
+          ფაილები (მხოლოდ `super_admin`-ს). `/settings`-ს მხოლოდ მოდულებზე
+          ლიმიტების გაწერა დარჩა — ის მართლა პარამეტრია. */}
+      <StorageCard />
+
+      {/* §7.6.6 — ვებძებნის კვოტა. ⚠️ **ცალკე ბარათია და არა საცავის შიგნით**:
+          ეს SerpApi-ის თვიური **ძებნების** ბიუჯეტია და არა დისკი; ერთ ბლოკში
+          ორი სხვადასხვა რესურსი ერთ რიცხვად წაიკითხებოდა. გასაღების გარეშე
+          ბარათი საერთოდ არ ჩანს. */}
+      <WebQuotaCard />
 
       {/* ---------- პაროლი ---------- */}
       <form onSubmit={savePassword} className="rounded-xl border border-border bg-card p-5">

@@ -13,6 +13,7 @@ import {
   type BoardGameFile,
 } from '@/api/boardGames'
 import { storageUrl } from '@/lib/api'
+import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -219,6 +220,10 @@ function Files({ game }: { game: BoardGame }) {
   const input = useRef<HTMLInputElement>(null)
   const { query, upload, remove } = useFiles(game, 'rules')
   const files = query.data ?? []
+  /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+  const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
+
 
   return (
     <div>
@@ -256,7 +261,15 @@ function Files({ game }: { game: BoardGame }) {
             className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm"
           >
             <FileText className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">{file.original_name ?? file.url}</span>
+            {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
+            <button
+              type="button"
+              onClick={() => viewer.open(file)}
+              className="min-w-0 flex-1 cursor-pointer truncate text-left hover:underline"
+              title={t('files.viewerOpen')}
+            >
+              {file.original_name ?? file.url}
+            </button>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {formatBytes(file.size)}
             </span>
@@ -289,6 +302,9 @@ function Files({ game }: { game: BoardGame }) {
           </li>
         ))}
       </ul>
+
+      {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
+      {viewer.node}
     </div>
   )
 }

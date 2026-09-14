@@ -240,4 +240,90 @@ class AuditLogTest extends TestCase
         $this->assertSame(1, $deleted);
         $this->assertSame($before - 1, AuditLog::count());
     }
+
+    /**
+     * **ჭრილების მთვლელები (ეტაპი 10)** — ბარათი/ტაბი იმ რიცხვს უნდა
+     * აჩვენებდეს, რასაც მასზე დაჭერით მიიღებ.
+     *
+     * ⚠️ **მთავარი წესი: ჭრილი საკუთარ თავს არ ითვლის.** არჩეული მოდულით
+     * დაფილტრულ პასუხშიც დანარჩენი მოდულების რიცხვები უნდა ჩანდეს,
+     * თორემ არჩევის შემდეგ ყველა სხვა ბარათი ნულზე ჩამოვიდოდა და
+     * „სხვაგან რა დევს" კითხვას ვეღარავინ უპასუხებდა.
+     */
+    public function test_summary_counts_every_cut_without_counting_itself(): void
+    {
+        $this->actingAs($this->user);
+        Movie::create(['title_ka' => 'ფილმი']);
+        Movie::create(['title_ka' => 'მეორე']);
+
+        // სხვა მოდულის რიგი — ხელით, რომ ორი ჭრილი მაინც იყოს
+        AuditLog::create([
+            'user_id' => $this->user->id,
+            'action' => AuditLog::ACTION_CHAT_DELETE,
+            'module' => 'chat',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $all = $this->getJson('/api/admin/audit/summary')->json();
+        $modules = collect($all['modules'])->pluck('total', 'key');
+
+        $this->assertSame(2, $modules['movie']);
+        $this->assertSame(1, $modules['chat']);
+
+        // მოდულზე გაფილტრულში მოქმედებები ვიწროვდება…
+        $filtered = $this->getJson('/api/admin/audit/summary?module=movie')->json();
+        $actions = collect($filtered['actions'])->pluck('total', 'key');
+        $this->assertSame(2, $actions[AuditLog::ACTION_CREATE]);
+        $this->assertArrayNotHasKey(AuditLog::ACTION_CHAT_DELETE, $actions->all());
+
+        // …მოდულების რიცხვები კი უცვლელი რჩება (ჭრილი საკუთარ თავს არ ითვლის)
+        $stillThere = collect($filtered['modules'])->pluck('total', 'key');
+        $this->assertSame(2, $stillThere['movie']);
+        $this->assertSame(1, $stillThere['chat']);
+
+        $this->assertSame(2, $this->getJson('/api/admin/audit?module=movie')->json('meta.total'));
+        $this->assertSame(2, $filtered['total']);
+    }
+
+    /**
+     * **„მოდულის გარეშე" ჭრილი** — შესვლას/გასვლას `module` არ აქვს, ე.ი.
+     * `whereIn`-ით მათამდე ფილტრით ვერასდროს მიხვიდოდი და ბარათების ჯამი
+     * „ყველას" ვერასდროს გაუტოლდებოდა.
+     */
+    public function test_rows_without_a_module_are_their_own_cut(): void
+    {
+        AuditLog::create([
+            'user_id' => $this->user->id,
+            'action' => AuditLog::ACTION_LOGIN,
+            'module' => null,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->user);
+        Movie::create(['title_ka' => 'ფილმი']);
+
+        $this->actingAs($this->admin);
+
+        $modules = collect($this->getJson('/api/admin/audit/summary')->json('modules'))
+            ->pluck('total', 'key');
+
+        $this->assertSame(1, $modules['none']);
+        $this->assertSame(1, $modules['movie']);
+
+        $rows = $this->getJson('/api/admin/audit?module=none')->json();
+        $this->assertSame(1, $rows['meta']['total']);
+        $this->assertNull($rows['data'][0]['module']);
+
+        // ორი ჭრილი ერთად — `none` სხვა მოდულს არ თიშავს
+        $this->assertSame(2, $this->getJson('/api/admin/audit?module=none,movie')->json('meta.total'));
+    }
+
+    /** მთვლელებიც ადმინის ზონაშია — `admin_access:audit`-ის მიღმა */
+    public function test_the_summary_is_admin_only(): void
+    {
+        $this->actingAs($this->user)->getJson('/api/admin/audit/summary')->assertForbidden();
+        $this->actingAs($this->admin)->getJson('/api/admin/audit/summary')->assertOk();
+    }
 }

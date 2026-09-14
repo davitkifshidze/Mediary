@@ -303,13 +303,15 @@
     "clear": "Clear",
     "more": "Filters",
     "apply": "Apply",
-    "activeCount": "{{count}} filter(s)",
     "genres": "Genres",
     "types": "Types",
     "tags": "Tags",
     "ranges": "Ranges",
     "search": "Search the list",
-    "noMatches": "Nothing matches"
+    "noMatches": "Nothing matches",
+    "statuses": "Statuses",
+    "clearGroup": "Clear this group",
+    "clearAll": "Clear everything"
   },
   "sort": {
     "label": "Sort",
@@ -524,7 +526,7 @@
     "contentLangHint": "Titles and descriptions — independent of the interface language.",
     "contentLangAuto": "Follow the interface",
     "translateDelay": "Pause between translations",
-    "translateDelayHint": "Translation calls Claude — its rate limit isn't TMDB's.",
+    "translateDelayHint": "Translation calls Gemini — its free tier allows ~15 requests a minute, so 4000 ms is the safe pace.",
     "unsaved": "You have unsaved changes",
     "noChanges": "No changes",
     "revert": "Discard",
@@ -570,7 +572,8 @@
       "rating": "Rating",
       "genres": "Genres",
       "cast": "Cast",
-      "details": "Runtime, IMDb, seasons"
+      "details": "Runtime, IMDb, seasons",
+      "trailer": "Trailer"
     },
     "mode": "Mode",
     "modeEmpty": "Only empty fields",
@@ -819,7 +822,6 @@
     "privateFile": "On the private disk — not reachable by URL",
     "warnNear": "Running out of space — {{remaining}} left.",
     "warnFull": "Out of space — {{remaining}} left. Uploads will fail.",
-    "filesMoved": "The upload library moved to your profile — the quota and its split stayed here.",
     "selectShown": "Select all ({{count}})",
     "selectNone": "Clear selection",
     "selected": "{{count}} selected · {{size}}",
@@ -832,7 +834,8 @@
     "filesDeleteSelectedHint": "The {{count}} selected file(s) will be deleted for good. The records stay — only the upload goes.",
     "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted for good: avatar, posters, thumbnails, photos and documents. The records stay.",
     "orphansWhy": "Where they come from: a record or attachment was deleted straight from the database (a script, a migration) and the copy stayed on disk · an upload was interrupted — the file landed, the row never did · the database was restored from a backup that is older than the files on disk.",
-    "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only."
+    "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only.",
+    "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block."
   },
   "errors": {
     "storage_quota_exceeded": "Out of space: {{needed}} needed, {{remaining}} left (quota {{quota}}).",
@@ -841,6 +844,7 @@
     "storage_request_out_of_range": "The requested quota is outside the allowed range.",
     "module_quota_exceeded": "This module's limit is used up: {{needed}} needed, {{remaining}} left (limit {{quota}}). Adjust the split in settings.",
     "allocation_exceeds_quota": "The allocated limits add up to more than your total quota.",
+    "openlibrary_unavailable": "Open Library is not answering — try later or fill the fields by hand.",
     "bgg_unavailable": "BoardGameGeek is unavailable right now — try later or fill the fields by hand.",
     "rawg_unavailable": "RAWG is unavailable (no API key configured) — fill the fields by hand.",
     "profile_not_public": "Your own profile must be public to compare.",
@@ -851,7 +855,12 @@
     "serpapi_unavailable": "Web search is unavailable — no API key is configured or the source is not answering.",
     "not_youtube": "That is not a YouTube address — fetching details only works for YouTube.",
     "ytdlp_unavailable": "Downloading is off on this server — yt-dlp is not installed.",
-    "download_already_running": "This video is already being downloaded."
+    "download_already_running": "This video is already being downloaded.",
+    "cast_source_required": "No cast member was given — pick one from the list or type a name.",
+    "cast_already_attached": "This person is already on this record.",
+    "cast_limit_reached": "This record has reached the cast limit.",
+    "cast_member_not_found": "The cast member could not be found.",
+    "upload_too_large": "The upload exceeds the server limit — {{file_limit}} per file, {{limit}} per request. See „Upload limits\" in Settings."
   },
   "fields": {
     "title": "Fields",
@@ -953,7 +962,6 @@
         "bgg_id": "BGG id",
         "status": "Status",
         "genre": "Genre",
-        "mechanics": "Mechanics",
         "links": "Shops",
         "image": "Image",
         "description": "Description"
@@ -1162,15 +1170,39 @@
     "confirm_tags_remove": "Tags {{target}} will be removed from {{count}} video(s); other tags stay."
   },
   "translate": {
+    "sourcesTitle": "Translate with",
+    "sourcesRequired": "Pick at least one source.",
+    "source": {
+      "tmdb": "TMDB text",
+      "gemini": "Gemini (machine)",
+      "review": "Review"
+    },
+    "sourceHint": {
+      "tmdb": "The official Georgian title and synopsis, when TMDB has them. Free and unlimited.",
+      "gemini": "Translates what TMDB does not have. Has a daily limit."
+    },
+    "quotaTitle": "Gemini usage",
+    "quotaUsed": "Used today: {{used}} / {{limit}}",
+    "quotaLeft": "{{count}} left",
+    "quotaOff": "The limit is off (GEMINI_DAILY_LIMIT=0).",
+    "quotaHint": "This counter is ours: Google exposes no usage API, so calls made by other programs do not show here. The limit resets once a day, at midnight Pacific time.",
+    "quotaRpm": "In the last minute: {{used}} / {{limit}}",
+    "recentTitle": "Recent translations",
+    "field": {
+      "title_ka": "Title (ka)",
+      "title_en": "Title (en)",
+      "description_ka": "Synopsis (ka)",
+      "description_en": "Synopsis (en)"
+    },
     "title": "Translations",
     "open": "Translate…",
     "run": "Run",
     "desc": "Fills in text that exists in one language but not the other.",
-    "pageHint": "TMDB first, then Claude. Existing text is never overwritten.",
+    "pageHint": "TMDB first, then Gemini. Existing text is never overwritten.",
     "howItWorks": "How it works",
     "sources": "Sources",
     "sourceTmdb": "TMDB — free and authoritative (genres come from here too).",
-    "sourceClaude": "Claude — only for what TMDB doesn't have.",
+    "sourceGemini": "Gemini — only for what TMDB doesn't have (free tier, ~1500 requests a day).",
     "sourceNever": "⚠️ A description empty in *both* languages is a sync problem, not a translation one.",
     "pending": "{{count}} to translate",
     "genresPending": "Genres: {{count}}",
@@ -1179,8 +1211,13 @@
     "allDone": "Everything is translated.",
     "nothingToDo": "Nothing to translate.",
     "started": "{{count}} record(s) queued",
-    "noKey": "ANTHROPIC_API_KEY is missing — descriptions won't be translated.",
-    "noTmdbKey": "TMDB_API_KEY is missing."
+    "noKey": "GEMINI_API_KEY is missing — only TMDB’s text will come through. Free key: aistudio.google.com/apikey",
+    "noTmdbKey": "TMDB_API_KEY is missing.",
+    "review": "Check TMDB's Georgian synopsis",
+    "reviewHint": "Gemini compares it with the English original and corrects it if needed.",
+    "reviewWarn": "⚠️ This is the one mode that overwrites existing text. It never touches a hand-written or already machine-translated synopsis.",
+    "reviewablePending": "To review (TMDB's Georgian synopsis): {{count}}",
+    "sourceReview": "Review — only on an explicit choice; it rewrites TMDB's Georgian synopsis."
   },
   "bookGenres": {
     "title": "Book genres",
@@ -1353,7 +1390,7 @@
   "gallery": {
     "title": "Gallery",
     "fetchTitle": "Download photos",
-    "fetch": "Download",
+    "fetch": "Download gallery",
     "run": "Run",
     "started": "{{count}} record(s) queued",
     "what": "What to fetch",
@@ -1383,13 +1420,11 @@
     "deleteHint": "The file is deleted for good and the space is freed.",
     "subject": {
       "stills": "Stills",
-      "posters": "Posters",
-      "logos": "Logos"
+      "posters": "Posters"
     },
     "subjectHint": {
       "stills": "Film stills — scenes shot without any text on them.",
-      "posters": "Official posters (in various languages).",
-      "logos": "The film's title logo — usually on a transparent background."
+      "posters": "Official posters (in various languages)."
     },
     "category": {
       "backdrop": "Still",
@@ -1520,7 +1555,41 @@
     "pickAllMale": "All men",
     "castPicked": "{{count}} selected",
     "fetchForActor": "Download — {{name}}",
-    "fetchForRecord": "Download — {{name}}"
+    "fetchForRecord": "Download — {{name}}",
+    "have": {
+      "with": "With photos",
+      "without": "Without photos",
+      "all": "All"
+    },
+    "groupSort": {
+      "label": "Sort",
+      "photos": "Photos — most first",
+      "photos_asc": "Photos — fewest first",
+      "title": "Name",
+      "year": "Year",
+      "bytes": "Size"
+    },
+    "groupSection": {
+      "label": "Group",
+      "none": "No grouping",
+      "genre": "By genre",
+      "year": "By year",
+      "status": "By status"
+    },
+    "moreFilters": "Filters",
+    "inner": {
+      "actors": "Actors"
+    },
+    "unknownSection": "Unknown",
+    "allHavePhotos": "Every record already has photos",
+    "actorsHavePhotos": "{{count}} skipped — they already have photos",
+    "recordsHavePhotos": "{{count}} skipped — they already have photos",
+    "openGroup": "Open the group",
+    "deleteGroup": "Delete every photo in the group ({{count}})",
+    "deleteGroupTitle": "Delete every photo in this group?",
+    "deleteGroupHint": "“{{name}}” — {{count}} photos will be deleted for good and the space freed. The record itself stays.",
+    "groupDeleted": "{{count}} photos deleted",
+    "moduleOff": "The “Gallery” module is off — saving photos and video links needs it."
   },
   "boardGames": {
     "title": "Board games",
@@ -1549,9 +1618,6 @@
     "bggId": "BGG id",
     "image": "Image",
     "imageHint": "Without an upload it's fetched from BGG.",
-    "mechanics": "Mechanics",
-    "mechanicsHint": "Up to ten — they come from BGG.",
-    "noMechanics": "No mechanics listed.",
     "shops": "Shops",
     "addShop": "Add shop",
     "price": "Price",
@@ -1602,7 +1668,8 @@
       "outOfStock": "out of stock",
       "add": "To links",
       "added": "Added"
-    }
+    },
+    "playersAnyHint": "Fits at least one of them (not all of them at once)."
   },
   "books": {
     "title": "Books",
@@ -1870,19 +1937,15 @@
     "filesHint": "PDFs, spreadsheets, archives and the like.",
     "fileDeleteTitle": "Delete this file?",
     "remindersTitle": "Reminders",
-    "remindersHint": "In the browser, on Telegram or by email.",
+    "remindersHint": "Reminds you in the browser or on Telegram — once, daily, weekly, monthly or yearly.",
     "remindersEmpty": "No reminders yet.",
     "addReminder": "Add reminder",
-    "reminderMode": "When",
     "reminderAt": "Date and time",
-    "reminderTime": "Time of day",
-    "reminderWeekday": "Day of the week",
     "reminderInterval": "Interval",
     "everyMinutes": "every {{count}} minute(s)",
     "reminderChannels": "Where to send it",
     "reminderActive": "Active",
     "reminderDeleteTitle": "Delete this reminder?",
-    "nextAt": "Next: {{time}}",
     "timezoneHint": "The time is stored in your timezone — the server runs on UTC.",
     "channelsTitle": "Delivery channels",
     "channelsSaved": "Channels saved",
@@ -1934,7 +1997,6 @@
     "videosEmpty": "No videos yet.",
     "reminderWeekdays": "Weekdays",
     "reminderWeekdaysHint": "Pick several if you like — the nearest selected day fires.",
-    "reminderDayOfMonth": "Day of month",
     "reminderDayOfMonthHint": "31 falls back to the last day in shorter months (28/29/30).",
     "reminderMonth": "Month",
     "reminderRepeat": "Repeat count",
@@ -1943,8 +2005,8 @@
     "reminderRepeatLeft": "{{count}} left",
     "reminderTimes": "{{count}}×",
     "reminderWeekdaysRequired": "Pick at least one day.",
-    "monthlyOn": "Monthly on day {{day}}",
-    "yearlyOn": "Yearly on {{month}} {{day}}",
+    "monthlyOn": "Monthly on day {{days}}",
+    "yearlyOn": "Yearly on {{month}} {{days}}",
     "months": {
       "1": "January",
       "2": "February",
@@ -1962,7 +2024,41 @@
     "logTitle": "Reminder log",
     "logHint": "Every fired reminder stays here — even if the app was closed. This is not a queue: read ones stay too.",
     "logEmpty": "No reminder has fired yet.",
-    "logMarkRead": "Mark as read"
+    "logMarkRead": "Mark as read",
+    "reminderStepWhen": "When it fires",
+    "reminderStepWhenHint": "Pick the mode first, then the days and times. Several times a day are allowed.",
+    "reminderStepWindow": "For how long",
+    "reminderStepWindowHint": "Between which dates it stays alive, and how many times it fires in total.",
+    "reminderStepChannelsHint": "Where the notification arrives. The browser channel needs the app open; Telegram does not.",
+    "reminderTimesLabel": "Times of day",
+    "reminderTimesHint": "Several are allowed — it fires at every selected time.",
+    "reminderTimesRequired": "Pick at least one time.",
+    "reminderAddTime": "Add time",
+    "reminderRemoveTime": "Remove {{time}}",
+    "reminderDaysOfMonth": "Days of the month",
+    "reminderDaysRequired": "Pick at least one day.",
+    "reminderWindowStart": "Starts",
+    "reminderWindowEnd": "Ends",
+    "reminderWindowHint": "Empty = no limit. Outside the window nothing fires.",
+    "reminderWindowInvalid": "The end must come after the start.",
+    "reminderWindowFrom": "from {{date}}",
+    "reminderWindowUntil": "until {{date}}",
+    "reminderNoNext": "No further firings",
+    "remindersSaveFirst": "Save the note first — a reminder is attached to it.",
+    "reminderNewTitle": "New reminder",
+    "reminderEditTitle": "Edit reminder",
+    "reminderFor": "Note:",
+    "reminderPaused": "Paused",
+    "remindersSummary": "{{total}} reminders · {{active}} active",
+    "remindersNoneInCut": "No reminders in this cut.",
+    "remindersAddOnNote": "Pick a note",
+    "reminderCut": {
+      "all": "All",
+      "active": "Active",
+      "paused": "Paused",
+      "done": "Finished"
+    },
+    "uploadsSaveFirst": "Save the note first — files are attached to it."
   },
   "chat": {
     "title": "Chat",
@@ -2115,7 +2211,12 @@
       "web": "From the web",
       "wikimedia": "Wikimedia Commons",
       "manual": "Manual"
-    }
+    },
+    "open": "Open",
+    "download": "Download",
+    "openOriginal": "Original in a new tab",
+    "select": "Select",
+    "deselect": "Deselect"
   },
   "numberPick": {
     "none": "None",
@@ -2151,7 +2252,9 @@
       "search": "Search",
       "searchHint": "Name, path or user…",
       "actions": "Action",
-      "modules": "Module"
+      "modules": "Module",
+      "allActions": "All",
+      "allModules": "All"
     },
     "columns": {
       "when": "When",
@@ -2170,14 +2273,18 @@
       "create": "Created",
       "update": "Edited",
       "delete": "Deleted",
-      "chat_delete": "Chat deletion"
+      "chat_delete": "Chat deletion",
+      "cast_attach": "Cast member added",
+      "cast_detach": "Cast member removed",
+      "translate": "Translation"
     },
     "modules": {
       "account": "Account",
       "admin": "Administration",
       "chat": "Chat",
       "genre": "Genres",
-      "cast": "Cast"
+      "cast": "Cast",
+      "none": "No module"
     },
     "subjects": {
       "movie": "movie",
@@ -2241,12 +2348,19 @@
     "cost": "Will spend {{count}} search(es)",
     "remaining": "{{count}} left",
     "search": "Search",
+    "stepQuery": "What to search for",
+    "stepSources": "Where to search",
+    "stepResults": "Results",
     "searchPhotos": "Photos from the web",
     "searchPhotosFor": "Photo search — {{name}}",
     "queryPlaceholder": "What are we looking for? e.g. \"Keanu Reeves portrait\"",
     "spent": "Spent {{count}} search(es)",
     "fromCache": "Served from cache — no search was spent",
     "nothingFound": "Nothing found.",
+    "found": "{{count}} found",
+    "notSearchedYet": "You haven't searched yet",
+    "notSearchedHint": "Type a query and press Search — nothing is ever searched automatically, so the quota is never spent silently.",
+    "searchWith": "Search with {{engine}}",
     "foundUnusable": "The source returned {{count}} result(s) with no link — they cannot be downloaded.",
     "sourceOffline": "Not answering: {{engines}}",
     "selected": "{{count}} selected",
@@ -2280,8 +2394,14 @@
     "distributeOn": "{{count}} actors selected — a photo found by name goes to them, the rest to the record.",
     "distributeOff": "Nobody selected — every photo goes to the record.",
     "assignAuto": "Automatically",
+    "assignLabel": "Attach to",
     "assignActor": "actor",
-    "assignRecord": "record"
+    "assignRecord": "record",
+    "limitLabel": "How many photos",
+    "limitHint": "Up to {{max}}. Type any number.",
+    "pagesLabel": "Pages",
+    "pagesHint": "Up to {{max}}. ⚠️ Each page costs one credit.",
+    "pagesOnlySerper": "Only Google Images (Serper) has pages."
   },
   "empty": {
     "filteredHint": "A filter or the search is cutting the list — clear it and the records come back.",
@@ -2289,7 +2409,7 @@
   },
   "dictionaries": {
     "title": "Dictionaries",
-    "subtitle": "Genres, categories and types — one page, with a module switcher.",
+    "subtitle": "Add, reorder, edit and delete.",
     "backToRecords": "Back to the module",
     "noModules": "No enabled module has a dictionary.",
     "add": "Add",
@@ -2301,7 +2421,27 @@
     "inUse": "“{{name}}” is used by {{count}} record(s). What should happen to them?",
     "moveTo": "Move them to another entry",
     "movePick": "Pick where they go",
-    "moveNone": "Leave them empty"
+    "moveNone": "Leave them empty",
+    "subtitleStatuses": "Statuses and sidebar sections — order, visibility, deletion.",
+    "backToIndex": "All dictionaries",
+    "groupStatuses": "Statuses",
+    "groupStatusesHint": "They are also sidebar sections — inside you also decide where “All” and “Favourites” sit and what is shown.",
+    "groupOther": "Genres, types and categories",
+    "groupOtherHint": "Used by the filter panel and the forms.",
+    "entries": "{{count}} entries",
+    "hiddenCount": "{{count}} hidden",
+    "sectionsHint": "This is the sidebar order. The eye hides a section from the sidebar — the status stays on records, in the filter and in the form.",
+    "pseudoHint": "A section, not a status — it can only be moved or hidden",
+    "hidden": "Hidden",
+    "hide": "Hide from the sidebar",
+    "show": "Show in the sidebar",
+    "deleteRecords": "Delete the records too ({{count}})",
+    "deleteRecordsWarning": "{{count}} record(s) will be deleted for good — together with their files, photos and notes. This cannot be undone.",
+    "deleteRecordsMulti": "A record that also has other genres is deleted too.",
+    "confirmLabel": "Type {{word}} to confirm",
+    "recordsDeleted": "{{count}} record(s) deleted",
+    "navHint": "Every module's statuses, genres, types and categories.",
+    "indexAction": "Open a card to add, reorder, hide or delete entries."
   },
   "playback": {
     "title": "Player",
@@ -2344,5 +2484,72 @@
   "list": {
     "showMore": "Show more",
     "shown": "Showing {{shown}} of {{total}}"
+  },
+  "cast": {
+    "add": "Add a cast member",
+    "addTitle": "Add a cast member to this record",
+    "added": "{{name}} added",
+    "alreadyAttached": "already here",
+    "billingOrder": "Order in the list",
+    "billingOrderHint": "A smaller number comes first. A hand-added person goes last.",
+    "character": "Role",
+    "characterPlaceholder": "Who they play",
+    "detach": "Remove from this record",
+    "detachHint": "{{name}} will be removed from this record. The person, their photos and other records stay.",
+    "detachTitle": "Remove the cast member",
+    "detached": "Cast member removed",
+    "editRole": "Edit the role",
+    "editRoleTitle": "{{name}} — role and order",
+    "empty": "No cast yet. Add someone by hand or run a sync.",
+    "gender": "Gender",
+    "genderUnknown": "Unspecified",
+    "groupLibrary": "Already in your library",
+    "groupTmdb": "TMDB",
+    "manualAdd": "Enter by hand",
+    "nameEn": "Name (Latin)",
+    "nameKa": "Name (Georgian)",
+    "noResults": "Nobody found",
+    "noResultsHint": "Try another spelling — or enter them by hand (TMDB does not see Georgian names).",
+    "notSearchedYet": "Nothing searched yet.",
+    "openActor": "Open the actor",
+    "search": "Search",
+    "searchPlaceholder": "Person's name",
+    "stepDetails": "Details",
+    "stepDetailsHint": "The role belongs to this record — it ties the person to the film, not to the person alone.",
+    "stepPick": "Pick one, or enter by hand",
+    "stepPickHint": "Not in the list — TMDB does not answer Georgian names — add them by hand.",
+    "stepSearch": "Who are you looking for",
+    "stepSearchHint": "The library is searched first, then TMDB. Searching only happens on the button.",
+    "tmdbMissingKey": "No TMDB key is configured — the search covers the library only.",
+    "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works."
+  },
+  "boundary": {
+    "title": "This page failed to load",
+    "hint": "Something threw while rendering, or the page chunk could not be downloaded. Try again — if it repeats, a full reload replaces a stale copy.",
+    "retry": "Try again",
+    "reload": "Reload the page"
+  },
+  "uploads": {
+    "title": "Upload limits",
+    "hint": "What the server accepts, by size and format. ⚠️ Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`.",
+    "moreFormats": "+{{count}}",
+    "perFile": "per file",
+    "perRequest": "per request",
+    "maxFiles": "at once",
+    "cappedByServer": "lowered by PHP",
+    "kind": {
+      "image": "Images",
+      "doc": "Documents",
+      "video": "Videos",
+      "book": "E-books",
+      "rules": "Rules (PDF)"
+    },
+    "anyFormat": "any format"
+  },
+  "files": {
+    "viewerTitle": "File",
+    "viewerOpen": "Open",
+    "viewerUnsupported": "The browser cannot show this format — download it.",
+    "viewerFailed": "The file could not be loaded."
   }
 }

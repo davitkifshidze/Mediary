@@ -50,7 +50,7 @@ export function WebQuotaCard() {
       </h2>
       <p className="mb-4 text-sm text-muted-foreground">{t('web.quotaHint')}</p>
 
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
+      <div className="h-2 overflow-hidden rounded-md bg-muted">
         <div
           className={percent >= 90 ? 'h-full bg-destructive' : 'h-full bg-primary'}
           style={{ width: `${percent}%` }}

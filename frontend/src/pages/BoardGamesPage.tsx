@@ -42,7 +42,9 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
@@ -72,6 +74,10 @@ const STATUS_TONE: Record<string, string> = {
   sold: 'bg-destructive/15 text-destructive',
 }
 
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_FILTERS = { genres: [] as string[], players: [] as string[] }
+type PanelFilters = typeof EMPTY_FILTERS
+
 export function BoardGamesPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -88,23 +94,19 @@ export function BoardGamesPage() {
     () => new URLSearchParams(search).get('genre')?.split(',').filter(Boolean) ?? [],
     [search],
   )
-  const mechanics = useMemo(
-    () => new URLSearchParams(search).get('mechanic')?.split(',').filter(Boolean) ?? [],
+  /* ⚠️ ეტაპი 8 — მოთამაშეები **სიაა** (`?players=2,4`) და არა ერთი რიცხვი.
+     სერვერზე ეს **OR**-ია: „2 **ან** 4 მოთამაშეს უდგება". */
+  const players = useMemo(
+    () => new URLSearchParams(search).get('players')?.split(',').filter(Boolean) ?? [],
     [search],
   )
-  const players = new URLSearchParams(search).get('players') ?? ''
 
-  const [draft, setDraft] = useState({ genres, mechanics, players })
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<BoardGame | 'new' | null>(null)
   const [opened, setOpened] = useState<BoardGame | null>(null)
-
-  useEffect(() => {
-    setDraft({ genres, mechanics, players })
-  }, [genres, mechanics, players])
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -114,8 +116,7 @@ export function BoardGamesPage() {
   const filters: BoardGameFilters = {
     q: term || undefined,
     genre_id: genres.length ? genres.join(',') : undefined,
-    mechanic: mechanics.length ? mechanics.join(',') : undefined,
-    players: players ? Number(players) : undefined,
+    players: players.length ? players.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
     status: (BOARD_GAME_STATUSES as readonly string[]).includes(view) ? view : undefined,
@@ -164,40 +165,29 @@ export function BoardGamesPage() {
     onError: fail,
   })
 
-  /** ფორმის მექანიკების შემოთავაზებები — ყველა სექციიდან დანახული გროვდება */
-  const [knownMechanics, setKnownMechanics] = useState<string[]>([])
-  useEffect(() => {
-    if (!games.length) return
-    setKnownMechanics((prev) => {
-      const merged = new Set([...prev, ...games.flatMap((g) => g.mechanics)])
-      return merged.size === prev.length ? prev : [...merged].sort((a, b) => a.localeCompare(b))
-    })
-  }, [games])
-
-  const mechanicOptions = useMemo(() => {
-    const set = new Set([...knownMechanics, ...games.flatMap((g) => g.mechanics), ...mechanics])
-    return [...set].sort((a, b) => a.localeCompare(b))
-  }, [knownMechanics, games, mechanics])
-
   /* ---------- ფილტრის გაშვება ---------- */
 
-  const activeCount = genres.length + mechanics.length + (players ? 1 : 0)
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x))
-  const dirty =
-    !same(draft.genres, genres) || !same(draft.mechanics, mechanics) || draft.players !== players
-
-  /** მიმდინარე სექცია (`?view=`) ინახება — პანელი მას არ ცვლის (Tasks 3) */
-  const applyDraft = (next: typeof draft) => {
+  /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
+  const writeFilters = (next: PanelFilters) => {
     const p = new URLSearchParams()
     if (view !== 'all') p.set('view', view)
     if (next.genres.length) p.set('genre', next.genres.join(','))
-    if (next.mechanics.length) p.set('mechanic', next.mechanics.join(','))
-    if (next.players) p.set('players', next.players)
+    if (next.players.length) p.set('players', next.players.join(','))
     setPanelOpen(false)
     navigate({ pathname: '/board-games', search: p.toString() })
   }
 
-  const toggle = (key: 'genres' | 'mechanics', value: string, on: boolean) =>
+  /* მონახაზი, „ცვლილებაა?", გასუფთავება და მრიცხველი — ერთი აღწერა
+     `lib/filters.ts`-ში. ⚠️ `clear()` **ორივე მხარეს** ასუფთავებს
+     (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
+     სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
+    { genres, players },
+    EMPTY_FILTERS,
+    writeFilters,
+  )
+
+  const toggle = (key: 'genres' | 'players', value: string, on: boolean) =>
     setDraft((d) => ({
       ...d,
       [key]: on ? [...d[key], value] : d[key].filter((x) => x !== value),
@@ -283,7 +273,7 @@ export function BoardGamesPage() {
               actions={
                 <>
                   {activeCount > 0 && (
-                    <Button variant="outline" onClick={() => applyDraft({ genres: [], mechanics: [], players: '' })}>
+                    <Button variant="outline" onClick={clear}>
                       {t('filter.clear')}
                     </Button>
                   )}
@@ -358,16 +348,6 @@ export function BoardGamesPage() {
                         </span>
                       )}
                     </p>
-
-                    {game.mechanics.length > 0 && (
-                      <p className="mt-1 flex flex-wrap gap-1">
-                        {game.mechanics.slice(0, 6).map((m) => (
-                          <span key={m} className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
-                            {m}
-                          </span>
-                        ))}
-                      </p>
-                    )}
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
@@ -440,33 +420,31 @@ export function BoardGamesPage() {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
-          onClear={() => applyDraft({ genres: [], mechanics: [], players: '' })}
+          onApply={() => apply(draft)}
+          onClear={clear}
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
           {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
-          <FilterGroup title={t('boardGames.players')} count={draft.players ? 1 : 0}>
-            <div className="flex flex-wrap gap-1.5 px-1.5 py-1">
+          {/* ⚠️ საერთო `Chip`-ით და არა ხელით დაწერილი პილულით (ეტაპი 1-ის წესი) */}
+          <FilterGroup title={t('boardGames.players')} count={draft.players.length}>
+            <ChipRow className="px-0.5 py-1">
               {PLAYER_COUNTS.map((n) => (
-                <button
+                <Chip
                   key={n}
-                  type="button"
-                  onClick={() =>
-                    setDraft((d) => ({ ...d, players: d.players === String(n) ? '' : String(n) }))
-                  }
-                  className={cn(
-                    'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
-                    draft.players === String(n)
-                      ? 'border-primary bg-secondary font-medium'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
+                  active={draft.players.includes(String(n))}
+                  onClick={() => toggle('players', String(n), !draft.players.includes(String(n)))}
                 >
                   {n}
                   {n === 8 ? '+' : ''}
-                </button>
+                </Chip>
               ))}
-            </div>
+            </ChipRow>
+            {/* ⚠️ წარწერა სწორედ იმიტომაა, რომ შედეგი ორაზროვანი არ იყოს:
+                აქ **OR**-ია (ჟანრებისგან განსხვავებით, სადაც AND). */}
+            <p className="px-1.5 pb-1 text-xs text-muted-foreground">
+              {t('boardGames.playersAnyHint')}
+            </p>
           </FilterGroup>
 
           <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
@@ -482,25 +460,6 @@ export function BoardGamesPage() {
               ))}
             </FilterOptionList>
           </FilterGroup>
-
-          <FilterGroup title={t('boardGames.mechanics')} count={draft.mechanics.length}>
-            {mechanicOptions.length ? (
-              <FilterOptionList>
-                {mechanicOptions.map((m) => (
-                  <FilterOption
-                    key={m}
-                    label={m}
-                    checked={draft.mechanics.includes(m)}
-                    onChange={(on) => toggle('mechanics', m, on)}
-                  />
-                ))}
-              </FilterOptionList>
-            ) : (
-              <p className="px-1.5 py-1 text-xs text-muted-foreground">
-                {t('boardGames.noMechanics')}
-              </p>
-            )}
-          </FilterGroup>
         </FilterPanel>
       </div>
 
@@ -515,7 +474,6 @@ export function BoardGamesPage() {
       {editing && (
         <BoardGameForm
           game={editing === 'new' ? null : editing}
-          allMechanics={knownMechanics}
           genres={allGenres}
           onClose={() => setEditing(null)}
           onSaved={() => {

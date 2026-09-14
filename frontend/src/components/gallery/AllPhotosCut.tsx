@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Images } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchGallerySummary } from '@/api/gallery'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
-import { cn } from '@/lib/utils'
+import { Chip, ChipRow } from '@/components/ui/chip'
 
 /* ============================================================
    „ყველა ფოტო" — **არეული ხედი** (§8.5).
@@ -14,34 +15,52 @@ import { cn } from '@/lib/utils'
 
    ⚠️ **კატეგორიის ჩიპები ფილტრია და არა ჭრილი** — ისინი ფილტრში ჯდება
    და გვერდსაც პირველზე აბრუნებს, თორემ „მე-3 გვერდი" ცარიელი დარჩებოდა.
+
+   ⚠️ **სია ბაზიდან მოდის და არა კოდიდან** (2026-09-12). აქამდე ოთხივე
+   კატეგორია კონსტანტა იყო, ამიტომ „ლოგო" იმ ბიბლიოთეკაშიც ჩანდა, სადაც
+   არცერთი ლოგო არ არის — ჩიპზე დაჭერა ცარიელ ბადეს აბრუნებდა და კითხვას
+   ტოვებდა „რატომ არაფერია". ახლა `GET /api/gallery` აბრუნებს
+   `categories`-ს, ჩიპი რიცხვიანია და ნულიანი საერთოდ არ იხატება.
+
+   ⚠️ **შეჯამება იმავე ქეშის გასაღებზეა** (`gallery-summary`), რომელსაც
+   გვერდის მთვლელები კითხულობს — მეორე რექვესთი არ ჩნდება.
    ============================================================ */
 
-const CATEGORIES = ['backdrop', 'poster', 'logo', 'actor'] as const
+/** რიგი მნიშვნელობით და არა ანბანით — „კადრი · პოსტერი · ლოგო · მსახიობი" */
+const CATEGORY_ORDER = ['backdrop', 'poster', 'logo', 'actor'] as const
 
 export function AllPhotosCut() {
   const { t } = useTranslation()
   const [category, setCategory] = useState<string>('all')
 
+  const summaryQ = useQuery({ queryKey: ['gallery-summary'], queryFn: fetchGallerySummary })
+
+  const counts = summaryQ.data?.categories ?? {}
+
+  /* ⚠️ არჩეული კატეგორია რიგში რჩება მაშინაც, თუ ბოლო ფოტო წაიშალა —
+     თორემ ჩიპი ფეხქვეშ გაქრებოდა და ბადე ცარიელი დარჩებოდა ახსნის გარეშე. */
+  const shown = useMemo(
+    () => CATEGORY_ORDER.filter((key) => (counts[key] ?? 0) > 0 || key === category),
+    [counts, category],
+  )
+
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <Images className="size-4 text-muted-foreground" />
-        {(['all', ...CATEGORIES] as const).map((key) => (
-          <button
+      <ChipRow className="mb-4">
+        <Chip active={category === 'all'} onClick={() => setCategory('all')} count={summaryQ.data?.photos}>
+          {t('filter.all')}
+        </Chip>
+        {shown.map((key) => (
+          <Chip
             key={key}
-            type="button"
+            active={category === key}
             onClick={() => setCategory(key)}
-            className={cn(
-              'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-              category === key
-                ? 'border-primary bg-secondary text-foreground'
-                : 'border-border text-muted-foreground hover:text-foreground',
-            )}
+            count={counts[key] ?? 0}
           >
-            {key === 'all' ? t('filter.all') : t(`gallery.category.${key}`)}
-          </button>
+            {t(`gallery.category.${key}`)}
+          </Chip>
         ))}
-      </div>
+      </ChipRow>
 
       <GroupPhotos
         title={t('gallery.allPhotos')}

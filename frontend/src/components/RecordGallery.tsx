@@ -167,21 +167,25 @@ export function RecordGallery({
         onPrimary={(image) => primary.mutate(image)}
         emptyText={t('gallery.emptyRecord')}
         actions={
+          /* ⚠️ **სამივე ერთ ზოლშია** (შენი მითითება, 2026-09-14):
+             ჩარჩოსა და გამყოფები `GalleryPanel`-სია, აქ მხოლოდ `ghost`
+             ღილაკებია — ორმაგვარი ჩარჩო (ზოლისა და თითო ღილაკის)
+             დახრამულ საზღვრებს იძლევა. */
           <>
             {/* ⚠️ **ჩამოტვირთვა აქვეა** — სკოუპი ამ ჩანაწერზეა მიბმული */}
-            <Button type="button" variant="outline" size="sm" onClick={() => setDownloadOpen(true)}>
+            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setDownloadOpen(true)}>
               <DownloadCloud className="size-4" />
               {t('gallery.fetch')}
             </Button>
 
             {/* ⚠️ **TMDB-ის გვერდით და არა მის ნაცვლად**: TMDB უფასოა და
                 ლიმიტის გარეშე, ვებძებნა კი 250-იან ბიუჯეტს ხარჯავს. */}
-            <Button type="button" variant="outline" size="sm" onClick={() => setWebOpen(true)}>
+            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setWebOpen(true)}>
               <Globe className="size-4" />
               {t('web.searchPhotos')}
             </Button>
 
-            <Button type="button" variant="outline" size="sm" onClick={() => setVideoOpen(true)}>
+            <Button type="button" variant="ghost" size="sm" className="rounded-none" onClick={() => setVideoOpen(true)}>
               <Video className="size-4" />
               {t('web.searchVideos')}
             </Button>
@@ -268,7 +272,18 @@ export function ActorGallery({
     enabled: has('gallery') && Number.isFinite(castId),
   })
 
-  if (!has('gallery')) return null
+  /* ⚠️ **გამორთული მოდული ჩუმად არ ქრება** (ეტაპი 3). ადრე აქ `null`
+     ბრუნდებოდა, ე.ი. „გალერეის" მოდულის გარეშე მსახიობის გვერდზე არც
+     ფოტოები ჩანდა, არც ვიდეოს ძებნის ღილაკი — და მიზეზი არსად ეწერა.
+     ვიდეო-ბმული `gallery_videos`-ში ჯდება, ე.ი. შენახვას ნამდვილად ეს
+     მოდული სჭირდება; ერთი წინადადება ამას ამბობს. */
+  if (!has('gallery')) {
+    const note = <p className="text-sm text-muted-foreground">{t('gallery.moduleOff')}</p>
+
+    return bare ? <div>{note}</div> : (
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">{note}</section>
+    )
+  }
 
   const detail = galleryQ.data
   const name = actorName ?? detail?.actor.name_ka ?? detail?.actor.name ?? ''
@@ -289,14 +304,15 @@ export function ActorGallery({
           <>
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
+              className="rounded-none"
               disabled={detail?.actor.has_tmdb === false}
               onClick={() => setDownloadOpen(true)}
             >
               <DownloadCloud className="size-4" />
               {t('gallery.fetch')}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setVideoOpen(true)}>
+            <Button size="sm" variant="ghost" className="rounded-none" onClick={() => setVideoOpen(true)}>
               <Video className="size-4" />
               {t('web.searchVideos')}
             </Button>

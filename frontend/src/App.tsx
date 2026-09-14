@@ -1,6 +1,7 @@
 import { Suspense, lazy, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
 import { PlayerBar } from '@/components/PlayerBar'
@@ -53,6 +54,9 @@ const BooksPage = lazy(() => import('@/pages/BooksPage').then((m) => ({ default:
 const BoardGamesPage = lazy(() => import('@/pages/BoardGamesPage').then((m) => ({ default: m.BoardGamesPage })))
 const GamesPage = lazy(() => import('@/pages/GamesPage').then((m) => ({ default: m.GamesPage })))
 const NotesPage = lazy(() => import('@/pages/NotesPage').then((m) => ({ default: m.NotesPage })))
+const NoteRemindersPage = lazy(() =>
+  import('@/pages/NoteRemindersPage').then((m) => ({ default: m.NoteRemindersPage })),
+)
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const DictionariesPage = lazy(() => import('@/pages/DictionariesPage').then((m) => ({ default: m.DictionariesPage })))
 const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage').then((m) => ({ default: m.PlaylistsPage })))
@@ -158,6 +162,8 @@ function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   // მასობრივი ოპერაციები (Tasks 4) — მედია-დომენებზე სტატუსი, ვიდეოებზე ტიპი/ტეგები
   const bulkAvailable = mediaModules.length > 0 || has('video')
+  /** შეცდომის ზღვრის გასაღები — მისამართის შეცვლა შეცდომას ასუფთავებს */
+  const location = useLocation()
 
   // §13.3 — შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
   // მუშაობდეს და არა მხოლოდ `/notes`-ზე. მოდულის გარეშე polling არ ირთვება.
@@ -177,6 +183,10 @@ function AppShell() {
         {/* §7.2 — ქვედა ზოლი გვერდს არ უნდა ფარავდეს; სიმაღლეს თვითონ
             დამკვრელი წერს `--player-h`-ში (დახურულზე ცვლადი საერთოდ არ არის) */}
         <main className="min-w-0 flex-1 pb-[var(--player-h,0px)]">
+        {/* ⚠️ ზღვარი `Suspense`-ზე **გარეთაა**: ჩანქის ჩატვირთვის ჩავარდნას
+            `lazy()` რენდერის დროს აგდებს, ე.ი. შიგნიდან ვერ დაიჭირებოდა.
+            `resetKey` მისამართია — სხვა სექციაზე გადასვლა ეკრანს ასუფთავებს. */}
+        <ErrorBoundary resetKey={location.pathname}>
         <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Tasks 2 — `/` დეშბორდია და არა ფილმების ბიბლიოთეკა */}
@@ -188,6 +198,10 @@ function AppShell() {
           {pageModules.map((m) => (
             <Route key={m.key} path={m.route_base.replace(/^\//, '')} element={MODULE_PAGES[m.key]} />
           ))}
+
+          {/* ეტაპი 11.2 — შეხსენებებს **თავისი სექცია** აქვს და არა ჩანაწერის
+              ფორმის ნაწილი. მოდულის ჩართვაზეა დამოკიდებული, როგორც პლეილისტები. */}
+          {has('note') && <Route path="notes/reminders" element={<NoteRemindersPage />} />}
 
           {/* ---------- ლექსიკონები: ერთი გვერდი, გადამრჩევით (§6.3) ----------
               ⚠️ **ძველი შვიდი მისამართი ცოცხალი რჩება** და ახალზე
@@ -273,6 +287,7 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
         </main>
       </div>
       {/* §7.2 — ერთი დამკვრელი მთელ აპზე. მარშრუტების **გარეთაა**: გვერდის
@@ -287,6 +302,7 @@ export default function App() {
     <BrowserRouter>
       {/* გარე მარშრუტები (login · register · საჯარო პროფილი) გარსის გარეთაა,
           ე.ი. საკუთარი fallback სჭირდებათ — აქ მთელი ეკრანი კანონიერია */}
+      <ErrorBoundary>
       <Suspense fallback={<Splash />}>
       <Routes>
         <Route
@@ -324,6 +340,7 @@ export default function App() {
         />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

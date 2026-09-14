@@ -44,6 +44,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -73,6 +74,10 @@ const STATUS_TONE: Record<string, string> = {
   abandoned: 'bg-destructive/15 text-destructive',
 }
 
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_FILTERS = { genres: [] as string[], platforms: [] as string[], modes: [] as string[] }
+type PanelFilters = typeof EMPTY_FILTERS
+
 export function GamesPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -98,17 +103,12 @@ export function GamesPage() {
     [search],
   )
 
-  const [draft, setDraft] = useState({ genres, platforms, modes })
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Game | 'new' | null>(null)
   const [opened, setOpened] = useState<Game | null>(null)
-
-  useEffect(() => {
-    setDraft({ genres, platforms, modes })
-  }, [genres, platforms, modes])
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -166,13 +166,8 @@ export function GamesPage() {
 
   /* ---------- ფილტრის გაშვება ---------- */
 
-  const activeCount = genres.length + platforms.length + modes.length
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x))
-  const dirty =
-    !same(draft.genres, genres) || !same(draft.platforms, platforms) || !same(draft.modes, modes)
-
-  /** მიმდინარე სექცია (`?view=`) ინახება — პანელი მას არ ცვლის (Tasks 3) */
-  const applyDraft = (next: typeof draft) => {
+  /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
+  const writeFilters = (next: PanelFilters) => {
     const p = new URLSearchParams()
     if (view !== 'all') p.set('view', view)
     if (next.genres.length) p.set('genre', next.genres.join(','))
@@ -181,6 +176,16 @@ export function GamesPage() {
     setPanelOpen(false)
     navigate({ pathname: '/games', search: p.toString() })
   }
+
+  /* მონახაზი, „ცვლილებაა?", გასუფთავება და მრიცხველი — ერთი აღწერა
+     `lib/filters.ts`-ში. ⚠️ `clear()` **ორივე მხარეს** ასუფთავებს
+     (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
+     სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
+    { genres, platforms, modes },
+    EMPTY_FILTERS,
+    writeFilters,
+  )
 
   const toggle = (key: keyof typeof draft, value: string, on: boolean) =>
     setDraft((d) => ({
@@ -268,7 +273,7 @@ export function GamesPage() {
               actions={
                 <>
                   {activeCount > 0 && (
-                    <Button variant="outline" onClick={() => applyDraft({ genres: [], platforms: [], modes: [] })}>
+                    <Button variant="outline" onClick={clear}>
                       {t('filter.clear')}
                     </Button>
                   )}
@@ -430,8 +435,8 @@ export function GamesPage() {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
-          onClear={() => applyDraft({ genres: [], platforms: [], modes: [] })}
+          onApply={() => apply(draft)}
+          onClear={clear}
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >

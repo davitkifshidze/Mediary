@@ -33,8 +33,10 @@ import {
   FilterOption,
   FilterOptionList,
   FilterPanel,
+  FilterRange,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { filterCount, useFilterDraft } from '@/lib/filters'
 import { Input } from '@/components/ui/input'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -72,7 +74,7 @@ interface Draft {
   ranges: Ranges
 }
 
-const rangeCount = (r: Ranges) => Object.values(r).filter((v) => v.trim() !== '').length
+const EMPTY_DRAFT: Draft = { genres: [], ranges: EMPTY_RANGES }
 
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
@@ -134,23 +136,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     }
   }, [search])
 
-  const [draft, setDraft] = useState<Draft>({ genres, ranges })
-
-  // მისამართის ცვლილება (საიდბარი, „უკან", ჟანრზე დაჭერა) → მონახაზი გასწორდეს
-  useEffect(() => {
-    setDraft({ genres, ranges })
-  }, [genres, ranges])
-
-  const dirty =
-    draft.genres.length !== genres.length ||
-    draft.genres.some((g) => !genres.includes(g)) ||
-    (Object.keys(EMPTY_RANGES) as (keyof Ranges)[]).some((k) => draft.ranges[k] !== ranges[k])
-
-  // სტატუსი მრიცხველში არ ითვლება — ის სექციაა და არა ფილტრი (Tasks 3)
-  const activeCount = genres.length + rangeCount(ranges)
-
   /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
-  const applyDraft = (next: Draft) => {
+  const writeFilters = (next: Draft) => {
     const q = new URLSearchParams()
     if (view !== 'all') q.set('view', view)
     if (next.genres.length) q.set('genre', next.genres.join(','))
@@ -163,7 +150,14 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     navigate({ pathname: libraryPath, search: q.toString() })
   }
 
-  const clearFilters = () => applyDraft({ genres: [], ranges: EMPTY_RANGES })
+  // მონახაზი, „ცვლილებაა?" და მრიცხველი — ერთი აღწერა რვავე გვერდისთვის.
+  // სტატუსი მრიცხველში არ ითვლება: ის სექციაა და არა ფილტრი (Tasks 3).
+  const applied = useMemo<Draft>(() => ({ genres, ranges }), [genres, ranges])
+  const { draft, setDraft, dirty, apply, clear: clearFilters, activeCount } = useFilterDraft<Draft>(
+    applied,
+    EMPTY_DRAFT,
+    writeFilters,
+  )
 
   const toggleGenre = (slug: string, on: boolean) =>
     setDraft((d) => ({
@@ -416,7 +410,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
+          onApply={() => apply(draft)}
           onClear={clearFilters}
           open={panelOpen}
           onOpenChange={setPanelOpen}
@@ -439,60 +433,31 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           {/* ⚠️ §1.4 — დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
               შეკეცილი ჯგუფი მალავდა იმას, რომ წელი და ქულა საერთოდ იფილტრება.
               შეკეცვა შესაძლებელი რჩება, უბრალოდ ხელით. */}
-          <FilterGroup title={t('filter.ranges')} count={rangeCount(draft.ranges)}>
-            <div className="space-y-2 px-1.5 pt-1">
-              <div>
-                <span className="text-xs text-muted-foreground">{t('filter.year')}</span>
-                <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={1700}
-                    max={currentYear + 1}
-                    value={draft.ranges.yearMin}
-                    onChange={(e) => setRange('yearMin', e.target.value)}
-                    placeholder="1700"
-                    className="h-9"
-                  />
-                  <span className="text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={1700}
-                    max={currentYear + 1}
-                    value={draft.ranges.yearMax}
-                    onChange={(e) => setRange('yearMax', e.target.value)}
-                    placeholder={String(currentYear + 1)}
-                    className="h-9"
-                  />
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">{t('filter.rating')}</span>
-                <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="10"
-                    value={draft.ranges.ratingMin}
-                    onChange={(e) => setRange('ratingMin', e.target.value)}
-                    placeholder="0.0"
-                    className="h-9"
-                  />
-                  <span className="text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="10"
-                    value={draft.ranges.ratingMax}
-                    onChange={(e) => setRange('ratingMax', e.target.value)}
-                    placeholder="10.0"
-                    className="h-9"
-                  />
-                </div>
-              </div>
+          <FilterGroup title={t('filter.ranges')} count={filterCount(draft.ranges)}>
+            <div className="space-y-3 px-0.5 pt-1">
+              <FilterRange
+                label={t('filter.year')}
+                from={draft.ranges.yearMin}
+                to={draft.ranges.yearMax}
+                onFrom={(v) => setRange('yearMin', v)}
+                onTo={(v) => setRange('yearMax', v)}
+                fromPlaceholder="1700"
+                toPlaceholder={String(currentYear + 1)}
+                min={1700}
+                max={currentYear + 1}
+              />
+              <FilterRange
+                label={t('filter.rating')}
+                from={draft.ranges.ratingMin}
+                to={draft.ranges.ratingMax}
+                onFrom={(v) => setRange('ratingMin', v)}
+                onTo={(v) => setRange('ratingMax', v)}
+                fromPlaceholder="0.0"
+                toPlaceholder="10.0"
+                min={0}
+                max={10}
+                step="0.1"
+              />
             </div>
           </FilterGroup>
         </FilterPanel>

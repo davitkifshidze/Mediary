@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
+  BellRing,
   ChevronDown,
   Clapperboard,
   DownloadCloud,
   Inbox,
   Languages,
   LayoutDashboard,
+  Library,
   ListChecks,
   MessageSquare,
   ListMusic,
@@ -23,24 +25,28 @@ import {
   X,
 } from 'lucide-react'
 import { MEDIA, mediaFromPath, type MediaType } from '@/lib/media'
-import { moduleName, useModules } from '@/lib/modules'
+import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { fetchChatUnread } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
 import { fetchPendingCount } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
-import { GALLERY_CUTS } from '@/lib/galleryCuts'
+import { GALLERY_CUTS, galleryCutLabel } from '@/lib/galleryCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useStatusMap } from '@/lib/statuses'
+import { PSEUDO_SECTIONS, arrangeSections, layoutFor, sectionSearch } from '@/lib/statusSections'
+// ⚠️ `App.tsx` ამას ისედაც სტატიკურად აიმპორტებს — ე.ი. საწყის chunk-ს არაფერი ემატება
+import { DICTIONARIES } from '@/lib/dictionaries'
 import { useContentLang } from '@/lib/settings'
-import type { Status } from '@/api/types'
+import type { StatusDomain } from '@/api/statuses'
 
 
 /**
- * ვიდეოების სექციები (K7 → Tasks 5.1).
- * „ყველა" ყოველთვის პირველია, შემდეგ **მართვადი ტიპები** (`video_types`),
- * ხოლო „რჩეული" — ყოველთვის ბოლო, რამდენი ტიპიც არ უნდა დაემატოს.
+ * საიდბარის ერთი სექცია (K7 → Tasks 5.1 → ეტაპი 8).
+ * რიგი და ხილვადობა `lib/statusSections.ts`-იდან მოდის — „ყველა" და „რჩეული"
+ * ნაგულისხმევად პირველი/ბოლოა, მაგრამ მომხმარებელი ლექსიკონის გვერდზე
+ * მათ ადგილს ცვლის და ნებისმიერ სექციას მალავს.
  */
 type VideoSection = { id: string; label: string; icon?: string | null; search: string }
 
@@ -52,6 +58,47 @@ type VideoSection = { id: string; label: string; icon?: string | null; search: s
 function domainFromRoute(pathname: string): MediaType | null {
   return mediaFromPath(pathname)
 }
+
+/* ============================================================
+   **მოდულის ფერი საიდბარში (ეტაპი 6).**
+
+   ფერი `modules.color`-შია (გლობალური სვეტი, არა `module_user.settings`) და
+   აქ **იმავე `useModules()`-იდან** მოდის, საიდანაც სახელი და ხატულა — ფრონტზე
+   მეორე სია იმავე დღეს გაშორდებოდა ბაზას.
+
+   ⚠️ **Tailwind კლასს hex-იდან ვერ დაბადებს**: `border-l-[#6366f1]` კომპილაციისას
+   არ არსებობს. ამიტომ ფერი inline `style`-ით ორ CSS-ცვლადად ჩამოდის
+   (`--mod` და მისი სუსტი ტონი `--mod-soft`), კლასები კი სტატიკურია
+   (`hover:border-l-[var(--mod)]`) — ჰოვერი მხოლოდ CSS-ით ითქმება, JS-ით არა.
+
+   ⚠️ **ცვლადი მემკვიდრეობით მიდის**: `<nav>`-ზე ნაგულისხმევად ოქროსფერია,
+   ე.ი. `color === null`-ზე რიგი დღევანდელ სახეს ინარჩუნებს (პუნქტი 7) და
+   დეშბორდიც იმავე ენაზე ლაპარაკობს.
+
+   ⚠️ **ფერი აქცენტია და არა ტექსტის ფერი** — მხოლოდ მარცხენა ხაზი, ხატულა და
+   აქტიური ქვე-პუნქტის სუსტი ფონი; ღია მწვანე სახელს ნათელ თემაზე წაუკითხავს
+   გახდიდა.
+   ============================================================ */
+/* ⚠️ **`border-l-transparent` მხოლოდ არააქტიურ ვარიანტშია და არა აქ.**
+   ორივე კლასი `border-left-color`-ს წერს ერთი და იმავე სპეციფიკურობით, CSS-ში
+   კი `.border-l-transparent` **`.border-l-[var(--mod)]`-ის შემდეგ** დგება
+   (შემოწმდა `dist/assets/*.css`-ში) — ე.ი. საერთო კლასში დატოვებული ის
+   აქტიურ ხაზს ჩუმად გამჭვირვალეს ტოვებდა. სიგანე (`border-l-2`) საერთოა,
+   რომ რიგები 2px-ით არ იცვლებოდნენ. */
+const MODULE_ROW =
+  'flex w-full cursor-pointer items-center gap-2 rounded-md border-l-2 px-2.5 py-2 text-sm font-semibold transition-colors'
+const MODULE_ROW_ACTIVE = 'border-l-[var(--mod)] text-foreground'
+const MODULE_ROW_IDLE =
+  'border-l-transparent text-muted-foreground hover:border-l-[var(--mod)] hover:text-foreground'
+/** აქტიური ქვე-პუნქტი — იმავე ფერის სუსტი ფონი (`bg-secondary`-ის ნაცვლად) */
+const SUB_ACTIVE = 'bg-[var(--mod-soft)] font-medium text-foreground [&>svg]:text-[var(--mod)]'
+
+/* ⚠️ `modAccent()` `lib/modules.tsx`-შია — იმავე ცვლადებს აუდიტ-ლოგის
+   ბარათებიც კითხულობს (ეტაპი 10), ე.ი. ორი ასლი გაშორდებოდა.
+   ფერის გარეშე მოდული ცვლადს **არ** წერს და `<nav>`-ის ოქროსფერს იმემკვიდრებს. */
+
+/** `<nav>`-ის ნაგულისხმევი აქცენტი — `lib/modules.tsx`-იდან, ერთი წყარო */
+const NAV_DEFAULT_ACCENT = MODULE_ACCENT_FALLBACK
 
 /**
  * ნავიგაცია. ლოგო, ენა/თემა და პროფილი ჰედერშია (K12) — აქ მხოლოდ მენიუა.
@@ -68,7 +115,9 @@ export function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const { mediaModules, pageModules, enabled } = useModules()
+  const { mediaModules, pageModules, enabled, has } = useModules()
+  // ეტაპი 2 — გალერეის „ჩანაწერები" ჩართული მედია-მოდულების სახელს იღებს
+  const mediaNames = mediaModules.map((m) => moduleName(m, i18n.language))
   const { settings } = useSettings()
   const lang = useContentLang(i18n.language)
   /* §6.4 — სტატუსები per-user ლექსიკონია, ე.ი. სექციები აქედან იგება.
@@ -142,37 +191,53 @@ export function Sidebar({
   /**
    * **სექციები აღარ წერია კოდში (Tasks §6.4).** სტატუსი per-user ლექსიკონია,
    * ე.ი. საიდბარის ჭრილებიც მისგან იგება: ყველა → *მისი* სტატუსები → რჩეული.
-   * ⚠️ „ყველა" და „რჩეული" სტატუსები **არაა** — ისინი ჩარჩოა და ყოველთვის რჩება.
+   * ⚠️ „ყველა" და „რჩეული" სტატუსები **არაა** — ისინი ფსევდო-განყოფილებებია.
+   *
+   * ⚠️ **ეტაპი 8: რიგი და დამალვა ლექსიკონის გვერდის `arrangeSections()`-იდანაა**,
+   * ზუსტად იმავე ფუნქციიდან, რომელიც `/dictionaries/<domain>-statuses`-ის სიას
+   * ხატავს — ორ ადგილას ხელით რომ ეწერა, გვერდი ერთ რიგს აჩვენებდა,
+   * საიდბარი მეორეს. დამალული სექცია **მხოლოდ აქ** ქრება.
+   *
+   * ⚠️ **„სტატუსების მართვის" ბმული აქ აღარ არის** (შენი მითითება,
+   * 2026-09-14): ის ოთხივე ადგილას ეწერა — მედიის სამ დომენზე, ჩანაწერზე,
+   * სანიშნესა და ვიდეოზე — და იმას იმეორებდა, რაც `/dictionaries`-ს პირველ
+   * ჯგუფად ისედაც უწერია. **სექციები რჩება**: ისინი ფილტრია („ნანახი"),
+   * და არა მართვა. ლექსიკონების ბმულები (ტიპები, ჟანრები, კატეგორიები) —
+   * ასევე რჩება; მითითება მხოლოდ სტატუსებს ეხებოდა.
    */
-  const sectionsFor = (statuses: Status[], extra: VideoSection[] = []): VideoSection[] => [
-    { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-    ...statuses.map((s) => ({
-      id: s.key,
-      label: statusName(s, lang),
-      icon: s.icon ?? 'Circle',
-      search: `view=${s.key}`,
-    })),
-    ...extra,
-    { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
-  ]
+  const sectionsFor = (domain: StatusDomain): VideoSection[] =>
+    arrangeSections(statusMap[domain] ?? [], PSEUDO_SECTIONS[domain], layoutFor(enabled, domain))
+      .filter((row) => !row.hidden)
+      .map((row) =>
+        row.kind === 'status'
+          ? {
+              id: row.id,
+              label: statusName(row.status, lang),
+              icon: row.status.icon ?? 'Circle',
+              search: sectionSearch(row),
+            }
+          : { id: row.id, label: t(row.pseudo.labelKey), icon: row.pseudo.icon, search: sectionSearch(row) },
+      )
 
-  const link = 'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+  // ⚠️ ჰოვერის ხაზი აქაც — მოდულის მიღმა პუნქტებზე `--nav`-ის ოქროსფერია
+  const link =
+    'flex w-full items-center gap-2.5 rounded-md border-l-2 border-l-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-l-[var(--mod)] hover:bg-muted hover:text-foreground'
 
   const nav = (
     <>
-      <nav className="flex-1 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto" style={NAV_DEFAULT_ACCENT}>
         {/* Tasks 2 — დეშბორდი ყოველთვის პირველია */}
         <Link
           to="/"
           onClick={() => setDrawerOpen(false)}
           className={cn(
-            'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+            MODULE_ROW,
             location.pathname === '/'
-              ? 'text-foreground [&>svg]:text-gold'
-              : 'text-muted-foreground hover:text-foreground',
+              ? MODULE_ROW_ACTIVE
+              : MODULE_ROW_IDLE,
           )}
         >
-          <LayoutDashboard className="size-4 shrink-0" />
+          <LayoutDashboard className="size-4 shrink-0 text-[var(--mod)]" />
           {t('dashboard.nav')}
         </Link>
 
@@ -181,16 +246,16 @@ export function Sidebar({
           const isActiveDomain = routeDomain === m.type
           const sectionOpen = !!open[m.type]
           return (
-            <div key={m.key}>
+            <div key={m.key} style={modAccent(m.color)}>
               <button
                 onClick={() => setOpen((o) => ({ ...o, [m.type]: !o[m.type] }))}
                 aria-expanded={sectionOpen}
                 className={cn(
-                  'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
-                  isActiveDomain ? 'text-foreground [&>svg]:text-gold' : 'text-muted-foreground hover:text-foreground',
+                  MODULE_ROW,
+                  isActiveDomain ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                 )}
               >
-                <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                 <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                 <ChevronDown
                   className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -199,7 +264,7 @@ export function Sidebar({
 
               {sectionOpen && (
                 <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                  {sectionsFor(statusMap[m.type] ?? []).map((sec) => {
+                  {sectionsFor(m.type).map((sec) => {
                     const active = isActiveDomain && activeView === sec.id
                     return (
                       <button
@@ -208,7 +273,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           active
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -217,19 +282,6 @@ export function Sidebar({
                       </button>
                     )
                   })}
-                  <Link
-                    to={`/dictionaries/${m.type}-statuses`}
-                    onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                      location.pathname === `/dictionaries/${m.type}-statuses`
-                        ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    <Tags className="size-4 shrink-0" />
-                    {t('statuses.manage')}
-                  </Link>
                   <Link
                     to={`${d.detailBase}/new`}
                     onClick={() => setDrawerOpen(false)}
@@ -262,18 +314,18 @@ export function Sidebar({
             const activeSection = !onSongs ? null : videoView === 'favorite' ? 'favorite' : 'all'
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, song: !o.song }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onSongs || location.pathname.startsWith('/playlists')
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -292,7 +344,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -307,7 +359,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname.startsWith('/playlists')
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -320,7 +372,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/song-genres'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -360,18 +412,18 @@ export function Sidebar({
             const activeSection = !onBooks ? null : (params.get('view') ?? 'all')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, book: !o.book }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onBooks || location.pathname === '/dictionaries/book-genres'
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -390,7 +442,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -404,7 +456,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/book-genres'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -440,18 +492,18 @@ export function Sidebar({
             const activeSection = !onGames ? null : (params.get('view') ?? 'all')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, board_game: !o.board_game }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onGames || location.pathname === '/dictionaries/board-game-genres'
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -470,7 +522,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -484,7 +536,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/board-game-genres'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -520,18 +572,18 @@ export function Sidebar({
             const activeSection = !onGames ? null : (params.get('view') ?? 'all')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, game: !o.game }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onGames || location.pathname === '/dictionaries/game-genres'
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -550,7 +602,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -564,7 +616,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/game-genres'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -593,23 +645,23 @@ export function Sidebar({
             const sectionOpen = !!open.note
 
             // §6.4 — სექციები ლექსიკონიდან და აღარ `NOTE_STATUSES`-იდან
-            const sections = sectionsFor(statusMap.note)
+            const sections = sectionsFor('note')
 
             const activeSection = !onNotes ? null : (params.get('view') ?? 'all')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, note: !o.note }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onNotes || location.pathname === '/dictionaries/note-categories'
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -628,7 +680,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -636,18 +688,20 @@ export function Sidebar({
                         <span className="min-w-0 truncate">{sec.label}</span>
                       </button>
                     ))}
+                    {/* ეტაპი 11.2 — შეხსენებებს თავისი სექცია აქვს (ჩანაწერის
+                        ფორმიდან ის მთლიანად მოიხსნა; პლეილისტების პრეცედენტი) */}
                     <Link
-                      to="/dictionaries/note-statuses"
+                      to="/notes/reminders"
                       onClick={() => setDrawerOpen(false)}
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/note-statuses'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                        location.pathname === '/notes/reminders'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
-                      <Tags className="size-4 shrink-0" />
-                      {t('statuses.manage')}
+                      <BellRing className="size-4 shrink-0" />
+                      {t('notes.remindersTitle')}
                     </Link>
                     <Link
                       to="/dictionaries/note-categories"
@@ -655,7 +709,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/note-categories'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -684,23 +738,23 @@ export function Sidebar({
             const sectionOpen = !!open.bookmark
 
             // §6.4 — სექციები ლექსიკონიდან და აღარ `BOOKMARK_STATUSES`-იდან
-            const sections = sectionsFor(statusMap.bookmark)
+            const sections = sectionsFor('bookmark')
 
             const activeSection = !onBookmarks ? null : (params.get('view') ?? 'all')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, bookmark: !o.bookmark }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                    MODULE_ROW,
                     onBookmarks || location.pathname === '/dictionaries/bookmark-categories'
-                      ? 'text-foreground [&>svg]:text-gold'
-                      : 'text-muted-foreground hover:text-foreground',
+                      ? MODULE_ROW_ACTIVE
+                      : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -719,7 +773,7 @@ export function Sidebar({
                         className={cn(
                           'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                           activeSection === sec.id
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
@@ -728,25 +782,12 @@ export function Sidebar({
                       </button>
                     ))}
                     <Link
-                      to="/dictionaries/bookmark-statuses"
-                      onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/bookmark-statuses'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('statuses.manage')}
-                    </Link>
-                    <Link
                       to="/dictionaries/bookmark-categories"
                       onClick={() => setDrawerOpen(false)}
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         location.pathname === '/dictionaries/bookmark-categories'
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -780,16 +821,16 @@ export function Sidebar({
             const onGallery = location.pathname.startsWith('/gallery')
 
             return (
-              <div key={m.key}>
+              <div key={m.key} style={modAccent(m.color)}>
                 <button
                   onClick={() => setOpen((o) => ({ ...o, gallery: !o.gallery }))}
                   aria-expanded={sectionOpen}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
-                    onGallery ? 'text-foreground [&>svg]:text-gold' : 'text-muted-foreground hover:text-foreground',
+                    MODULE_ROW,
+                    onGallery ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                   <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                   <ChevronDown
                     className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -808,12 +849,17 @@ export function Sidebar({
                           // ⚠️ „ყველა" მხოლოდ ზუსტ მისამართზეა აქტიური, თორემ
                           // ყოველ ქვე-გვერდზე ორი პუნქტი აინთებოდა
                           (cut.key === 'all' ? location.pathname === cut.path : location.pathname.startsWith(cut.path))
-                            ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                            ? SUB_ACTIVE
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
                         <cut.icon className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{t(`gallery.cut.${cut.key}`)}</span>
+                        {/* ⚠️ „ჩანაწერები" ჩართული მედია-მოდულების სახელით
+                            იცვლება (ეტაპი 2) — გვერდზეც იგივე ჰელპერი მუშაობს,
+                            ე.ი. მენიუ და ტაბი ვერ გაშორდება */}
+                        <span className="min-w-0 truncate">
+                          {galleryCutLabel(cut.key, t(`gallery.cut.${cut.key}`), mediaNames)}
+                        </span>
                       </Link>
                     ))}
                   </div>
@@ -827,17 +873,18 @@ export function Sidebar({
               <Link
                 key={m.key}
                 to={m.route_base}
+                style={modAccent(m.color)}
                 onClick={() => setDrawerOpen(false)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
+                  MODULE_ROW,
                   // ქვე-გვერდზეც აქტიური რჩება (მაგ. `/gallery/movie/12` — Tasks 10)
                   location.pathname === m.route_base ||
                     location.pathname.startsWith(`${m.route_base}/`)
-                    ? 'text-foreground [&>svg]:text-gold'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? MODULE_ROW_ACTIVE
+                    : MODULE_ROW_IDLE,
                 )}
               >
-                <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                 {moduleName(m, i18n.language)}
               </Link>
             )
@@ -854,23 +901,23 @@ export function Sidebar({
              §7.1 — ჩამოწერილები **ცალკე სექციაცაა და საერთო სიაშიც რჩება**
              (თასქის პირობა): აქ მხოლოდ ისინი ჩანს, „ყველაში" კი ხატულით
              გამოირჩევა, ე.ი. ერთი შეხედვით ჩანს, რომელია ლოკალური. */
-          const sections = sectionsFor(statusMap.video, [
-            { id: 'downloaded', label: t('videos.downloadedSection'), icon: 'HardDriveDownload', search: 'view=downloaded' },
-          ])
+          // ეტაპი 8 — „ჩამოწერილები" ფსევდო-განყოფილებაა (`PSEUDO_SECTIONS.video`):
+          // „რჩეულის" მსგავსად დამალვადი და გადასატანი
+          const sections = sectionsFor('video')
 
           const activeSection = !onVideos ? null : (params.get('view') ?? 'all')
 
           return (
-            <div key={m.key}>
+            <div key={m.key} style={modAccent(m.color)}>
               <button
                 onClick={() => setOpen((o) => ({ ...o, video: !o.video }))}
                 aria-expanded={sectionOpen}
                 className={cn(
-                  'flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors',
-                  onVideos ? 'text-foreground [&>svg]:text-gold' : 'text-muted-foreground hover:text-foreground',
+                  MODULE_ROW,
+                  onVideos ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                 )}
               >
-                <ModuleIcon name={m.icon} className="size-4 shrink-0" />
+                <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
                 <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
                 <ChevronDown
                   className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
@@ -889,7 +936,7 @@ export function Sidebar({
                       className={cn(
                         'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                         activeSection === s.id
-                          ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                          ? SUB_ACTIVE
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                       )}
                     >
@@ -898,25 +945,12 @@ export function Sidebar({
                     </button>
                   ))}
                   <Link
-                    to="/dictionaries/video-statuses"
-                    onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                      location.pathname === '/dictionaries/video-statuses'
-                        ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    <Tags className="size-4 shrink-0" />
-                    {t('statuses.manage')}
-                  </Link>
-                  <Link
                     to="/dictionaries/video-types"
                     onClick={() => setDrawerOpen(false)}
                     className={cn(
                       'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
                       location.pathname === '/dictionaries/video-types'
-                        ? 'bg-secondary font-medium text-foreground [&>svg]:text-gold'
+                        ? SUB_ACTIVE
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
@@ -939,6 +973,29 @@ export function Sidebar({
 
         <div className="my-2 border-t border-border" />
 
+        {/* ეტაპი 9 — **ლექსიკონები ინსტრუმენტების პირველი რიგია**, `/genres`-ზე
+            ზემოთ. ⚠️ ორი მართლა სხვადასხვა რამაა და სწორედ ამიტომ დგანან
+            გვერდიგვერდ: `/genres` **გლობალური** TMDB-ის ჟანრებია (ყველა
+            ანგარიშისთვის ერთი, წაშლა ადმინის დასტურს ითხოვს), `/dictionaries`
+            კი **ჩემი** სტატუსები, ჟანრები, ტიპები და კატეგორიები.
+            ⚠️ ხატულაც ამას ამბობს: `Library` („ჩემი სიების თარო") vs `Tags`.
+            ⚠️ ქვეწარწერა იმიტომ აქვს, რომ მენიუშივე ჩანდეს — იქ **სტატუსებიც**
+            არის; ტექსტი ინდექსის გვერდის იმავე გასაღებიდან მოდის და არა ასლიდან. */}
+        {DICTIONARIES.some((d) => has(d.module)) && (
+          <Link
+            to="/dictionaries"
+            onClick={() => setDrawerOpen(false)}
+            className={cn(link, 'items-start')}
+          >
+            <Library className="mt-0.5 size-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="block">{t('dictionaries.title')}</span>
+              <span className="block text-xs leading-snug text-muted-foreground/80">
+                {t('dictionaries.navHint')}
+              </span>
+            </span>
+          </Link>
+        )}
         {mediaModules.length > 0 && (
           <Link to="/genres" onClick={() => setDrawerOpen(false)} className={link}>
             <Tags className="size-4 shrink-0" />

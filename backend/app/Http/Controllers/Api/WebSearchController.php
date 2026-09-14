@@ -7,6 +7,7 @@ use App\Models\CastMember;
 use App\Services\Serp\SerpApiClient;
 use App\Services\Serp\SerpQuotaExceeded;
 use App\Services\Serp\WebImageImporter;
+use App\Services\Web\SerperImages;
 use App\Services\Web\WikimediaImages;
 use App\Support\GalleryParent;
 use App\Support\VideoUrl;
@@ -58,6 +59,7 @@ class WebSearchController extends Controller
     public function __construct(
         private readonly SerpApiClient $serp,
         private readonly WikimediaImages $wikimedia,
+        private readonly SerperImages $serper,
         private readonly WebImageImporter $importer,
     ) {}
 
@@ -72,6 +74,19 @@ class WebSearchController extends Controller
      */
     private const FREE_IMAGE_SOURCES = [
         WikimediaImages::KEY => ['name' => 'Wikimedia Commons', 'safe' => false],
+    ];
+
+    /**
+     * **მესამე კატეგორია: საკუთარი გასაღები, საკუთარი ანგარიშსწორება** (2026-09-14).
+     *
+     * ⚠️ Serper **უფასო არ არის**, მაგრამ SerpApi-ის 250-იან ბიუჯეტსაც არ ეხება —
+     * მას თავისი credit-ები აქვს. ერთ-ერთ არსებულ სიაში რომ ჩაგვესვა, ან
+     * მრიცხველი მოგვატყუებდა („უფასოა"), ან სხვისი კვოტა დაიხარჯებოდა.
+     *
+     * @return array<string, array{name: string, safe: bool}>
+     */
+    private const EXTRA_IMAGE_SOURCES = [
+        SerperImages::KEY => ['name' => 'Google Images (Serper)', 'safe' => true],
     ];
 
     /**
@@ -407,7 +422,12 @@ class WebSearchController extends Controller
             'query' => ['required', 'string', 'max:255'],
             'engines' => ['sometimes', 'array', 'max:'.count($keys)],
             'engines.*' => ['string', Rule::in($keys)],
-            'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            // ⚠️ ჭერი 1000-ია და არა 100 (2026-09-14) — Serper რამდენიმე გვერდს
+            // კრებს; დანარჩენი წყაროები `runOne()`-ში ისევ 100-ზე იჭრებიან,
+            // თორემ ერთ SerpApi-ის ძახილს 1000 შედეგს ვთხოვდით.
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:'.SerperImages::MAX_LIMIT],
+            // ⚠️ **თითო გვერდი = ერთი credit** — ამიტომ ხელით შეიყვანება
+            'pages' => ['sometimes', 'integer', 'min:1', 'max:'.SerperImages::MAX_PAGES],
             // ⚠️ ცენზურა **გამორთულია ნაგულისხმევად** (§7.5-ის პირდაპირი პირობა):
             // „რასაც ტეგში დაწერს, ის ჩამოიწეროს".
             'safe' => ['sometimes', 'boolean'],
@@ -428,6 +448,7 @@ class WebSearchController extends Controller
         }
 
         $limit = (int) ($data['limit'] ?? 20);
+        $pages = (int) ($data['pages'] ?? 1);
         $safe = (bool) ($data['safe'] ?? false);
 
         $merged = [];
@@ -436,7 +457,7 @@ class WebSearchController extends Controller
 
         foreach ($usable as $engine) {
             try {
-                $result = $this->runOne($engine, $kind, $data['query'], $limit, $safe);
+                $result = $this->runOne($engine, $kind, $data['query'], $limit, $pages, $safe);
             } catch (SerpQuotaExceeded $e) {
                 // ⚠️ უკვე მოტანილი შედეგები **არ იკარგება** — ლიმიტი შუა გზაზე
                 // რომ ამოიწუროს, სამი engine-ის პასუხის გადაგდება ძებნის
@@ -453,8 +474,9 @@ class WebSearchController extends Controller
                 break;
             }
 
-            // ⚠️ უფასო წყარო ხარჯს არ ზრდის — სწორედ ეს რიცხვი წერია ღილაკზე
-            if (! $result['cached'] && $result['ok'] && ! $this->isFree($engine)) {
+            // ⚠️ მრიცხველი **მხოლოდ SerpApi-ისაა** — უფასო წყარო და საკუთარი
+            // გასაღების მქონე Serper მას არ ეხებიან (იხ. `EXTRA_IMAGE_SOURCES`)
+            if (! $result['cached'] && $result['ok'] && $this->usesSerpQuota($engine)) {
                 $spent++;
             }
 
@@ -487,6 +509,9 @@ class WebSearchController extends Controller
                 // „ვერაფერი ვიპოვე"-ს არ უდრის და ინტერფეისმაც სხვა რამ უნდა თქვას.
                 'dropped' => $result['dropped'],
                 'quota_exceeded' => false,
+                // ⚠️ Serper-ის ხარჯი ცალკე იწერება: ის SerpApi-ის 250-ში არ ჯდება,
+                // მაგრამ ფული მაინც არის და ეკრანზე უნდა ჩანდეს
+                'credits' => (int) ($result['spent'] ?? 0),
             ];
         }
 
@@ -505,15 +530,21 @@ class WebSearchController extends Controller
      *
      * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int}
      */
-    private function runOne(string $engine, string $kind, string $query, int $limit, bool $safe): array
+    private function runOne(string $engine, string $kind, string $query, int $limit, int $pages, bool $safe): array
     {
         if ($engine === WikimediaImages::KEY) {
-            return $this->wikimedia->search($query, $limit);
+            return $this->wikimedia->search($query, min($limit, 100));
+        }
+
+        // ⚠️ **ერთადერთი წყარო, რომელსაც გვერდები აქვს** — დანარჩენებს ერთი
+        // ძახილი აქვთ და 1000-ის თხოვნა მათ უბრალოდ შეცდომას დააბრუნებინებდა
+        if ($engine === SerperImages::KEY) {
+            return $this->serper->search($query, $limit, $pages, $safe);
         }
 
         return $kind === 'images'
-            ? $this->serp->images($engine, $query, $limit, $safe)
-            : $this->serp->videos($engine, $query, $limit, $safe);
+            ? $this->serp->images($engine, $query, min($limit, 100), $safe)
+            : $this->serp->videos($engine, $query, min($limit, 100), $safe);
     }
 
     /** უფასო წყარო კვოტას არ ეხება (არც ჭერს ამოწმებს, არც მრიცხველს ზრდის) */
@@ -522,9 +553,25 @@ class WebSearchController extends Controller
         return isset(self::FREE_IMAGE_SOURCES[$engine]);
     }
 
+    /**
+     * **SerpApi-ის 250-იან ბიუჯეტს ეხება თუ არა.**
+     *
+     * ⚠️ სამი კატეგორიაა და არა ორი: უფასო (Wikimedia) · საკუთარი გასაღები
+     * (Serper) · SerpApi. მხოლოდ ბოლო ზრდის იმ მრიცხველს, რომელიც ეკრანზე
+     * „დარჩა N ძებნა"-დ იკითხება.
+     */
+    private function usesSerpQuota(string $engine): bool
+    {
+        return ! $this->isFree($engine) && ! isset(self::EXTRA_IMAGE_SOURCES[$engine]);
+    }
+
     /** ეს წყარო ახლა მუშაობს? (ფასიანს გასაღები სჭირდება, უფასოს — არა) */
     private function usable(string $engine): bool
     {
+        if ($engine === SerperImages::KEY) {
+            return $this->serper->configured();
+        }
+
         return $this->isFree($engine) || $this->serp->configured();
     }
 
@@ -541,7 +588,9 @@ class WebSearchController extends Controller
             $paid[$key] = ['name' => $spec['name'], 'safe' => $spec['safe']];
         }
 
-        return self::FREE_IMAGE_SOURCES + $paid;
+        // ⚠️ რიგი: უფასო → საკუთარი გასაღები → SerpApi. ნაგულისხმევად
+        // პირველი ირჩევა, ე.ი. ბიუჯეტი ისევ ხელუხლებელი რჩება (§7.5).
+        return self::FREE_IMAGE_SOURCES + self::EXTRA_IMAGE_SOURCES + $paid;
     }
 
     /** @return list<array<string, mixed>> */
@@ -561,6 +610,12 @@ class WebSearchController extends Controller
                 'name' => $spec['name'],
                 'safe_search' => $spec['safe'],
                 'free' => $this->isFree($key),
+                /* ⚠️ ინტერფეისს **სამივე კატეგორია** სჭირდება და არა „უფასო/ფასიანი":
+                   Serper არც უფასოა და არც SerpApi-ის ბიუჯეტიდან იხარჯება, ე.ი.
+                   „დარჩა N ძებნა" მასზე არაფერს ამბობს. */
+                'uses_quota' => $this->usesSerpQuota($key),
+                // გვერდები მხოლოდ Serper-ს აქვს — ინტერფეისი ველს სხვაზე არ აჩვენებს
+                'paged' => $key === SerperImages::KEY,
             ];
         }
 

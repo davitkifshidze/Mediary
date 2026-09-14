@@ -43,7 +43,7 @@ export function FieldHint({
           tabIndex={-1}
           aria-label={required ? t('form.requiredHint') : hint}
           className={cn(
-            'inline-grid size-4 shrink-0 cursor-help place-items-center rounded-full align-text-bottom transition-colors',
+            'inline-grid size-4 shrink-0 cursor-help place-items-center rounded-md align-text-bottom transition-colors',
             required
               ? 'text-destructive hover:bg-destructive/15'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',

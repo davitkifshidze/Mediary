@@ -92,7 +92,7 @@ class Anime extends Model
     public function cast(): MorphToMany
     {
         return $this->morphToMany(CastMember::class, 'castable')
-            ->withPivot('character', 'billing_order')
+            ->withPivot('character', 'billing_order', 'is_manual')
             ->orderByPivot('billing_order');
     }
 

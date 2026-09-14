@@ -8,6 +8,7 @@ use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,13 +27,6 @@ use Illuminate\Support\Facades\Storage;
  */
 class NoteEntryFileController extends Controller
 {
-    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx,zip';
-
-    private const VIDEO_MIMES = 'mp4,webm,mov,m4v';
-
-    /** ვიდეო ერთეულზე ყველაზე მძიმეა — 1 GB კვოტაზე 100 MB რეალისტური ჭერია */
-    private const VIDEO_MAX_KB = 102400;
-
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request, NoteEntry $note)
@@ -50,12 +44,10 @@ class NoteEntryFileController extends Controller
 
         $data = $request->validate([
             'kind' => ['required', 'in:image,video,doc'],
-            'files' => ['required', 'array', 'max:20'],
-            'files.*' => match ($kind) {
-                'image' => ['file', 'image', 'max:8192'],
-                'video' => ['file', 'max:'.self::VIDEO_MAX_KB, 'mimes:'.self::VIDEO_MIMES],
-                default => ['file', 'max:20480', 'mimes:'.self::DOC_MIMES],
-            },
+            'files' => ['required', 'array', 'max:'.UploadLimits::MAX_FILES],
+            // ⚠️ ზომა/ფორმატი **ერთი რუკიდან** მოდის (`UploadLimits`) — შვიდი
+            // კონტროლერი ერთსა და იმავეს იმეორებდა და ინტერფეისში არსად ეწერა
+            'files.*' => UploadLimits::rule($kind === 'image' || $kind === 'video' ? $kind : 'doc'),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე

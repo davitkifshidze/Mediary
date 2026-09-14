@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * შეხსენება ჩანაწერზე (Tasks §13.2, გაფართოებული §5.5-ით).
+ * შეხსენება ჩანაწერზე (Tasks §13.2 → §5.5 → **ეტაპი 7**).
  *
  * ექვსი რეჟიმი: **ერთჯერადი** კონკრეტულ დროზე და ხუთი პერიოდული —
  * ინტერვალი (ყოველ N წუთში), ყოველდღიური, ყოველკვირეული (**რამდენიმე დღე
- * ერთდროულად**), ყოველთვიური (თვის რიცხვი) და ყოველწლიური (თვე + რიცხვი).
+ * ერთდროულად**), ყოველთვიური (**რამდენიმე რიცხვი**) და ყოველწლიური
+ * (თვე + რიცხვები). ყველა პერიოდულს შეიძლება **დღეში რამდენიმე დრო**
+ * ჰქონდეს, და ყველას — **მოქმედების ფანჯარა** (`starts_at`/`ends_at`).
  * ⚠️ §13.2-ის მოთხოვნით პერიოდი **ველია და არა ჩაშენებული კონსტანტა**:
  * `interval_minutes` ნებისმიერი რიცხვია და არა 10/15/20-ის სია.
  *
@@ -27,13 +29,23 @@ use Illuminate\Support\Carbon;
  * სარტყელი მას არ სჭირდება; დანარჩენები კი კედლის საათს ინახავენ,
  * ე.ი. `timezone`-ის გარეშე აზრი არ აქვთ.
  *
+ * ⚠️ **ფანჯარა კი აბსოლუტურია** (`starts_at`/`ends_at`, UTC) — `next_at`-საც
+ * UTC აქვს, ე.ი. შედარება პირდაპირია და კედლის საათის მეორე მათემატიკა
+ * არსად ჩნდება. ფანჯარა **ყველა რეჟიმს ეხება**, `once`-საც: „ამ
+ * დიაპაზონში" საზღვარია და არა კიდევ ერთი რეჟიმი.
+ *
  * ⚠️ **31 რიცხვი თებერვალში ბოლო დღეზე ჩამოდის** (`atDay()`), და არა
  * მარტის 3-ზე გადადის. „ყოველთვიურად 31-ში" ნიშნავს თვის ბოლოს — Carbon-ის
  * ნაგულისხმევი გადავსება (`Feb 31 → Mar 3`) აქ ჩუმად არასწორ თვეს აირჩევდა.
  *
- * ⚠️ **ჯერადობა (`repeat_count`) მხოლოდ `nextStateAfterSending()`-შია**
+ * ⚠️ **ჯერადობა (`repeat_count`) მხოლოდ `exhaustedAfter()`-შია**
  * გათვალისწინებული — ე.ი. „ბოლო გასროლა" ერთ ადგილას წყდება. `null` =
  * უსასრულოდ.
+ *
+ * ⚠️ **ყველა სია ერთი წესით ნორმალიზდება** (`clocks()`, `selectedWeekdays()`,
+ * `selectedDays()`): დუბლიკატის, დიაპაზონს გარეთ მნიშვნელობისა და რიგის
+ * საკითხი მოდელში წყდება — ვალიდაცია მხოლოდ შესვლისას ამოწმებს, ბაზაში კი
+ * ძველი (ან ხელით ჩაწერილი) რიგიც შეიძლება იდოს.
  */
 class NoteReminder extends Model
 {
@@ -60,7 +72,20 @@ class NoteReminder extends Model
         self::MODE_YEARLY,
     ];
 
-    /** მიწოდების არხები (§13.3) — ბრაუზერი მთავარია და დამოკიდებულების გარეშე მუშაობს */
+    /** რეჟიმები, რომლებსაც კედლის საათი (და ე.ი. სარტყელი) სჭირდებათ */
+    public const CLOCK_MODES = [
+        self::MODE_DAILY,
+        self::MODE_WEEKLY,
+        self::MODE_MONTHLY,
+        self::MODE_YEARLY,
+    ];
+
+    /** რეჟიმები, რომლებსაც თვის რიცხვი სჭირდებათ */
+    public const DAY_OF_MONTH_MODES = [
+        self::MODE_MONTHLY,
+        self::MODE_YEARLY,
+    ];
+
     /**
      * მიწოდების არხები.
      *
@@ -76,15 +101,23 @@ class NoteReminder extends Model
     /** უსასრულო ციკლისგან დაცვა: 1 წუთზე ხშირად შეხსენება არ იგზავნება */
     public const MIN_INTERVAL_MINUTES = 1;
 
+    /** დღეში რამდენ დროზე შეიძლება გაისროლოს (ეტაპი 7) */
+    public const MAX_TIMES_PER_DAY = 24;
+
     protected $guarded = ['id'];
 
     protected $casts = [
         'remind_at' => 'datetime',
+        // ⚠️ ფანჯარა აბსოლუტურია — `next_at`-საც UTC აქვს, შედარება პირდაპირია
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
         'next_at' => 'datetime',
         'last_sent_at' => 'datetime',
         'interval_minutes' => 'integer',
         'weekdays' => 'array',
-        'day_of_month' => 'integer',
+        // ⚠️ ეტაპი 7 — ორივე **სიაა**: დღეში რამდენიმე დრო, თვეში რამდენიმე რიცხვი
+        'times_of_day' => 'array',
+        'days_of_month' => 'array',
         'month' => 'integer',
         'repeat_count' => 'integer',
         'sent_count' => 'integer',
@@ -103,23 +136,37 @@ class NoteReminder extends Model
      * მომდევნო გასროლის მომენტი UTC-ში, ან `null` — თუ აღარ ისროლებს.
      *
      * `$from` = საიდან ვითვლით (შენახვისას „ახლა", გასროლის შემდეგ — გასროლის დრო).
+     *
+     * ⚠️ **ფანჯარა აქვეა და არა დისპეტჩერში.** გამოთვლა ერთადერთი ადგილია,
+     * სადაც „როდის გაისვრის" წყდება; ფილტრი გამგზავნში რომ დაწერილიყო,
+     * `next_at` ისეთ მომენტს აჩვენებდა, რომელზეც სინამდვილეში არაფერი მოხდება.
      */
     public function computeNextAt(?CarbonInterface $from = null): ?Carbon
     {
         $from = ($from ? Carbon::instance($from) : now())->copy()->utc();
 
-        return match ($this->mode) {
+        $opensAt = $this->starts_at?->copy()->utc();
+        // ფანჯრის გახსნამდე ათვლა არ დაწყებულა — ე.ი. ვითვლით გახსნის მომენტიდან
+        $opening = $opensAt && $from->lessThan($opensAt);
+
+        if ($opening) {
+            $from = $opensAt->copy();
+        }
+
+        $next = match ($this->mode) {
             // ერთჯერადი — თვითონ არჩეული აბსოლუტური მომენტი
             self::MODE_ONCE => $this->remind_at?->copy()->utc(),
-            self::MODE_INTERVAL => $this->interval_minutes >= self::MIN_INTERVAL_MINUTES
-                ? $from->copy()->addMinutes($this->interval_minutes)
-                : null,
-            self::MODE_DAILY => $this->nextClock($from, null),
+            // ⚠️ ფანჯრის გახსნა **თვითონაა** პირველი გასროლა: „09:00-დან 18:00-მდე
+            // ყოველ 15 წუთში" 09:15-ზე კი არ უნდა დაიწყოს, 09:00-ზე.
+            self::MODE_INTERVAL => $this->nextInterval($from, $opening),
+            self::MODE_DAILY => $this->earliest($this->clockCandidates($from, null)),
             self::MODE_WEEKLY => $this->nextWeekly($from),
             self::MODE_MONTHLY => $this->nextByDate($from, null),
             self::MODE_YEARLY => $this->nextByDate($from, $this->month),
             default => null,
         };
+
+        return $next && $this->withinWindow($next) ? $next : null;
     }
 
     /**
@@ -129,17 +176,21 @@ class NoteReminder extends Model
      * წერს (`where next_at = ძველი`), რომ ორმა პარალელურმა გამომძახებელმა
      * ერთი და იგივე შეხსენება ორჯერ ვერ დაიჭიროს.
      *
-     * ერთჯერადი აქვე ითიშება: მეორედ არასდროს უნდა გაისროლოს.
+     * ⚠️ **„აღარ ისვრის" = „აღარაა აქტიური"** — ერთი წესი სამივე მიზეზზე:
+     * ერთჯერადი, ამოწურული ჯერადობა და **დამთავრებული ფანჯარა**. სამივე
+     * ცალკე რომ შემოწმებულიყო, ერთი მათგანი დაავიწყდებოდა და სიაში
+     * სამუდამოდ „აქტიური" შეხსენება იდგებოდა, რომელიც არასდროს გაისვრის.
      *
      * @return array{next_at: Carbon|null, is_active: bool, last_sent_at: Carbon, sent_count: int}
      */
     public function nextStateAfterSending(CarbonInterface $sentAt): array
     {
         $sentCount = (int) $this->sent_count + 1;
+        $next = $this->exhaustedAfter($sentCount) ? null : $this->computeNextAt($sentAt);
 
         return [
-            'next_at' => $this->exhaustedAfter($sentCount) ? null : $this->computeNextAt($sentAt),
-            'is_active' => ! $this->exhaustedAfter($sentCount),
+            'next_at' => $next,
+            'is_active' => $next !== null,
             'last_sent_at' => Carbon::instance($sentAt)->utc(),
             'sent_count' => $sentCount,
         ];
@@ -158,49 +209,138 @@ class NoteReminder extends Model
             || ($this->repeat_count > 0 && $sentCount >= $this->repeat_count);
     }
 
-    /**
-     * კედლის საათის მომდევნო დადგომა user-ის სარტყელში → UTC.
-     * `$weekday` null = ყოველდღიური; 0 = კვირა (Carbon-ის `dayOfWeek`).
-     */
-    private function nextClock(Carbon $from, ?int $weekday): ?Carbon
+    /** მომენტი ფანჯარაშია? (ორივე ბოლო არასავალდებულოა) */
+    private function withinWindow(Carbon $moment): bool
     {
-        if (! $this->time_of_day) {
+        if ($this->starts_at && $moment->lessThan($this->starts_at)) {
+            return false;
+        }
+
+        return ! ($this->ends_at && $moment->greaterThan($this->ends_at));
+    }
+
+    /** ინტერვალი: ფანჯრის გახსნაზე — ზუსტად გახსნის მომენტი, სხვაგვარად +N წუთი */
+    private function nextInterval(Carbon $from, bool $opening): ?Carbon
+    {
+        if ($this->interval_minutes < self::MIN_INTERVAL_MINUTES) {
             return null;
         }
 
-        [$hour, $minute] = $this->clock();
-
-        $local = $from->copy()->setTimezone($this->zone())->setTime($hour, $minute, 0);
-
-        if ($weekday !== null) {
-            // მიმდინარე კვირის სასურველ დღეზე გადავდივართ, მერე საჭიროებისამებრ +1 კვირა
-            $local->addDays((($weekday - $local->dayOfWeek) + 7) % 7);
-        }
-
-        // „ზუსტად ახლა" უკვე გავიდა — შემდეგ ჯერზე
-        if ($local->lessThanOrEqualTo($from)) {
-            $local->add($weekday === null ? '1 day' : '1 week');
-        }
-
-        return $local->copy()->utc();
+        return $opening ? $from->copy() : $from->copy()->addMinutes($this->interval_minutes);
     }
 
     /**
-     * ყოველკვირეული — **რამდენიმე დღე ერთდროულად** (§5.5).
+     * ყოველკვირეული — **რამდენიმე დღე × რამდენიმე დრო**.
      *
-     * ⚠️ ყოველ არჩეულ დღეზე ვითვლით კანდიდატს და **უახლოესს** ვირჩევთ.
-     * ერთი არჩეული დღე ძველი ერთდღიანი ქცევის იდენტურია.
+     * ⚠️ ყოველ არჩეულ წყვილზე ვითვლით კანდიდატს და **უახლოესს** ვირჩევთ.
+     * ერთი დღე + ერთი დრო ძველი ქცევის იდენტურია.
      */
     private function nextWeekly(Carbon $from): ?Carbon
     {
         $candidates = [];
 
         foreach ($this->selectedWeekdays() as $day) {
-            if ($next = $this->nextClock($from, $day)) {
-                $candidates[] = $next;
+            $candidates = array_merge($candidates, $this->clockCandidates($from, $day));
+        }
+
+        return $this->earliest($candidates);
+    }
+
+    /**
+     * კედლის საათების მომდევნო დადგომა user-ის სარტყელში → UTC.
+     * `$weekday` null = ყოველდღიური; 0 = კვირა (Carbon-ის `dayOfWeek`).
+     *
+     * @return Carbon[]
+     */
+    private function clockCandidates(Carbon $from, ?int $weekday): array
+    {
+        $candidates = [];
+
+        foreach ($this->clocks() as [$hour, $minute]) {
+            $local = $from->copy()->setTimezone($this->zone())->setTime($hour, $minute, 0);
+
+            if ($weekday !== null) {
+                // მიმდინარე კვირის სასურველ დღეზე გადავდივართ, მერე საჭიროებისამებრ +1 კვირა
+                $local->addDays((($weekday - $local->dayOfWeek) + 7) % 7);
+            }
+
+            // „ზუსტად ახლა" უკვე გავიდა — შემდეგ ჯერზე
+            if ($local->lessThanOrEqualTo($from)) {
+                $local->add($weekday === null ? '1 day' : '1 week');
+            }
+
+            $candidates[] = $local->copy()->utc();
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * ყოველთვიური (`$month = null`) და ყოველწლიური (`$month` = 1–12),
+     * **რამდენიმე რიცხვზე და რამდენიმე დროზე ერთდროულად**.
+     *
+     * ორი იტერაცია ერთ წყვილზე საკმარისია: თუ მიმდინარე პერიოდის მომენტი
+     * უკვე გავიდა, მომდევნო პერიოდისა აუცილებლად მომავალშია.
+     */
+    private function nextByDate(Carbon $from, ?int $month): ?Carbon
+    {
+        if ($month !== null && ($month < 1 || $month > 12)) {
+            return null;
+        }
+
+        $local = $from->copy()->setTimezone($this->zone());
+        $candidates = [];
+
+        foreach ($this->selectedDays() as $day) {
+            foreach ($this->clocks() as [$hour, $minute]) {
+                $year = $local->year;
+                $periodMonth = $month ?? $local->month;
+
+                for ($i = 0; $i < 2; $i++) {
+                    $candidate = $this->atDay($year, $periodMonth, $day, $hour, $minute);
+
+                    if ($candidate->greaterThan($from)) {
+                        $candidates[] = $candidate->copy()->utc();
+
+                        break;
+                    }
+
+                    if ($month === null) {
+                        $periodMonth++;
+
+                        if ($periodMonth > 12) {
+                            $periodMonth = 1;
+                            $year++;
+                        }
+                    } else {
+                        $year++;
+                    }
+                }
             }
         }
 
+        return $this->earliest($candidates);
+    }
+
+    /**
+     * არჩეული რიცხვი მოცემულ თვეში, user-ის სარტყელში.
+     *
+     * ⚠️ **დღე თვის სიგრძეზე ჩამოდის**: „ყოველთვიურად 31-ში" თებერვალში
+     * 28/29-ს ნიშნავს. Carbon-ის ნაგულისხმევი გადავსება (`Feb 31 → Mar 3`)
+     * აქ ჩუმად სულ სხვა თვეს აირჩევდა.
+     */
+    private function atDay(int $year, int $month, int $day, int $hour, int $minute): Carbon
+    {
+        $date = Carbon::create($year, $month, 1, 0, 0, 0, $this->zone());
+
+        return $date
+            ->setDay(min($day, $date->daysInMonth))
+            ->setTime($hour, $minute, 0);
+    }
+
+    /** უახლოესი კანდიდატი — ერთი პასუხი ოთხივე პერიოდულ რეჟიმზე */
+    private function earliest(array $candidates): ?Carbon
+    {
         if (! $candidates) {
             return null;
         }
@@ -208,6 +348,34 @@ class NoteReminder extends Model
         usort($candidates, fn (Carbon $a, Carbon $b) => $a->getTimestamp() <=> $b->getTimestamp());
 
         return $candidates[0];
+    }
+
+    /**
+     * ნორმალიზებული კედლის საათები — `[[საათი, წუთი], …]`, დალაგებული.
+     *
+     * ⚠️ ერთადერთი პარსერი ყველა რეჟიმისთვის. გასაღებით დედუპლიკაცია
+     * იმიტომაა, რომ „9:00" და „09:00" ერთი და იგივე დროა და ორ გასროლას
+     * არ უნდა ნიშნავდეს.
+     */
+    private function clocks(): array
+    {
+        $clocks = [];
+
+        foreach ((array) ($this->times_of_day ?? []) as $raw) {
+            [$hour, $minute] = array_pad(explode(':', (string) $raw), 2, '0');
+            $hour = (int) $hour;
+            $minute = (int) $minute;
+
+            if ($hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) {
+                continue;
+            }
+
+            $clocks[sprintf('%02d:%02d', $hour, $minute)] = [$hour, $minute];
+        }
+
+        ksort($clocks);
+
+        return array_values($clocks);
     }
 
     /** ნორმალიზებული 0–6 სია, დუბლიკატებისა და ნაგვის გარეშე */
@@ -221,71 +389,14 @@ class NoteReminder extends Model
         return $days;
     }
 
-    /**
-     * ყოველთვიური (`$month = null`) და ყოველწლიური (`$month` = 1–12).
-     *
-     * ორი იტერაცია საკმარისია: თუ მიმდინარე პერიოდის მომენტი უკვე გავიდა,
-     * მომდევნო პერიოდისა აუცილებლად მომავალშია.
-     */
-    private function nextByDate(Carbon $from, ?int $month): ?Carbon
+    /** ნორმალიზებული 1–31 სია (თვის რიცხვები) */
+    private function selectedDays(): array
     {
-        if (! $this->time_of_day || ! $this->day_of_month) {
-            return null;
-        }
+        $days = array_map('intval', (array) ($this->days_of_month ?? []));
+        $days = array_values(array_unique(array_filter($days, fn (int $d) => $d >= 1 && $d <= 31)));
+        sort($days);
 
-        if ($month !== null && ($month < 1 || $month > 12)) {
-            return null;
-        }
-
-        $local = $from->copy()->setTimezone($this->zone());
-        $year = $local->year;
-        $periodMonth = $month ?? $local->month;
-
-        for ($i = 0; $i < 2; $i++) {
-            $candidate = $this->atDay($year, $periodMonth);
-
-            if ($candidate->greaterThan($from)) {
-                return $candidate->copy()->utc();
-            }
-
-            if ($month === null) {
-                $periodMonth++;
-                if ($periodMonth > 12) {
-                    $periodMonth = 1;
-                    $year++;
-                }
-            } else {
-                $year++;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * არჩეული რიცხვი მოცემულ თვეში, user-ის სარტყელში.
-     *
-     * ⚠️ **დღე თვის სიგრძეზე ჩამოდის**: „ყოველთვიურად 31-ში" თებერვალში
-     * 28/29-ს ნიშნავს. Carbon-ის ნაგულისხმევი გადავსება (`Feb 31 → Mar 3`)
-     * აქ ჩუმად სულ სხვა თვეს აირჩევდა.
-     */
-    private function atDay(int $year, int $month): Carbon
-    {
-        [$hour, $minute] = $this->clock();
-
-        $date = Carbon::create($year, $month, 1, 0, 0, 0, $this->zone());
-
-        return $date
-            ->setDay(min((int) $this->day_of_month, $date->daysInMonth))
-            ->setTime($hour, $minute, 0);
-    }
-
-    /** `HH:MM` → [საათი, წუთი] — ერთი პარსერი ყველა რეჟიმისთვის */
-    private function clock(): array
-    {
-        [$hour, $minute] = array_pad(explode(':', (string) $this->time_of_day), 2, '0');
-
-        return [(int) $hour, (int) $minute];
+        return $days;
     }
 
     /** დაზიანებული/უცნობი სარტყელი მთელ დისპეტჩერს არ უნდა აგდებდეს */

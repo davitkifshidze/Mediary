@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import type { StorageUsage } from './account'
+import type { Status } from './types'
 import type { MediaType } from '@/lib/media'
 
 /* ============================================================
@@ -19,12 +20,17 @@ import type { MediaType } from '@/lib/media'
 /* ---------- ჩანაწერის ფოტოები: სახეობა, რაოდენობა, ზომა ---------- */
 
 /**
- * ჩანაწერის ფოტოს სახეობები.
+ * ჩანაწერის ფოტოს სახეობები — `GalleryFetcher::SUBJECTS`-ის ასლი.
  *
- * ⚠️ **`logos` ახალია (§8.2)** — TMDB-ს ის bucket ჰქონდა, ჩვენ კი არ
- * ვთავაზობდით, თუმცა `gallery_images.category` მას ისედაც იცნობდა.
+ * ⚠️ **`logos` ამოღებულია 2026-09-14-ს** (შენი მითითება: „ეს
+ * ნაწილი საერთოდ არ მცირდება“). `gallery_images.category`-ში `logo`
+ * **რჩება** (ძველი რიგები და მსახიობის tagged-ფოტოები), ამოღებულია
+ * **არჩევანი** და არა ბიბლიოთეკა.
+ *
+ * ⚠️ **ძველი შენახული პარამეტრი არ ტყდება** — `readGalleryDefaults()`
+ * უცნობ სახეობას ისედაც ფილტრავს, ე.ი. მიგრაცია არ დასჭირდება.
  */
-export const GALLERY_SUBJECTS = ['stills', 'posters', 'logos'] as const
+export const GALLERY_SUBJECTS = ['stills', 'posters'] as const
 export type GallerySubject = (typeof GALLERY_SUBJECTS)[number]
 
 /**
@@ -37,13 +43,11 @@ export type GallerySubject = (typeof GALLERY_SUBJECTS)[number]
 export const GALLERY_SUBJECT_SIZES = {
   stills: ['w300', 'w780', 'w1280', 'original'],
   posters: ['w185', 'w342', 'w500', 'w780', 'original'],
-  logos: ['w154', 'w300', 'w500', 'original'],
 } as const satisfies Record<GallerySubject, readonly string[]>
 
 export const GALLERY_SUBJECT_DEFAULT_SIZE = {
   stills: 'w780',
   posters: 'w500',
-  logos: 'w300',
 } as const satisfies Record<GallerySubject, string>
 
 /** მსახიობების არჩევანი (user-ის მოთხოვნა) */
@@ -129,7 +133,7 @@ export interface GalleryDefaults {
 
 export const GALLERY_FALLBACK_DEFAULTS: GalleryDefaults = {
   subjects: ['stills'],
-  limits: { stills: GALLERY_DEFAULT_LIMIT, posters: GALLERY_DEFAULT_LIMIT, logos: 5 },
+  limits: { stills: GALLERY_DEFAULT_LIMIT, posters: GALLERY_DEFAULT_LIMIT },
   sizes: { ...GALLERY_SUBJECT_DEFAULT_SIZE },
   /* ⚠️ **„არცერთი" აღარ არის ნაგულისხმევი** (Tasks §3.2): მსახიობები ცალკე
      ტაბია, ე.ი. იქ „არცერთი" იმას ნიშნავდა, რომ ტაბი თავისთავად გამორთულია. */
@@ -294,6 +298,18 @@ export interface GalleryGroup {
   previews?: string[]
   /** მოდულების ჭრილი პრივატულ დისკზეც ცხოვრობს (`note`) */
   private?: boolean
+
+  /* ---------- ეტაპი 2: შიდა დაჯგუფების საკვები ----------
+     ⚠️ **სამივე ჯგუფშივე მოდის და ცალკე არ იკითხება.** „ჟანრი / წელი /
+     სტატუსი" სექციებად დაყოფა ფრონტზე ხდება (იხ. `lib/galleryGroups.ts`),
+     ე.ი. თითო ბარათზე ცალკე მოთხოვნა ასჯერ გაიგზავნებოდა.
+     ⚠️ მხოლოდ ჩანაწერების ჭრილშია — მსახიობს, წყაროსა და მომწოდებელს ეს
+     ველები არ აქვთ. */
+  year?: number | null
+  favorite?: boolean
+  /** ⚠️ **ობიექტია და არა სტრიქონი** (§6.4) — სახელი მფლობელის ლექსიკონშია */
+  status?: Status | null
+  genres?: { slug: string; name_ka: string | null; name_en: string | null }[]
 }
 
 export interface GalleryGroups {
@@ -361,6 +377,13 @@ export interface GallerySummary {
   bytes: number
   records: number
   actors: number
+  /**
+   * რომელი კატეგორია რამდენია — `{backdrop: 14, poster: 4, actor: 103}`.
+   *
+   * ⚠️ **გასაღები მხოლოდ მაშინ არის, როცა ფოტო მართლა არსებობს**: სწორედ
+   * ამიტომ ჩანდა „ლოგო" ცარიელ ბიბლიოთეკაზეც — სია ფრონტში კონსტანტა იყო.
+   */
+  categories: Partial<Record<string, number>>
   videos: number
   module_groups: number
   domains: MediaType[]
@@ -460,6 +483,14 @@ export interface GalleryPlan {
   count: number
   eta_seconds: number
   skipped_without_tmdb: number
+  /**
+   * რამდენი მოიჭრა „ვისაც უკვე აქვს, გამოტოვე"-ით.
+   *
+   * ⚠️ **ნული თავის მიზეზს უნდა ატარებდეს**: „მსახიობი 0" ერთნაირად
+   * იხატებოდა მაშინაც, როცა სკოუპი ცარიელია, და მაშინაც, როცა ყველას
+   * ფოტოები უკვე აქვს — ეს ორი სრულიად სხვადასხვა მდგომარეობაა.
+   */
+  skipped_with_photos: number
   /** ⚠️ ზედა ზღვარია: TMDB სიაში ფაილის ზომას არ იძლევა (17.3) */
   estimated_bytes: number
   storage: StorageUsage
@@ -498,15 +529,36 @@ export async function fetchGallerySummary(): Promise<GallerySummary> {
   return data
 }
 
+/**
+ * ჯგუფების ჭრილის ფილტრი (ეტაპი 2).
+ *
+ * ⚠️ **`have: 'without'` — „რომელ ჩანაწერს არ აქვს ფოტო".** აქამდე ჯგუფების
+ * სია ყოველთვის `has('galleryImages')`-ით იწყებოდა, ე.ი. სწორედ ის ჩანაწერები
+ * არსად ჩანდა, რომლებისთვისაც ჩამოტვირთვა არსებობს.
+ *
+ * ⚠️ `genre`/`status` **მძიმით გაყოფილი სიაა** — ჟანრები AND-ით, სტატუსები
+ * OR-ით (ჩანაწერი ორ სტატუსში ვერ იქნება); იგივე წესი, რაც ბიბლიოთეკის სიას.
+ */
+export interface GalleryGroupQuery {
+  /** ჩანაწერების ჭრილის დომენის ტაბი — `movie` · `song` · … */
+  type?: GalleryParentKind
+  /** მსახიობების ჭრილის დომენის ტაბი: ვინც **ამ დომენში** თამაშობს */
+  from?: MediaType
+  q?: string
+  gender?: 'female' | 'male'
+  have?: 'with' | 'without' | 'all'
+  genre?: string
+  status?: string
+  year_min?: number
+  year_max?: number
+  favorite?: boolean
+  /** დასტას ხუთი ბარათი აქვს — ე.ი. სამი ესკიზი აღარ ჰყოფნის */
+  previews?: number
+}
+
 export async function fetchGalleryGroups(
   by: GalleryGroupBy,
-  params: {
-    type?: MediaType
-    q?: string
-    gender?: 'female' | 'male'
-    /** დასტას ხუთი ბარათი აქვს — ე.ი. სამი ესკიზი აღარ ჰყოფნის */
-    previews?: number
-  } = {},
+  params: GalleryGroupQuery = {},
 ): Promise<GalleryGroups> {
   const { data } = await api.get('/gallery/groups', { params: { by, ...params } })
   return data

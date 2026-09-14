@@ -157,6 +157,8 @@ class WebSearchTest extends TestCase
     public function test_the_free_catalogue_works_without_any_key(): void
     {
         config()->set('services.serpapi.key', null);
+        // ⚠️ Serper-საც **თავისი** გასაღები აქვს — „გასაღების გარეშე" ორივეს ნიშნავს
+        config()->set('services.serper.key', null);
 
         Http::fake(['commons.wikimedia.org/*' => Http::response(['query' => ['pages' => [
             '1' => [
@@ -187,6 +189,54 @@ class WebSearchTest extends TestCase
         $sources = $this->actingAs($this->user)->getJson('/api/web/status')->json('sources.images');
         $this->assertSame(['wikimedia'], array_column($sources, 'key'));
         $this->assertTrue($sources[0]['free']);
+    }
+
+    /**
+     * **Serper — მესამე კატეგორია (2026-09-14).**
+     *
+     * ⚠️ ის არც უფასოა და არც SerpApi-ის 250-იან ბიუჯეტს ეხება: თავისი
+     * გასაღები აქვს და თავისი credit-ები. ეს სამივე ფაქტი ცალკე იკითხება,
+     * თორემ ეკრანზე „დარჩა N ძებნა" მასზეც დაიწერებოდა და მოგვატყუებდა.
+     */
+    public function test_serper_is_neither_free_nor_on_the_serpapi_quota(): void
+    {
+        config()->set('services.serpapi.key', null);
+        config()->set('services.serper.key', 'test-key');
+
+        Http::fake(['google.serper.dev/*' => Http::response(['images' => [
+            [
+                'title' => 'Keanu Reeves',
+                'imageUrl' => 'https://example.com/keanu.jpg',
+                'thumbnailUrl' => 'https://example.com/keanu-thumb.jpg',
+                'link' => 'https://example.com/article',
+                'domain' => 'example.com',
+                'imageWidth' => 1200,
+                'imageHeight' => 800,
+            ],
+            // ⚠️ ბმულის გარეშე ერთეული `dropped`-ში ითვლება და არა შედეგებში
+            ['title' => 'no url'],
+        ]])]);
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=serper&limit=50&pages=1')
+            ->assertOk();
+
+        $this->assertCount(1, $res->json('items'));
+        $this->assertSame('serper', $res->json('items.0.source'));
+        $this->assertSame(1, $res->json('sources.0.dropped'));
+        // SerpApi-ის მრიცხველი ხელუხლებელია…
+        $this->assertSame(0, $res->json('spent'));
+        $this->assertSame(0, SerpSearch::count());
+        // …Serper-ის ხარჯი კი ცალკე ჩანს
+        $this->assertSame(1, $res->json('sources.0.credits'));
+
+        $sources = $this->actingAs($this->user)->getJson('/api/web/status')->json('sources.images');
+        $serper = collect($sources)->firstWhere('key', 'serper');
+
+        $this->assertNotNull($serper, 'Serper სიაში უნდა იყოს, როცა გასაღები აქვს');
+        $this->assertFalse($serper['free']);
+        $this->assertFalse($serper['uses_quota']);
+        $this->assertTrue($serper['paged']);
     }
 
     /**
@@ -396,5 +446,54 @@ class WebSearchTest extends TestCase
         $this->assertTrue($second['ok'], 'ჩავარდნა დაქეშდა და მეორე ცდა ვეღარ გავიდა');
         $this->assertNotEmpty($second['items']);
         $this->assertSame(2, $calls);
+    }
+
+    /**
+     * **ფარდობითი თარიღი ნორმალიზდება** (ეტაპი 4, 2026-09-13).
+     *
+     * ⚠️ YouTube `published_date`-ში „9 months ago"-ს წერს. ეს სტრიქონი
+     * პირდაპირ მიდიოდა `POST /api/gallery/videos`-ზე, სადაც `published_at`
+     * `date`-ით მოწმდება — ე.ი. **ნაპოვნი ვიდეოს შენახვა ყოველთვის 422 იყო**
+     * და ძებნა „არ მუშაობდა". ტესტი სწორედ ამ გადასვლას იჭერს.
+     */
+    public function test_a_relative_published_date_becomes_a_real_date(): void
+    {
+        Http::fake([
+            'serpapi.com/account*' => Http::response(['total_searches_left' => 100]),
+            'serpapi.com/search.json*' => Http::response(['video_results' => [[
+                'title' => 'Kraken | Official Teaser Trailer HD',
+                'link' => 'https://www.youtube.com/watch?v=EUTatY1-oBI',
+                'channel' => ['name' => 'Samuel Goldwyn Films'],
+                'length' => '2:04',
+                'published_date' => '9 months ago',
+                'thumbnail' => ['static' => 'https://i.ytimg.com/vi/EUTatY1-oBI/hq.jpg'],
+            ]]]),
+        ]);
+
+        $published = $this->actingAs($this->user)
+            ->getJson('/api/web/videos?query=kraken&engines[]=youtube')
+            ->assertOk()
+            ->json('items.0.published');
+
+        $this->assertMatchesRegularExpression('~^\d{4}-\d{2}-\d{2}$~', (string) $published);
+        $this->assertSame(now()->subMonths(9)->toDateString(), $published);
+    }
+
+    /** ⚠️ თარიღად წაუკითხავი სტრიქონი **`null`-ია და არა ნაგულისხმევი დღეს** */
+    public function test_an_unreadable_published_date_is_null(): void
+    {
+        Http::fake([
+            'serpapi.com/account*' => Http::response(['total_searches_left' => 100]),
+            'serpapi.com/search.json*' => Http::response(['videos_results' => [[
+                'title' => 'Kraken',
+                'url' => 'https://yandex.example/video/1',
+                'published_date' => 'ვერ წაიკითხება',
+            ]]]),
+        ]);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/web/videos?query=kraken&engines[]=yandex_videos')
+            ->assertOk()
+            ->assertJsonPath('items.0.published', null);
     }
 }

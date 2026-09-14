@@ -154,14 +154,21 @@ class Status extends Model
             ->all();
     }
 
-    /** სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს */
+    /**
+     * სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს.
+     *
+     * ⚠️ **`all`/`favorite`/`downloaded` დაკავებულია** (ეტაპი 8): ისინი
+     * `?view=`-ის ფსევდო-განყოფილებებია. „Favorite" სახელის სტატუსი
+     * `favorite` გასაღებს რომ მიეღო, მისი სექცია რჩეულებს გაიხსნიდა, და
+     * საიდბარის განლაგებაში ორი რიგი ერთ id-ს იკავებდა.
+     */
     public static function makeKey(int $userId, string $domain, string $name): string
     {
         $base = Str::slug($name) ?: 'status';
         $key = $base;
         $n = 2;
 
-        while (static::withoutGlobalScope('owner')
+        while (in_array($key, StatusDomain::RESERVED_KEYS, true) || static::withoutGlobalScope('owner')
             ->where('user_id', $userId)->where('module', $domain)->where('key', $key)->exists()) {
             $key = "{$base}-{$n}";
             $n++;

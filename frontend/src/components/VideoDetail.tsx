@@ -14,6 +14,7 @@ import {
   type Video,
 } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
+import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
@@ -81,6 +82,10 @@ export function VideoDetail({
     onError: fail,
   })
   const removeFile = useMutation({ mutationFn: deleteVideoFile, onSuccess: refresh, onError: fail })
+  /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+  const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => removeFile.mutate(id) })
+
   const addNote = useMutation({
     mutationFn: (body: string) => createVideoNote(video.id, body),
     onSuccess: () => {
@@ -273,7 +278,15 @@ export function VideoDetail({
                 {docs.map((a) => (
                   <li key={a.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm">{a.original_name}</span>
+                    {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
+                    <button
+                      type="button"
+                      onClick={() => viewer.open(a)}
+                      className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm hover:underline"
+                      title={t('files.viewerOpen')}
+                    >
+                      {a.original_name}
+                    </button>
                     <span className="shrink-0 text-xs text-muted-foreground">{bytes(a.size)}</span>
                     <a
                       href={storageUrl(a.url) ?? '#'}
@@ -299,6 +312,9 @@ export function VideoDetail({
           </>
         )}
       </div>
+
+      {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
+      {viewer.node}
     </ModalShell>
   )
 }

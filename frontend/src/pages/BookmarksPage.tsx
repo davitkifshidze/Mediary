@@ -52,6 +52,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FieldLabel } from '@/components/ui/field-label'
@@ -72,6 +73,10 @@ import { cn } from '@/lib/utils'
    ============================================================ */
 
 const SORTS = ['newest', 'oldest', 'title', 'domain', 'visited', 'visits'] as const
+
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[] }
+type PanelFilters = typeof EMPTY_FILTERS
 
 export function BookmarksPage() {
   const { t, i18n } = useTranslation()
@@ -97,16 +102,11 @@ export function BookmarksPage() {
     [search],
   )
 
-  const [draft, setDraft] = useState({ categories, tags })
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Bookmark | 'new' | null>(null)
-
-  useEffect(() => {
-    setDraft({ categories, tags })
-  }, [categories, tags])
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -179,12 +179,8 @@ export function BookmarksPage() {
 
   /* ---------- ფილტრის გაშვება ---------- */
 
-  const activeCount = categories.length + tags.length
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x))
-  const dirty = !same(draft.categories, categories) || !same(draft.tags, tags)
-
-  /** მიმდინარე სექცია (`?view=`) ინახება — პანელი მას არ ცვლის */
-  const applyDraft = (next: typeof draft) => {
+  /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
+  const writeFilters = (next: PanelFilters) => {
     const p = new URLSearchParams()
     if (view !== 'all') p.set('view', view)
     if (next.categories.length) p.set('category', next.categories.join(','))
@@ -192,6 +188,16 @@ export function BookmarksPage() {
     setPanelOpen(false)
     navigate({ pathname: '/bookmarks', search: p.toString() })
   }
+
+  /* მონახაზი, „ცვლილებაა?", გასუფთავება და მრიცხველი — ერთი აღწერა
+     `lib/filters.ts`-ში. ⚠️ `clear()` **ორივე მხარეს** ასუფთავებს
+     (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
+     სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
+    { categories, tags },
+    EMPTY_FILTERS,
+    writeFilters,
+  )
 
   const toggle = (key: 'categories' | 'tags', value: string, on: boolean) =>
     setDraft((d) => ({
@@ -280,7 +286,7 @@ export function BookmarksPage() {
               actions={
                 <>
                   {activeCount > 0 && (
-                    <Button variant="outline" onClick={() => applyDraft({ categories: [], tags: [] })}>
+                    <Button variant="outline" onClick={clear}>
                       {t('filter.clear')}
                     </Button>
                   )}
@@ -431,8 +437,8 @@ export function BookmarksPage() {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
-          onClear={() => applyDraft({ categories: [], tags: [] })}
+          onApply={() => apply(draft)}
+          onClear={clear}
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >

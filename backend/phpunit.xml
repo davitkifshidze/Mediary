@@ -31,6 +31,11 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- ⚠️ ცოცხალი გასაღები ტესტებში არასდროს: `.env`-ში ჩასმული
+             `GEMINI_API_KEY` ნამდვილ კვოტას დახარჯავდა და თარჯიმნის
+             „კონფიგურირებულია თუ არა" ტესტებს დეველოპერის მანქანაზე
+             დამოკიდებულს გახდიდა. თითოეული ტესტი კლავიშს თვითონ სვამს. -->
+        <env name="GEMINI_API_KEY" value=""/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
 </phpunit>

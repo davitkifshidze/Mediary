@@ -911,3 +911,28 @@ export async function purgeItem(
   )
   return data
 }
+
+/* ---------- ატვირთვის ლიმიტები (2026-09-14) ---------- */
+
+export interface UploadKindLimit {
+  kind: 'image' | 'doc' | 'video' | 'book' | 'rules'
+  /** აპის წესი (KB) — რაც კოდში წერია */
+  max_kb: number
+  /** **ნამდვილი** ჭერი ბაიტებში — აპისა და PHP-ის მინიმუმი */
+  max_bytes: number
+  /** ⚠️ `true` = ჭერი PHP-მ ჩამოწია (`php.ini`), და არა აპმა */
+  capped_by_server: boolean
+  /** ცარიელი `image`-ზე: მას Laravel-ის `image` წესი იცავს და არა გაფართოება */
+  mimes: string[]
+}
+
+export interface UploadLimits {
+  kinds: UploadKindLimit[]
+  max_files: number
+  server: { upload_max_filesize: string; post_max_size: string; max_bytes: number }
+}
+
+export async function fetchUploadLimits(): Promise<UploadLimits> {
+  const { data } = await api.get('/uploads/limits')
+  return data.data
+}

@@ -54,8 +54,16 @@ use Throwable;
  */
 class GalleryFetcher
 {
-    /** ჩანაწერის ფოტოების სახეები — user ირჩევს, რომელი ჩამოვიდეს */
-    public const SUBJECTS = ['stills', 'posters', 'logos'];
+    /**
+     * ჩანაწერის ფოტოების სახეები — user ირჩევს, რომელი ჩამოვიდეს.
+     *
+     * ⚠️ **`logos` ამოღებულია 2026-09-14-ს** (შენი მითითება: „ეს
+     * ნაწილი საერთოდ არ მცირდება“). `gallery_images.category`-ში
+     * `logo` **რჩება** — ძველი რიგები არსებობს და გალერეაში
+     * ისინივე წესით იხატება; ამოღებულია **არჩევანი** და არა
+     * ბიბლიოთეკა.
+     */
+    public const SUBJECTS = ['stills', 'posters'];
 
     /**
      * სახეობა → TMDB-ის bucket და ჩვენი `category`.
@@ -66,21 +74,18 @@ class GalleryFetcher
     private const SUBJECT_BUCKETS = [
         'stills' => ['backdrops', 'backdrop'],
         'posters' => ['posters', 'poster'],
-        'logos' => ['logos', 'logo'],
     ];
 
     /** სახეობა → დასაშვები ზომები (TMDB `configuration`-ის ზუსტი სიები) */
     public const SUBJECT_SIZES = [
         'stills' => ['w300', 'w780', 'w1280', 'original'],
         'posters' => ['w185', 'w342', 'w500', 'w780', 'original'],
-        'logos' => ['w154', 'w300', 'w500', 'original'],
     ];
 
     /** სახეობა → ნაგულისხმევი ზომა */
     public const SUBJECT_DEFAULT_SIZE = [
         'stills' => 'w780',
         'posters' => 'w500',
-        'logos' => 'w300',
     ];
 
     /** მსახიობების არჩევანი (user-ის მოთხოვნა: ყველა / ქალი / კაცი / კონკრეტული) */

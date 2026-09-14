@@ -43,6 +43,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
@@ -76,6 +77,10 @@ function materialCount(song: Song): number {
   return (song.images_count ?? 0) + (song.documents_count ?? 0) + (song.notes_count ?? 0)
 }
 
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_FILTERS = { genres: [] as string[], tags: [] as string[] }
+type PanelFilters = typeof EMPTY_FILTERS
+
 export function SongsPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -98,7 +103,6 @@ export function SongsPage() {
     [search],
   )
 
-  const [draft, setDraft] = useState({ genres, tags })
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
@@ -128,10 +132,6 @@ export function SongsPage() {
   // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.
   const [material, setMaterial] = useState<Song | null>(null)
-
-  useEffect(() => {
-    setDraft({ genres, tags })
-  }, [genres, tags])
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -192,12 +192,8 @@ export function SongsPage() {
 
   /* ---------- ფილტრის გაშვება ---------- */
 
-  const activeCount = genres.length + tags.length
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x))
-  const dirty = !same(draft.genres, genres) || !same(draft.tags, tags)
-
-  /** მიმდინარე სექცია (`?view=favorite`) ინახება — პანელი მას არ ცვლის */
-  const applyDraft = (next: typeof draft) => {
+  /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
+  const writeFilters = (next: PanelFilters) => {
     const p = new URLSearchParams()
     if (view !== 'all') p.set('view', view)
     if (next.genres.length) p.set('genre', next.genres.join(','))
@@ -205,6 +201,16 @@ export function SongsPage() {
     setPanelOpen(false)
     navigate({ pathname: '/songs', search: p.toString() })
   }
+
+  /* მონახაზი, „ცვლილებაა?", გასუფთავება და მრიცხველი — ერთი აღწერა
+     `lib/filters.ts`-ში. ⚠️ `clear()` **ორივე მხარეს** ასუფთავებს
+     (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
+     სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
+    { genres, tags },
+    EMPTY_FILTERS,
+    writeFilters,
+  )
 
   const toggle = (key: 'genres' | 'tags', value: string, on: boolean) =>
     setDraft((d) => ({
@@ -294,7 +300,7 @@ export function SongsPage() {
               actions={
                 <>
                   {activeCount > 0 && (
-                    <Button variant="outline" onClick={() => applyDraft({ genres: [], tags: [] })}>
+                    <Button variant="outline" onClick={clear}>
                       {t('filter.clear')}
                     </Button>
                   )}
@@ -459,8 +465,8 @@ export function SongsPage() {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
-          onClear={() => applyDraft({ genres: [], tags: [] })}
+          onApply={() => apply(draft)}
+          onClear={clear}
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >

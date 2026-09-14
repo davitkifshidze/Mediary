@@ -1,6 +1,7 @@
 import { API_URL, api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    ვიდეოს მოდული (I5) — ბმულები ნებისმიერი წყაროდან.
@@ -148,11 +149,12 @@ export async function updateVideoType(id: number, input: VideoTypeInput): Promis
 }
 
 /** წაშლა; `moveTo` — რომელ ტიპზე გადავიდეს ეს ვიდეოები (null = ტიპის გარეშე) */
-export async function deleteVideoType(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/video-types/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteVideoType(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/video-types/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderVideoTypes(ids: number[]): Promise<VideoType[]> {

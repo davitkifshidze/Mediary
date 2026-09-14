@@ -23,7 +23,6 @@ class BoardGameResource extends JsonResource
             'publisher' => $this->publisher,
             'genre_id' => $this->genre_id,
             'genre' => $this->whenLoaded('genre', fn () => new BoardGameGenreResource($this->genre)),
-            'mechanics' => $this->mechanics ?? [],
 
             'players_min' => $this->players_min,
             'players_max' => $this->players_max,

@@ -2,9 +2,9 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GalleryCastImage, GalleryImage } from '@/api/gallery'
 import { formatBytes } from '@/lib/utils'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    გალერეის ფილტრები + ბადე (Tasks 10 · §2.9).
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  * ფილტრის ჩიპი — კატეგორიით ჭრა (ყველა · კადრები · პოსტერები · მსახიობები).
  * `logo` ახლა აღარ ჩამოდის, მაგრამ ძველ ჩანაწერებზე არსებობს — ამიტომ ჩიპებში რჩება.
  */
-type Chip = 'all' | 'backdrop' | 'poster' | 'logo' | 'actor'
+type CategoryChip = 'all' | 'backdrop' | 'poster' | 'logo' | 'actor'
 
 export function GalleryPanel({
   images,
@@ -52,7 +52,7 @@ export function GalleryPanel({
   categories?: boolean
 }) {
   const { t } = useTranslation()
-  const [chip, setChip] = useState<Chip>('all')
+  const [chip, setChip] = useState<CategoryChip>('all')
 
   const shown = useMemo(
     () => (chip === 'all' ? images : images.filter((i) => i.category === chip)),
@@ -85,33 +85,32 @@ export function GalleryPanel({
             </span>
           )}
         </h2>
-        {actions}
+        {/* ⚠️ **მოქმედებები ერთ დაჯგუფებულ ზოლშია** (შენი მითითება,
+            2026-09-14). ადრე ისინი პირდაპირ `justify-between`-იან რიგში
+            იდგნენ, ე.ი. ბრაუზერი სამივეს **მთელ სიგანეზე** ფანტავდა და სამ
+            დამოუკიდებელ ღილაკად იკითხებოდნენ. ჩარჩო ამბობს, რომ ეს ერთი
+            ხელსაწყოთა ზოლია, `gap-0`+გამყოფი კი მათ ერთმანეთს აახლოებს. */}
+        {actions && (
+          <div className="inline-flex items-center overflow-hidden rounded-md border border-border divide-x divide-border">
+            {actions}
+          </div>
+        )}
       </div>
 
       {/* კატეგორიის ჩიპები — მხოლოდ მაშინ, თუ ერთზე მეტი სახეა */}
       {categories && present.length > 1 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {(['all', ...present] as Chip[]).map((c) => (
-            <button
+        <ChipRow className="mb-4">
+          {(['all', ...present] as CategoryChip[]).map((c) => (
+            <Chip
               key={c}
-              type="button"
-              onClick={() => {
-                setChip(c)
-              }}
-              className={cn(
-                'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-                chip === c
-                  ? 'border-primary bg-secondary text-foreground'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
+              active={chip === c}
+              onClick={() => setChip(c)}
+              count={c === 'all' ? images.length : images.filter((i) => i.category === c).length}
             >
               {c === 'all' ? t('filter.all') : t(`gallery.category.${c}`)}
-              <span className="ml-1 opacity-60">
-                {c === 'all' ? images.length : images.filter((i) => i.category === c).length}
-              </span>
-            </button>
+            </Chip>
           ))}
-        </div>
+        </ChipRow>
       )}
 
       {/* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid` (§2.9).
@@ -128,6 +127,10 @@ export function GalleryPanel({
               ? t(`gallery.category.${image.category}`)
               : t('gallery.category.other')),
           portrait: image.category === 'actor' || image.category === 'poster',
+          /* ⚠️ **მსახიობის ფოტოზე „მთავარად" აკრძალულია** (`cast_members.photo_path`
+             გლობალური სვეტია, backend 422-ს აბრუნებს). აქამდე ღილაკი იხატებოდა
+             და დაჭერა ჩუმად არაფერს აკეთებდა — ახლა პუნქტი საერთოდ არ ჩნდება. */
+          canPrimary: image.category !== 'actor',
           size: image.size,
           width: image.width,
           height: image.height,
@@ -140,7 +143,7 @@ export function GalleryPanel({
           onPrimary &&
           ((id) => {
             const image = shown.find((i) => i.id === id)
-            // ⚠️ მსახიობის ფოტოზე „მთავარად" აკრძალულია (გლობალური სვეტი)
+            // ⚠️ მეორე ფენა: `canPrimary`-ს გარდა თვითონ გამოძახებაც იცავს თავს
             if (image && image.category !== 'actor') onPrimary(image as GalleryImage)
           })
         }

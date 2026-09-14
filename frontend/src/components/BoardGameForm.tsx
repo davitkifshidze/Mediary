@@ -24,7 +24,6 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
-import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
@@ -50,13 +49,11 @@ import { useToast } from '@/components/ui/feedback'
 
 export function BoardGameForm({
   game,
-  allMechanics,
   genres,
   onClose,
   onSaved,
 }: {
   game: BoardGame | null
-  allMechanics: string[]
   genres: BoardGameGenre[]
   onClose: () => void
   onSaved: () => void
@@ -74,7 +71,6 @@ export function BoardGameForm({
     designer: game?.designer ?? '',
     publisher: game?.publisher ?? '',
     genreId: game?.genre_id ? String(game.genre_id) : '',
-    mechanics: game?.mechanics ?? [],
     players_min: game?.players_min ? String(game.players_min) : '',
     players_max: game?.players_max ? String(game.players_max) : '',
     age_min: game?.age_min ? String(game.age_min) : '',
@@ -198,7 +194,6 @@ export function BoardGameForm({
       year: f.year || (draft.year ? String(draft.year) : ''),
       designer: f.designer || (draft.designer ?? ''),
       publisher: f.publisher || (draft.publisher ?? ''),
-      mechanics: f.mechanics.length ? f.mechanics : draft.mechanics,
       players_min: f.players_min || (draft.players_min ? String(draft.players_min) : ''),
       players_max: f.players_max || (draft.players_max ? String(draft.players_max) : ''),
       age_min: f.age_min || (draft.age_min ? String(draft.age_min) : ''),
@@ -243,7 +238,6 @@ export function BoardGameForm({
       designer: form.designer || null,
       publisher: form.publisher || null,
       genre_id: form.genreId ? Number(form.genreId) : null,
-      mechanics: form.mechanics,
       players_min: num(form.players_min),
       players_max: num(form.players_max),
       age_min: num(form.age_min),
@@ -637,22 +631,6 @@ export function BoardGameForm({
               >
                 <Plus className="size-4" />
               </Button>
-            </div>
-
-            <div className={fields.shows('mechanics') ? 'mt-4' : 'hidden'}>
-              <FieldLabel
-                htmlFor="bg-mechanics"
-                required={fields.required('mechanics')}
-                hint={fields.hint('mechanics') ?? t('boardGames.mechanicsHint')}
-              >
-                {fields.label('mechanics')}
-              </FieldLabel>
-              <TagSelect
-                inputId="bg-mechanics"
-                options={allMechanics}
-                value={form.mechanics}
-                onChange={(mechanics) => setForm((f) => ({ ...f, mechanics }))}
-              />
             </div>
 
             {/* მაღაზიები: ბმული + ფასი (§14) */}

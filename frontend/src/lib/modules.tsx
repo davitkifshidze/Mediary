@@ -76,6 +76,39 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
   return <ModulesContext.Provider value={value}>{children}</ModulesContext.Provider>
 }
 
+/* ============================================================
+   **მოდულის ფერი CSS-ცვლადებად** (ეტაპი 6 → ეტაპი 10).
+
+   ⚠️ **Tailwind კლასს hex-იდან ვერ დაბადებს**: `border-[#6366f1]`
+   კომპილაციისას არ არსებობს. ამიტომ ფერი inline `style`-ით ორ ცვლადად
+   ჩამოდის (`--mod` და სუსტი ტონი `--mod-soft`), კლასები კი სტატიკურია
+   (`hover:border-[var(--mod)]`) — ჰოვერი მხოლოდ CSS-ით ითქმება, JS-ით არა.
+
+   ⚠️ **ფერის გარეშე მოდული ცვლადს არ წერს** — მშობლისას იმემკვიდრებს
+   (საიდბარში `<nav>`-ის ოქროსფერი). სწორედ ეს ცვლის „თუ ფერი არ აქვს"
+   განშტოებას ყოველ გამოძახებაზე.
+
+   ⚠️ **ერთი განსაზღვრება ორი მომხმარებლისთვის** — საიდბარისა და აუდიტ-
+   ლოგის ბარათების; მეორე ასლი იმავე კვირაში გაშორდებოდა.
+   ============================================================ */
+export function modAccent(color: string | null | undefined): React.CSSProperties | undefined {
+  if (!color) return undefined
+  return {
+    '--mod': color,
+    '--mod-soft': `color-mix(in oklab, ${color} 16%, transparent)`,
+  } as React.CSSProperties
+}
+
+/**
+ * ნაგულისხმევი აქცენტი — ოქროსფერი. ფერის უქონელი (ან ფსევდო-) მოდული
+ * სწორედ ამას იმემკვიდრებს, ე.ი. „თუ ფერი არ აქვს" განშტოება ყოველ
+ * გამოძახებაზე აღარ იწერება.
+ */
+export const MODULE_ACCENT_FALLBACK = {
+  '--mod': 'var(--gold)',
+  '--mod-soft': 'color-mix(in oklab, var(--gold) 16%, transparent)',
+} as React.CSSProperties
+
 /** მოდულის სახელი მიმდინარე ენაზე */
 export function moduleName(m: ModuleInfo, lang: string): string {
   return (lang === 'ka' ? m.name_ka : m.name_en) || m.name_en || m.name_ka

@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { Globe } from 'lucide-react'
 import type { SerpEngine, SerpQuota } from '@/api/web'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,9 +16,14 @@ import { cn } from '@/lib/utils'
    შეუმჩნევლად. ამიტომ ფასი **ღილაკის გვერდით ცხადად წერია** („დაიხარჯება N,
    დარჩენილია M") და არა დახმარების ტექსტში.
 
-   ⚠️ **უფასო წყარო ხარჯში არ ითვლება** და ჩიპითაც ასეა მონიშნული: სწორედ
+   ⚠️ **უფასო წყარო ხარჯში არ ითვლება** და ტეგითაც ასეა მონიშნული: სწორედ
    ეს განსხვავება წყვეტს, დააჭერ თუ არა „ყველა ერთად"-ს. სია **უფასოთი
    იწყება** (რიგი backend-ისაა) — ე.ი. ნაგულისხმევი არჩევანი ბიუჯეტს არ ეხება.
+
+   ⚠️ **საკუთარი ჩარჩო აღარ აქვს** (ეტაპი 5, 2026-09-13) — ბლოკი ახლა
+   `StepSection`-ის შიგნით დგას („სად ვეძებთ") და ორი ერთმანეთში ჩალაგებული
+   ბორდერი სწორედ ის ვიზუალია, რომელზეც შენიშვნა იყო. სათაურსაც ნაბიჯი
+   ატარებს, ე.ი. აქ მხოლოდ არჩევანი და ფასი რჩება.
    ============================================================ */
 
 export function WebSourcePicker({
@@ -52,12 +56,46 @@ export function WebSourcePicker({
   const cost = engines.filter((e) => selected.includes(e.key) && !e.free).length
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-sm font-medium">
-          <Globe className="size-4 text-muted-foreground" />
-          {t('web.sources')}
-        </span>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {engines.map((engine) => {
+          const on = selected.includes(engine.key)
+
+          return (
+            <label
+              key={engine.key}
+              className={cn(
+                'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors',
+                on ? 'border-primary bg-secondary' : 'border-border hover:border-primary/40',
+                disabled && 'cursor-not-allowed opacity-60',
+              )}
+            >
+              <Checkbox
+                checked={on}
+                onCheckedChange={() => toggle(engine.key)}
+                disabled={disabled}
+              />
+              {engine.name}
+              {engine.free && (
+                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                  {t('web.free')}
+                </span>
+              )}
+              {/* ცენზურის გამორთვა მხოლოდ Google-ის engine-ებს აქვს — სხვაგან
+                  ტეგი ისე მუშაობს, როგორც თვითონ წყარო გადაწყვეტს */}
+              {!engine.safe_search && <FieldHint hint={t(engine.free ? 'web.freeHint' : 'web.noSafeToggle')} />}
+            </label>
+          )
+        })}
+      </div>
+
+      {/* ⚠️ ფასი ღილაკის გვერდით და არა დახმარებაში — ესაა ის ადგილი,
+          სადაც 250-იანი ბიუჯეტი შეუმჩნევლად ქრება (§7.6.4) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+        <p className="text-xs text-muted-foreground">
+          {t('web.cost', { count: cost })}
+          {quota?.remaining != null && ` · ${t('web.remaining', { count: quota.remaining })}`}
+        </p>
 
         <Button
           type="button"
@@ -69,40 +107,6 @@ export function WebSourcePicker({
           {allSelected ? t('web.onlyFirst') : t('web.allTogether')}
         </Button>
       </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {engines.map((engine) => (
-          <label
-            key={engine.key}
-            className={cn(
-              'flex cursor-pointer items-center gap-2 text-sm',
-              disabled && 'cursor-not-allowed opacity-60',
-            )}
-          >
-            <Checkbox
-              checked={selected.includes(engine.key)}
-              onCheckedChange={() => toggle(engine.key)}
-              disabled={disabled}
-            />
-            {engine.name}
-            {engine.free && (
-              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                {t('web.free')}
-              </span>
-            )}
-            {/* ცენზურის გამორთვა მხოლოდ Google-ის engine-ებს აქვს — სხვაგან
-                ტეგი ისე მუშაობს, როგორც თვითონ წყარო გადაწყვეტს */}
-            {!engine.safe_search && <FieldHint hint={t(engine.free ? 'web.freeHint' : 'web.noSafeToggle')} />}
-          </label>
-        ))}
-      </div>
-
-      {/* ⚠️ ფასი ღილაკის გვერდით და არა დახმარებაში — ესაა ის ადგილი,
-          სადაც 250-იანი ბიუჯეტი შეუმჩნევლად ქრება (§7.6.4) */}
-      <p className="mt-2 text-xs text-muted-foreground">
-        {t('web.cost', { count: cost })}
-        {quota?.remaining != null && ` · ${t('web.remaining', { count: quota.remaining })}`}
-      </p>
     </div>
   )
 }

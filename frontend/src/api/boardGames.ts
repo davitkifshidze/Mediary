@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    ბორდგეიმების მოდული (`board_game`, Tasks §14).
@@ -31,7 +32,6 @@ export interface BoardGame {
   publisher: string | null
   genre_id: number | null
   genre?: BoardGameGenre | null
-  mechanics: string[]
   players_min: number | null
   players_max: number | null
   age_min: number | null
@@ -62,9 +62,9 @@ export interface BoardGameFilters extends ListParams {
   /** ჟანრები — მძიმით გამოყოფილი id-ები */
   genre_id?: string
   /** მექანიკები — მძიმით გამოყოფილი სია */
-  mechanic?: string
   /** „რამდენი კაცით ვთამაშობთ" — დიაპაზონში მოხვედრა */
-  players?: number
+  /** ⚠️ ეტაპი 8 — მძიმით გაყოფილი სია (`"2,4"`), სერვერზე OR */
+  players?: string
   sort?: string
 }
 
@@ -75,7 +75,6 @@ export interface BoardGameInput {
   designer?: string | null
   publisher?: string | null
   genre_id?: number | null
-  mechanics?: string[]
   players_min?: number | null
   players_max?: number | null
   age_min?: number | null
@@ -118,7 +117,6 @@ function toFormData(input: BoardGameInput): FormData {
 
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  ;(input.mechanics ?? []).forEach((m) => fd.append('mechanics[]', m))
   ;(input.links ?? []).forEach((link, i) => {
     fd.append(`links[${i}][url]`, link.url)
     fd.append(`links[${i}][label]`, link.label ?? '')
@@ -187,7 +185,6 @@ export interface BggCandidate {
   bgg_rating: number | null
   image_url: string | null
   genre: string | null
-  mechanics: string[]
   designer: string | null
   publisher: string | null
 }
@@ -349,11 +346,12 @@ export async function updateBoardGameGenre(
 }
 
 /** წაშლა; `moveTo` — რომელ ჟანრზე გადავიდეს ეს თამაშები (null = ჟანრის გარეშე) */
-export async function deleteBoardGameGenre(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/board-game-genres/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteBoardGameGenre(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/board-game-genres/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderBoardGameGenres(ids: number[]): Promise<BoardGameGenre[]> {

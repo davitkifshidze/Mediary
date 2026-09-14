@@ -25,7 +25,7 @@ class TranslationScanner
     /** მედია-დომენები, რომლებსაც ორენოვანი სქემა აქვთ */
     public const TYPES = ['movie', 'series', 'anime'];
 
-    /** გაზომილი ტემპი — მიახლოებითი დროის შესაფასებლად (TMDB + Claude) */
+    /** გაზომილი ტემპი — მიახლოებითი დროის შესაფასებლად (TMDB + Gemini) */
     public const ITEMS_PER_MINUTE = 8.0;
 
     /**
@@ -50,6 +50,22 @@ class TranslationScanner
         }
 
         return $missing;
+    }
+
+    /**
+     * **გადასამოწმებელია თუ არა** — `review` რეჟიმის სკოუპი (2026-09-14).
+     *
+     * ⚠️ ეს `missing()`-ის საპირისპირო კითხვაა: იქ „რა აკლია", აქ — „რა
+     * არსებობს და საეჭვოა". სამივე პირობა აუცილებელია და `ItemTranslator`-ის
+     * იმავე შეზღუდვებს იმეორებს, თორემ გეგმა ჩაწერდა ჩანაწერს, რომელსაც
+     * თარგმანი უარს ეტყოდა — ე.ი. რიგი „გამოტოვებულებით" აივსებოდა.
+     */
+    public static function reviewable(Model $item): bool
+    {
+        return trim((string) $item->description_ka) !== ''
+            && trim((string) $item->description_en) !== ''
+            // მხოლოდ TMDB-ისა: `manual` მომხმარებლისაა, `translation` — უკვე Gemini-ისა
+            && $item->description_ka_source === 'tmdb';
     }
 
     /** ჟანრს რომელი სახელი აკლია */
@@ -79,12 +95,14 @@ class TranslationScanner
      */
     public function summary(array $types): array
     {
-        $out = array_fill_keys([...self::TYPES, 'genres', 'total'], 0);
+        $out = array_fill_keys([...self::TYPES, 'genres', 'total', 'reviewable'], 0);
 
         foreach (array_intersect($types, self::TYPES) as $type) {
-            $out[$type] = $this->query($type)->get()
-                ->filter(fn ($row) => self::missing($row) !== [])
-                ->count();
+            $rows = $this->query($type)->get();
+
+            $out[$type] = $rows->filter(fn ($row) => self::missing($row) !== [])->count();
+            // იმავე გატარებაზე — ცალკე მოთხოვნა ჰედერის badge-ს გაორმაგებდა
+            $out['reviewable'] += $rows->filter(fn ($row) => self::reviewable($row))->count();
         }
 
         $out['genres'] = Genre::with('translations')->get()
@@ -99,6 +117,11 @@ class TranslationScanner
             $out['total'] += $out[$type];
         }
 
+        /* ⚠️ **`reviewable` ჯამში განზრახ არ შედის.** `total` ჰედერის badge-ია
+           („გაქვს N სათარგმნი") — გადამოწმება კი ცხადი არჩევანია და არა
+           ნაკლული თარგმანი; ჯამში ჩადებული ის badge-ს **სამუდამოდ** აანთებდა,
+           ზუსტად ისე, როგორც „ორივე ენაზე ცარიელი" ტექსტი. */
+
         return $out;
     }
 
@@ -106,9 +129,10 @@ class TranslationScanner
      * ფილტრები → დასამუშავებელი ჩანაწერების რიგი (`/sync`-ის plan-ის ანალოგი).
      *
      * @param  array<string, mixed>  $filters
+     * @param  bool  $review  გადასამოწმებელი ჩანაწერებიც შედის თუ არა
      * @return array{items:array<int, array<string, mixed>>, genres:int}
      */
-    public function plan(array $types, array $filters): array
+    public function plan(array $types, array $filters, bool $review = false): array
     {
         $ids = $filters['ids'] ?? [];
         $items = [];
@@ -132,7 +156,12 @@ class TranslationScanner
 
             foreach ($query->get() as $row) {
                 $missing = self::missing($row);
-                if (! $missing) {
+                /* ⚠️ `review`-ზე სრულად შევსებული ჩანაწერიც სამუშაოა — მაგრამ
+                   მხოლოდ მაშინ, თუ ნამდვილად აქვს გადასამოწმებელი ტექსტი:
+                   თორემ რიგი მთელი ბიბლიოთეკით აივსებოდა და 95% „გამოვტოვე"
+                   იქნებოდა. */
+                $toReview = $review && self::reviewable($row);
+                if (! $missing && ! $toReview) {
                     continue;
                 }
                 $items[] = [
@@ -141,6 +170,8 @@ class TranslationScanner
                     'title' => $row->title_ka ?: ($row->title_en ?: '#'.$row->id),
                     'year' => $row->year,
                     'missing' => $missing,
+                    // რიგის ბარათმა უნდა თქვას, რატომ არის აქ ეს ჩანაწერი
+                    'review' => $toReview,
                 ];
             }
         }

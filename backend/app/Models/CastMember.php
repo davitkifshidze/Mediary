@@ -59,20 +59,20 @@ class CastMember extends Model
     public function movies(): MorphToMany
     {
         return $this->morphedByMany(Movie::class, 'castable')
-            ->withPivot('character', 'billing_order');
+            ->withPivot('character', 'billing_order', 'is_manual');
     }
 
     public function series(): MorphToMany
     {
         return $this->morphedByMany(Series::class, 'castable')
-            ->withPivot('character', 'billing_order');
+            ->withPivot('character', 'billing_order', 'is_manual');
     }
 
     /** §7.1 — მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება */
     public function animes(): MorphToMany
     {
         return $this->morphedByMany(Anime::class, 'castable')
-            ->withPivot('character', 'billing_order');
+            ->withPivot('character', 'billing_order', 'is_manual');
     }
 
     /* ---------- translation accessor (name = canonical column) ---------- */

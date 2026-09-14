@@ -26,7 +26,7 @@ export function VisibilityBadge({ value }: { value: Visibility | null | undefine
 
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
       title={t('visibility.publicHint')}
     >
       <Globe className="size-3" />

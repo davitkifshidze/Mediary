@@ -26,6 +26,14 @@ export interface SerpEngine {
   safe_search: boolean
   /** ⚠️ უფასო წყარო **კვოტას არ ხარჯავს** — ღილაკზე ფასიც ამით ითვლება */
   free: boolean
+  /**
+   * ⚠️ **სამი კატეგორიაა და არა ორი** (2026-09-14): უფასო (Wikimedia) ·
+   * საკუთარი გასაღები (Serper) · SerpApi. მხოლოდ ბოლო ხარჯავს იმ 250-ს,
+   * რომელიც ეკრანზე „დარჩა N ძებნა"-დ იკითხება.
+   */
+  uses_quota?: boolean
+  /** გვერდები მხოლოდ Serper-ს აქვს — ველი სხვა წყაროზე არ ჩანს */
+  paged?: boolean
 }
 
 export interface SerpQuota {
@@ -80,6 +88,14 @@ export interface SerpVideo {
   channel: string | null
   duration: number | null
   views: number | null
+  /**
+   * გამოქვეყნების თარიღი — **`YYYY-MM-DD` ან `null`**, არასდროს „9 months ago".
+   *
+   * ⚠️ YouTube სწორედ იმ ფარდობით სტრიქონს აბრუნებს, და ის პირდაპირ მიდიოდა
+   * `published_at`-ზე, რომელიც `date`-ით მოწმდება — ე.ი. **ნაპოვნი ვიდეოს
+   * შენახვა ყოველთვის 422-ით ვარდებოდა**. ნორმალიზაცია სერვერზეა
+   * (`SerpApiClient::publishedDate()`), ე.ი. აქ ყოველთვის თარიღია.
+   */
   published: string | null
   thumbnail: string | null
   description: string | null
@@ -100,6 +116,8 @@ export interface SerpSource {
   count: number
   dropped: number
   quota_exceeded: boolean
+  /** ⚠️ Serper-ის ხარჯი — **SerpApi-ის 250-ში არ ჯდება**, მაგრამ ფულია */
+  credits?: number
 }
 
 export interface SerpSearchResult<T> {
@@ -123,10 +141,20 @@ export interface SerpSearchParams {
    * წყარო +1 ძებნაა 250-იდან; უფასო არაფერს ხარჯავს.
    */
   engines?: string[]
+  /** სულ რამდენი ფოტო (ხელით შესაყვანი, ჭერი 1000) */
   limit?: number
+  /**
+   * რამდენი გვერდი მოვითხოვოთ — **მხოლოდ Serper-ს ეხება**.
+   * ⚠️ **თითო გვერდი = ერთი credit**, ე.ი. ეს რიცხვი ფულს ხარჯავს.
+   */
+  pages?: number
   /** ⚠️ ნაგულისხმევად **გამორთულია** (§7.5-ის პირობა) */
   safe?: boolean
 }
+
+/** ხელით შეყვანის ჭერები — backend-ის `SerperImages`-ის ასლი */
+export const WEB_MAX_PAGES = 100
+export const WEB_MAX_PHOTOS = 1000
 
 export async function searchWebImages(params: SerpSearchParams): Promise<SerpSearchResult<SerpImage>> {
   const { data } = await api.get<SerpSearchResult<SerpImage>>('/web/images', { params })
@@ -154,7 +182,15 @@ export async function fetchWebVideoDetails(url: string) {
       channel: string | null
       duration: number | null
       views: number | null
-      published: string | null
+      /**
+   * გამოქვეყნების თარიღი — **`YYYY-MM-DD` ან `null`**, არასდროს „9 months ago".
+   *
+   * ⚠️ YouTube სწორედ იმ ფარდობით სტრიქონს აბრუნებს, და ის პირდაპირ მიდიოდა
+   * `published_at`-ზე, რომელიც `date`-ით მოწმდება — ე.ი. **ნაპოვნი ვიდეოს
+   * შენახვა ყოველთვის 422-ით ვარდებოდა**. ნორმალიზაცია სერვერზეა
+   * (`SerpApiClient::publishedDate()`), ე.ი. აქ ყოველთვის თარიღია.
+   */
+  published: string | null
       thumbnail: string | null
     }
     quota: SerpQuota

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookGenreResource;
 use App\Models\Book;
 use App\Models\BookGenre;
+use App\Support\DictionaryRecords;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -55,23 +56,26 @@ class BookGenreController extends Controller
     /** წაშლა; `move_to` — რომელ ჟანრზე გადავიდეს ეს წიგნები */
     public function destroy(Request $request, BookGenre $bookGenre)
     {
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
-            ],
-        ]);
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
+        ));
 
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $bookGenre->id
-            ? (int) $data['move_to']
-            : null;
+        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete(Book::where('genre_id', $bookGenre->id));
+            $bookGenre->delete();
+
+            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+        }
+
+        $moveTo = DictionaryRecords::moveTarget($data, $bookGenre->id);
 
         $moved = Book::where('genre_id', $bookGenre->id)->update(['genre_id' => $moveTo]);
 
         $bookGenre->delete();
 
-        return response()->json(['moved' => $moved]);
+        return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */

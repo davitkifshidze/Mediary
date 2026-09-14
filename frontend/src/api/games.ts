@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -450,9 +451,12 @@ export async function updateGameGenre(id: number, input: GameGenreInput): Promis
  * წაშლა; `moveTo` — რომელ ჟანრზე გადავიდნენ ეს თამაშები.
  * ⚠️ pivot-ზე „გადატანა" **მიმატებაა** — თამაშის დანარჩენი ჟანრები რჩება.
  */
-export async function deleteGameGenre(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/game-genres/${id}`, { data: { move_to: moveTo ?? null } })
-  return data.moved as number
+export async function deleteGameGenre(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/game-genres/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderGameGenres(ids: number[]): Promise<GameGenre[]> {

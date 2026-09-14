@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Lightbox, { type Slide } from 'yet-another-react-lightbox'
 import Counter from 'yet-another-react-lightbox/plugins/counter'
@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Info,
+  ImageOff,
   Square,
   SquareDashed,
   Star,
@@ -19,6 +19,17 @@ import {
   X,
 } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
+import { photoActions } from '@/lib/photoActions'
+import { EmptyState } from '@/components/ui/empty-state'
+import { NumberPick } from '@/components/ui/number-pick'
+import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { usePrivateFileUrl } from '@/components/PrivateFile'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -74,6 +85,14 @@ export interface PhotoItem {
   badge?: ReactNode
   /** ვერტიკალური კადრი — პოსტერი/მსახიობი */
   portrait?: boolean
+  /**
+   * „მთავარად დაყენება" ამ ფოტოზე შესაძლებელია.
+   *
+   * ⚠️ **მსახიობის ფოტოზე ეს `false`-ია** — `cast_members.photo_path`
+   * გლობალური სვეტია და backend 422-ს აბრუნებს. აქამდე ღილაკი იხატებოდა,
+   * დაჭერა კი ჩუმად არაფერს აკეთებდა (`GalleryPanel` მას თვითონ ყლაპავდა).
+   */
+  canPrimary?: boolean
   size?: number | null
   width?: number | null
   height?: number | null
@@ -96,7 +115,26 @@ export const PHOTO_PAGE_ALL = 0
 /** ნაგულისხმევი — 20 (ადრე ბადეზე ან ყველაფერი იყო, ან ჩაჭედილი 8) */
 export const PHOTO_PAGE_DEFAULT = 20
 
-/** ჩიპების რიგი: 10 · 20 · 30 · 40 · 50 · ყველა */
+/**
+ * ⚠️ **ჭერი სერვერისაა და არა ბადისა** — მართულ რეჟიმში ეს რიცხვი
+ * `per_page`-ად მიდის, რომელსაც `GalleryController::MAX_PER_PAGE` 1000-ზე
+ * ჩერდება; ხელით ჩაწერილი 5000 იქ 422-ს დააბრუნებდა.
+ */
+const PHOTO_PAGE_MAX = 1000
+
+/**
+ * „რამდენი გამოჩნდეს" — **სელექტი მზა რიცხვებით + „სხვა"** (შენი მითითება,
+ * 2026-09-13). ადრე ექვსი ჩიპის რიგი იყო, ე.ი. არჩევანი ფიქსირებულ ხუთ
+ * რიცხვს ებმებოდა და ხელსაწყოთა ზოლის ნახევარს ჭამდა.
+ *
+ * ⚠️ **ეს `NumberPick`-ია და არა საკუთარი სელექტი** — იმავე კონტროლს
+ * იყენებს გალერეის ჩამოტვირთვის დიალოგი; ორი ასლი „სხვა"-ს ორნაირად
+ * მოაქცევდა.
+ *
+ * ⚠️ **ნული აქ „ყველა"-ა და არა „არცერთი"** (`noneLabel`), და სიის
+ * **ბოლოშია** (`noneLast`) — „10 · 20 · 30 · 40 · 50 · ყველა · სხვა"
+ * ზუსტად ისე იკითხება, როგორც ითხოვე.
+ */
 export function PhotoPageSizePick({
   value,
   onChange,
@@ -114,23 +152,19 @@ export function PhotoPageSizePick({
   if (total <= PHOTO_PAGE_SIZES[0]) return null
 
   return (
-    <span className={cn('flex flex-wrap items-center gap-1', className)}>
-      <span className="mr-0.5 text-xs text-muted-foreground">{t('photos.show')}</span>
-      {[...PHOTO_PAGE_SIZES, PHOTO_PAGE_ALL].map((size) => (
-        <button
-          key={size}
-          type="button"
-          onClick={() => onChange(size)}
-          className={cn(
-            'cursor-pointer rounded-full border px-2 py-0.5 text-xs tabular-nums transition-colors',
-            value === size
-              ? 'border-primary bg-secondary text-foreground'
-              : 'border-border text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {size === PHOTO_PAGE_ALL ? t('photos.showAll') : size}
-        </button>
-      ))}
+    <span className={cn('flex items-center gap-2', className)}>
+      <span className="text-xs text-muted-foreground">{t('photos.show')}</span>
+      <NumberPick
+        value={value}
+        onChange={onChange}
+        options={[...PHOTO_PAGE_SIZES]}
+        allowNone
+        noneLabel={t('photos.showAll')}
+        noneLast
+        size="sm"
+        min={1}
+        max={PHOTO_PAGE_MAX}
+      />
     </span>
   )
 }
@@ -143,6 +177,9 @@ export function PhotoGrid({
   onPrimary,
   primaryId,
   emptyText,
+  emptyIcon,
+  emptyHint,
+  emptyActions,
   lightboxExtra,
   className,
   pageSize,
@@ -164,6 +201,10 @@ export function PhotoGrid({
   onPrimary?: (id: number) => void
   primaryId?: number | null
   emptyText?: string
+  /** ცარიელი მდგომარეობის ხატულა/ახსნა/ღილაკები — იხ. `ui/empty-state.tsx` */
+  emptyIcon?: ReactNode
+  emptyHint?: ReactNode
+  emptyActions?: ReactNode
   /** გახსნილ ფოტოზე დამატებითი კონტროლი (გალერეის თემის select) */
   lightboxExtra?: (item: PhotoItem) => ReactNode
   className?: string
@@ -241,8 +282,17 @@ export function PhotoGrid({
   )
 
   const allSelected = items.length > 0 && selected.length === items.length
-  const toggle = (id: number) =>
+
+  /**
+   * ⚠️ **მონიშვნა მონიშვნის რეჟიმსაც რთავს** (შენი მითითება, 2026-09-14).
+   * მარჯვენა კლიკის მენიუდან „მონიშვნა" მხოლოდ `selected`-ს ცვლიდა, `picking`
+   * კი ტულბარის ღილაკს ელოდა — ე.ი. ზედა ზოლში „მონიშნულების წაშლა/
+   * ჩამოტვირთვა" საერთოდ არ ჩნდებოდა და მონიშვნა უსარგებლო იყო.
+   */
+  const toggle = (id: number) => {
+    setPicking(true)
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+  }
 
   /**
    * ჩამოტვირთვა — თითო ფაილი თავისი `<a download>`-ით, თანმიმდევრობით.
@@ -340,7 +390,19 @@ export function PhotoGrid({
       )}
 
       {!items.length ? (
-        <p className="text-sm text-muted-foreground">{emptyText ?? t('photos.empty')}</p>
+        /* ⚠️ **ცარიელი ბადე ცენტრირებული ბლოკია და არა ერთი ნაცრისფერი წინადადება**
+           (შენი მითითება, 2026-09-12). `EmptyState` სწორედ ამისთვის დაიწერა
+           §2.4-ში, ბადემ კი მას არ იყენებდა — ე.ი. ცხრა მოდულზე მოწესრიგებული
+           ცარიელი მდგომარეობა გალერეაში, ჩანაწერზე, მსახიობზე და პროფილის
+           ფაილებში ერთნაირად ირღვეოდა. `emptyIcon`/`emptyHint`/`emptyActions`
+           გამომძახებელს ეკუთვნის — „დაამატე" და „ფილტრის მოხსნა" სხვადასხვა
+           ადგილას სხვადასხვაა. */
+        <EmptyState
+          icon={emptyIcon ?? <ImageOff className="size-6" />}
+          title={emptyText ?? t('photos.empty')}
+          hint={emptyHint}
+          actions={emptyActions}
+        />
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {shown.map((item, index) => (
@@ -352,12 +414,21 @@ export function PhotoGrid({
               picking={picking}
               checked={selected.includes(item.id)}
               isPrimary={primaryId != null && primaryId === item.id}
-              // ⚠️ ინდექსი **გახსნილი სიისაა** და არა ბადისა — გვერდებისას ისინი სხვაობს
-              onOpen={() =>
-                picking ? toggle(item.id) : setOpen(viewable.findIndex((x) => x.id === item.id))
+              /* ⚠️ **მონიშნულზე მოქმედება მთელ მონიშვნაზეა** (ეტაპი 2): მონიშნულ
+                 ფოტოზე „წაშლა" ნიშნავს „ყველა მონიშნული", არამონიშნულზე —
+                 მხოლოდ ამ ერთს. შეუქცევად მოქმედებაზე ორაზროვნება დაუშვებელია. */
+              targets={selected.includes(item.id) && selected.length ? selected : [item.id]}
+              /* ⚠️ ინდექსი **გახსნილი სიისაა** და არა ბადისა — გვერდებისას ისინი სხვაობს.
+                 ⚠️ „გახსნა" ყოველთვის ლაითბოქსია: მონიშვნის რეჟიმის შემთხვევა
+                 სურათის ღილაკშია, თორემ მენიუს „გახსნა" ზოგჯერ მონიშვნას
+                 ნიშნავდა და პუნქტი თავის სახელს ატყუებდა. */
+              onOpen={() => setOpen(viewable.findIndex((x) => x.id === item.id))}
+              onToggle={() => toggle(item.id)}
+              onDownload={download}
+              onPrimary={
+                onPrimary && item.canPrimary !== false ? () => onPrimary(item.id) : undefined
               }
-              onPrimary={onPrimary && (() => onPrimary(item.id))}
-              onDelete={onDelete && (() => onDelete([item.id]))}
+              onDelete={onDelete}
               onResolved={(url) => setResolved((cur) => (cur[item.id] === url ? cur : { ...cur, [item.id]: url }))}
             />
           ))}
@@ -417,7 +488,15 @@ export function PhotoGrid({
   )
 }
 
-/** ერთი უჯრა — პრივატულ დისკზე თვითონ ჭრის blob-ს (hook ციკლში არ ეშვება) */
+/**
+ * ერთი უჯრა — პრივატულ დისკზე თვითონ ჭრის blob-ს (hook ციკლში არ ეშვება).
+ *
+ * ## ეტაპი 2 (2026-09-13)
+ * ⚠️ **მოქმედებები სამივე გზით ერთი სიიდან იხატება** (`photoActions()`):
+ * ქვედა ზოლის ხატულები · „⋮" მენიუ · **მარჯვენა კლიკი**. აქამდე ღილაკები
+ * მხოლოდ ჰოვერზე იყო, ე.ი. სენსორულ ეკრანზე და კლავიატურით პრაქტიკულად
+ * მიუწვდომელი, მარჯვენა კლიკი კი ბრაუზერის მენიუს ხსნიდა.
+ */
 function PhotoCell({
   item,
   index,
@@ -425,7 +504,10 @@ function PhotoCell({
   picking,
   checked,
   isPrimary,
+  targets,
   onOpen,
+  onToggle,
+  onDownload,
   onPrimary,
   onDelete,
   onResolved,
@@ -436,9 +518,13 @@ function PhotoCell({
   picking: boolean
   checked: boolean
   isPrimary: boolean
+  /** რომელ id-ებზე იმოქმედებს ჩამოტვირთვა/წაშლა — იხ. მონიშვნის წესი ზემოთ */
+  targets: number[]
   onOpen: () => void
+  onToggle: () => void
+  onDownload: (ids: number[]) => void
   onPrimary?: () => void
-  onDelete?: () => void
+  onDelete?: (ids: number[]) => void
   onResolved: (url: string) => void
 }) {
   const { t } = useTranslation()
@@ -451,121 +537,180 @@ function PhotoCell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url])
 
-  return (
-    <li
-      className={cn(
-        'group relative overflow-hidden rounded-xl border bg-card transition-colors',
-        checked ? 'border-primary' : 'border-border',
-      )}
-    >
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={item.title ?? String(index + 1)}
-        /* ფიქსირებული ჩარჩო — რეალური ზომა ბადეს არ ცვლის (§2.9) */
-        className={cn('block w-full cursor-pointer bg-muted', item.portrait ? 'aspect-[2/3]' : 'aspect-video')}
-      >
-        {url && (
-          <img
-            src={url}
-            alt={item.title ?? ''}
-            loading="lazy"
-            className="size-full object-cover transition-transform group-hover:scale-[1.02]"
-          />
-        )}
-      </button>
+  const actions = photoActions({
+    t,
+    count: targets.length,
+    privateDisk,
+    isPrimary,
+    picking,
+    checked,
+    onOpen,
+    onInfo: item.info?.length ? () => setInfo((on) => !on) : undefined,
+    onPrimary,
+    onDownload: () => onDownload(targets),
+    /* ⚠️ **ორიგინალი პრივატულზე არ იხატება** — იქ მისამართი blob-ია და ახალ
+       ტაბში გახსნილი ბმული ამ გვერდთან ერთად კვდება; წესი `photoActions()`-შია,
+       ე.ი. ერთხელ წერია და ტესტიც აქვს. */
+    onOriginal: url ? () => window.open(url, '_blank', 'noopener,noreferrer') : undefined,
+    onToggle,
+    onDelete: onDelete && (() => onDelete(targets)),
+  })
 
-      {picking && (
-        <span
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <li
           className={cn(
-            'pointer-events-none absolute right-2 top-2 grid size-6 place-items-center rounded-md',
-            checked ? 'bg-primary text-primary-foreground' : 'bg-background/80 text-muted-foreground',
+            'group relative overflow-hidden rounded-xl border bg-card transition-colors',
+            checked ? 'border-primary' : 'border-border',
           )}
         >
-          {checked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-        </span>
-      )}
-
-      {item.badge && (
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-          {item.badge}
-        </span>
-      )}
-
-      {/* ---------- „ფოტოს შესახებ" (§4.3) ---------- */}
-      {info && !!item.info?.length && (
-        <div className="absolute inset-0 z-10 overflow-y-auto bg-background/95 p-3 text-xs backdrop-blur-sm">
           <button
             type="button"
-            onClick={() => setInfo(false)}
-            aria-label={t('confirm.cancel')}
-            className="absolute right-2 top-2 cursor-pointer rounded-md p-1 text-muted-foreground hover:text-foreground"
+            // მონიშვნის რეჟიმში სურათზე დაჭერა ნიშნავს „მონიშნე", და არა „გახსენი"
+            onClick={picking ? onToggle : onOpen}
+            aria-label={item.title ?? String(index + 1)}
+            /* ფიქსირებული ჩარჩო — რეალური ზომა ბადეს არ ცვლის (§2.9) */
+            className={cn('block w-full cursor-pointer bg-muted', item.portrait ? 'aspect-[2/3]' : 'aspect-video')}
           >
-            <X className="size-3.5" />
+            {url && (
+              <img
+                src={url}
+                alt={item.title ?? ''}
+                loading="lazy"
+                className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+              />
+            )}
           </button>
-          <dl className="space-y-1 pr-6">
-            {item.info.map((row) => (
-              <div key={row.label} className="min-w-0">
-                <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{row.label}</dt>
-                <dd className="truncate">
-                  {row.href ? (
-                    <a
-                      href={row.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary underline underline-offset-2"
-                    >
-                      {row.value}
-                    </a>
-                  ) : (
-                    row.value
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
 
-      <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-        <span className="min-w-0 text-xs text-muted-foreground">
-          <span className="block truncate">{item.subtitle ?? item.title}</span>
-          {item.size != null && formatBytes(item.size)}
-        </span>
-        <span className="flex shrink-0 gap-1">
-          {!!item.info?.length && (
-            <button
-              type="button"
-              onClick={() => setInfo((on) => !on)}
-              title={t('photos.info')}
-              className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          {/* ⚠️ **`checked`-იც ხატავს ნიშანს და არა მხოლოდ `picking`** (შენი
+              მითითება, 2026-09-14): მარჯვენა კლიკით მონიშნულ ფოტოს ჩარჩო
+              ეცვლებოდა, პტიჩკა კი არა — ე.ი. „ზემოთ რიცხვი ჩანს, ფოტოზე
+              არაფერი". ორივე პირობა საჭიროა: `picking` ცარიელ უჯრებზეც
+              აჩვენებს ჩარჩოს, `checked` კი მაშინაც, თუ რეჟიმი ჯერ არ ჩართულა. */}
+          {(picking || checked) && (
+            <span
+              className={cn(
+                'pointer-events-none absolute right-2 top-2 grid size-6 place-items-center rounded-md',
+                checked ? 'bg-primary text-primary-foreground' : 'bg-background/80 text-muted-foreground',
+              )}
             >
-              <Info className="size-3.5" />
-            </button>
+              {checked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+            </span>
           )}
-          {onPrimary && (
-            <button
-              type="button"
-              onClick={onPrimary}
-              disabled={isPrimary}
-              title={isPrimary ? t('gallery.isPrimary') : t('gallery.setPrimary')}
-              className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-default"
+
+          {item.badge && (
+            <span className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+              {item.badge}
+            </span>
+          )}
+
+          {/* ---------- „ფოტოს შესახებ" (§4.3) ---------- */}
+          {info && !!item.info?.length && (
+            <div className="absolute inset-0 z-10 overflow-y-auto bg-background/95 p-3 text-xs backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => setInfo(false)}
+                aria-label={t('confirm.cancel')}
+                className="absolute right-2 top-2 cursor-pointer rounded-md p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+              <dl className="space-y-1 pr-6">
+                {item.info.map((row) => (
+                  <div key={row.label} className="min-w-0">
+                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{row.label}</dt>
+                    <dd className="truncate">
+                      {row.href ? (
+                        <a
+                          href={row.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          {row.value}
+                        </a>
+                      ) : (
+                        row.value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+            <span className="min-w-0 text-xs text-muted-foreground">
+              <span className="block truncate">{item.subtitle ?? item.title}</span>
+              {item.size != null && formatBytes(item.size)}
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              {/* ⚠️ „ეს მთავარია" **ნიშანია და არა გამორთული ღილაკი** — მოქმედება,
+                  რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}
+              {isPrimary && (
+                <span className="grid size-7 place-items-center" title={t('gallery.isPrimary')}>
+                  <Star className="size-3.5 fill-primary text-primary" />
+                </span>
+              )}
+
+              {actions
+                .filter((action) => action.quick)
+                .map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    onClick={action.run}
+                    title={action.label}
+                    aria-label={action.label}
+                    className={cn(
+                      'grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground',
+                      action.danger
+                        ? 'hover:bg-destructive/10 hover:text-destructive'
+                        : 'hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <action.icon className="size-3.5" />
+                  </button>
+                ))}
+
+              {/* ⚠️ **„⋯" კლავიატურის გზაა** — მარჯვენა კლიკი მალსახმობია და არა
+                  ერთადერთი კარი (სენსორული ეკრანი, Tab-ნავიგაცია) */}
+              <ActionMenu label={t('actions.more')}>
+                {actions.map((action) => (
+                  <ActionMenuClose key={action.key} asChild>
+                    <button
+                      type="button"
+                      onClick={action.run}
+                      className={actionItemClass(action.danger ? 'destructive' : undefined)}
+                    >
+                      <action.icon className="size-3.5" />
+                      {action.label}
+                    </button>
+                  </ActionMenuClose>
+                ))}
+              </ActionMenu>
+            </span>
+          </div>
+        </li>
+      </ContextMenuTrigger>
+
+      {/* ⚠️ იგივე სია — მარჯვენა კლიკზე. `LAYER_POPUP` `ContextMenuContent`-შია,
+          ე.ი. ბადე მოდალის ან ლაითბოქსის შიგნითაც სწორად იხატება (§1.2). */}
+      <ContextMenuContent>
+        {actions.map((action) => (
+          <Fragment key={action.key}>
+            {action.danger && <ContextMenuSeparator />}
+            <ContextMenuItem
+              onSelect={action.run}
+              className={action.danger ? 'text-destructive focus:bg-destructive/10' : undefined}
             >
-              <Star className={isPrimary ? 'size-3.5 fill-primary text-primary' : 'size-3.5'} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              title={t('confirm.delete')}
-              className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          )}
-        </span>
-      </div>
-    </li>
+              <action.icon className="size-3.5" />
+              {action.label}
+            </ContextMenuItem>
+          </Fragment>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

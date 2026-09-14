@@ -84,7 +84,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
           <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
             <h1 className="font-display text-3xl font-semibold tracking-tight">{name}</h1>
             {actor.known_for && (
-              <span className="mt-1.5 rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
+              <span className="mt-1.5 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
                 {actor.known_for}
               </span>
             )}
@@ -126,7 +126,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                   href={link.href(link.value)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
                 >
                   <ExternalLink className="size-3" />
                   {link.label}
@@ -137,7 +137,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                   href={actor.homepage}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
                 >
                   <Globe className="size-3" />
                   {t('actor.homepage')}

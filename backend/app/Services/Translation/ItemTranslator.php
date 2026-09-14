@@ -16,46 +16,188 @@ use Throwable;
  *   1. **TMDB** — უფასოა და ავტორიტეტული. ქართული სათაური/აღწერა TMDB-ს ხშირად
  *      უკვე აქვს; `Lang::georgian()` იცავს იმისგან, რომ TMDB ჩუმად ორიგინალ
  *      ენას აბრუნებს, როცა თარგმანი არ აქვს.
- *   2. **Claude** — მხოლოდ იმაზე, რაც TMDB-ის შემდეგ დარჩა. ე.ი. კლავიშის
- *      ხარჯი მინიმალურია და სათაურებზე თითქმის არასდროს გვჭირდება.
+ *   2. **Gemini** — მხოლოდ იმაზე, რაც TMDB-ის შემდეგ დარჩა — ე.ი. სათაურებზე
+ *      თითქმის არასდროს გვჭირდება. ⚠️ გასაღების გარეშე ეს ნაბიჯი
+ *      უბრალოდ არაფერს აკეთებს — და ინტერფეისი ამას ცხადად წერს.
+ *
+ * ⚠️ **წყაროებს ახლა მომხმარებელი ირჩევს** (შენი მითითება, 2026-09-14:
+ * „უნდა ირჩევდე, გუგლით თარგმნო თუ TMDB-დან — თავისით არ უნდა ხდებოდეს").
+ * `$sources` ქვესიმრავლეა და **თანმიმდევრობას ინარჩუნებს**: მარტო `tmdb`,
+ * მარტო `gemini`, ან ორივე.
+ *
+ * ⚠️ **„რომელმა წყარომ შეავსო" ახლა ბრუნდება და ინახება.** აქამდე
+ * `persist()` აღწერას **ყოველთვის** `source = 'translation'`-ს აწერდა —
+ * მაშინაც, როცა ტექსტი TMDB-მ მოიტანა, ე.ი. ჩანაწერის გვერდზე ბარათი
+ * ცრუობდა.
  *
  * არსებულ ტექსტს **არ ვცვლით** — მხოლოდ ცარიელი ივსება (იგივე სემანტიკა, რაც
  * Enricher-ებს აქვთ).
+ *
+ * ⚠️ **ერთადერთი გამონაკლისი `review` რეჟიმია** (2026-09-14) — და სწორედ
+ * იმიტომაა ცალკე, ცხადად ჩასართავი დროშა და არა ჩუმი ქცევა, რომ ზემოთა წესს
+ * არღვევს: იქ TMDB-ის **ქართული აღწერა** Gemini-ს გადასამოწმებლად მიდის.
+ * იხ. `reviewGeorgian()`.
  */
 class ItemTranslator
 {
+    /** დასაშვები წყაროები, **თანმიმდევრობით** — TMDB ჯერ, Gemini მერე */
+    public const SOURCES = ['tmdb', 'gemini'];
+
     public function __construct(
         private TmdbClient $tmdb,
         private Translator $translator,
     ) {}
 
     /**
-     * @return array{ok:bool, skipped:bool, changed:array<int, string>, error:?string}
+     * @param  array<int, string>  $sources  `tmdb` · `gemini` (ქვესიმრავლე)
+     * @param  bool  $review  TMDB-ის ქართული აღწერა Gemini-მ გადაამოწმოს თუ არა
+     * @return array{ok:bool, skipped:bool, changed:array<int, string>, providers:array<string, string>, error:?string}
      */
-    public function translate(Model $item): array
+    public function translate(Model $item, array $sources = self::SOURCES, bool $review = false): array
     {
+        $sources = $this->normalizeSources($sources);
+
         $missing = TranslationScanner::missing($item);
-        if (! $missing) {
+
+        /* ⚠️ **`review`-ზე ცარიელი `missing` „გამოტოვებას" აღარ ნიშნავს.**
+           გადამოწმების საგანი სწორედ **არსებული** ტექსტია, ე.ი. სრულად
+           შევსებული ჩანაწერიც სამუშაოა. */
+        if (! $missing && ! $review) {
             return $this->result(true, true, [], null);
         }
 
+        /** @var array<string, string> ველი => წყარო */
+        $providers = [];
         $filled = [];
 
         try {
-            $filled = $this->fromTmdb($item, $missing);
+            if ($missing && in_array('tmdb', $sources, true)) {
+                $filled = $this->fromTmdb($item, $missing);
+                foreach ($filled as $field => $_) {
+                    $providers[$field] = 'tmdb';
+                }
+            }
 
-            // რაც TMDB-მ ვერ შეავსო — თარჯიმანზე
-            $rest = array_values(array_diff($missing, array_keys($filled)));
-            $this->fromTranslator($item, $rest, $filled);
+            if ($missing && in_array('gemini', $sources, true)) {
+                // რაც TMDB-მ ვერ შეავსო — თარჯიმანზე
+                $rest = array_values(array_diff($missing, array_keys($filled)));
+                $before = $filled;
+                $this->fromTranslator($item, $rest, $filled);
 
-            $this->persist($item, $filled);
+                foreach (array_diff_key($filled, $before) as $field => $_) {
+                    $providers[$field] = 'gemini';
+                }
+            }
+
+            if ($review) {
+                $this->reviewGeorgian($item, $filled, $providers);
+            }
+
+            $this->persist($item, $filled, $providers);
         } catch (Throwable $e) {
-            return $this->result(false, false, array_keys($filled), $e->getMessage());
+            return $this->result(false, false, array_keys($filled), $e->getMessage(), $providers);
         }
 
         $changed = array_keys($filled);
 
-        return $this->result(true, $changed === [], $changed, null);
+        /* ⚠️ **ამოწურული ლიმიტი ჩუმად არ გაივლის.** თუ ვერაფერი შეივსო და
+           თარჯიმანმა კვოტის მიზეზი დააბრუნა, ეს **შეცდომაა** და არა
+           „გამოტოვებული" — თორემ რიგი დაწერდა „შესრულდა" და ბიბლიოთეკა
+           უთარგმნელი დარჩებოდა. */
+        if (! $changed && ($reason = $this->translator->lastError()) === 'gemini_quota_exceeded') {
+            return $this->result(false, false, [], $reason, $providers);
+        }
+
+        return $this->result(true, $changed === [], $changed, null, $providers);
+    }
+
+    /* ---------- ნაბიჯი 3: გადამოწმება (`review`, 2026-09-14) ---------- */
+
+    /**
+     * **TMDB-ის ქართულ აღწერას Gemini ადარებს ინგლისურ ორიგინალს.**
+     *
+     * ⚠️ **ეს ერთადერთი ადგილია, სადაც არსებული ტექსტი გადაიწერება** — ამიტომ
+     * არის ცალკე, სახელდებული რეჟიმი და არა ჩუმი ქცევა (პროექტის მზიდი წესი:
+     * „არსებული ტექსტი არასდროს გადაიწერება").
+     *
+     * ოთხი შეზღუდვა და თითოეულს თავისი მიზეზი აქვს:
+     *
+     * ⚠️ **მხოლოდ `ka`.** ინგლისური ტექსტი TMDB-ზე თარგმანი კი არა, ორიგინალია
+     * — მის „გადამოწმებას" შესადარებელი არაფერი აქვს.
+     *
+     * ⚠️ **მხოლოდ აღწერა და არა სათაური.** `<domain>_translations.source`
+     * **სტრიქონის** სვეტია და პრაქტიკულად აღწერას აღწერს; სათაურის გადაწერისას
+     * იგივე სტრიქონი განაგრძობდა „TMDB-ისაა"-ს მტკიცებას მანქანურად
+     * გადაკეთებულ სათაურზე, ე.ი. ბარათი ცრუობდა. სათაური თან ერთ-ორსიტყვიანია
+     * — TMDB-ის ოფიციალური ქართული სახელის „გასწორება" უფრო ზიანია.
+     *
+     * ⚠️ **მხოლოდ `source = 'tmdb'`.** `manual` მომხმარებლის საკუთარი ტექსტია
+     * (მისი გადაწერა ყველაზე მძიმე ზიანია), `translation` კი თავად Gemini-ის
+     * გამოსავალია — მისი გადამოწმება იმავე მოდელით ხარჯია და არა შემოწმება.
+     *
+     * ⚠️ **ორიგინალიც TMDB-ისა უნდა იყოს.** თუ ინგლისური აღწერა ამავე
+     * გატარებაზე Gemini-მ დაწერა (ka-დან), მასთან შედარება წრეა — ქართულს
+     * საკუთარი თარგმანის თარგმანს შევადარებდით.
+     *
+     * @param  array<string, string>  $filled
+     * @param  array<string, string>  $providers
+     */
+    private function reviewGeorgian(Model $item, array &$filled, array &$providers): void
+    {
+        if (! $this->translator->configured()) {
+            return;
+        }
+
+        if (isset($filled['description_ka'])) {
+            // ამავე გატარებაზე შევსებული — მხოლოდ TMDB-ისა გადამოწმდება
+            if (($providers['description_ka'] ?? null) !== 'tmdb') {
+                return;
+            }
+            $text = $filled['description_ka'];
+        } else {
+            $text = trim((string) $item->description_ka);
+            if ($text === '' || $item->description_ka_source !== 'tmdb') {
+                return;
+            }
+        }
+
+        $original = ($providers['description_en'] ?? null) === 'tmdb'
+            ? ($filled['description_en'] ?? '')
+            : trim((string) $item->description_en);
+
+        if ($original === '') {
+            return;
+        }
+
+        $kind = MediaDomain::isTv(MediaDomain::typeOf($item)) ? 'TV series' : 'movie';
+        $fixed = trim((string) $this->translator->review($text, $original, 'ka', "{$kind} synopsis"));
+
+        // შედეგიც მხედრული უნდა იყოს — თორემ მოდელმა ორიგინალი დაგვიბრუნა
+        if ($fixed === '' || ! Lang::georgian($fixed)) {
+            return;
+        }
+
+        $filled['description_ka'] = $fixed;
+        /* ⚠️ წყარო **`translation`-ია** (შენი პასუხი, 2026-09-14): ბარათზე
+           ორი რამ უნდა ითქვას — „TMDB-ისაა" თუ „მანქანამ თარგმნა", და
+           გადამოწმებული ტექსტი უკვე Gemini-ის დაწერილია. `providers`-ში
+           კი `review` რჩება, რომ ლოგმა „რა რითი" ზუსტად თქვას. */
+        $providers['description_ka'] = 'review';
+    }
+
+    /**
+     * არჩეული წყაროები — თანმიმდევრობა **ჩვენია** და არა გამომძახებლის.
+     *
+     * @param  array<int, string>  $sources
+     * @return array<int, string>
+     */
+    private function normalizeSources(array $sources): array
+    {
+        $picked = array_values(array_intersect(self::SOURCES, $sources));
+
+        // ⚠️ ცარიელი არჩევანი კონტროლერზე 422-ია; აქ ის მხოლოდ პროგრამული
+        // გამოძახებისთვის ბრუნდება ნაგულისხმევზე (CLI, ტესტი).
+        return $picked ?: self::SOURCES;
     }
 
     /* ---------- ნაბიჯი 1: TMDB ---------- */
@@ -150,8 +292,11 @@ class ItemTranslator
 
     /* ---------- ჩაწერა ---------- */
 
-    /** @param  array<string, string>  $filled */
-    private function persist(Model $item, array $filled): void
+    /**
+     * @param  array<string, string>  $filled
+     * @param  array<string, string>  $providers  ველი => `tmdb`|`gemini`
+     */
+    private function persist(Model $item, array $filled, array $providers = []): void
     {
         foreach (['ka', 'en'] as $locale) {
             $attrs = [];
@@ -160,7 +305,13 @@ class ItemTranslator
             }
             if (isset($filled['description_'.$locale])) {
                 $attrs['description'] = $filled['description_'.$locale];
-                $attrs['source'] = 'translation';
+                /* ⚠️ **წყარო ნამდვილი უნდა იყოს და არა ყოველთვის `translation`.**
+                   აქამდე TMDB-ის ტექსტიც „მანქანურ თარგმანად" ინიშნებოდა, ე.ი.
+                   ჩანაწერის გვერდზე ბარათი პირდაპირ ცრუობდა — და სწორედ ესაა
+                   შენი „რა რითი ითარგმნა უნდა ჩანდეს". */
+                $attrs['source'] = ($providers['description_'.$locale] ?? 'gemini') === 'tmdb'
+                    ? 'tmdb'
+                    : 'translation';
             }
             if ($attrs) {
                 $item->setTranslation($locale, $attrs);
@@ -174,20 +325,25 @@ class ItemTranslator
      * ჟანრების ლექსიკონი ერთ გატარებაზე (მათი რაოდენობა ათეულებია).
      *
      * TMDB-ს ჟანრის ქართული სახელი **უკვე აქვს** (`/genre/movie/list?language=ka`),
-     * ამიტომ ჯერ ის — და მხოლოდ დარჩენილზე Claude. ვამთხვევთ `tmdb_id`-ით:
+     * ამიტომ ჯერ ის — და მხოლოდ დარჩენილზე Gemini. ვამთხვევთ `tmdb_id`-ით:
      * slug ლათინურია და ქართულ სახელს ვერ დაედება.
      *
      * @param  iterable<Genre>  $genres
+     * @param  array<int, string>  $sources  `tmdb` · `gemini` (ქვესიმრავლე)
      * @return array{translated:int, changed:array<int, string>}
      */
-    public function translateGenres(iterable $genres): array
+    public function translateGenres(iterable $genres, array $sources = self::SOURCES): array
     {
+        $sources = $this->normalizeSources($sources);
+
         $genres = collect($genres);
         if ($genres->isEmpty()) {
             return ['translated' => 0, 'changed' => []];
         }
 
-        $lists = $this->genreLists();
+        // ⚠️ TMDB-ის სიაც ფულს არ ხარჯავს, მაგრამ არჩევანი არჩევანია:
+        // „მარტო Gemini"-ზე TMDB-ს საერთოდ არ ვეკითხებით
+        $lists = in_array('tmdb', $sources, true) ? $this->genreLists() : ['ka' => [], 'en' => []];
         $changed = [];
         $translated = 0;
 
@@ -196,7 +352,7 @@ class ItemTranslator
 
             foreach (TranslationScanner::genreMissing($genre) as $field) {
                 $locale = substr($field, -2);
-                $value = $this->genreName($genre, $locale, $lists);
+                $value = $this->genreName($genre, $locale, $lists, in_array('gemini', $sources, true));
                 if ($value === '') {
                     continue;
                 }
@@ -239,7 +395,7 @@ class ItemTranslator
     }
 
     /** ჟანრის სახელი მოცემულ ენაზე — ჯერ TMDB, მერე თარჯიმანი */
-    private function genreName(Genre $genre, string $locale, array $lists): string
+    private function genreName(Genre $genre, string $locale, array $lists, bool $useTranslator = true): string
     {
         if ($genre->tmdb_id && isset($lists[$locale][$genre->tmdb_id])) {
             $value = trim($lists[$locale][$genre->tmdb_id]);
@@ -249,6 +405,10 @@ class ItemTranslator
             if ($value !== '') {
                 return $value;
             }
+        }
+
+        if (! $useTranslator) {
+            return '';
         }
 
         $source = trim((string) ($locale === 'ka' ? $genre->name_en : $genre->name_ka));
@@ -261,8 +421,15 @@ class ItemTranslator
         return $locale === 'ka' && ! Lang::georgian($value) ? '' : $value;
     }
 
-    private function result(bool $ok, bool $skipped, array $changed, ?string $error): array
+    private function result(bool $ok, bool $skipped, array $changed, ?string $error, array $providers = []): array
     {
-        return ['ok' => $ok, 'skipped' => $skipped, 'changed' => $changed, 'error' => $error];
+        return [
+            'ok' => $ok,
+            'skipped' => $skipped,
+            'changed' => $changed,
+            // „რა რითი ითარგმნა" — ველი => წყარო (ლოგისა და ინტერფეისისთვის)
+            'providers' => $providers,
+            'error' => $error,
+        ];
     }
 }

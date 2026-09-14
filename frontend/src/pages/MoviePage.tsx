@@ -1,21 +1,40 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ExternalLink, Loader2, Pencil, Play, Plus, RefreshCw, Star, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Star,
+  Trash2,
+  UserPlus,
+  UserRound,
+} from 'lucide-react'
 import { fetchMovieCollection, mediaApi } from '@/api/media'
+import { detachCastMember } from '@/api/cast'
+import type { CastMember } from '@/api/types'
 import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { PosterImage } from '@/components/PosterImage'
 import { RecordGallery } from '@/components/RecordGallery'
+import { CastMemberDialog } from '@/components/CastMemberDialog'
+import { CastRoleDialog } from '@/components/CastRoleDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
+import { ActionMenu, actionItemClass } from '@/components/ui/action-menu'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { castName, genreName, movieSubtitle, movieTitle } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
+import { errorMessage } from '@/lib/errors'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 
 
@@ -63,6 +82,35 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
       nav(backTo, { replace: true })
     },
   })
+
+  /* ეტაპი 1 — მსახიობის დამატება და როლის შესწორება */
+  const [castOpen, setCastOpen] = useState(false)
+  const [roleOf, setRoleOf] = useState<CastMember | null>(null)
+
+  const detachMut = useMutation({
+    mutationFn: (castId: number) => detachCastMember(type, Number(id), castId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [type, 'detail', id] })
+      toast({ title: t('cast.detached'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /**
+   * ⚠️ **მოხსნა და წაშლა ერთი არ არის.** მსახიობი გლობალურ ლექსიკონში
+   * რჩება (მას სხვისი ფილმებიც ეყრდნობა), აქ მხოლოდ ბმული ქრება.
+   * დასტური იმისთვისაა, რომ ეს გარჩევა ცხადი იყოს.
+   */
+  const askDetach = async (c: CastMember) => {
+    const ok = await confirm({
+      title: t('cast.detachTitle'),
+      description: t('cast.detachHint', { name: castName(c, lang) }),
+      confirmText: t('cast.detach'),
+      cancelText: t('confirm.cancel'),
+      variant: 'destructive',
+    })
+    if (ok) detachMut.mutate(c.id)
+  }
 
   const askDelete = async () => {
     const ok = await confirm({
@@ -292,7 +340,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                       <div className="aspect-[2/3]">
                         <PosterImage src={p.poster} alt={p.title} className="h-full w-full" />
                       </div>
-                      <span className="absolute left-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-black/60 text-[11px] font-semibold text-white">
+                      <span className="absolute left-1.5 top-1.5 grid size-5 place-items-center rounded-md bg-black/60 text-[11px] font-semibold text-white">
                         {i + 1}
                       </span>
                       {!p.owned && (
@@ -303,12 +351,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                           )}
                         >
                           {adding ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium backdrop-blur">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-2.5 py-1 text-xs font-medium backdrop-blur">
                               <Loader2 className="size-3.5 animate-spin" />
                               {t('queue.queued')}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium backdrop-blur">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-white/15 px-2.5 py-1 text-xs font-medium backdrop-blur">
                               <Plus className="size-3.5" />
                               {t('actor.add')}
                             </span>
@@ -339,25 +387,90 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
           </section>
         )}
 
-        {m.cast.length > 0 && (
-          <section>
-            <h2 className="mb-4 text-lg font-semibold">{t('detail.cast')}</h2>
+        {/* ეტაპი 1 — მსახიობები ახლა ხელითაც იხსნება.
+            ⚠️ სექცია ახლა **ცარიელზეც იხატება** — „დაამატე" იმ შემთხვევაშიც
+            უნდა ჩანდეს, როცა TMDB-ს ამ ფილმზე არცერთი არ დაუდვია. */}
+        <section>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">
+              {t('detail.cast')}
+              {m.cast.length > 0 && <span className="text-muted-foreground"> · {m.cast.length}</span>}
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => setCastOpen(true)}>
+              <UserPlus className="size-4" />
+              {t('cast.add')}
+            </Button>
+          </div>
+
+          {m.cast.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('cast.empty')}</p>
+          ) : (
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
               {m.cast.map((c) => (
-                <Link key={c.id} to={`/actors/${c.id}`} className="group/cast block cursor-pointer text-center">
-                  <PosterImage
-                    src={c.photo}
-                    alt={castName(c, lang)}
-                    className="mx-auto size-20 rounded-full ring-1 ring-border transition-transform duration-300 group-hover/cast:scale-105"
-                  />
-                  <div className="mt-2 truncate text-xs font-medium group-hover/cast:text-gold">
-                    {castName(c, lang)}
+                <div key={c.id} className="group/cast relative text-center">
+                  <Link to={`/actors/${c.id}`} className="block cursor-pointer">
+                    <PosterImage
+                      src={c.photo}
+                      alt={castName(c, lang)}
+                      className="mx-auto size-20 rounded-full ring-1 ring-border transition-transform duration-300 group-hover/cast:scale-105"
+                    />
+                    <div className="mt-2 truncate text-xs font-medium group-hover/cast:text-gold">
+                      {castName(c, lang)}
+                    </div>
+                    {c.character && (
+                      <div className="truncate text-xs text-muted-foreground">{c.character}</div>
+                    )}
+                  </Link>
+
+                  {/* ⚠️ მოქმედებები ცალკე მენიუშია და არა ბარათზე: ბარათის დაწკაპუნება
+                      მსახიობის გვერდია და ეს ხშირი მოქმედებაა — წაშლა მას ვერ დაეჩრდილება. */}
+                  <div className="absolute right-0 top-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover/cast:opacity-100">
+                    <ActionMenu label={t('actions.more')}>
+                      <Link to={`/actors/${c.id}`} className={actionItemClass()}>
+                        <UserRound className="size-4" />
+                        {t('cast.openActor')}
+                      </Link>
+                      <button
+                        type="button"
+                        className={actionItemClass()}
+                        onClick={() => setRoleOf(c)}
+                      >
+                        <Pencil className="size-4" />
+                        {t('cast.editRole')}
+                      </button>
+                      <button
+                        type="button"
+                        className={actionItemClass('destructive')}
+                        onClick={() => askDetach(c)}
+                      >
+                        <Trash2 className="size-4" />
+                        {t('cast.detach')}
+                      </button>
+                    </ActionMenu>
                   </div>
-                  {c.character && <div className="truncate text-xs text-muted-foreground">{c.character}</div>}
-                </Link>
+                </div>
               ))}
             </div>
-          </section>
+          )}
+        </section>
+
+        {castOpen && (
+          <CastMemberDialog
+            type={type}
+            recordId={m.id}
+            onClose={() => setCastOpen(false)}
+            onAdded={() => qc.invalidateQueries({ queryKey: [type, 'detail', id] })}
+          />
+        )}
+
+        {roleOf && (
+          <CastRoleDialog
+            type={type}
+            recordId={m.id}
+            member={roleOf}
+            onClose={() => setRoleOf(null)}
+            onSaved={() => qc.invalidateQueries({ queryKey: [type, 'detail', id] })}
+          />
         )}
       </div>
     </div>

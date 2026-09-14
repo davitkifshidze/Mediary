@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -77,6 +78,34 @@ class BookModuleTest extends TestCase
             ->assertJsonCount(0, 'results');
 
         Http::assertNothingSent();
+    }
+
+    /**
+     * წყაროს ჩავარდნა **503-ია და არა 500** (შენი შეცდომა, 2026-09-14).
+     *
+     * ⚠️ `cURL error 28` (timeout) `OpenLibraryClient`-იდან გამონაკლისით
+     * ამოდიოდა და ერთი შხეება წიგნის დამატებას წითელ ტოსტით აცდებდა.
+     * ⚠️ „წყარო არ პასუხობს" და „ვერაფერი ვიპოვე" სხვა ფაქტებია.
+     */
+    public function test_an_open_library_outage_is_503_and_not_500(): void
+    {
+        Http::fake(fn () => throw new ConnectionException('cURL error 28: Timeout'));
+
+        $this->actingAs($this->user)
+            ->postJson('/api/books/lookup/candidates', ['query' => 'dune'])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'openlibrary_unavailable');
+    }
+
+    /** წყარო მუშაობს, ვერაფერი იპოვა — ეს **200-ია ცარიელი სიით** */
+    public function test_no_results_is_not_reported_as_an_outage(): void
+    {
+        Http::fake(['openlibrary.org/*' => Http::response(['docs' => []])]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/books/lookup/candidates', ['query' => 'zzzzzz'])
+            ->assertOk()
+            ->assertJsonCount(0, 'results');
     }
 
     /** მოდულის gate + §12-ის ველების ნაკრები */

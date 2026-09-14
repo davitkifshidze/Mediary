@@ -49,6 +49,11 @@ export interface CastMember {
   photo: string | null
   character?: string | null
   billing_order?: number
+  /** TMDB-ის კოდირება: 1 = ქალი, 2 = კაცი */
+  gender?: number | null
+  has_tmdb?: boolean
+  /** ეტაპი 1 — ეს ბმული ხელით გაკეთდა და `/sync` მას აღარ შლის */
+  is_manual?: boolean
 }
 
 export interface MovieListItem {

@@ -75,7 +75,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                 type="button"
                 aria-label={t('missing.label')}
                 onClick={(e) => e.preventDefault()}
-                className="absolute left-2 top-2 z-10 grid size-6 cursor-help place-items-center rounded-full bg-destructive/15 text-destructive shadow ring-1 ring-destructive/30 transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                className="absolute left-2 top-2 z-10 grid size-6 cursor-help place-items-center rounded-md bg-destructive/15 text-destructive shadow ring-1 ring-destructive/30 transition-colors hover:bg-destructive hover:text-destructive-foreground"
               >
                 <AlertTriangle className="size-3.5" />
               </button>
@@ -114,7 +114,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                   {movie.franchise_next && (
                     <span
                       title={t('franchise.continue')}
-                      className="absolute bottom-2 left-2 z-10 inline-flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-full bg-amber-400/95 px-2 py-0.5 text-[10px] font-semibold text-black shadow ring-1 ring-black/10 backdrop-blur-sm"
+                      className="absolute bottom-2 left-2 z-10 inline-flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-md bg-amber-400/95 px-2 py-0.5 text-[10px] font-semibold text-black shadow ring-1 ring-black/10 backdrop-blur-sm"
                     >
                       <PlayCircle className="size-3 shrink-0" />
                       <span className="truncate">{t('franchise.continue')}</span>

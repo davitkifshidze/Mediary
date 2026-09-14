@@ -77,7 +77,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
             className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Languages className="size-5" />
-            <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-[18px] text-primary-foreground">
+            <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-[18px] text-primary-foreground">
               {pending > 99 ? '99+' : pending}
             </span>
           </Link>
@@ -124,7 +124,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
               <div className="border-b border-border px-2.5 pb-2 pt-1.5">
                 <p className="truncate text-sm font-medium">{user?.display_name}</p>
                 <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-                {/* 17.3 — „გამოყენებულია X / Y"; დეტალები `/settings`-ზეა */}
+                {/* 17.3 — „გამოყენებულია X / Y"; დეტალები `/profile`-ზეა (ეტაპი 5) */}
                 {user?.storage && <StorageBar usage={user.storage} className="mt-2.5" />}
               </div>
 

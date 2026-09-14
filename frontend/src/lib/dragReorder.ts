@@ -13,9 +13,16 @@ import { useCallback, useState, type DragEvent } from 'react'
    `sort_order` თანმიმდევრული რჩება.
    ============================================================ */
 
-export interface DragReorder {
+/**
+ * ⚠️ **id სტრიქონიც შეიძლება იყოს (ეტაპი 8).** სტატუსების სიაში „ყველა" და
+ * „რჩეული" ცხრილის რიგი არაა, ე.ი. რიცხვითი id არ აქვთ — მათი id
+ * `'all'`/`'favorite'`-ია, სტატუსისა კი მისი `key`.
+ */
+export type DragId = string | number
+
+export interface DragReorder<T extends DragId = number> {
   /** ელემენტზე დასაკიდებელი პროპები (`<li {...handlers(id)}>`) */
-  handlers: (id: number) => {
+  handlers: (id: T) => {
     draggable: true
     onDragStart: (e: DragEvent) => void
     onDragEnter: (e: DragEvent) => void
@@ -24,20 +31,23 @@ export interface DragReorder {
     onDrop: (e: DragEvent) => void
   }
   /** რომელი ელემენტი ითრევა ახლა (გამჭვირვალობისთვის) */
-  draggingId: number | null
+  draggingId: T | null
   /** რომელზე ჩამოვარდება (ჩასმის ხაზისთვის) */
-  overId: number | null
+  overId: T | null
   /** კლავიატურის/ღილაკების ალტერნატივა: −1 = ზემოთ, +1 = ქვემოთ */
-  moveBy: (id: number, delta: number) => void
+  moveBy: (id: T, delta: number) => void
 }
 
-export function useDragReorder(ids: number[], onReorder: (ids: number[]) => void): DragReorder {
-  const [draggingId, setDraggingId] = useState<number | null>(null)
-  const [overId, setOverId] = useState<number | null>(null)
+export function useDragReorder<T extends DragId>(
+  ids: T[],
+  onReorder: (ids: T[]) => void,
+): DragReorder<T> {
+  const [draggingId, setDraggingId] = useState<T | null>(null)
+  const [overId, setOverId] = useState<T | null>(null)
 
   /** `from`-ის ამოღება და `to`-ის პოზიციაზე ჩასმა */
   const apply = useCallback(
-    (from: number, to: number) => {
+    (from: T, to: T) => {
       const next = [...ids]
       const fromIndex = next.indexOf(from)
       const toIndex = next.indexOf(to)
@@ -50,7 +60,7 @@ export function useDragReorder(ids: number[], onReorder: (ids: number[]) => void
   )
 
   const handlers = useCallback(
-    (id: number) => ({
+    (id: T) => ({
       draggable: true as const,
       onDragStart: (e: DragEvent) => {
         setDraggingId(id)
@@ -73,17 +83,20 @@ export function useDragReorder(ids: number[], onReorder: (ids: number[]) => void
       },
       onDrop: (e: DragEvent) => {
         e.preventDefault()
-        const from = Number(e.dataTransfer.getData('text/plain'))
+        // ⚠️ `dataTransfer` ყველაფერს სტრიქონად ინახავს — id სიაშივე იძებნება;
+        // `Number()` სტრიქონ-id-ს (`'favorite'`) NaN-ად აქცევდა
+        const raw = e.dataTransfer.getData('text/plain')
+        const from = ids.find((x) => String(x) === raw)
         setDraggingId(null)
         setOverId(null)
-        if (Number.isFinite(from)) apply(from, id)
+        if (from !== undefined) apply(from, id)
       },
     }),
-    [apply],
+    [apply, ids],
   )
 
   const moveBy = useCallback(
-    (id: number, delta: number) => {
+    (id: T, delta: number) => {
       const index = ids.indexOf(id)
       const target = index + delta
       if (index < 0 || target < 0 || target >= ids.length) return
@@ -103,7 +116,7 @@ export function useDragReorder(ids: number[], onReorder: (ids: number[]) => void
  * ⚠️ `border`-ის კლასი აქ არის და არა გამომძახებელთან, თორემ Tailwind-ის
  * ბოლო კლასი მოიგებდა და მონიშვნა ხან ჩანდებოდა, ხან არა.
  */
-export function dragRowClass(drag: DragReorder, id: number): string {
+export function dragRowClass<T extends DragId>(drag: DragReorder<T>, id: T): string {
   return [
     'transition-colors',
     // ⚠️ **„ხელის" კურსორი მთელ ზოლზეა და არა მხოლოდ სახელურზე** (Tasks §1.3):

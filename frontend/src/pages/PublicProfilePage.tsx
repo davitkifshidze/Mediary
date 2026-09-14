@@ -16,6 +16,7 @@ import { storageUrl } from '@/lib/api'
 import { useContentLang } from '@/lib/settings'
 import { PageContainer } from '@/components/ui/page'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 import { MatchPanel } from '@/components/MatchPanel'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -208,20 +209,15 @@ export function PublicProfilePage() {
             {/* ---------- დომენების ტაბები რაოდენობებით ---------- */}
             <nav className="fb-scroll -mx-1 flex gap-2 overflow-x-auto py-5">
               {profile.domains.map((d) => (
-                <button
+                <Chip
                   key={d}
-                  type="button"
+                  size="md"
+                  active={d === domain}
                   onClick={() => switchDomain(d)}
-                  className={cn(
-                    'inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-colors',
-                    d === domain
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
+                  count={profile.counts[d] ?? 0}
                 >
                   {moduleLabel(d)}
-                  <span className="text-xs opacity-70">{profile.counts[d] ?? 0}</span>
-                </button>
+                </Chip>
               ))}
             </nav>
 

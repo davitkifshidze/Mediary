@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\BookFile;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
@@ -20,13 +21,7 @@ use Illuminate\Http\Request;
 class BookFileController extends Controller
 {
     /** თვითონ წიგნის ფაილები — მხოლოდ საკითხავი ფორმატები */
-    private const BOOK_MIMES = 'pdf,epub,mobi,azw3,fb2,djvu,txt';
-
-    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx';
-
     /** 50 MB — §12-ის „ყველაზე მძიმეა ერთეულზე (10–50 MB)" */
-    private const BOOK_MAX_KB = 51200;
-
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Book $book)
@@ -42,9 +37,9 @@ class BookFileController extends Controller
             'kind' => ['required', 'in:book,image,doc'],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => match ($kind) {
-                'image' => ['file', 'image', 'max:8192'],
-                'doc' => ['file', 'max:20480', 'mimes:'.self::DOC_MIMES],
-                default => ['file', 'max:'.self::BOOK_MAX_KB, 'mimes:'.self::BOOK_MIMES],
+                'image' => UploadLimits::rule('image'),
+                'doc' => UploadLimits::rule('doc'),
+                default => UploadLimits::rule('book'),
             },
         ]);
 

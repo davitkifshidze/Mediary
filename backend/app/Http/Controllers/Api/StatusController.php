@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StatusResource;
+use App\Models\Module;
 use App\Models\Status;
+use App\Models\User;
+use App\Support\DictionaryRecords;
+use App\Support\ModuleSettings;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -25,6 +29,9 @@ use Illuminate\Validation\Rule;
  */
 class StatusController extends Controller
 {
+    /** `module_user.settings`-ის გასაღები — საიდბარის განლაგება (ეტაპი 8) */
+    public const SECTIONS_KEY = 'status_sections';
+
     /**
      * სია — მთვლელებით („რამდენი ჩანაწერია ამ სტატუსზე").
      *
@@ -104,7 +111,8 @@ class StatusController extends Controller
 
     /**
      * წაშლა. `move_to` — რომელ სტატუსზე გადავიდნენ ეს ჩანაწერები;
-     * მითითების გარეშე სტატუსის გარეშე რჩებიან (`status_id = null`).
+     * მითითების გარეშე სტატუსის გარეშე რჩებიან (`status_id = null`);
+     * `delete_records` — ჩანაწერებიც იშლება (ეტაპი 8, `DictionaryRecords`).
      *
      * ⚠️ **ბოლო სტატუსიც იშლება** — „ყველაფერი იშლება" მომხმარებლის
      * ცხადი პასუხია (2026-09-12). ცარიელ ლექსიკონზე ახალი ჩანაწერი
@@ -116,22 +124,29 @@ class StatusController extends Controller
 
         $status = $this->find($domain, $id);
 
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('statuses', 'id')
-                    ->where('user_id', $request->user()->id)
-                    ->where('module', $domain),
-            ],
-        ]);
-
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $status->id
-            ? (int) $data['move_to']
-            : null;
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('statuses', 'id')
+                ->where('user_id', $request->user()->id)
+                ->where('module', $domain),
+        ));
 
         $model = StatusDomain::model($domain);
-        $moved = $model::query()->where('status_id', $status->id)->update(['status_id' => $moveTo]);
+        $records = $model::query()->where('status_id', $status->id);
+
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete($records);
+            $moved = 0;
+        } else {
+            $deleted = 0;
+            $moved = $records->update(['status_id' => DictionaryRecords::moveTarget($data, $status->id)]);
+        }
+
+        // განლაგებაში ამ სტატუსის შემდეგ მდგარი „რჩეული" მის წინა მეზობელზე
+        // გადაება — ე.ი. საიდბარში ადგილს არ იცვლის (იხ. `forgetInLayout()`)
+        $previousKey = Status::forDomain($domain)->ordered()->get()
+            ->takeUntil(fn (Status $s) => $s->id === $status->id)
+            ->last()?->key;
 
         $wasDefault = $status->is_default;
         $status->delete();
@@ -142,7 +157,51 @@ class StatusController extends Controller
             $this->makeDefault($next);
         }
 
-        return response()->json(['moved' => $moved]);
+        $this->forgetInLayout($request->user(), $domain, $status->key, $previousKey ?? 'start');
+
+        return response()->json(['moved' => $moved, 'deleted' => $deleted]);
+    }
+
+    /**
+     * **საიდბარის განლაგება (ეტაპი 8)** — რომელი განყოფილება იმალება და
+     * სად დგას „ყველა"/„რჩეული"/„ჩამოწერილები" სტატუსებს შორის.
+     *
+     * ⚠️ **ორი ფაქტი, ორი ადგილი, და ეს განზრახაა.** სტატუსების *ურთიერთ*
+     * რიგი `statuses.sort_order`-შია (ფორმა და ფილტრიც მას კითხულობს),
+     * ფსევდო-განყოფილება კი ცხრილში საერთოდ არ არის — ე.ი. მისი ადგილი
+     * **მეზობელ სტატუსის გასაღებით** იწერება (`at`: `start` · `end` · key),
+     * და არა ინდექსით: ახალი სტატუსი ბოლოს ემატება, და ინდექსით „ბოლოს
+     * მდგარი" რჩეული მის **წინ** აღმოჩნდებოდა.
+     *
+     * ⚠️ **დამალვა მხოლოდ საიდბარს ეხება** (მომხმარებლის პასუხი 2026-09-13):
+     * დამალული სტატუსი ჩანაწერზე, ფილტრსა და ფორმაში რჩება.
+     *
+     * ⚠️ **`view` და არა `update`** — ეს ჩემი ხედია, ლექსიკონის შიგთავსი არ
+     * იცვლება. ⚠️ **`PUT`**, `EnsureModulePermission`-ის POST→create ხაფანგის გამო.
+     */
+    public function sections(Request $request, string $domain)
+    {
+        $this->guard($request, $domain, 'view');
+
+        $data = $request->validate([
+            'hidden' => ['present', 'array', 'max:100'],
+            'hidden.*' => ['string', 'max:60', 'distinct'],
+            'placement' => ['present', 'array', 'max:'.count(StatusDomain::RESERVED_KEYS)],
+            'placement.*.id' => ['required', 'string', 'distinct', Rule::in(StatusDomain::RESERVED_KEYS)],
+            'placement.*.at' => ['required', 'string', 'max:60'],
+        ]);
+
+        $layout = [
+            'hidden' => array_values($data['hidden']),
+            'placement' => array_map(
+                fn (array $p) => ['id' => $p['id'], 'at' => $p['at']],
+                array_values($data['placement']),
+            ),
+        ];
+
+        ModuleSettings::merge($request->user(), $this->moduleRow($domain), [self::SECTIONS_KEY => $layout]);
+
+        return response()->json([self::SECTIONS_KEY => $layout]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */
@@ -189,6 +248,42 @@ class StatusController extends Controller
     private function find(string $domain, int $id): Status
     {
         return Status::forDomain($domain)->whereKey($id)->firstOrFail();
+    }
+
+    private function moduleRow(string $domain): Module
+    {
+        return Module::where('key', StatusDomain::module($domain))->firstOrFail();
+    }
+
+    /**
+     * წაშლილი სტატუსი განლაგებიდან.
+     *
+     * ⚠️ **ორივე მიზეზით აუცილებელია.** `hidden`-ში რომ დარჩეს, იმავე
+     * სახელით ხელახლა შექმნილი სტატუსი (`makeKey()` იმავე გასაღებს
+     * აბრუნებს) **დამალული დაიბადებოდა**. `at`-ში რომ დარჩეს, „რჩეული"
+     * ანკერს დაკარგავდა და ბოლოში ჩამოვარდებოდა — ამიტომ წინა მეზობელზე
+     * გადაება.
+     */
+    private function forgetInLayout(User $user, string $domain, string $key, string $replacement): void
+    {
+        $module = $this->moduleRow($domain);
+        $layout = ModuleSettings::read($user, $module)[self::SECTIONS_KEY] ?? null;
+
+        if (! is_array($layout)) {
+            return;
+        }
+
+        $layout['hidden'] = array_values(array_filter(
+            (array) ($layout['hidden'] ?? []),
+            fn ($id) => $id !== $key,
+        ));
+
+        $layout['placement'] = array_map(
+            fn ($p) => is_array($p) && ($p['at'] ?? null) === $key ? [...$p, 'at' => $replacement] : $p,
+            (array) ($layout['placement'] ?? []),
+        );
+
+        ModuleSettings::merge($user, $module, [self::SECTIONS_KEY => $layout]);
     }
 
     /**

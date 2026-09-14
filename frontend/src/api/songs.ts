@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { VideoMetadata, VideoPlatform } from '@/api/videos'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -182,11 +183,12 @@ export async function updateSongGenre(id: number, input: SongGenreInput): Promis
 }
 
 /** წაშლა; `moveTo` — რომელ ჟანრზე გადავიდეს ეს სიმღერები (null = ჟანრის გარეშე) */
-export async function deleteSongGenre(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/song-genres/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteSongGenre(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/song-genres/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderSongGenres(ids: number[]): Promise<SongGenre[]> {

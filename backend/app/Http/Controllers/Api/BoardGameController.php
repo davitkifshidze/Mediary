@@ -11,6 +11,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 /**
@@ -23,6 +24,9 @@ use Illuminate\Validation\Rule;
  */
 class BoardGameController extends Controller
 {
+    /** ⚠️ ფილტრის ჭერი — მეტი მოთამაშე ბორდგეიმზე პრაქტიკულად არ ხდება */
+    private const MAX_PLAYERS_FILTER = 12;
+
     public function __construct(
         private StorageMeter $meter,
         private BggClient $bgg,
@@ -39,31 +43,40 @@ class BoardGameController extends Controller
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
-        // ჟანრები/მექანიკები — მძიმით გამოყოფილი სია (5.2-ის წესი)
+        // ჟანრები — მძიმით გამოყოფილი სია (5.2-ის წესი)
         if ($genres = $this->slugList($request->string('genre_id')->toString())) {
             $query->whereIn('genre_id', array_map('intval', $genres));
         }
-        foreach ($this->slugList($request->string('mechanic')->toString()) as $mechanic) {
-            $query->whereJsonContains('mechanics', $mechanic);
-        }
 
-        // „რამდენი კაცით ვთამაშობთ" — ყველაზე ხშირი კითხვა ბორდგეიმზე
-        if ($request->filled('players')) {
-            $players = $request->integer('players');
-            $query->where(fn ($q) => $q
-                ->whereNull('players_min')
-                ->orWhere('players_min', '<=', $players))
-                ->where(fn ($q) => $q
-                    ->whereNull('players_max')
-                    ->orWhere('players_max', '>=', $players));
+        /* „რამდენი კაცით ვთამაშობთ" — ყველაზე ხშირი კითხვა ბორდგეიმზე.
+           ⚠️ **სია და OR** (ეტაპი 8), ჟანრებისგან განსხვავებით: „2 **ან** 4
+           მოთამაშეს უდგება". AND ნიშნავდა „ორივეს ერთდროულად უდგება", რაც
+           დიაპაზონურ ველზე თითქმის ყოველთვის იმავე პასუხს იძლევა.
+           ⚠️ **ვალიდაცია 422-ია და არა ჩუმი გაფილტვრა**: `?players=abc`
+           ცარიელ სიას დახატავდა ისე, თითქოს ბიბლიოთეკაში არაფერია. */
+        if ($players = $this->slugList($request->string('players')->toString())) {
+            Validator::make(['players' => $players], [
+                'players.*' => ['integer', 'min:1', 'max:'.self::MAX_PLAYERS_FILTER],
+            ])->validate();
+
+            $query->where(function ($outer) use ($players) {
+                foreach ($players as $value) {
+                    /* ⚠️ დიაპაზონის გარეშე ჩანაწერი **არ ხვდება**: „უცნობია" და
+                       „ნებისმიერს უდგება" ერთი არაა. NULL-თან შედარება არც
+                       MySQL-ზე და არც sqlite-ზე არ არის true, ე.ი. ცალკე
+                       `whereNotNull` აღარ სჭირდება. */
+                    $outer->orWhere(fn ($q) => $q
+                        ->where('players_min', '<=', (int) $value)
+                        ->where('players_max', '>=', (int) $value));
+                }
+            });
         }
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
                 ->where('title', 'like', "%{$q}%")
                 ->orWhere('designer', 'like', "%{$q}%")
-                ->orWhere('publisher', 'like', "%{$q}%")
-                ->orWhere('mechanics', 'like', "%{$q}%"));
+                ->orWhere('publisher', 'like', "%{$q}%"));
         }
 
         match ($request->string('sort')->toString()) {
@@ -221,8 +234,6 @@ class BoardGameController extends Controller
                 'nullable', 'integer',
                 Rule::exists('board_game_genres', 'id')->where('user_id', $userId),
             ],
-            'mechanics' => ['nullable', 'array', 'max:20'],
-            'mechanics.*' => ['string', 'max:60'],
 
             'players_min' => ['nullable', 'integer', 'min:1', 'max:999'],
             'players_max' => ['nullable', 'integer', 'min:1', 'max:999', 'gte:players_min'],
@@ -277,9 +288,6 @@ class BoardGameController extends Controller
             if (! empty($data[$field])) {
                 $game->{$field} = $data[$field];
             }
-        }
-        if (array_key_exists('mechanics', $data)) {
-            $game->mechanics = BoardGame::normalizeMechanics($data['mechanics'] ?? []);
         }
         if (array_key_exists('links', $data)) {
             $game->links = array_values(array_map(fn (array $link) => [

@@ -322,4 +322,136 @@ class StatusDictionaryTest extends TestCase
         $video = Video::create(['title' => 'x', 'url' => 'https://youtu.be/z']);
         $this->assertSame('video', $video->refresh()->status->module);
     }
+
+    /* ---------- ეტაპი 8: წაშლა ჩანაწერებით ---------- */
+
+    /**
+     * ⚠️ **ჩანაწერებიც იშლება — და მოდელის გავლით.** `deleted` ივენთი სწორედ
+     * ის არის, რაც ფაილს, კვოტასა და გალერეას ასუფთავებს; query-ზე `delete()`
+     * მას ჩუმად გვერდს აუვლიდა. სხვა სტატუსის ჩანაწერი ადგილზე რჩება.
+     */
+    public function test_deleting_a_status_can_delete_its_records(): void
+    {
+        $this->actingAs($this->user);
+
+        $watched = $this->dictionaryRow($this->user, 'movie', 'watched');
+
+        $gone = Movie::create(['year' => 2010]);
+        $gone->applyStatusKey('watched');
+        $gone->save();
+
+        $kept = Movie::create(['year' => 2011]);
+
+        $fired = 0;
+        Movie::deleted(function () use (&$fired) {
+            $fired++;
+        });
+
+        $this->deleteJson("/api/statuses/movie/{$watched->id}", ['delete_records' => true])
+            ->assertOk()
+            ->assertJsonPath('deleted', 1)
+            ->assertJsonPath('moved', 0);
+
+        $this->assertSame(1, $fired);
+        $this->assertNull(Movie::find($gone->id));
+        $this->assertNotNull(Movie::find($kept->id));
+    }
+
+    /** ორი ურთიერთგამომრიცხავი ბრძანება — 422, და არაფერი იშლება */
+    public function test_move_to_and_delete_records_together_are_rejected(): void
+    {
+        $this->actingAs($this->user);
+
+        $watched = $this->dictionaryRow($this->user, 'movie', 'watched');
+        $target = $this->dictionaryRow($this->user, 'movie', 'to_watch');
+
+        $movie = Movie::create(['year' => 2012]);
+        $movie->applyStatusKey('watched');
+        $movie->save();
+
+        $this->deleteJson("/api/statuses/movie/{$watched->id}", [
+            'move_to' => $target->id,
+            'delete_records' => true,
+        ])->assertStatus(422)->assertJsonValidationErrors('move_to');
+
+        $this->assertNotNull(Movie::find($movie->id));
+        $this->assertNotNull(Status::find($watched->id));
+    }
+
+    /**
+     * ⚠️ **`all`/`favorite` სტატუსის გასაღები არ ხდება.** „Favorite" სახელის
+     * სტატუსი `?view=favorite`-ს რჩეულებთან გაყოფდა.
+     */
+    public function test_a_status_never_takes_a_reserved_key(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->postJson('/api/statuses/movie', ['name_ka' => 'რჩეული', 'name_en' => 'Favorite', 'role' => 'done'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.key', 'favorite-2');
+
+        $this->postJson('/api/statuses/movie', ['name_ka' => 'ყველა', 'name_en' => 'All', 'role' => 'todo'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.key', 'all-2');
+    }
+
+    /* ---------- ეტაპი 8: საიდბარის განლაგება ---------- */
+
+    /** განლაგება `module_user.settings`-ში ჯდება — და იქ მდგარ სხვა პარამეტრებს არ წაშლავს */
+    public function test_sidebar_sections_are_stored_next_to_other_module_settings(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->putJson('/api/modules/movie/settings', ['settings' => ['gallery' => ['limit' => 7]]])->assertOk();
+
+        $layout = [
+            'hidden' => ['favorite', 'watched'],
+            'placement' => [['id' => 'all', 'at' => 'start'], ['id' => 'favorite', 'at' => 'to_watch']],
+        ];
+
+        $this->putJson('/api/statuses/movie/sections', $layout)
+            ->assertOk()
+            ->assertJsonPath('status_sections.hidden', ['favorite', 'watched']);
+
+        $movie = collect($this->getJson('/api/modules')->json('data'))->firstWhere('key', 'movie');
+
+        $this->assertSame($layout, $movie['user_settings']['status_sections']);
+        $this->assertSame(['limit' => 7], $movie['user_settings']['gallery']);
+    }
+
+    /** განლაგებაში ადგილი მხოლოდ ფსევდო-განყოფილებას ინახება — სტატუსის რიგი `sort_order`-შია */
+    public function test_only_a_pseudo_section_can_be_placed(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->putJson('/api/statuses/movie/sections', [
+            'hidden' => [],
+            'placement' => [['id' => 'watched', 'at' => 'start']],
+        ])->assertStatus(422)->assertJsonValidationErrors('placement.0.id');
+    }
+
+    /**
+     * ⚠️ **წაშლილი სტატუსი განლაგებიდანაც ქრება.** `hidden`-ში რომ დარჩეს,
+     * იმავე სახელით ხელახლა შექმნილი სტატუსი დამალული დაიბადებოდა; „რჩეული",
+     * რომელიც მის შემდეგ დგას, წინა მეზობელზე გადაება და ადგილს არ იცვლის.
+     */
+    public function test_deleting_a_status_forgets_it_in_the_layout(): void
+    {
+        $this->actingAs($this->user);
+
+        $watching = $this->dictionaryRow($this->user, 'movie', 'watching');
+
+        $this->putJson('/api/statuses/movie/sections', [
+            'hidden' => ['watching', 'favorite'],
+            'placement' => [['id' => 'favorite', 'at' => 'watching']],
+        ])->assertOk();
+
+        $this->deleteJson("/api/statuses/movie/{$watching->id}")->assertOk();
+
+        $movie = collect($this->getJson('/api/modules')->json('data'))->firstWhere('key', 'movie');
+        $layout = $movie['user_settings']['status_sections'];
+
+        $this->assertSame(['favorite'], $layout['hidden']);
+        $this->assertSame([['id' => 'favorite', 'at' => 'to_watch']], $layout['placement']);
+    }
 }

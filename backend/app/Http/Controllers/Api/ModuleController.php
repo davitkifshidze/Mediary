@@ -7,9 +7,9 @@ use App\Http\Resources\ModuleResource;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
 use App\Services\Modules\FieldSettings;
+use App\Support\ModuleSettings;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * მოდულების სია მიმდინარე მომხმარებლისთვის (I3).
@@ -139,21 +139,8 @@ class ModuleController extends Controller
 
         $data = $request->validate(['settings' => ['required', 'array']]);
 
-        // ⚠️ `DB::table` განზრახ: pivot-ის JSON-ს Eloquent არ cast-ავს (CLAUDE.md)
-        $current = json_decode((string) DB::table('module_user')
-            ->where('user_id', $request->user()->getKey())
-            ->where('module_id', $module->id)
-            ->value('settings'), true) ?: [];
-
-        $merged = [...$current, ...$data['settings']];
-
-        $attrs = ['settings' => json_encode($merged)];
-        // `enabled_at` მხოლოდ პირველად (super_admin-ს pivot-ი შეიძლება საერთოდ არ ჰქონდეს)
-        if (! $request->user()->modules()->where('modules.id', $module->id)->exists()) {
-            $attrs['enabled_at'] = now();
-        }
-
-        $request->user()->modules()->syncWithoutDetaching([$module->id => $attrs]);
+        // შერწყმა — საიდბარის განლაგებაც (ეტაპი 8) იმავე ბლოკში წერს
+        $merged = ModuleSettings::merge($request->user(), $module, $data['settings']);
 
         // ⚠️ პასუხი **შერწყმულს** აბრუნებს და არა მოსულს — კლიენტმა უნდა
         // დაინახოს, რა ჩაიწერა მართლა

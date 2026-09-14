@@ -81,7 +81,7 @@ export function MatchPanel({ username }: { username: string }) {
     <div className="pb-10">
       {/* ---------- ჯამი ---------- */}
       <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-5">
-        <div className="grid size-16 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <div className="grid size-16 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
           <span className="text-lg font-semibold tabular-nums">{Math.round(total.percent)}%</span>
         </div>
         <div className="min-w-0">

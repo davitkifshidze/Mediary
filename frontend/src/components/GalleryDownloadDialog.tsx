@@ -3,7 +3,7 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Play, Search, Square, Users } from 'lucide-react'
+import { Check, Clapperboard, Layers, Loader2, Play, Search, Square, UserRound, Users } from 'lucide-react'
 import {
   fetchGalleryPlan,
   GALLERY_CAST_SIZES,
@@ -30,6 +30,7 @@ import { cn, formatBytes } from '@/lib/utils'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { Button } from '@/components/ui/button'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -51,7 +52,7 @@ import { useToast } from '@/components/ui/feedback'
    ალაგებინებდა იქ, სადაც ის უკვე ცნობილია.
 
    ## ორი ტაბი და რატომ
-   · **ჩანაწერის ფოტოები** — რა (კადრი · პოსტერი · ლოგო), **თითოზე რამდენი**
+   · **ჩანაწერის ფოტოები** — რა (კადრი · პოსტერი), **თითოზე რამდენი**
      და **თითოზე რა ზომის**. მსახიობები აქ საერთოდ არ ჩანს: კადრში ვერ
      გაარჩევ, ვინაა სურათზე, ე.ი. კომბინაცია თავიდანვე უაზრო იყო.
    · **მსახიობების ფოტოები** — წყარო (პორტრეტები · კადრები ფილმებიდან),
@@ -75,6 +76,13 @@ type Flow = 'record' | 'cast'
 const LIMIT_OPTIONS = [5, 10, 20, 50, 100, 250, 500, GALLERY_MAX_LIMIT]
 const PER_ACTOR_OPTIONS = [1, 2, 3, 5, 10, 20, 50, GALLERY_MAX_PER_ACTOR]
 const ACTORS_OPTIONS = [3, 6, 12, 20, 50, 100, GALLERY_MAX_ACTORS]
+
+/** მსახიობის ფოტოს წყაროს ხატულა — პორტრეტი · კადრი · ორივე */
+const CAST_SOURCE_ICON: Record<GalleryCastSource, typeof UserRound> = {
+  profiles: UserRound,
+  tagged: Clapperboard,
+  both: Layers,
+}
 
 export interface GalleryDownloadPin {
   /** ჩანაწერიდან გახსნილი — სკოუპი უკვე ცნობილია */
@@ -184,6 +192,24 @@ export function GalleryDownloadDialog({
   /** ჩანაწერიდან/მსახიობიდან გახსნილზე სკოუპის არჩევანი ზედმეტია */
   const pinned = !!pin?.record || !!pin?.actor
 
+  /**
+   * **„ვისაც უკვე აქვს, გამოტოვე" — ერთი გამოთქმა ჩამრთველისთვისაც და
+   * რექვესთისთვისაც** (გასწორდა 2026-09-13).
+   *
+   * ⚠️ ეს ორი ადგილი ერთმანეთს გასცდა და ნამდვილ ხარვეზს იძლეოდა:
+   * მსახიობის გვერდიდან გახსნილ დიალოგში ჩამრთველი **დამალული იყო**,
+   * `skip_with_photos` კი ისევ `true` მიდიოდა — ე.ი. კონკრეტულად
+   * მონიშნული მსახიობი, რომელსაც ერთი ფოტო მაინც ჰქონდა, გეგმიდან
+   * ჩუმად ამოვარდებოდა და ეკრანზე „მსახიობი 0 × თითოზე 20 = 0" წერია
+   * (ცოცხლად გადამოწმებული — Abigail Lowe, 1 ფოტო).
+   *
+   * ⚠️ **მიბმულ ერთეულზე ფილტრს აზრი არ აქვს:** არჩევანი ხელით გაკეთდა,
+   * „ვისაც უკვე აქვს" კი მასობრივი გაშვების მოხერხებულობაა. ჩანაწერიდან
+   * გახსნილ **მსახიობების** ტაბზე პირიქით — ავზი ამ ფილმის მთელი
+   * შემადგენლობაა და ფილტრი ისევ საჭიროა.
+   */
+  const canSkipWithPhotos = castFlow ? !pin?.actor : !pinned
+
   const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres(), enabled: open && !pinned })
 
   /**
@@ -195,7 +221,7 @@ export function GalleryDownloadDialog({
       castFlow
         ? {
             subjects: [],
-            limits: { stills: 0, posters: 0, logos: 0 },
+            limits: { stills: 0, posters: 0 },
             cast: castMode,
             cast_ids: castMode === 'selected' ? castIds : [],
             cast_source: castSource,
@@ -235,11 +261,11 @@ export function GalleryDownloadDialog({
       target: castFlow ? 'actor' : 'record',
       ...scopeFilters,
       // მიბმულ ჩანაწერზე „უკვე აქვს ფოტოები" გამორიცხვა აზრს კარგავს
-      skip_with_photos: pinned && !castFlow ? false : skipWithPhotos,
+      skip_with_photos: canSkipWithPhotos && skipWithPhotos,
       cast_q: castFlow && !pin?.actor ? castQuery || undefined : undefined,
       ...options,
     }),
-    [castFlow, scopeFilters, pinned, pin, skipWithPhotos, castQuery, options],
+    [castFlow, scopeFilters, canSkipWithPhotos, pin, skipWithPhotos, castQuery, options],
   )
 
   const planQ = useQuery({
@@ -352,23 +378,13 @@ export function GalleryDownloadDialog({
               {domains.length > 1 && (
                 <div>
                   <Label className="mb-2 block">{t('gallery.domains')}</Label>
-                  <div className="flex flex-wrap gap-1.5">
+                  <ChipRow>
                     {domains.map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => toggleType(type)}
-                        className={cn(
-                          'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-                          types.includes(type)
-                            ? 'border-primary bg-secondary text-foreground'
-                            : 'border-border text-muted-foreground hover:text-foreground',
-                        )}
-                      >
+                      <Chip key={type} active={types.includes(type)} onClick={() => toggleType(type)}>
                         {t(MEDIA_NAV_KEY[type])}
-                      </button>
+                      </Chip>
                     ))}
-                  </div>
+                  </ChipRow>
                   {/* ⚠️ ცარიელი არჩევანი ცხადად ითქვას — გეგმა 403-ს დააბრუნებს */}
                   {!types.length && (
                     <p className="mt-1.5 text-xs text-destructive">{t('gallery.pickDomain')}</p>
@@ -391,19 +407,13 @@ export function GalleryDownloadDialog({
                     <div className="flex flex-wrap gap-1.5">
                       {/* §6.4 — ჩიპები არჩეული დომენების ლექსიკონებიდან */}
                       {statusOptions.map((s) => (
-                        <button
+                        <Chip
                           key={s.key}
-                          type="button"
+                          active={statuses.includes(s.key)}
                           onClick={() => toggleStatus(s.key)}
-                          className={cn(
-                            'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-                            statuses.includes(s.key)
-                              ? 'border-primary bg-secondary text-foreground'
-                              : 'border-border text-muted-foreground hover:text-foreground',
-                          )}
                         >
                           {statusName(s, lang)}
-                        </button>
+                        </Chip>
                       ))}
                     </div>
                   </ScopeRow>
@@ -413,23 +423,13 @@ export function GalleryDownloadDialog({
                   <ScopeRow value="genre" active={scope} label={t('sync.scopeGenre')}>
                     <GenreSelect genres={genresQ.data ?? []} value={genres} onChange={setGenres} />
                     {/* ⚠️ „ყველა ერთდროულად" სამ ჟანრზე ხშირად ცარიელ სკოუპს იძლევა */}
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <ChipRow className="mt-2">
                       {(['any', 'all'] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setGenreMode(mode)}
-                          className={cn(
-                            'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-                            genreMode === mode
-                              ? 'border-primary bg-secondary text-foreground'
-                              : 'border-border text-muted-foreground hover:text-foreground',
-                          )}
-                        >
+                        <Chip key={mode} active={genreMode === mode} onClick={() => setGenreMode(mode)}>
                           {t(`gallery.genreMode.${mode}`)}
-                        </button>
+                        </Chip>
                       ))}
-                    </div>
+                    </ChipRow>
                   </ScopeRow>
 
                   <ScopeRow value="ids" active={scope} label={t('sync.scopeSpecific')}>
@@ -452,7 +452,7 @@ export function GalleryDownloadDialog({
             </>
           )}
 
-          {(!pinned || castFlow) && !pin?.actor && (
+          {canSkipWithPhotos && (
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <Checkbox checked={skipWithPhotos} onCheckedChange={() => setSkipWithPhotos((v) => !v)} />
               <span>
@@ -533,29 +533,47 @@ export function GalleryDownloadDialog({
           {/* ============ ტაბი 2 — მსახიობების ფოტოები ============ */}
           {castFlow && (
             <>
-              {/* წყარო — პორტრეტები თუ კადრები ფილმებიდან (§8.2) */}
+              {/* წყარო — პორტრეტები თუ კადრები ფილმებიდან (§8.2).
+
+                  ⚠️ **ბარათებია და აღარ ჩიპები** (შენი მითითება, 2026-09-14).
+                  სამ ჩიპს ქვემოთ ერთი განმარტება ჰქონდა — **მხოლოდ არჩეულის**,
+                  ე.ი. დანარჩენი ორის მნიშვნელობა დაფარული იყო და არჩევანის
+                  გასაკეთებლად ჯერ უნდა გადაგერთო, რომ წაგეკითხა, რას ირჩევდი.
+                  ახლა სამივე თავის განმარტებას თვითონ ამბობს. */}
               <div>
                 <Label className="mb-2 block">{t('gallery.castSourceTitle')}</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {GALLERY_CAST_SOURCES.map((source) => (
-                    <button
-                      key={source}
-                      type="button"
-                      onClick={() => setCastSource(source)}
-                      className={cn(
-                        'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-                        castSource === source
-                          ? 'border-primary bg-secondary text-foreground'
-                          : 'border-border text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {t(`gallery.castSource.${source}`)}
-                    </button>
-                  ))}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {GALLERY_CAST_SOURCES.map((source) => {
+                    const on = castSource === source
+                    const Icon = CAST_SOURCE_ICON[source]
+
+                    return (
+                      <button
+                        key={source}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setCastSource(source)}
+                        className={cn(
+                          'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3 text-left transition-colors',
+                          on
+                            ? 'border-primary bg-secondary/60'
+                            : 'border-border hover:border-primary/40 hover:bg-muted/50',
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                            {t(`gallery.castSource.${source}`)}
+                          </span>
+                          {on && <Check className="size-4 shrink-0 text-primary" />}
+                        </span>
+                        <span className="text-xs leading-snug text-muted-foreground">
+                          {t(`gallery.castSourceHint.${source}`)}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  {t(`gallery.castSourceHint.${castSource}`)}
-                </p>
               </div>
 
               {!pin?.actor && (
@@ -733,6 +751,16 @@ export function GalleryDownloadDialog({
                   <span className="block text-xs text-muted-foreground">
                     {t(castFlow ? 'gallery.actorsNoTmdb' : 'sync.noTmdb', {
                       count: plan.skipped_without_tmdb,
+                    })}
+                  </span>
+                )}
+                {/* ⚠️ **ნული თავის მიზეზს ატარებს** — „ყველას ფოტოები უკვე აქვს"
+                    და „სკოუპში არაფერია" ერთნაირად ცარიელი გეგმაა, ტექსტი კი
+                    სხვა უნდა იყოს; სწორედ ამის დუმილი იკითხებოდა ხარვეზად. */}
+                {plan.skipped_with_photos > 0 && (
+                  <span className="block text-xs text-muted-foreground">
+                    {t(castFlow ? 'gallery.actorsHavePhotos' : 'gallery.recordsHavePhotos', {
+                      count: plan.skipped_with_photos,
                     })}
                   </span>
                 )}

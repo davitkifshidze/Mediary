@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -34,4 +35,33 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        /*
+         * ⚠️ **PHP-ის ატვირთვის ჭერი ჩუმად კლავდა მოთხოვნას** (2026-09-14).
+         * `post_max_size`-ზე დიდი სხეული PHP-მ **მთლიანად** ჩამოაგდო: `$_POST`
+         * და `$_FILES` ცარიელი მოდიოდა, ე.ი. ვალიდაცია 422-ს წერდა „ფაილი
+         * სავალდებულოა"-ზე — მაშინ როცა ფაილი ნამდვილად შერჩეული იყო.
+         * ზუსტად ასე ვარდებოდა დიდი PDF და რამდენიმე ფოტო ერთად.
+         *
+         * ⚠️ **ეს ცალკე კოდია და არა კვოტის 413** (`storage_quota_exceeded`):
+         * ორი სრულიად სხვადასხვა ზღვარია — სერვერის ერთი მოთხოვნის ჭერი და
+         * ანგარიშის საცავი. ერთ შეტყობინებაში რომ გაერთიანებულიყო, „ადგილი
+         * აღარ გაქვს" დაეწერებოდა იმას, ვისაც ადგილი ბევრი აქვს.
+         *
+         * ⚠️ ჭერი **თვითონ ვერსად წერია** — `ini_get()`-იდან მოდის, თორემ
+         * `php.ini`-ის შეცვლისთანავე ტექსტი მოტყუებას დაიწყებდა.
+         */
+        $exceptions->render(function (PostTooLargeException $e, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            /* ⚠️ `message` **არის** მანქანური კოდი — `lib/errors.ts` სწორედ მას
+               კითხულობს (`storage_quota_exceeded`-ის კონვენცია). */
+            return response()->json([
+                'message' => 'upload_too_large',
+                'limit' => ini_get('post_max_size'),
+                'file_limit' => ini_get('upload_max_filesize'),
+            ], 413);
+        });
     })->create();

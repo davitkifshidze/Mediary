@@ -45,6 +45,29 @@ class AuditLog extends Model
      */
     public const ACTION_CHAT_DELETE = 'chat_delete';
 
+    /**
+     * მსახიობის მიბმა/მოხსნა ჩანაწერზე (ეტაპი 1, 2026-09-13).
+     *
+     * ⚠️ **ცალკე მოქმედებებია და არა `update`.** `castables` მოდელი არაა,
+     * ე.ი. `AuditObserver` მას ვერ ხედავს და ცვლილება ცხადად იწერება;
+     * თუ ამას `update`-ს დავარქმევდით, ლოგში ძველი/ახალი მნიშვნელობების
+     * გარეშე გამოჩნდებოდა — არც დიფი, არც ფილტრი.
+     */
+    public const ACTION_CAST_ATTACH = 'cast_attach';
+
+    public const ACTION_CAST_DETACH = 'cast_detach';
+
+    /**
+     * ჩანაწერის თარგმნა (შენი მითითება, 2026-09-14: „რა რითი ითარგმნა ჩანდეს
+     * ლოგებშიც").
+     *
+     * ⚠️ **`update` არ გამოდგებოდა.** ტექსტი `<domain>_translations`-ში ჯდება,
+     * რომელიც `AuditRegistry::MODELS`-ში არ არის — ე.ი. `AuditObserver` მას ვერ
+     * ხედავს და თარგმანი ლოგში **საერთოდ არ ჩანდა**. `new_values` აქ „ველი →
+     * წყარო" რუკაა, ე.ი. ზუსტად ის, რასაც კითხულობ: **რა რითი** ითარგმნა.
+     */
+    public const ACTION_TRANSLATE = 'translate';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
@@ -55,6 +78,9 @@ class AuditLog extends Model
         self::ACTION_UPDATE,
         self::ACTION_DELETE,
         self::ACTION_CHAT_DELETE,
+        self::ACTION_CAST_ATTACH,
+        self::ACTION_CAST_DETACH,
+        self::ACTION_TRANSLATE,
     ];
 
     /**

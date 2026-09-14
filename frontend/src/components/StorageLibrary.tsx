@@ -18,6 +18,7 @@ import { useDateFormat } from '@/lib/dates'
 import { moduleName, useModules } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -195,36 +196,37 @@ export function StorageLibrary({
 
       {/* ---------- ჩიპები: მოდული და ფაილის სახე ---------- */}
       {(moduleChips.length > 1 || kindChips.length > 1) && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
+        <ChipRow className="mb-4">
           {moduleChips.length > 1 && (
             <>
-              <Chip active={module === 'all'} onClick={() => setModule('all')} label={t('filter.all')} count={files.length} />
+              <Chip active={module === 'all'} onClick={() => setModule('all')} count={files.length}>
+                {t('filter.all')}
+              </Chip>
               {moduleChips.map((c) => (
                 <Chip
                   key={c.key}
                   active={module === c.key}
                   onClick={() => setModule(c.key)}
-                  label={label(c.key)}
                   count={c.count}
-                />
+                >
+                  {label(c.key)}
+                </Chip>
               ))}
             </>
           )}
           {kindChips.length > 1 && (
-            <span className="ml-2 flex flex-wrap gap-1.5 border-l border-border pl-3">
-              <Chip active={kind === 'all'} onClick={() => setKind('all')} label={t('storage.allKinds')} />
+            <ChipRow className="ml-1 border-l border-border pl-3">
+              <Chip active={kind === 'all'} onClick={() => setKind('all')}>
+                {t('storage.allKinds')}
+              </Chip>
               {kindChips.map((c) => (
-                <Chip
-                  key={c.key}
-                  active={kind === c.key}
-                  onClick={() => setKind(c.key)}
-                  label={t(`storage.fileKind.${c.key}`)}
-                  count={c.count}
-                />
+                <Chip key={c.key} active={kind === c.key} onClick={() => setKind(c.key)} count={c.count}>
+                  {t(`storage.fileKind.${c.key}`)}
+                </Chip>
               ))}
-            </span>
+            </ChipRow>
           )}
-        </div>
+        </ChipRow>
       )}
 
       {/* ---------- §6.2 — მასობრივი მოქმედებები ----------
@@ -380,33 +382,6 @@ export function StorageLibrary({
   )
 }
 
-function Chip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean
-  onClick: () => void
-  label: string
-  count?: number
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-        active
-          ? 'border-primary bg-secondary text-foreground'
-          : 'border-border text-muted-foreground hover:text-foreground',
-      )}
-    >
-      {label}
-      {count != null && <span className="ml-1 opacity-60">{count}</span>}
-    </button>
-  )
-}
 
 /**
  * ფაილის მინი-ხედი.

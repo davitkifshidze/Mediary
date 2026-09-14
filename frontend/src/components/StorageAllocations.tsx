@@ -29,10 +29,16 @@ const MB = 1024 * 1024
 export function StorageAllocations({
   usage,
   modules,
+  bare,
 }: {
   usage: StorageUsage
   /** მხოლოდ ჩართული მოდულები — ავატარი (`account`) ლიმიტს ვერ იღებს */
   modules: { key: string; name: string }[]
+  /**
+   * საკუთარ სექციაში დგას (ეტაპი 5, `/settings`) — ე.ი. ზედა გამყოფი და
+   * სათაური ზედმეტია: მათ გამომძახებელი წერს.
+   */
+  bare?: boolean
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -76,12 +82,12 @@ export function StorageAllocations({
   if (!modules.length) return null
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
-      <h3 className="mb-1 text-sm font-semibold">{t('storage.allocationsTitle')}</h3>
+    <div className={bare ? undefined : 'mt-4 border-t border-border pt-4'}>
+      {!bare && <h3 className="mb-1 text-sm font-semibold">{t('storage.allocationsTitle')}</h3>}
       <p className="mb-3 text-xs text-muted-foreground">{t('storage.allocationsHint')}</p>
 
       {/* ვიზუალური ზოლი — სად რამდენი წავიდა */}
-      <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-muted">
+      <div className="mb-3 flex h-2 overflow-hidden rounded-md bg-muted">
         {modules.map((m, i) => {
           const bytes = bytesOf(draft[m.key] ?? '') ?? 0
           if (!bytes || !usage.quota) return null

@@ -82,6 +82,7 @@ export function GalleryPhotoGrid({
   return (
     <PhotoGrid
       emptyText={emptyText ?? t('gallery.noPhotosYet')}
+      emptyHint={t('gallery.emptyHint')}
       items={images.map(toItem)}
       lightboxItems={lightboxImages?.map(toItem)}
       pageSize={pageSize}
@@ -125,7 +126,7 @@ export function GalleryStackSkeleton({ count = 8 }: { count?: number }) {
   return (
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
-        <li key={i} className="rounded-2xl border border-border bg-card p-3">
+        <li key={i} className="rounded-2xl border border-border bg-card p-4">
           <div className="aspect-[3/4] animate-pulse rounded-xl bg-muted/60" />
           <div className="mt-3 h-3 w-2/3 animate-pulse rounded bg-muted/60" />
           <div className="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-muted/50" />

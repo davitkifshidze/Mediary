@@ -24,7 +24,7 @@ export function SettingRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium">
           {label}
-          {dirty && <span className="size-1.5 shrink-0 rounded-full bg-primary" title={label} />}
+          {dirty && <span className="size-1.5 shrink-0 rounded-md bg-primary" title={label} />}
         </div>
         {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       </div>

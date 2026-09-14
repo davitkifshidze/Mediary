@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { GALLERY_CUTS, type GalleryCut } from '@/lib/galleryCuts'
+import { GALLERY_CUTS, galleryCutLabel, type GalleryCut } from '@/lib/galleryCuts'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,16 +11,17 @@ import {
   type GalleryDefaults,
   type GalleryGroup,
 } from '@/api/gallery'
-import { isMediaKey, useModules } from '@/lib/modules'
+import { isMediaKey, moduleName, useModules } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { GalleryDownloadDialog, type GalleryDownloadPin } from '@/components/GalleryDownloadDialog'
 import { StorageBar } from '@/components/StorageBar'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { AllPhotosCut } from '@/components/gallery/AllPhotosCut'
 import { GroupsCut } from '@/components/gallery/GroupsCut'
+import { RecordsCut } from '@/components/gallery/RecordsCut'
 import { ModulesCut } from '@/components/gallery/ModulesCut'
 import { VideosCut } from '@/components/gallery/VideosCut'
 
@@ -43,7 +44,7 @@ import { VideosCut } from '@/components/gallery/VideosCut'
    ============================================================ */
 
 export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { all, mediaModules } = useModules()
 
@@ -51,6 +52,13 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
     () => mediaModules.map((m) => m.key).filter(isMediaKey),
     [mediaModules],
   )
+
+  const mediaNames = useMemo(
+    () => mediaModules.map((m) => moduleName(m, i18n.language)),
+    [mediaModules, i18n.language],
+  )
+
+  const cutLabel = (key: GalleryCut) => galleryCutLabel(key, t(`gallery.cut.${key}`), mediaNames)
 
   const [open, setOpen] = useState(false)
   const [pin, setPin] = useState<GalleryDownloadPin | undefined>()
@@ -87,7 +95,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
     <PageContainer>
       <PageHeader
         module="gallery"
-        title={t(`gallery.cut.${cut}`)}
+        title={cutLabel(cut)}
         actions={
           domains.length > 0 ? (
             <Button onClick={() => openDownload(undefined)}>
@@ -100,7 +108,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
 
       {/* ---------- მთვლელები + ადგილი ---------- */}
       {summary && (
-        <section className="mb-5 rounded-xl border border-border bg-card p-4">
+        <section className="mb-5 rounded-xl border border-border bg-card p-5">
           <div className="mb-3 flex flex-wrap gap-x-6 gap-y-2">
             <Stat label={t('gallery.statPhotos')} value={summary.photos} />
             <Stat label={t('gallery.statRecords')} value={summary.records} />
@@ -129,7 +137,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
             }
           >
             <Icon className="size-4" />
-            {t(`gallery.cut.${key}`)}
+            {cutLabel(key)}
           </NavLink>
         ))}
       </nav>
@@ -137,12 +145,9 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
       {/* ---------- ჭრილი ---------- */}
       {cut === 'all' && <AllPhotosCut />}
 
-      {cut === 'records' &&
-        (domains.length === 0 ? (
-          <EmptyState title={t('gallery.needsMediaModule')} />
-        ) : (
-          <GroupsCut by="record" onDownloadRecord={fromRecordGroup} onDownloadActor={fromActorGroup} />
-        ))}
+      {cut === 'records' && (
+        <RecordsCut onDownloadRecord={fromRecordGroup} onDownloadActor={fromActorGroup} />
+      )}
 
       {cut === 'actors' && (
         <GroupsCut by="actor" onDownloadRecord={fromRecordGroup} onDownloadActor={fromActorGroup} />
@@ -154,23 +159,13 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
         <div>
           {/* ⚠️ **ორი სხვადასხვა კითხვა და ორივეს პასუხი სჭირდება**: „რომელმა
               წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". */}
-          <div className="mb-4 flex flex-wrap gap-1.5">
+          <ChipRow className="mb-4">
             {(['provider', 'source'] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSourceBy(key)}
-                className={cn(
-                  'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-                  sourceBy === key
-                    ? 'border-primary bg-secondary text-foreground'
-                    : 'border-border text-muted-foreground hover:text-foreground',
-                )}
-              >
+              <Chip key={key} active={sourceBy === key} onClick={() => setSourceBy(key)}>
                 {t(`gallery.sourceBy.${key}`)}
-              </button>
+              </Chip>
             ))}
-          </div>
+          </ChipRow>
           <GroupsCut by={sourceBy} />
         </div>
       )}

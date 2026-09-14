@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    ჩანაწერების მოდული (`note`, Tasks §13).
@@ -168,16 +169,19 @@ export interface NoteReminder {
   remind_at: string | null
   /** ⚠️ პერიოდი ველია და არა ჩაშენებული 10/15/20 (§13.2) */
   interval_minutes: number | null
-  /** `HH:mm` — ყველა პერიოდულს სჭირდება */
-  time_of_day: string | null
+  /** ⚠️ **სიაა** (ეტაპი 7) — `HH:mm`, დღეში რამდენიმე გასროლა */
+  times_of_day: string[]
   /** ⚠️ **მასივია** (§5.5) — 0 = კვირა */
   weekdays: number[]
-  /** `monthly`/`yearly` — 1–31 (მოკლე თვეში ბოლო დღეზე ჩამოდის) */
-  day_of_month: number | null
+  /** ⚠️ **სიაა** (ეტაპი 7) — 1–31 (მოკლე თვეში ბოლო დღეზე ჩამოდის) */
+  days_of_month: number[]
   /** `yearly` — 1–12 */
   month: number | null
   /** ჯერადობა: სულ რამდენჯერ გაისროლოს; `null` = უსასრულოდ */
   repeat_count: number | null
+  /** მოქმედების ფანჯარა (ეტაპი 7) — აბსოლუტური მომენტები, ISO */
+  starts_at: string | null
+  ends_at: string | null
   timezone: string
   channels: ReminderChannel[]
   is_active: boolean
@@ -185,17 +189,21 @@ export interface NoteReminder {
   next_at: string | null
   last_sent_at: string | null
   sent_count: number
+  /** მხოლოდ საერთო სიაში (`fetchAllNoteReminders`) — ბმა ჩანაწერზე */
+  note?: { id: number; title: string }
 }
 
 export interface NoteReminderInput {
   mode: ReminderMode
   remind_at?: string | null
   interval_minutes?: number | null
-  time_of_day?: string | null
+  times_of_day?: string[] | null
   weekdays?: number[] | null
-  day_of_month?: number | null
+  days_of_month?: number[] | null
   month?: number | null
   repeat_count?: number | null
+  starts_at?: string | null
+  ends_at?: string | null
   timezone?: string
   channels?: ReminderChannel[]
   is_active?: boolean
@@ -203,6 +211,18 @@ export interface NoteReminderInput {
 
 export async function fetchNoteReminders(noteId: number): Promise<NoteReminder[]> {
   const { data } = await api.get(`/notes/${noteId}/reminders`)
+  return data.data
+}
+
+/**
+ * **ყველა შეხსენება ერთ სიაში** (ეტაპი 11.2 — `/notes/reminders`-ის გვერდი).
+ *
+ * ⚠️ თითო რიგს თან მოჰყვება `note` (id + სათაური) — ეს არის ის „ბმა",
+ * რომლის გარეშეც სია უაზროა: „ყოველდღე 09:00" არაფერს ამბობს, სანამ არ
+ * ჩანს, *რას* ეხება.
+ */
+export async function fetchAllNoteReminders(): Promise<NoteReminder[]> {
+  const { data } = await api.get('/note-reminders')
   return data.data
 }
 
@@ -310,11 +330,12 @@ export async function updateNoteCategory(
 }
 
 /** წაშლა; `moveTo` — რომელ კატეგორიაზე გადავიდნენ ეს ჩანაწერები (null = უკატეგორიოდ) */
-export async function deleteNoteCategory(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/note-categories/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteNoteCategory(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/note-categories/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderNoteCategories(ids: number[]): Promise<NoteCategory[]> {

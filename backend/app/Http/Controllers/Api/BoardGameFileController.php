@@ -8,6 +8,7 @@ use App\Models\BoardGame;
 use App\Models\BoardGameFile;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
@@ -20,11 +21,7 @@ use Illuminate\Http\Request;
  */
 class BoardGameFileController extends Controller
 {
-    private const DOC_MIMES = 'pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx';
-
     /** წესები ხშირად სკანირებული PDF-ია — 30 MB რეალისტური ჭერია */
-    private const RULES_MAX_KB = 30720;
-
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request, BoardGame $boardGame)
@@ -44,9 +41,9 @@ class BoardGameFileController extends Controller
             'kind' => ['required', 'in:rules,image,doc'],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => match ($kind) {
-                'image' => ['file', 'image', 'max:8192'],
-                'doc' => ['file', 'max:20480', 'mimes:'.self::DOC_MIMES],
-                default => ['file', 'max:'.self::RULES_MAX_KB, 'mimes:pdf'],
+                'image' => UploadLimits::rule('image'),
+                'doc' => UploadLimits::rule('doc'),
+                default => UploadLimits::rule('rules'),
             },
         ]);
 

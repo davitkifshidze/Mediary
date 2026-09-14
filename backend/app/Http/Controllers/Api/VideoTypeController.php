@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoTypeResource;
 use App\Models\Video;
 use App\Models\VideoType;
+use App\Support\DictionaryRecords;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -60,23 +61,26 @@ class VideoTypeController extends Controller
      */
     public function destroy(Request $request, VideoType $videoType)
     {
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
-            ],
-        ]);
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+        ));
 
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $videoType->id
-            ? (int) $data['move_to']
-            : null;
+        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete(Video::where('type_id', $videoType->id));
+            $videoType->delete();
+
+            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+        }
+
+        $moveTo = DictionaryRecords::moveTarget($data, $videoType->id);
 
         $moved = Video::where('type_id', $videoType->id)->update(['type_id' => $moveTo]);
 
         $videoType->delete();
 
-        return response()->json(['moved' => $moved]);
+        return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */

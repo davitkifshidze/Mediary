@@ -44,7 +44,6 @@ class BoardGame extends Model
         'bgg_rating' => 'float',
         'rating' => 'integer',
         'is_favorite' => 'boolean',
-        'mechanics' => 'array',
         'links' => 'array',
         'sort_order' => 'integer',
     ];
@@ -97,11 +96,5 @@ class BoardGame extends Model
         if ($this->image_path && $this->image_source === 'upload') {
             app(StorageMeter::class)->deleteUpload($this->user_id, $this->image_path);
         }
-    }
-
-    /** მექანიკები იმავე წესებით ნორმალიზდება, რაც ტეგები ვიდეოზე/სიმღერაზე */
-    public static function normalizeMechanics(array $values): array
-    {
-        return Video::normalizeTags($values);
     }
 }

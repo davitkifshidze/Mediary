@@ -475,7 +475,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
                   {/* ⚠️ ჩაკეტილ ველზე მიზეზი **ცხადად** წერია, თორემ გამორთული
                       გადამრთველი „გატეხილად" იკითხება */}
                   {field.locked && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
                       <Lock className="size-3" />
                       {t('fields.locked')}
                     </span>

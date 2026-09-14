@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDateTime } from './dates'
+import { formatDate, formatDateTime, formatRelative } from './dates'
 
 /* ============================================================
    `lib/dates.ts` — თარიღის ერთიანი ფორმატი.
@@ -36,5 +36,32 @@ describe('formatDateTime', () => {
 
   it('ცარიელზე ტირეა', () => {
     expect(formatDateTime(null, 'iso')).toBe('—')
+  })
+})
+
+describe('formatRelative', () => {
+  const NOW = Date.parse('2026-09-14T12:00:00Z')
+
+  /** ⚠️ „3 საათში" წინადადებაა — ლოკალი ინტერფეისის ენაა და არა თარიღის ფორმატი */
+  it('ქართულად წერს მომავალსაც და წარსულსაც', () => {
+    expect(formatRelative('2026-09-14T15:00:00Z', 'ka', NOW)).toBe('3 საათში')
+    expect(formatRelative('2026-09-14T10:00:00Z', 'ka', NOW)).toBe('2 საათის წინ')
+  })
+
+  /** `numeric: 'auto'` — „ხვალ" და არა „1 დღეში" */
+  it('უახლოეს დღეებს სიტყვით ამბობს', () => {
+    expect(formatRelative('2026-09-15T12:00:00Z', 'ka', NOW)).toBe('ხვალ')
+    expect(formatRelative('2026-09-15T12:00:00Z', 'en', NOW)).toBe('tomorrow')
+  })
+
+  /** ერთ წუთზე ნაკლები წამებში ითქმება და არა „0 წუთში" */
+  it('ძალიან ახლო მომენტი წამებშია', () => {
+    expect(formatRelative('2026-09-14T12:00:30Z', 'ka', NOW)).toBe('30 წამში')
+  })
+
+  it('ცარიელსა და გაუმართავზე `null`-ია და არა „Invalid Date"', () => {
+    expect(formatRelative(null, 'ka', NOW)).toBeNull()
+    expect(formatRelative('', 'ka', NOW)).toBeNull()
+    expect(formatRelative('არა თარიღი', 'ka', NOW)).toBeNull()
   })
 })

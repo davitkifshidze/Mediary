@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BoardGameGenreResource;
 use App\Models\BoardGame;
 use App\Models\BoardGameGenre;
+use App\Support\DictionaryRecords;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -55,23 +56,26 @@ class BoardGameGenreController extends Controller
     /** წაშლა; `move_to` — რომელ ჟანრზე გადავიდეს ეს თამაშები */
     public function destroy(Request $request, BoardGameGenre $boardGameGenre)
     {
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
-            ],
-        ]);
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
+        ));
 
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $boardGameGenre->id
-            ? (int) $data['move_to']
-            : null;
+        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete(BoardGame::where('genre_id', $boardGameGenre->id));
+            $boardGameGenre->delete();
+
+            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+        }
+
+        $moveTo = DictionaryRecords::moveTarget($data, $boardGameGenre->id);
 
         $moved = BoardGame::where('genre_id', $boardGameGenre->id)->update(['genre_id' => $moveTo]);
 
         $boardGameGenre->delete();
 
-        return response()->json(['moved' => $moved]);
+        return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */

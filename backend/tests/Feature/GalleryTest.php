@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\CastMember;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
+use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\Song;
@@ -711,6 +712,137 @@ class GalleryTest extends TestCase
     }
 
     /**
+     * **ეტაპი 2 — „ფოტოიანი / უფოტო".**
+     *
+     * ⚠️ ჯგუფების სია ყოველთვის `has('galleryImages')`-ით იწყებოდა, ე.ი.
+     * სწორედ ის ჩანაწერები არსად ჩანდა, რომლებისთვისაც ჩამოტვირთვა არსებობს
+     * („რომელ ფილმს არ აქვს ფოტო" კითხვას გალერეაში პასუხი არ ჰქონდა).
+     */
+    public function test_records_cut_lists_records_without_photos(): void
+    {
+        $withPhoto = $this->makeMovie('Fight Club');
+        $without = $this->makeMovie('Se7en', 807);
+        $this->image($withPhoto, 'backdrop');
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $withPhoto->id);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&have=without')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $without->id)
+            ->assertJsonPath('groups.0.photos', 0);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&have=all')
+            ->assertOk()
+            ->assertJsonCount(2, 'groups');
+    }
+
+    /**
+     * **ეტაპი 2 — ჟანრი/წელი/სტატუსი და შიდა დაჯგუფების საკვები.**
+     *
+     * ⚠️ სამივე ველი **ჯგუფშივე** ბრუნდება: სექციებად დაყოფა ფრონტზე ხდება
+     * და თითო ბარათზე ცალკე მოთხოვნა ასჯერ გაიგზავნებოდა.
+     */
+    public function test_record_groups_filter_by_genre_year_and_status(): void
+    {
+        $drama = Genre::create(['slug' => 'drama']);
+        $drama->translations()->create(['locale' => 'ka', 'name' => 'დრამა']);
+        $drama->translations()->create(['locale' => 'en', 'name' => 'Drama']);
+
+        $old = $this->makeMovie('Fight Club');          // year 1999
+        $new = $this->makeMovie('Dune', 438631);
+        $new->year = 2021;
+        $new->save();
+
+        $old->genres()->sync([$drama->id]);
+        $this->image($old, 'backdrop');
+        $this->image($new, 'backdrop');
+
+        $old->applyStatusKey('watched');
+        $old->save();
+
+        // ჟანრი
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&genre=drama')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $old->id)
+            ->assertJsonPath('groups.0.genres.0.slug', 'drama');
+
+        // წელი
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&year_min=2000')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $new->id)
+            ->assertJsonPath('groups.0.year', 2021);
+
+        /* სტატუსი — ⚠️ **ობიექტია და არა სტრიქონი** (§6.4): სახელი
+           მფლობელის ლექსიკონშია და გასაღები მარტო არაფერს ამბობს */
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&status=watched')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $old->id)
+            ->assertJsonPath('groups.0.status.key', 'watched')
+            ->assertJsonPath('groups.0.status.role', 'done');
+    }
+
+    /**
+     * **ეტაპი 2 — მსახიობების ჭრილი დომენით.**
+     *
+     * შენი სიტყვები: „ფილმების გალერეა, სადაც უნდა იყოს როგორც ფილმები
+     * ასევე მსახიობები შიგნით". ⚠️ ფოტო **მსახიობზეა** მიბმული (ერთი ფოტო
+     * ორ ფილმზე არ დუბლირდება), ე.ი. „რომელი დომენისაა" მხოლოდ იმით
+     * გამოითვლება, სად თამაშობს ეს ადამიანი.
+     */
+    public function test_actor_groups_can_be_cut_by_domain(): void
+    {
+        $this->user->modules()->syncWithoutDetaching(Module::where('key', 'anime')->pluck('id')->all());
+        $this->user = $this->user->refresh();
+
+        $movie = $this->makeMovie('Fight Club');
+        [$female, $male] = $this->attachCast($movie);
+
+        $anime = Anime::create(['user_id' => $this->user->id, 'tmdb_id' => 30, 'year' => 2016]);
+        $anime->translations()->create(['locale' => 'en', 'title' => 'Your Name']);
+        $other = CastMember::create(['tmdb_person_id' => 33, 'name' => 'Mone', 'gender' => 1]);
+        $anime->cast()->sync([$other->id => ['billing_order' => 0]]);
+
+        foreach ([$female, $male, $other] as $member) {
+            $this->image($member, 'actor');
+        }
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=actor')
+            ->assertOk()
+            ->assertJsonCount(3, 'groups');
+
+        $ids = collect(
+            $this->actingAs($this->user)
+                ->getJson('/api/gallery/groups?by=actor&from=movie')
+                ->assertOk()
+                ->assertJsonCount(2, 'groups')
+                ->json('groups')
+        )->pluck('id')->all();
+
+        sort($ids);
+        $this->assertSame([$female->id, $male->id], $ids);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=actor&from=anime')
+            ->assertOk()
+            ->assertJsonCount(1, 'groups')
+            ->assertJsonPath('groups.0.id', $other->id);
+    }
+
+    /**
      * Tasks §3.6 — რიცხვი სამიზნეზეა და **0 „არცერთს" ნიშნავს**.
      *
      * ⚠️ ადრე `clamp()` ნულს ნაგულისხმევზე აბრუნებდა, ე.ი. „მსახიობზე
@@ -1336,5 +1468,63 @@ class GalleryTest extends TestCase
         // …მაგრამ მონიშნული მაინც ჩამოიწერება
         $this->assertSame(1, $body['count']);
         $this->assertSame($female->id, $body['items'][0]['id']);
+    }
+
+    /**
+     * **„მსახიობი 0" — ნულს მიზეზი უნდა ჰქონდეს** (ეტაპი 4, 2026-09-13).
+     *
+     * ⚠️ ცოცხალი ხარვეზი ასე გამოიყურებოდა: მსახიობის გვერდიდან გახსნილ
+     * ჩამოტვირთვაში „მსახიობი 0 × თითოზე 20 = 0 ფოტომდე" ეწერა. მიზეზი
+     * `skip_with_photos`-ია — ვისაც ერთი ფოტო მაინც აქვს, გეგმიდან
+     * ამოვარდება. ფრონტზე ჩამრთველი მიბმულ მსახიობზე **დამალულია**, ე.ი.
+     * ფილტრი ისე მუშაობდა, რომ ეკრანზე კვალი არ რჩებოდა. ახლა გეგმა
+     * ცხადად ამბობს, რამდენი მოიჭრა ამ მიზეზით.
+     */
+    public function test_the_plan_says_how_many_were_skipped_for_having_photos(): void
+    {
+        $movie = $this->makeMovie('Fight Club');
+        [$female] = $this->attachCast($movie);
+        $this->image($female, 'actor');
+
+        $body = $this->actingAs($this->user)
+            ->postJson('/api/gallery/plan', [
+                'target' => 'actor',
+                'cast' => 'selected',
+                'cast_ids' => [$female->id],
+                'skip_with_photos' => true,
+                'per_actor' => 2,
+            ])
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(0, $body['count']);
+        $this->assertSame(1, $body['skipped_with_photos']);
+
+        // ⚠️ ფილტრის გარეშე იგივე მსახიობი ისევ გეგმაშია — ე.ი. ნული
+        // „არაფერი მოიძებნა" არასდროს ყოფილა
+        $this->actingAs($this->user)
+            ->postJson('/api/gallery/plan', [
+                'target' => 'actor',
+                'cast' => 'selected',
+                'cast_ids' => [$female->id],
+                'skip_with_photos' => false,
+                'per_actor' => 2,
+            ])
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('skipped_with_photos', 0);
+    }
+
+    /** იგივე ჩანაწერების ტაბზე — „ყველას უკვე აქვს" ცარიელი სკოუპი არ არის */
+    public function test_the_record_plan_counts_records_skipped_for_having_photos(): void
+    {
+        $movie = $this->makeMovie('Fight Club');
+        $this->image($movie, 'backdrop');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/gallery/plan', ['scope' => 'all', 'skip_with_photos' => true])
+            ->assertOk()
+            ->assertJsonPath('count', 0)
+            ->assertJsonPath('skipped_with_photos', 1);
     }
 }

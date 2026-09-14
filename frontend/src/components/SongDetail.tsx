@@ -13,6 +13,7 @@ import {
   type Song,
 } from '@/api/songs'
 import { storageUrl } from '@/lib/api'
+import { useFileViewer } from '@/components/FileViewer'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { formatBytes } from '@/lib/utils'
@@ -81,6 +82,10 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
     onError: fail,
   })
   const removeFile = useMutation({ mutationFn: deleteSongFile, onSuccess: refresh, onError: fail })
+  /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
+     მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
+  const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => removeFile.mutate(id) })
+
 
   const addNote = useMutation({
     mutationFn: (body: string) => createSongNote(song.id, body),
@@ -249,7 +254,15 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
                 {docs.map((f) => (
                   <li key={f.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm">{f.original_name}</span>
+                    {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
+                    <button
+                      type="button"
+                      onClick={() => viewer.open(f)}
+                      className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm hover:underline"
+                      title={t('files.viewerOpen')}
+                    >
+                      {f.original_name}
+                    </button>
                     <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(f.size)}</span>
                     <a
                       href={storageUrl(f.url) ?? '#'}
@@ -281,6 +294,9 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
           </>
         )}
       </div>
+
+      {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
+      {viewer.node}
     </ModalShell>
   )
 }

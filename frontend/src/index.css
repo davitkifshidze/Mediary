@@ -40,7 +40,12 @@
   --status-watched: #3f7d42;
   --favorite: #b4532a;
 
-  --radius: 0.5rem;
+  /* ⚠️ **ერთადერთი ადგილი, სადაც მომრგვალება წყდება.** იხ. `@theme inline` —
+     `rounded-xl`/`rounded-2xl` Tailwind-ის საკუთარ სკალას კითხულობს და ამ
+     ცვლადს **არ** ემორჩილება, სანამ იქ ცხადად არ გადავფარავთ.
+     ⚠️ ჭერი 5px-ია (მომხმარებლის პირდაპირი მოთხოვნა, 2026-09-12) — მასზე
+     დიდი მომრგვალება არსად უნდა გაჩნდეს. */
+  --radius: 5px;
 }
 
 .dark {
@@ -98,9 +103,32 @@
   --color-status-watched: var(--status-watched);
   --color-favorite: var(--favorite);
 
+  /* ---- მომრგვალება (2026-09-12) ----------------------------------------
+     ⚠️ **`--radius` მარტო არაფერს აკეთებდა.** მასზე მხოლოდ `rounded-sm/md/lg`
+     იყო გადაბმული, აპლიკაციაში კი 120 ადგილას `rounded-xl`/`rounded-2xl`
+     წერია — ისინი Tailwind-ის ნაგულისხმევ სკალას (0.75rem / 1rem) კითხულობდნენ
+     და ტოკენის შეცვლა მათზე **ჩუმად არაფერს ცვლიდა**. ამიტომ სკალა აქვე
+     სრულად გადაიფარება: ერთი ცვლილება = მთელი აპლიკაცია, კლასების გადაწერის
+     გარეშე.
+
+     ⚠️ **მთელი სკალა 5px-ზეა შეჩერებული** — `rounded-xl`, `rounded-2xl` და
+     `rounded-3xl` ერთსა და იმავე მნიშვნელობას აბრუნებს. ეს განზრახაა: კლასის
+     დონეზე „უფრო მრგვალი“ ვარიანტი აღარ არსებობს, ე.ი. ახალი გვერდი
+     `rounded-2xl`-ით ვერ დააბრუნებს დიდ მომრგვალებას.
+     ⚠️ **`--radius-xs`-იდან `--radius-4xl`-მდე ყველა გასაღები ჩამოთვლილია** —
+     Tailwind v4-ის namespace სწორედ ეს რვაა და ერთის გამოტოვება იმას ნიშნავს,
+     რომ ის ერთი კლასი ბიბლიოთეკის ნაგულისხმევს დაუბრუნდება.
+
+     ⚠️ `rounded-full` ხელუხლებელია — ავატარი, გადამრთველი, ჩიპი და პროგრესის
+     ზოლი წრე/აბი უნდა დარჩეს, ეს რადიუსის პარამეტრი კი არა, ცალკე ფორმაა. */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: var(--radius); /* 5px */
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 0.125rem);
-  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-xl: var(--radius); /* იყო 12px */
+  --radius-2xl: var(--radius); /* იყო 16px */
+  --radius-3xl: var(--radius); /* იყო 24px */
+  --radius-4xl: var(--radius); /* იყო 32px */
 
   --font-sans: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces", "Noto Serif Georgian", Georgia, serif;
@@ -167,11 +195,12 @@
 }
 .fb-scroll::-webkit-scrollbar-track {
   background: var(--muted);
-  border-radius: 9999px;
+  /* ⚠️ იყო 9999px — „ყველგან 5px" სქროლბარსაც ეხება (2026-09-13, ეტაპი 4) */
+  border-radius: var(--radius);
 }
 .fb-scroll::-webkit-scrollbar-thumb {
   background-color: var(--muted-foreground);
-  border-radius: 9999px;
+  border-radius: var(--radius);
   border: 3px solid var(--muted);
   background-clip: content-box;
   min-height: 32px;
@@ -190,15 +219,21 @@
 
 /* react-day-picker (Tasks §2.8) — თემის ცვლადებზე მიბმა.
    ⚠️ ბიბლიოთეკის CSS `--rdp-*`-ზეა აწყობილი, ე.ი. ერთი ბლოკი ყოფნის და
-   თითო კლასის გადაწერა (და ორ თემად გაორება) არ სჭირდება. */
-.fb-rdp {
+   თითო კლასის გადაწერა (და ორ თემად გაორება) არ სჭირდება.
+   ⚠️ სელექტორი **`.rdp-root.fb-rdp`-ია და არა `.fb-rdp`**: ბიბლიოთეკა იმავე
+   ელემენტზე `.rdp-root`-ით აცხადებს ამ ცვლადებს (`border-radius: 100%`), ე.ი.
+   თანაბარი specificity-ის დროს გადაწყვეტს რიგი — მისი CSS კი lazy chunk-ია და
+   ჩვენსას **მოგვიანებით** ეშვება თავზე. ერთი კლასით მეტი ამ დამოკიდებულებას
+   ხსნის, თორემ დღეები მრგვალი რჩებოდა. */
+.rdp-root.fb-rdp {
   --rdp-accent-color: var(--primary);
   --rdp-accent-background-color: color-mix(in oklab, var(--primary) 18%, transparent);
   --rdp-day-height: 36px;
   --rdp-day-width: 36px;
   --rdp-day_button-height: 34px;
   --rdp-day_button-width: 34px;
-  --rdp-day_button-border-radius: 8px;
+  --rdp-day_button-border-radius: 5px;
+  --rdp-week_number-border-radius: 5px;
   --rdp-nav_button-height: 1.75rem;
   --rdp-nav_button-width: 1.75rem;
   --rdp-months-gap: 1.25rem;
@@ -219,4 +254,7 @@
    დარჩებოდა და §1.2-ის ბაგი lightbox-ში დაბრუნდებოდა (იხ. `lib/layers.ts`). */
 :root {
   --yarl__portal_zindex: 80;
+  /* ⚠️ ბიბლიოთეკის ნაგულისხმევი 4px-ია — ახლოსაა, მაგრამ **სხვა წყაროა**;
+     რადიუსს ერთი ადგილი წყვეტს (ეტაპი 4) */
+  --yarl__thumbnails_thumbnail_border_radius: var(--radius);
 }

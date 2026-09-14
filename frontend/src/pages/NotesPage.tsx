@@ -36,6 +36,7 @@ import { NoteChannelsDialog } from '@/components/NoteChannelsDialog'
 import { NoteNotificationsDialog } from '@/components/NoteNotificationsDialog'
 import { NoteDetail } from '@/components/NoteDetail'
 import { NoteForm } from '@/components/NoteForm'
+import { NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import {
   FilterGroup,
@@ -44,6 +45,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -65,6 +67,10 @@ const SORTS = ['newest', 'oldest', 'title', 'due', 'updated'] as const
 
 /* ⚠️ სტატუსების სია აღარ წერია კოდში (§6.4) — ის per-user ლექსიკონია.
    ფერი `statusTone()`-იდან მოდის, ე.ი. ხელით დამატებულიც ფერადია. */
+
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_FILTERS = { categories: [] as string[], tags: [] as string[], overdue: false }
+type PanelFilters = typeof EMPTY_FILTERS
 
 export function NotesPage() {
   const { t, i18n } = useTranslation()
@@ -91,20 +97,17 @@ export function NotesPage() {
   )
   const overdue = new URLSearchParams(search).get('overdue') === '1'
 
-  const [draft, setDraft] = useState({ categories, tags, overdue })
   const [panelOpen, setPanelOpen] = useState(false)
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<NoteEntry | 'new' | null>(null)
   const [opened, setOpened] = useState<NoteEntry | null>(null)
+  // ეტაპი 11 — ბეჯი პირდაპირ შეხსენებების ფანჯარას ხსნის (და აღარ ჩანაწერს)
+  const [reminders, setReminders] = useState<NoteEntry | null>(null)
   const [channels, setChannels] = useState(false)
   // §8.2 — შეხსენებების ჟურნალი: ელფოსტის არხის ჩამნაცვლებელი
   const [log, setLog] = useState(false)
-
-  useEffect(() => {
-    setDraft({ categories, tags, overdue })
-  }, [categories, tags, overdue])
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -178,13 +181,8 @@ export function NotesPage() {
 
   /* ---------- ფილტრის გაშვება ---------- */
 
-  const activeCount = categories.length + tags.length + (overdue ? 1 : 0)
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x))
-  const dirty =
-    !same(draft.categories, categories) || !same(draft.tags, tags) || draft.overdue !== overdue
-
-  /** მიმდინარე სექცია (`?view=`) ინახება — პანელი მას არ ცვლის (Tasks 3) */
-  const applyDraft = (next: typeof draft) => {
+  /** მონახაზის გაშვება = ახალი მისამართი; მიმდინარე სექცია (`?view=`) ინახება */
+  const writeFilters = (next: PanelFilters) => {
     const p = new URLSearchParams()
     if (view !== 'all') p.set('view', view)
     if (next.categories.length) p.set('category', next.categories.join(','))
@@ -193,6 +191,16 @@ export function NotesPage() {
     setPanelOpen(false)
     navigate({ pathname: '/notes', search: p.toString() })
   }
+
+  /* მონახაზი, „ცვლილებაა?", გასუფთავება და მრიცხველი — ერთი აღწერა
+     `lib/filters.ts`-ში. ⚠️ `clear()` **ორივე მხარეს** ასუფთავებს
+     (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
+     სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
+    { categories, tags, overdue },
+    EMPTY_FILTERS,
+    writeFilters,
+  )
 
   const toggle = (key: 'categories' | 'tags', value: string, on: boolean) =>
     setDraft((d) => ({
@@ -292,7 +300,7 @@ export function NotesPage() {
               actions={
                 <>
                   {activeCount > 0 && (
-                    <Button variant="outline" onClick={() => applyDraft({ categories: [], tags: [], overdue: false })}>
+                    <Button variant="outline" onClick={clear}>
                       {t('filter.clear')}
                     </Button>
                   )}
@@ -348,12 +356,6 @@ export function NotesPage() {
                         {fmt.date(note.due_at)}
                       </span>
                     )}
-                    {(note.reminders_count ?? 0) > 0 && (
-                      <span className="inline-flex items-center gap-1">
-                        <BellRing className="size-3" />
-                        {note.reminders_count}
-                      </span>
-                    )}
                     {(note.files_count ?? 0) > 0 && (
                       <span className="inline-flex items-center gap-1">
                         <FileText className="size-3" />
@@ -407,6 +409,29 @@ export function NotesPage() {
                       <ExternalLink className="size-4" />
                     </a>
                   )}
+                  {/* ⚠️ **ზარი მოქმედებების რიგშია, რედაქტირების გვერდით**
+                      (შენი მითითება, 2026-09-14) — და აღარ მეტა-ხაზში,
+                      კატეგორიისა და ფაილების მრიცხველებს შორის: იქ ის
+                      *ინფორმაცია* ეგონა თვალს და არა ღილაკი, თუმცა ღილაკი იყო.
+                      ⚠️ ყოველთვის ჩანს (ნულზეც), თორემ „შეხსენება დავამატო"
+                      მხოლოდ იმას ეჩვენებოდა, ვისაც უკვე ჰქონდა. */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReminders(note)}
+                    title={t('notes.remindersTitle')}
+                    aria-label={t('notes.remindersTitle')}
+                  >
+                    <BellRing className="size-3.5" />
+                    {/* ⚠️ **რიცხვს ფიქსირებული ადგილი აქვს** (შენი მითითება,
+                        2026-09-14): პირობითად დახატული ციფრი ღილაკს აგანიერებდა,
+                        ე.ი. შეხსენებიანი და უშეხსენებო ჩანაწერის რიგები ერთმანეთს
+                        არ ემთხვეოდა. `tabular-nums` — ერთნიშნა და ორნიშნა რიცხვიც
+                        ერთსა და იმავე სიგანეშია. */}
+                    <span className="w-3 text-center tabular-nums">
+                      {(note.reminders_count ?? 0) > 0 ? note.reminders_count : ''}
+                    </span>
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(note)}>
                     <Pencil className="size-3.5" />
                     {t('actions.edit')}
@@ -438,20 +463,18 @@ export function NotesPage() {
         <FilterPanel
           activeCount={activeCount}
           dirty={dirty}
-          onApply={() => applyDraft(draft)}
-          onClear={() => applyDraft({ categories: [], tags: [], overdue: false })}
+          onApply={() => apply(draft)}
+          onClear={clear}
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
           {/* სტატუსი აქ განზრახ არ არის (Tasks 3) — ის საიდბარის სექციაა */}
           <FilterGroup title={t('notes.dueFilter')} count={draft.overdue ? 1 : 0}>
-            <div className="px-1.5 py-1">
-              <FilterOption
-                label={t('notes.overdueOnly')}
-                checked={draft.overdue}
-                onChange={(on) => setDraft((d) => ({ ...d, overdue: on }))}
-              />
-            </div>
+            <FilterOption
+              label={t('notes.overdueOnly')}
+              checked={draft.overdue}
+              onChange={(on) => setDraft((d) => ({ ...d, overdue: on }))}
+            />
           </FilterGroup>
 
           <FilterGroup title={t('notes.category')} count={draft.categories.length}>
@@ -492,6 +515,14 @@ export function NotesPage() {
           // სია განახლდება ატვირთვის შემდეგ — მოდალს ახალი ობიექტი უნდა
           note={notes.find((n) => n.id === opened.id) ?? opened}
           onClose={() => setOpened(null)}
+        />
+      )}
+
+      {/* ეტაპი 11 — იგივე ფანჯარა, რასაც ფორმა და დეტალები ხსნიან */}
+      {reminders && (
+        <NoteRemindersDialog
+          note={notes.find((n) => n.id === reminders.id) ?? reminders}
+          onClose={() => setReminders(null)}
         />
       )}
 

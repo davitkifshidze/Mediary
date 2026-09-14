@@ -7,6 +7,7 @@ use App\Models\Genre;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\Translator;
+use App\Support\CastSync;
 use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -272,7 +273,8 @@ abstract class TvEnricher
             $sync[$member->id] = ['character' => $c['character'] ?? '', 'billing_order' => $i];
         }
         if ($sync) {
-            $series->cast()->sync($sync);
+            // ⚠️ ხელით დამატებული მსახიობი `sync()`-ს ჩუმად წაეშლებოდა — იხ. `CastSync`
+            CastSync::fromSource($series, $sync);
         }
 
         return true;

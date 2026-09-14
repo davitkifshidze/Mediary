@@ -24,3 +24,23 @@ export const GALLERY_CUTS = [
   { key: 'sources', path: '/gallery/sources', icon: Radio },
   { key: 'modules', path: '/gallery/modules', icon: Boxes },
 ] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown }[]
+
+/**
+ * **ჭრილის სახელი (ეტაპი 2).**
+ *
+ * ⚠️ **„ჩანაწერები" ცუდი სახელია მაშინ, როცა მხოლოდ ფილმები გაქვს** — ესაა
+ * შენი შენიშვნა („რატო დაარქვი, ფილმებია ეს"). სახელი ახლა **ჩართული
+ * მედია-მოდულებიდან** იგება: ერთია — „ფილმები", ორია — „ფილმები · სერიალები".
+ *
+ * ⚠️ **სახელს `useModules()` აძლევს და არა i18n-ის ცალკე გასაღები** — მოდულის
+ * სახელი ბაზაშია (`modules.name_ka/name_en`) და საიდბარიც სწორედ მას ხატავს;
+ * მეორე წყარო ერთ დღეს გაშორდებოდა (და გადარქმეულ მოდულს ძველ სახელს
+ * აჩვენებდა).
+ *
+ * ⚠️ **ფოლბექი მაინც საჭიროა** — მედია-მოდული შეიძლება საერთოდ არ იყოს
+ * ჩართული (ჭრილში მაშინ სიმღერა/წიგნი/თამაში დგას), და უსახელო ტაბი
+ * უარესია, ვიდრე ზოგადი „ჩანაწერები".
+ */
+export function galleryCutLabel(cut: GalleryCut, fallback: string, mediaNames: string[]): string {
+  return cut === 'records' && mediaNames.length > 0 ? mediaNames.join(' · ') : fallback
+}

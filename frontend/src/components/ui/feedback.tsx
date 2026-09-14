@@ -119,7 +119,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                 <>
                   <div className="flex items-start gap-3">
                     {confirmState.variant === 'destructive' && (
-                      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+                      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md bg-destructive/10 text-destructive">
                         <AlertTriangle className="size-5" />
                       </span>
                     )}

@@ -97,6 +97,31 @@ export async function fetchAuditLogs(
   return data
 }
 
+/**
+ * ჭრილების მთვლელები (ეტაპი 10) — რამდენი რიგი აქვს თითო მოდულს/მოქმედებას.
+ *
+ * ⚠️ **თითო ჭრილი საკუთარ თავს არ ითვლის** (backend-ის `except`): მოდულის
+ * არჩევის შემდეგაც დანარჩენი ბარათები თავის რიცხვს ინარჩუნებს, ე.ი.
+ * „სხვაგან რა დევს" ყოველთვის კითხვადია. რიცხვი სწორედ ის რაოდენობაა,
+ * რასაც იმ ბარათზე დაჭერით მიიღებ.
+ */
+export interface AuditFacet {
+  /** `null` = მოდულის გარეშე რიგი (შესვლა/გასვლა/რეგისტრაცია) */
+  key: string | null
+  total: number
+}
+
+export interface AuditSummary {
+  total: number
+  modules: AuditFacet[]
+  actions: AuditFacet[]
+}
+
+export async function fetchAuditSummary(filters: AuditFilters): Promise<AuditSummary> {
+  const { data } = await api.get('/admin/audit/summary', { params: params(filters) })
+  return data
+}
+
 export async function fetchAuditMeta(): Promise<AuditMeta> {
   const { data } = await api.get('/admin/audit/meta')
   return data

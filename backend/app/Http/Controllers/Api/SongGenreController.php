@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SongGenreResource;
+use App\Models\Song;
 use App\Models\SongGenre;
+use App\Support\DictionaryRecords;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -64,17 +66,21 @@ class SongGenreController extends Controller
      */
     public function destroy(Request $request, SongGenre $songGenre)
     {
-        $data = $request->validate([
-            'move_to' => [
-                'nullable',
-                'integer',
-                Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
-            ],
-        ]);
+        $data = $request->validate(DictionaryRecords::rules(
+            $request,
+            Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
+        ));
 
-        $moveTo = isset($data['move_to']) && (int) $data['move_to'] !== $songGenre->id
-            ? (int) $data['move_to']
-            : null;
+        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი).
+        // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
+        if ($request->boolean('delete_records')) {
+            $deleted = DictionaryRecords::delete(Song::whereKey($songGenre->songs()->pluck('songs.id')->all()));
+            $songGenre->delete();
+
+            return response()->json(['moved' => 0, 'deleted' => $deleted]);
+        }
+
+        $moveTo = DictionaryRecords::moveTarget($data, $songGenre->id);
 
         $songIds = $songGenre->songs()->pluck('songs.id')->all();
         $moved = 0;
@@ -86,7 +92,7 @@ class SongGenreController extends Controller
 
         $songGenre->delete();
 
-        return response()->json(['moved' => $moved]);
+        return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
 
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */

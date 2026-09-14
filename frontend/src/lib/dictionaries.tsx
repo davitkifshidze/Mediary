@@ -22,7 +22,14 @@ import { NoteCategoryDialog } from '@/components/NoteCategoryDialog'
 import { SongGenreDialog } from '@/components/SongGenreDialog'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import { StatusDialog } from '@/components/StatusDialog'
-import { STATUS_DOMAINS, deleteStatus, fetchStatuses, reorderStatuses } from '@/api/statuses'
+import {
+  STATUS_DOMAINS,
+  deleteStatus,
+  fetchStatuses,
+  reorderStatuses,
+  type StatusDomain,
+} from '@/api/statuses'
+import type { DictionaryRemoval, DictionaryRemoved } from '@/api/dictionary'
 import { statusesQueryKey } from '@/lib/statuses'
 import { MEDIA } from '@/lib/media'
 import type { Status } from '@/api/types'
@@ -84,10 +91,20 @@ export interface DictionaryDef {
   countKey: string
   list: () => Promise<DictionaryItem[]>
   reorder: (ids: number[]) => Promise<DictionaryItem[]>
-  /** `moveTo: null` — ჩანაწერები ლექსიკონის გარეშე რჩება */
-  remove: (id: number, moveTo: number | null) => Promise<number>
+  /** გადატანა · ცარიელად დატოვება · ჩანაწერების წაშლაც (ეტაპი 8, `api/dictionary.ts`) */
+  remove: (id: number, removal: DictionaryRemoval) => Promise<DictionaryRemoved>
   count: (item: DictionaryItem) => number
   dialog: (item: DictionaryItem | null, onClose: () => void) => ReactNode
+  /**
+   * სტატუსის ლექსიკონი — ინდექსზე „სტატუსების" ჯგუფშია, შიგნით კი
+   * „ყველა"/„რჩეული" რიგებადაც ჩანს და საიდბარის განლაგებაც იქ იმართება.
+   */
+  statusDomain?: StatusDomain
+  /**
+   * ⚠️ **pivot-ია** (სიმღერა/თამაში რამდენიმე ჟანრით) — „ჩანაწერების წაშლა"
+   * ისეთ ჩანაწერსაც შლის, რომელსაც სხვა ჟანრიც აქვს, და დიალოგი ამას ცხადად ამბობს.
+   */
+  multi?: boolean
 }
 
 /**
@@ -124,6 +141,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     list: fetchSongGenres as never,
     reorder: reorderSongGenres as never,
     remove: deleteSongGenre,
+    multi: true,
     count: (item) => num(item.songs_count),
     dialog: (item, onClose) => <SongGenreDialog genre={item as never} onClose={onClose} />,
   },
@@ -166,6 +184,7 @@ export const DICTIONARIES: DictionaryDef[] = [
     list: fetchGameGenres as never,
     reorder: reorderGameGenres as never,
     remove: deleteGameGenre,
+    multi: true,
     count: (item) => num(item.games_count),
     dialog: (item, onClose) => <GameGenreDialog genre={item as never} onClose={onClose} />,
   },
@@ -253,6 +272,22 @@ const STATUS_COUNT_KEY: Record<(typeof STATUS_DOMAINS)[number], string> = {
   bookmark: 'bookmarks.count',
 }
 
+/**
+ * ჩანაწერების სიის ქეშის გასაღები — **გვერდს** ეკუთვნის და არა დომენს.
+ *
+ * ⚠️ ადრე ეს `domain` ეწერა, ე.ი. `note`/`bookmark`/`video`-ზე `['note']`-ს
+ * ანულებდა, სია კი `['notes', …]`-ზეა: სტატუსის წაშლა/გადატანა ჩანაწერების
+ * გვერდზე მხოლოდ ქეშის ვადის გასვლის შემდეგ ჩნდებოდა (ეტაპი 8-ზე ნაპოვნი).
+ */
+const STATUS_RECORDS_KEY: Record<(typeof STATUS_DOMAINS)[number], string> = {
+  movie: 'movie',
+  series: 'series',
+  anime: 'anime',
+  video: 'videos',
+  note: 'notes',
+  bookmark: 'bookmarks',
+}
+
 for (const domain of STATUS_DOMAINS) {
   DICTIONARIES.push({
     key: `${domain}-statuses`,
@@ -260,11 +295,12 @@ for (const domain of STATUS_DOMAINS) {
     titleKey: STATUS_TITLE[domain],
     recordsRoute: STATUS_ROUTE[domain],
     queryKey: statusesQueryKey(domain),
-    recordsQueryKey: domain,
+    recordsQueryKey: STATUS_RECORDS_KEY[domain],
     countKey: STATUS_COUNT_KEY[domain],
+    statusDomain: domain,
     list: (() => fetchStatuses(domain)) as never,
     reorder: ((ids: number[]) => reorderStatuses(domain, ids)) as never,
-    remove: (id, moveTo) => deleteStatus(domain, id, moveTo),
+    remove: (id, removal) => deleteStatus(domain, id, removal),
     count: (item) => num(item.records_count),
     dialog: (item, onClose) => (
       <StatusDialog domain={domain} status={item as unknown as Status | null} onClose={onClose} />

@@ -164,7 +164,6 @@ final class FieldCatalog
             ['key' => 'bgg_id', 'type' => 'number', 'sort_order' => 90],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 100],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 110],
-            ['key' => 'mechanics', 'type' => 'list', 'sort_order' => 120],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 130],
             ['key' => 'image', 'type' => 'file', 'sort_order' => 140],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 150],

@@ -54,14 +54,14 @@ export function StorageBar({
         </div>
       )}
       <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        className="h-1.5 w-full overflow-hidden rounded-md bg-muted"
         role="progressbar"
         aria-valuenow={usage.percent}
         aria-valuemin={0}
         aria-valuemax={100}
       >
         <div
-          className={cn('h-full rounded-full transition-[width]', BAR[level])}
+          className={cn('h-full rounded-md transition-[width]', BAR[level])}
           style={{ width: `${Math.max(usage.percent, usage.used > 0 ? 2 : 0)}%` }}
         />
       </div>

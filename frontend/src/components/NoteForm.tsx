@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { FieldLabel } from '@/components/ui/field-label'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
+import { NoteRemindersDialog, NoteRemindersLink } from '@/components/NoteRemindersDialog'
+import { NoteUploads } from '@/components/NoteUploads'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,6 +40,9 @@ import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
    შემდეგ ემატება (დეტალების მოდალში), რადგან ატვირთვას არსებული `note_id`
    სჭირდება — იგივე წესი, რაც წიგნსა და ბორდგეიმზეა.
    ============================================================ */
+
+/** ⚠️ `form="…"`-ს სჭირდება id; ერთი მოდალი ერთ ფორმას შეიცავს, ე.ი. მუდმივია */
+const FORM_ID = 'note-form'
 
 export function NoteForm({
   note,
@@ -71,6 +76,7 @@ export function NoteForm({
   const [links, setLinks] = useState<NoteLink[]>(note?.links ?? [])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newCategory, setNewCategory] = useState(false)
+  const [reminders, setReminders] = useState(false)
 
   const save = useMutation({
     mutationFn: (input: NoteInput) => (note ? updateNote(note.id, input) : createNote(input)),
@@ -100,9 +106,32 @@ export function NoteForm({
     })
   }
 
+  /* ⚠️ **შეხსენებების ფანჯარა ფორმის მოდალს ცვლის და არ ეფარება** (2026-09-14,
+     შენი არჩევანი: „ის გაქრეს, ეს გამოჩნდეს; დახურავ — პირიქით"). ორი ერთმანეთზე
+     დადებული მოდალი ერთი სიგანისა იყო, ე.ი. ქვედა კიდეებიდან მოჩანდა.
+
+     ⚠️ **ფორმა მონტირებული რჩება** — მხოლოდ მისი `ModalShell` იცვლება, ე.ი.
+     შევსებული ველები ადგილზეა, როცა ფანჯრიდან ბრუნდები. სწორედ ამიტომ უჭირავს
+     მდგომარეობა ფორმას და არა ღილაკს. */
+  if (reminders && note) {
+    return (
+      <NoteRemindersDialog
+        note={note}
+        onBack={() => setReminders(false)}
+        onClose={() => setReminders(false)}
+      />
+    )
+  }
+
   return (
     <ModalShell title={t(note ? 'notes.edit' : 'notes.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
+      {/* ⚠️ **მოქმედებების რიგი `<form>`-ის გარეთაა და ეკრანის ბოლოშია**
+          (2026-09-14). აქამდე „შენახვა" ფორმის ბოლოში იდგა, ატვირთვები,
+          შეხსენება და მორგებული ველები კი **მის ქვემოთ** — ე.ი. ღილაკი
+          გვერდს შუაზე ჭრიდა და ქვემოთ დარჩენილი ნაწილი „შენახვის შემდეგ
+          მოსულს" ჰგავდა. HTML5-ის `form="…"` სწორედ ამისთვისაა: ღილაკი
+          ფორმის გარეთ დგას და მაინც მას უშვებს. */}
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-4">
         <div>
           {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება */}
           <FieldLabel htmlFor="note-title" required>{fields.label('title')}</FieldLabel>
@@ -267,19 +296,37 @@ export function NoteForm({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </div>
       </form>
+
+      {/* ატვირთვები **დამატებაშიც და რედაქტირებაშიც** (2026-09-14) — იგივე
+          კომპონენტი, რაც დეტალებშია. ⚠️ `</form>`-ის გარეთ დგას: ფაილს
+          საკუთარი endpoint აქვს და ჩანაწერის `PUT`-ში არ მოგზაურობს. */}
+      <div className="mt-4">
+        <NoteUploads noteId={note?.id ?? null} />
+      </div>
+
+      {/* ⚠️ **შეხსენება ფორმის შიგნით არ დგას — არც ველებს შორის და არც
+          „გაუქმება/შენახვის" რიგში** (შენი მითითება, 2026-09-14): ის
+          `</form>`-ის **გარეთაა**, ცალკე რიგად, ხატულითა და ტექსტით.
+          ე.ი. ჩანაწერის ფორმას ისევ ერთი საქმე აქვს, გვერდზე კი ცხადად
+          ჩანს გასასვლელი შეხსენებებზე. იგივე, რასაც სიის ზარი აკეთებს. */}
+      <div className="mt-4">
+        <NoteRemindersLink note={note} onOpen={() => setReminders(true)} />
+      </div>
 
       {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
       <div className="mt-4">
         <CustomFieldsCard module="note" recordId={note?.id ?? null} />
+      </div>
+
+      {/* ⚠️ ბოლოში და ზედა ხაზით გამოყოფილი — ყველაფრის შემდეგ, რაც გვერდზეა */}
+      <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+        <Button type="button" variant="ghost" onClick={onClose}>
+          {t('actions.cancel')}
+        </Button>
+        <Button type="submit" form={FORM_ID} disabled={save.isPending}>
+          {save.isPending ? t('actions.saving') : t('actions.save')}
+        </Button>
       </div>
 
       {/* სწრაფი „ახალი კატეგორია" — შენახვისთანავე select-ში ირჩევა */}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, ImageOff } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 /* ============================================================
    ფოტოების **დასტა** — ერთი ჯგუფი ერთი კარტით (Tasks §4.2 → **§8.6**).
@@ -30,6 +31,14 @@ import { cn } from '@/lib/utils'
    ერთნაირად იმუშაოს.
    ⚠️ **ესკიზის უქონლობა ცალკე მდგომარეობაა** — ცარიელი ნაცრისფერი კარტი
    „ჩატვირთვად" იკითხებოდა; ახლა ხატულა ცხადად ამბობს, რომ ესკიზი არაა.
+
+   ## ეტაპი 2-ის ცვლილება (2026-09-13)
+   ⚠️ **მარჯვენა კლიკის მენიუ ბარათსაც აქვს** — გალერეის ჭრილებში სწორედ ეს
+   ბარათია ძირითადი ერთეული, ე.ი. „ჩამოტვირთვა" და „ჯგუფის ყველა ფოტოს
+   წაშლა" აქ უნდა იყოს და არა მხოლოდ ჯგუფის შიგნით.
+   ⚠️ **შიგთავსს გამომძახებელი წერს** (`menu`) — დასტამ არ იცის, რას ნიშნავს
+   „ჩამოტვირთვა" მსახიობზე, ჩანაწერზე თუ მოდულზე; მისი საქმე მხოლოდ ის არის,
+   რომ ბარათი დასაჭერად გამოდგეს.
    ============================================================ */
 
 /** რამდენი კარტი ჩანს დასტაში — მეტი უკან ისედაც არ იკითხება */
@@ -62,6 +71,7 @@ export function PhotoStack({
   aspect = 'portrait',
   badge,
   actions,
+  menu,
   className,
 }: {
   title: string
@@ -81,15 +91,22 @@ export function PhotoStack({
   badge?: ReactNode
   /** ქვედა მარჯვენა კონტროლები — ჩამოტვირთვა, ვებძებნა და მისთანები */
   actions?: ReactNode
+  /**
+   * მარჯვენა კლიკის მენიუს პუნქტები (`ContextMenuItem`-ები).
+   *
+   * ⚠️ **იგივე სიიდან უნდა დაიხატოს, რაც `actions`** — ორი ასლი აუცილებლად
+   * გაშორდება და მომხმარებელი სწორედ იმ ერთადერთს ეძებს, სადაც პუნქტია.
+   */
+  menu?: ReactNode
   className?: string
 }) {
   const [spread, setSpread] = useState(false)
   const cards = images.slice(0, STACK_CARDS)
 
-  return (
+  const card = (
     <div
       className={cn(
-        'group/stack relative rounded-2xl border bg-card p-3 transition-all duration-300',
+        'group/stack relative rounded-2xl border bg-card p-4 transition-all duration-300',
         open
           ? 'border-primary shadow-lg'
           : 'border-border hover:border-primary/60 hover:shadow-lg',
@@ -143,7 +160,7 @@ export function PhotoStack({
           {/* რაოდენობა — დასტის კუთხეში, ყოველთვის ზემოთ */}
           {count != null && count > 0 && (
             <span
-              className="pointer-events-none absolute -right-1 -top-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow-sm"
+              className="pointer-events-none absolute -right-1 -top-1 rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums text-primary-foreground shadow-sm"
               style={{ zIndex: STACK_CARDS + 1 }}
             >
               {count}
@@ -152,7 +169,7 @@ export function PhotoStack({
 
           {badge && (
             <span
-              className="pointer-events-none absolute left-1 top-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm"
+              className="pointer-events-none absolute left-1 top-1 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm"
               style={{ zIndex: STACK_CARDS + 1 }}
             >
               {badge}
@@ -185,5 +202,14 @@ export function PhotoStack({
         </div>
       )}
     </div>
+  )
+
+  if (!menu) return card
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{card}</ContextMenuTrigger>
+      <ContextMenuContent>{menu}</ContextMenuContent>
+    </ContextMenu>
   )
 }

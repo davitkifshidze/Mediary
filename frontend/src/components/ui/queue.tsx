@@ -10,7 +10,12 @@ import {
   type GalleryPlanItem,
 } from '@/api/gallery'
 import { mediaApi, syncItem, type SyncOptions, type SyncPlanItem } from '@/api/media'
-import { translateGenres, translateItem, type TranslationPlanItem } from '@/api/translations'
+import {
+  translateGenres,
+  translateItem,
+  type TranslationPlanItem,
+  type TranslationSource,
+} from '@/api/translations'
 import type { MediaType } from '@/lib/media'
 import { isMediaKey } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
@@ -63,6 +68,23 @@ interface QItem {
   galleryActor?: boolean
   /** translate — ჟანრების ლექსიკონი (ჩანაწერი არ აქვს, `itemId` ცარიელია) */
   genresDict?: boolean
+  /**
+   * translate — არჩეული წყაროები (`tmdb` · `gemini`).
+   *
+   * ⚠️ **არჩევანი ერთეულს მიჰყვება და არა დიალოგს** (შენი მითითება,
+   * 2026-09-14): რიგი თითო ჩანაწერს ცალკე რექვესთად აგზავნის, ე.ი. აქ რომ
+   * არ ეწეროს, მეორე ჩანაწერიდან სერვერი ნაგულისხმევზე დაბრუნდებოდა და
+   * „მარტო TMDB-ით" ჩუმად „ორივეთი" გაიქცეოდა.
+   */
+  sources?: TranslationSource[]
+  /**
+   * translate — TMDB-ის ქართული აღწერა გადამოწმდეს თუ არა (2026-09-14).
+   *
+   * ⚠️ `sources`-ის იგივე მიზეზით ზის **ერთეულზე** და არა დიალოგზე: ეს
+   * ერთადერთი რეჟიმია, რომელიც არსებულ ტექსტს წერს, ე.ი. მისი „ჩუმად
+   * ჩართვაც" და „ჩუმად ჩაქრობაც" ერთნაირად ცუდია.
+   */
+  review?: boolean
   /** purge — რა სამიზნეზე და ვისთან იშლება (20.2) */
   purgeOpts?: PurgeQueueOptions
   /** ჩავარდნის მიზეზი (J5) ან 'cancelled' */
@@ -80,7 +102,12 @@ interface QueueApi {
   /** გალერეის ჩამოტვირთვა (Tasks 10) — იგივე მოდელი, რაც სინქრონზე */
   enqueueGallery: (items: GalleryPlanItem[], opts: GalleryOptions) => void
   /** თარგმანების შევსება (Tasks 7); `genres` — ლექსიკონიც ერთ ერთეულად */
-  enqueueTranslate: (items: TranslationPlanItem[], genres?: boolean) => void
+  enqueueTranslate: (
+    items: TranslationPlanItem[],
+    genres?: boolean,
+    sources?: TranslationSource[],
+    review?: boolean,
+  ) => void
   /** ⚠️ მასობრივი წაშლა (20.2) — მხოლოდ დადასტურებული სკოუპით */
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
   isQueued: (tmdbId: number, mediaType?: MediaType) => boolean
@@ -132,7 +159,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
-   * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Claude-ის
+   * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Gemini-ის
    * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery` — TMDB.
    */
   const paceOf = React.useCallback(
@@ -235,7 +262,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  const enqueueTranslate = React.useCallback((toRun: TranslationPlanItem[], genres = false) => {
+  const enqueueTranslate = React.useCallback((
+    toRun: TranslationPlanItem[],
+    genres = false,
+    sources?: TranslationSource[],
+    review = false,
+  ) => {
     setExpanded(true) // თარგმანი გრძელია — პროგრესი მაშინვე ჩანს
     setItems((cur) => {
       const base = freshBase(cur)
@@ -253,6 +285,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           title: r.year ? `${r.title} (${r.year})` : r.title,
           mediaType: r.type,
           status: 'pending' as QStatus,
+          sources,
+          review,
         }))
       // ჟანრები ბოლოს — ერთი რექვესთი მთელ ლექსიკონზე
       if (genres && !busy.has('genres')) {
@@ -263,6 +297,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           mediaType: 'movie',
           status: 'pending' as QStatus,
           genresDict: true,
+          sources,
+          /* ⚠️ ჟანრებზე `review` **განზრახ არ გადადის**: ჟანრის სახელი
+             ერთი-ორი სიტყვაა და TMDB-ის ოფიციალური სიიდან მოდის — მისი
+             „გადამოწმება" ხარჯია და არა შემოწმება. */
         })
       }
       return fresh.length ? [...base, ...fresh] : base
@@ -363,8 +401,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             }))
           : next.kind === 'translate'
             ? (next.genresDict
-                ? translateGenres(ctrl.signal)
-                : translateItem(next.mediaType, next.itemId!, ctrl.signal)
+                ? translateGenres(next.sources, ctrl.signal)
+                : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal)
               ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped }))
             : next.kind === 'purge'
               ? purgeItem(next.purgeOpts!, next.itemId!, ctrl.signal).then((r) => ({

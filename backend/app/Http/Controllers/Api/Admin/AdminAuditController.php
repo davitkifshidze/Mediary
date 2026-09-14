@@ -30,6 +30,19 @@ class AdminAuditController extends Controller
 {
     private const CONFIRM_WORD = 'DELETE';
 
+    /**
+     * **„მოდულის გარეშე" ჭრილი (ეტაპი 10).**
+     *
+     * შესვლას, გასვლასა და რეგისტრაციას `module` არ აქვთ, ე.ი. `whereIn`-ით
+     * მათამდე ფილტრით ვერასდროს მიხვიდოდი და ბარათების ჯამიც „ყველას"
+     * ვერასდროს გაუტოლდებოდა. ერთი დაცული გასაღები ამას ასწორებს.
+     *
+     * ⚠️ **მოდულის ნამდვილ key-ს ვერ დაემთხვევა** — `modules.key` ყოველთვის
+     * სექციის სახელია (`movie`, `song`…), `PSEUDO_MODULES` კი ხუთი ცნობილი
+     * მნიშვნელობაა; არცერთი არ არის `none`.
+     */
+    private const MODULE_NONE = 'none';
+
     /** სია — გვერდებით, ფილტრებით და diff-ისთვის საჭირო ორივე მხარით */
     public function index(Request $request)
     {
@@ -73,10 +86,62 @@ class AdminAuditController extends Controller
                     'key' => $key,
                     'name_ka' => null,
                     'name_en' => null,
-                ], AuditRegistry::PSEUDO_MODULES),
+                ], [...AuditRegistry::PSEUDO_MODULES, self::MODULE_NONE]),
             ],
             'users' => User::orderBy('name')->get(['id', 'name', 'username'])->all(),
         ]);
+    }
+
+    /**
+     * **ჭრილების მთვლელები (ეტაპი 10)** — რამდენი რიგი აქვს თითო მოდულს
+     * და თითო მოქმედებას *მიმდინარე ფილტრში*.
+     *
+     * ⚠️ **თითოეული ჭრილი საკუთარ თავს არ ითვლის** (`except`): მოდულების
+     * რიცხვები მოდულის ფილტრის **გარეშე** ითვლება, მოქმედებებისა კი —
+     * მოქმედების გარეშე. სწორედ ეს ხდის ბარათის რიცხვს პატიოსანს: ის
+     * ზუსტად ის რაოდენობაა, რასაც იმ ბარათზე დაჭერით მიიღებ. თუ ჭრილი
+     * საკუთარ თავსაც გაიტარებდა, არჩეულის გარდა ყველა ბარათი ნულზე
+     * ჩამოვიდოდა და „სხვაგან რა დევს" კითხვას ვეღარავინ უპასუხებდა.
+     *
+     * ⚠️ **სიაც და მთვლელებიც ერთსა და იმავე `filtered()`-ზე დგას** —
+     * `GalleryController::sourceQuery()`-ის იგივე წესი: „ბარათზე 40 წერია,
+     * შიგნით 37-ია" ვერ მოხდება.
+     *
+     * ⚠️ **`GET`** — `plan`-ის იგივე მიზეზი: POST-ს `EnsureAdminAccess`
+     * `create`-ად წაიკითხავდა და მხოლოდ-ნახვის როლი ცრუ 403-ს მიიღებდა.
+     */
+    public function summary(Request $request)
+    {
+        return response()->json([
+            'total' => $this->filtered($request)->count(),
+            'modules' => $this->facet($this->filtered($request, ['module']), 'module'),
+            'actions' => $this->facet($this->filtered($request, ['action']), 'action'),
+        ]);
+    }
+
+    /**
+     * ერთი სვეტის დაჯგუფება — `[{key, total}]`.
+     *
+     * ⚠️ ცარიელი `module` (შესვლა, გასვლა, რეგისტრაცია) **ცალკე ჭრილია და
+     * არა ნაგავი** — `none`-ად ბრუნდება, ე.ი. ბარათებით მიღწევადია.
+     *
+     * @param  'module'|'action'  $column
+     * @return list<array{key: string, total: int}>
+     */
+    private function facet(Builder $query, string $column): array
+    {
+        return $query->toBase()
+            ->selectRaw($column.' as facet_key, count(*) as total')
+            ->groupBy($column)
+            ->get()
+            ->map(fn ($row) => [
+                // ⚠️ ცარიელი მოდული `none`-ად ბრუნდება და არა `null`-ად:
+                // რომელ გასაღებზეც აჭერ, იმავეთი ფილტრავ — ორი ლექსიკონი
+                // ფრონტსა და backend-ს შორის იმავე დღეს გაშორდებოდა
+                'key' => $row->facet_key === null ? self::MODULE_NONE : (string) $row->facet_key,
+                'total' => (int) $row->total,
+            ])
+            ->all();
     }
 
     /**
@@ -128,8 +193,13 @@ class AdminAuditController extends Controller
      *
      * ⚠️ თარიღები **მთელ დღეს მოიცავს**: `to=2026-09-10` იმ დღის 23:59-საც
      * ნიშნავს, თორემ „დღევანდელი ლოგი" ყოველთვის ცარიელი იქნებოდა.
+     *
+     * ⚠️ `$except` მხოლოდ `summary()`-სთვისაა (ეტაპი 10) — სიას, გეგმასა და
+     * წაშლას **ყოველთვის სრული** ფილტრი ეხება.
+     *
+     * @param  list<string>  $except  რომელი ჭრილი გამოტოვდეს (`module`/`action`)
      */
-    private function filtered(Request $request): Builder
+    private function filtered(Request $request, array $except = []): Builder
     {
         $query = AuditLog::query();
 
@@ -137,11 +207,23 @@ class AdminAuditController extends Controller
             $query->where('user_id', $userId);
         }
 
-        if ($modules = $this->slugList($request->query('module'))) {
-            $query->whereIn('module', $modules);
+        if (! in_array('module', $except, true) && ($modules = $this->slugList($request->query('module')))) {
+            // ⚠️ `none` = „მოდულის გარეშე" (შესვლა/გასვლა/რეგისტრაცია) და
+            // `whereIn`-ში `null` ვერ მოხვდება — ამიტომ ცალკე `orWhereNull`
+            $keys = array_values(array_diff($modules, [self::MODULE_NONE]));
+            $withoutModule = in_array(self::MODULE_NONE, $modules, true);
+
+            $query->where(function (Builder $sub) use ($keys, $withoutModule) {
+                if ($keys !== []) {
+                    $sub->whereIn('module', $keys);
+                }
+                if ($withoutModule) {
+                    $sub->orWhereNull('module');
+                }
+            });
         }
 
-        if ($actions = $this->slugList($request->query('action'))) {
+        if (! in_array('action', $except, true) && ($actions = $this->slugList($request->query('action')))) {
             $query->whereIn('action', $actions);
         }
 

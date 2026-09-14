@@ -96,4 +96,16 @@ final class GalleryParent
     {
         return 'in:'.implode(',', self::keys());
     }
+
+    /**
+     * იგივე, **მსახიობის გარეშე** — `in:movie,series,anime,song,book,game`.
+     *
+     * ⚠️ ჯგუფების ჭრილს დომენის ტაბები დაემატა (ეტაპი 2) და მისი `type`
+     * `MediaDomain::rule()`-ზე იყო მიბმული — ე.ი. სიმღერის ან წიგნის ტაბი
+     * **422-ს** აბრუნებდა, თუმცა თვითონ სია ამ მშობლებს ისედაც ხატავდა.
+     */
+    public static function recordRule(): string
+    {
+        return 'in:'.implode(',', self::recordKeys());
+    }
 }

@@ -8,6 +8,10 @@ import { formatBytes } from '@/lib/utils'
  */
 const CODES = [
   'storage_quota_exceeded',
+  // 2026-09-14 — **სერვერის** ჭერი ერთ მოთხოვნაზე (`php.ini`), და არა კვოტა:
+  // ⚠️ ორი სრულიად სხვადასხვა ზღვარია და ერთ ტექსტში რომ შერეულიყო,
+  // „ადგილი აღარ გაქვს" დაეწერებოდა იმას, ვისაც ადგილი ბევრი აქვს
+  'upload_too_large',
   // 17.4 — ლიმიტის გაზრდის მოთხოვნის უარყოფის მიზეზები
   'storage_request_pending',
   'storage_request_not_an_increase',
@@ -18,6 +22,7 @@ const CODES = [
   'allocation_exceeds_quota',
   // §14 — BoardGameGeek Cloudflare-ის უკან დგას და შეიძლება არ გაიხსნას
   'bgg_unavailable',
+  'openlibrary_unavailable',
   // §11 — RAWG კლავიშს ითხოვს; მისი გარეშე წყარო „მიუწვდომელია"
   'rawg_unavailable',
   // §16.2 — დამთხვევა ორ **საჯარო** პროფილს შორის ითვლება
@@ -32,6 +37,12 @@ const CODES = [
   // შეცდომა არ არის — ის 200-ია ცარიელი სიით.
   'serpapi_quota_exceeded',
   'serpapi_unavailable',
+  /* ეტაპი 1 — მსახიობის ხელით მიბმა. ⚠️ ოთხივე სხვადასხვა მდგომარეობაა
+     და ოთხივეს თავისი ტექსტი — „ვერ დაემატა" არცერთს ახსნის. */
+  'cast_source_required',
+  'cast_already_attached',
+  'cast_limit_reached',
+  'cast_member_not_found',
   'not_youtube',
   // §7.1 — ვიდეოს ლოკალური ჩამოწერა. ⚠️ **ორი სხვადასხვა ფაქტია**: `yt-dlp`
   // ამ მანქანაზე არ არის (503) და ჩამოწერა უკვე მიმდინარეობს (409).
@@ -73,6 +84,12 @@ export function errorMessage(e: unknown, fallback = 'შეცდომა'): st
   const params = Object.fromEntries(
     bytes.filter((k) => typeof data?.[k] === 'number').map((k) => [k, formatBytes(data![k] as number)]),
   )
+
+  /* ⚠️ `limit`/`file_limit` **სტრიქონებია** (`php.ini`-ის „256M") და არა
+     ბაიტები — ისინი პირდაპირ გადადიან, თორემ `formatBytes` მათ გააფუჭებდა. */
+  for (const key of ['limit', 'file_limit'] as const) {
+    if (typeof data?.[key] === 'string') params[key] = data[key] as string
+  }
 
   return i18n.t(`errors.${message}`, params)
 }

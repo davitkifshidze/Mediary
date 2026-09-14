@@ -2,7 +2,9 @@
 
 namespace App\Services\Books;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 /**
  * Open Library — წიგნების გამამდიდრებელი წყარო (Tasks §12).
@@ -23,10 +25,26 @@ class OpenLibraryClient
 
     private const COVERS = 'https://covers.openlibrary.org/b';
 
+    /** ბოლო გამოძახებამ ქსელის დონეზე ჩაიჭრა თუ არა */
+    private bool $failed = false;
+
     /** ისეთი წყაროა, კლავიშს რომ არ ითხოვს — მაგრამ ინტერფეისს ერთი კითხვა აქვს */
     public function configured(): bool
     {
         return true;
+    }
+
+    /**
+     * ბოლო გამოძახება **წყაროს ჩავარდნა** იყო (და არა უბრალოდ უშედეგო ძებნა).
+     *
+     * ⚠️ **ეს ორი სრულიად სხვადასხვა ფაქტია და მათი გაერთიანება შეცდომაა**
+     * (`BggClient::blocked()`-ის ზუსტი პრეცედენტი): „ვერაფერი ვიპოვე"
+     * ნიშნავს, რომ ასეთი წიგნი არ არსებობს, „წყარო არ პასუხობს" კი —
+     * რომ ხელახლა უნდა სცადო ან ხელით შეავსო.
+     */
+    public function blocked(): bool
+    {
+        return $this->failed;
     }
 
     /**
@@ -37,7 +55,7 @@ class OpenLibraryClient
      */
     public function search(string $query, int $limit = 10): array
     {
-        $res = $this->http()->get(self::BASE.'/search.json', [
+        $res = $this->get(self::BASE.'/search.json', [
             'q' => $query,
             'limit' => max(1, min($limit, 25)),
             // მხოლოდ საჭირო ველები — პასუხი სხვა შემთხვევაში ასობით კილობაიტია
@@ -45,7 +63,7 @@ class OpenLibraryClient
                 .'publisher,language,cover_i,subject,edition_key',
         ]);
 
-        if (! $res->successful()) {
+        if (! $res?->successful()) {
             return [];
         }
 
@@ -61,9 +79,9 @@ class OpenLibraryClient
             return null;
         }
 
-        $res = $this->http()->get(self::BASE."/isbn/{$isbn}.json");
+        $res = $this->get(self::BASE."/isbn/{$isbn}.json");
 
-        if (! $res->successful()) {
+        if (! $res?->successful()) {
             return null;
         }
 
@@ -79,9 +97,9 @@ class OpenLibraryClient
     {
         $key = '/'.trim($key, '/');
 
-        $res = $this->http()->get(self::BASE."{$key}.json");
+        $res = $this->get(self::BASE."{$key}.json");
 
-        if (! $res->successful()) {
+        if (! $res?->successful()) {
             return null;
         }
 
@@ -111,13 +129,38 @@ class OpenLibraryClient
     /** ყდის ბაიტები — `MediaDownloader::contents()`-ის ანალოგი, ჩაწერის გარეშე */
     public function cover(int|string $id, string $type = 'id', string $size = 'L'): ?string
     {
-        $res = $this->http()->get(self::COVERS."/{$type}/{$id}-{$size}.jpg");
+        $res = $this->get(self::COVERS."/{$type}/{$id}-{$size}.jpg");
 
         // Open Library ცარიელ 1×1-ს აბრუნებს, როცა ყდა არაა
-        return $res->successful() && strlen($res->body()) > 1000 ? $res->body() : null;
+        return $res?->successful() && strlen($res->body()) > 1000 ? $res->body() : null;
     }
 
     /* ---------- დამხმარეები ---------- */
+
+    /**
+     * ერთი გამოძახება — **ქსელის ჩავარდნა გამონაკლისი არ არის**.
+     *
+     * ⚠️ ამ კლასს try/catch საერთოდ არ ჰქონდა, ე.ი. `cURL error 28`
+     * (openlibrary.org-ის timeout, ცოცხალი შეცდომა 2026-09-14) კონტროლერიდან
+     * **500-ით** გადიოდა და ეკრანზე გამონაკლისის ტექსტით აიცემბოდა.
+     * რაც მყისი წყაროს ჩავარდნამ **წიგნის დამატება არ უნდა შეაჩეროს**
+     * (`LinkMetadata`/`BggClient`-ის წესი) — ხელით შევსება ყოველთვის ოპციაა.
+     */
+    private function get(string $url, array $query = []): ?Response
+    {
+        try {
+            $res = $this->http()->get($url, $query);
+        } catch (Throwable) {
+            $this->failed = true;
+
+            return null;
+        }
+
+        // 5xx-იც წყაროს ჩავარდნაა და არა „ასეთი წიგნი არ არსებობს"
+        $this->failed = $res->serverError();
+
+        return $res;
+    }
 
     private function http()
     {
@@ -130,9 +173,9 @@ class OpenLibraryClient
     /** ერთი გამოცემა ნაწარმოებიდან — გვერდები/ISBN/გამომცემელი მხოლოდ იქაა */
     private function firstEdition(string $workKey): ?array
     {
-        $res = $this->http()->get(self::BASE."{$workKey}/editions.json", ['limit' => 1]);
+        $res = $this->get(self::BASE."{$workKey}/editions.json", ['limit' => 1]);
 
-        if (! $res->successful()) {
+        if (! $res?->successful()) {
             return null;
         }
 

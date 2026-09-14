@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
+import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
@@ -183,11 +184,12 @@ export async function updateBookmarkCategory(
 }
 
 /** წაშლა; `moveTo` — რომელ კატეგორიაზე გადავიდნენ (null = კატეგორიის გარეშე) */
-export async function deleteBookmarkCategory(id: number, moveTo?: number | null): Promise<number> {
-  const { data } = await api.delete(`/bookmark-categories/${id}`, {
-    data: { move_to: moveTo ?? null },
-  })
-  return data.moved as number
+export async function deleteBookmarkCategory(
+  id: number,
+  removal?: DictionaryRemoval,
+): Promise<DictionaryRemoved> {
+  const { data } = await api.delete(`/bookmark-categories/${id}`, { data: removalBody(removal) })
+  return readRemoved(data)
 }
 
 export async function reorderBookmarkCategories(ids: number[]): Promise<BookmarkCategory[]> {

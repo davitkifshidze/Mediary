@@ -11,6 +11,7 @@ use App\Services\Chat\ChatService;
 use App\Services\Profile\PublicProfileService;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -42,12 +43,6 @@ use Illuminate\Validation\Rule;
 class ChatController extends Controller
 {
     /** ატვირთვის ჭერი კილობაიტებში — ვიდეო ყველაზე მძიმეა */
-    private const MAX_IMAGE_KB = 8192;
-
-    private const MAX_VIDEO_KB = 102400;
-
-    private const MAX_FILE_KB = 20480;
-
     public function __construct(
         private ChatService $chat,
         private PublicProfileService $profiles,
@@ -178,9 +173,11 @@ class ChatController extends Controller
             'type' => ['nullable', Rule::in(Message::MEDIA_TYPES)],
             'body' => ['nullable', 'string', 'max:4000'],
             'file' => match ($type) {
-                'image' => ['file', 'image', 'max:'.self::MAX_IMAGE_KB],
-                'video' => ['file', 'max:'.self::MAX_VIDEO_KB, 'mimes:mp4,webm,ogg,mov,m4v'],
-                default => ['file', 'max:'.self::MAX_FILE_KB],
+                'image' => UploadLimits::rule('image'),
+                'video' => UploadLimits::rule('video'),
+                // ⚠️ ჩატში დოკუმენტს **ფორმატი არ ეზღუდება** — მიმოწერაა და
+                // არა ბიბლიოთეკა; მხოლოდ ზომა მოქმედებს
+                default => ['file', 'max:'.UploadLimits::effectiveKb('doc')],
             },
         ]);
 

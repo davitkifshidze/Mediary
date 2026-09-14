@@ -45,7 +45,7 @@ export function SettingsSaveBar() {
             </span>
           ) : dirty ? (
             <span className="inline-flex items-center gap-2 font-medium text-primary">
-              <span className="size-2 rounded-full bg-primary" />
+              <span className="size-2 rounded-md bg-primary" />
               {t('settings.unsaved')}
             </span>
           ) : justSaved ? (

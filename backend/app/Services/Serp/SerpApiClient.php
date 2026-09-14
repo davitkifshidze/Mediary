@@ -316,7 +316,7 @@ class SerpApiClient
             'channel' => $this->str($row['channel']['name'] ?? $row['channel'] ?? null),
             'duration' => $this->seconds($row['length'] ?? $row['duration'] ?? null),
             'views' => is_numeric($row['views'] ?? null) ? (int) $row['views'] : null,
-            'published' => $this->str($row['published_date'] ?? $row['publish_date'] ?? null),
+            'published' => $this->publishedDate($row['published_date'] ?? $row['publish_date'] ?? null),
             'thumbnail' => $this->url($row['thumbnail']['static'] ?? $row['thumbnail'] ?? null),
         ];
     }
@@ -598,7 +598,7 @@ class SerpApiClient
             'channel' => $this->str($row['channel']['name'] ?? $row['channel'] ?? $row['author'] ?? null),
             'duration' => $this->seconds($row['length'] ?? $row['duration'] ?? null),
             'views' => is_numeric($row['views'] ?? null) ? (int) $row['views'] : null,
-            'published' => $this->str($row['published_date'] ?? $row['publish_date'] ?? null),
+            'published' => $this->publishedDate($row['published_date'] ?? $row['publish_date'] ?? null),
             'thumbnail' => $this->url($row['thumbnail']['static'] ?? $row['thumbnail'] ?? null),
             'description' => $this->str($row['description'] ?? null),
         ];
@@ -658,6 +658,45 @@ class SerpApiClient
         $value = trim((string) $value);
 
         return $value === '' ? null : mb_substr($value, 0, 500);
+    }
+
+    /**
+     * გამოქვეყნების თარიღი — **ყოველთვის `Y-m-d` ან `null`** (2026-09-13).
+     *
+     * ⚠️ **YouTube აბსოლუტურ თარიღს არ აბრუნებს**: `published_date`-ში
+     * „9 months ago" წერია. ეს სტრიქონი პირდაპირ მიდიოდა
+     * `POST /api/gallery/videos`-ზე, სადაც `published_at` `date`-ით
+     * მოწმდება — ე.ი. **ნაპოვნი ვიდეოს შენახვა ყოველთვის 422-ით ვარდებოდა**
+     * („ვიდეოს ძებნაც და გამოტანებიც არ მუშაობს"). გადამოწმებულია ცოცხლად.
+     *
+     * ⚠️ **ნორმალიზაცია აქაა და არა ფრონტში ან კონტროლერში** — engine-ის
+     * თავისებურებას ეს კლასი ფარავს (იგივე წესი, რაც `query`/`results`
+     * სვეტებზეა); ორ ადგილას გაწერილი წესი ერთ დღეს გაშორდებოდა.
+     *
+     * ⚠️ **თარიღი მიახლოებითია და სხვა გზა არ არის** — „9 months ago"-ს
+     * დღეზე ზუსტი შესატყვისი არ აქვს. ან მიახლოებით ვინახავთ, ან ფაქტს
+     * სრულიად ვკარგავთ; სვეტი სწორედ ამისთვის არსებობს.
+     */
+    private function publishedDate(mixed $value): ?string
+    {
+        $value = $this->str($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        // YouTube-ის ორი პრეფიქსი — `strtotime` მათზე იბნევა
+        $value = preg_replace('~^(streamed|premiered)\s+~i', '', $value) ?? $value;
+
+        try {
+            $date = Carbon::parse($value);
+        } catch (Throwable) {
+            return null;
+        }
+
+        // ⚠️ `Carbon::parse('Kraken')` არ არსებობს, მაგრამ `Carbon::parse('2')`
+        // დღევანდელი თვის მე-2 რიცხვია — რიცხვი თარიღად არ ითვლება
+        return is_numeric($value) ? null : $date->toDateString();
     }
 
     /** ⚠️ მხოლოდ http(s) — `data:` და სხვა სქემები ჩვენთან არ შემოდის */

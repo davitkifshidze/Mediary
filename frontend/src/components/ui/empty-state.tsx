@@ -38,7 +38,7 @@ export function EmptyState({
         className,
       )}
     >
-      <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
+      <span className="grid size-12 place-items-center rounded-md bg-muted text-muted-foreground">
         {icon ?? <Inbox className="size-6" />}
       </span>
 

@@ -3,12 +3,14 @@ import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Languages, Loader2 } from 'lucide-react'
+import { Check, Languages, Loader2, Sparkles } from 'lucide-react'
 import { fetchGenres } from '@/api/media'
 import {
   fetchTranslationPlan,
   fetchTranslationSummary,
+  TRANSLATION_SOURCES,
   type TranslationPlanFilters,
+  type TranslationSource,
 } from '@/api/translations'
 import { useModules } from '@/lib/modules'
 import { MEDIA_NAV_KEY, emptyMediaIds, type MediaType } from '@/lib/media'
@@ -28,9 +30,19 @@ import { cn } from '@/lib/utils'
    თარგმანების დიალოგი (Tasks 7):
    სკოუპი → რამდენ ჩანაწერს შეეხება → გაშვება რიგში.
 
-   „რა ითარგმნოს" არჩევანი განზრახ **არ არის**: ვსებავთ მხოლოდ იმას, რაც აკლია,
-   და არსებულ ტექსტს არასდროს ვცვლით — ე.ი. არჩევის საგანი არაფერია.
+   „რა ითარგმნოს" არჩევანი განზრახ **არ არის**: ვსებავთ მხოლოდ იმას, რაც აკლია.
    ციკლს queue ატარებს, როგორც სინქრონსა და გალერეაზე.
+
+   ⚠️ **ერთადერთი გამონაკლისი `review`-ის ჩამრთველია** (2026-09-14): ის TMDB-ის
+   ქართულ აღწერას Gemini-ს გადასამოწმებლად აძლევს, ე.ი. **არსებულ ტექსტს
+   წერს**. სწორედ ამიტომაა ცალკე, სახელდებული და ნაგულისხმევად გამორთული —
+   და არა ჩუმი ქცევა.
+
+   ⚠️ **„რითი ითარგმნოს" კი არჩევანია (შენი მითითება, 2026-09-14).** ადრე
+   თანმიმდევრობა ჩაშენებული იყო — ჯერ TMDB, მერე Gemini — და მომხმარებელს
+   არაფერს ეკითხებოდა. ახლა წყაროები ცხადად ირჩევა და **არჩევანი რიგსაც
+   მიჰყვება** (`QItem.sources`), თორემ მეორე ჩანაწერიდან ნაგულისხმევზე
+   დაბრუნდებოდა.
    ============================================================ */
 
 type Scope = 'all' | 'status' | 'favorite' | 'genre' | 'specific'
@@ -58,6 +70,11 @@ export function TranslateDialog({
   const [genreSlugs, setGenreSlugs] = useState<string[]>([])
   const [ids, setIds] = useState<Record<MediaType, number[]>>(emptyMediaIds)
   const [withGenres, setWithGenres] = useState(true)
+  const [sources, setSources] = useState<TranslationSource[]>([...TRANSLATION_SOURCES])
+  /* ⚠️ **ნაგულისხმევად გამორთულია.** ეს ერთადერთი რეჟიმია, რომელიც არსებულ
+     ტექსტს გადაწერს — ჩართული ნაგულისხმევი ზუსტად „თავისით არ უნდა
+     ხდებოდეს"-ს არღვევდა. */
+  const [review, setReview] = useState(false)
 
   const summaryQ = useQuery({
     queryKey: ['translations', 'summary'],
@@ -74,8 +91,9 @@ export function TranslateDialog({
       genres: scope === 'genre' && genreSlugs.length ? genreSlugs : undefined,
       ids: scope === 'specific' ? ids : undefined,
       include_genres: withGenres,
+      review,
     }),
-    [types, scope, status, genreSlugs, ids, withGenres],
+    [types, scope, status, genreSlugs, ids, withGenres, review],
   )
 
   const planQ = useQuery({
@@ -89,16 +107,18 @@ export function TranslateDialog({
     setTypes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
 
   const plan = planQ.data
+  // Gemini-ის გასაღების გარეშე გადამოწმება ვერაფერს გააკეთებს
+  const reviewDead = summaryQ.data?.translator_configured === false
   const genresInRun = withGenres && (plan?.genres_pending ?? 0) > 0
   const totalUnits = (plan?.count ?? 0) + (genresInRun ? 1 : 0)
-  const canRun = totalUnits > 0 && !planQ.isFetching
+  const canRun = totalUnits > 0 && !planQ.isFetching && sources.length > 0
 
   const eta = (seconds: number) =>
     seconds < 90 ? t('sync.etaSec', { count: seconds }) : t('sync.etaMin', { count: Math.round(seconds / 60) })
 
   const run = () => {
     if (!plan) return
-    enqueueTranslate(plan.items, genresInRun)
+    enqueueTranslate(plan.items, genresInRun, sources, review)
     toast({ title: t('translate.started', { count: totalUnits }), variant: 'success' })
     onOpenChange(false)
   }
@@ -118,6 +138,83 @@ export function TranslateDialog({
               {t('translate.noKey')}
             </p>
           )}
+
+          {/* ---------- წყაროები (შენი მითითება, 2026-09-14) ----------
+
+              ⚠️ **ბარათებია და არა ჩიპები**: თითოეულმა თვითონ უნდა თქვას, რას
+              ნიშნავს — „TMDB-ის ოფიციალური ტექსტი" და „მანქანური თარგმანი"
+              სხვადასხვა ხარისხისა და ხარჯის რამეა, ე.ი. არჩევანი ინფორმირებული
+              უნდა იყოს. ⚠️ **ორივეს მოხსნა აკრძალულია** (ღილაკი ითიშება):
+              წყაროს გარეშე გაშვება სერვერზე 422-ია. */}
+          <div>
+            <Label className="mb-2 block">{t('translate.sourcesTitle')}</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {TRANSLATION_SOURCES.map((source) => {
+                const on = sources.includes(source)
+                const Icon = source === 'tmdb' ? Languages : Sparkles
+                // Gemini-ის გასაღების გარეშე ეს წყარო ვერაფერს გააკეთებს
+                const dead = source === 'gemini' && summaryQ.data?.translator_configured === false
+
+                return (
+                  <button
+                    key={source}
+                    type="button"
+                    aria-pressed={on}
+                    disabled={dead}
+                    onClick={() =>
+                      setSources((cur) =>
+                        cur.includes(source) ? cur.filter((x) => x !== source) : [...cur, source],
+                      )
+                    }
+                    className={cn(
+                      'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                      on ? 'border-primary bg-secondary/60' : 'border-border hover:border-primary/40',
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {t(`translate.source.${source}`)}
+                      </span>
+                      {on && <Check className="size-4 shrink-0 text-primary" />}
+                    </span>
+                    <span className="text-xs leading-snug text-muted-foreground">
+                      {t(`translate.sourceHint.${source}`)}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {sources.length === 0 && (
+              <p className="mt-1.5 text-xs text-destructive">{t('translate.sourcesRequired')}</p>
+            )}
+          </div>
+
+          {/* ---------- გადამოწმება (`review`, 2026-09-14) ----------
+
+              ⚠️ **ცალკე ჩამრთველია და არა მესამე წყარო.** წყაროები *ცარიელ*
+              ველს ავსებენ, ეს კი **არსებულ** ტექსტს ეხება — ე.ი. სხვა ღერძია
+              და „მარტო TMDB + გადამოწმება" სავსებით ნორმალური არჩევანია.
+              ⚠️ ფრთხილების ტექსტი ცხადად წერს, რომ ტექსტი **გადაიწერება** —
+              ეს პროექტში ერთადერთი ასეთი ადგილია. */}
+          <div className={cn('rounded-lg border p-3', review ? 'border-primary bg-secondary/50' : 'border-border')}>
+            <label className={cn('flex items-start gap-2 text-sm', reviewDead ? 'opacity-50' : 'cursor-pointer')}>
+              <Checkbox
+                checked={review}
+                disabled={reviewDead}
+                onCheckedChange={() => setReview((v) => !v)}
+              />
+              <span>
+                <span className="font-medium">{t('translate.review')}</span>
+                <span className="block text-xs text-muted-foreground">{t('translate.reviewHint')}</span>
+              </span>
+            </label>
+            {review && (
+              <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+                {t('translate.reviewWarn')}
+              </p>
+            )}
+          </div>
 
           {/* ---------- დომენი ---------- */}
           {available.length > 0 && (

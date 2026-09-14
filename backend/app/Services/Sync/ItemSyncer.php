@@ -7,6 +7,7 @@ use App\Models\Genre;
 use App\Models\Series;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\MediaDomain;
 use App\Support\Trailer;
@@ -77,7 +78,7 @@ class ItemSyncer
                 ? ($isSeries ? $this->tmdb->tvCredits($item->tmdb_id) : $this->tmdb->credits($item->tmdb_id))
                 : [];
 
-            // ქართული სახელი/აღწერა — TMDB-ის ლოკალიზებული პასუხიდან (Translator მკვდარია, იხ. B7)
+            // ქართული სახელი/აღწერა — TMDB-ის ლოკალიზებული პასუხიდან (Translator აქ განზრახ არ ერთვის — თარგმანი `/translations`-ის საქმეა)
             $dka = [];
             if (array_intersect(['title', 'description'], $fields)) {
                 try {
@@ -314,7 +315,8 @@ class ItemSyncer
         if (! $sync) {
             return false;
         }
-        $item->cast()->sync($sync);
+        // ⚠️ ხელით დამატებული მსახიობი `sync()`-ს ჩუმად წაეშლებოდა — იხ. `CastSync`
+        CastSync::fromSource($item, $sync);
 
         return true;
     }

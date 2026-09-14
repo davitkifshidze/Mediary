@@ -52,6 +52,7 @@ use App\Http\Controllers\Api\NoteEntryFileController;
 use App\Http\Controllers\Api\NoteReminderController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
+use App\Http\Controllers\Api\RecordCastController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
@@ -76,6 +77,7 @@ use App\Support\CustomFields;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
+use App\Support\UploadLimits;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -165,6 +167,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     /* ---------- მოდულები და მოთხოვნები ---------- */
+    /* **ატვირთვის ლიმიტები** (2026-09-14) — ინტერფეისი ზუსტად იმას წერს,
+       რასაც სერვერი მიიღებს. ⚠️ მოდულზე დამოკიდებული არაა: ლიმიტი აპისა და
+       PHP-ის წესია და არა ბიბლიოთეკის შიგთავსისა, ე.ი. `module:` ჯგუფს
+       მიღმა დგას (პარამეტრების გვერდსაც სჭირდება, ჩართული მოდულის გარეშეც). */
+    Route::get('/uploads/limits', fn () => response()->json(['data' => UploadLimits::all()]));
+
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::put('/modules/{key}/settings', [ModuleController::class, 'updateSettings']);
     // §6 (ფაზა 1) — რომელი არჩევითი ველი ჩანს მოდულის ფორმაზე.
@@ -399,6 +407,11 @@ Route::middleware('auth:sanctum')->group(function () {
         /* ⚠️ `{noteReminder}`-ის მარშრუტი არ არსებობს GET-ზე, ე.ი. „due"
            კონფლიქტს არ ქმნის; მაინც ზემოთ წერია, რომ წესი თვალსაჩინო იყოს */
         Route::get('/note-reminders/due', [NoteReminderController::class, 'due']);
+        /* ეტაპი 11.2 — შეხსენებებს თავისი გვერდი აქვს (`/notes/reminders`),
+           ე.ი. სჭირდება „რა მელის საერთოდ" და არა მხოლოდ „ამ ჩანაწერს რა აქვს".
+           ⚠️ `due`-ს **შემდეგ** წერია, თორემ „due" `{noteReminder}`-ად წაიკითხებოდა
+           (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს). */
+        Route::get('/note-reminders', [NoteReminderController::class, 'all']);
         Route::match(['put', 'patch'], '/note-reminders/{noteReminder}', [NoteReminderController::class, 'update']);
         Route::delete('/note-reminders/{noteReminder}', [NoteReminderController::class, 'destroy']);
         // „ვნახე" — PATCH განზრახ: POST-ს `permission:` middleware `create`-ად წაიკითხავდა
@@ -577,6 +590,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item']);
     });
 
+    /* ---------- ჩანაწერის მსახიობები ხელით (ეტაპი 1) ----------
+       ⚠️ **უფლება სამივეწე `update`-ია და არა მეთოდიდან გამოყვანილი.**
+       `EnsureModulePermission` POST-იდან `create`-ს და DELETE-იდან `delete`-ს
+       გამოიყვანდა, მაშინ როცა მსახიობის მიბმა/მოხსნა **ჩანაწერის
+       რედაქტირებაა** — ვინც update-ით შემოვიდა, ცრუ 403-ს მიიღებდა
+       (იგივე გადაწყვეტილება, რაც `/translations/{type}/{id}`-ს აქვს). */
+    Route::middleware(['module:@type', 'permission:@type,view'])->group(function () {
+        Route::get('/media/cast/{type}/{id}', [RecordCastController::class, 'index'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    });
+    Route::middleware(['module:@type', 'permission:@type,update'])->group(function () {
+        Route::post('/media/cast/{type}/{id}', [RecordCastController::class, 'store'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+        Route::match(['put', 'patch'], '/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'update'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+        Route::delete('/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'destroy'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    });
+
     // sync-ის გეგმა ორივე დომენს ერთდროულად ეხება — ფილტრი თავად ითვალისწინებს
     Route::post('/media/sync/plan', [MediaSyncController::class, 'plan']);
 
@@ -585,6 +617,10 @@ Route::middleware('auth:sanctum')->group(function () {
        გლობალური ლექსიკონია — ამიტომ სამივე `module:` ჯგუფის გარეთ დგას და
        ჩართული მოდულების ფილტრს კონტროლერი თვითონ აკეთებს. */
     Route::get('/translations/summary', [TranslationController::class, 'summary']);
+    /* ხარჯის სურათი + ბოლო თარგმანების ლოგი (შენი მითითება, 2026-09-14).
+       ⚠️ **GET-ია** — `EnsureModulePermission` POST-ს `create`-ად კითხულობს, ე.ი.
+       მხოლოდ მქონე მომხმარებელს „რამდენი დარჩა" არ უნდა არქვებდეს. */
+    Route::get('/translations/usage', [TranslationController::class, 'usage']);
     Route::post('/translations/plan', [TranslationController::class, 'plan']);
     // ერთი ჩანაწერის თარგმნა — ჯგუფის გარეთ, რადგან POST-ია, მაგრამ **არსებულს ცვლის**:
     // მოქმედება ცხადად `update`-ია (მისამართის ბოლო სეგმენტი id-ია, ე.ი.
@@ -656,6 +692,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereIn('domain', StatusDomain::keys());
     Route::post('/statuses/{domain}/reorder', [StatusController::class, 'reorder'])
         ->whereIn('domain', StatusDomain::keys());
+    // ეტაპი 8 — საიდბარის განლაგება (დამალვა + „ყველა"/„რჩეული"-ს ადგილი)
+    Route::put('/statuses/{domain}/sections', [StatusController::class, 'sections'])
+        ->whereIn('domain', StatusDomain::keys());
     Route::post('/statuses/{domain}', [StatusController::class, 'store'])
         ->whereIn('domain', StatusDomain::keys());
     Route::match(['put', 'patch'], '/statuses/{domain}/{id}', [StatusController::class, 'update'])
@@ -672,7 +711,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/genres/{genre}/items', [GenreItemController::class, 'index']);
     Route::post('/genres/{genre}/items', [GenreItemController::class, 'update']);
 
-    Route::get('/cast/{castMember}', [CastController::class, 'show']);
+    /* ეტაპი 1 — მსახიობის ძებნა (ლექსიკონი + TMDB).
+       ⚠️ **აუცილებლივ `/cast/{castMember}`-ზე ზემოთ**, თორემ „search"
+       იდენტიფიკატორად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აცვავს). */
+    Route::get('/cast/search', [RecordCastController::class, 'search']);
+    Route::get('/cast/{castMember}', [CastController::class, 'show'])->whereNumber('castMember');
     /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
        ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */
@@ -715,6 +758,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('admin_access:audit')->group(function () {
             Route::get('/audit', [AdminAuditController::class, 'index']);
             Route::get('/audit/meta', [AdminAuditController::class, 'meta']);
+            // ჭრილების მთვლელები (ეტაპი 10) — ტაბებსა და ბარათებზე რიცხვები.
+            // ⚠️ ისიც `GET`-ია, `plan`-ის იმავე მიზეზით.
+            Route::get('/audit/summary', [AdminAuditController::class, 'summary']);
             // ⚠️ **`GET` და არა `POST`**: გეგმა კითხვაა, POST-ს კი
             // `EnsureAdminAccess` `create`-ად წაიკითხავდა და მხოლოდ-ნახვის
             // როლი ცრუ 403-ს მიიღებდა (იგივე ხაფანგი, რაც `permission:`-ს აქვს)

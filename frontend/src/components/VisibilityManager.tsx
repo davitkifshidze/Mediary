@@ -17,6 +17,7 @@ import { useContentLang } from '@/lib/settings'
 import { errorMessage } from '@/lib/errors'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
+import { Chip, ChipRow } from '@/components/ui/chip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -190,23 +191,13 @@ export function VisibilityManager() {
       <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('visibility.manageHint')}</p>
 
       {/* ---------- დომენები ---------- */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <ChipRow className="mb-4">
         {domains.map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => switchDomain(d)}
-            className={cn(
-              'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-              d === domain
-                ? 'border-primary bg-secondary text-foreground'
-                : 'border-border text-muted-foreground hover:text-foreground',
-            )}
-          >
+          <Chip key={d} active={d === domain} onClick={() => switchDomain(d)}>
             {domainLabel(d)}
-          </button>
+          </Chip>
         ))}
-      </div>
+      </ChipRow>
 
       {/* ---------- ძებნა + ჭრილი ---------- */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -220,27 +211,21 @@ export function VisibilityManager() {
           />
         </form>
 
-        <span className="flex flex-wrap gap-1.5">
+        <ChipRow>
           {(['all', 'public', 'private'] as const).map((v) => (
-            <button
+            <Chip
               key={v}
-              type="button"
+              active={only === v}
               onClick={() => {
                 setOnly(v)
                 setPage(1)
               }}
-              className={cn(
-                'cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors',
-                only === v
-                  ? 'border-primary bg-secondary text-foreground'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
+              count={meta && v !== 'all' ? meta[v] : undefined}
             >
               {v === 'all' ? t('filter.all') : t(`visibility.${v}`)}
-              {meta && v !== 'all' && <span className="ml-1 opacity-60">{meta[v]}</span>}
-            </button>
+            </Chip>
           ))}
-        </span>
+        </ChipRow>
       </div>
 
       {/* ---------- მასობრივი მოქმედებები ---------- */}

@@ -36,6 +36,17 @@ final class StatusDomain
     /** ლექსიკონის სამი მნიშვნელობა — ვალიდაციის ერთადერთი წყარო */
     public const ROLES = ['todo', 'doing', 'done'];
 
+    /**
+     * **`?view=`-ის ფსევდო-განყოფილებები (ეტაპი 8)** — „ყველა" · „რჩეული" ·
+     * ვიდეოს „ჩამოწერილები". ისინი სტატუსები არაა, მაგრამ საიდბარში მათ
+     * გვერდით დგანან, ე.ი. ორ რამეს ემსახურება ეს სია:
+     *  · `Status::makeKey()` ამ გასაღებებს სტატუსს **არ აძლევს**;
+     *  · `StatusController::sections()` განლაგებაში მხოლოდ მათ ადგილს ინახავს.
+     *
+     * ⚠️ სარკე: `frontend/src/lib/statusSections.ts` → `PSEUDO_SECTIONS`.
+     */
+    public const RESERVED_KEYS = ['all', 'favorite', 'downloaded'];
+
     /** მედია-დომენების საერთო ნაკრები — ვიდეოსაც იგივე ჰქონდეს (ის ხომ იყურება) */
     private const WATCH_DEFAULTS = [
         ['key' => 'undecided', 'name_ka' => 'გადაუწყვეტელი', 'name_en' => 'Undecided', 'role' => 'todo', 'icon' => 'HelpCircle', 'is_default' => true],

@@ -8,6 +8,7 @@ use App\Models\Movie;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\Translator;
+use App\Support\CastSync;
 use App\Support\Trailer;
 use Illuminate\Support\Str;
 
@@ -255,7 +256,8 @@ class MovieEnricher
             $sync[$member->id] = ['character' => $c['character'] ?? '', 'billing_order' => $i];
         }
         if ($sync) {
-            $movie->cast()->sync($sync);
+            // ⚠️ ხელით დამატებული მსახიობი `sync()`-ს ჩუმად წაეშლებოდა — იხ. `CastSync`
+            CastSync::fromSource($movie, $sync);
         }
 
         return true;
