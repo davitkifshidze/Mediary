@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { GALLERY_CUTS, galleryCutLabel, type GalleryCut } from '@/lib/galleryCuts'
+import { GALLERY_CUTS, type GalleryCut } from '@/lib/galleryCuts'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,12 +11,11 @@ import {
   type GalleryDefaults,
   type GalleryGroup,
 } from '@/api/gallery'
-import { isMediaKey, moduleName, useModules } from '@/lib/modules'
+import { isMediaKey, useModules } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { GalleryDownloadDialog, type GalleryDownloadPin } from '@/components/GalleryDownloadDialog'
 import { StorageBar } from '@/components/StorageBar'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { AllPhotosCut } from '@/components/gallery/AllPhotosCut'
@@ -24,6 +23,8 @@ import { GroupsCut } from '@/components/gallery/GroupsCut'
 import { RecordsCut } from '@/components/gallery/RecordsCut'
 import { ModulesCut } from '@/components/gallery/ModulesCut'
 import { VideosCut } from '@/components/gallery/VideosCut'
+import { UncategorizedCut } from '@/components/gallery/UncategorizedCut'
+import { GalleryScope } from '@/components/gallery/GalleryScope'
 
 /* ============================================================
    გალერეა — `/gallery` და მისი ქვე-გვერდები (Tasks 10 → **§8**).
@@ -44,7 +45,7 @@ import { VideosCut } from '@/components/gallery/VideosCut'
    ============================================================ */
 
 export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const { all, mediaModules } = useModules()
 
@@ -53,12 +54,10 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
     [mediaModules],
   )
 
-  const mediaNames = useMemo(
-    () => mediaModules.map((m) => moduleName(m, i18n.language)),
-    [mediaModules, i18n.language],
-  )
-
-  const cutLabel = (key: GalleryCut) => galleryCutLabel(key, t(`gallery.cut.${key}`), mediaNames)
+  /* ⚠️ სახელი ერთი გასაღებიდან (§27) — იგივე, რასაც საიდბარი ხატავს.
+     ადრე „ჩანაწერები" ჩართული მოდულების სახელებისგან იგებოდა, რაც
+     ტაბისთვის გრძელი იყო და მაინც არასრული. */
+  const cutLabel = (key: GalleryCut) => t(`gallery.cut.${key}`)
 
   const [open, setOpen] = useState(false)
   const [pin, setPin] = useState<GalleryDownloadPin | undefined>()
@@ -113,6 +112,8 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
             <Stat label={t('gallery.statPhotos')} value={summary.photos} />
             <Stat label={t('gallery.statRecords')} value={summary.records} />
             <Stat label={t('gallery.statActors')} value={summary.actors} />
+            {/* §26 — „უკატეგორიო" მთვლელი აქვე, რომ ჭრილის არსებობა ჩანდეს */}
+            <Stat label={t('gallery.statUncategorized')} value={summary.uncategorized} />
             <Stat label={t('gallery.statVideos')} value={summary.videos} />
             <Stat label={t('gallery.statSize')} value={formatBytes(summary.bytes)} />
           </div>
@@ -153,19 +154,27 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
         <GroupsCut by="actor" onDownloadRecord={fromRecordGroup} onDownloadActor={fromActorGroup} />
       )}
 
+      {cut === 'uncategorized' && <UncategorizedCut />}
+
       {cut === 'videos' && <VideosCut />}
 
       {cut === 'sources' && (
         <div>
           {/* ⚠️ **ორი სხვადასხვა კითხვა და ორივეს პასუხი სჭირდება**: „რომელმა
-              წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". */}
-          <ChipRow className="mb-4">
-            {(['provider', 'source'] as const).map((key) => (
-              <Chip key={key} active={sourceBy === key} onClick={() => setSourceBy(key)}>
-                {t(`gallery.sourceBy.${key}`)}
-              </Chip>
-            ))}
-          </ChipRow>
+              წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". §24.3-ის შემდეგ
+              ისინი ბარათებია და არა ჩიპები — იგივე ვიზუალი, რაც აუდიტ-ლოგს. */}
+          <div className="mb-4">
+            <GalleryScope
+              label={t('gallery.sourceScope')}
+              options={(['provider', 'source'] as const).map((key) => ({
+                key,
+                label: t(`gallery.sourceBy.${key}`),
+                hint: t(`gallery.sourceByHint.${key}`),
+              }))}
+              value={sourceBy}
+              onChange={(key) => setSourceBy(key as 'provider' | 'source')}
+            />
+          </div>
           <GroupsCut by={sourceBy} />
         </div>
       )}

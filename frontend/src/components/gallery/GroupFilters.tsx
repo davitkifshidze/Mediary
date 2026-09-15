@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Search, SlidersHorizontal, Star, X } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown, Search, SlidersHorizontal, Star, X } from 'lucide-react'
 import { fetchGenres } from '@/api/media'
 import type { GalleryParentKind } from '@/api/gallery'
 import { isMediaKey } from '@/lib/modules'
@@ -36,6 +36,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ============================================================ */
 
 export interface GroupFilterState {
+  /**
+   * **„დაჯგუფებული ↔ არეული" (§28).**
+   *
+   * ⚠️ ეს **ჭრილი არ არის** — ერთი და იგივე სკოუპის ორი გამოსახულებაა:
+   * `grouped` დასტებია (თითო ჩანაწერი/მსახიობი ერთი ბარათი), `mixed` კი
+   * იმავე სკოუპის ფოტოების ბრტყელი ბადე. სწორედ ესაა შენი „ან არეულად
+   * ჩვენება, ან შეკრება".
+   */
+  layout: 'grouped' | 'mixed'
   q: string
   have: 'with' | 'without' | 'all'
   /** მძიმით გაყოფილი slug-ები (AND) */
@@ -50,6 +59,7 @@ export interface GroupFilterState {
 }
 
 export const EMPTY_GROUP_FILTERS: GroupFilterState = {
+  layout: 'grouped',
   q: '',
   have: 'with',
   genre: '',
@@ -89,6 +99,9 @@ export function GroupFilters({
   showHave,
   sorts = GALLERY_GROUP_SORTS,
   showSections = true,
+  showLayout = true,
+  onCollapseAll,
+  collapsed,
   extra,
 }: {
   value: GroupFilterState
@@ -101,6 +114,18 @@ export function GroupFilters({
   sorts?: readonly GalleryGroupSort[]
   /** სექციებად დაყოფა მხოლოდ ჩანაწერებზეა (მსახიობს ჟანრი/წელი არ აქვს) */
   showSections?: boolean
+  /**
+   * „დაჯგუფებული / არეული" გადამრთველი (§28).
+   *
+   * ⚠️ **იქ არ იხატება, სადაც ბრტყელი ეკვივალენტი არ არსებობს**: „წყაროს"
+   * და „მომწოდებლის" ჭრილში ჯგუფი მთელი დომენია, ე.ი. „არეული" იქ
+   * ბიბლიოთეკის ყველა ფოტოს ნიშნავდა — სულ სხვა კითხვის პასუხს. ეს
+   * პროექტის არსებული წესია: კონტროლი, რომელიც ტყუის, არ იხატება.
+   */
+  showLayout?: boolean
+  /** სექციების ერთბაშად შეკრება/გაშლა — მხოლოდ მაშინ, როცა სექციები არსებობს */
+  onCollapseAll?: () => void
+  collapsed?: boolean
   /** ჭრილის საკუთარი კონტროლი (მაგ. სქესის რიგი მსახიობებზე) */
   extra?: ReactNode
 }) {
@@ -154,6 +179,17 @@ export function GroupFilters({
         {extra}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {showLayout && (
+            <Pick
+              label={t('gallery.layout.label')}
+              value={value.layout}
+              options={(['grouped', 'mixed'] as const).map((key) => ({
+                value: key,
+                label: t(`gallery.layout.${key}`),
+              }))}
+              onChange={(next) => set({ layout: next as GroupFilterState['layout'] })}
+            />
+          )}
           <Pick
             label={t('gallery.groupSort.label')}
             value={value.sort}
@@ -167,6 +203,16 @@ export function GroupFilters({
             options={GALLERY_GROUP_SECTIONS.map((key) => ({ value: key, label: t(`gallery.groupSection.${key}`) }))}
             onChange={(next) => set({ section: next as GalleryGroupSection })}
           />
+          )}
+          {onCollapseAll && (
+            <Button variant="outline" size="sm" onClick={onCollapseAll}>
+              {collapsed ? (
+                <ChevronsUpDown className="size-4" />
+              ) : (
+                <ChevronsDownUp className="size-4" />
+              )}
+              {t(collapsed ? 'gallery.expandAll' : 'gallery.collapseAll')}
+            </Button>
           )}
           {mediaDomains.length > 0 && (
             <Button variant={open ? 'default' : 'outline'} size="sm" onClick={() => setOpen((o) => !o)}>

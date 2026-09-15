@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deleteGalleryImage, type GalleryOwnedImage } from '@/api/gallery'
@@ -5,6 +6,7 @@ import { errorMessage } from '@/lib/errors'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 
 /* ============================================================
    გალერეის ბადე — **ერთი ფენა ყველა ჭრილისთვის** (§8.5).
@@ -15,6 +17,12 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 
    ⚠️ **წაშლა მყისიერია** (ბიბლიოთეკაა და არა ფორმა), მაგრამ დადასტურება
    ერთხელ იკითხება მთელ მონიშნულზე — თითოზე დიალოგი ათჯერ ამოხტებოდა.
+
+   ⚠️ **გადატანის დიალოგი აქ ცხოვრობს და არა ჭრილებში** (§26.3): ბადე
+   შვიდივე ჭრილშია, ე.ი. აქ ერთხელ დაწერილი მოქმედება ყველგან ჩნდება —
+   და მდგომარეობაც და პორტალის JSX-იც **ერთ კომპონენტშია**, ის წესი,
+   რომელიც `GroupsCut`-ის ცოცხალმა ხარვეზმა დაგვაწერინა (ღილაკი ერთ
+   შტოში იყო, დიალოგი მეორეში, და დაჭერაზე არაფერი ხდებოდა).
    ============================================================ */
 
 export function GalleryPhotoGrid({
@@ -44,6 +52,8 @@ export function GalleryPhotoGrid({
   const qc = useQueryClient()
   const confirm = useConfirm()
   const { toast } = useToast()
+  /** §26.3 — რომელი ფოტოები გადაგვაქვს (ცარიელი = დიალოგი დახურულია) */
+  const [moving, setMoving] = useState<number[] | null>(null)
 
   const remove = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map((id) => deleteGalleryImage(id))),
@@ -80,6 +90,7 @@ export function GalleryPhotoGrid({
   if (loading) return <GallerySkeletonGrid />
 
   return (
+    <>
     <PhotoGrid
       emptyText={emptyText ?? t('gallery.noPhotosYet')}
       emptyHint={t('gallery.emptyHint')}
@@ -89,6 +100,7 @@ export function GalleryPhotoGrid({
       onPageSizeChange={onPageSizeChange}
       total={total}
       extraTools={extraTools}
+      onMove={(ids) => setMoving(ids)}
       onDelete={async (ids) => {
         const ok = await confirm({
           title: t('gallery.deleteTitle'),
@@ -99,6 +111,9 @@ export function GalleryPhotoGrid({
         if (ok) remove.mutate(ids)
       }}
     />
+
+    {moving && <GalleryMoveDialog ids={moving} onClose={() => setMoving(null)} />}
+    </>
   )
 }
 

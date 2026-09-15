@@ -1,4 +1,4 @@
-import { Boxes, Film, Images, Radio, Users, Video } from 'lucide-react'
+import { Boxes, Film, Images, Inbox, Radio, Users, Video } from 'lucide-react'
 
 /* ============================================================
    გალერეის ჭრილები (§8.5) — **ერთი რუკა** გვერდისთვისაც და საიდბარისთვისაც.
@@ -13,34 +13,35 @@ import { Boxes, Film, Images, Radio, Users, Video } from 'lucide-react'
    ორი ასლი მაინც არ ჩნდება — სია აქ ერთია და ორივე მხარე აქედან კითხულობს.
    ============================================================ */
 
-export type GalleryCut = 'all' | 'records' | 'actors' | 'videos' | 'sources' | 'modules'
+export type GalleryCut =
+  | 'all'
+  | 'records'
+  | 'actors'
+  | 'uncategorized'
+  | 'videos'
+  | 'sources'
+  | 'modules'
 
 /** ჭრილი → მისამართი და ხატულა */
 export const GALLERY_CUTS = [
   { key: 'all', path: '/gallery', icon: Images },
   { key: 'records', path: '/gallery/records', icon: Film },
   { key: 'actors', path: '/gallery/actors', icon: Users },
+  // §26 — უმშობლო ფოტოები და მათი ალბომები
+  { key: 'uncategorized', path: '/gallery/uncategorized', icon: Inbox },
   { key: 'videos', path: '/gallery/videos', icon: Video },
   { key: 'sources', path: '/gallery/sources', icon: Radio },
   { key: 'modules', path: '/gallery/modules', icon: Boxes },
 ] as const satisfies readonly { key: GalleryCut; path: string; icon: unknown }[]
 
-/**
- * **ჭრილის სახელი (ეტაპი 2).**
- *
- * ⚠️ **„ჩანაწერები" ცუდი სახელია მაშინ, როცა მხოლოდ ფილმები გაქვს** — ესაა
- * შენი შენიშვნა („რატო დაარქვი, ფილმებია ეს"). სახელი ახლა **ჩართული
- * მედია-მოდულებიდან** იგება: ერთია — „ფილმები", ორია — „ფილმები · სერიალები".
- *
- * ⚠️ **სახელს `useModules()` აძლევს და არა i18n-ის ცალკე გასაღები** — მოდულის
- * სახელი ბაზაშია (`modules.name_ka/name_en`) და საიდბარიც სწორედ მას ხატავს;
- * მეორე წყარო ერთ დღეს გაშორდებოდა (და გადარქმეულ მოდულს ძველ სახელს
- * აჩვენებდა).
- *
- * ⚠️ **ფოლბექი მაინც საჭიროა** — მედია-მოდული შეიძლება საერთოდ არ იყოს
- * ჩართული (ჭრილში მაშინ სიმღერა/წიგნი/თამაში დგას), და უსახელო ტაბი
- * უარესია, ვიდრე ზოგადი „ჩანაწერები".
- */
-export function galleryCutLabel(cut: GalleryCut, fallback: string, mediaNames: string[]): string {
-  return cut === 'records' && mediaNames.length > 0 ? mediaNames.join(' · ') : fallback
-}
+/* ⚠️ **`galleryCutLabel()` წაშლილია (§27).** ის ჭრილის სახელს ჩართული
+   მედია-მოდულებისგან აწყობდა („ფილმები · სერიალები · ანიმეები") და შენი
+   შენიშვნაც სწორედ ეს იყო: ტაბისთვის გრძელია, ოთხ მოდულზე კიდევ
+   გაიზრდება — და **მაინც იტყუება**, რადგან ამ ჭრილში სიმღერაც ზის,
+   წიგნიც და თამაშიც. სახელი, რომელიც ჩამოთვლას ცდილობს, ან ვერ ეტევა,
+   ან არასრულია.
+
+   ახლა ჭრილს **ერთი ზოგადი სახელი** აქვს (`gallery.cut.records` —
+   „ბიბლიოთეკა"), ხოლო რომელი დომენებია შიგნით, ბარათებზე წერია, თითოს
+   თავისი რიცხვით (§24.4). ფუნქცია რომ დარჩენილიყო `t()`-ს გადამცემ
+   გარსად, ორივე მხარეს ეჭვი დარჩებოდა, ხომ არ აკეთებს ის კიდევ რაღაცას. */

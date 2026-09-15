@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DownloadCloud, Globe, Images, Maximize2, Trash2, User, Video } from 'lucide-react'
+import { ChevronDown, DownloadCloud, Globe, Images, Maximize2, Trash2, User, Video } from 'lucide-react'
 import {
   deleteGalleryImage,
   fetchActorGalleryImages,
@@ -17,9 +17,8 @@ import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import type { PhotoAction } from '@/lib/photoActions'
 import { sectionGalleryGroups, sortGalleryGroups } from '@/lib/galleryGroups'
 import { useContentLang } from '@/lib/settings'
-import { formatBytes } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
@@ -27,6 +26,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
 import { EMPTY_GROUP_FILTERS, GroupFilters, type GroupFilterState } from '@/components/gallery/GroupFilters'
+import { GalleryScope } from '@/components/gallery/GalleryScope'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
 
@@ -94,6 +94,14 @@ export function GroupsCut({
 
   const [filters, setFilters] = useState<GroupFilterState>(EMPTY_GROUP_FILTERS)
   const [gender, setGender] = useState<'all' | 'female' | 'male'>('all')
+  /**
+   * §28 — შეკრებილი სექციები.
+   *
+   * ⚠️ **შეკრებილები ინახება და არა გაშლილები**: ახალი სექცია (ახალი ჟანრი,
+   * ახალი წელი) გაშლილი უნდა დაიბადოს — თორემ ფილტრის შეცვლაზე ეკრანი
+   * უცებ ცარიელდებოდა და ეს „აღარაფერია"-დ იკითხებოდა.
+   */
+  const [closed, setClosed] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState<GalleryGroup | null>(null)
   const [webOn, setWebOn] = useState<GalleryGroup | null>(null)
   const [videoOn, setVideoOn] = useState<GalleryGroup | null>(null)
@@ -119,6 +127,20 @@ export function GroupsCut({
     queryKey: ['gallery-groups', by, query],
     queryFn: () => fetchGalleryGroups(by, query),
   })
+
+  /**
+   * **„არეული" ხედის ბრტყელი ფილტრი (§28).**
+   *
+   * ⚠️ ის **იმავე სკოუპს** უნდა აღწერდეს, რასაც დასტები: `parent` ამბობს,
+   * ვის ჰკიდია ფოტო, `type`/`from` კი დომენს ჭრის. `from=movie` +
+   * `parent=actor` ზუსტად „ფილმების მსახიობების ფოტოებია" — რადგან
+   * `from` ჯერ ჩანაწერსაც და მის შემადგენლობასაც აერთიანებს, `parent`
+   * კი მათგან მსახიობებს ტოვებს.
+   */
+  const flatFilters =
+    by === 'actor'
+      ? ({ parent: 'actor', from } as const)
+      : ({ parent: 'record', type } as const)
 
   /** მსახიობზე ჩამოტვირთვა პირდაპირ ერთი გამოძახებაა (ნაგულისხმევი პარამეტრებით) */
   const quickActor = useMutation({
@@ -280,6 +302,19 @@ export function GroupsCut({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [groups, filters.section, by, lang],
   )
+
+  /** ერთი სექციის შეკრება/გაშლა */
+  const toggleSection = (key: string) =>
+    setClosed((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  /** ⚠️ „ყველას შეკრება" ორმხრივია: სრულად შეკრებილზე იგივე ღილაკი შლის */
+  const toggleAll = (keys: string[]) =>
+    setClosed((prev) => (prev.size >= keys.length ? new Set() : new Set(keys)))
 
   /**
    * ვებძებნის ორი დიალოგი (ეტაპი 3, **ცოცხალი ხარვეზის შესწორება**).
@@ -455,6 +490,25 @@ export function GroupsCut({
   return (
     <>
       <section>
+        {/* §24.2 — „ყველა / მსახიობი ქალები / მსახიობი კაცები" ბარათებად.
+            ⚠️ რიცხვი **ფასეტურია** (სერვერი მას სქესის ფილტრის გარეშე
+            ითვლის), თორემ „ქალების" არჩევისთანავე „კაცები" ნულზე
+            ჩამოვიდოდა და ბარათი პასუხს აღარ გასცემდა. */}
+        {by === 'actor' && (
+          <div className="mb-4">
+            <GalleryScope
+              label={t('gallery.castScope')}
+              options={(['all', 'female', 'male'] as const).map((key) => ({
+                key,
+                label: key === 'all' ? t('gallery.cast.all') : t(`gallery.cast.${key}`),
+                count: groupsQ.data?.facets?.gender?.[key],
+              }))}
+              value={gender}
+              onChange={(key) => setGender(key as 'all' | 'female' | 'male')}
+            />
+          </div>
+        )}
+
         {/* ⚠️ „წყაროს"/„მომწოდებლის" ჭრილში ჯგუფი **დომენია** — იქ არც ძებნას
             აქვს აზრი და არც ჟანრს, ამიტომ ფილტრის ზოლი მხოლოდ ორ ჭრილშია */}
         {(by === 'record' || by === 'actor') && (
@@ -467,18 +521,9 @@ export function GroupsCut({
                ჩუმად არაფერს გააკეთებდა */
             sorts={by === 'actor' ? ['photos', 'photos_asc', 'title', 'bytes'] : undefined}
             showSections={by === 'record'}
-            extra={
-              by === 'actor' ? (
-                /* §3.2 — „ქალი/კაცი" ჭრილი; სქესი TMDB-დან მოდის და ძველ ჩანაწერებზე ცარიელია */
-                <ChipRow>
-                  {(['all', 'female', 'male'] as const).map((key) => (
-                    <Chip key={key} active={gender === key} onClick={() => setGender(key)}>
-                      {key === 'all' ? t('filter.all') : t(`gallery.cast.${key}`)}
-                    </Chip>
-                  ))}
-                </ChipRow>
-              ) : undefined
-            }
+            /* ⚠️ სექციების შეკრება მხოლოდ მაშინ, როცა სექციები მართლა არსებობს */
+            onCollapseAll={sections.length ? () => toggleAll(sections.map((x) => x.key)) : undefined}
+            collapsed={sections.length > 0 && closed.size >= sections.length}
           />
         )}
 
@@ -490,7 +535,16 @@ export function GroupsCut({
           </span>
         </div>
 
-        {groupsQ.isLoading ? (
+        {/* §28 — „არეული": იმავე სკოუპის ფოტოები ბრტყელ ბადეზე */}
+        {filters.layout === 'mixed' && (by === 'record' || by === 'actor') ? (
+          <GroupPhotos
+            title={t('gallery.allPhotos')}
+            subtitle={t('gallery.mixedHint')}
+            filters={flatFilters}
+            cacheKey={`flat:${by}:${type ?? from ?? 'all'}`}
+            showOwner
+          />
+        ) : groupsQ.isLoading ? (
           <GalleryStackSkeleton />
         ) : !groups.length ? (
           <EmptyState
@@ -500,17 +554,31 @@ export function GroupsCut({
           />
         ) : sections.length ? (
           <div className="space-y-6">
-            {sections.map((section) => (
-              <div key={section.key || 'unknown'}>
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  {section.label}
-                  <span className="text-xs font-normal text-muted-foreground tabular-nums">
-                    {section.groups.length}
-                  </span>
-                </h3>
-                {grid(section.groups)}
-              </div>
-            ))}
+            {sections.map((section) => {
+              const key = section.key || 'unknown'
+              const shut = closed.has(key)
+
+              return (
+                <div key={key}>
+                  {/* ⚠️ სათაური **ღილაკია** (§28 — „შეკრება"): ცალკე პატარა
+                      ისარი სენსორულ ეკრანზე პრაქტიკულად მიუწვდომელია */}
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(key)}
+                    className="mb-2 flex w-full items-center gap-2 text-left text-sm font-semibold"
+                  >
+                    <ChevronDown
+                      className={cn('size-4 transition-transform', shut && '-rotate-90')}
+                    />
+                    {section.label}
+                    <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                      {section.groups.length}
+                    </span>
+                  </button>
+                  {!shut && grid(section.groups)}
+                </div>
+              )
+            })}
           </div>
         ) : (
           grid(groups)

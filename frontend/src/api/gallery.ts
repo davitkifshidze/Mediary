@@ -225,6 +225,8 @@ export interface GalleryImage {
   is_thumbnail: boolean
   /** ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება */
   category: 'backdrop' | 'poster' | 'logo' | 'actor' | null
+  /** §26 — user-ის თავისი დახარისხება; მშობლისგან დამოუკიდებელი */
+  album_id: number | null
   width: number | null
   height: number | null
 }
@@ -275,7 +277,7 @@ export interface GalleryVideoPage {
  * მოვიდა თუ სერიალიდან", მეორე კი „TMDB-დან თუ Google-დან". ვებძებნის
  * შემდეგ ორივეს პასუხი სჭირდება.
  */
-export type GalleryGroupBy = 'record' | 'actor' | 'source' | 'provider' | 'module'
+export type GalleryGroupBy = 'record' | 'actor' | 'source' | 'provider' | 'module' | 'album'
 
 export interface GalleryGroup {
   kind: GalleryOwnerKind | 'provider' | 'module'
@@ -315,6 +317,17 @@ export interface GalleryGroup {
 export interface GalleryGroups {
   by: GalleryGroupBy
   groups: GalleryGroup[]
+  /**
+   * **ფასეტური მთვლელები ჭრილის ბარათებისთვის** (§24).
+   *
+   * ⚠️ **ჭრილი საკუთარ თავს არ ითვლის** — რიცხვი ფილტრის *გარეშე* მოდის,
+   * თორემ „ქალების" არჩევისთანავე „კაცები" ნულზე ჩამოვიდოდა და ბარათი
+   * იმ კითხვას ვეღარ უპასუხებდა, რისთვისაც არსებობს.
+   */
+  facets?: {
+    gender?: { all: number; female: number; male: number }
+    types?: Partial<Record<string, number>>
+  }
   /** `kind:id` → ესკიზების გზები (ბადეზე „რა დევს შიგნით") */
   previews: Record<string, string[]>
 }
@@ -329,8 +342,19 @@ export const GALLERY_SORTS = ['new', 'old', 'random'] as const
 export type GallerySort = (typeof GALLERY_SORTS)[number]
 
 export interface GalleryPhotoFilters {
-  /** `movie:12` · `song:4` · `actor:5`; მისი გარეშე — ყველა ფოტო */
+  /**
+   * `movie:12` · `song:4` · `actor:5` · `album:3` · `none`;
+   * მისი გარეშე — ყველა ფოტო.
+   *
+   * ⚠️ **`none` და „owner არ მოსულა" ორი სხვადასხვა კითხვაა**: პირველი
+   * უკატეგორიოა (§26), მეორე — მთელი ბიბლიოთეკა.
+   */
   owner?: string
+  /** §28 — „არეული" ხედი ჭრილის ფარგლებში: ვის ჰკიდია ფოტო */
+  parent?: 'record' | 'actor' | 'none'
+  /** §28 — ერთ დომენზე ჭრა („არეული" ხედი ერთი ტაბის შიგნით) */
+  type?: GalleryParentKind
+  album_id?: number
   /** „წყაროს" ჭრილი — დომენის ყველა ფოტო (ჩანაწერისაც და მსახიობებისაც) */
   from?: MediaType
   /** „მომწოდებლის" ჭრილი — `tmdb` · `wikimedia` · `serpapi:*` */
@@ -384,6 +408,10 @@ export interface GallerySummary {
    * ამიტომ ჩანდა „ლოგო" ცარიელ ბიბლიოთეკაზეც — სია ფრონტში კონსტანტა იყო.
    */
   categories: Partial<Record<string, number>>
+  /** §26 — მშობლის გარეშე დარჩენილი ფოტოები */
+  uncategorized: number
+  /** §26 — რამდენი ალბომია */
+  albums: number
   videos: number
   module_groups: number
   domains: MediaType[]
@@ -568,6 +596,65 @@ export async function fetchGalleryPhotos(filters: GalleryPhotoFilters = {}): Pro
   const { data } = await api.get('/gallery/photos', {
     params: { ...filters, with_cast: filters.with_cast === false ? 0 : undefined },
   })
+  return data
+}
+
+/* ---------- ალბომები და გადატანა (Tasks §26) ---------- */
+
+export interface GalleryAlbum {
+  id: number
+  name: string
+  description: string | null
+  sort_order: number
+  photos: number
+}
+
+export async function fetchGalleryAlbums(): Promise<GalleryAlbum[]> {
+  const { data } = await api.get('/gallery/albums')
+  return data
+}
+
+export async function createGalleryAlbum(body: {
+  name: string
+  description?: string | null
+}): Promise<GalleryAlbum> {
+  const { data } = await api.post('/gallery/albums', body)
+  return data
+}
+
+export async function updateGalleryAlbum(
+  id: number,
+  body: { name?: string; description?: string | null },
+): Promise<GalleryAlbum> {
+  const { data } = await api.patch(`/gallery/albums/${id}`, body)
+  return data
+}
+
+/** ⚠️ ფოტოები **არ იშლება** — `move_to`-ს გარეშე ისინი უკატეგორიოში ბრუნდება */
+export async function deleteGalleryAlbum(id: number, moveTo?: number | null): Promise<void> {
+  await api.delete(`/gallery/albums/${id}`, { data: { move_to: moveTo ?? null } })
+}
+
+export async function reorderGalleryAlbums(ids: number[]): Promise<GalleryAlbum[]> {
+  const { data } = await api.post('/gallery/albums/reorder', { ids })
+  return data
+}
+
+/**
+ * **ფოტოს გადატანა (§26.3).**
+ *
+ * ⚠️ **ორი ღერძი ცალ-ცალკე**: `target` მშობელს ცვლის, `album` —
+ * დახარისხებას. გამოტოვებული გასაღები „ხელუხლებელს" ნიშნავს, ცხადი
+ * `null` კი — „გაასუფთავე". ერთად რომ წასულიყო, ალბომში ჩაგდება ჩუმად
+ * ფილმისგან მოხსნას ნიშნავდა.
+ */
+export async function moveGalleryImages(body: {
+  ids: number[]
+  /** `none` = უკატეგორიოში; `movie:12` / `cast_member:5` = მშობელზე */
+  target?: string
+  album_id?: number | null
+}): Promise<{ moved: number }> {
+  const { data } = await api.post('/gallery/images/move', body)
   return data
 }
 

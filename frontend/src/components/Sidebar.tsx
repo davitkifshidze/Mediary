@@ -35,7 +35,7 @@ import { useSettings } from '@/lib/settings'
 import { fetchPendingCount } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
-import { GALLERY_CUTS, galleryCutLabel } from '@/lib/galleryCuts'
+import { GALLERY_CUTS } from '@/lib/galleryCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useStatusMap } from '@/lib/statuses'
 import { PSEUDO_SECTIONS, arrangeSections, layoutFor, sectionSearch } from '@/lib/statusSections'
@@ -186,8 +186,6 @@ export function Sidebar({
   const location = useLocation()
   const [params] = useSearchParams()
   const { mediaModules, pageModules, enabled, has } = useModules()
-  // ეტაპი 2 — გალერეის „ჩანაწერები" ჩართული მედია-მოდულების სახელს იღებს
-  const mediaNames = mediaModules.map((m) => moduleName(m, i18n.language))
   const { settings } = useSettings()
   const lang = useContentLang(i18n.language)
   /* §6.4 — სტატუსები per-user ლექსიკონია, ე.ი. სექციები აქედან იგება.
@@ -891,12 +889,11 @@ export function Sidebar({
                         )}
                       >
                         <cut.icon className="size-4 shrink-0" />
-                        {/* ⚠️ „ჩანაწერები" ჩართული მედია-მოდულების სახელით
-                            იცვლება (ეტაპი 2) — გვერდზეც იგივე ჰელპერი მუშაობს,
-                            ე.ი. მენიუ და ტაბი ვერ გაშორდება */}
-                        <span className="min-w-0 truncate">
-                          {galleryCutLabel(cut.key, t(`gallery.cut.${cut.key}`), mediaNames)}
-                        </span>
+                        {/* ⚠️ სახელი ერთი გასაღებიდან მოდის (§27): ადრე
+                            „ჩანაწერები" ჩართული მოდულების სახელებისგან
+                            იგებოდა, რაც ტაბისთვის გრძელი იყო და მაინც
+                            არასრული — შიგნით სიმღერაც ზის და წიგნიც */}
+                        <span className="min-w-0 truncate">{t(`gallery.cut.${cut.key}`)}</span>
                       </Link>
                     ))}
                   </div>

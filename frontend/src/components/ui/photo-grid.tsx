@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Download,
   ImageOff,
+  MoveRight,
   Square,
   SquareDashed,
   Star,
@@ -174,6 +175,7 @@ export function PhotoGrid({
   lightboxItems,
   privateDisk,
   onDelete,
+  onMove,
   onPrimary,
   primaryId,
   emptyText,
@@ -198,6 +200,14 @@ export function PhotoGrid({
   privateDisk?: boolean
   /** წაშლა — **ერთსაც და მონიშნულებსაც ერთი ხელმოწერით** */
   onDelete?: (ids: number[]) => void
+  /**
+   * §26.3 — გადატანა (მშობელი · ალბომი · უკატეგორიო).
+   *
+   * ⚠️ **ცალკე პროპია და არა `extraTools`-ში ჩადებული ღილაკი**: მოქმედებას
+   * **მონიშნული** სჭირდება, `extraTools` კი უბრალო `ReactNode`-ია და
+   * მონიშვნას ვერ ხედავს. `onDelete`-ის იგივე ხელმოწერა.
+   */
+  onMove?: (ids: number[]) => void
   onPrimary?: (id: number) => void
   primaryId?: number | null
   emptyText?: string
@@ -358,6 +368,15 @@ export function PhotoGrid({
             })}
           </Button>
 
+          {onMove && (
+            <Button type="button" variant="outline" size="sm" onClick={() => onMove(targets)}>
+              <MoveRight className="size-3.5" />
+              {t(selected.length ? 'gallery.moveSelected' : 'gallery.moveAll', {
+                count: targets.length,
+              })}
+            </Button>
+          )}
+
           {onDelete && (
             <Button
               type="button"
@@ -428,6 +447,7 @@ export function PhotoGrid({
               onPrimary={
                 onPrimary && item.canPrimary !== false ? () => onPrimary(item.id) : undefined
               }
+              onMove={onMove}
               onDelete={onDelete}
               onResolved={(url) => setResolved((cur) => (cur[item.id] === url ? cur : { ...cur, [item.id]: url }))}
             />
@@ -509,6 +529,7 @@ function PhotoCell({
   onToggle,
   onDownload,
   onPrimary,
+  onMove,
   onDelete,
   onResolved,
 }: {
@@ -524,6 +545,7 @@ function PhotoCell({
   onToggle: () => void
   onDownload: (ids: number[]) => void
   onPrimary?: () => void
+  onMove?: (ids: number[]) => void
   onDelete?: (ids: number[]) => void
   onResolved: (url: string) => void
 }) {
@@ -553,6 +575,7 @@ function PhotoCell({
        ე.ი. ერთხელ წერია და ტესტიც აქვს. */
     onOriginal: url ? () => window.open(url, '_blank', 'noopener,noreferrer') : undefined,
     onToggle,
+    onMove: onMove && (() => onMove(targets)),
     onDelete: onDelete && (() => onDelete(targets)),
   })
 

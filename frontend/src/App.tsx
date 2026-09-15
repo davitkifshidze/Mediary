@@ -235,6 +235,10 @@ function AppShell() {
           )}
           {has('gallery') && <Route path="gallery/actors" element={<GalleryPage cut="actors" />} />}
           {has('gallery') && <Route path="gallery/actors/:id" element={<ActorRedirect />} />}
+          {/* §26 — უკატეგორიო ფოტოები და მათი ალბომები */}
+          {has('gallery') && (
+            <Route path="gallery/uncategorized" element={<GalleryPage cut="uncategorized" />} />
+          )}
           {has('gallery') && <Route path="gallery/videos" element={<GalleryPage cut="videos" />} />}
           {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
           {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}

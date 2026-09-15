@@ -1,24 +1,41 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GALLERY_PARENTS, type GalleryGroup, type GalleryParentKind } from '@/api/gallery'
+import { useQuery } from '@tanstack/react-query'
+import {
+  fetchGalleryGroups,
+  GALLERY_PARENTS,
+  type GalleryGroup,
+  type GalleryParentKind,
+} from '@/api/gallery'
 import { isMediaKey, moduleName, useModules } from '@/lib/modules'
 import type { MediaType } from '@/lib/media'
-import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { GroupsCut } from '@/components/gallery/GroupsCut'
+import { GalleryScope } from '@/components/gallery/GalleryScope'
 
 /* ============================================================
-   ჩანაწერების ჭრილი — **დომენის ტაბები და მსახიობები შიგნით** (ეტაპი 2).
+   ბიბლიოთეკის ჭრილი — **დომენის ბარათები და მსახიობები შიგნით**.
 
-   შენი სიტყვები: „ჩანაწერის გალერეა არა — ფილმების გალერეა, სადაც უნდა
-   იყოს როგორც ფილმები ასევე მსახიობები შიგნით".
+   შენი სიტყვები (ეტაპი 2): „ჩანაწერის გალერეა არა — ფილმების გალერეა,
+   სადაც უნდა იყოს როგორც ფილმები ასევე მსახიობები შიგნით".
 
    ⚠️ **აქამდე „ჩანაწერები" და „მსახიობები" ორი დამოუკიდებელი ჭრილი იყო** და
    ფილმის მსახიობებამდე მისასვლელად გვერდითა მენიუში ჭრილის გამოცვლა
    გჭირდებოდა — ე.ი. „ფილმების გალერეა" ორ სხვადასხვა ადგილას იყო გაყოფილი.
-   ახლა დომენის ტაბს თავისი „ჩანაწერები / მსახიობები" გადამრთველი აქვს.
    ცალკე „მსახიობების" ჭრილი **რჩება**: ის ბიბლიოთეკის ყველა მსახიობია,
    დომენის გარეშე.
+
+   ## §24.4/§27 (2026-09-15)
+   ⚠️ **ჩიპების ნაცვლად ბარათებია, თითოს თავისი რიცხვით** — იგივე ვიზუალი,
+   რაც აუდიტ-ლოგს აქვს, და სწორედ ისაა შენი შენიშვნის პასუხი: „რაღაც
+   ყველაფერი მოდის და რაღაც არ მომწონს, მინდა უფრო დახარისხებული იყოს".
+   ტაბი, რომელიც არ ამბობს რამდენი ჩანაწერია შიგნით, არჩევამდე არაფერს
+   გეუბნება.
+
+   ⚠️ **რიცხვი ფასეტურია**: სერვერი მას **დომენის ფილტრის გარეშე** ითვლის
+   (`GalleryGroups.facets.types`), თორემ ერთი დომენის არჩევისთანავე
+   დანარჩენები ნულზე ჩამოვიდოდა — აუდიტის `summary()`-ის იგივე წესი.
 
    ⚠️ **ტაბები `useModules()`-იდან იგება და არა ხელით დაწერილი სიიდან** —
    გამორთულ მოდულს ტაბი არ უნდა ჰქონდეს, სახელი კი ის უნდა იყოს, რასაც
@@ -45,10 +62,23 @@ export function RecordsCut({
     () =>
       GALLERY_PARENTS.filter((key) => enabled.some((m) => m.key === key)).map((key) => ({
         key,
+        module: enabled.find((m) => m.key === key)!,
         label: moduleName(enabled.find((m) => m.key === key)!, i18n.language),
       })),
     [enabled, i18n.language],
   )
+
+  /* ⚠️ **მთვლელებისთვის ცალკე, ფილტრის გარეშე მოთხოვნა** (`previews: 0`).
+     ბარათებს დომენების სრული სურათი სჭირდებათ, ჯგუფების სია კი უკვე
+     გაფილტრულია — ერთმანეთში რომ აგვერია, არჩეული დომენის გარდა ყველა
+     ბარათი ნულს აჩვენებდა. ესკიზები აქ არ იკითხება, ე.ი. ეს იაფი
+     მოთხოვნაა და იმავე ქეშში ზის, რასაც „ყველა" ტაბი ისედაც კითხულობს. */
+  const facetsQ = useQuery({
+    queryKey: ['gallery-groups', 'record', { previews: 0, have: 'with' }],
+    queryFn: () => fetchGalleryGroups('record', { previews: 0, have: 'with' }),
+  })
+
+  const counts = facetsQ.data?.facets?.types ?? {}
 
   if (!parents.length) {
     return <EmptyState title={t('gallery.needsMediaModule')} />
@@ -60,32 +90,46 @@ export function RecordsCut({
 
   return (
     <div>
-      {/* ---------- დომენის ტაბები ---------- */}
+      {/* ---------- დომენის ბარათები ---------- */}
       {parents.length > 1 && (
-        <ChipRow className="mb-3">
-          <Chip active={active === 'all'} onClick={() => setDomain('all')}>
-            {t('filter.all')}
-          </Chip>
-          {parents.map((parent) => (
-            <Chip key={parent.key} active={active === parent.key} onClick={() => setDomain(parent.key)}>
-              {parent.label}
-            </Chip>
-          ))}
-        </ChipRow>
+        <div className="mb-4">
+          <GalleryScope
+            label={t('gallery.domainScope')}
+            options={[
+              { key: 'all', label: t('filter.all'), count: counts.all },
+              ...parents.map((parent) => ({
+                key: parent.key,
+                label: parent.label,
+                count: counts[parent.key] ?? 0,
+                color: parent.module.color ?? null,
+                // მოდულის თავისი ხატულა — იგივე, რასაც საიდბარი ხატავს
+                node: <ModuleIcon name={parent.module.icon} className="size-4 text-[var(--mod)]" />,
+              })),
+            ]}
+            value={active}
+            onChange={(key) => setDomain(key as GalleryParentKind | 'all')}
+          />
+        </div>
       )}
 
       {/* ---------- ჩანაწერები / მსახიობები ----------
-          ⚠️ მარცხენა გადამრთველს **მოდულის სახელი** აწერია („ფილმები") და
-          არა „ჩანაწერები": სწორედ ეს სიტყვა იყო შენი შენიშვნა. */}
+          ⚠️ მარცხენა ბარათს **მოდულის სახელი** აწერია („ფილმები") და არა
+          „ჩანაწერები": სწორედ ეს სიტყვა იყო შენი შენიშვნა. */}
       {showActors && (
-        <ChipRow className="mb-4">
-          <Chip active={tab === 'records'} onClick={() => setTab('records')}>
-            {parents.find((p) => p.key === active)?.label ?? t('gallery.cut.records')}
-          </Chip>
-          <Chip active={tab === 'actors'} onClick={() => setTab('actors')}>
-            {t('gallery.inner.actors')}
-          </Chip>
-        </ChipRow>
+        <div className="mb-4">
+          <GalleryScope
+            options={[
+              {
+                key: 'records',
+                label: parents.find((p) => p.key === active)?.label ?? t('gallery.cut.records'),
+                count: counts[active] ?? 0,
+              },
+              { key: 'actors', label: t('gallery.inner.actors') },
+            ]}
+            value={tab}
+            onChange={(key) => setTab(key as 'records' | 'actors')}
+          />
+        </div>
       )}
 
       {/* ⚠️ **`key` განზრახაა — ტაბის გადართვა ფილტრს ანულებს.** ორივე

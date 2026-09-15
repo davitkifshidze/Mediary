@@ -262,10 +262,6 @@ class GalleryController extends Controller
             ->get();
 
         $members = CastMember::whereIn('id', $rows->pluck('imageable_id'))
-            ->when($data['gender'] ?? null, fn ($query, $gender) => $query->where(
-                'gender',
-                $gender === 'female' ? CastMember::GENDER_FEMALE : CastMember::GENDER_MALE,
-            ))
             /* ეტაპი 2 — დომენის ტაბი: „ფილმების გალერეაში" მხოლოდ ფილმების
                მსახიობები. ⚠️ `whereHas` მედია-მოდელზე `owner` scope-ს
                იმემკვიდრეობს, ე.ი. ეს **ამ user-ის** ბიბლიოთეკაა და არა
@@ -276,6 +272,24 @@ class GalleryController extends Controller
             )
             ->get()
             ->keyBy('id');
+
+        /* **ფასეტური მთვლელი „ყველა / ქალები / კაცები"-სთვის (§24.2).**
+
+           ⚠️ **ჭრილი საკუთარ თავს არ ითვლის** — იგივე წესი, რაც აუდიტის
+           `summary()`-ს აქვს: სქესი რომ მთვლელშივე გაგვეფილტრა, „ქალების"
+           არჩევისთანავე „კაცები" ნულზე ჩამოვიდოდა და ბარათი პასუხს
+           აღარ გასცემდა. ამიტომ `$members` სქესის გარეშე იგება და ფილტრი
+           ქვემოთ დევს. */
+        $facets = [
+            'all' => $members->count(),
+            'female' => $members->where('gender', CastMember::GENDER_FEMALE)->count(),
+            'male' => $members->where('gender', CastMember::GENDER_MALE)->count(),
+        ];
+
+        if ($gender = $data['gender'] ?? null) {
+            $wanted = $gender === 'female' ? CastMember::GENDER_FEMALE : CastMember::GENDER_MALE;
+            $members = $members->where('gender', $wanted);
+        }
 
         $groups = $rows
             ->map(function ($row) use ($members) {
@@ -305,6 +319,7 @@ class GalleryController extends Controller
         return response()->json([
             'by' => 'actor',
             'groups' => $groups,
+            'facets' => ['gender' => $facets],
             'previews' => $this->previews($groups, GalleryParent::ACTOR, $previews),
         ]);
     }
@@ -321,10 +336,15 @@ class GalleryController extends Controller
         $groups = collect();
         $have = $data['have'] ?? 'with';
 
+        /* **დომენის ბარათების ფასეტური მთვლელი (§24.4).**
+
+           ⚠️ **ტაბის ფილტრი აქ აღარ ჭრის ციკლს** და ეს განზრახული ფასია:
+           რიცხვი რომ თითო ტაბზე „რამდენია სხვაგან" კითხვას პასუხობდეს,
+           ყველა დომენი უნდა დაითვალოს (აუდიტის `summary()`-ის იგივე წესი —
+           ჭრილი საკუთარ თავს არ ითვლის). ფილტრი ქვემოთ, უკვე აგებულ სიაზე
+           დევს, ე.ი. „ჯგუფში 40 წერია, შიგნით 37-ია" ვერ მოხდება — სია და
+           მთვლელი ერთი და იმავე მოთხოვნიდან მოდის. */
         foreach (GalleryParent::recordKeys() as $type) {
-            if (($data['type'] ?? null) && $data['type'] !== $type) {
-                continue;
-            }
             if (! $user->hasModule(GalleryParent::module($type))) {
                 continue;
             }
@@ -398,9 +418,17 @@ class GalleryController extends Controller
            სწორად არჩევს. */
         $groups = $groups->sortByDesc('photos')->values();
 
+        $facets = $groups->countBy('kind')->map(fn ($n) => (int) $n)->all();
+        $facets['all'] = $groups->count();
+
+        if ($type = $data['type'] ?? null) {
+            $groups = $groups->where('kind', $type)->values();
+        }
+
         return response()->json([
             'by' => 'record',
             'groups' => $groups,
+            'facets' => ['types' => (object) $facets],
             'previews' => $this->previews($groups, null, $previews),
         ]);
     }
@@ -810,6 +838,16 @@ class GalleryController extends Controller
                ერთი მათგანი ვერსად გამოჩნდებოდა. */
             'owner' => ['nullable', 'string', 'regex:/^(none|('.$owners.'):\d+)$/'],
             'with_cast' => ['nullable', 'boolean'],
+            /* **§28 — „არეული" ხედი ყველა ჭრილში.**
+               `parent` ამბობს, *ვის* ჰკიდია ფოტო: `record` (ნებისმიერი
+               ჩანაწერი) · `actor` (მსახიობი) · `none` (უკატეგორიო). `type`
+               კი ერთ დომენზე ჭრის. ⚠️ ამის გარეშე „დაჯგუფებული/არეული"
+               გადამრთველი მხოლოდ „ყველა ფოტოს" ჭრილში იმუშავებდა —
+               მსახიობების ან ჩანაწერების ჭრილში „არეული" ბიბლიოთეკის
+               მთელ სიას აჩვენებდა, ე.ი. სულ სხვა კითხვას უპასუხებდა. */
+            'parent' => ['nullable', 'in:record,actor,none'],
+            'type' => ['nullable', GalleryParent::recordRule()],
+            'album_id' => ['nullable', 'integer'],
             'category' => ['nullable', 'in:backdrop,poster,logo,actor'],
             // §4.1 — „საიდან მოვიდა" ჭრილში შესვლა (დომენი და არა ერთეული)
             'from' => ['nullable', MediaDomain::rule()],
@@ -857,6 +895,22 @@ class GalleryController extends Controller
                     }
                 });
             }
+        }
+
+        match ($data['parent'] ?? null) {
+            'actor' => $query->where('imageable_type', GalleryParent::ACTOR),
+            'record' => $query->whereNotNull('imageable_type')
+                ->where('imageable_type', '!=', GalleryParent::ACTOR),
+            'none' => $query->whereNull('imageable_type'),
+            default => null,
+        };
+
+        if ($kindFilter = $data['type'] ?? null) {
+            $query->where('imageable_type', $kindFilter);
+        }
+
+        if ($album = $data['album_id'] ?? null) {
+            $query->where('album_id', (int) $album);
         }
 
         if ($category = $data['category'] ?? null) {

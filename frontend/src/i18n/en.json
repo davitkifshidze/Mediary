@@ -1549,7 +1549,7 @@
       "record": "The film’s/series’ own stills and posters. Actors take no part here — their photos are the second tab.",
       "cast": "Portraits of these records’ actors. A photo attaches to the actor, so it is never duplicated across films."
     },
-    "castScope": "Whose cast",
+    "castScope": "Actors",
     "castSize": "Portrait size",
     "castSizeHint": "TMDB has its own sizes for people — they differ from the record’s.",
     "castSizeOption": {
@@ -1563,11 +1563,12 @@
     "bySourceHint": "Whether a photo came from a film or a series. ⚠️ A cast photo hangs off the actor (so it is never duplicated across films), which is why an actor who plays in both shows up in both groups.",
     "cut": {
       "all": "All photos",
-      "records": "Records",
+      "records": "Library",
       "actors": "Actors",
       "videos": "Videos",
       "sources": "Sources",
-      "modules": "Modules"
+      "modules": "Modules",
+      "uncategorized": "Uncategorized"
     },
     "statPhotos": "photos",
     "statRecords": "records",
@@ -1582,7 +1583,8 @@
     },
     "layout": {
       "grouped": "Grouped",
-      "mixed": "Mixed"
+      "mixed": "Mixed",
+      "label": "View"
     },
     "sourceBy": {
       "provider": "Which source brought it",
@@ -1663,7 +1665,46 @@
     "deleteGroupTitle": "Delete every photo in this group?",
     "deleteGroupHint": "“{{name}}” — {{count}} photos will be deleted for good and the space freed. The record itself stays.",
     "groupDeleted": "{{count}} photos deleted",
-    "moduleOff": "The “Gallery” module is off — saving photos and video links needs it."
+    "moduleOff": "The “Gallery” module is off — saving photos and video links needs it.",
+    "categoryScope": "Kind of photo",
+    "sourceScope": "Which cut",
+    "sourceByHint": {
+      "provider": "TMDB · Wikimedia · web search",
+      "source": "Movie · series · anime"
+    },
+    "domainScope": "Which module",
+    "statUncategorized": "Uncategorized",
+    "collapseAll": "Collapse all",
+    "expandAll": "Expand all",
+    "mixedHint": "Every photo in this cut, in one grid",
+    "move": "Move",
+    "moveSelected": "Move {{count}} photos",
+    "moveAll": "Move all ({{count}})",
+    "moveTitle": "Move {{count}} photos",
+    "moveHint": "Nothing is deleted — only what the photo hangs on and which album it is in.",
+    "moveTarget": "Where it hangs",
+    "moveKeepParent": "Leave the parent alone",
+    "moveToUncategorized": "To uncategorized",
+    "moveToRecord": "To a record",
+    "moveToActor": "To an actor",
+    "movePickRecord": "Pick a record…",
+    "moveFindActor": "Find an actor…",
+    "movePickActor": "Pick an actor…",
+    "moveAlbum": "Album",
+    "moveAlbumKeep": "Leave it alone",
+    "moveAlbumNone": "Take out of the album",
+    "moved": "{{count}} photos moved",
+    "albumAdd": "Add an album",
+    "albumName": "Album name",
+    "albumNone": "No album",
+    "albumHint": "An album does not change the photo’s parent — it is your own sorting.",
+    "albumEmpty": "Nothing in this album yet.",
+    "albumDeleted": "Album deleted",
+    "albumDeleteTitle": "Delete the album",
+    "albumDeleteHint": "“{{name}}” goes, the photos stay — they return to uncategorized.",
+    "uncategorizedHint": "Photos that hang on no record. Sort them into albums or move them onto a record.",
+    "uncategorizedEmpty": "No uncategorized photos",
+    "uncategorizedEmptyHint": "Photos whose parent was removed show up here — for example when a record is deleted."
   },
   "boardGames": {
     "title": "Board games",

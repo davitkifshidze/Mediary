@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Info,
   Maximize2,
+  MoveRight,
   Square,
   Star,
   Trash2,
@@ -66,6 +67,8 @@ export interface PhotoActionsInput {
   /** ორიგინალის გახსნა ახალ ტაბში */
   onOriginal?: () => void
   onToggle?: () => void
+  /** §26.3 — გადატანა სხვა მშობელზე/ალბომში/უკატეგორიოში */
+  onMove?: () => void
   onDelete?: () => void
 }
 
@@ -82,6 +85,7 @@ export function photoActions({
   onDownload,
   onOriginal,
   onToggle,
+  onMove,
   onDelete,
 }: PhotoActionsInput): PhotoAction[] {
   const many = count > 1
@@ -116,6 +120,18 @@ export function photoActions({
       label: checked ? t('photos.deselect') : picking ? t('photos.select') : t('photos.pickOn'),
       icon: checked ? CheckSquare : Square,
       run: onToggle,
+    })
+  }
+
+  /* ⚠️ **გადატანა წაშლის ზემოთ დგას და `danger` არ არის** (§26.3): ფოტო
+     არსად ქრება — მხოლოდ მშობელი და ალბომი იცვლება. წითლად რომ დაგვეხატა,
+     ის შეუქცევად მოქმედებად წაიკითხებოდა. */
+  if (onMove) {
+    list.push({
+      key: 'move',
+      label: many ? t('gallery.moveSelected', { count }) : t('gallery.move'),
+      icon: MoveRight,
+      run: onMove,
     })
   }
 
