@@ -28,6 +28,7 @@ use App\Models\VideoFile;
 use App\Models\VideoNote;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
+use App\Support\MediaDomain;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,14 @@ class PurgeService
      * რომელი სკოუპი რომელ სამიზნეს შეესაბამება — **ერთი წყარო** კონტროლერის
      * ვალიდაციისთვისაც და ფრონტის რადიო-ღილაკებისთვისაც.
      *
+     * ⚠️ **`ids` თერთმეტივე სამიზნეს აქვს** (§25.1, 2026-09-15). აქამდე ის
+     * მხოლოდ მედია-დომენებსა და გალერეას ეწერა, თუმცა თვითონ რეჟიმი
+     * დომენისგან **დამოუკიდებელია** — `recordIds()`-ის `whereIn('id', …)`
+     * და `modelQuery()` თერთმეტივეს ერთნაირად ემსახურება. ე.ი. აკლდა
+     * ნებართვა და არა ლოგიკა, და შედეგი ის იყო, რომ ბუკმარკიდან ერთი
+     * კონკრეტული ჩანაწერის წაშლა `/purge`-ით **საერთოდ შეუძლებელი იყო**:
+     * მთელი კატეგორია უნდა წაგეშალა, ან არაფერი.
+     *
      * `genre` = გლობალური polymorphic `genres` (მხოლოდ მედია-დომენებს აქვს),
      * `type` = **per-user ლექსიკონი** (`videos.type_id` ან `genre_id` სიმღერაზე /
      * წიგნზე / ბორდგეიმზე), `tag` = JSON მასივი (ბორდგეიმს ტეგები არ აქვს —
@@ -75,16 +84,16 @@ class PurgeService
         // §7.1 — ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
         'anime' => ['ids', 'genre', 'status', 'all'],
         // §6.4 — ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
-        'video' => ['type', 'tag', 'status', 'all'],
-        'song' => ['type', 'tag', 'all'],
-        'book' => ['type', 'tag', 'status', 'all'],
-        'board_game' => ['type', 'status', 'all'],
+        'video' => ['ids', 'type', 'tag', 'status', 'all'],
+        'song' => ['ids', 'type', 'tag', 'all'],
+        'book' => ['ids', 'type', 'tag', 'status', 'all'],
+        'board_game' => ['ids', 'type', 'status', 'all'],
         // ⚠️ თამაშს ტეგები არ აქვს (ჟანრები და პლატფორმები ფარავს)
-        'game' => ['type', 'status', 'all'],
+        'game' => ['ids', 'type', 'status', 'all'],
         // §13 — „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
-        'note' => ['type', 'tag', 'status', 'all'],
+        'note' => ['ids', 'type', 'tag', 'status', 'all'],
         // §18 — ბუკმარკზეც კატეგორიაა (`bookmarks.category_id`)
-        'bookmark' => ['type', 'tag', 'status', 'all'],
+        'bookmark' => ['ids', 'type', 'tag', 'status', 'all'],
         'gallery' => ['ids', 'genre', 'status', 'all'],
     ];
 
@@ -231,6 +240,43 @@ class PurgeService
             'bytes' => $totals['bytes'],
             'items' => $items,
         ];
+    }
+
+    /**
+     * **ამ ანგარიშის ჩანაწერები ამ სამიზნეზე** — `ids` სკოუპის ამრჩევი (§25.2).
+     *
+     * ⚠️ **რატომ ცალკე endpoint და არა მოდულის თავისი სია.** `/purge` **სხვისი**
+     * ბიბლიოთეკიდან შლის (`user_id`), მოდულების `index()` კი ყოველთვის
+     * მოვალეს — `BelongsToUser`-ის `owner` სკოუპი ჩემს რიგებს აბრუნებს. ე.ი.
+     * ფრონტის ძველი ამრჩევი ადმინს **მის საკუთარ** ფილმებს უჩვენებდა და იმ
+     * id-ებს სამიზნე ანგარიშზე აგზავნიდა: იქ ისინი ან საერთოდ არ არსებობდა
+     * („გამოტოვებული"), ან — უარესი — სხვა ჩანაწერს ეკუთვნოდა. აქ სკოუპი
+     * ცხადად იწერება, ე.ი. სია იმ ანგარიშისაა, რომელსაც ვასუფთავებთ.
+     *
+     * ⚠️ **გვერდებად არ იჭრება.** `ids` სკოუპი სწორედ იმას ნიშნავს, რომ
+     * მომხმარებელი სიიდან ირჩევს — მე-2 გვერდზე დარჩენილი ჩანაწერი ჩუმად
+     * ამოვარდებოდა (იგივე წესი, რაც `all=1`-ის ოთხ გამომძახებელს აქვს).
+     *
+     * @return array<int, array{id: int, title: string, year: int|null}>
+     */
+    public function records(User $user, string $target, ?string $mediaType = null): array
+    {
+        $type = $target === 'gallery' ? ($mediaType ?: 'movie') : $target;
+
+        $query = $this->modelQuery($user, $type)->orderBy('id');
+
+        // ორენოვანი ტექსტი translation-ცხრილშია მხოლოდ მედია-დომენებზე
+        if (in_array($type, MediaDomain::TYPES, true)) {
+            $query->with('translations');
+        }
+
+        return $query->get()
+            ->map(fn ($record) => [
+                'id' => (int) $record->id,
+                'title' => $this->titleOf($record, $type),
+                'year' => in_array($type, ['video', 'note', 'bookmark'], true) ? null : $record->year,
+            ])
+            ->all();
     }
 
     /**
@@ -418,7 +464,7 @@ class PurgeService
                 'id' => (int) $record->id,
                 'title' => $this->titleOf($record, $type),
                 // ვიდეოსა და ჩანაწერს `year` სვეტი საერთოდ არ აქვს
-                'year' => in_array($type, ['video', 'note'], true) ? null : $record->year,
+                'year' => in_array($type, ['video', 'note', 'bookmark'], true) ? null : $record->year,
             ])
             ->all();
     }

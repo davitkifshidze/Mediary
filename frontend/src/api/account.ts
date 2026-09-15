@@ -812,15 +812,16 @@ export const PURGE_TARGET_MODES = {
   // §7.1 — ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
   anime: ['ids', 'genre', 'status', 'all'],
   // §6.4 — ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
-  video: ['type', 'tag', 'status', 'all'],
-  song: ['type', 'tag', 'all'],
-  book: ['type', 'tag', 'status', 'all'],
-  board_game: ['type', 'status', 'all'],
-  game: ['type', 'status', 'all'],
+  // ⚠️ `ids` თერთმეტივეს აქვს (§25.1) — სარკეა `PurgeService::TARGET_MODES`-ისა
+  video: ['ids', 'type', 'tag', 'status', 'all'],
+  song: ['ids', 'type', 'tag', 'all'],
+  book: ['ids', 'type', 'tag', 'status', 'all'],
+  board_game: ['ids', 'type', 'status', 'all'],
+  game: ['ids', 'type', 'status', 'all'],
   // §13 — „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
-  note: ['type', 'tag', 'status', 'all'],
+  note: ['ids', 'type', 'tag', 'status', 'all'],
   // §18 — ბუკმარკზეც კატეგორიაა (`bookmarks.category_id`)
-  bookmark: ['type', 'tag', 'status', 'all'],
+  bookmark: ['ids', 'type', 'tag', 'status', 'all'],
   gallery: ['ids', 'genre', 'status', 'all'],
 } as const satisfies Record<PurgeTarget, readonly PurgeMode[]>
 
@@ -911,6 +912,29 @@ export interface PurgeItemResult {
 export async function fetchPurgePlan(input: PurgeInput): Promise<PurgePlan> {
   const { data } = await api.post('/admin/purge/plan', input)
   return data
+}
+
+/** `ids` სკოუპის ამრჩევის ერთეული — id + უკვე გადაწყვეტილი სათაური */
+export type PurgeRecord = { id: number; title: string; year: number | null }
+
+/**
+ * **სამიზნე ანგარიშის** ჩანაწერები ერთი სამიზნის ფარგლებში (§25.2).
+ *
+ * ⚠️ **მოდულის თავისი `list({all:true})` აქ არ ვარგა** და სწორედ ეს იყო
+ * ხარვეზი: `/purge` სხვისი ბიბლიოთეკიდან შლის (`user_id`), მოდულის სია კი
+ * ყოველთვის **ჩემს** ჩანაწერებს აბრუნებს (`owner` სკოუპი) — ე.ი. ამრჩევში
+ * ჩემი ფილმები ჩანდა და მათი id-ები სხვის ანგარიშზე მიდიოდა.
+ *
+ * ⚠️ **სათაურს backend წყვეტს**: თერთმეტი დომენიდან ზოგს `title` აქვს,
+ * ზოგს `title_ka`/`title_en` — ერთი რუკა ორ მხარეს გაშორდებოდა.
+ */
+export async function fetchPurgeRecords(opts: {
+  target: PurgeTarget
+  media_type?: string
+  user_id?: number
+}): Promise<PurgeRecord[]> {
+  const { data } = await api.get('/admin/purge/records', { params: opts })
+  return data.items ?? []
 }
 
 /**

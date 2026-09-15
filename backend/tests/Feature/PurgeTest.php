@@ -6,6 +6,7 @@ use App\Models\BoardGame;
 use App\Models\BoardGameGenre;
 use App\Models\Book;
 use App\Models\BookGenre;
+use App\Models\Bookmark;
 use App\Models\BookNote;
 use App\Models\CastMember;
 use App\Models\GalleryImage;
@@ -534,6 +535,69 @@ class PurgeTest extends TestCase
             ->assertJsonPath('plan.items.0.title', 'Alien')
             ->assertJsonPath('plan.items.0.year', 2020)
             ->assertJsonPath('eta_seconds', 1);
+    }
+
+    /**
+     * §25.1 — „კონკრეტული" სკოუპი **ყველა** დომენს აქვს.
+     *
+     * ⚠️ აქამდე ბუკმარკიდან/ჩანაწერიდან/თამაშიდან ერთი ჩანაწერის წაშლა
+     * `/purge`-ით შეუძლებელი იყო: `mode: ids` **422**-ს იძლეოდა
+     * (`mode_not_supported_for_target`) და მთელი კატეგორიის წაშლა რჩებოდა
+     * ერთადერთ გზად.
+     */
+    public function test_the_ids_scope_works_on_a_non_media_module(): void
+    {
+        $gone = Bookmark::create(['user_id' => $this->admin->id, 'title' => 'Gone', 'url' => 'https://a.example/1']);
+        $keep = Bookmark::create(['user_id' => $this->admin->id, 'title' => 'Keep', 'url' => 'https://a.example/2']);
+
+        $this->actingAs($this->admin->refresh())
+            ->postJson('/api/admin/purge/plan', [
+                'target' => 'bookmark',
+                'mode' => 'ids',
+                'ids' => [$gone->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('plan.records', 1)
+            ->assertJsonPath('plan.items.0.title', 'Gone');
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/admin/purge/item', [
+                'target' => 'bookmark',
+                'id' => $gone->id,
+                'confirm' => 'DELETE',
+            ])
+            ->assertOk();
+
+        $left = Bookmark::withoutGlobalScope('owner')->pluck('id')->all();
+        $this->assertSame([$keep->id], $left);
+    }
+
+    /**
+     * §25.2 — ამრჩევის სია **სამიზნე ანგარიშისაა**.
+     *
+     * ⚠️ ეს ცოცხალი ხარვეზი იყო: ფრონტი სიას მოდულის თავისი `index()`-იდან
+     * კითხულობდა, რომელსაც `owner` სკოუპი **ჩემს** ჩანაწერებზე ჭრის — ე.ი.
+     * ადმინი სხვისი ბიბლიოთეკის გასუფთავებისას თავის ფილმებს ხედავდა და
+     * იმ id-ებს სხვის ანგარიშზე აგზავნიდა.
+     */
+    public function test_the_record_pool_belongs_to_the_target_account(): void
+    {
+        $mine = $this->makeMovie($this->admin, 'Mine');
+        $theirs = $this->makeMovie($this->other, 'Theirs');
+
+        $this->actingAs($this->admin->refresh())
+            ->getJson('/api/admin/purge/records?target=movie&user_id='.$this->other->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $theirs->id)
+            ->assertJsonPath('items.0.title', 'Theirs');
+
+        // user_id-ის გარეშე — ჩემი
+        $this->actingAs($this->admin)
+            ->getJson('/api/admin/purge/records?target=movie')
+            ->assertOk()
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $mine->id);
     }
 
     /** ერთი ნაბიჯი — ერთი ჩანაწერი, დანარჩენი ხელუხლებელი; კვოტაც თავისუფლდება */

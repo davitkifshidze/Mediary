@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import { fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
 import { statusName } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Trash2 } from 'lucide-react'
 import {
   fetchPurgePlan,
+  fetchPurgeRecords,
   fetchUsers,
+  purgeItem,
   PURGE_TARGETS,
   PURGE_TARGET_MODES,
   PURGE_TARGET_STATUSES,
@@ -16,7 +18,7 @@ import {
   type PurgeTargetWithStatus,
   type PurgeTargetWithType,
 } from '@/api/account'
-import { fetchGenres, mediaApi } from '@/api/media'
+import { fetchGenres } from '@/api/media'
 import { fetchVideos, fetchVideoTypes } from '@/api/videos'
 import { fetchSongGenres, fetchSongs } from '@/api/songs'
 import { fetchBookGenres, fetchBooks } from '@/api/books'
@@ -31,7 +33,7 @@ import { useContentLang } from '@/lib/settings'
 import { cn, formatBytes } from '@/lib/utils'
 import { GenreSelect } from '@/components/GenreSelect'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { MovieMultiSelect } from '@/components/MovieMultiSelect'
+import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -43,7 +45,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { useQueue } from '@/components/ui/queue'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
+import { PurgeItemList } from '@/components/purge/PurgeItemList'
 
 /* ============================================================
    მასობრივი წაშლა (Tasks 20) — `/purge`, მხოლოდ super_admin-ს.
@@ -124,6 +127,8 @@ export function PurgePage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
+  const confirm = useConfirm()
+  const qc = useQueryClient()
   const { user: me } = useAuth()
   const { has, all: allModules } = useModules()
   const { enqueuePurge, isBusy } = useQueue()
@@ -139,6 +144,10 @@ export function PurgePage() {
   const [keepFavorites, setKeepFavorites] = useState(true)
   const [userId, setUserId] = useState<number | undefined>(undefined)
   const [confirmWord, setConfirmWord] = useState('')
+  /** §25.3 — რიგიდან ხელით ამოღებული ერთეულები (id-ებით, იხ. `PurgeItemList`) */
+  const [excluded, setExcluded] = useState<Set<number>>(new Set())
+  /** რომელი ერთეული იშლება ცალკე ახლა */
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   /** რომელ დომენზე მუშაობს არჩეული სამიზნე */
   const domain: PurgeDomain = target === 'gallery' ? mediaType : target
@@ -153,8 +162,10 @@ export function PurgePage() {
 
   /**
    * რეჟიმების სია სამიზნეს მიჰყვება (სარკე `PurgeService::TARGET_MODES`-ისა).
-   * ⚠️ ლექსიკონიან დომენებზე „კონკრეტული" განზრახ არ არის: ბიბლიოთეკა
-   * ბადეშივე იშლება თითოეულად, მასობრივად კი ტიპი/ტეგი გვჭირდება.
+   * ⚠️ **„კონკრეტული" ახლა თერთმეტივეს აქვს** (§25.1) — აქამდე ის მხოლოდ
+   * მედია-დომენებზე ეწერა და შენი შენიშვნაც სწორედ ესაა: ბუკმარკიდან ერთი
+   * ჩანაწერის წაშლა `/purge`-ით საერთოდ არ შეიძლებოდა, მთელი კატეგორია
+   * უნდა წაგეშალა ან არაფერი.
    * ⚠️ `readonly` — სია `as const`-ია, რომ ტიპებმა ლიტერალები დაინახონ.
    */
   const modes: readonly PurgeMode[] = PURGE_TARGET_MODES[target]
@@ -213,19 +224,27 @@ export function PurgePage() {
     enabled: byDictionary,
   })
   const dictionary = dictQ.data ?? []
-  /* ⚠️ ექვსივე `all: true`-ით. `/purge` სკოუპს **ცხადად** აგებს (`mode` +
-     პარამეტრები), ე.ი. ამრჩევსა და ტეგების შემოთავაზებას გვერდებად დაჭრილი
-     სია არ გამოადგება: მე-2 გვერდზე დარჩენილი ჩანაწერი სიიდან ჩუმად
-     ამოვარდებოდა და წასაშლელის სია მცდარი იქნებოდა. */
+  /* **„კონკრეტული ჩანაწერები" — თერთმეტივე სამიზნეზე ერთი წყარო** (§25.2).
+
+     ⚠️ **აქამდე სია `mediaApi(domain).list()`-იდან მოდიოდა და ორმაგად
+     მცდარი იყო.** ჯერ ერთი, ის მხოლოდ მედია-დომენს იცნობდა, ე.ი. ბუკმარკს/
+     ჩანაწერს/თამაშს ამრჩევი საერთოდ არ ჰქონდა (`ids` სკოუპიც ამიტომ არ
+     ეძლეოდათ). მეორეც — და ეს უფრო საზიანოა — ის **ჩემს** ბიბლიოთეკას
+     კითხულობდა (`owner` სკოუპი), მაშინ როცა `/purge` `user_id`-ით სხვისას
+     შლის: ადმინი თავის ფილმებს ირჩევდა და იმ id-ებს სხვის ანგარიშზე
+     აგზავნიდა.
+
+     ⚠️ სია გვერდებად არ იჭრება — `ids` სკოუპი ზუსტად იმას ნიშნავს, რომ
+     ამრჩევში **ყველა** ჩანაწერი უნდა ჩანდეს. */
   const poolQ = useQuery({
-    queryKey: ['purge-pool', domain],
+    queryKey: ['purge-pool', target, target === 'gallery' ? mediaType : null, userId ?? 'me'],
     queryFn: () =>
-      byDictionary
-        ? Promise.resolve([])
-        : mediaApi(domain as 'movie' | 'series')
-            .list({ all: true })
-            .then((p) => p.items),
-    enabled: mode === 'ids' && !byDictionary,
+      fetchPurgeRecords({
+        target,
+        media_type: target === 'gallery' ? mediaType : undefined,
+        user_id: userId,
+      }),
+    enabled: mode === 'ids',
   })
   // ტეგების შემოთავაზება — ბიბლიოთეკაში უკვე არსებული ტეგები
   const videosQ = useQuery({
@@ -273,12 +292,76 @@ export function PurgePage() {
     enabled: scopeReady,
   })
 
+  const planItems = useMemo(() => planQ.data?.plan.items ?? [], [planQ.data])
+
+  /** რიგში ჩასაყრელი — გეგმა მინუს ხელით ამოღებული (§25.3) */
+  const queued = useMemo(
+    () => planItems.filter((item) => !excluded.has(item.id)),
+    [planItems, excluded],
+  )
+
+  /* ⚠️ სკოუპის შეცვლაზე გამორიცხვა უნდა გასუფთავდეს: id-ები წინა გეგმისაა
+     და ახალ სიაში სულ სხვა ჩანაწერს დაემთხვეოდა. */
+  const planKey = JSON.stringify(input)
+  const [seenPlan, setSeenPlan] = useState(planKey)
+  if (seenPlan !== planKey) {
+    setSeenPlan(planKey)
+    setExcluded(new Set())
+  }
+
+  const toggleItem = (id: number) =>
+    setExcluded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  /**
+   * **ერთეულის წაშლა სიიდან** (§25.3).
+   *
+   * ⚠️ აკრეფილი `DELETE` აქ არ მოითხოვება: სიტყვა იმისთვისაა, რომ მთელი
+   * ბიბლიოთეკა ერთი ღილაკით ვერ გაქრეს — ერთი ჩანაწერის წაშლა კი ისეთივე
+   * მოქმედებაა, როგორიც სექციის ბადეში. `purgeItem()` თვითონ აგზავნის
+   * `confirm`-ს, რომელსაც backend ითხოვს.
+   */
+  const deleteOne = async (item: { id: number; title: string }) => {
+    const ok = await confirm({
+      title: t('purge.deleteOneTitle'),
+      description: t('purge.deleteOneHint', { name: item.title }),
+      confirmText: t('confirm.delete'),
+      variant: 'destructive',
+    })
+    if (!ok) return
+
+    setDeletingId(item.id)
+    try {
+      const res = await purgeItem(
+        { target, media_type: target === 'gallery' ? mediaType : undefined, user_id: userId },
+        item.id,
+      )
+      if (!res.ok) throw new Error(res.error ?? '')
+      toast({ title: t('purge.deletedOne', { name: item.title }), variant: 'success' })
+      // გეგმაც და მარაგიც უკვე მოძველდა
+      ;['purge-plan', 'purge-pool', 'storage', 'me'].forEach((key) =>
+        qc.invalidateQueries({ queryKey: [key] }),
+      )
+    } catch {
+      toast({ title: t('purge.deleteOneFailed', { name: item.title }), variant: 'error' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   /**
    * ⚠️ გაშვება — რიგში ჩაყრა. ქეშის გასუფთავებასა და შედეგის შეჯამებას
    * queue თვითონ აკეთებს, ე.ი. გვერდიდან გასვლაც უსაფრთხოა.
    */
   const run = () => {
-    const items = planQ.data?.plan.items ?? []
+    /* ⚠️ რიგში **მხოლოდ დატოვებული** ერთეულები ჩადის (§25.3). სკოუპი
+       (`mode`/`ids`) უცვლელია — აქ მხოლოდ ისაა ამოღებული, რაც ხელით
+       მოვნიშნეთ, ე.ი. „გეგმა" და „წაშლილი" ისევ ერთი query-დან მოდის. */
+    const items = queued
     if (!items.length) return
 
     enqueuePurge(items, {
@@ -301,7 +384,10 @@ export function PurgePage() {
 
   const plan = planQ.data?.plan
   const nothing = !!plan && plan.items.length === 0
-  const canRun = scopeReady && !!plan && !nothing && confirmWord.trim() === CONFIRM_WORD
+  /* ⚠️ `queued.length` და არა `plan.items.length` (§25.3): ყველას ამოღების
+     შემდეგ „წაშლა" ღილაკი აქტიური რომ დარჩეს, ის ცარიელ რიგს გაუშვებდა. */
+  const canRun =
+    scopeReady && !!plan && !nothing && queued.length > 0 && confirmWord.trim() === CONFIRM_WORD
 
   // სამიზნე = მოდული, ე.ი. გამორთული მოდული სიაშიც არ ჩანს
   const targets = PURGE_TARGETS.filter((tg) => has(tg))
@@ -347,6 +433,12 @@ export function PurgePage() {
                   setMode(PURGE_TARGET_MODES[tg][0])
                   // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
                   setStatus('')
+                  /* ⚠️ **არჩეული id-ები დომენს ეკუთვნის და არა გვერდს** (§25.1):
+                     ისინი რომ დარჩნენ, ფილმის id ბუკმარკის სკოუპში გადავიდოდა
+                     და სულ სხვა ჩანაწერს წაშლიდა. */
+                  setIds([])
+                  setTypeIds([])
+                  setTags([])
                 }}
               />
             )
@@ -397,8 +489,11 @@ export function PurgePage() {
 
               {mode === m && m === 'ids' && (
                 <div className="mt-2 pl-8">
-                  <MovieMultiSelect
-                    movies={poolQ.data ?? []}
+                  <IdMultiSelect
+                    items={(poolQ.data ?? []).map((r) => ({
+                      id: r.id,
+                      label: r.year ? `${r.title} (${r.year})` : r.title,
+                    }))}
                     value={ids}
                     onChange={setIds}
                     placeholder={poolQ.isLoading ? t('api.loading') : t('purge.pickRecords')}
@@ -510,10 +605,12 @@ export function PurgePage() {
               )}
               <li>{t('purge.willDeletePhotos', { count: plan.photos })}</li>
               <li className="font-medium">{t('purge.willFree', { size: formatBytes(plan.bytes) })}</li>
-              {/* 20.2 — რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე */}
-              {plan.items.length > 0 && (
+              {/* 20.2 — რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე.
+                  ⚠️ რიცხვი **დატოვებულია** და არა გეგმისა (§25.3) — თორემ
+                  ეკრანზე ხაზგადასმული ერთეულებიც ჩაითვლებოდა. */}
+              {queued.length > 0 && (
                 <li className="text-muted-foreground">
-                  {t('purge.queueUnits', { count: plan.items.length })}
+                  {t('purge.queueUnits', { count: queued.length })}
                   {' · ≈ '}
                   {(planQ.data?.eta_seconds ?? 0) < 90
                     ? t('sync.etaSec', { count: planQ.data?.eta_seconds ?? 0 })
@@ -521,6 +618,21 @@ export function PurgePage() {
                 </li>
               )}
             </ul>
+
+            {/* ---------- ჩაშლა: რიგი სიად (§25.3) ---------- */}
+            {planItems.length > 0 && (
+              <PurgeItemList
+                items={planItems}
+                excluded={excluded}
+                onToggle={toggleItem}
+                onToggleAll={(select) =>
+                  setExcluded(select ? new Set() : new Set(planItems.map((i) => i.id)))
+                }
+                onDeleteOne={deleteOne}
+                busyId={deletingId}
+                disabled={isBusy}
+              />
+            )}
 
             {nothing ? (
               <p className="mt-3 text-sm text-muted-foreground">{t('purge.nothing')}</p>

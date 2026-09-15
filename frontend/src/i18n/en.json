@@ -1185,7 +1185,20 @@
       "gallery": "Photos only — the records themselves stay.",
       "bookmark": "The bookmark together with its uploaded image.",
       "anime": "Anime records — poster, genres, cast and gallery."
-    }
+    },
+    "itemsTitle": "What is in the queue",
+    "itemsKept": "{{kept}} of {{total}} kept",
+    "itemsSelectAll": "Bring all back",
+    "itemsClearAll": "Remove all",
+    "itemsNoMatch": "Nothing matches that search.",
+    "itemsInclude": "Put back in the queue",
+    "itemsExclude": "Take out of the queue",
+    "itemsMore": "{{count}} more",
+    "deleteOne": "Delete just this one",
+    "deleteOneTitle": "Delete one record",
+    "deleteOneHint": "“{{name}}” will be deleted for good, with its files and photos.",
+    "deletedOne": "“{{name}}” deleted",
+    "deleteOneFailed": "“{{name}}” could not be deleted"
   },
   "videoTypes": {
     "title": "Video types",

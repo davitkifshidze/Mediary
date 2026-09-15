@@ -860,6 +860,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/purge', [AdminPurgeController::class, 'run']);
         /* რიგის ერთი ნაბიჯი (20.2) — ფრონტი ციკლს queue-თი ატარებს */
         Route::post('/purge/item', [AdminPurgeController::class, 'item']);
+        /* `ids` სკოუპის ამრჩევი (§25.2) — **სამიზნე ანგარიშის** ჩანაწერები;
+           მოდულის თავისი `index()` ყოველთვის მოვალის სიას აბრუნებს. */
+        Route::get('/purge/records', [AdminPurgeController::class, 'records']);
 
         /* **ბაზის დამპი და აღდგენა (Tasks §22)**.
            ⚠️ `super_admin` და არა `admin_access:` — დამპი მთელი ბაზაა

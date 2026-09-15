@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
+use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,32 @@ class AdminPurgeController extends Controller
         ]);
     }
 
+    /**
+     * `ids` სკოუპის ამრჩევის სია (§25.2).
+     *
+     * ⚠️ **`GET`-ია და არა `POST`** — მხოლოდ კითხულობს. `POST`-ს ისედაც
+     * `confirm`-ის ლოგიკასთან აურევდნენ, და ჩვენ აქ არაფერს ვშლით.
+     *
+     * ⚠️ **სია სამიზნე ანგარიშისაა** (`user_id`), და სწორედ ეს არის ამ
+     * endpoint-ის აზრი — მოდულის თავისი `index()` ყოველთვის მოვალის
+     * ჩანაწერებს აბრუნებს (`owner` სკოუპი), ე.ი. ადმინს სხვისი
+     * ბიბლიოთეკის არჩევა იქიდან **შეუძლებელი** იყო.
+     */
+    public function records(Request $request)
+    {
+        $data = $request->validate([
+            'target' => ['required', Rule::in(PurgeService::TARGETS)],
+            'media_type' => ['nullable', MediaDomain::rule()],
+            'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+        ]);
+
+        $user = $this->targetUser($request, $data);
+
+        return response()->json([
+            'items' => $this->purge->records($user, $data['target'], $data['media_type'] ?? null),
+        ]);
+    }
+
     public function run(Request $request)
     {
         $data = $this->validated($request, withConfirm: true);
@@ -69,7 +96,7 @@ class AdminPurgeController extends Controller
     {
         $data = $request->validate([
             'target' => ['required', Rule::in(PurgeService::TARGETS)],
-            'media_type' => ['nullable', 'in:movie,series'],
+            'media_type' => ['nullable', MediaDomain::rule()],
             'id' => ['required', 'integer'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             // ⚠️ დადასტურება თითოეულ ნაბიჯზეც — ჩუმად ვერ გაეშვება
@@ -106,7 +133,7 @@ class AdminPurgeController extends Controller
             'target' => ['required', Rule::in(PurgeService::TARGETS)],
             'mode' => ['required', Rule::in(PurgeService::MODES)],
             // `target = gallery`-ზე რომელ დომენის ჩანაწერებს ვასუფთავებთ
-            'media_type' => ['nullable', 'in:movie,series'],
+            'media_type' => ['nullable', MediaDomain::rule()],
             'ids' => ['nullable', 'array'],
             'ids.*' => ['integer'],
             'genres' => ['nullable', 'array'],
