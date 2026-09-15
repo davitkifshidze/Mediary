@@ -142,6 +142,13 @@ export function PurgePage() {
   const [typeIds, setTypeIds] = useState<number[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [keepFavorites, setKeepFavorites] = useState(true)
+  /**
+   * §25.5 — „ფოტოები გალერეაში დამიტოვე".
+   *
+   * ⚠️ **ნაგულისხმევად გამორთულია**: ჩანაწერის წაშლა დღემდე ფოტოებსაც
+   * შლიდა და ეს ქცევა ჩუმად ვერ შეიცვლება — „დატოვება" ცხადი არჩევანია.
+   */
+  const [keepGallery, setKeepGallery] = useState(false)
   const [userId, setUserId] = useState<number | undefined>(undefined)
   const [confirmWord, setConfirmWord] = useState('')
   /** §25.3 — რიგიდან ხელით ამოღებული ერთეულები (id-ებით, იხ. `PurgeItemList`) */
@@ -200,9 +207,11 @@ export function PurgePage() {
       type_ids: mode === 'type' ? typeIds : undefined,
       tags: mode === 'tag' ? tags : undefined,
       keep_favorites: keepFavorites,
+      // გალერეის სამიზნეზე აზრი არ აქვს — სწორედ ფოტოებია წასაშლელი
+      keep_gallery: target === 'gallery' ? undefined : keepGallery,
       user_id: userId,
     }),
-    [target, mode, mediaType, ids, genres, status, typeIds, tags, keepFavorites, userId],
+    [target, mode, mediaType, ids, genres, status, typeIds, tags, keepFavorites, keepGallery, userId],
   )
 
   /** სკოუპი შევსებულია? (backend-იც ამოწმებს — ეს მხოლოდ UI-ს ბლოკავს) */
@@ -337,7 +346,12 @@ export function PurgePage() {
     setDeletingId(item.id)
     try {
       const res = await purgeItem(
-        { target, media_type: target === 'gallery' ? mediaType : undefined, user_id: userId },
+        {
+          target,
+          media_type: target === 'gallery' ? mediaType : undefined,
+          user_id: userId,
+          keep_gallery: target === 'gallery' ? undefined : keepGallery,
+        },
         item.id,
       )
       if (!res.ok) throw new Error(res.error ?? '')
@@ -368,6 +382,7 @@ export function PurgePage() {
       target,
       media_type: target === 'gallery' ? mediaType : undefined,
       user_id: userId,
+      keep_gallery: target === 'gallery' ? undefined : keepGallery,
     })
     // დადასტურება ერთჯერადია — მეორე გაშვება ხელახლა ჩაწერას მოითხოვს
     setConfirmWord('')
@@ -562,6 +577,19 @@ export function PurgePage() {
           </span>
         </label>
 
+        {/* §25.5 — „ფილმს თუ შლი, გალერეაც იშლება, თუ დარჩეს?"
+            ⚠️ გალერეის სამიზნეზე არ იხატება: იქ სწორედ ფოტოებია წასაშლელი,
+            ე.ი. ეს checkbox თავის თავს გააუქმებდა. */}
+        {target !== 'gallery' && (
+          <label className="mt-2 flex cursor-pointer items-start gap-2 text-sm">
+            <Checkbox checked={keepGallery} onCheckedChange={() => setKeepGallery((v) => !v)} />
+            <span>
+              {t('purge.keepGallery')}
+              <span className="block text-xs text-muted-foreground">{t('purge.keepGalleryHint')}</span>
+            </span>
+          </label>
+        )}
+
         {/* ადმინს სხვისი ბიბლიოთეკის გასუფთავებაც შეუძლია */}
         <div className="mt-3 border-t border-border pt-3">
           <Label className="mb-2 block">{t('purge.account')}</Label>
@@ -604,6 +632,13 @@ export function PurgePage() {
                 </li>
               )}
               <li>{t('purge.willDeletePhotos', { count: plan.photos })}</li>
+              {/* ⚠️ „დარჩენილი" ცალკე ხაზია: ნული წაშლილი ფოტო და ნული
+                  არსებული ფოტო ერთნაირად იკითხებოდა */}
+              {plan.kept_photos > 0 && (
+                <li className="text-muted-foreground">
+                  {t('purge.willKeepPhotos', { count: plan.kept_photos })}
+                </li>
+              )}
               <li className="font-medium">{t('purge.willFree', { size: formatBytes(plan.bytes) })}</li>
               {/* 20.2 — რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე.
                   ⚠️ რიცხვი **დატოვებულია** და არა გეგმისა (§25.3) — თორემ

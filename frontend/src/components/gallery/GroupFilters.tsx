@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LayoutToggle } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
    ჯგუფების ჭრილის ფილტრი, დალაგება და შიდა დაჯგუფება (ეტაპი 2).
@@ -179,16 +180,11 @@ export function GroupFilters({
         {extra}
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* ⚠️ **იგივე გადამრთველია, რაც მსახიობების ქვე-სექციაში** (§28.1):
+              სელექტი და სეგმენტები ერთსა და იმავე არჩევანს ორნაირად
+              გამოსახავდა და „სად იყო ეს?" კითხვად იკითხებოდა. */}
           {showLayout && (
-            <Pick
-              label={t('gallery.layout.label')}
-              value={value.layout}
-              options={(['grouped', 'mixed'] as const).map((key) => ({
-                value: key,
-                label: t(`gallery.layout.${key}`),
-              }))}
-              onChange={(next) => set({ layout: next as GroupFilterState['layout'] })}
-            />
+            <LayoutToggle value={value.layout} onChange={(next) => set({ layout: next })} />
           )}
           <Pick
             label={t('gallery.groupSort.label')}

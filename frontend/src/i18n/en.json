@@ -1198,7 +1198,10 @@
     "deleteOneTitle": "Delete one record",
     "deleteOneHint": "“{{name}}” will be deleted for good, with its files and photos.",
     "deletedOne": "“{{name}}” deleted",
-    "deleteOneFailed": "“{{name}}” could not be deleted"
+    "deleteOneFailed": "“{{name}}” could not be deleted",
+    "keepGallery": "Keep the photos in the gallery",
+    "keepGalleryHint": "The record goes, its photos move to “uncategorized”. ⚠️ No space is freed — the files stay on disk.",
+    "willKeepPhotos": "{{count}} photos stay in the gallery"
   },
   "videoTypes": {
     "title": "Video types",

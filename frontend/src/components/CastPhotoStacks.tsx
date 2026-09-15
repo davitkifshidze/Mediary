@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Layers, Shuffle, User } from 'lucide-react'
+import { Trash2, User } from 'lucide-react'
 import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
 import { castName } from '@/lib/display'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
+import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
    მსახიობების ფოტოები ჩანაწერზე — **ქვე-სექცია** (Tasks §4.2 → **§8.5**).
@@ -30,7 +31,8 @@ import { PhotoStack } from '@/components/ui/photo-stack'
    მისივე გვერდზეც იგივე დასტა ჩანს.
    ============================================================ */
 
-type Layout = 'grouped' | 'mixed'
+/** ⚠️ ტიპიც გაზიარებულია (§28) — ლოკალური ასლი ერთ დღეს გაშორდებოდა */
+type Layout = GalleryLayout
 
 export function CastPhotoStacks({
   images,
@@ -116,31 +118,16 @@ export function CastPhotoStacks({
           </span>
         </h3>
 
-        {/* ⚠️ **გადამრთველი** — ერთი მსახიობის ფოტოები ერთად თუ ყველაფერი არეულად */}
-        <div className="ml-auto flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-          {(
-            [
-              { key: 'grouped' as Layout, icon: Layers },
-              { key: 'mixed' as Layout, icon: Shuffle },
-            ] satisfies { key: Layout; icon: typeof Layers }[]
-          ).map(({ key, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setLayout(key)
-                setOpenActor(null)
-              }}
-              className={cn(
-                'flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors',
-                layout === key ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Icon className="size-3.5" />
-              {t(`gallery.layout.${key}`)}
-            </button>
-          ))}
-        </div>
+        {/* ⚠️ **გადამრთველი გაზიარებულია** (§28) — ერთი მსახიობის ფოტოები
+            ერთად თუ ყველაფერი არეულად */}
+        <LayoutToggle
+          className="ml-auto"
+          value={layout}
+          onChange={(next) => {
+            setLayout(next)
+            setOpenActor(null)
+          }}
+        />
       </div>
 
       {layout === 'mixed' ? (
@@ -171,6 +158,25 @@ export function CastPhotoStacks({
                 images={photos.map((image) => image.url)}
                 open={openActor === member.id}
                 onClick={() => setOpenActor((cur) => (cur === member.id ? null : member.id))}
+                actions={
+                  /* §25.4 — „მსახიობები გამოიძახო, გალერეა ნახო და წაშალო":
+                     ერთეულების წაშლა ბადეშივე იყო, მთელი დასტისა კი — არსად,
+                     ე.ი. ოცფოტოიანი მსახიობის გასუფთავება ოცი დაჭერა იყო.
+                     ⚠️ დადასტურებას გამომძახებელი კითხულობს (`onDelete`),
+                     ე.ი. კითხვა ერთი და იგივეა ბადეზეც და აქაც. */
+                  onDelete ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-destructive"
+                      onClick={() => onDelete(photos)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      {t('photos.deleteSelected', { count: photos.length })}
+                    </Button>
+                  ) : undefined
+                }
               />
             </li>
           ))}

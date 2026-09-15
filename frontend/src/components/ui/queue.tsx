@@ -45,6 +45,8 @@ export interface PurgeQueueOptions {
   target: PurgeTarget
   media_type?: 'movie' | 'series'
   user_id?: number
+  /** §25.5 — ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
+  keep_gallery?: boolean
 }
 
 interface QItem {

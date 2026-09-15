@@ -870,6 +870,14 @@ export interface PurgeInput {
   type_ids?: number[]
   tags?: string[]
   keep_favorites?: boolean
+  /**
+   * §25.5 — „ჩანაწერს ვშლი, ფოტოები გალერეაში დამიტოვე".
+   *
+   * ⚠️ ფოტო **უკატეგორიო** ხდება (მშობელი ეხსნება) და არა იშლება; ადგილი
+   * კი **არ თავისუფლდება** — ფაილი დისკზე რჩება და კვოტაშიც ითვლება,
+   * რასაც გეგმა ცხადად ამბობს (`kept_photos`).
+   */
+  keep_gallery?: boolean
   /** ადმინს სხვისი ბიბლიოთეკის გასუფთავებაც შეუძლია */
   user_id?: number
 }
@@ -892,6 +900,8 @@ export interface PurgePlan {
     attachments: number
     notes: number
     bytes: number
+    /** §25.5 — რამდენი ფოტო რჩება გალერეაში (და არა იშლება) */
+    kept_photos: number
     items: PurgePlanItem[]
   }
   eta_seconds: number
@@ -945,7 +955,14 @@ export async function fetchPurgeRecords(opts: {
  * `mode`/სკოუპი აღარ იგზავნება: id-ები `plan`-იდან მოვიდა და user-მა დაადასტურა.
  */
 export async function purgeItem(
-  opts: { target: PurgeTarget; media_type?: 'movie' | 'series'; user_id?: number },
+  opts: {
+    target: PurgeTarget
+    media_type?: 'movie' | 'series'
+    user_id?: number
+    /** §25.5 — რიგის **ყოველ** ნაბიჯს უნდა მოჰყვეს, თორემ პირველის
+        ფოტოები დარჩებოდა და დანარჩენების — წაიშლებოდა */
+    keep_gallery?: boolean
+  },
   id: number,
   signal?: AbortSignal,
 ): Promise<PurgeItemResult> {

@@ -19,6 +19,7 @@ import { PhotoStack } from '@/components/ui/photo-stack'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
+import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
    **უკატეგორიო ჭრილი და მისი ალბომები (Tasks §26.4).**
@@ -54,6 +55,8 @@ export function UncategorizedCut() {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<GalleryAlbum | null>(null)
+  /** §28 — ალბომების დასტები თუ ყველა უკატეგორიო ფოტო ერთ ბადეზე */
+  const [layout, setLayout] = useState<GalleryLayout>('grouped')
 
   const groupsQ = useQuery({
     queryKey: ['gallery-groups', 'album', {}],
@@ -120,6 +123,7 @@ export function UncategorizedCut() {
         <p className="text-xs text-muted-foreground">{t('gallery.uncategorizedHint')}</p>
 
         <div className="ml-auto flex items-center gap-2">
+          <LayoutToggle value={layout} onChange={setLayout} />
           {(adding || editing) && (
             <>
               <Input
@@ -170,7 +174,18 @@ export function UncategorizedCut() {
         </div>
       </div>
 
-      {groupsQ.isLoading ? (
+      {/* §28 — „არეული": ყველა უმშობლო ფოტო ერთ ბრტყელ ბადეზე.
+          ⚠️ ალბომებში დახარისხებულებიც აქ ჩანს, რადგან ალბომი მშობელს არ
+          ცვლის — ე.ი. ჭრილი იგივე რჩება, მხოლოდ გამოსახულება იცვლება. */}
+      {layout === 'mixed' ? (
+        <GroupPhotos
+          title={t('gallery.cut.uncategorized')}
+          subtitle={t('gallery.mixedHint')}
+          filters={{ owner: 'none' }}
+          cacheKey="flat:uncategorized"
+          emptyText={t('gallery.uncategorizedEmpty')}
+        />
+      ) : groupsQ.isLoading ? (
         <GalleryStackSkeleton />
       ) : !groups.length ? (
         <EmptyState

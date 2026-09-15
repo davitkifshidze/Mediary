@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DownloadCloud, Globe, Video } from 'lucide-react'
+import { DownloadCloud, Globe, Trash2, Video } from 'lucide-react'
 import { updateModuleSettings } from '@/api/account'
 import {
   deleteGalleryImage,
@@ -189,6 +189,23 @@ export function RecordGallery({
               <Video className="size-4" />
               {t('web.searchVideos')}
             </Button>
+
+            {/* §25.4 — „ასევე თავად ფილმზეც": ამ ჩანაწერის მთელი გალერეის
+                წაშლა ერთი მოქმედებით. ⚠️ **მსახიობების ფოტოებს არ ეხება** —
+                ისინი მსახიობზეა მიბმული და სხვა ფილმებშიც ჩანს; მათ თავისი
+                დასტის ღილაკი შლის. */}
+            {images.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-none text-destructive"
+                onClick={() => askDelete(images, detail?.record.poster_path)}
+              >
+                <Trash2 className="size-4" />
+                {t('photos.deleteSelected', { count: images.length })}
+              </Button>
+            )}
           </>
         }
       />
