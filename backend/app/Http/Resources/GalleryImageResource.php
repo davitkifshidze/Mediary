@@ -29,6 +29,9 @@ class GalleryImageResource extends JsonResource
             'is_thumbnail' => (bool) $this->is_thumbnail,
             // ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება
             'category' => $this->category,
+            /* §26 — ალბომი (user-ის თავისი დახარისხება). `null` = ალბომის
+               გარეშე; მშობლისგან დამოუკიდებელია, ე.ი. ორივე შეიძლება იყოს. */
+            'album_id' => $this->album_id,
             'width' => $this->width,
             'height' => $this->height,
             'created_at' => $this->created_at?->toIso8601String(),

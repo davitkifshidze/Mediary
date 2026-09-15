@@ -221,6 +221,9 @@ class PurgeService
                 // ჩანაწერი არ იშლება — მხოლოდ ფოტოები
                 'records' => 0,
                 'photos' => $photos,
+                // ⚠️ გალერეის სამიზნეზე „დატოვება" აზრს კარგავს — სწორედ
+                // ფოტოებია წასაშლელი; ველი ფორმისთვის მაინც ბრუნდება.
+                'kept_photos' => 0,
                 'attachments' => 0,
                 'notes' => 0,
                 'bytes' => $photoBytes,
@@ -229,15 +232,18 @@ class PurgeService
         }
 
         $totals = $this->recordTotals($user, $target, $ids);
+        $keepGallery = ! empty($input['keep_gallery']);
 
         return [
             'target' => $target,
             'mode' => $input['mode'],
             'records' => count($ids),
-            'photos' => $totals['photos'],
+            // §25.5 — „ფოტოები დამიტოვე": ისინი უკატეგორიოში გადადის და არა იშლება
+            'photos' => $keepGallery ? 0 : $totals['photos'],
+            'kept_photos' => $keepGallery ? $totals['photos'] : 0,
             'attachments' => $totals['attachments'],
             'notes' => $totals['notes'],
-            'bytes' => $totals['bytes'],
+            'bytes' => $keepGallery ? $totals['bytes'] - $totals['photo_bytes'] : $totals['bytes'],
             'items' => $items,
         ];
     }
@@ -323,13 +329,16 @@ class PurgeService
         $totals = $this->recordTotals($user, $target, [$id]);
         $title = $this->titleOf($record, $target);
 
+        $kept = $this->detachGallery($user, $target, [$id], ! empty($input['keep_gallery']));
+
         $record->delete();
 
         return [
             'target' => $target,
             'records' => 1,
-            'photos' => $totals['photos'],
-            'bytes' => $totals['bytes'],
+            'photos' => $kept ? 0 : $totals['photos'],
+            'kept_photos' => $kept ? $totals['photos'] : 0,
+            'bytes' => $kept ? $totals['bytes'] - $totals['photo_bytes'] : $totals['bytes'],
             'title' => $title,
         ];
     }
@@ -362,6 +371,8 @@ class PurgeService
         $deleted = 0;
 
         foreach (array_chunk($ids, self::CHUNK) as $chunk) {
+            $this->detachGallery($user, $target, $chunk, ! empty($input['keep_gallery']));
+
             // ⚠️ მოდელით ვშლით, თორემ `deleting` ივენთი არ იმუშავებს:
             // ფაილები დისკზე დარჩება და კვოტის მრიცხველი აცდება
             foreach ($this->modelQuery($user, $target)->whereIn('id', $chunk)->get() as $record) {
@@ -384,12 +395,12 @@ class PurgeService
      * ჩანაწერების თანმხლები ჯამები — ერთი წყარო `plan()`-ისთვისაც და
      * `runOne()`-ისთვისაც, რომ „დათვლილი" და „წაშლილი" ვერ დაშორდეს.
      *
-     * @return array{photos: int, attachments: int, notes: int, bytes: int}
+     * @return array{photos: int, attachments: int, notes: int, bytes: int, photo_bytes: int}
      */
     private function recordTotals(User $user, string $target, array $ids): array
     {
         if (! $ids) {
-            return ['photos' => 0, 'attachments' => 0, 'notes' => 0, 'bytes' => 0];
+            return ['photos' => 0, 'attachments' => 0, 'notes' => 0, 'bytes' => 0, 'photo_bytes' => 0];
         }
 
         $morph = $this->morphAlias($target);
@@ -414,6 +425,11 @@ class PurgeService
         return [
             'attachments' => $files->count(),
             'photos' => $photos->count(),
+            /* ⚠️ ცალკე რიცხვი §25.5-ისთვის: „ფოტოები დამიტოვე" რეჟიმში
+               მათი მოცულობა **არ თავისუფლდება**, ე.ი. `bytes`-იდან უნდა
+               გამოაკლდეს — თორემ გეგმა ჰპირდებოდა ადგილს, რომელიც
+               არსად გაჩნდებოდა. */
+            'photo_bytes' => (int) $photos->sum('size'),
             // ვიდეოს თამბნეილი და ხელით ატვირთული პოსტერი/ყდაც კვოტაშია
             'bytes' => (int) $photos->sum('size') + (int) $files->sum('size')
                 + $this->ownUploadBytes($user, $target, $ids)
@@ -523,6 +539,43 @@ class PurgeService
         }
 
         return $record->title_ka ?: ($record->title_en ?: '#'.$record->id);
+    }
+
+    /**
+     * **„ფოტოები გალერეაში დამიტოვე" (§25.5).**
+     *
+     * შენი სიტყვები: „ფილმს თუ შლი, მასთან მიბმული გალერეაც უნდა
+     * იშლებოდეს, ან გეკითხებოდეს — ხომ არ დავტოვო ისე, უბრალოდ გალერეაში".
+     *
+     * ⚠️ **ფოტოს მშობელი ეხსნება და ფოტო არსად მიდის** — ის „უკატეგორიო"
+     * ხდება (§26), ე.ი. გალერეაშივე რჩება და ალბომებში დახარისხებაც
+     * შეიძლება. ეს ერთადერთი გზაა: `Movie::booted()`-ის
+     * `deleteGalleryMedia()` სწორედ `imageable`-ით პოულობს ფოტოებს, ე.ი.
+     * სანამ მშობელი დგას, წაშლა გარდაუვალია.
+     *
+     * ⚠️ **მოცულობა არ თავისუფლდება** და `plan()` ამას ცხადად ამბობს:
+     * ფაილი დისკზე რჩება და კვოტაშიც ისევ ითვლება — „ადგილი გამომინთავისუფლე"
+     * და „ფოტოები დამიტოვე" ერთდროულად შეუძლებელია.
+     *
+     * ⚠️ **ვიდეო-ბმულებს ეს არ ეხება.** `gallery_videos`-ის მშობელი
+     * სავალდებულოა და „უკატეგორიო ვიდეოს" ჭრილი არ არსებობს — ე.ი.
+     * უმშობლო რიგი ბაზაში იდებოდა და არსად გამოჩნდებოდა.
+     *
+     * @return bool დარჩა თუ არა ფოტოები
+     */
+    private function detachGallery(User $user, string $target, array $ids, bool $keep): bool
+    {
+        if (! $keep || ! $ids || $target === 'gallery') {
+            return false;
+        }
+
+        GalleryImage::withoutGlobalScope('owner')
+            ->where('user_id', $user->getKey())
+            ->where('imageable_type', $this->morphAlias($target))
+            ->whereIn('imageable_id', $ids)
+            ->update(['imageable_type' => null, 'imageable_id' => null]);
+
+        return true;
     }
 
     /** სკოუპში მოხვედრილი ჩანაწერების id-ები */

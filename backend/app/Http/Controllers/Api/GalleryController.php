@@ -7,6 +7,7 @@ use App\Http\Resources\GalleryImageResource;
 use App\Http\Resources\GalleryVideoResource;
 use App\Http\Resources\StatusResource;
 use App\Models\CastMember;
+use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Services\Gallery\GalleryFetcher;
@@ -21,6 +22,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 /**
  * გალერეის მოდული (Tasks 10 → **§8, გალერეა 2.0**).
@@ -117,7 +119,11 @@ class GalleryController extends Controller
         /* ⚠️ **`count(distinct a, b)` მხოლოდ MySQL-ს აქვს** — sqlite-ზე
            (ტესტები) იგივე შედეგი ქვე-მოთხოვნით მიიღება. არსებული წესი:
            დრაივერის სპეციფიკა ცხადად იჭრება და არა შემთხვევით. */
+        /* ⚠️ `whereNotNull` ცხადად: SQL-ში `!=` ისედაც `NULL`-ს ტოვებს გარეთ,
+           მაგრამ §26-ის შემდეგ უმშობლო რიგები მართლა არსებობს და ეს
+           გამორიცხვა განზრახული უნდა ჩანდეს და არა შემთხვევითი. */
         $records = GalleryImage::query()
+            ->whereNotNull('imageable_type')
             ->where('imageable_type', '!=', GalleryParent::ACTOR)
             ->distinct()
             ->count(DB::connection()->getDriverName() === 'mysql'
@@ -141,11 +147,19 @@ class GalleryController extends Controller
             ->map(fn ($n) => (int) $n)
             ->all();
 
+        /* §26 — უკატეგორიო (მშობლის გარეშე) და ალბომების რაოდენობა.
+           ⚠️ ქვე-მენიუს ორივე რიცხვი აქედან მოსდის — ცალკე `groups`
+           გამოძახება მთელ სიას ჩამოტვირთავდა მხოლოდ იმისთვის, რომ
+           მენიუზე ერთი ციფრი დაეწერა. */
+        $loose = GalleryImage::query()->whereNull('imageable_type')->count();
+
         return response()->json([
             'photos' => (int) ($images->photos ?? 0),
             'bytes' => (int) ($images->bytes ?? 0),
             'records' => (int) $records,
             'actors' => (int) $actors,
+            'uncategorized' => (int) $loose,
+            'albums' => GalleryAlbum::query()->count(),
             'categories' => (object) $categories,
             'videos' => GalleryVideo::query()->count(),
             // სხვა მოდულების ფოტოები — ცალკე ჭრილია, ე.ი. ცალკე მთვლელიც
@@ -176,7 +190,7 @@ class GalleryController extends Controller
     public function groups(Request $request)
     {
         $data = $request->validate([
-            'by' => ['nullable', 'in:record,actor,source,provider,module'],
+            'by' => ['nullable', 'in:record,actor,source,provider,module,album'],
             /* ⚠️ **`type` აღარ არის მხოლოდ მედია-დომენი** (ეტაპი 2): ჩანაწერების
                ჭრილში ტაბებად ყველა მშობელი დგას — სიმღერაც, წიგნიც, თამაშიც —
                ე.ი. `MediaDomain::rule()` მათ 422-ს აძლევდა. */
@@ -205,6 +219,10 @@ class GalleryController extends Controller
         $q = $data['q'] ?? null;
         $user = $request->user();
         $previews = (int) ($data['previews'] ?? self::DEFAULT_PREVIEWS);
+
+        if ($by === 'album') {
+            return $this->albumGroups($previews);
+        }
 
         if ($by === 'module') {
             return response()->json([
@@ -560,6 +578,140 @@ class GalleryController extends Controller
     }
 
     /**
+     * **ალბომების ჭრილი (§26.4) — „უკატეგორიო" და მისი ჯგუფები.**
+     *
+     * პირველი ჯგუფი ყოველთვის **„უკატეგორიო, ალბომის გარეშე"**-ა
+     * (`album:0`), მერე user-ის ალბომები.
+     *
+     * ⚠️ **ნულიანი ალბომიც იხატება** — ცარიელი საქაღალდე სწორედ ის ადგილია,
+     * სადაც ფოტოებს ეზიდები; თუ ის მანამდე გაქრებოდა, სანამ პირველ ფოტოს
+     * ჩააგდებდი, გადატანა შეუძლებელი იქნებოდა.
+     *
+     * ⚠️ **ალბომი ფოტოს მშობელს არ ცვლის**: ფილმის კადრიც შეიძლება
+     * ალბომში იდოს. ამიტომ ჯგუფის რიცხვი `album_id`-ს ითვლის და არა
+     * უმშობლოებს — თორემ „ჯგუფში 12 წერია, შიგნით 4-ია" გამოვიდოდა.
+     */
+    private function albumGroups(int $previews)
+    {
+        $loose = GalleryImage::query()
+            ->whereNull('imageable_type')
+            ->whereNull('album_id')
+            ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
+            ->first();
+
+        $groups = collect([[
+            'kind' => 'album',
+            'id' => 0,
+            'title' => null,
+            'title_ka' => null,
+            'photos' => (int) ($loose->photos ?? 0),
+            'bytes' => (int) ($loose->bytes ?? 0),
+            'has_tmdb' => false,
+        ]]);
+
+        foreach (GalleryAlbum::query()->orderBy('sort_order')->orderBy('id')->get() as $album) {
+            $totals = GalleryImage::query()
+                ->where('album_id', $album->id)
+                ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
+                ->first();
+
+            $groups->push([
+                'kind' => 'album',
+                'id' => (int) $album->id,
+                'title' => $album->name,
+                'title_ka' => $album->name,
+                'photos' => (int) ($totals->photos ?? 0),
+                'bytes' => (int) ($totals->bytes ?? 0),
+                'has_tmdb' => false,
+            ]);
+        }
+
+        $out = [];
+        foreach ($groups as $group) {
+            if ($group['photos'] < 1 || $previews <= 0) {
+                continue;
+            }
+
+            $query = GalleryImage::query();
+            $group['id'] === 0
+                ? $query->whereNull('imageable_type')->whereNull('album_id')
+                : $query->where('album_id', $group['id']);
+
+            $out['album:'.$group['id']] = $query->orderBy('sort_order')->limit($previews)->pluck('path')->all();
+        }
+
+        return response()->json([
+            'by' => 'album',
+            'groups' => $groups->values()->all(),
+            'previews' => $out,
+        ]);
+    }
+
+    /**
+     * **ფოტოს გადატანა (§26.3) — `POST /api/gallery/images/move`.**
+     *
+     * შენი სიტყვები: „ფოტოებზე შეიძლებოდეს გადაიტანო სხვადასხვა რამეზე —
+     * იმ უკატეგორიოზე, ასევე უკატეგორიოში რაიმე კონკრეტულ ჯგუფში, ან
+     * მსახიობზე, ან სერიალზე".
+     *
+     * ⚠️ **ორი ღერძი ერთ გამოძახებაში, მაგრამ ცალ-ცალკე არჩევადი.**
+     * `target` მშობელს ცვლის, `album_id` — დახარისხებას. თუ გასაღები
+     * საერთოდ არ მოვიდა, ის ღერძი **ხელუხლებელია**; თუ მოვიდა `null`-ით —
+     * იშლება. „არ მომიტანია" და „გაასუფთავე" ერთ მნიშვნელობად რომ
+     * გვექცია, ალბომში ჩაგდება ჩუმად მშობელსაც მოხსნიდა.
+     *
+     * ⚠️ **ფაილი არსად მოძრაობს.** გადატანა მხოლოდ ორი სვეტია — დისკზე
+     * ფოტო იმავე ადგილას რჩება, ე.ი. არც კვოტა იცვლება და არც `path`.
+     *
+     * ⚠️ **სკოუპი `owner`-ია**: `GalleryImage`-ს `BelongsToUser` აქვს, ე.ი.
+     * სხვისი ფოტოს id უბრალოდ ვერ მოიძებნება — „გამოტოვებული" და არა 403.
+     */
+    public function moveImages(Request $request)
+    {
+        $parents = implode('|', GalleryParent::keys());
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            /* `none` = უკატეგორიოში; `movie:12`/`actor:5` = მშობელზე */
+            'target' => ['nullable', 'string', 'regex:/^(none|('.$parents.'):\d+)$/'],
+            'album_id' => ['nullable', 'integer',
+                Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)],
+        ]);
+
+        $changes = [];
+
+        if ($target = $data['target'] ?? null) {
+            if ($target === 'none') {
+                $changes['imageable_type'] = null;
+                $changes['imageable_id'] = null;
+            } else {
+                [$kind, $id] = explode(':', $target);
+                $parent = $kind === GalleryParent::ACTOR
+                    ? CastMember::find((int) $id)
+                    : $this->findParent($kind, (int) $id);
+
+                // ⚠️ მშობელი **ჩემი** უნდა იყოს — `findParent()` `owner` სკოუპზე დგას
+                abort_unless($parent, 404, 'not_found');
+
+                $changes['imageable_type'] = $kind;
+                $changes['imageable_id'] = (int) $id;
+            }
+        }
+
+        // ⚠️ `exists()` და არა `filled()`: `album_id: null` „გაასუფთავეა"
+        if ($request->exists('album_id')) {
+            $changes['album_id'] = $data['album_id'] ?? null;
+        }
+
+        abort_if(! $changes, 422, 'nothing_to_move');
+
+        $moved = GalleryImage::whereIn('id', array_map('intval', $data['ids']))->update($changes);
+
+        return response()->json(['moved' => $moved]);
+    }
+
+    /**
      * ერთი დომენის ფოტოები — ჩანაწერისაც და მისი მსახიობებისაც.
      *
      * ⚠️ **ერთი წყარო ჯგუფის დათვლისთვისაც და შიგთავსისთვისაც** — ორი
@@ -649,10 +801,14 @@ class GalleryController extends Controller
      */
     public function photos(Request $request)
     {
-        $owners = implode('|', [...GalleryParent::recordKeys(), 'actor']);
+        $owners = implode('|', [...GalleryParent::recordKeys(), 'actor', 'album']);
 
         $data = $request->validate([
-            'owner' => ['nullable', 'string', 'regex:/^('.$owners.'):\d+$/'],
+            /* ⚠️ **`none` ცალკე მნიშვნელობაა და არა „owner არ მოსულა"** (§26):
+               მშობლის გარეშე ჩამოსული მოთხოვნა „ყველა ფოტოა", უმშობლო
+               ფოტოების ჭრილი კი — „უკატეგორიო". ერთ სიტყვად რომ გვექცია,
+               ერთი მათგანი ვერსად გამოჩნდებოდა. */
+            'owner' => ['nullable', 'string', 'regex:/^(none|('.$owners.'):\d+)$/'],
             'with_cast' => ['nullable', 'boolean'],
             'category' => ['nullable', 'in:backdrop,poster,logo,actor'],
             // §4.1 — „საიდან მოვიდა" ჭრილში შესვლა (დომენი და არა ერთეული)
@@ -672,9 +828,14 @@ class GalleryController extends Controller
             : GalleryImage::query();
 
         if ($owner = $data['owner'] ?? null) {
-            [$kind, $id] = explode(':', $owner);
+            [$kind, $id] = $owner === 'none' ? ['none', 0] : explode(':', $owner);
 
-            if ($kind === 'actor') {
+            /* „უკატეგორიო" — მშობლის გარეშე დარჩენილი ფოტოები (§26) */
+            if ($kind === 'none') {
+                $query->whereNull('imageable_type');
+            } elseif ($kind === 'album') {
+                $query->where('album_id', (int) $id);
+            } elseif ($kind === 'actor') {
                 $query->where('imageable_type', GalleryParent::ACTOR)->where('imageable_id', (int) $id);
             } else {
                 $record = $this->findParent($kind, (int) $id);

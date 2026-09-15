@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\StoredFile;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -30,5 +31,18 @@ class GalleryImage extends Model
     public function imageable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * ალბომი (Tasks §26) — user-ის თავისი დახარისხება.
+     *
+     * ⚠️ **მშობლისგან დამოუკიდებელია**: ფოტოს შეიძლება ჰქონდეს ორივე,
+     * ერთი ან არცერთი. უმშობლო ფოტო „უკატეგორიოა" და სწორედ იქ აქვს
+     * ალბომს აზრი, თუმცა ცალკე შეზღუდვას არ ვწერთ — ალბომში ჩაგდებული
+     * ფილმის კადრიც კანონიერია.
+     */
+    public function album(): BelongsTo
+    {
+        return $this->belongsTo(GalleryAlbum::class, 'album_id');
     }
 }

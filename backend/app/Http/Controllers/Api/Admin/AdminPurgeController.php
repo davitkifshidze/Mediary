@@ -99,6 +99,10 @@ class AdminPurgeController extends Controller
             'media_type' => ['nullable', MediaDomain::rule()],
             'id' => ['required', 'integer'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            /* §25.5 — „ფოტოები გალერეაში დამიტოვე". ⚠️ რიგის **ყოველ** ნაბიჯს
+               უნდა მოჰყვეს, თორემ პირველი ჩანაწერის ფოტოები დარჩებოდა და
+               დანარჩენების — წაიშლებოდა. */
+            'keep_gallery' => ['nullable', 'boolean'],
             // ⚠️ დადასტურება თითოეულ ნაბიჯზეც — ჩუმად ვერ გაეშვება
             'confirm' => ['required', 'in:DELETE'],
         ]);
@@ -146,6 +150,8 @@ class AdminPurgeController extends Controller
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string'],
             'keep_favorites' => ['nullable', 'boolean'],
+            // §25.5 — ფოტოები უკატეგორიოში გადადის და არა იშლება
+            'keep_gallery' => ['nullable', 'boolean'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ];
 

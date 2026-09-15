@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
+use App\Http\Controllers\Api\GalleryAlbumController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GalleryVideoController;
 use App\Http\Controllers\Api\GameController;
@@ -622,7 +623,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/gallery/videos', [GalleryVideoController::class, 'index']);
         Route::post('/gallery/videos', [GalleryVideoController::class, 'store']);
         Route::delete('/gallery/videos/{galleryVideo}', [GalleryVideoController::class, 'destroy']);
+        /* **ალბომები და ფოტოს გადატანა (Tasks §26).**
+           ⚠️ `albums`/`images/move` `{type}/{id}`-ზე **ზემოთ** — იგივე წესი,
+           რაც „groups"/„photos"/„videos"-ს აქვს.
+           ⚠️ გადატანა `POST`-ია და `EnsureModulePermission` მას `create`-ად
+           წაიკითხავდა, ამიტომ ბოლო სეგმენტი `move`-ია და არა id — ე.ი.
+           უფლება ცხადად `gallery` მოდულზეა და არა მოქმედებიდან ნაგულისხმევი. */
+        Route::get('/gallery/albums', [GalleryAlbumController::class, 'index']);
+        Route::post('/gallery/albums', [GalleryAlbumController::class, 'store']);
+        Route::post('/gallery/albums/reorder', [GalleryAlbumController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/gallery/albums/{galleryAlbum}', [GalleryAlbumController::class, 'update'])
+            ->whereNumber('galleryAlbum');
+        Route::delete('/gallery/albums/{galleryAlbum}', [GalleryAlbumController::class, 'destroy'])
+            ->whereNumber('galleryAlbum');
+
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
+        Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);
         Route::delete('/gallery/images/{galleryImage}', [GalleryController::class, 'destroyImage']);
         Route::post('/gallery/images/{galleryImage}/primary', [GalleryController::class, 'setPrimary']);
         // მსახიობის გალერეა — მშობელი მსახიობია, ე.ი. ფოტო მის გვერდზეც ჩანს

@@ -19,6 +19,7 @@ use App\Models\CastMember;
 use App\Models\CastMemberTag;
 use App\Models\CastMemberTranslation;
 use App\Models\Conversation;
+use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Game;
@@ -136,6 +137,7 @@ class AuditRegistry
         BookmarkCategory::class => 'bookmark',
 
         // ---- გალერეა
+        GalleryAlbum::class => 'gallery',
         GalleryImage::class => 'gallery',
         // §8.1 — ვიდეო-ბმული იმავე მშობლებზე; ადამიანი ამატებს და შლის, ე.ი. ლოგში ხვდება
         GalleryVideo::class => 'gallery',
