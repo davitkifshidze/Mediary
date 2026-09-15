@@ -47,6 +47,14 @@ export interface Video {
   download_name: string | null
   download_error: string | null
   downloaded_at: string | null
+  /**
+   * ⚠️ **„გაჭედილია" — სერვერის სათქმელია და არა ჩვენი.** ფონური პროცესი
+   * შეიძლება მოკვდეს (სერვერის ტერმინალის დახურვა, გადატვირთვა) და სტატუსი
+   * `running`-ად დარჩეს სამუდამოდ. ჭერისა და საწყისი დროის აქ გამეორება
+   * ორ ფორმულას გააჩენდა — ღილაკი „მიმდინარეობს"-ს აჩვენებდა მაშინ, როცა
+   * სერვერი უკვე უშვებდა ხელახლა გაშვებას (`Video::downloadStale()`).
+   */
+  download_stale: boolean
   /** მიმაგრებული შიგთავსი (K3) */
   images_count?: number
   documents_count?: number

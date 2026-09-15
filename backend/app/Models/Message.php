@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * ჩატის შეტყობინება (Tasks §16.3).
@@ -25,7 +26,14 @@ class Message extends Model
     /** ტიპები, რომლებიც ატვირთვას ითხოვს */
     public const MEDIA_TYPES = ['image', 'video', 'file'];
 
-    /** წაშლის სკოუპი (§4.6) — `self` მხოლოდ წამშლელთან, `both` ორივესთან */
+    /**
+     * წაშლის სკოუპი (§4.6) — `self` მხოლოდ წამშლელთან, `both` ორივესთან.
+     *
+     * ⚠️ **ეს API-ს ლექსიკონია და არა სვეტის მნიშვნელობები** (აუდიტი
+     * 2026-09-14, §B2). ორი სკოუპი ორ **სხვადასხვა ადგილას** ინახება:
+     * `both` — `removed_at`/`removed_by`-ში (ფაქტი შეტყობინებისაა),
+     * `self` — `message_hides`-ში (ფაქტი **მაყურებლისაა**).
+     */
     public const REMOVAL_SCOPES = ['self', 'both'];
 
     protected $guarded = ['id'];
@@ -35,6 +43,12 @@ class Message extends Model
         'removed_at' => 'datetime',
     ];
 
+    /** §4.6/§B2 — ვინ დაიმალა ეს წერილი **თავისთვის** */
+    public function hides(): HasMany
+    {
+        return $this->hasMany(MessageHide::class);
+    }
+
     /**
      * **ამ მომხმარებლისთვის ხილული წერილები (§4.6)**.
      *
@@ -42,14 +56,17 @@ class Message extends Model
      * არ ჰქვია**: „მხოლოდ ჩემთან წაშლილი" მეორე მხარეს **უნდა** უჩანდეს,
      * global scope კი ორივესგან დამალავდა. ე.ი. ხილვადობა ყოველთვის
      * კონკრეტული user-ის ჭრილშია და ცხადად ითქმის.
+     *
+     * ⚠️ **ორი პირობა ორი სხვადასხვა ფაქტისაა** (აუდიტი 2026-09-14, §B2):
+     * `removed_at` — „ავტორმა ორივესთან წაშალა" (შეტყობინების ფაქტი) —
+     * და `message_hides` — „მე დავიმალე" (მაყურებლის ფაქტი). ადრე ორივე
+     * ერთ სამეულში ეწერა, ე.ი. **მეორე მხარის დამალვა პირველისას აუქმებდა**.
      */
     public function scopeVisibleTo(Builder $query, int $userId): Builder
     {
-        return $query->where(fn (Builder $q) => $q
+        return $query
             ->whereNull('removed_at')
-            ->orWhere(fn (Builder $s) => $s
-                ->where('removed_scope', 'self')
-                ->where('removed_by', '!=', $userId)));
+            ->whereDoesntHave('hides', fn (Builder $q) => $q->where('user_id', $userId));
     }
 
     /** მედიის შეტყობინებაა და ფაილი აღარ არსებობს (იხ. კლასის შენიშვნა) */

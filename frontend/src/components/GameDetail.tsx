@@ -155,7 +155,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="min-w-0 flex-1 truncate text-primary hover:underline"
+                    className="min-w-0 flex-1 truncate text-primary hover:text-primary/70"
                   >
                     {link.label || link.url}
                   </a>
@@ -426,7 +426,7 @@ function Files({ game }: { game: Game }) {
             <button
               type="button"
               onClick={() => viewer.open(file)}
-              className="min-w-0 flex-1 cursor-pointer truncate text-left hover:underline"
+              className="min-w-0 flex-1 cursor-pointer truncate text-left hover:text-primary"
               title={t('files.viewerOpen')}
             >
               {file.original_name ?? file.url}

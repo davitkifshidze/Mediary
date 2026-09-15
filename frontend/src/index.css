@@ -34,11 +34,47 @@
 
   --gold: #a9761b; /* editorial accent */
 
+  /* აიქონების სემანტიკური ტონები — იხ. „აიქონების ჰოვერი" ქვემოთ.
+     ⚠️ **ახალი პალიტრა არ იბადება**: იგივე მწვანე/ლურჯი/ქარვისფერია,
+     რითიც სტატუსები იხატება — მეორე ნაკრები ერთ დღეს დაშორდებოდა. */
+  --icon-ok: var(--status-watched);
+  --icon-warn: var(--status-towatch);
+  --icon-info: var(--status-watching);
+
   --status-undecided: #7c6f9c;
   --status-towatch: #b4791f;
   --status-watching: #2f6b8f;
   --status-watched: #3f7d42;
   --favorite: #b4532a;
+
+  /* **სექციების ფერები (Tasks §23)** — არა-მოდულური სექციები: ლექსიკონები,
+     ჟანრები, სტატუსი, სინქრონი, თარგმანები, გემოვნება, ჩატი, მოდულები,
+     მოთხოვნები, მომხმარებლები, როლები, აუდიტი (+ მონაცემები და ბექაპი).
+
+     ⚠️ **თითოეულს თავისი ტონი აქვს და არა „ოჯახს".** 2026-09-15-ს ისინი
+     რვა ოჯახად დაიხატა და შედეგად ხუთი ადმინის რიგი ერთფეროვანი გახდა —
+     ე.ი. ფერი მათ ერთმანეთისგან **ვერ** არჩევდა, რაც სწორედ ფერის საქმეა.
+     ჯგუფურობა მაინც იკითხება: ადმინის ხუთეული მეზობელ ტონშია (ინდიგო →
+     იისფერი), სოციალური წყვილი — ერთმანეთის გვერდით.
+
+     ⚠️ **ცვლადებია და არა hex კოდი კომპონენტში**: Tailwind კლასს ცვლადიდან
+     ვერ დაბადებს, ე.ი. ფერი ისედაც inline `style`-ით მიდის — ხოლო ორივე
+     თემაზე ცალკე მნიშვნელობა მხოლოდ აქ იწერება. */
+  --tool-dictionaries: #a9761b;
+  --tool-genres: #b4791f;
+  --tool-bulk: #3f7d42;
+  --tool-sync: #2f6b8f;
+  --tool-translations: #b4532a;
+  --tool-people: #7c6f9c;
+  --tool-chat: #4f7fa8;
+  --tool-modules: #5b63c4;
+  --tool-requests: #8a6bb8;
+  --tool-users: #2f7d78;
+  --tool-roles: #6d5bb0;
+  --tool-audit: #6b6f7a;
+  --tool-credentials: #a06a3d;
+  --tool-backups: #45756b;
+  --tool-purge: #a52714;
 
   /* ⚠️ **ერთადერთი ადგილი, სადაც მომრგვალება წყდება.** იხ. `@theme inline` —
      `rounded-xl`/`rounded-2xl` Tailwind-ის საკუთარ სკალას კითხულობს და ამ
@@ -74,6 +110,35 @@
   --status-watching: #6aa6c8;
   --status-watched: #6fb573;
   --favorite: #e0865b;
+
+  /* §23 — იგივე სია მუქ თემაზე. ⚠️ **ცალკე უნდა გამეორდეს**: ეს ნედლი
+     მნიშვნელობებია და არა alias-ები, ე.ი. `:root`-ის ფერი მუქ ფონზე
+     უბრალოდ ბნელი ლაქა იქნებოდა. */
+  --tool-dictionaries: #d0a24e;
+  /* ⚠️ ღია თემაზე ეს ორი განზრახ ახლოა და მაინც განსხვავდება („ჩემი
+     ლექსიკონი" vs **გლობალური** ჟანრები, გვერდიგვერდ დგანან); მუქზე კი
+     ერთი და იგივე hex ეწერა, ე.ი. განსხვავება ჩუმად ქრებოდა */
+  --tool-genres: #c98f36;
+  --tool-bulk: #6fb573;
+  --tool-sync: #6aa6c8;
+  --tool-translations: #e0865b;
+  --tool-people: #a596c9;
+  --tool-chat: #7fb3d5;
+  --tool-modules: #8d94ee;
+  --tool-requests: #b79ae0;
+  --tool-users: #5fb3ac;
+  --tool-roles: #9d8ce0;
+  --tool-audit: #a0a5b2;
+  --tool-credentials: #d09a63;
+  --tool-backups: #74b3a6;
+  --tool-purge: #e5674f;
+
+  /* ⚠️ მუქ თემაზე ცალკე უნდა გამეორდეს: `var()` მნიშვნელობა იქ გამოითვლება,
+     სადაც ცვლადი გამოცხადდა — მარტო `:root`-ში დაწერილი alias მუქ თემაზე
+     ღია თემის ფერს დაიმახსოვრებდა. */
+  --icon-ok: var(--status-watched);
+  --icon-warn: var(--status-towatch);
+  --icon-info: var(--status-watching);
 }
 
 @theme inline {
@@ -158,10 +223,396 @@
   from { opacity: 0; transform: translateX(-100%); }
   to { opacity: 1; transform: translateX(0); }
 }
+/* ---- გვერდის ჰედერის შემოსვლა (Tasks §23) ----
+   ⚠️ **ორი ცალკე მოძრაობაა და განზრახ.** ზოლი ოდნავ ზემოდან ეშვება
+   (ყურადღება სათაურზე მიდის), ხატულის ფილა კი ცოტა მოგვიანებით „ამოხტება" —
+   ე.ი. თვალი ჯერ სექციას კითხულობს, მერე ფერს ამჩნევს. ერთი საერთო
+   ანიმაცია ამ თანმიმდევრობას დაკარგავდა.
+
+   ⚠️ **`backwards` სავალდებულოა ფილაზე**: მას `delay` აქვს, ე.ი. მის
+   გარეშე ხატულა ჯერ სრული ზომით დაიხატებოდა და მერე დაიწყებდა პატარადან
+   ზრდას — ზუსტად ის ციმციმი, რისთვისაც ანიმაცია არ კეთდება.
+
+   ⚠️ მოძრაობა `prefers-reduced-motion`-ის ქვეშაა (ფერი — არა), როგორც
+   აიქონების წესებშია. */
+@keyframes fb-header-in {
+  from { opacity: 0; transform: translateY(-0.375rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fb-header-icon-in {
+  from { opacity: 0; transform: scale(0.72); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* ---- ბარათების შემოსვლა (2026-09-15) ----
+   ⚠️ **დაყოვნება inline `style`-ით მოდის და არა კლასით**: Tailwind
+   `animation-delay`-ს ინდექსიდან ვერ დაბადებს, ე.ი. ცხრა ბარათს ცხრა კლასი
+   დასჭირდებოდა. აქ მხოლოდ თვითონ მოძრაობა წერია.
+
+   ⚠️ **`backwards` სავალდებულოა** (ჰედერის ფილის იგივე მიზეზი): დაყოვნების
+   გამო მის გარეშე ბარათი ჯერ სრული გამჭვირვალობით დაიხატებოდა, მერე
+   გაქრებოდა და თავიდან შემოვიდოდა — ზუსტად ის ციმციმი, რისთვისაც
+   ანიმაცია არ კეთდება. */
+@keyframes fb-card-in {
+  from { opacity: 0; transform: translateY(0.5rem) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fb-header { animation: fb-header-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .fb-header-icon { animation: fb-header-icon-in 340ms cubic-bezier(0.16, 1, 0.3, 1) 80ms backwards; }
+  .fb-card { animation: fb-card-in 300ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+}
+
 .fb-overlay { animation: fb-fade-in 150ms ease-out; }
 .fb-content { animation: fb-pop-in 160ms cubic-bezier(0.16, 1, 0.3, 1); }
 .fb-toast { animation: fb-toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 .fb-drawer { animation: fb-drawer-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ============================================================
+   აიქონების ჰოვერი და სემანტიკური ფერი — **ერთი ადგილი მთელ აპზე** (2026-09-14).
+
+   მოთხოვნა იყო „ყველგან, სადაც აიქონია, ჰოვერზე შესაბამისი ანიმაცია და
+   აიქონებს შესაბამისი ფერები". აპში **135 სხვადასხვა აიქონია ასეულობით
+   ადგილას** — ხელით დაწერილი `hover:` კლასი თითოეულზე ერთ კვირაში
+   დაშორდებოდა (ერთგან `scale-110`, სხვაგან არაფერი), ამიტომ წესი აქ წერია
+   ერთხელ და ავტომატურად ეხება ყველა არსებულსა და ყველა მომავალ აიქონს.
+
+   ⚠️ **როგორ მუშაობს: `lucide-react` თვითონ აწერს კლასს** — ყოველი აიქონი
+   რენდერდება როგორც `class="lucide lucide-trash-2"`. ე.ი. CSS-ს შეუძლია
+   *რომელი* აიქონია იცოდეს და თითოეულს თავისი მოძრაობა მისცეს. სხვა
+   ბიბლიოთეკის SVG (lightbox, Radix-ის ინდიკატორები) `.lucide`-ს არ ატარებს,
+   ე.ი. ხელუხლებელი რჩება.
+
+   ⚠️ **სტატიკური ფერები `@layer base`-შია, ჰოვერისა კი შრის გარეთ** — და
+   ეს განზრახაა: Tailwind-ის უტილიტები `@layer utilities`-შია, ე.ი.
+   base-ში დაწერილი ფერი **ნაგულისხმევია** (კომპონენტის `text-destructive`
+   მას ყოველთვის სძლევს — მაგ. ჰედერის გაფრთხილება კრიტიკულზე წითელი რჩება
+   და ქარვისფრად არ გადაიქცევა), ხოლო შრის გარეთ დაწერილი ჰოვერი
+   `text-muted-foreground`-საც სძლევს — თორემ ჰოვერის ფერი უბრალოდ არ
+   ჩანდებოდა.
+
+   ⚠️ **მოძრაობა `prefers-reduced-motion`-ს ემორჩილება**, ფერი კი არა:
+   ანიმაციის გამორთვა მომხმარებლის არჩევანია, მნიშვნელობის დაკარგვა — არა.
+
+   ⚠️ **გამონაკლისი: ტრიალა Loader.** მას ტრანსფორმი უკვე `animate-spin`-ს
+   უჭირავს; თუ აქ transition დაემატება, ტრიალი გაიჭედება.
+
+   ⚠️ **კონკრეტული აიქონის წესი ზოგადის შემდეგ უნდა ეწეროს** — სპეციფიკურობა
+   ორივეს ერთი და იგივე აქვს (`:hover` + ერთი კლასი), ე.ი. გადაწყვეტს რიგი.
+   ============================================================ */
+
+@keyframes fb-icon-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+@keyframes fb-icon-star {
+  0%   { transform: scale(1) rotate(0deg); }
+  35%  { transform: scale(1.38) rotate(-20deg); }
+  65%  { transform: scale(1.14) rotate(10deg); }
+  100% { transform: scale(1.24) rotate(0deg); }
+}
+/* ⚠️ ზარი **ზემოდან** უნდა ირხეოდეს — `transform-origin`-ის გარეშე ის
+   შუაგულში ტრიალებს და რხევას არ ჰგავს. ქანაობა ნელ-ნელა ცხრება. */
+@keyframes fb-icon-ring {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(-17deg); }
+  30%  { transform: rotate(14deg); }
+  45%  { transform: rotate(-10deg); }
+  60%  { transform: rotate(7deg); }
+  75%  { transform: rotate(-4deg); }
+  100% { transform: rotate(0deg); }
+}
+/* კალამი წერს — პატარა დიაგონალური მოძრაობა და დახრა */
+/* შემოვარდნილი წერილი — ერთი მოკლე ვარდნა და დაჯდომა */
+@keyframes fb-icon-drop {
+  0%   { transform: translateY(-3px); }
+  55%  { transform: translateY(2px); }
+  100% { transform: translateY(0) scale(1.1); }
+}
+@keyframes fb-icon-write {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  30%  { transform: translate(1.5px, -1.5px) rotate(-10deg); }
+  65%  { transform: translate(-1px, 1px) rotate(7deg); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
+}
+@keyframes fb-icon-swing {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-14deg); }
+  60% { transform: rotate(10deg); }
+}
+
+@layer base {
+  /* ---- ნაგულისხმევი მნიშვნელობის ფერი (კომპონენტის კლასი ფარავს) ---- */
+  .lucide-triangle-alert,
+  .lucide-circle-alert { color: var(--icon-warn); }
+
+  .lucide-info { color: var(--icon-info); }
+
+  .lucide-circle-check,
+  .lucide-shield-check { color: var(--icon-ok); }
+
+  .lucide-ban,
+  .lucide-circle-slash,
+  .lucide-circle-x,
+  .lucide-shield-off { color: var(--destructive); }
+
+  /* ⚠️ **ვარსკვლავი და გული აქ განზრახ არაა.** მათი ფერი *მდგომარეობაა*
+     („რჩეულია თუ არა“) და კომპონენტი წერს — სტატიკური ოქროსფერი ორივე
+     მდგომარეობას ერთნაირს გახდიდა, ე.ი. ღილაკი შეწყვეტდა პასუხის გაცემას
+     კითხვაზე „რჩეულში მაქვს?". */
+  .lucide-sparkles,
+  .lucide-wand-sparkles { color: var(--gold); }
+
+  /* ⚠️ **რედაქტირებას საკუთარი, შენელებული ტონი აქვს** — სუფთა ლურჯი ყოველ
+     სტრიქონში ხმაური იქნებოდა, უფერული კი ვერაფერს იტყოდა; `color-mix` ორივეს
+     შორისაა და ჰოვერზე სრულ ფერამდე ვარდება. */
+  .lucide-square-pen,
+  .lucide-pen-line,
+  .lucide-pencil-line,
+  .lucide-file-pen,
+  .lucide-notebook-pen { color: color-mix(in oklab, var(--icon-info) 62%, var(--muted-foreground)); }
+
+  /* ⚠️ ზარი ზემოდან ირხევა და არა შუაგულიდან */
+  .lucide-bell,
+  .lucide-bell-ring,
+  .lucide-bell-plus,
+  .lucide-bell-off { transform-origin: top center; }
+
+  /* ---- გადასვლა: მხოლოდ ინტერაქტიულ ელემენტში მდგომ აიქონზე ---- */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']) .lucide {
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms ease, filter 200ms ease;
+  }
+
+  /* ტრიალას ტრანსფორმი უკვე უჭირავს — მხოლოდ ფერი */
+  .lucide-loader-circle,
+  .animate-spin { transition: color 150ms ease; }
+}
+
+
+/* ---- ჰოვერი: მოძრაობა ----
+   ⚠️ **`:not(.transition-transform)` აქ სავალდებულოა და არა სილამაზისთვის.**
+   იმ აიქონს, რომლის ტრანსფორმსაც **კომპონენტი** მართავს (საიდბარისა და
+   ფილტრის ჩასაკეცი ისრები: დახურულზე `-rotate-90`), გლობალური `transform`
+   ჰოვერზე ამ ბრუნვას ჩამოართმევდა — ე.ი. დახურული სექციის ისარი ჰოვერზე
+   „გახსნილივით" ჩამოტრიალდებოდა. ის კლასი ისედაც წერია ყველა ასეთ ადგილას,
+   ამიტომ სწორედ ის არის აქ გამორთვის ნიშანი.
+
+   ⚠️ **წინაპრების სია მენიუს პუნქტებსაც შეიცავს** (`[role='menuitem']`,
+   `[role='option']`): აიქონების დიდი ნაწილი სწორედ კონტექსტურ და
+   `ActionMenu`-ს პუნქტებშია — მხოლოდ `button`/`a` მათ ვერ დაიჭერდა.
+
+   ⚠️ **ანიმაციას ბოლო კადრი `transform`-ს უნდა ემთხვეოდეს.** ანიმაცია
+   დამთავრებისას ელემენტი დეკლარირებულ `transform`-ს უბრუნდება — თუ ისინი
+   არ ემთხვევა, აიქონი ბოლოს ჩუმად ხტება (ვარსკვლავზე ეს თვალსაჩინოა). */
+@media (prefers-reduced-motion: no-preference) {
+  /* ნაგულისხმევი — მსუბუქი ზრდა */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide:not(.transition-transform) { transform: scale(1.12); }
+
+  /* დახურვა/მოხსნა — ჯვარი ბრუნავს */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-x:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-x:not(.transition-transform) { transform: rotate(90deg) scale(1.1); }
+
+  /* დამატება — ხაზგასმული ზრდა */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-plus:not(.transition-transform) { transform: scale(1.25); }
+
+  /* რედაქტირება — კალამი წერს */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-square-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pen-line:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil-line:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-notebook-pen:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil:not(.transition-transform) { animation: fb-icon-write 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  /* ხელსაწყო — იხრება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-wrench:not(.transition-transform) { transform: rotate(-12deg) scale(1.12); }
+
+  /* განახლება/გამეორება — ნახევარი ბრუნი */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-refresh-cw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-rotate-cw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-repeat:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shuffle:not(.transition-transform) { transform: rotate(180deg); }
+
+  /* დაბრუნება — საწინააღმდეგო ბრუნი */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-rotate-ccw:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-undo-2:not(.transition-transform) { transform: rotate(-180deg); }
+
+  /* პარამეტრები — კბილანა */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-settings-2:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sliders-horizontal:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-cog:not(.transition-transform) { transform: rotate(45deg); }
+
+  /* ჩამოტვირთვა — ქვევით */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-download:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-cloud-download:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-hard-drive-download:not(.transition-transform) { transform: translateY(2px); }
+
+  /* ატვირთვა — ზევით */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-upload:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-cloud-upload:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-hard-drive-upload:not(.transition-transform) { transform: translateY(-2px); }
+
+  /* წინ — მარჯვნივ */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-right:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-right:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-send:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-in:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-skip-forward:not(.transition-transform) { transform: translateX(3px); }
+
+  /* უკან — მარცხნივ */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-left:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-left:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-out:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-skip-back:not(.transition-transform) { transform: translateX(-3px); }
+
+  /* ქვევით */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-down:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-down-wide-narrow:not(.transition-transform) { transform: translateY(2px); }
+
+  /* ზევით */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-chevron-up:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-up-narrow-wide:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-up-wide-narrow:not(.transition-transform) { transform: translateY(-2px); }
+
+  /* გარე ბმული — „გავიდა" */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-external-link:not(.transition-transform) { transform: translate(2px, -2px); }
+
+  /* დაკვრა/ძებნა/დადასტურება — ძლიერი ზრდა */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-play:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-play:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-search:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check-check:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-eye:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-eye-off:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sparkles:not(.transition-transform) { transform: scale(1.22); }
+
+  /* მიმაგრება — სამაგრი იხრება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-paperclip:not(.transition-transform) { transform: rotate(-20deg) scale(1.1); }
+
+  /* წაშლა — ქანაობა (ერთხელ) */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash-2:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash:not(.transition-transform) { animation: fb-icon-shake 420ms ease-in-out; }
+
+  /* რჩეული — ამოხტომა შემობრუნებით (ბოლო კადრი `transform`-ს ემთხვევა, რომ ანიმაციის ბოლოს არ ხტებოდეს) */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-star:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-heart:not(.transition-transform) { animation: fb-icon-star 560ms cubic-bezier(0.16, 1, 0.3, 1); transform: scale(1.24); }
+
+  /* შეხსენება — ზარის ცხრადი რხევა */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-ring:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-plus:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-off:not(.transition-transform) { animation: fb-icon-ring 760ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+
+  /* ---- ნავიგაციის ინსტრუმენტები (საიდბარის ქვედა რიგი) ---- */
+
+  /* თარგმანი — გადაბრუნება (ერთი ენიდან მეორეზე) */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-languages:not(.transition-transform) { transform: rotateY(180deg); }
+
+  /* ლექსიკონები — წიგნი თაროდან იხრება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-library:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-book-open:not(.transition-transform) { transform: rotate(-7deg) scale(1.12); }
+
+  /* ჟანრები — იარლიყი ეკიდება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-tags:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-tag:not(.transition-transform) { transform: rotate(-12deg) scale(1.1); }
+
+  /* სიები — წინ */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-checks:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-video:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-list-music:not(.transition-transform) { transform: translateX(2px) scale(1.08); }
+
+  /* ხალხი */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-users:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-user-round:not(.transition-transform) { transform: scale(1.18); }
+
+  /* ჩატი — ბუშტი ამოხტება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-message-square:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-messages-square:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-message-square-x:not(.transition-transform) { transform: translateY(-2px) scale(1.1); }
+
+  /* მოდულები — პაზლი ჯდება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-puzzle:not(.transition-transform) { transform: rotate(14deg) scale(1.1); }
+
+  /* მოთხოვნები — შემოვარდნილი წერილი */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-inbox:not(.transition-transform) { animation: fb-icon-drop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  /* ლოგი/დოკუმენტი — იშლება */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-scroll-text:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-text:not(.transition-transform) { transform: scaleY(1.12) scale(1.06); }
+
+  /* უფლებები */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-check:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-key-round:not(.transition-transform) { transform: scale(1.16); }
+
+}
+
+/* ---- ჰოვერი: ფერი და შუქი (მოძრაობის გამორთვისასაც მუშაობს) ----
+   ⚠️ **სია განზრახ მოკლეა.** ფერი მხოლოდ იქ, სადაც ის *მნიშვნელობას*
+   ამბობს (წაშლა, რედაქტირება, დადასტურება, რჩეული, შეხსენება), და არა
+   ყველა აიქონზე — თორემ მოდულის ფერი (საიდბარი, `--mod`) და სტატუსების
+   ტონები დაიკარგებოდა. */
+/* შეუქცევადი/უარყოფითი მოქმედება */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash-2:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-trash:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-x:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-ban:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-slash:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-off:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-x:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-video-off:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-log-out:not(.transition-transform) { color: var(--destructive); }
+
+/* რედაქტირება — სრულ ტონამდე */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-square-pen:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pen-line:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil-line:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-file-pen:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-notebook-pen:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-pencil:not(.transition-transform) { color: var(--icon-info); }
+
+/* რჩეული — აპის საკუთარი ტოკენი და თბილი შუქი */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-star:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-heart:not(.transition-transform) { color: var(--favorite); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--favorite) 55%, transparent)); }
+
+/* შეხსენება — ზარის ოქროსფერი და შუქი */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-ring:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-plus:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-bell-off:not(.transition-transform) { color: var(--gold); filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 50%, transparent)); }
+
+/* „ჯადოსნური" მოქმედება */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-sparkles:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-wand-sparkles:not(.transition-transform) { color: var(--gold); }
+
+/* დადასტურება/შენახვა */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-check-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-shield-check:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-save:not(.transition-transform) { color: var(--icon-ok); }
+
+/* ბმული და ინფორმაცია */
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-external-link:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-link:not(.transition-transform),
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-info:not(.transition-transform) { color: var(--icon-info); }
+
+/* ⚠️ **გამორთვის სახელური** — თუ სადმე მოძრაობა ან ფერი ხელს უშლის,
+   `fb-icon-plain` ან ბლოკს დაედება, ან თვითონ აიქონს. */
+.fb-icon-plain .lucide,
+.lucide.fb-icon-plain,
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .fb-icon-plain .lucide,
+:where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide.fb-icon-plain {
+  transform: none;
+  animation: none;
+  filter: none;
+  color: inherit;
+}
 
 @layer base {
   * {

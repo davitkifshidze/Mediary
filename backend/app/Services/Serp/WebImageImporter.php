@@ -6,10 +6,9 @@ use App\Models\GalleryImage;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
 use App\Services\Web\WikimediaImages;
+use App\Support\SafeHttp;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Http;
-use Throwable;
 
 /**
  * **ვებიდან ნაპოვნი ფოტოს ჩამოტვირთვა და მიმაგრება (Tasks §7.6.5)**.
@@ -33,6 +32,12 @@ use Throwable;
  * ⚠️ **HTML არასდროს ინახება** (`VideoUrl`-ის წესი): პასუხის `content-type`
  * მოწმდება და არა-სურათი უბრალოდ არ ჩამოიწერება — თორემ 403-ის გვერდი
  * „სურათად" შეინახებოდა და ბადეში გატეხილი უჯრა გამოჩნდებოდა.
+ *
+ * ⚠️ **ჩამოტვირთვა `SafeHttp`-ზე გადის** (აუდიტი 2026-09-14, §A2/§A3). ორი
+ * მიზეზი: მისამართი **მომხმარებლის ნაკარნახევია** (ძებნის შედეგიდან მოდის,
+ * მაგრამ სხეულს კლიენტი აგზავნის), ე.ი. `http://127.0.0.1:…` სერვერს შიდა
+ * ქსელის სკანერად აქცევდა; და `MAX_BYTES` **ჩამოტვირთვის შემდეგ** მოწმდებოდა,
+ * ე.ი. 2 GB-იანი ფაილი მეხსიერებას ამოწურავდა სანამ ჭერამდე მივიდოდით.
  */
 class WebImageImporter
 {
@@ -42,7 +47,10 @@ class WebImageImporter
      */
     private const MAX_BYTES = 15_000_000;
 
-    public function __construct(private readonly StorageMeter $meter) {}
+    public function __construct(
+        private readonly StorageMeter $meter,
+        private readonly SafeHttp $http,
+    ) {}
 
     /**
      * მონიშნული ფოტოები ერთ მშობელზე.
@@ -152,25 +160,22 @@ class WebImageImporter
      */
     private function download(string $url): ?array
     {
-        try {
-            $res = Http::timeout(25)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (არსებული წესი)
-                ->withOptions(['verify' => storage_path('cacert.pem'), 'allow_redirects' => true])
-                // hotlink-ის დაცვა ბოტს აგდებს; ბრაუზერული UA ამას ხსნის
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
-                    'Accept' => 'image/avif,image/webp,image/*,*/*;q=0.8',
-                ])
-                ->get($url);
-        } catch (Throwable) {
+        $res = $this->http->fetch(
+            $url,
+            self::MAX_BYTES,
+            // hotlink-ის დაცვა ბოტს აგდებს; ბრაუზერული UA ამას ხსნის
+            [
+                'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
+                'Accept' => 'image/avif,image/webp,image/*,*/*;q=0.8',
+            ],
+            timeout: 25,
+        );
+
+        if ($res === null) {
             return null;
         }
 
-        if (! $res->successful()) {
-            return null;
-        }
-
-        $mime = strtolower(trim(explode(';', (string) $res->header('Content-Type'))[0]));
+        $mime = (string) $res['mime'];
         $extension = $this->extension($mime);
 
         // ⚠️ არა-სურათი არ ინახება: 403-ის HTML გვერდი „ფოტოდ" შეინახებოდა
@@ -178,13 +183,15 @@ class WebImageImporter
             return null;
         }
 
-        $body = $res->body();
-
-        if ($body === '' || strlen($body) > self::MAX_BYTES) {
+        /* ⚠️ **მოჭრილი სურათი არ ინახება.** ტექსტისგან განსხვავებით ნახევარი
+           ფაილი აქ გატეხილი ფაილია — ის ბადეში გატეხილ უჯრად დაიხატებოდა და
+           კვოტასაც დახარჯავდა. `SafeHttp` ცხადად გვეუბნება, შეწყდა თუ
+           დასრულდა (`truncated`) — სწორედ ამისთვის კითხულობს ერთი ბაიტით მეტს. */
+        if ($res['body'] === '' || $res['truncated']) {
             return null;
         }
 
-        return ['body' => $body, 'mime' => $mime, 'extension' => $extension];
+        return ['body' => $res['body'], 'mime' => $mime, 'extension' => $extension];
     }
 
     /** ცნობილი სურათის ტიპები; სხვა ყველაფერი უარყოფილია (`null`) */

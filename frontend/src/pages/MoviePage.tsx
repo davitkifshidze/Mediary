@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Loader2,
-  Pencil,
+  SquarePen,
   Play,
   Plus,
   RefreshCw,
@@ -264,7 +264,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
                 </Button>
                 <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'outline' })}>
-                  <Pencil className="size-4" />
+                  <SquarePen className="size-4" />
                   {t('actions.edit')}
                 </Link>
                 <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
@@ -435,7 +435,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                         className={actionItemClass()}
                         onClick={() => setRoleOf(c)}
                       >
-                        <Pencil className="size-4" />
+                        <SquarePen className="size-4" />
                         {t('cast.editRole')}
                       </button>
                       <button

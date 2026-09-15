@@ -8,7 +8,7 @@ import {
   ExternalLink,
   Globe,
   Loader2,
-  Pencil,
+  SquarePen,
   Plus,
   Search,
   Star,
@@ -333,7 +333,7 @@ export function BookmarksPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => visited.mutate(bookmark.id)}
-                      className="block truncate text-sm font-medium hover:underline"
+                      className="block truncate text-sm font-medium hover:text-primary"
                       title={bookmark.title}
                     >
                       {bookmark.title}
@@ -404,7 +404,7 @@ export function BookmarksPage() {
                       />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => setEditing(bookmark)}>
-                      <Pencil className="size-4" />
+                      <SquarePen className="size-4" />
                     </Button>
                     <Button
                       variant="ghost"

@@ -45,7 +45,17 @@ class Video extends Model
         'sort_order' => 'integer',
         'download_size' => 'integer',
         'downloaded_at' => 'datetime',
+        'download_started_at' => 'datetime',
     ];
+
+    /**
+     * ⚠️ **რამდენი ხნის შემდეგ ითვლება `running` მკვდრად** — `yt-dlp`-ის
+     * საკუთარ ლიმიტს პლუს მარაგი შერწყმასა და ფაილის გადატანაზე. ამ დროის
+     * შემდეგ პროცესი ან დასრულდა, ან თვითონ ჩავარდა — ორივე შემთხვევაში
+     * სტატუსი უკვე ჩაწერილი იქნებოდა, ე.ი. `running` მხოლოდ მაშინ რჩება,
+     * თუ პროცესი **მოკლეს**.
+     */
+    private const DOWNLOAD_GRACE_SECONDS = 120;
 
     /**
      * ⚠️ `video_files`/`video_notes` ბაზაზე cascade-ით იშლება, მაგრამ SQL-ის
@@ -125,13 +135,15 @@ class Video extends Model
      */
     public function deleteDownload(): void
     {
-        if (! $this->download_path) {
-            return;
+        /* ⚠️ **ფაილის გათავისუფლება პირობითია, სვეტების გასუფთავება — არა**
+           (აუდიტი 2026-09-14, §B1). ადრე მთელი მეთოდი აქ ბრუნდებოდა, ე.ი.
+           გაჭედილ `running`-ს (რომელსაც ბილიკი არ აქვს) **ვერაფერი ასუფთავებდა**:
+           `DELETE /videos/{id}/download` ჩუმად არაფერს აკეთებდა. */
+        if ($this->download_path) {
+            $meter = app(StorageMeter::class);
+            $meter->deleteUpload(null, $this->download_path);
+            $meter->addFor((int) $this->user_id, -(int) $this->download_size);
         }
-
-        $meter = app(StorageMeter::class);
-        $meter->deleteUpload(null, $this->download_path);
-        $meter->addFor((int) $this->user_id, -(int) $this->download_size);
 
         $this->forceFill([
             'download_path' => null,
@@ -141,7 +153,35 @@ class Video extends Model
             'download_status' => null,
             'download_error' => null,
             'downloaded_at' => null,
+            'download_started_at' => null,
         ]);
+    }
+
+    /**
+     * **მიმდინარე ჩამოწერა მკვდარია?** (აუდიტი §B1)
+     *
+     * ⚠️ **ერთადერთი ადგილი, სადაც ეს წყდება** — მას `VideoDownloader::start()`
+     * ეკითხება (გაშვების დაშვებისთვის) და `VideoResource` (ღილაკის
+     * მდგომარეობისთვის). ორი ფორმულა იმას ნიშნავდა, რომ UI „გაჭედილს"
+     * აჩვენებდა და სერვერი 409-ს აბრუნებდა — ან პირიქით.
+     *
+     * ⚠️ **`null` საწყისი დრო „მკვდარია"**: ან ეს მიგრაციამდელი გაჭედილი
+     * რიგია, ან ვიღაცამ ხელით ჩაწერა — ორივეზე განბლოკვა სწორი პასუხია,
+     * სამუდამო 409 კი — არა.
+     */
+    public function downloadStale(): bool
+    {
+        if ($this->download_status !== self::DOWNLOAD_RUNNING) {
+            return false;
+        }
+
+        if (! $this->download_started_at) {
+            return true;
+        }
+
+        $limit = (int) config('mediary.ytdlp.timeout', 1800) + self::DOWNLOAD_GRACE_SECONDS;
+
+        return $this->download_started_at->lt(now()->subSeconds($limit));
     }
 
     /** ლოკალური ასლი მზადაა? (ბადეზე ხატულა და „ცალკე სექცია" ამაზე დგას) */

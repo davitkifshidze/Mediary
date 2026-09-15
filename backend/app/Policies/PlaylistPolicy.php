@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Playlist;
-use App\Models\User;
-
-class PlaylistPolicy
-{
-    public function view(User $user, Playlist $playlist): bool
-    {
-        return $playlist->user_id === $user->id;
-    }
-
-    public function update(User $user, Playlist $playlist): bool
-    {
-        return $this->view($user, $playlist);
-    }
-
-    public function delete(User $user, Playlist $playlist): bool
-    {
-        return $this->view($user, $playlist);
-    }
-}
+/**
+ * Playlist-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\Playlist` → `App\Policies\PlaylistPolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class PlaylistPolicy extends OwnedRecordPolicy {}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Clock, Loader2, Lock, Pencil, Send, Users, X } from 'lucide-react'
+import { ArrowLeft, Clock, Loader2, Lock, SquarePen, Send, Users, X } from 'lucide-react'
 import {
   cancelRequest,
   fetchAdminModules,
@@ -22,7 +22,7 @@ import {
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { moduleDescription, moduleName, useModules } from '@/lib/modules'
+import { MODULE_ACCENT_FALLBACK, modAccent, moduleDescription, moduleName, useModules } from '@/lib/modules'
 import { roleName } from '@/lib/display'
 import { CustomFieldsEditor } from '@/components/CustomFieldsEditor'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -157,9 +157,15 @@ export function ModulePage() {
         {t('modules.title')}
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-muted">
-          <ModuleIcon name={module.icon} className="size-6" />
+      {/* ⚠️ ჰედერი მოდულის **საკუთარ** ფერს იღებს (2026-09-15): ჩამონათვალი
+          ფერადი გახდა, შიდა გვერდი კი ნაცრისფერი დარჩებოდა — ე.ი. ერთი
+          სექციის ორი სახე. ფერი იმავე `modules.color`-იდან მოდის. */}
+      <div
+        className="mb-6 flex flex-wrap items-center gap-4"
+        style={modAccent(module.color) ?? MODULE_ACCENT_FALLBACK}
+      >
+        <span className="fb-header-icon grid size-14 shrink-0 place-items-center rounded-xl bg-[var(--mod-soft)]">
+          <ModuleIcon name={module.icon} className="size-6 text-[var(--mod)]" />
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -358,7 +364,7 @@ export function ModulePage() {
                           <UserAvatar user={u} size="size-7" />
                           <Link
                             to={`/users/${u.id}`}
-                            className="min-w-0 truncate hover:text-primary hover:underline"
+                            className="min-w-0 truncate hover:text-primary"
                           >
                             {u.display_name}
                           </Link>
@@ -490,7 +496,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
 
               <span className="flex shrink-0 items-center gap-1">
                 <Button variant="ghost" size="sm" onClick={() => setOpen(editing ? null : field.key)}>
-                  <Pencil className="size-3.5" />
+                  <SquarePen className="size-3.5" />
                   {t('fields.edit')}
                 </Button>
                 <Switch

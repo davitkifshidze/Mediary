@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { LanguageDropdown } from '@/components/LanguageDropdown'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -35,6 +36,14 @@ export function RegisterPage() {
     value: form[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value })),
+  })
+
+  /* ⚠️ `SecretInput` მზა **სტრიქონს** გადმოსცემს და არა event-ს, ე.ი.
+     ზემოთა helper-ის გამოყენება `e.target.value`-ს `undefined`-ად აქცევდა
+     და პაროლის ველი ჩუმად ცარიელი დარჩებოდა. */
+  const secretField = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (value: string) => setForm((f) => ({ ...f, [key]: value })),
   })
 
   const submit = async (e: React.FormEvent) => {
@@ -106,16 +115,16 @@ export function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="password">{t('auth.password')}</Label>
-                <Input id="password" type="password" autoComplete="new-password" {...field('password')} />
+                <PasswordInput id="password" autoComplete="new-password" {...secretField('password')} />
                 {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
               </div>
               <div>
                 <Label htmlFor="password_confirmation">{t('auth.passwordConfirm')}</Label>
-                <Input
+                <PasswordInput
                   id="password_confirmation"
-                  type="password"
                   autoComplete="new-password"
-                  {...field('password_confirmation')}
+                 
+                  {...secretField('password_confirmation')}
                 />
               </div>
             </div>
@@ -134,7 +143,7 @@ export function RegisterPage() {
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {t('auth.hasAccount')}{' '}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/login" className="text-primary hover:text-primary/70">
               {t('auth.login')}
             </Link>
           </p>

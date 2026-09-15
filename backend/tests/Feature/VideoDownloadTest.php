@@ -283,12 +283,131 @@ class VideoDownloadTest extends TestCase
     {
         $this->fakeYtDlp();
         $video = $this->makeVideo($this->user);
-        $video->forceFill(['download_status' => Video::DOWNLOAD_RUNNING])->save();
+        // ⚠️ **საწყისი დროც იწერება** — სწორედ ის ასხვავებს ცოცხალ გაშვებას
+        // მკვდრისგან (§B1); მის გარეშე ჩანაწერი „გაჭედილად" ითვლება
+        $video->forceFill([
+            'download_status' => Video::DOWNLOAD_RUNNING,
+            'download_started_at' => now(),
+        ])->save();
 
         $this->actingAs($this->user)
             ->postJson("/api/videos/{$video->id}/download")
             ->assertStatus(409)
             ->assertJson(['message' => 'download_already_running']);
+    }
+
+    /* ============================================================
+       გაჭედილი ჩამოწერა (აუდიტი 2026-09-14, §B1)
+       ============================================================ */
+
+    /**
+     * **მთავარი რეგრესია:** მკვდარი ფონური პროცესი ვიდეოს სამუდამოდ არ კეტავს.
+     *
+     * ⚠️ **რეპროდუქცია იყო ჩვეულებრივი:** ჩამოწერა დაიწყე → დახურე
+     * `artisan serve`-ის ტერმინალი. სტატუსი `running`-ად რჩებოდა, `POST`
+     * სამუდამოდ 409-ს აბრუნებდა, `DELETE` კი ბილიკის არქონის გამო ჩუმად
+     * არაფერს აკეთებდა — ე.ი. ამ ვიდეოს ჩამოწერა ხელით SQL-ის გარეშე
+     * **ვეღარასდროს გაეშვებოდა**.
+     */
+    public function test_a_stale_running_download_can_be_restarted(): void
+    {
+        $this->fakeYtDlp();
+        $video = $this->makeVideo($this->user);
+
+        $video->forceFill([
+            'download_status' => Video::DOWNLOAD_RUNNING,
+            // yt-dlp-ის ლიმიტზე დიდი ხნის წინ — პროცესი ვერ იქნება ცოცხალი
+            'download_started_at' => now()->subSeconds((int) config('mediary.ytdlp.timeout') + 3600),
+        ])->save();
+
+        $this->actingAs($this->user)
+            ->postJson("/api/videos/{$video->id}/download")
+            ->assertStatus(202);
+
+        $video->refresh();
+        $this->assertSame(Video::DOWNLOAD_RUNNING, $video->download_status);
+        // ახალი გაშვების საწყისი დრო ახალია
+        $this->assertTrue($video->download_started_at->greaterThan(now()->subMinute()));
+    }
+
+    /**
+     * ⚠️ **მიგრაციამდელი გაჭედილი რიგი** — `download_started_at` ცარიელია.
+     * „არ ვიცი, როდის დაიწყო" სამუდამო 409-ს ვერ გაამართლებს.
+     */
+    public function test_a_running_download_without_a_start_time_is_treated_as_stale(): void
+    {
+        $this->fakeYtDlp();
+        $video = $this->makeVideo($this->user);
+        $video->forceFill(['download_status' => Video::DOWNLOAD_RUNNING])->save();
+
+        $this->assertTrue($video->downloadStale());
+
+        $this->actingAs($this->user)
+            ->postJson("/api/videos/{$video->id}/download")
+            ->assertStatus(202);
+    }
+
+    /**
+     * მეორე გამოსავალი: **წაშლა**. ადრე `deleteDownload()` პირველივე ხაზზე
+     * ბრუნდებოდა, თუ ბილიკი ცარიელი იყო — ე.ი. გაჭედილ `running`-ს
+     * ვერაფერი ასუფთავებდა და ღილაკი უშედეგოდ მუშაობდა.
+     */
+    public function test_deleting_clears_a_stuck_running_status(): void
+    {
+        $video = $this->makeVideo($this->user);
+        $video->forceFill([
+            'download_status' => Video::DOWNLOAD_RUNNING,
+            'download_started_at' => now()->subDay(),
+        ])->save();
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/videos/{$video->id}/download")
+            ->assertOk()
+            ->assertJsonPath('data.download_status', null);
+
+        $this->assertNull($video->refresh()->download_status);
+        $this->assertNull($video->download_started_at);
+    }
+
+    /**
+     * ⚠️ **„გაჭედილია" API-ში ცხადად წერია** და SPA-ს თავისი ფორმულა არ
+     * სჭირდება: ორი წყარო ერთ დღეს დაშორდებოდა და ღილაკი „მიმდინარეობს"-ს
+     * აჩვენებდა მაშინ, როცა სერვერი უკვე უშვებდა ხელახლა გაშვებას.
+     */
+    public function test_the_resource_states_whether_the_run_is_stale(): void
+    {
+        $fresh = $this->makeVideo($this->user);
+        $fresh->forceFill([
+            'download_status' => Video::DOWNLOAD_RUNNING,
+            'download_started_at' => now(),
+        ])->save();
+
+        $this->actingAs($this->user)
+            ->getJson("/api/videos/{$fresh->id}")
+            ->assertOk()
+            ->assertJsonPath('data.download_stale', false);
+
+        $fresh->forceFill(['download_started_at' => now()->subDay()])->save();
+
+        $this->actingAs($this->user)
+            ->getJson("/api/videos/{$fresh->id}")
+            ->assertOk()
+            ->assertJsonPath('data.download_stale', true);
+    }
+
+    /** მზა ან ჩავარდნილი ჩამოწერა „გაჭედილი" არასდროსაა */
+    public function test_only_a_running_download_can_be_stale(): void
+    {
+        $video = $this->makeVideo($this->user);
+
+        foreach ([null, Video::DOWNLOAD_READY, Video::DOWNLOAD_FAILED] as $status) {
+            $video->forceFill([
+                'download_status' => $status,
+                'download_started_at' => now()->subYear(),
+            ])->save();
+
+            $this->assertFalse($video->downloadStale(), 'სტატუსი: '.var_export($status, true));
+        }
     }
 
     /**

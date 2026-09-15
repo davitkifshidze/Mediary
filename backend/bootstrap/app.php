@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureModulePermission;
+use App\Http\Middleware\EnsureRecordOwnership;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,37 @@ return Application::configure(basePath: dirname(__DIR__))
         // SPA cookie ავტორიზაცია: stateful დომენებიდან (SANCTUM_STATEFUL_DOMAINS)
         // მოსულ /api/* რექვესთს სესია + CSRF ემატება, დანარჩენი token-ით მუშაობს.
         $middleware->statefulApi();
+
+        /*
+         * **მოთხოვნების ჭერი მთელ `/api`-ზე** (აუდიტი 2026-09-14, §A1).
+         *
+         * ⚠️ აქამდე `throttle` პროექტში **არსად არ იყო** — ღია რეგისტრაციის
+         * პირობებში ეს იმას ნიშნავდა, რომ პაროლის ბრუტფორსს არაფერი აჩერებდა.
+         *
+         * ⚠️ ლიმიტი თვითონ `AppServiceProvider::rateLimiters()`-შია და არა აქ:
+         * ის **ანგარიშზეა** დაყრდნობილი (`$request->user()`) და არა IP-ზე,
+         * ე.ი. ჭერის განსაზღვრას რექვესთის კონტექსტი სჭირდება. ცალკეული
+         * ძვირი endpoint-ები ამის **გარდა** თავის ჭერს იღებენ
+         * (`throttle:web-search`, `throttle:translate`, …) — ისინი
+         * `routes/api.php`-შია და გლობალურს ცვლიან კი არა, ემატებიან.
+         */
+        $middleware->throttleApi('api');
+
+        /*
+         * **მფლობელობის მეორე ფენა** (აუდიტი 2026-09-14, §A5).
+         *
+         * ⚠️ **`append` და არა `prepend`**: შემოწმებას route-ზე მიბმული
+         * **მოდელები** სჭირდება, ისინი კი `SubstituteBindings`-მდე ჯერ კიდევ
+         * სტრიქონებია — ადრე გაშვებულ middleware-ს შესამოწმებელი არაფერი
+         * ექნებოდა და კარიბჭე ჩუმად ცარიელი იქნებოდა.
+         *
+         * ⚠️ **ჯგუფზე დგას და არა კონტროლერებში.** ჩვიდმეტი policy კლასი
+         * სწორედ იმიტომ იდო წლის განმავლობაში გამოუძახებელი, რომ ცხადი
+         * `$this->authorize()` ყოველ ახალ endpoint-ზე ხელახლა უნდა
+         * დაწერილიყო — იგივე მიზეზი, რის გამოც აუდიტ-ლოგი observer-ის ერთი
+         * ციკლით ებმევა.
+         */
+        $middleware->api(append: [EnsureRecordOwnership::class]);
 
         $middleware->alias([
             'module' => EnsureModuleEnabled::class,

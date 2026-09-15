@@ -3,10 +3,12 @@
 namespace App\Services\Serp;
 
 use App\Models\SerpSearch;
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -135,7 +137,21 @@ class SerpApiClient
 
     public function configured(): bool
     {
-        return (bool) config('services.serpapi.key');
+        return (bool) CredentialStore::value(CredentialProviders::SERPAPI);
+    }
+
+    /**
+     * **ვის ხარჯზე იწერება ეს ძებნა** (Tasks §21.4).
+     *
+     * ⚠️ `null` = საერთო გასაღები, ე.ი. მრიცხველი ძველებურად **მთელ
+     * ინსტალაციას** ითვლის (ზუსტად ის, რასაც `SerpSearch`-ის დოკბლოკი
+     * აღწერს: „კვოტა ანგარიშისაა და არა მომხმარებლისა"). თავისი გასაღებით
+     * კი მხოლოდ თავისი რიგები ითვლება — თორემ სხვისი ძებნა ჩემს 250-ს
+     * ხარჯავდა, თუმცა SerpApi-ს ჩემი გასაღები საერთოდ არ უნახავს.
+     */
+    private function quotaOwner(): ?int
+    {
+        return CredentialStore::quotaOwner(CredentialProviders::SERPAPI);
     }
 
     /** ბოლო რექვესთი **დაბლოკილი/ჩავარდნილი** იყო და არა უბრალოდ უშედეგო */
@@ -147,9 +163,7 @@ class SerpApiClient
     /** ჩვენი ჭერი (`SERPAPI_MONTHLY_LIMIT`); `null` = ჭერი არ დაგვიწესებია */
     public function limit(): ?int
     {
-        $limit = config('services.serpapi.monthly_limit');
-
-        return $limit === null || $limit === '' ? null : max(0, (int) $limit);
+        return CredentialStore::limit(CredentialProviders::SERPAPI, 'monthly');
     }
 
     /* ---------- მრიცხველები ---------- */
@@ -163,7 +177,12 @@ class SerpApiClient
      */
     public function usage(?Carbon $since = null): int
     {
-        return SerpSearch::where('created_at', '>=', $since ?? $this->windowStart())->count();
+        $owner = $this->quotaOwner();
+
+        return SerpSearch::where('created_at', '>=', $since ?? $this->windowStart())
+            // §21.4 — თავისი გასაღები → თავისი ხარჯი; საერთო → ყველასი
+            ->when($owner !== null, fn ($q) => $q->where('user_id', $owner))
+            ->count();
     }
 
     /**
@@ -226,26 +245,34 @@ class SerpApiClient
             return [];
         }
 
+        /* §21.5 — ქეშის key **გასაღების ანაბეჭდით**: `/account` კონკრეტული
+           გასაღების ანგარიშს აღწერს, ე.ი. საერთო key ჩემს ნაშთს სხვას
+           აჩვენებდა. ⚠️ ძებნის **შედეგის** ქეში განზრახ საერთო რჩება — ის
+           გასაღებზე არაა დამოკიდებული და საზიარო ქეში კვოტას ზოგავს. */
+        $cacheKey = 'serpapi:account:'.CredentialStore::fingerprint(CredentialProviders::SERPAPI);
+
         if ($fresh) {
-            Cache::forget('serpapi:account');
+            Cache::forget($cacheKey);
         }
 
-        $cached = Cache::get('serpapi:account');
+        $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
             return $cached;
         }
 
         try {
-            $res = Http::timeout(15)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->get(self::ACCOUNT_URL, ['api_key' => config('services.serpapi.key')]);
-        } catch (Throwable) {
+            $res = SourceLog::request(15)
+                ->get(self::ACCOUNT_URL, ['api_key' => CredentialStore::value(CredentialProviders::SERPAPI)]);
+        } catch (Throwable $e) {
+            SourceLog::threw('serpapi', $e, ['step' => 'account']);
+
             return [];
         }
 
         if (! $res->successful()) {
+            SourceLog::status('serpapi', $res->status(), $res->body(), ['step' => 'account']);
+
             return [];
         }
 
@@ -255,7 +282,7 @@ class SerpApiClient
             return [];
         }
 
-        Cache::put('serpapi:account', $data, now()->addMinutes(self::ACCOUNT_CACHE_MINUTES));
+        Cache::put($cacheKey, $data, now()->addMinutes(self::ACCOUNT_CACHE_MINUTES));
 
         return $data;
     }
@@ -426,17 +453,17 @@ class SerpApiClient
         }
 
         try {
-            $res = Http::timeout(30)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
+            $res = SourceLog::request(30)
                 ->get(self::SEARCH_URL, $params + [
                     'engine' => $engine,
-                    'api_key' => config('services.serpapi.key'),
+                    'api_key' => CredentialStore::value(CredentialProviders::SERPAPI),
                     // ⚠️ SerpApi-საც აქვს თავისი ქეში და ისიც ზოგავს ძებნას
                     'no_cache' => 'false',
                 ]);
             $this->lastStatus = $res->status();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             $this->lastStatus = 0;
+            SourceLog::threw('serpapi', $e, ['engine' => $engine]);
 
             return ['data' => null, 'cached' => false];
         }
@@ -447,28 +474,55 @@ class SerpApiClient
         }
 
         if (! $res->successful()) {
+            SourceLog::status('serpapi', $res->status(), $res->body(), ['engine' => $engine]);
+
             return ['data' => null, 'cached' => false];
         }
 
         $data = $res->json();
 
         if (! is_array($data) || isset($data['error'])) {
-            // SerpApi შეცდომას 200-ითაც აბრუნებს (`{"error": "…"}`) — ესეც ჩავარდნაა
+            /* ⚠️ **SerpApi შეცდომას 200-ითაც აბრუნებს** (`{"error": "…"}`) —
+               ე.ი. სტატუსზე დაყრდნობა ამ მიზეზს სამუდამოდ დამალავდა. */
+            SourceLog::failed('serpapi', 'error payload', [
+                'engine' => $engine,
+                'error' => is_array($data) ? mb_substr((string) ($data['error'] ?? ''), 0, 200) : null,
+            ]);
+
             return ['data' => null, 'cached' => false];
         }
 
-        // ჩვენი მრიცხველი: ხარჯი **მხოლოდ აქ** იწერება
+        $this->record($engine, $query, $fingerprint, $this->countRows($data));
+
+        Cache::put('serpapi:'.$fingerprint, $data, now()->addHours(self::CACHE_HOURS));
+
+        return ['data' => $data, 'cached' => false];
+    }
+
+    /**
+     * **ხარჯის აღრიცხვა — ერთი წერტილი** (აუდიტი 2026-09-14).
+     *
+     * ⚠️ **მხოლოდ წარმატებული პასუხი იწერება — და ეს `Translator`-ისგან
+     * განსხვავდება განზრახ** (გადამოწმდა აუდიტის დროს, 2026-09-14).
+     * თავიდან ეს შეუსაბამობად ჩაითვალა, სინამდვილეში კი ორი პროვაიდერი
+     * მართლა სხვადასხვანაირად ანგარიშობს: **SerpApi ჩავარდნილ ძებნას არ
+     * გვახარჯვინებს** (კრედიტს აბრუნებს), Gemini-ს კვოტა კი **უარყოფილ
+     * მოთხოვნასაც** ითვლის — სწორედ ამიტომ ჩნდება 429. ე.ი. თითოეული
+     * კლიენტი **თავისი** წყაროს ქცევას ასახავს და მათი „გაერთიანება"
+     * ორივე მრიცხველს გააფუჭებდა. ამას `WebSearchTest::test_a_failure_is_not_cached`
+     * ცხადად იცავს.
+     *
+     * ⚠️ **ქეშის მოხვედრაც არ იწერება** — ის ქსელში საერთოდ არ გასულა.
+     */
+    private function record(string $engine, string $query, string $fingerprint, int $results): void
+    {
         SerpSearch::create([
             'user_id' => Auth::id(),
             'engine' => $engine,
             'query' => mb_substr($query, 0, 255),
             'fingerprint' => $fingerprint,
-            'results' => $this->countRows($data),
+            'results' => $results,
         ]);
-
-        Cache::put('serpapi:'.$fingerprint, $data, now()->addHours(self::CACHE_HOURS));
-
-        return ['data' => $data, 'cached' => false];
     }
 
     /**

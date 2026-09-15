@@ -2,12 +2,12 @@
 
 namespace App\Services\BoardGames;
 
+use App\Support\SourceLog;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMXPath;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -125,21 +125,19 @@ class GeorgianShops
         }
 
         try {
-            $res = Http::timeout(20)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem'), 'allow_redirects' => true])
+            $res = SourceLog::request(20, ['allow_redirects' => true])
                 // ბოტად აღქმული რექვესთი 403-ს იღებს; ბრაუზერული UA ამას ხსნის
                 ->withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
                     'Accept' => 'text/html,application/xhtml+xml',
                 ])
                 ->get($url);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            return SourceLog::threw('shops', $e, ['url' => $url]);
         }
 
         if (! $res->successful()) {
-            return null;
+            return SourceLog::status('shops', $res->status(), '', ['url' => $url]);
         }
 
         $html = substr($res->body(), 0, self::MAX_BYTES);

@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, Clock, Lock } from 'lucide-react'
 import { fetchAdminModules, fetchMyRequests, type ModuleInfo } from '@/api/account'
-import { moduleDescription, moduleName, useModules } from '@/lib/modules'
+import {
+  MODULE_ACCENT_FALLBACK,
+  modAccent,
+  moduleDescription,
+  moduleName,
+  useModules,
+} from '@/lib/modules'
 import { useAuth } from '@/lib/auth'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PageContainer } from '@/components/ui/page'
@@ -17,7 +23,26 @@ import { cn } from '@/lib/utils'
    ადრე ორი იყო: `/modules` (მომხმარებლის სია) და ადმინის „მოდულები" ტაბი
    (ქარდები + მოდალი). ახლა ერთია, ქარდებით, და ქარდზე დაჭერით იხსნება
    **შიდა გვერდი** `/modules/{key}` — მოდალი აღარაა.
+
+   **ფერი და ანიმაცია (2026-09-15, შენი მითითებით).**
+
+   ⚠️ **ფერი `modules.color`-იდან მოდის და აქ ახალი პალიტრა არ იბადება** —
+   იგივე სვეტი, რასაც საიდბარი, გვერდის ჰედერი და აუდიტ-ლოგის ბარათები
+   კითხულობენ. სწორედ ეს არის ამ სექციის სიმწვავე: **მოდულების გვერდი
+   ერთადერთი იყო, სადაც მოდული უფერო რჩებოდა** — თერთმეტი ერთნაირად
+   ნაცრისფერი ბარათი, თუმცა მენიუში თითოეულს თავისი ტონი აქვს.
+
+   ⚠️ **ფერი inline `style`-ით ჩამოდის** (`modAccent()`): Tailwind კლასს
+   hex-იდან ვერ დაბადებს, ე.ი. `border-[#7073ff]` კომპილაციისას არ არსებობს.
+
+   ⚠️ **დაყოვნება ინდექსიდან იწერება და კლასი — არა** (იმავე მიზეზით), და
+   **შეზღუდულია**: 40ms × 11 ბარათი თითქმის ნახევარი წამია, ე.ი. ბოლო
+   ბარათი დაგვიანებულად „ჩამორჩებოდა"; ჭერი 240ms-ია.
    ============================================================ */
+
+/** ბარათის შემოსვლის საფეხური და ჭერი (იხ. `index.css`-ის `fb-card`) */
+const STAGGER_MS = 40
+const STAGGER_MAX_MS = 240
 
 export function ModulesPage() {
   const { t, i18n } = useTranslation()
@@ -57,6 +82,7 @@ export function ModulesPage() {
   return (
     <PageContainer>
       <PageHeader
+        tool="modules"
         title={t('modules.title')}
         subtitle={isAdmin ? t('modules.subtitleAdmin') : t('modules.subtitle')}
       />
@@ -64,17 +90,24 @@ export function ModulesPage() {
       {loading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {list.map((m) => {
+        {list.map((m, i) => {
           const s = state(m)
           return (
             <Link
               key={m.id}
               to={`/modules/${m.key}`}
-              className="group rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+              style={{
+                // ⚠️ ფერის უქონელი მოდული ოქროსფერ ნაგულისხმევს იღებს — აქ
+                // საიდბარის `<nav>`-ის მსგავსი მშობელი არ არსებობს, ე.ი.
+                // `--mod`-ის გარეშე ფილა და ხატულა უფერული დარჩებოდა
+                ...(modAccent(m.color) ?? MODULE_ACCENT_FALLBACK),
+                animationDelay: `${Math.min(i * STAGGER_MS, STAGGER_MAX_MS)}ms`,
+              }}
+              className="fb-card group rounded-2xl border border-border bg-card p-5 transition-[border-color,transform] hover:-translate-y-0.5 hover:border-[var(--mod)]"
             >
               <div className="flex items-center gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted">
-                  <ModuleIcon name={m.icon} className="size-5" />
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+                  <ModuleIcon name={m.icon} className="size-5 text-[var(--mod)]" />
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium">
                   {moduleName(m, i18n.language)}

@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use App\Models\BoardGameFile;
 use App\Models\BookFile;
+use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\GameFile;
 use App\Models\Message;
@@ -483,6 +484,30 @@ class StorageMeter
             ]);
         }
 
+        /* §22 — ბაზის დამპი.
+           ⚠️ `module` აქ `backup`-ია: `modules` ცხრილში რიგი არ აქვს
+           (`chat`/`account`-ის მდგომარეობა), ე.ი. ცალკე ლიმიტს ვერ იღებს
+           და საერთო აუზიდან იხარჯება.
+           ⚠️ **ყველაზე დიდი ერთეული ფაილია მთელ კვოტაში**, ე.ი. საცავის
+           გვერდზე მისი დანახვა ზუსტად ის შემთხვევაა, რისთვისაც ის სია
+           არსებობს. */
+        $backups = DatabaseBackup::where('user_id', $user->id)
+            ->whereNotNull('path')
+            ->get(['id', 'path', 'name', 'size', 'created_at']);
+
+        foreach ($backups as $backup) {
+            $add([
+                'kind' => 'backup',
+                'module' => 'backup',
+                'owner_type' => 'database_backup',
+                'owner_id' => (int) $backup->id,
+                'path' => $backup->path,
+                'name' => $backup->name,
+                'size' => $backup->size,
+                'created_at' => $backup->created_at,
+            ]);
+        }
+
         /* §6 ფაზა 4b — მორგებულ `ფაილი` ველზე ატვირთული ფაილი.
            ⚠️ **მოდული ცხრილიდან მოდის** (`movie_field_values` → `movie`) და
            სწორედ ის ემთხვევა საქაღალდის ფესვსაც (`movies/fields`), ე.ი. §17.2-ის
@@ -592,6 +617,11 @@ class StorageMeter
         $zip = new ZipArchive;
 
         if ($zip->open($zipPath, ZipArchive::OVERWRITE | ZipArchive::CREATE) !== true) {
+            // ⚠️ `tempnam()`-მა ფაილი **უკვე შექმნა** — გაუხსნელად დატოვება
+            // `%TEMP%`-ში ნაგავს აგროვებდა (`deleteFileAfterSend()` მხოლოდ
+            // წარმატებულ გზას ფარავს)
+            @unlink($zipPath);
+
             return null;
         }
 
@@ -643,6 +673,11 @@ class StorageMeter
             'game_file' => GameFile::class,
             'note_entry_file' => NoteEntryFile::class,
             'gallery_image' => GalleryImage::class,
+            /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
+               ბიბლიოთეკაში ფაილი ჩანდა, „წაშლა" კი ჩუმად აბრუნებდა `false`-ს
+               — ე.ი. ღილაკი არაფერს აკეთებდა. ჩანაწერი `StoredFile`-ს
+               იყენებს, ე.ი. წაშლა ფაილსაც შლის და კვოტასაც ათავისუფლებს. */
+            'database_backup' => DatabaseBackup::class,
             default => null,
         };
 
@@ -972,6 +1007,9 @@ class StorageMeter
             'gallery_images.path',
             'messages.attachment_path',
             'cast_members.photo_path',
+            // §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ ადმინის
+            // „ობოლების გასუფთავება" ცოცხალ ბექაპებს **წაშლიდა**
+            'database_backups.path',
             // §6 ფაზა 4b — რვავე `<module>_field_values` (ქვემოთ ემატება)
         ];
 
@@ -1041,6 +1079,41 @@ class StorageMeter
                 "CASE WHEN storage_used_bytes + ({$delta}) < 0 THEN 0 ELSE storage_used_bytes + ({$delta}) END"
             ),
         ]);
+    }
+
+    /**
+     * **ადგილის ატომური დაჯავშნა** (აუდიტი 2026-09-14).
+     *
+     * ⚠️ **`guard()` + `add()` ატომური არ იყო.** ორი პარალელური ატვირთვა
+     * ორივე გაივლიდა შემოწმებას (ორივე ხედავდა ერთსა და იმავე ნაშთს) და
+     * ორივე დაამატებდა — ე.ი. კვოტა გადალახვადი იყო. „ლიმიტი, რომლის
+     * გადალახვაც შეიძლება, ლიმიტი არ არის" — ეს წესი პროექტს უკვე
+     * ჩაწერილი აქვს (`VideoDownloader`), მაგრამ თვითონ მრიცხველი მას
+     * არ იცავდა.
+     *
+     * ⚠️ **ერთი პირობითი `UPDATE`** აკეთებს შემოწმებასაც და ჩაწერასაც:
+     * თუ 0 რიგი შეიცვალა, ადგილი აღარ არის. იგივე compare-and-swap,
+     * რითაც `ReminderDispatcher` ორმაგ გასროლას იცავს.
+     *
+     * @return bool დაჯავშნა მოხერხდა?
+     */
+    public function reserve(User $user, int $bytes): bool
+    {
+        if ($bytes <= 0) {
+            return true;
+        }
+
+        $ok = User::whereKey($user->getKey())
+            ->whereRaw('storage_used_bytes + ? <= storage_quota_bytes', [$bytes])
+            ->update(['storage_used_bytes' => DB::raw('storage_used_bytes + '.(int) $bytes)]) > 0;
+
+        if ($ok) {
+            // მოდელის ატრიბუტი raw UPDATE-ის შემდეგ ძველია — იხ. `add()`
+            $user->storage_used_bytes = (int) User::whereKey($user->getKey())->value('storage_used_bytes');
+            $user->syncOriginalAttribute('storage_used_bytes');
+        }
+
+        return $ok;
     }
 
     public function remaining(User $user): int
@@ -1122,13 +1195,10 @@ class StorageMeter
     {
         $size = (int) $file->getSize();
         // §17.2 — საქაღალდე მოდულსაც განსაზღვრავს, ე.ი. ლიმიტიც აქვე მოწმდება
-        $this->guard($user, $size, $folder);
+        $this->claim($user, $size, $folder);
 
         // დისკი საქაღალდიდან გამომდინარეობს (§17.5) — გამომძახებელი მას არ ირჩევს
-        $path = $file->store($folder, StorageFolder::diskFor($folder));
-        $this->add($user, $size);
-
-        return $path;
+        return $this->write($user, $size, fn () => $file->store($folder, StorageFolder::diskFor($folder)));
     }
 
     /**
@@ -1139,13 +1209,15 @@ class StorageMeter
     public function storeContents(User $user, string $contents, string $folder, string $extension = 'jpg'): string
     {
         $size = strlen($contents);
-        $this->guard($user, $size, $folder);
+        $this->claim($user, $size, $folder);
 
         $path = trim($folder, '/').'/'.Str::random(40).'.'.ltrim($extension, '.');
-        $this->disk($folder)->put($path, $contents);
-        $this->add($user, $size);
 
-        return $path;
+        return $this->write($user, $size, function () use ($folder, $path, $contents) {
+            $this->disk($folder)->put($path, $contents);
+
+            return $path;
+        });
     }
 
     /**
@@ -1162,25 +1234,67 @@ class StorageMeter
     public function storeLocalFile(User $user, string $absolutePath, string $folder, ?string $name = null): string
     {
         $size = is_file($absolutePath) ? (int) filesize($absolutePath) : 0;
-        $this->guard($user, $size, $folder);
+        $this->claim($user, $size, $folder);
 
         $extension = strtolower(pathinfo($name ?: $absolutePath, PATHINFO_EXTENSION)) ?: 'mp4';
         $path = trim($folder, '/').'/'.Str::random(40).'.'.$extension;
 
-        $stream = fopen($absolutePath, 'rb');
-        if ($stream === false) {
-            throw new \RuntimeException("ჩამოწერილი ფაილი ვერ გაიხსნა: {$absolutePath}");
-        }
+        return $this->write($user, $size, function () use ($absolutePath, $folder, $path) {
+            $stream = fopen($absolutePath, 'rb');
 
+            if ($stream === false) {
+                throw new \RuntimeException("ჩამოწერილი ფაილი ვერ გაიხსნა: {$absolutePath}");
+            }
+
+            try {
+                $this->disk($folder)->writeStream($path, $stream);
+            } finally {
+                fclose($stream);
+            }
+
+            return $path;
+        });
+    }
+
+    /**
+     * **ადგილის აღება ჩაწერამდე** — ანგარიშისაც და მოდულისაც.
+     *
+     * ⚠️ ანგარიშის ნაწილი **ატომურია** (`reserve()`), მოდულისა კი ჩვეულებრივი
+     * შემოწმება: მოდულის ლიმიტი მომხმარებლის საკუთარი შეზღუდვაა და მისი
+     * ერთი ბაიტით გადაცდენა ანგარიშის კვოტას არ არღვევს.
+     */
+    private function claim(User $user, int $bytes, string $folder): void
+    {
+        $this->guardModule($user, $bytes, $folder);
+
+        if (! $this->reserve($user, $bytes)) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'storage_quota_exceeded',
+                'needed' => $bytes,
+                'remaining' => $this->remaining($user->refresh()),
+                'quota' => (int) $user->storage_quota_bytes,
+            ], 413));
+        }
+    }
+
+    /**
+     * ჩაწერა უკვე დაჯავშნილ ადგილზე.
+     *
+     * ⚠️ **ჩავარდნაზე ადგილი ბრუნდება.** ჯავშანი ჩაწერამდეა, ე.ი. დისკის
+     * შეცდომა მრიცხველში „მოჩვენებით" ბაიტებს დატოვებდა — და ისინი მხოლოდ
+     * `recalculate()`-ით გაქრებოდა.
+     *
+     * @param  callable(): string  $writer
+     */
+    private function write(User $user, int $bytes, callable $writer): string
+    {
         try {
-            $this->disk($folder)->writeStream($path, $stream);
-        } finally {
-            fclose($stream);
+            return $writer();
+        } catch (\Throwable $e) {
+            $this->addFor((int) $user->getKey(), -$bytes);
+
+            throw $e;
         }
-
-        $this->add($user, $size);
-
-        return $path;
     }
 
     /**

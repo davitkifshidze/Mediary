@@ -58,6 +58,22 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        /*
+         * **გარე წყაროების არხი** (აუდიტი 2026-09-14, §D) — `App\Support\SourceLog`.
+         *
+         * ⚠️ **ცალკე ფაილი განზრახ:** TMDB/RAWG/BGG/Gemini-ის ჩავარდნები
+         * დიაგნოსტიკის საკუთარი ჟანრია („გასაღები გაქრა თუ timeout იყო") და
+         * აპლიკაციის ლოგში ისინი ხმაურში იკარგებოდა. `daily` — რადგან ეს
+         * ისტორიაა და არა ერთჯერადი შეტყობინება.
+         */
+        'sources' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sources.log'),
+            'level' => 'debug',
+            'max_files' => env('LOG_SOURCES_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

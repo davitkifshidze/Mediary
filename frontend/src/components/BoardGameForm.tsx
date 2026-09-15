@@ -374,7 +374,7 @@ export function BoardGameForm({
                           href={offer.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="block truncate text-sm hover:underline"
+                          className="block truncate text-sm hover:text-primary"
                         >
                           {offer.title}
                         </a>

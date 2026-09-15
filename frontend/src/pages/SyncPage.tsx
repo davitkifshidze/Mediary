@@ -35,6 +35,7 @@ export function SyncPage() {
       </Link>
 
       <PageHeader
+        tool="sync"
         title={t('sync.title')}
         subtitle={t('settings.syncHint')}
       />

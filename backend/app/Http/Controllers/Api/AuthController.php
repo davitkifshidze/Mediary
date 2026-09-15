@@ -63,7 +63,7 @@ class AuthController extends Controller
         $user->modules()->sync($defaults);
 
         Auth::login($user, remember: true);
-        $request->session()->regenerate();
+        $this->regenerateSession($request);
 
         // §4.1 — შესვლა/გასვლა მოდელის მოვლენა არ არის, ე.ი. ცხადად იწერება
         $this->audit->log(AuditLog::ACTION_REGISTER, [
@@ -96,7 +96,7 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['login' => 'ანგარიში გათიშულია — მიმართე ადმინისტრატორს.']);
         }
 
-        $request->session()->regenerate();
+        $this->regenerateSession($request);
 
         $this->audit->log(AuditLog::ACTION_LOGIN, [
             'module' => 'account',
@@ -120,10 +120,37 @@ class AuthController extends Controller
         ]);
 
         Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+
+        // ⚠️ იგივე დაცვა, რაც `regenerateSession()`-ს — იხ. მისი შენიშვნა
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->noContent();
+    }
+
+    /**
+     * სესიის ID-ის განახლება შესვლისას — **session fixation**-ის დაცვა.
+     *
+     * ⚠️ **`hasSession()` აუცილებელია** (აუდიტი 2026-09-14): `/api/*`-ს სესია
+     * მხოლოდ მაშინ აქვს, როცა რექვესთი **stateful** დომენიდან მოვიდა
+     * (`EnsureFrontendRequestsAreStateful` + `SANCTUM_STATEFUL_DOMAINS`).
+     * სხვა შემთხვევაში `$request->session()` **`RuntimeException`-ს** აგდებდა,
+     * ე.ი. შესვლა/რეგისტრაცია **500**-ს აბრუნებდა სუფთა პასუხის ნაცვლად —
+     * და `SANCTUM_STATEFUL_DOMAINS`-ის არასწორი კონფიგურაცია ყველაზე
+     * ძნელად ამოსაცნობ შეცდომად იქცეოდა.
+     *
+     * ⚠️ სწორედ ეს აფერხებდა ავტორიზაციის ტესტის დაწერას: `postJson()`
+     * stateful არ არის, ე.ი. `/auth/register` ტესტიდან ყოველთვის 500 იყო.
+     *
+     * სესიის არქონისას განახლებას აზრი არ აქვს — დასაცავი არაფერია.
+     */
+    private function regenerateSession(Request $request): void
+    {
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
     }
 
     /** მიმდინარე მომხმარებელი — ფრონტის bootstrap-ისთვის */
@@ -190,7 +217,16 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['current_password' => 'მიმდინარე პაროლი არასწორია.']);
         }
 
-        $request->user()->update(['password' => Hash::make($data['password'])]);
+        $request->user()->forceFill(['password' => Hash::make($data['password'])])->save();
+
+        /* ⚠️ **სხვა სესიებიც უქმდება** (აუდიტი 2026-09-14). პაროლი სწორედ
+           იმიტომ იცვლება, რომ ძველი კომპრომეტირებულია — ძველი სესია კი
+           `SESSION_LIFETIME`-ის ბოლომდე ცოცხალი რჩებოდა.
+           ⚠️ მხოლოდ სესიის არსებობისას: `/api/*`-ს ის მხოლოდ stateful
+           დომენიდან აქვს (იგივე წესი, რაც `regenerateSession()`-ს). */
+        if ($request->hasSession()) {
+            Auth::logoutOtherDevices($data['password']);
+        }
 
         return response()->noContent();
     }
@@ -198,7 +234,12 @@ class AuthController extends Controller
     /** per-user პარამეტრები (E1 — localStorage-ის ნაცვლად ბაზაში) */
     public function updateSettings(Request $request)
     {
-        $data = $request->validate(['settings' => ['required', 'array']]);
+        /* ⚠️ **ზომას ჭერი სჭირდება** (აუდიტი 2026-09-14): `settings` JSON
+           სვეტია, ყოველ `/auth/me`-ზე იკითხება და `AuditObserver`-ის გავლით
+           **მთლიანად** ეწერება `audit_logs.new_values`-შიც — ე.ი. ერთი დიდი
+           მოთხოვნა ორივეს აბერებდა. `UserSettings`-ს ცნობილი გასაღებების
+           სია ისედაც აქვს, ე.ი. ასეულზე მეტი აქ ვერ იქნება. */
+        $data = $request->validate(['settings' => ['required', 'array', 'max:200']]);
 
         // `settings` fillable-ში არ არის (მასობრივი შევსება არ გვინდა) — forceFill
         $request->user()->forceFill(['settings' => $data['settings']])->save();

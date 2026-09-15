@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpDown, ChevronDown, Pencil, Search, Trash2 } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, SquarePen, Search, Trash2 } from 'lucide-react'
 import { deleteUser, fetchRoles, fetchUsers, type User } from '@/api/account'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
@@ -139,6 +139,7 @@ export function UsersPage() {
   return (
     <PageContainer>
       <PageHeader
+        tool="users"
         title={t('admin.users')}
         subtitle={t('admin.usersSubtitle')}
       />
@@ -204,7 +205,7 @@ export function UsersPage() {
                     <Link to={`/users/${u.id}`} className="flex items-center gap-2.5">
                       <UserAvatar user={u} />
                       <span className="min-w-0">
-                        <span className="block truncate font-medium hover:text-primary hover:underline">
+                        <span className="block truncate font-medium hover:text-primary">
                           {u.first_name || u.display_name}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">{u.email}</span>
@@ -250,7 +251,7 @@ export function UsersPage() {
                       >
                         <ActionMenuClose asChild>
                           <Link to={`/users/${u.id}`} className={actionItemClass()}>
-                            <Pencil className="size-4 shrink-0" />
+                            <SquarePen className="size-4 shrink-0" />
                             {t('actions.edit')}
                           </Link>
                         </ActionMenuClose>

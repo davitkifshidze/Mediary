@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -7,8 +7,10 @@ import {
   BellRing,
   ChevronDown,
   Clapperboard,
+  DatabaseBackup,
   DownloadCloud,
   Inbox,
+  KeyRound,
   Languages,
   LayoutDashboard,
   Library,
@@ -26,6 +28,7 @@ import {
 } from 'lucide-react'
 import { MEDIA, mediaFromPath, type MediaType } from '@/lib/media'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
+import { toolAccent } from '@/lib/toolSections'
 import { fetchChatUnread } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
@@ -90,12 +93,79 @@ const MODULE_ROW =
 const MODULE_ROW_ACTIVE = 'border-l-[var(--mod)] text-foreground'
 const MODULE_ROW_IDLE =
   'border-l-transparent text-muted-foreground hover:border-l-[var(--mod)] hover:text-foreground'
-/** აქტიური ქვე-პუნქტი — იმავე ფერის სუსტი ფონი (`bg-secondary`-ის ნაცვლად) */
-const SUB_ACTIVE = 'bg-[var(--mod-soft)] font-medium text-foreground [&>svg]:text-[var(--mod)]'
+/* ============================================================
+   **ქვე-პუნქტისა და ინსტრუმენტის რიგი — აქტიური მდგომარეობა (2026-09-15).**
+
+   შენი სიტყვები: „ქვედა მენიუებში, როდესაც შესულია, არ ეტყობა, რომ იმ
+   მენიუზე დგას — რომელია აქტიური". ორი სხვადასხვა ხარვეზი იყო:
+
+   1. **ინსტრუმენტების რიგებს (ლექსიკონები, სინქრონი, ჩატი, ადმინის
+      ხუთეული…) აქტიური მდგომარეობა საერთოდ არ ჰქონდათ** — `/roles`-ზე
+      მდგომიც ზუსტად ისე იხატებოდა, როგორც დანარჩენი თოთხმეტი. ფერი
+      მხოლოდ ჰოვერზე ჩნდებოდა, ე.ი. თაგვის აღებისთანავე ქრებოდა.
+   2. **ქვე-პუნქტის მონიშვნა `--mod-soft`-ით ხდებოდა** (16%) — თითქმის
+      უხილავი, თანაც ხაზის გარეშე, ე.ი. „ნანახი" და „ყველა" ერთნაირად
+      გამოიყურებოდა.
+
+   ⚠️ **ორივე ერთსა და იმავე ენაზე ლაპარაკობს, რითიც მოდულის რიგები**:
+   მარცხენა 2px ხაზი მოდულის ფერში + იმავე ფერის ფონი + ხატულა აქცენტში.
+   მესამე ვიზუალური ენა აქ ზუსტად იმას დაბადებდა, რასაც შენიშვნა ასწორებს.
+
+   ⚠️ **ფონი `--mod-fill`-ია და არა `--mod-soft`** — იხ. `lib/modules.tsx`:
+   სუსტი ტონი ბარათის ხატულის ფილისაა, მონიშვნას კი ძლიერი სჭირდება.
+
+   ⚠️ **`border-l-transparent` მხოლოდ არააქტიურ ვარიანტშია** (მოდულის
+   რიგების იგივე ხაფანგი): ორივე კლასი `border-left-color`-ს წერს ერთი და
+   იმავე სპეციფიკურობით, CSS-ში კი `.border-l-transparent` შემდეგ დგება —
+   საერთო კლასში დატოვებული ის აქტიურ ხაზს ჩუმად გამჭვირვალეს ტოვებს.
+   ============================================================ */
+const SUB_ROW =
+  'flex w-full cursor-pointer items-center gap-2.5 rounded-md border-l-2 px-3 py-1.5 text-sm transition-colors'
+const SUB_ROW_ACTIVE =
+  'border-l-[var(--mod)] bg-[var(--mod-fill)] font-semibold text-foreground [&>svg]:text-[var(--mod)]'
+const SUB_ROW_IDLE =
+  'border-l-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+
+/** ქვე-პუნქტი — ერთი განსაზღვრება ოცივე გამოძახებისთვის */
+const subRow = (active: boolean) => cn(SUB_ROW, active ? SUB_ROW_ACTIVE : SUB_ROW_IDLE)
+
+/**
+ * „დამატება" — **მოქმედებაა და არა ჭრილი**, ე.ი. აქტიური მდგომარეობა არ
+ * აქვს: ის მისამართს არ შეესაბამება, უბრალოდ ფორმას ხსნის.
+ */
+const SUB_ADD = cn(SUB_ROW, 'border-l-transparent text-primary hover:bg-muted')
+
+/** ინსტრუმენტების რიგი (მოდულების მიღმა) — იგივე ენა, სხვა ზომა */
+const TOOL_ROW =
+  'flex w-full items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm transition-colors [&>svg]:text-[var(--mod)]'
+const TOOL_ROW_ACTIVE = 'border-l-[var(--mod)] bg-[var(--mod-fill)] font-medium text-foreground'
+const TOOL_ROW_IDLE =
+  'border-l-transparent text-muted-foreground hover:border-l-[var(--mod)] hover:bg-muted hover:text-foreground'
 
 /* ⚠️ `modAccent()` `lib/modules.tsx`-შია — იმავე ცვლადებს აუდიტ-ლოგის
    ბარათებიც კითხულობს (ეტაპი 10), ე.ი. ორი ასლი გაშორდებოდა.
    ფერის გარეშე მოდული ცვლადს **არ** წერს და `<nav>`-ის ოქროსფერს იმემკვიდრებს. */
+
+/**
+ * **ინსტრუმენტების რიგის ტონები** (2026-09-15, შენი მითითებით).
+ *
+ * ⚠️ **ოჯახებად და არა თითო თავისი ფერით.** თერთმეტივეს უნიკალური ფერი
+ * რომ მიგვეცა, ფერი აზრს დაკარგავდა — რიგი ცისარტყელა გამოვიდოდა.
+ * ამიტომ ტონი *ჯგუფს* ეკუთვნის: ჩემი ლექსიკონი ოქროსფერია, გლობალური
+ * ჟანრები ქარვისფერი (ეს ორი განზრახ ჰგავს და მაინც განსხვავდება — იხ.
+ * ქვემოთ კომენტარი), მონაცემთა ოპერაციები ლურჯი/ნარინჯისფერი, სოციალური
+ * ფენა იისფერი, ადმინის ხუთეული ერთი ნეიტრალური მელნისფერი, წაშლა წითელი.
+ *
+ * ⚠️ **მნიშვნელობები თემის ტოკენებია და არა hex-ები** — მუქ თემაზე
+ * თვითონვე იცვლება და მეორე პალიტრა არ იბადება.
+ *
+ * ⚠️ **ანიმაცია აქ არ იწერება**: ხატულები `index.css`-ის გლობალურ წესს
+ * ემორჩილება (თითოეულს თავისი მოძრაობა აქვს) — რიგს მხოლოდ ფერი სჭირდება.
+ */
+/* §23 — ინსტრუმენტების ფერები **საერთო რეესტრიდან** (`lib/toolSections.ts`).
+   ⚠️ აქ დაწერილი პირადი რუკა გვერდის ჰედერს ვერ სწვდებოდა, ე.ი. იმავე
+   სექციას საიდბარი ფერავდა და სათაური — არა; ორი ასლი კი პირველივე
+   ცვლილებაზე დაშორდებოდა. */
 
 /** `<nav>`-ის ნაგულისხმევი აქცენტი — `lib/modules.tsx`-იდან, ერთი წყარო */
 const NAV_DEFAULT_ACCENT = MODULE_ACCENT_FALLBACK
@@ -181,6 +251,33 @@ export function Sidebar({
     setOpen(Object.fromEntries(mediaModules.map((m) => [m.type, m.type === routeDomain])))
   }, [routeDomain, mediaModules])
 
+  /**
+   * **მიმდინარე მარშრუტის განყოფილება თვითონ იშლება** (2026-09-15).
+   *
+   * ⚠️ აქტიური ქვე-პუნქტის მონიშვნას აზრი არ აქვს, თუ განყოფილება
+   * დაკეცილია: `/videos`-ზე შესული ხედავდა ჩაკეცილ „ვიდეოებს" და ვერ
+   * ხედავდა, რომელ ჭრილში იდგა. მედია-დომენებს ეს უკვე ჰქონდათ
+   * (`prevDomain`-ის ეფექტი) — დანარჩენებს არა.
+   *
+   * ⚠️ **მხოლოდ ხსნის და არასოდეს კეცავს**: ხელით გახსნილი მეორე
+   * განყოფილება მომხმარებლის განზრახვაა და მარშრუტის შეცვლა მას არ
+   * ეკუთვნის (მედიის ეფექტისგან განსხვავებით, სადაც დომენი მართლა იცვლება).
+   */
+  const routeSection = useMemo(() => {
+    // პლეილისტები სიმღერების ქვე-სექციაა, გალერეას კი `route_base`-ს მიღმა ჭრილები აქვს
+    if (location.pathname.startsWith('/playlists')) return 'song'
+    if (location.pathname.startsWith('/gallery')) return 'gallery'
+    const m = pageModules.find(
+      (x) => location.pathname === x.route_base || location.pathname.startsWith(`${x.route_base}/`),
+    )
+    return m?.key ?? null
+  }, [location.pathname, pageModules])
+
+  useEffect(() => {
+    if (!routeSection) return
+    setOpen((o) => (o[routeSection] ? o : { ...o, [routeSection]: true }))
+  }, [routeSection])
+
   const setView = (libraryPath: string, v: string) => {
     const n = new URLSearchParams()
     if (v !== 'all') n.set('view', v)
@@ -219,9 +316,27 @@ export function Sidebar({
           : { id: row.id, label: t(row.pseudo.labelKey), icon: row.pseudo.icon, search: sectionSearch(row) },
       )
 
-  // ⚠️ ჰოვერის ხაზი აქაც — მოდულის მიღმა პუნქტებზე `--nav`-ის ოქროსფერია
-  const link =
-    'flex w-full items-center gap-2.5 rounded-md border-l-2 border-l-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-l-[var(--mod)] hover:bg-muted hover:text-foreground'
+  /**
+   * **ინსტრუმენტის რიგი — აქტიურის ჩათვლით** (2026-09-15, შენი შენიშვნა).
+   *
+   * ⚠️ **აქტიური მდგომარეობა აქამდე საერთოდ არ იყო**: თოთხმეტივე რიგი
+   * ერთნაირად იხატებოდა და ფერი მხოლოდ ჰოვერზე ჩნდებოდა — ე.ი. `/roles`-ზე
+   * მდგომი ვერ ხედავდა, რომ როლებში იყო.
+   *
+   * ⚠️ **შესატყვისობა ქვე-მისამართებსაც იჭერს** (`/users/3`, `/modules/song`,
+   * `/chat/12`, `/dictionaries/video-types`): ზუსტი ტოლობა ჩანაწერის
+   * გვერდზე მონიშვნას ჩააქრობდა, ე.ი. „შევედი და მენიუ ჩამქრალია".
+   *
+   * ⚠️ `[&>svg]:text-[var(--mod)]` — ხატულა რიგის აქცენტში, ზუსტად ისე,
+   * როგორც მოდულების რიგებში. ფერს თითო ბმული `lib/toolSections.ts`-იდან
+   * წერს inline `style`-ით (Tailwind კლასს ცვლადიდან ვერ დაბადებს), ხოლო
+   * ფერის უქონელი პუნქტი `<nav>`-ის ოქროსფერს იმემკვიდრებს.
+   */
+  const onPath = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+
+  const toolLink = (path: string, extra?: string) =>
+    cn(TOOL_ROW, onPath(path) ? TOOL_ROW_ACTIVE : TOOL_ROW_IDLE, extra)
 
   const nav = (
     <>
@@ -270,12 +385,7 @@ export function Sidebar({
                       <button
                         key={sec.id}
                         onClick={() => setView(d.libraryPath, sec.id)}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          active
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(active)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -285,7 +395,7 @@ export function Sidebar({
                   <Link
                     to={`${d.detailBase}/new`}
                     onClick={() => setDrawerOpen(false)}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                    className={SUB_ADD}
                   >
                     <Plus className="size-4 shrink-0" />
                     {t('actions.addShort')}
@@ -341,12 +451,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -356,12 +461,7 @@ export function Sidebar({
                     <Link
                       to="/playlists"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname.startsWith('/playlists')
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname.startsWith('/playlists'))}
                     >
                       <ListMusic className="size-4 shrink-0" />
                       {t('playlists.title')}
@@ -369,12 +469,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/song-genres"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/song-genres'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/song-genres')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('songGenres.manage')}
@@ -382,7 +477,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -439,12 +534,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -453,12 +543,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/book-genres"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/book-genres'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/book-genres')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('bookGenres.manage')}
@@ -466,7 +551,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -519,12 +604,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -533,12 +613,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/board-game-genres"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/board-game-genres'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/board-game-genres')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('boardGameGenres.manage')}
@@ -546,7 +621,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -599,12 +674,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -613,12 +683,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/game-genres"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/game-genres'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/game-genres')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('gameGenres.manage')}
@@ -626,7 +691,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -677,12 +742,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -693,12 +753,7 @@ export function Sidebar({
                     <Link
                       to="/notes/reminders"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/notes/reminders'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/notes/reminders')}
                     >
                       <BellRing className="size-4 shrink-0" />
                       {t('notes.remindersTitle')}
@@ -706,12 +761,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/note-categories"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/note-categories'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/note-categories')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('noteCategories.manage')}
@@ -719,7 +769,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -770,12 +820,7 @@ export function Sidebar({
                           navigate({ pathname: m.route_base, search: sec.search })
                           setDrawerOpen(false)
                         }}
-                        className={cn(
-                          'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          activeSection === sec.id
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        className={subRow(activeSection === sec.id)}
                       >
                         <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
                         <span className="min-w-0 truncate">{sec.label}</span>
@@ -784,12 +829,7 @@ export function Sidebar({
                     <Link
                       to="/dictionaries/bookmark-categories"
                       onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        location.pathname === '/dictionaries/bookmark-categories'
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(location.pathname === '/dictionaries/bookmark-categories')}
                     >
                       <Tags className="size-4 shrink-0" />
                       {t('bookmarkCategories.manage')}
@@ -797,7 +837,7 @@ export function Sidebar({
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                      className={SUB_ADD}
                     >
                       <Plus className="size-4 shrink-0" />
                       {t('actions.addShort')}
@@ -844,13 +884,10 @@ export function Sidebar({
                         key={cut.key}
                         to={cut.path}
                         onClick={() => setDrawerOpen(false)}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
+                        className={subRow(
                           // ⚠️ „ყველა" მხოლოდ ზუსტ მისამართზეა აქტიური, თორემ
                           // ყოველ ქვე-გვერდზე ორი პუნქტი აინთებოდა
-                          (cut.key === 'all' ? location.pathname === cut.path : location.pathname.startsWith(cut.path))
-                            ? SUB_ACTIVE
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          (cut.key === 'all' ? location.pathname === cut.path : location.pathname.startsWith(cut.path)),
                         )}
                       >
                         <cut.icon className="size-4 shrink-0" />
@@ -933,12 +970,7 @@ export function Sidebar({
                         navigate({ pathname: m.route_base, search: s.search })
                         setDrawerOpen(false)
                       }}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                        activeSection === s.id
-                          ? SUB_ACTIVE
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
+                      className={subRow(activeSection === s.id)}
                     >
                       <ModuleIcon name={s.icon} className="size-4 shrink-0" />
                       <span className="min-w-0 truncate">{s.label}</span>
@@ -947,12 +979,7 @@ export function Sidebar({
                   <Link
                     to="/dictionaries/video-types"
                     onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                      location.pathname === '/dictionaries/video-types'
-                        ? SUB_ACTIVE
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
+                    className={subRow(location.pathname === '/dictionaries/video-types')}
                   >
                     <Tags className="size-4 shrink-0" />
                     {t('videoTypes.manage')}
@@ -960,7 +987,7 @@ export function Sidebar({
                   <Link
                     to={`${m.route_base}?new=1`}
                     onClick={() => setDrawerOpen(false)}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-primary transition-colors hover:bg-muted"
+                    className={SUB_ADD}
                   >
                     <Plus className="size-4 shrink-0" />
                     {t('actions.addShort')}
@@ -985,7 +1012,8 @@ export function Sidebar({
           <Link
             to="/dictionaries"
             onClick={() => setDrawerOpen(false)}
-            className={cn(link, 'items-start')}
+            style={toolAccent('dictionaries')}
+            className={toolLink('/dictionaries', 'items-start')}
           >
             <Library className="mt-0.5 size-4 shrink-0" />
             <span className="min-w-0 flex-1">
@@ -997,7 +1025,7 @@ export function Sidebar({
           </Link>
         )}
         {mediaModules.length > 0 && (
-          <Link to="/genres" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/genres" onClick={() => setDrawerOpen(false)} style={toolAccent('genres')} className={toolLink('/genres')}>
             <Tags className="size-4 shrink-0" />
             {t('genres.manage')}
           </Link>
@@ -1005,7 +1033,7 @@ export function Sidebar({
         {/* Tasks 4 — მასობრივი ოპერაციები ვიდეოებსაც ეხება (ტიპი/ტეგები),
             ე.ი. მედია-მოდულის გარეშეც სჭირდება ბმული */}
         {(mediaModules.length > 0 || pageModules.some((m) => m.key === 'video')) && (
-          <Link to="/status" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/status" onClick={() => setDrawerOpen(false)} style={toolAccent('bulk')} className={toolLink('/status')}>
             <ListChecks className="size-4 shrink-0" />
             {t('bulkStatus.manage')}
           </Link>
@@ -1013,7 +1041,7 @@ export function Sidebar({
         {/* L2 — სინქრონი პარამეტრებიდან ცალკე გვერდზე გავიდა (queue გლობალურია);
             TMDB მხოლოდ მედია-დომენებს ეხება */}
         {mediaModules.length > 0 && (
-          <Link to="/sync" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/sync" onClick={() => setDrawerOpen(false)} style={toolAccent('sync')} className={toolLink('/sync')}>
             <DownloadCloud className="size-4 shrink-0" />
             {t('sync.title')}
           </Link>
@@ -1021,19 +1049,28 @@ export function Sidebar({
         {/* Tasks 7 — თარგმანები. ორენოვანი სქემა მხოლოდ მედია-დომენებს აქვთ
             (ჟანრებიც მათი ლექსიკონია), ე.ი. იმავე პირობაზე ჩანს, რაც სინქრონი. */}
         {mediaModules.length > 0 && (
-          <Link to="/translations" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/translations" onClick={() => setDrawerOpen(false)} style={toolAccent('translations')} className={toolLink('/translations')}>
             <Languages className="size-4 shrink-0" />
             {t('translate.title')}
           </Link>
         )}
+        {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
+            ⚠️ **პირობის გარეშე ჩანს**: TMDB-ს მედია-მოდულები იყენებენ,
+            RAWG-ს თამაშები, YouTube-ს ვიდეო — ე.ი. „რომელი მოდული მაქვს"
+            კითხვაზე პასუხი ყოველთვის „რომელიღაც"-ია, ხოლო კვოტა და
+            გასაღები ანგარიშის საკითხია და არა ბიბლიოთეკისა. */}
+        <Link to="/credentials" onClick={() => setDrawerOpen(false)} style={toolAccent('credentials')} className={toolLink('/credentials')}>
+          <KeyRound className="size-4 shrink-0" />
+          {t('credentials.title')}
+        </Link>
         {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება". მოდულზე დამოკიდებული
             არაა: სოციალური ფენა ბიბლიოთეკის შიგთავსს არ ეკითხება. */}
-        <Link to="/people" onClick={() => setDrawerOpen(false)} className={link}>
+        <Link to="/people" onClick={() => setDrawerOpen(false)} style={toolAccent('people')} className={toolLink('/people')}>
           <Users className="size-4 shrink-0" />
           {t('people.title')}
         </Link>
         {/* Tasks §16.3 — ჩატი; წაუკითხავის მრიცხველი ჰედერშივე ჩანს */}
-        <Link to="/chat" onClick={() => setDrawerOpen(false)} className={link}>
+        <Link to="/chat" onClick={() => setDrawerOpen(false)} style={toolAccent('chat')} className={toolLink('/chat')}>
           <MessageSquare className="size-4 shrink-0" />
           <span className="flex-1">{t('chat.title')}</span>
           {chatUnread > 0 && (
@@ -1044,13 +1081,13 @@ export function Sidebar({
         </Link>
         {/* პარამეტრები განზრახ აქ არ არის (L1): ერთადერთი შესვლის წერტილი
             პროფილის ჩამოსაშლელია (`Header.tsx`), მარშრუტი `/settings` უცვლელია. */}
-        <Link to="/modules" onClick={() => setDrawerOpen(false)} className={link}>
+        <Link to="/modules" onClick={() => setDrawerOpen(false)} style={toolAccent('modules')} className={toolLink('/modules')}>
           <Puzzle className="size-4 shrink-0" />
           {t('modules.title')}
         </Link>
 
         {/* Tasks 1.1 — „ადმინი" ერთიანი ბმული აღარაა; ოთხი ცალკე სექციაა */}
-        <Link to="/requests" onClick={() => setDrawerOpen(false)} className={link}>
+        <Link to="/requests" onClick={() => setDrawerOpen(false)} style={toolAccent('requests')} className={toolLink('/requests')}>
           <Inbox className="size-4 shrink-0" />
           <span className="flex-1">{t('admin.requests')}</span>
           {canAdmin('requests') && pending > 0 && (
@@ -1062,28 +1099,37 @@ export function Sidebar({
 
         {/* Tasks 1.6 — თითო სექცია ცალკე უფლებაზეა და აღარ ერთ „ადმინზე" */}
         {canAdmin('users') && (
-          <Link to="/users" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/users" onClick={() => setDrawerOpen(false)} style={toolAccent('users')} className={toolLink('/users')}>
             <Users className="size-4 shrink-0" />
             {t('admin.users')}
           </Link>
         )}
         {canAdmin('roles') && (
-          <Link to="/roles" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/roles" onClick={() => setDrawerOpen(false)} style={toolAccent('roles')} className={toolLink('/roles')}>
             <ShieldCheck className="size-4 shrink-0" />
             {t('roles.title')}
           </Link>
         )}
         {/* Tasks §4.4 — აუდიტ-ლოგი; ცალკე უფლებაა (`admin:audit`) */}
         {canAdmin('audit') && (
-          <Link to="/audit" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/audit" onClick={() => setDrawerOpen(false)} style={toolAccent('audit')} className={toolLink('/audit')}>
             <ScrollText className="size-4 shrink-0" />
             {t('audit.title')}
+          </Link>
+        )}
+        {/* Tasks §22 — ბაზის დამპი. ⚠️ **მხოლოდ super_admin**: დამპი მთელი
+            ბაზაა (ყველა ანგარიში, ჰეშირებული პაროლები, პირადი ჩატები), ე.ი.
+            სექციის უფლებით არ იხსნება — `admin/purge`-ის იგივე მსჯელობა. */}
+        {isAdmin && (
+          <Link to="/backups" onClick={() => setDrawerOpen(false)} style={toolAccent('backups')} className={toolLink('/backups')}>
+            <DatabaseBackup className="size-4 shrink-0" />
+            {t('backups.title')}
           </Link>
         )}
         {/* ⚠️ მასობრივი წაშლა **მხოლოდ** super_admin-ისაა (სხვისი ბიბლიოთეკის
             წაშლაა) — ის სექციის უფლებით არ იხსნება. დესტრუქციულია, ბოლოშია. */}
         {isAdmin && (
-          <Link to="/purge" onClick={() => setDrawerOpen(false)} className={link}>
+          <Link to="/purge" onClick={() => setDrawerOpen(false)} style={toolAccent('purge')} className={toolLink('/purge')}>
             <Trash2 className="size-4 shrink-0" />
             {t('purge.title')}
           </Link>

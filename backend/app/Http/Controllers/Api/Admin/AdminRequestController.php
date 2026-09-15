@@ -23,7 +23,28 @@ class AdminRequestController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return ApprovalRequestResource::collection($items);
+        /* ⚠️ **მთვლელები პასუხშივე მოდის და არა ცალკე რექვესთით** (2026-09-15).
+           ჭრილები აუდიტ-ლოგის ბარათებად გადავიდა, ბარათი კი რიცხვის გარეშე
+           იმავე უფერო პილულაა, რაც იყო — „რამდენი დევს რიგში" სწორედ ის
+           ფაქტია, რისთვისაც აქ შემოდიხარ.
+
+           ⚠️ **ჭრილი საკუთარ თავს არ ზღუდავს** (აუდიტის `summary()`-ის წესი):
+           რიცხვები მთელ ცხრილს ითვლიან, თორემ „რიგის" არჩევისთანავე
+           დანარჩენი სამი ნულზე ჩამოვიდოდა და „სხვაგან რა დევს" კითხვას
+           პასუხი აღარ ექნებოდა. */
+        $counts = ApprovalRequest::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return ApprovalRequestResource::collection($items)->additional([
+            'counts' => [
+                'pending' => (int) ($counts['pending'] ?? 0),
+                'approved' => (int) ($counts['approved'] ?? 0),
+                'rejected' => (int) ($counts['rejected'] ?? 0),
+                'all' => (int) $counts->sum(),
+            ],
+        ]);
     }
 
     /** რამდენი მოთხოვნაა რიგში — ჰედერის/საიდბარის badge-ისთვის */

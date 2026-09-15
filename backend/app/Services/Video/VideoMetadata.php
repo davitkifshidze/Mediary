@@ -2,8 +2,10 @@
 
 namespace App\Services\Video;
 
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use App\Support\VideoUrl;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -66,7 +68,7 @@ class VideoMetadata
 
     public function hasYoutubeKey(): bool
     {
-        return (bool) config('services.youtube.key');
+        return (bool) CredentialStore::value(CredentialProviders::YOUTUBE);
     }
 
     /* ---------- პლატფორმები ---------- */
@@ -87,7 +89,7 @@ class VideoMetadata
         $res = $this->http()->get('https://www.googleapis.com/youtube/v3/videos', [
             'id' => $id,
             'part' => 'snippet,contentDetails',
-            'key' => config('services.youtube.key'),
+            'key' => CredentialStore::value(CredentialProviders::YOUTUBE),
         ]);
 
         if (! $res->successful()) {
@@ -115,7 +117,10 @@ class VideoMetadata
     private function oembed(string $endpoint, array $meta): array
     {
         $res = $this->http()->get($endpoint);
+
         if (! $res->successful()) {
+            SourceLog::status('oembed', $res->status(), '', ['endpoint' => $endpoint]);
+
             return $meta;
         }
 
@@ -140,9 +145,7 @@ class VideoMetadata
 
     private function http()
     {
-        return Http::timeout(10)
-            ->withOptions(['verify' => storage_path('cacert.pem')])
-            ->acceptJson();
+        return SourceLog::request(10)->acceptJson();
     }
 
     /** ISO-8601 ხანგრძლივობა („PT1H2M3S") → წამები */

@@ -2,27 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Movie;
-use App\Models\User;
-
 /**
- * მფლობელობის მეორე ფენა: global scope ჩუმად მალავს სხვის ჩანაწერს,
- * policy კი აშკარად კეტავს (თუ სადმე scope გამორთულია).
+ * Movie-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\Movie` → `App\Policies\MoviePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
  */
-class MoviePolicy
-{
-    public function view(User $user, Movie $movie): bool
-    {
-        return $movie->user_id === $user->id;
-    }
-
-    public function update(User $user, Movie $movie): bool
-    {
-        return $movie->user_id === $user->id;
-    }
-
-    public function delete(User $user, Movie $movie): bool
-    {
-        return $movie->user_id === $user->id;
-    }
-}
+class MoviePolicy extends OwnedRecordPolicy {}

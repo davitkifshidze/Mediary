@@ -8,6 +8,7 @@ import { storageUrl } from '@/lib/api'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PublicProfileCard } from '@/components/PublicProfileCard'
@@ -216,12 +217,12 @@ export function ProfilePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="current_password">{t('profile.currentPassword')}</Label>
-            <Input
+            <PasswordInput
               id="current_password"
-              type="password"
               autoComplete="current-password"
+             
               value={pw.current_password}
-              onChange={(e) => setPw((p) => ({ ...p, current_password: e.target.value }))}
+              onChange={(value) => setPw((p) => ({ ...p, current_password: value }))}
             />
             {pwErrors.current_password && (
               <p className="mt-1 text-xs text-destructive">{pwErrors.current_password}</p>
@@ -229,23 +230,23 @@ export function ProfilePage() {
           </div>
           <div>
             <Label htmlFor="new_password">{t('profile.newPassword')}</Label>
-            <Input
+            <PasswordInput
               id="new_password"
-              type="password"
               autoComplete="new-password"
+             
               value={pw.password}
-              onChange={(e) => setPw((p) => ({ ...p, password: e.target.value }))}
+              onChange={(value) => setPw((p) => ({ ...p, password: value }))}
             />
             {pwErrors.password && <p className="mt-1 text-xs text-destructive">{pwErrors.password}</p>}
           </div>
           <div>
             <Label htmlFor="new_password_confirm">{t('auth.passwordConfirm')}</Label>
-            <Input
+            <PasswordInput
               id="new_password_confirm"
-              type="password"
               autoComplete="new-password"
+             
               value={pw.password_confirmation}
-              onChange={(e) => setPw((p) => ({ ...p, password_confirmation: e.target.value }))}
+              onChange={(value) => setPw((p) => ({ ...p, password_confirmation: value }))}
             />
           </div>
         </div>

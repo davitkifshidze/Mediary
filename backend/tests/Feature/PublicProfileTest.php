@@ -401,4 +401,32 @@ class PublicProfileTest extends TestCase
         $this->assertArrayHasKey('id', $hidden);
         $this->assertArrayHasKey('title_en', $hidden);
     }
+
+    /**
+     * **`per_page`-ს ქვედა ზღვარიც სჭირდება** (აუდიტი 2026-09-14, §B4).
+     *
+     * ⚠️ `Builder::limit()` **უარყოფით** მნიშვნელობას ჩუმად უგულებელყოფს
+     * (`if ($value >= 0)`), ე.ი. `?per_page=-1` `LIMIT`-ს საერთოდ აშორებდა
+     * და ეს endpoint — **ავტორიზაციის გარეშე ერთადერთი დომენური** — მთელ
+     * საჯარო ბიბლიოთეკას ერთ პასუხში აბრუნებდა.
+     */
+    public function test_a_negative_per_page_cannot_bypass_the_page_size(): void
+    {
+        $this->alice->forceFill(['profile_visibility' => 'public'])->save();
+        $this->publishModule($this->alice, 'movie');
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->makeMovie($this->alice, "ფილმი {$i}", 'public');
+        }
+
+        foreach ([-1, 0, 100000] as $bad) {
+            $res = $this->getJson("/api/public/profiles/alice/movie?per_page={$bad}")->assertOk();
+
+            $perPage = $res->json('meta.per_page');
+
+            $this->assertGreaterThanOrEqual(1, $perPage, "per_page={$bad}");
+            $this->assertLessThanOrEqual(100, $perPage, "per_page={$bad}");
+            $this->assertLessThanOrEqual($perPage, count($res->json('data')));
+        }
+    }
 }

@@ -10,7 +10,7 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
-  Pencil,
+  SquarePen,
   Plus,
   Search,
   Star,
@@ -53,6 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
    ბორდგეიმების მოდული (`board_game`, Tasks §14).
@@ -309,7 +310,7 @@ export function BoardGamesPage() {
                   <div className="min-w-0 flex-1">
                     <button
                       onClick={() => setOpened(game)}
-                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:underline"
+                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
                       title={game.title}
                     >
                       {game.title}
@@ -351,23 +352,18 @@ export function BoardGamesPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    <span
-                      className={cn(
-                        'mr-1 rounded-[5px] px-1.5 py-0.5 text-xs',
-                        STATUS_TONE[game.status] ?? 'bg-secondary',
-                      )}
-                    >
+                    <Badge className={cn('mr-1', STATUS_TONE[game.status] ?? 'bg-secondary')}>
                       {t(`boardGames.statuses.${game.status}`)}
-                    </span>
+                    </Badge>
                     {game.bgg_rating != null && (
-                      <span className="mr-1 rounded-[5px] bg-secondary px-1.5 py-0.5 text-xs tabular-nums">
+                      <Badge className="mr-1 bg-secondary tabular-nums">
                         BGG {game.bgg_rating}
-                      </span>
+                      </Badge>
                     )}
                     {game.rating != null && (
-                      <span className="mr-1 rounded-[5px] bg-secondary px-1.5 py-0.5 text-xs tabular-nums">
+                      <Badge className="mr-1 bg-secondary tabular-nums">
                         {game.rating}/{BOARD_GAME_MAX_RATING}
-                      </span>
+                      </Badge>
                     )}
                     <button
                       onClick={() => favorite.mutate(game.id)}
@@ -389,7 +385,7 @@ export function BoardGamesPage() {
                       </a>
                     )}
                     <Button variant="ghost" size="sm" onClick={() => setEditing(game)}>
-                      <Pencil className="size-3.5" />
+                      <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>
                     <Button

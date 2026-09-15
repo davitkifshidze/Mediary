@@ -371,7 +371,7 @@ class BookController extends Controller
         }
 
         $path = StorageFolder::BOOK_COVERS."/ol-{$coverId}.jpg";
-        Storage::disk('public')->put($path, $body);
+        Storage::disk(StorageFolder::diskFor($path))->put($path, $body);
 
         $book->forceFill(['cover_path' => $path, 'cover_source' => 'openlibrary'])->save();
     }

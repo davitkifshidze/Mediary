@@ -2,8 +2,10 @@
 
 namespace App\Services\Web;
 
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -46,7 +48,7 @@ class SerperImages
 
     public function configured(): bool
     {
-        return (string) config('services.serper.key') !== '';
+        return (string) CredentialStore::value(CredentialProviders::SERPER) !== '';
     }
 
     /**
@@ -145,9 +147,8 @@ class SerperImages
     private function page(string $query, int $page, bool $safe): ?array
     {
         try {
-            $res = Http::timeout(25)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->withHeaders(['X-API-KEY' => (string) config('services.serper.key')])
+            $res = SourceLog::request(25)
+                ->withHeaders(['X-API-KEY' => (string) CredentialStore::value(CredentialProviders::SERPER)])
                 ->post(self::URL, [
                     'q' => $query,
                     'num' => self::PER_PAGE,
@@ -160,12 +161,14 @@ class SerperImages
                        ჩამოიწეროს". იგივე წესი `SerpApiClient`-საც აქვს. */
                     'safe' => $safe ? 'active' : 'off',
                 ]);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            return SourceLog::threw('serper', $e, ['query' => $query, 'page' => $page]);
         }
 
+        /* ⚠️ **Serper-ზე თითო გვერდი კრედიტია** (§7.5), ე.ი. ჩავარდნილი
+           გვერდი დახარჯული ფულია — მიზეზი აუცილებლად უნდა ჩანდეს. */
         if (! $res->successful()) {
-            return null;
+            return SourceLog::status('serper', $res->status(), $res->body(), ['query' => $query, 'page' => $page]);
         }
 
         $rows = $res->json('images');

@@ -61,7 +61,12 @@ class PublicProfileController extends Controller
         // მოდული საჯარო არაა → დომენი არ არსებობს ამ პროფილისთვის
         abort_unless(in_array($domain, $this->profiles->domains($user), true), 404);
 
-        $perPage = min((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 100);
+        /* ⚠️ **ქვედა ზღვარიც აუცილებელია და არა მარტო ჭერი** (აუდიტი
+           2026-09-14, §B4). `Builder::limit()` **უარყოფით** მნიშვნელობას
+           ჩუმად უგულებელყოფს, ე.ი. `?per_page=-1` `LIMIT`-ს საერთოდ
+           აშორებდა და ეს endpoint — **ავტორიზაციის გარეშე ერთადერთი
+           დომენური** — მთელ საჯარო ბიბლიოთეკას ერთ პასუხში აბრუნებდა. */
+        $perPage = min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
 
         $page = $this->profiles->query($user, $domain)->paginate($perPage);
 

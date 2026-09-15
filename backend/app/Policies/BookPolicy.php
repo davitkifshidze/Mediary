@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Book;
-use App\Models\User;
-
-class BookPolicy
-{
-    public function view(User $user, Book $book): bool
-    {
-        return $book->user_id === $user->id;
-    }
-
-    public function update(User $user, Book $book): bool
-    {
-        return $this->view($user, $book);
-    }
-
-    public function delete(User $user, Book $book): bool
-    {
-        return $this->view($user, $book);
-    }
-}
+/**
+ * Book-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\Book` → `App\Policies\BookPolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class BookPolicy extends OwnedRecordPolicy {}

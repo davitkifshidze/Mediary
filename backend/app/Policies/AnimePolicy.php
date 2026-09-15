@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Anime;
-use App\Models\User;
-
-class AnimePolicy
-{
-    public function view(User $user, Anime $anime): bool
-    {
-        return $anime->user_id === $user->id;
-    }
-
-    public function update(User $user, Anime $anime): bool
-    {
-        return $anime->user_id === $user->id;
-    }
-
-    public function delete(User $user, Anime $anime): bool
-    {
-        return $anime->user_id === $user->id;
-    }
-}
+/**
+ * Anime-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\Anime` → `App\Policies\AnimePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class AnimePolicy extends OwnedRecordPolicy {}

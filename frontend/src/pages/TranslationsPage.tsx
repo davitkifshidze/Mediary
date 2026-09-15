@@ -57,6 +57,7 @@ export function TranslationsPage() {
       </Link>
 
       <PageHeader
+        tool="translations"
         title={t('translate.title')}
         subtitle={t('translate.pageHint')}
       />

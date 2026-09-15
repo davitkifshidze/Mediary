@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Module;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
 
 /**
@@ -213,5 +214,37 @@ class ModulesSeeder extends Seeder
                 $module->forceFill(['color' => self::COLORS[$m['key']]])->save();
             }
         }
+
+        $this->fillDefaultRole();
+    }
+
+    /**
+     * **ნაგულისხმევი როლის უფლებები — „ყველა მოდულის" ნიღბის ჩამნაცვლებელი**
+     * (2026-09-15).
+     *
+     * ⚠️ **ეს სწორედ ის ადგილია, სადაც მოდულების სია ცხოვრობს.** `user`
+     * როლი ადრე `{"*": …}`-ზე იდგა; ნიღბის მოხსნის შემდეგ მისი შევსება
+     * მიგრაციას არ შეუძლია — მიგრაციები სიდერამდე გადის, ე.ი. `modules`
+     * ცხრილი მაშინ ცარიელია.
+     *
+     * ⚠️ **ივსება მხოლოდ სრულიად ცარიელი ნაკრები**, ე.ი. ახალი ბაზა.
+     * `null` განზრახ არ ირევა — ის „შეზღუდვის გარეშეს" ნიშნავს და შევსება
+     * უფლებებს **შეამცირებდა**; უკვე კონფიგურირებული როლი კი reseed-ზე
+     * ხელახლა არ იხსნება (იგივე წესი, რაც `COLORS`-ს აქვს — ხელით
+     * არჩეული არ გადაიწერება).
+     */
+    private function fillDefaultRole(): void
+    {
+        $role = Role::where('key', 'user')->first();
+
+        if (! $role || $role->permissions !== []) {
+            return;
+        }
+
+        $role->forceFill([
+            'permissions' => Module::pluck('key')
+                ->mapWithKeys(fn (string $key) => [$key => Role::ACTIONS])
+                ->all(),
+        ])->save();
     }
 }

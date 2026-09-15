@@ -239,17 +239,24 @@ class OwnershipTest extends TestCase
     }
 
     /**
-     * ⚠️ **მთავარი უსაფრთხოების წესი:** `"*"` („ყველა მოდული") ადმინის
-     * სექციას **არ** ხსნის. სხვაგვარად ჩვეულებრივი როლი, რომელსაც ყველა
-     * მოდულზე უფლება აქვს, ჩუმად მიიღებდა მომხმარებლების მართვას.
+     * ⚠️ **მთავარი უსაფრთხოების წესი:** მოდულის უფლება ადმინის სექციას
+     * **არ** ხსნის — რამდენ მოდულზეც არ უნდა ჰქონდეს. სხვაგვარად
+     * ჩვეულებრივი „გაძლიერებული" როლი ჩუმად მიიღებდა მომხმარებლების
+     * მართვას.
+     *
+     * ⚠️ **ადრე ეს ტესტი `"*"`-ით იწერებოდა** — ნიღაბი 2026-09-15-ს
+     * მოიხსნა (იხ. `Role`), ე.ი. იგივე კითხვა ახლა ცხადად ჩამოწერილი
+     * მოდულებით ისმება.
      */
-    public function test_wildcard_module_permission_never_opens_the_admin_zone(): void
+    public function test_module_permissions_never_open_the_admin_zone(): void
     {
         $role = Role::create([
             'key' => 'power-user',
             'name_ka' => 'გაძლიერებული',
             'name_en' => 'Power user',
-            'permissions' => ['*' => ['view', 'create', 'update', 'delete']],
+            'permissions' => Module::pluck('key')
+                ->mapWithKeys(fn (string $key) => [$key => Role::ACTIONS])
+                ->all(),
         ]);
         $this->alice->forceFill(['role_id' => $role->id])->save();
         $alice = $this->alice->refresh();
@@ -259,7 +266,7 @@ class OwnershipTest extends TestCase
         }
 
         $this->assertSame([], $alice->adminResources());
-        // მოდულის უფლება კი მართლა აქვს — ე.ი. `*` თავის საქმეს აკეთებს
+        // მოდულის უფლება კი მართლა აქვს
         $this->assertTrue($alice->hasPermission('movie', 'delete'));
     }
 

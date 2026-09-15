@@ -467,7 +467,7 @@ class GameController extends Controller
         }
 
         $path = StorageFolder::GAME_COVERS."/{$name}.jpg";
-        Storage::disk('public')->put($path, $body);
+        Storage::disk(StorageFolder::diskFor($path))->put($path, $body);
 
         $game->forceFill(['cover_path' => $path, 'cover_source' => 'rawg'])->save();
     }

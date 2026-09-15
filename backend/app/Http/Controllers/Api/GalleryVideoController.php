@@ -137,7 +137,15 @@ class GalleryVideoController extends Controller
             'published_at' => $data['published_at'] ?? null,
             'thumbnail_url' => $this->httpUrl($data['thumbnail_url'] ?? null),
             'source_url' => $this->httpUrl($data['source_url'] ?? null),
-            'sort_order' => (int) $parent->galleryVideos()->withoutGlobalScope('owner')->max('sort_order') + 1,
+            /* ⚠️ **`user_id`-ის ფილტრიც აუცილებელია** (აუდიტი 2026-09-14): scope
+               მოხსნილია, ე.ი. `max()` **ყველა ანგარიშის** რიგებს კითხულობდა —
+               ორი ხაზით ზემოთ იგივე query სწორად იფილტრება. საზიარო მშობელზე
+               (ერთი მსახიობი მრავალ ანგარიშზე) ეს რიგითობას ახტუნებდა და
+               `unsignedSmallInteger`-ის ჭერისკენ სწრაფად მიდიოდა. */
+            'sort_order' => (int) $parent->galleryVideos()
+                ->withoutGlobalScope('owner')
+                ->where('user_id', $user->getKey())
+                ->max('sort_order') + 1,
         ]);
 
         // ⚠️ ერთადერთი ადგილი, სადაც პლატფორმა/embed იწერება

@@ -53,9 +53,6 @@
     "permissionsHint": "A permission is CRUD inside a module. **Access** to a module is a separate mechanism.",
     "module": "Module",
     "moduleCount": "{{count}} module(s)",
-    "anyModule": "All modules",
-    "anyModuleHint": "Also covers modules added later.",
-    "allModules": "All modules",
     "fullAccess": "Full access",
     "noAccess": "No access",
     "toggleRow": "Whole row",
@@ -65,7 +62,16 @@
       "create": "Create",
       "update": "Edit",
       "delete": "Delete"
-    }
+    },
+    "emptyTitle": "No roles yet",
+    "emptyHint": "Add a role to say who can do what inside a module.",
+    "adminCount": "{{count}} admin section(s)",
+    "grantAll": "All",
+    "everyModule": "Every module",
+    "everyModuleHint": "Marks every module that exists today, one by one; a module added tomorrow is not included.",
+    "searchModules": "Find a module",
+    "modulesTitle": "Modules",
+    "noModulesFound": "No such module"
   },
   "profile": {
     "title": "Profile",
@@ -185,7 +191,8 @@
       "removeTitle": "Delete the local copy?",
       "removeHint": "The downloaded file for “{{name}}” will be deleted and {{size}} freed. The record and its link stay.",
       "unavailable": "Downloading is off on this server — yt-dlp is not installed.",
-      "noFfmpeg": "no ffmpeg — quality is limited"
+      "noFfmpeg": "no ffmpeg — quality is limited",
+      "stalled": "Stopped — try again"
     }
   },
   "requests": {
@@ -290,7 +297,9 @@
     "addAnime": "Add anime",
     "more": "More",
     "less": "Less",
-    "close": "Close"
+    "close": "Close",
+    "clear": "Clear",
+    "download": "Download"
   },
   "filter": {
     "all": "All",
@@ -346,7 +355,54 @@
     "emptyAnime": "No anime yet"
   },
   "search": {
-    "placeholder": "Search by title…"
+    "placeholder": "Search every module…",
+    "clear": "Clear",
+    "searching": "Searching…",
+    "empty": "Nothing found for “{{query}}”",
+    "title": "Search",
+    "hint": "Type at least two characters — titles, descriptions, notes, quotes, tags, cast and file names are all searched",
+    "emptyHint": "Try another word, or part of one",
+    "found": "{{count}} results",
+    "allDomains": "Everywhere",
+    "allResults": "All results ({{count}})",
+    "showAllIn": "{{name}} — all {{count}} results",
+    "capped": "Showing the first {{count}} — the rest is in the section's own list",
+    "group": {
+      "cast": "Cast",
+      "playlist": "Playlists",
+      "gallery": "Gallery videos"
+    },
+    "field": {
+      "title": "Title",
+      "name": "Name",
+      "description": "Description",
+      "note": "Note",
+      "quote": "Quote",
+      "cast": "Cast",
+      "character": "Role",
+      "tags": "Tag",
+      "author": "Author",
+      "artist": "Artist",
+      "album": "Album",
+      "designer": "Designer",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "franchise": "Franchise",
+      "series": "Series",
+      "biography": "Biography",
+      "knownFor": "Known for",
+      "birthplace": "Born in",
+      "channel": "Channel",
+      "category": "Category",
+      "domain": "Domain",
+      "url": "Link",
+      "isbn": "ISBN",
+      "imdb": "IMDb",
+      "platform": "Platform",
+      "video": "Video",
+      "file": "File",
+      "field": "Field"
+    }
   },
   "form": {
     "addTitle": "Add movie",
@@ -457,7 +513,9 @@
     "retryFailed": "Retry {{count}} failed",
     "sec": "s",
     "min": "min",
-    "quotaStopped": "Out of space — the rest was stopped"
+    "quotaStopped": "Out of space — the rest was stopped",
+    "handOff": "Run on the server",
+    "handedOff": "{{count}} items handed to the server — you can close the tab now"
   },
   "missing": {
     "label": "Missing:",
@@ -860,7 +918,10 @@
     "cast_already_attached": "This person is already on this record.",
     "cast_limit_reached": "This record has reached the cast limit.",
     "cast_member_not_found": "The cast member could not be found.",
-    "upload_too_large": "The upload exceeds the server limit — {{file_limit}} per file, {{limit}} per request. See „Upload limits\" in Settings."
+    "upload_too_large": "The upload exceeds the server limit — {{file_limit}} per file, {{limit}} per request. See „Upload limits\" in Settings.",
+    "mysqldump_unavailable": "mysqldump was not found on this machine",
+    "background_unavailable": "the background process could not be started",
+    "invalid_backup_file": "only .sql or .sql.gz files"
   },
   "fields": {
     "title": "Fields",
@@ -2179,7 +2240,8 @@
     "pick": "Pick a date",
     "pickMany": "Pick dates",
     "pickRange": "Pick a period",
-    "time": "Time"
+    "time": "Time",
+    "pickTime": "Pick a time"
   },
   "photos": {
     "pickOn": "Select",
@@ -2551,5 +2613,128 @@
     "viewerOpen": "Open",
     "viewerUnsupported": "The browser cannot show this format — download it.",
     "viewerFailed": "The file could not be loaded."
+  },
+  "credentials": {
+    "title": "Credentials",
+    "subtitle": "API keys and limits for external sources",
+    "intro": "Here you enter your own keys. While a field is empty the app uses the installation's shared key, which means everyone spends the same quota. As soon as you add your own key the limit becomes yours, and other people's requests no longer touch it.",
+    "getKey": "Get a key",
+    "usingShared": "using the shared key",
+    "empty": "not set",
+    "noLimit": "no limit",
+    "limitHint": "empty — the default; 0 — no limit is checked",
+    "usage": "Used",
+    "remaining": "{{n}} left",
+    "usageHint": "This is our own accounting, not the provider's — a call made by another program is invisible here.",
+    "saved": "Key saved",
+    "cleared": "Key removed",
+    "test": "Test",
+    "testPaid": "Test (1 credit)",
+    "testCosts": "Testing this source spends one credit",
+    "testOk": "The key works",
+    "testFailed": "The key was rejected",
+    "verifiedAt": "checked {{date}}",
+    "useMine": "Use my key",
+    "clear": "Remove",
+    "clearTitle": "Remove the key",
+    "clearHint": "Your {{name}} key will be removed and the app will fall back to the shared one.",
+    "source": {
+      "user": "your key",
+      "shared": "shared key",
+      "none": "no key"
+    },
+    "field": {
+      "key": "API key",
+      "model": "Model",
+      "client_id": "Client ID",
+      "client_secret": "Client Secret",
+      "bot_token": "Bot token",
+      "chat_id": "Chat ID"
+    },
+    "limit": {
+      "daily": "Daily limit",
+      "rpm": "Per-minute limit",
+      "monthly": "Monthly limit"
+    },
+    "desc": {
+      "tmdb": "Posters, descriptions, cast and gallery for movies, series and anime.",
+      "gemini": "Translation between Georgian and English. The free tier has a daily and a per-minute limit.",
+      "rawg": "Game search and field filling. Without a key the module still works by hand.",
+      "igdb": "Fallback source for games, used when RAWG finds nothing. Both fields are required.",
+      "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
+      "serper": "Google Images, cheaply. Every requested page costs one credit.",
+      "youtube": "Video duration and tags. Without a key the title and thumbnail still arrive.",
+      "telegram": "Sending reminders to Telegram (the notes module). The bot is personal — there is no shared key here."
+    },
+    "error": {
+      "rejected": "the source rejected the key",
+      "rate_limited": "the source rate-limited us — try again later",
+      "unreachable": "the source is not answering",
+      "not_configured": "no key has been entered yet",
+      "unknown_provider": "unknown source"
+    },
+    "helpTitle": "How to get a {{name}} key",
+    "openSite": "Open the site",
+    "help": {
+      "tmdb": "Open themoviedb.org and register (free, no card needed).\nGo to your profile: Settings → API.\nChoose “Developer” and fill in the short form — the app name can be anything, state personal use as the purpose.\nCopy the “API Key (v3 auth)” field — a 32-character string.",
+      "gemini": "Open aistudio.google.com/apikey with a Google account.\nPress “Create API key” and pick (or create) a project.\nCopy the key — it starts with AIza.\nYou can leave the model field empty: the default gemini-3.5-flash will be used.",
+      "rawg": "Register at rawg.io.\nOpen rawg.io/apidocs and press “Get API key”.\nFill in the form — the app name and address can be anything (a personal site works).\nThe key appears on your profile's API page — copy it.",
+      "igdb": "Sign in at dev.twitch.tv/console/apps with a Twitch account (two-factor authentication is required).\nPress “Register Your Application”: any name, OAuth Redirect URL http://localhost, category Application Integration.\nCopy the Client ID.\nPress “New Secret” and copy the Client Secret — it is shown only once.",
+      "serpapi": "Register at serpapi.com.\nOpen serpapi.com/manage-api-key.\nCopy “Your Private API Key”.",
+      "serper": "Register at serper.dev with a Google account.\nThe key is on the dashboard right away (“API Key”) — copy it.",
+      "youtube": "Open console.cloud.google.com and create a project.\nAPIs & Services → Library → find “YouTube Data API v3” and enable it.\nAPIs & Services → Credentials → Create credentials → API key.\nCopy the key.",
+      "telegram": "In Telegram find @BotFather and send /newbot.\nGive the bot a name, then a username — it must end in bot.\nBotFather replies with the token (123456:ABC-DEF…) — copy it and paste it here.\nWrite something to your own bot (even “hi”) — until you do, it cannot message you.\nTo find the chat id open https://api.telegram.org/bot<token>/getUpdates and copy the chat.id number."
+    },
+    "helpNote": {
+      "tmdb": "Free, and it does not ask for a card.",
+      "gemini": "Free tier: ~15 requests per minute and 1500 per day. No card needed.",
+      "rawg": "Free up to 20,000 requests a month.",
+      "igdb": "Free, but both values are required — OAuth does not work with only one.",
+      "serpapi": "The free plan is 250 searches a month and the budget belongs to the whole account.",
+      "serper": "You get 2500 free credits on signup; every requested page costs one credit.",
+      "youtube": "Free (10,000 units a day). Without it the video title and thumbnail still arrive.",
+      "telegram": "Completely free. The token is full access to the bot — do not share it."
+    },
+    "installation": "Installation settings",
+    "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env."
+  },
+  "backups": {
+    "title": "Database backup",
+    "subtitle": "Database: {{database}}",
+    "intro": "A dump is a copy of the whole database: download it, upload it on another computer and restore it right there. The file is stored on your account and counts against your storage limit.",
+    "create": "Create a dump",
+    "import": "Upload a file",
+    "imported": "File uploaded",
+    "started": "The dump has started",
+    "invalidFile": "Only .sql or .sql.gz files",
+    "unavailable": "mysqldump was not found",
+    "unavailableHint": "mysqldump was not found on this machine — set the path in backend/.env (MYSQLDUMP_BINARY and MYSQL_BINARY).",
+    "driverHint": "Current driver: {{driver}}; dumps only work on MySQL/MariaDB.",
+    "note": "Note",
+    "notePlaceholder": "for example: before the trip",
+    "empty": "No dumps yet",
+    "emptyHint": "Take the first copy so you can move the library to another computer.",
+    "tables": "{{n}} tables",
+    "restore": "Restore",
+    "restoreTitle": "Restore the database",
+    "restoreWarning": "{{name}} will replace the current database — every record you have now will be lost.",
+    "restoreSafety": "A safety copy is taken automatically before the restore, so going back is possible.",
+    "restoreStarted": "The restore has started",
+    "recalcHint": "Files on disk do not follow the database — run Recalculate storage after a restore.",
+    "typeToConfirm": "Type RESTORE to confirm",
+    "deleteTitle": "Delete the dump",
+    "deleteHint": "{{name}} will be removed from disk and the space freed.",
+    "status": {
+      "running": "running",
+      "ready": "ready",
+      "failed": "failed",
+      "stale": "the process stopped"
+    }
+  },
+  "secret": {
+    "show": "Show",
+    "hide": "Hide",
+    "copy": "Copy",
+    "change": "Change"
   }
 }

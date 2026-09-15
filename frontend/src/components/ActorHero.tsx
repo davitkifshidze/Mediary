@@ -156,7 +156,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="mt-1 cursor-pointer text-xs font-medium text-primary hover:underline"
+                  className="mt-1 cursor-pointer text-xs font-medium text-primary hover:text-primary/70"
                 >
                   {t(expanded ? 'actions.less' : 'actions.more')}
                 </button>

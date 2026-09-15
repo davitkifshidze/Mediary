@@ -10,7 +10,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  Pencil,
+  SquarePen,
   Plus,
   Search,
   Settings2,
@@ -55,6 +55,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
    ჩანაწერების მოდული (`note`, Tasks §13).
@@ -333,7 +334,7 @@ export function NotesPage() {
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => setOpened(note)}
-                    className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:underline"
+                    className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
                     title={note.title}
                   >
                     {note.title}
@@ -382,14 +383,9 @@ export function NotesPage() {
                 </div>
 
                 <span className="flex shrink-0 items-center gap-1">
-                  <span
-                    className={cn(
-                      'mr-1 rounded-[5px] px-1.5 py-0.5 text-xs',
-                      STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary',
-                    )}
-                  >
+                  <Badge className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
                     {statusName(note.status, lang)}
-                  </span>
+                  </Badge>
                   <button
                     onClick={() => favorite.mutate(note.id)}
                     aria-label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
@@ -433,7 +429,7 @@ export function NotesPage() {
                     </span>
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(note)}>
-                    <Pencil className="size-3.5" />
+                    <SquarePen className="size-3.5" />
                     {t('actions.edit')}
                   </Button>
                   <Button

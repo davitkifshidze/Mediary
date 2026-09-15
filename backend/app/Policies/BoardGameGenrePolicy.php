@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\BoardGameGenre;
-use App\Models\User;
-
-class BoardGameGenrePolicy
-{
-    public function view(User $user, BoardGameGenre $genre): bool
-    {
-        return $genre->user_id === $user->id;
-    }
-
-    public function update(User $user, BoardGameGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-
-    public function delete(User $user, BoardGameGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-}
+/**
+ * BoardGameGenre-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\BoardGameGenre` → `App\Policies\BoardGameGenrePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class BoardGameGenrePolicy extends OwnedRecordPolicy {}

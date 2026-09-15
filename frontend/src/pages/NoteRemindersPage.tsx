@@ -149,7 +149,7 @@ export function NoteRemindersPage() {
         />
       )}
 
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {shown.map((reminder) => (
           <ReminderCard
             key={reminder.id}
@@ -166,7 +166,7 @@ export function NoteRemindersPage() {
             }}
             noteLink={
               reminder.note && (
-                <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] leading-none">
+                <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[11px] leading-none">
                   <NotebookPen className="size-3 shrink-0" />
                   <span className="truncate">{reminder.note.title}</span>
                 </span>

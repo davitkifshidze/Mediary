@@ -10,6 +10,7 @@ use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\StorageFolder;
 use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -348,7 +349,7 @@ class ItemSyncer
         if (empty($d['poster_path'])) {
             return false;
         }
-        if ($onlyMissing && $item->poster_path && Storage::disk('public')->exists($item->poster_path)) {
+        if ($onlyMissing && $item->poster_path && Storage::disk(StorageFolder::diskFor((string) $item->poster_path))->exists($item->poster_path)) {
             return false;
         }
         // ხელით ატვირთულ პოსტერს არ ვაფუჭებთ
@@ -374,23 +375,34 @@ class ItemSyncer
             return true;
         }
 
-        return ! $member->photo_path || ! Storage::disk('public')->exists($member->photo_path);
+        return ! $member->photo_path || ! Storage::disk(StorageFolder::diskFor((string) $member->photo_path))->exists($member->photo_path);
     }
 
     /** ჩანაწერს აკლია პოსტერი ან რომელიმე მსახიობის ფოტო? */
     public function mediaMissing(Model $item): bool
     {
-        $disk = Storage::disk('public');
-        if (! $item->poster_path || ! $disk->exists($item->poster_path)) {
+        if ($this->fileMissing($item->poster_path)) {
             return true;
         }
+
         foreach ($item->cast as $member) {
-            if (! $member->photo_path || ! $disk->exists($member->photo_path)) {
+            if ($this->fileMissing($member->photo_path)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * ⚠️ **დისკი თითო გზაზე ცალკე იკითხება** (აუდიტი 2026-09-14): პროექტის
+     * წესი ის არის, რომ დისკს **მხოლოდ** `StorageFolder::diskFor()` წყვეტს
+     * (§17.5), ე.ი. ერთი გაზიარებული `'public'` ობიექტი ამ წესს არღვევდა
+     * და მომავალ პრივატულ საქაღალდეს არასწორ დისკზე მოძებნიდა.
+     */
+    private function fileMissing(?string $path): bool
+    {
+        return ! $path || ! Storage::disk(StorageFolder::diskFor($path))->exists($path);
     }
 
     private function result(bool $ok, bool $skipped, array $changed, ?string $error): array

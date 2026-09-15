@@ -40,6 +40,7 @@ const RegisterPage = lazy(() => import('@/pages/RegisterPage').then((m) => ({ de
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })))
 const PeoplePage = lazy(() => import('@/pages/PeoplePage').then((m) => ({ default: m.PeoplePage })))
+const SearchPage = lazy(() => import('@/pages/SearchPage').then((m) => ({ default: m.SearchPage })))
 const ChatPage = lazy(() => import('@/pages/ChatPage').then((m) => ({ default: m.ChatPage })))
 const ModulesPage = lazy(() => import('@/pages/ModulesPage').then((m) => ({ default: m.ModulesPage })))
 const ModulePage = lazy(() => import('@/pages/ModulePage').then((m) => ({ default: m.ModulePage })))
@@ -65,6 +66,8 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ 
 const GalleryPage = lazy(() => import('@/pages/GalleryPage').then((m) => ({ default: m.GalleryPage })))
 const GalleryRecordPage = lazy(() => import('@/pages/GalleryRecordPage').then((m) => ({ default: m.GalleryRecordPage })))
 const PurgePage = lazy(() => import('@/pages/PurgePage').then((m) => ({ default: m.PurgePage })))
+const CredentialsPage = lazy(() => import('@/pages/CredentialsPage').then((m) => ({ default: m.CredentialsPage })))
+const BackupsPage = lazy(() => import('@/pages/BackupsPage').then((m) => ({ default: m.BackupsPage })))
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
 
 
@@ -253,6 +256,10 @@ function AppShell() {
           {mediaModules.length > 0 && <Route path="sync" element={<SyncPage />} />}
           {/* Tasks 7 — თარგმანები; ორენოვანი სქემა მედია-დომენებზეა */}
           {mediaModules.length > 0 && <Route path="translations" element={<TranslationsPage />} />}
+          {/* ძებნის შედეგები — ⚠️ **მოდულზე დამოცებული არაა**:
+              ის თვითონ ეკითხება ძებნას ყველა ჩართულ დომენში და გამორთულს
+              საერთოდ არ აჭვენებს. */}
+          <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება": საჯარო პროფილების
@@ -268,6 +275,12 @@ function AppShell() {
           <Route path="modules/:key" element={<ModulePage />} />
           {/* Tasks 20 — მასობრივი წაშლა (გვერდი თვითონ ამოწმებს super_admin-ს) */}
           <Route path="purge" element={<PurgePage />} />
+          {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
+              ⚠️ მოდულზე დამოკიდებული არაა და არც უნდა იყოს: გასაღები
+              `modules` ცხრილში არ არის და ყველა ანგარიშს თავისი სჭირდება. */}
+          <Route path="credentials" element={<CredentialsPage />} />
+          {/* Tasks §22 — ბაზის დამპი (გვერდი თვითონ ამოწმებს super_admin-ს) */}
+          <Route path="backups" element={<BackupsPage />} />
           {/* Tasks 1.5 — მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}
           <Route path="requests" element={<RequestsPage />} />
 

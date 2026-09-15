@@ -45,12 +45,26 @@ class VideoDownloader
             ], 503));
         }
 
-        // ⚠️ „უკვე მიმდინარეობს" **ცალკე პასუხია** და არა ჩუმი მეორე გაშვება:
-        // ორი პარალელური yt-dlp ერთსა და იმავე ვიდეოზე ორჯერ დახარჯავდა კვოტას.
-        if ($video->download_status === Video::DOWNLOAD_RUNNING) {
+        /* ⚠️ „უკვე მიმდინარეობს" **ცალკე პასუხია** და არა ჩუმი მეორე გაშვება:
+           ორი პარალელური yt-dlp ერთსა და იმავე ვიდეოზე ორჯერ დახარჯავდა კვოტას.
+
+           ⚠️ **მაგრამ მხოლოდ მაშინ, თუ ის მართლა მიმდინარეობს** (აუდიტი
+           2026-09-14, §B1). ფონური პროცესი შეიძლება მოკვდეს — სერვერის
+           ტერმინალის დახურვით, მანქანის გადატვირთვით, ფატალური შეცდომით —
+           და მაშინ `running` სამუდამოდ რჩებოდა: `POST` 409-ს აბრუნებდა,
+           `DELETE` ბილიკის არქონის გამო არაფერს აკეთებდა, ე.ი. ჩამოწერა ამ
+           ვიდეოზე ხელით SQL-ის გარეშე **ვეღარასდროს გაეშვებოდა**. */
+        if ($video->download_status === Video::DOWNLOAD_RUNNING && ! $video->downloadStale()) {
             throw new HttpResponseException(response()->json([
                 'message' => 'download_already_running',
             ], 409));
+        }
+
+        if ($video->downloadStale()) {
+            Log::warning('videos:download stale run reclaimed', [
+                'video' => $video->getKey(),
+                'started_at' => $video->download_started_at?->toIso8601String(),
+            ]);
         }
 
         // წინა ასლი (თუ იყო) ჯერ თავისუფლდება — ორი ფაილი ერთ ვიდეოზე არ არსებობს
@@ -65,6 +79,9 @@ class VideoDownloader
         $video->forceFill([
             'download_status' => Video::DOWNLOAD_RUNNING,
             'download_error' => null,
+            // ⚠️ **ცალკე სვეტი და არა `updated_at`**: ეს ერთადერთი ფაქტია,
+            // რომლითაც მკვდარი გაშვება ცოცხლისგან გაირჩევა (იხ. `downloadStale()`)
+            'download_started_at' => now(),
         ])->save();
 
         $launched = $this->background->dispatch([
@@ -79,6 +96,7 @@ class VideoDownloader
             $video->forceFill([
                 'download_status' => Video::DOWNLOAD_FAILED,
                 'download_error' => 'ფონური პროცესი ვერ გაეშვა (popen/exec გამორთულია)',
+                'download_started_at' => null,
             ])->save();
 
             throw new HttpResponseException(response()->json([
@@ -147,6 +165,7 @@ class VideoDownloader
             'download_error' => mb_substr($reason, 0, 500),
             'download_path' => null,
             'download_size' => 0,
+            'download_started_at' => null,
         ])->save();
     }
 

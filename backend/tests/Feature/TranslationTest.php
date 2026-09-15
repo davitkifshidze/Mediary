@@ -366,7 +366,8 @@ class TranslationTest extends TestCase
         $movie = $this->movie([], ['title' => 'The Matrix']);
 
         // მხოლოდ ნახვის უფლება — თარგმანი ჩანაწერს ცვლის, ე.ი. უნდა აიკრძალოს
-        $this->user->role->update(['permissions' => ['*' => ['view']]]);
+        // (⚠️ ადრე `'*'`-ით ეწერა; ნიღაბი მოიხსნა — იხ. `Role`)
+        $this->user->role->update(['permissions' => ['movie' => ['view'], 'series' => ['view']]]);
 
         $this->actingAs($this->user->refresh())
             ->postJson("/api/translations/movie/{$movie->id}")

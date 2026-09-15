@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, X } from 'lucide-react'
+import { Check, CircleCheck, CircleX, Clock, LayoutGrid, X } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -11,6 +11,7 @@ import {
   rejectRequest,
   type ApprovalRequestItem,
 } from '@/api/account'
+import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
 import { grantedQuota, requestLabel, requestedQuota } from '@/lib/display'
@@ -31,7 +32,25 @@ const MB = 1024 * 1024
    ყველასთვის — **ჩემი** მოთხოვნები (ადრე `/modules`-ზე ეკიდა და ტვირთავდა).
    ============================================================ */
 
-const STATUSES = ['pending', 'approved', 'rejected', 'all'] as const
+/**
+ * **ჭრილები ბარათებად** (2026-09-15, შენი მითითებით: „მინდა მსგავსი
+ * ვიზუალის იყოს, რაც მაქვს აუდიტ-ლოგში").
+ *
+ * ⚠️ **ბარათი `ui/scope-card.tsx`-იდან მოდის და აქ არ იწერება** — იმავე
+ * კომპონენტს აუდიტ-ლოგი, სტატუსის მასობრივი შეცვლა და მასობრივი წაშლა
+ * კითხულობენ; ასლი პირველივე შესწორებაზე დაშორდებოდა.
+ *
+ * ⚠️ **ფერი მდგომარეობისაა და არა დეკორაცია**: რიგი — ნეიტრალური
+ * „ჯერ არ გადაწყვეტილა", დამტკიცებული — მწვანე, უარყოფილი — წითელი.
+ * სწორედ ეს ფერი ცვლის იმ ოთხ ერთნაირ პილულას, სადაც მხოლოდ კითხვით
+ * ირჩეოდა, რომელზე დგახარ.
+ */
+const STATUSES = [
+  { key: 'pending', icon: Clock, color: 'var(--status-undecided)' },
+  { key: 'approved', icon: CircleCheck, color: 'var(--icon-ok)' },
+  { key: 'rejected', icon: CircleX, color: 'var(--destructive)' },
+  { key: 'all', icon: LayoutGrid, color: 'var(--primary)' },
+] as const
 
 export function RequestsPage() {
   const { t, i18n } = useTranslation()
@@ -46,11 +65,13 @@ export function RequestsPage() {
   // 17.4 — რამდენს ვაძლევთ სინამდვილეში (MB). ცარიელი = მოთხოვნილი ზუსტად.
   const [grants, setGrants] = useState<Record<number, string>>({})
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['admin-requests', status],
     queryFn: () => fetchAdminRequests(status),
     enabled: isAdmin,
   })
+  const items = data?.items ?? []
+  const counts = data?.counts
 
   const { data: mine = [] } = useQuery({ queryKey: ['my-requests'], queryFn: fetchMyRequests })
 
@@ -101,6 +122,7 @@ export function RequestsPage() {
   return (
     <PageContainer>
       <PageHeader
+        tool="requests"
         title={t('admin.requests')}
         subtitle={isAdmin ? t('admin.requestsSubtitle') : t('admin.requestsSubtitleUser')}
       />
@@ -108,19 +130,20 @@ export function RequestsPage() {
       {/* ---------- ადმინის ხედი ---------- */}
       {isAdmin && (
         <section className="mb-8">
-          <div className="mb-4 flex gap-2">
-            {STATUSES.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatus(s)}
-                className={cn(
-                  'cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors',
-                  status === s ? 'bg-secondary font-medium' : 'text-muted-foreground hover:bg-muted',
-                )}
-              >
-                {t(`requests.status.${s}`)}
-              </button>
-            ))}
+          <div className="mb-4">
+            <ScopeGroup>
+              {STATUSES.map((s) => (
+                <ScopeCard
+                  key={s.key}
+                  active={status === s.key}
+                  color={s.color}
+                  icon={<s.icon className="size-4 text-[var(--mod)]" />}
+                  label={t(`requests.status.${s.key}`)}
+                  count={counts?.[s.key]}
+                  onClick={() => setStatus(s.key)}
+                />
+              ))}
+            </ScopeGroup>
           </div>
 
           {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
@@ -245,7 +268,7 @@ export function RequestsPage() {
         {!mine.length ? (
           <p className="text-sm text-muted-foreground">
             {t('admin.noOwnRequests')}{' '}
-            <Link to="/modules" className="text-primary hover:underline">
+            <Link to="/modules" className="text-primary hover:text-primary/70">
               {t('modules.title')}
             </Link>
           </p>

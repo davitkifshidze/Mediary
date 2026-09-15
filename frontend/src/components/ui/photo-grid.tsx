@@ -626,7 +626,7 @@ function PhotoCell({
                           href={row.href}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-primary underline underline-offset-2"
+                          className="text-primary hover:text-primary/70"
                         >
                           {row.value}
                         </a>

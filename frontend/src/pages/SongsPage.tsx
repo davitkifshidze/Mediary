@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
-import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, Paperclip, Pencil, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
+import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, Paperclip, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
 import {
   SONG_MAX_RATING,
   createSong,
@@ -56,6 +56,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -399,9 +400,9 @@ export function SongsPage() {
 
                   <span className="flex shrink-0 items-center gap-1">
                     {song.rating != null && (
-                      <span className="mr-1 rounded-[5px] bg-secondary px-1.5 py-0.5 text-xs tabular-nums">
+                      <Badge className="mr-1 bg-secondary tabular-nums">
                         {song.rating}/{SONG_MAX_RATING}
-                      </span>
+                      </Badge>
                     )}
                     <button
                       onClick={() => favorite.mutate(song.id)}
@@ -434,7 +435,7 @@ export function SongsPage() {
                       )}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setEditing(song)}>
-                      <Pencil className="size-3.5" />
+                      <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>
                     <Button

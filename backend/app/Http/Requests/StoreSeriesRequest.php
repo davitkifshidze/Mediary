@@ -8,6 +8,15 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * ⚠️ **`imdb_id`-ის უნიკალურობა user-ის ფარგლებშია** და არა გლობალურად
+ * (აუდიტი 2026-09-14). ბაზაში ინდექსი `unique(user_id, imdb_id)`-ია
+ * 2026-08-28-იდან — ორმა ანგარიშმა ერთი და იგივე ფილმი უნდა შეძლოს
+ * დაამატოს. გლობალური `unique:series,imdb_id` კი მეორეს **უსაფუძვლოდ
+ * უკრძალავდა** („ეს სერიალი უკვე დამატებულია") და, რაც უარესია, **სხვისი
+ * ბიბლიოთეკის შიგთავსსაც ამხელდა**. `anime` მოდული (2026-09-11) უკვე
+ * სწორად იყო დაწერილი — ორი უძველესი დომენი გამორჩა.
+ */
 class StoreSeriesRequest extends FormRequest
 {
     public function authorize(): bool
@@ -21,7 +30,9 @@ class StoreSeriesRequest extends FormRequest
             'title_ka' => ['nullable', 'string', 'max:255'],
             'title_en' => ['nullable', 'string', 'max:255'],
             'year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'imdb_id' => ['nullable', 'string', 'regex:/^tt\d+$/', 'unique:series,imdb_id'],
+            'imdb_id' => ['nullable', 'string', 'regex:/^tt\d+$/',
+                Rule::unique('series', 'imdb_id')->where('user_id', $this->user()?->id),
+            ],
             'ge_url' => ['nullable', 'url', 'max:500'],
             // ტრეილერი (Tasks 9) — ხელით ჩასმაც შეიძლება, TMDB-ს არ ველოდებით
             'trailer_url' => ['nullable', 'url', 'max:500'],

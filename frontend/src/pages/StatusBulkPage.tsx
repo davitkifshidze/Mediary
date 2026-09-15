@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
+import { fetchDashboard } from '@/api/dashboard'
 import { mediaApi } from '@/api/media'
 import { type MediaType } from '@/lib/media'
 import { moduleName, useModules } from '@/lib/modules'
@@ -12,7 +13,9 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
+import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { VideoBulkPanel } from '@/components/VideoBulkPanel'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -37,13 +40,21 @@ export function StatusBulkPage() {
   // ჩართული დომენები; ერთის შემთხვევაში გადამრთველი არ ჩანს
   const domains = useMemo(
     () => [
-      ...mediaModules.map((m) => ({ key: m.key, label: moduleName(m, i18n.language), domain: m.type as Domain })),
+      ...mediaModules.map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: m.type as Domain })),
       ...enabled
         .filter((m) => m.key === 'video')
-        .map((m) => ({ key: m.key, label: moduleName(m, i18n.language), domain: 'video' as Domain })),
+        .map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: 'video' as Domain })),
     ],
     [mediaModules, enabled, i18n.language],
   )
+
+  /* ⚠️ **რიცხვი დეშბორდის იმავე endpoint-იდან მოდის და არა ცალკე დათვლიდან**:
+     ბარათს რიცხვი სჭირდება (თორემ იგივე უფერო პილულაა), ჩამონათვალი კი
+     მხოლოდ **აქტიური** დომენისთვის იტვირთება — ე.ი. დანარჩენ სამ ბარათს
+     საკუთარი წყარო არ აქვს. `GET /dashboard` ერთი მოკლე რექვესთია და
+     დეშბორდიდან ისედაც ქეშშია. */
+  const { data: cards } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard })
+  const countOf = (key: string) => cards?.find((c) => c.key === key)?.count ?? undefined
 
   const [domain, setDomain] = useState<Domain>(domains[0]?.domain ?? 'movie')
   // მოდულების ჩატვირთვამდე `domains` ცარიელია — პირველივე ხელმისაწვდომზე გადავდივართ
@@ -60,27 +71,32 @@ export function StatusBulkPage() {
       </Link>
 
       <PageHeader
+        tool="bulk"
         title={t('bulkStatus.title')}
         subtitle={t(active === 'video' ? 'bulkVideo.subtitle' : 'bulkStatus.subtitle')}
       />
 
-      {/* დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) */}
+      {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) ----------
+          ⚠️ **ბარათები აუდიტ-ლოგის იმავე კომპონენტისაა** (`ui/scope-card.tsx`,
+          შენი მითითება 2026-09-15): ერთნაირი ჩარჩოიანი ღილაკები მხოლოდ
+          წარწერით განსხვავდებოდნენ, ე.ი. „რომელ ბიბლიოთეკაში ვცვლი სტატუსს"
+          წაკითხვას მოითხოვდა. ფერი და ხატულა **მოდულის საკუთარია**
+          (`modules.color`) — იგივე, რასაც საიდბარი და გვერდის ჰედერი ხატავს. */}
       {domains.length > 1 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          {domains.map((d) => (
-            <button
-              key={d.key}
-              onClick={() => setDomain(d.domain)}
-              className={cn(
-                'inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
-                active === d.domain
-                  ? 'border-primary bg-secondary font-medium'
-                  : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-            >
-              {d.label}
-            </button>
-          ))}
+        <div className="mb-5">
+          <ScopeGroup>
+            {domains.map((d) => (
+              <ScopeCard
+                key={d.key}
+                active={active === d.domain}
+                color={d.color}
+                icon={<ModuleIcon name={d.icon} className="size-4 text-[var(--mod)]" />}
+                label={d.label}
+                count={countOf(d.key)}
+                onClick={() => setDomain(d.domain)}
+              />
+            ))}
+          </ScopeGroup>
         </div>
       )}
 

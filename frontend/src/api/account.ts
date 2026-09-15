@@ -723,9 +723,30 @@ export async function updateModule(id: number, input: Partial<ModuleInfo>): Prom
   return data.data
 }
 
-export async function fetchAdminRequests(status = 'pending'): Promise<ApprovalRequestItem[]> {
+/** ჭრილების მთვლელები — ბარათების რიცხვები (`AdminRequestController::index`) */
+export interface RequestCounts {
+  pending: number
+  approved: number
+  rejected: number
+  all: number
+}
+
+export interface AdminRequestPage {
+  items: ApprovalRequestItem[]
+  counts: RequestCounts
+}
+
+/**
+ * ⚠️ **სია და მთვლელები ერთი პასუხია და არა ორი რექვესთი.** ბარათი რიცხვის
+ * გარეშე იმავე უფერო პილულად რჩება, ორი წყარო კი „ბარათზე 4 წერია, შიგნით
+ * 3-ია"-ს დაბადებდა — აუდიტ-ლოგის `summary()`-ის იგივე წესი.
+ */
+export async function fetchAdminRequests(status = 'pending'): Promise<AdminRequestPage> {
   const { data } = await api.get('/admin/requests', { params: { status } })
-  return data.data
+  return {
+    items: data.data,
+    counts: data.counts ?? { pending: 0, approved: 0, rejected: 0, all: 0 },
+  }
 }
 
 export async function fetchPendingCount(): Promise<number> {

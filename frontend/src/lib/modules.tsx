@@ -90,12 +90,20 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
 
    ⚠️ **ერთი განსაზღვრება ორი მომხმარებლისთვის** — საიდბარისა და აუდიტ-
    ლოგის ბარათების; მეორე ასლი იმავე კვირაში გაშორდებოდა.
+
+   ⚠️ **`--mod-fill` სუსტი ტონის ძლიერი ძმაა (28% vs 16%) და 2026-09-15-ს
+   დაემატა**: საიდბარში აქტიური პუნქტი `--mod-soft`-ით იხატებოდა და
+   „რომელზე ვდგავარ" პრაქტიკულად არ ჩანდა — ეს იყო შენი შენიშვნა. ორივე
+   რჩება, რადგან სხვადასხვა საქმეს აკეთებენ: `soft` **ფონია** (ბარათის
+   ხატულის ფილა), `fill` კი **მონიშვნაა**. ერთ მნიშვნელობამდე შეკვეცა
+   ან ბარათს გადააფერადებდა, ან მონიშვნას ისევ უხილავს გახდიდა.
    ============================================================ */
 export function modAccent(color: string | null | undefined): React.CSSProperties | undefined {
   if (!color) return undefined
   return {
     '--mod': color,
     '--mod-soft': `color-mix(in oklab, ${color} 16%, transparent)`,
+    '--mod-fill': `color-mix(in oklab, ${color} 28%, transparent)`,
   } as React.CSSProperties
 }
 
@@ -107,6 +115,7 @@ export function modAccent(color: string | null | undefined): React.CSSProperties
 export const MODULE_ACCENT_FALLBACK = {
   '--mod': 'var(--gold)',
   '--mod-soft': 'color-mix(in oklab, var(--gold) 16%, transparent)',
+  '--mod-fill': 'color-mix(in oklab, var(--gold) 28%, transparent)',
 } as React.CSSProperties
 
 /** მოდულის სახელი მიმდინარე ენაზე */

@@ -1,18 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { BellRing } from 'lucide-react'
-import { updateModuleSettings } from '@/api/account'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { BellRing, HelpCircle } from 'lucide-react'
+import { fetchCredentials, revealCredential, saveCredential } from '@/api/credentials'
 import { errorMessage } from '@/lib/errors'
 import {
   notificationPermission,
   requestNotificationPermission,
 } from '@/lib/noteReminders'
-import { useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { SecretInput } from '@/components/ui/secret-input'
+import { CredentialHelpDialog } from '@/components/CredentialHelpDialog'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -31,20 +32,39 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  const { all } = useModules()
 
-  const settings = (all.find((m) => m.key === 'note')?.user_settings ?? {}) as Record<string, string>
+  /* ⚠️ ტოკენი **აღარ მოდის** მოდულების სიასთან ერთად (§21.9): ის ახლა
+     დაშიფრულია და მხოლოდ ნიღბიანი კუდი ჩანს. ამიტომ ეს ფანჯარაც იმავე
+     წყაროს ეკითხება, რასაც „მონაცემები". */
+  const credentials = useQuery({ queryKey: ['credentials'], queryFn: fetchCredentials })
+  const telegram = credentials.data?.data.find((c) => c.provider === 'telegram')
+  const tokenField = telegram?.fields.find((f) => f.name === 'bot_token')
+  const chatField = telegram?.fields.find((f) => f.name === 'chat_id')
 
-  const [form, setForm] = useState({
-    telegram_bot_token: settings.telegram_bot_token ?? '',
-    telegram_chat_id: settings.telegram_chat_id ?? '',
-  })
+  const [form, setForm] = useState({ bot_token: '', chat_id: '' })
   const [permission, setPermission] = useState(notificationPermission())
+  const [helpOpen, setHelpOpen] = useState(false)
+
+  /* ⚠️ `chat_id` საიდუმლო არაა, ე.ი. სერვერიდან მზა მნიშვნელობით მოდის —
+     ტოკენი კი არა. ფორმა სწორედ ამ ასიმეტრიას მიჰყვება: ღია ველი ივსება,
+     საიდუმლო ცარიელი რჩება (ცარიელი = „არ შეცვლილა"). */
+  useEffect(() => {
+    if (chatField) setForm((f) => (f.chat_id === '' ? { ...f, chat_id: chatField.value ?? '' } : f))
+  }, [chatField])
 
   const save = useMutation({
-    mutationFn: () => updateModuleSettings('note', { ...form }),
+    /* ⚠️ ცარიელი საიდუმლო **არ იგზავნება** — backend-ზე ცარიელი სტრიქონი
+       „გასუფთავებას" ნიშნავს, ე.ი. მხოლოდ chat id-ის შეცვლა ტოკენს
+       ჩუმად წაშლიდა. */
+    mutationFn: () =>
+      saveCredential('telegram', {
+        fields: {
+          ...(form.bot_token !== '' ? { bot_token: form.bot_token } : {}),
+          chat_id: form.chat_id,
+        },
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['modules'] })
+      qc.invalidateQueries({ queryKey: ['credentials'] })
       toast({ title: t('notes.channelsSaved'), variant: 'success' })
       onClose()
     },
@@ -75,25 +95,46 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
 
         {/* ---------- ტელეგრამი ---------- */}
         <section className="rounded-lg border border-border p-3">
-          <h3 className="text-sm font-semibold">{t('notes.channels.telegram')}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold">{t('notes.channels.telegram')}</h3>
+            <span className="flex-1" />
+            {/* ⚠️ იგივე მოდალია, რაც `/credentials`-ზე: ბოტის ტოკენიც
+                ზუსტად ისეთივე „საიდან მოვიტანო"-ა, და მეორე, თითქმის
+                იდენტური ფანჯარა ერთ კვირაში დაშორდებოდა. */}
+            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)}>
+              <HelpCircle className="size-4" />
+              {t('credentials.getKey')}
+            </Button>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">{t('notes.telegramHint')}</p>
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="tg-token">{t('notes.telegramToken')}</Label>
-              <Input
+              {/* ⚠️ **ტოკენი პაროლის სახითაა** (შენი მითითება): ის სრული
+                  წვდომაა ბოტზე, ე.ი. ეკრანზე ღიად წერა იმავე რიგისაა, რაც
+                  გასაღების ჩვენება. ⚠️ `onReveal` **არ სჭირდება** — ეს
+                  მნიშვნელობა `module_user.settings`-იდან ისედაც ხელთაა,
+                  ე.ი. თვალი ლოკალურად მუშაობს და სერვერს არ ეკითხება. */}
+              <SecretInput
                 id="tg-token"
-                value={form.telegram_bot_token}
+                value={form.bot_token}
+                masked={tokenField?.masked ?? null}
                 placeholder="123456:ABC-DEF…"
-                onChange={(e) => setForm((f) => ({ ...f, telegram_bot_token: e.target.value }))}
+                onChange={(value) => setForm((f) => ({ ...f, bot_token: value }))}
+                onReveal={
+                  tokenField?.has_own
+                    ? async () => (await revealCredential('telegram')).fields.bot_token ?? null
+                    : undefined
+                }
               />
             </div>
             <div>
               <Label htmlFor="tg-chat">{t('notes.telegramChat')}</Label>
               <Input
                 id="tg-chat"
-                value={form.telegram_chat_id}
+                value={form.chat_id}
                 placeholder="123456789"
-                onChange={(e) => setForm((f) => ({ ...f, telegram_chat_id: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, chat_id: e.target.value }))}
               />
             </div>
           </div>
@@ -103,6 +144,15 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
             არ აქვს, ე.ი. ველი მხოლოდ იმას გვპირდებოდა, რასაც ვერ ასრულებდა.
             მის ადგილს **ჟურნალი** იკავებს: ყოველი გასროლილი შეხსენება
             რჩება და `/notes`-ის „ჟურნალის" ღილაკიდან იკითხება. */}
+
+        {helpOpen && (
+          <CredentialHelpDialog
+            provider="telegram"
+            brand="Telegram"
+            docs="https://t.me/BotFather"
+            onClose={() => setHelpOpen(false)}
+          />
+        )}
 
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

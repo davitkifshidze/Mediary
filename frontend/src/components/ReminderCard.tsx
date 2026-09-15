@@ -10,7 +10,7 @@ import {
   CalendarRange,
   CheckCheck,
   Hourglass,
-  Pencil,
+  SquarePen,
   Repeat,
   Send,
   Sun,
@@ -139,7 +139,7 @@ const STATE_TONE: Record<ReminderState, { stripe: string; icon: string; card: st
 /** წვრილი მეტა-ნიშანი ბარათზე (არხი, ჯერადობა, ფანჯარა) — დაუჭერელი */
 function Meta({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[11px] leading-none text-muted-foreground">
       {icon}
       <span className="truncate">{children}</span>
     </span>
@@ -176,9 +176,9 @@ export function ReminderCard({
   const period = windowLabel(reminder, t, dateTime)
 
   return (
-    <li className={cn('relative overflow-hidden rounded-xl border p-3 pl-4 transition-colors', tone.card)}>
+    <li className={cn('relative overflow-hidden rounded-xl border p-4 pl-5 transition-colors', tone.card)}>
       {/* მარცხენა ზოლი — მდგომარეობა ტექსტის წაკითხვამდე */}
-      <span className={cn('absolute inset-y-0 left-0 w-1', tone.stripe)} />
+      <span className={cn('absolute inset-y-0 left-0 w-1.5', tone.stripe)} />
 
       <div className="flex items-start gap-3">
         <span className={cn('grid size-9 shrink-0 place-items-center rounded-md', tone.icon)}>
@@ -191,7 +191,7 @@ export function ReminderCard({
           className="min-w-0 flex-1 cursor-pointer text-left"
           aria-label={t('notes.reminderEditTitle')}
         >
-          <span className="block truncate text-sm font-medium hover:underline">
+          <span className="block truncate text-sm font-medium hover:text-primary">
             {reminderLabel(reminder, t, dateTime)}
           </span>
 
@@ -240,7 +240,7 @@ export function ReminderCard({
             aria-label={t('notes.reminderActive')}
           />
           <Button variant="ghost" size="icon" onClick={onEdit} aria-label={t('actions.edit')}>
-            <Pencil className="size-4" />
+            <SquarePen className="size-4" />
           </Button>
           <Button
             variant="ghost"

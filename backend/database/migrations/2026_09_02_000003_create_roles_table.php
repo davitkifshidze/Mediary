@@ -10,16 +10,15 @@ use Illuminate\Support\Facades\Schema;
  *
  * უფლება = **მოდულის შიდა** CRUD (გადაწყდა 19.8): `permissions` JSON-ია სახით
  * `{"movie": ["view","create","update","delete"], "*": ["view"]}`.
- * `"*"` = ყველა მოდული — ამის გარეშე ხვალ დამატებული მოდული ავტომატურად
- * აკრძალული აღმოჩნდებოდა ყველა არსებულ როლზე.
+ * ⚠️ **`"*"` („ყველა მოდული") 2026-09-15-ს მოიხსნა** — იხ.
+ * `expand_wildcard_role_permissions`. ფასი ცნობილია და მიღებული: ხვალ
+ * დამატებული მოდული ყველა როლზე **ცხადად** უნდა მოინიშნოს.
  *
  * მოდულზე **წვდომა** (ვინ ხედავს მოდულს) ისევ `module_user`-შია — ეს ორი
  * მექანიზმი ერთმანეთს არ ცვლის.
  */
 return new class extends Migration
 {
-    private const FULL = ['view', 'create', 'update', 'delete'];
-
     public function up(): void
     {
         Schema::create('roles', function (Blueprint $table) {
@@ -40,7 +39,12 @@ return new class extends Migration
 
         foreach ([
             ['key' => 'super_admin', 'name_ka' => 'სუპერ-ადმინი', 'name_en' => 'Super admin', 'permissions' => null, 'is_system' => true, 'sort_order' => 1],
-            ['key' => 'user', 'name_ka' => 'მომხმარებელი', 'name_en' => 'User', 'permissions' => json_encode(['*' => self::FULL]), 'is_system' => true, 'sort_order' => 2],
+            /* ⚠️ **ცარიელი და არა `['*' => FULL]` (2026-09-15).** „ყველა მოდულის"
+               ნიღაბი მოიხსნა (იხ. `expand_wildcard_role_permissions`), აქ კი
+               მოდულების სია ვერც დაიწერება: მიგრაცია სიდერამდე გადის, ე.ი.
+               `modules` ცხრილი ჯერ ცარიელია. ამ როლს **`ModulesSeeder`
+               ავსებს** — ის იცნობს მოდულების კანონიკურ სიას. */
+            ['key' => 'user', 'name_ka' => 'მომხმარებელი', 'name_en' => 'User', 'permissions' => json_encode([]), 'is_system' => true, 'sort_order' => 2],
         ] as $role) {
             $ids[$role['key']] = DB::table('roles')->insertGetId($role + ['created_at' => $now, 'updated_at' => $now]);
         }

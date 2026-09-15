@@ -8,7 +8,7 @@ import {
   ChevronUp,
   ListMusic,
   Loader2,
-  Pencil,
+  SquarePen,
   Play,
   Plus,
   Trash2,
@@ -114,7 +114,7 @@ export function PlaylistsPage() {
             </span>
 
             <Link to={`/playlists/${playlist.id}`} className="min-w-0 flex-1">
-              <span className="block truncate font-medium hover:underline">{playlist.name}</span>
+              <span className="block truncate font-medium hover:text-primary">{playlist.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {t('playlists.songCount', { count: playlist.songs_count ?? 0 })}
                 {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
@@ -144,7 +144,7 @@ export function PlaylistsPage() {
                 <ChevronDown className="size-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setEditing(playlist)}>
-                <Pencil className="size-3.5" />
+                <SquarePen className="size-3.5" />
                 {t('actions.edit')}
               </Button>
               <Button

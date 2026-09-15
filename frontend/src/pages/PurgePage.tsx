@@ -30,6 +30,7 @@ import { useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
 import { cn, formatBytes } from '@/lib/utils'
 import { GenreSelect } from '@/components/GenreSelect'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
 import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
 
@@ -123,7 +125,7 @@ export function PurgePage() {
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
   const { user: me } = useAuth()
-  const { has } = useModules()
+  const { has, all: allModules } = useModules()
   const { enqueuePurge, isBusy } = useQueue()
 
   const [target, setTarget] = useState<PurgeTarget>('movie')
@@ -307,6 +309,7 @@ export function PurgePage() {
   return (
     <PageContainer>
       <PageHeader
+        tool="purge"
         title={t('purge.title')}
         subtitle={t('purge.subtitle')}
       />
@@ -316,44 +319,60 @@ export function PurgePage() {
         <p>{t('purge.warning')}</p>
       </div>
 
-      {/* ---------- 1. რა წაიშლება ---------- */}
+      {/* ---------- 1. რა წაიშლება ----------
+          ⚠️ **ბარათები აუდიტ-ლოგის იმავე კომპონენტისაა** (`ui/scope-card.tsx`,
+          შენი მითითება 2026-09-15). თერთმეტი ერთნაირი ღილაკი ყველაზე ცუდად
+          სწორედ აქ იკითხებოდა: ეს გვერდი ბიბლიოთეკას შლის და „რას ვშლი"
+          ერთი შეხედვით უნდა ჩანდეს — ახლა მოდულის საკუთარი ფერი და ხატულა
+          პასუხობს (იგივე, რასაც საიდბარი ხატავს).
+
+          ⚠️ **რიცხვი ბარათს განზრახ არ აქვს.** `/purge` **სხვისი** ანგარიშიდან
+          შლის (ქვემოთ არჩევადია), ე.ი. ჩემი ბიბლიოთეკის რიცხვი აქ ტყუილი
+          იქნებოდა; ნამდვილ რიცხვებს გეგმა ამბობს მე-3 ბლოკში. */}
       <section className="mb-4 rounded-xl border border-border bg-card p-5">
         <Label className="mb-2 block">{t('purge.target')}</Label>
-        <div className="flex flex-wrap gap-2">
-          {targets.map((tg) => (
-            <Button
-              key={tg}
-              size="sm"
-              variant={target === tg ? 'default' : 'outline'}
-              onClick={() => {
-                setTarget(tg)
-                // რეჟიმი ვალიდური უნდა დარჩეს — თითო სამიზნეს თავისი სია აქვს
-                setMode(PURGE_TARGET_MODES[tg][0])
-                // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
-                setStatus('')
-              }}
-            >
-              {t(`purge.targetOption.${tg}`)}
-            </Button>
-          ))}
-        </div>
+        <ScopeGroup>
+          {targets.map((tg) => {
+            const mod = allModules.find((m) => m.key === tg)
+            return (
+              <ScopeCard
+                key={tg}
+                active={target === tg}
+                color={mod?.color ?? null}
+                icon={<ModuleIcon name={mod?.icon} className="size-4 text-[var(--mod)]" />}
+                label={t(`purge.targetOption.${tg}`)}
+                onClick={() => {
+                  setTarget(tg)
+                  // რეჟიმი ვალიდური უნდა დარჩეს — თითო სამიზნეს თავისი სია აქვს
+                  setMode(PURGE_TARGET_MODES[tg][0])
+                  // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
+                  setStatus('')
+                }}
+              />
+            )
+          })}
+        </ScopeGroup>
         <p className="mt-2 text-xs text-muted-foreground">{t(`purge.targetHint.${target}`)}</p>
 
         {target === 'gallery' && (
           <div className="mt-3 border-t border-border pt-3">
             <Label className="mb-2 block">{t('purge.mediaType')}</Label>
-            <div className="flex gap-2">
-              {(['movie', 'series'] as const).map((d) => (
-                <Button
-                  key={d}
-                  size="sm"
-                  variant={mediaType === d ? 'default' : 'outline'}
-                  onClick={() => setMediaType(d)}
-                >
-                  {t(d === 'series' ? 'nav.series' : 'nav.movies')}
-                </Button>
-              ))}
-            </div>
+            {/* გალერეის მშობელი დომენი — იმავე ბარათებით, რომ არჩევანი ერთ ენაზე ლაპარაკობდეს */}
+            <ScopeGroup>
+              {(['movie', 'series'] as const).map((d) => {
+                const mod = allModules.find((m) => m.key === d)
+                return (
+                  <ScopeCard
+                    key={d}
+                    active={mediaType === d}
+                    color={mod?.color ?? null}
+                    icon={<ModuleIcon name={mod?.icon} className="size-4 text-[var(--mod)]" />}
+                    label={t(d === 'series' ? 'nav.series' : 'nav.movies')}
+                    onClick={() => setMediaType(d)}
+                  />
+                )
+              })}
+            </ScopeGroup>
           </div>
         )}
       </section>

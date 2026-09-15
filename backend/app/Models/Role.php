@@ -2,23 +2,28 @@
 
 namespace App\Models;
 
+use App\Support\DictionaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 /**
  * როლი (Tasks 1.6) — **გლობალური** ლექსიკონი, არა per-user.
  *
- * უფლება მოდულის შიდა CRUD-ია (19.8): `permissions` = `{"<module>": ["view", …]}`,
- * `"*"` კი ყველა მოდულს ნიშნავს. `null` = შეზღუდვის გარეშე (`super_admin`).
+ * უფლება მოდულის შიდა CRUD-ია (19.8): `permissions` = `{"<module>": ["view", …]}`.
+ * `null` = შეზღუდვის გარეშე (`super_admin`).
+ *
+ * ⚠️ **„ყველა მოდულის" ნიღაბი (`"*"`) აღარ არსებობს (2026-09-15, შენი
+ * მითითება).** ის ერთადერთი მექანიზმი იყო, რომლითაც *ხვალ დამატებული*
+ * მოდული ავტომატურად იხსნებოდა; მისი მოხსნის ფასი ზუსტად ესაა — **ახალი
+ * მოდული ყველა როლზე ცხადად უნდა მოინიშნოს**. სანაცვლოდ უფლება იმას
+ * ნიშნავს, რაც წერია: ფარული, მატრიცაში უხილავი წყარო აღარ დგას.
+ * ძველი `"*"` ჩანაწერები მიგრაციამ თითოეულ მოდულად გაშალა, ე.ი.
+ * არსებულ როლს წვდომა არ დაუკარგავს.
  */
 class Role extends Model
 {
     /** უფლების ოთხი მოქმედება — ინტერფეისის მატრიცის სვეტები */
     public const ACTIONS = ['view', 'create', 'update', 'delete'];
-
-    /** ყველა მოდულის „ნიღაბი" */
-    public const ANY_MODULE = '*';
 
     /**
      * **ადმინის სექციები (Tasks 1.6)** — მოდულები არ არიან, მაგრამ იმავე
@@ -56,7 +61,7 @@ class Role extends Model
             return true;
         }
 
-        $granted = $this->permissions[$module] ?? $this->permissions[self::ANY_MODULE] ?? [];
+        $granted = $this->permissions[$module] ?? [];
 
         return in_array($action, (array) $granted, true);
     }
@@ -64,10 +69,9 @@ class Role extends Model
     /**
      * **ადმინის სექციაზე წვდომა (Tasks 1.6)** — `/users`, `/roles`, `/requests`.
      *
-     * ⚠️ **`"*"` აქ განზრახ არ მოქმედებს.** „ყველა მოდული" ზუსტად მოდულებს
-     * ნიშნავს; მისი აქ გავრცელება ჩვეულებრივ როლს ადმინის პანელს ჩუმად
-     * გაუხსნიდა — ეს უფლების გაფართოებაა და არა მოხერხებულობა. წვდომა
-     * მხოლოდ ცხადად ჩაწერილი `admin:<resource>`-ით მიიღება.
+     * ⚠️ **წვდომა მხოლოდ ცხადად ჩაწერილი `admin:<resource>`-ით მიიღება.**
+     * არც ერთი მოდულის უფლება — რამდენიც უნდა იყოს — აქ არ ვრცელდება:
+     * ეს უფლების გაფართოებაა და არა მოხერხებულობა.
      */
     public function allowsAdmin(string $resource, string $action): bool
     {
@@ -92,15 +96,12 @@ class Role extends Model
     /** სახელიდან უნიკალური key — ქართულ სახელზეც მუშაობს (slug ცარიელი გამოდის) */
     public static function makeKey(string $name): string
     {
-        $base = Str::slug($name) ?: 'role';
-        $key = $base;
-        $n = 2;
-
-        while (static::where('key', $key)->exists()) {
-            $key = "{$base}-{$n}";
-            $n++;
-        }
-
-        return mb_substr($key, 0, 60);
+        // ⚠️ იგივე ალგორითმი, რაც ლექსიკონებს (`DictionaryKey`, §B3) — ოღონდ
+        // როლი **გლობალურია**, ე.ი. `user_id`-ის ფილტრი აქ არ არსებობს
+        return DictionaryKey::make(
+            $name,
+            fn (string $key) => static::where('key', $key)->exists(),
+            'role',
+        );
     }
 }

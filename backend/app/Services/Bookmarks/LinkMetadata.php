@@ -2,7 +2,7 @@
 
 namespace App\Services\Bookmarks;
 
-use Illuminate\Support\Facades\Http;
+use App\Support\SafeHttp;
 
 /**
  * გვერდის მეტამონაცემი ბუკმარკის ფორმისთვის (Tasks §18 — ბუკმარკები).
@@ -17,6 +17,14 @@ use Illuminate\Support\Facades\Http;
  * კილობაიტშია და მთელი გვერდის ჩამოტვირთვას აზრი არ აქვს — ერთი უზარმაზარი
  * გვერდი `php artisan serve`-ს (ერთი რექვესთი ერთდროულად) დაბლოკავდა.
  *
+ * ⚠️ **ეს ჭერი 2026-09-14-მდე ტყუილი იყო** (აუდიტი §A3): `$res->body()` მთელ
+ * პასუხს **უკვე** ჩამოტვირთავდა და `substr()` მხოლოდ ამის შემდეგ ჭრიდა.
+ * ნამდვილ ჭერს ახლა `SafeHttp` აკეთებს — ნაკადს ლიმიტამდე კითხულობს და ჩერდება.
+ *
+ * ⚠️ **მისამართიც იქვე მოწმდება** (§A2): მომხმარებელს შეეძლო `http://127.0.0.1:3306`
+ * ან cloud-ის `169.254.169.254` მიეთითებინა და სერვერი შიდა ქსელის სკანერად
+ * ექცია. redirect-ებს `SafeHttp` ხელით ყვება, ე.ი. **ყოველი** ნახტომი მოწმდება.
+ *
  * ⚠️ **ჩავარდნა ნორმალური შედეგია.** გვერდი შეიძლება 403-ს აბრუნებდეს ან
  * საერთოდ არ იხსნებოდეს; მაშინ ცარიელი ველები ბრუნდება და user ხელით ავსებს —
  * ეს არაა შეცდომა, ე.ი. endpoint 200-ს აბრუნებს და არა 5xx-ს.
@@ -25,6 +33,8 @@ class LinkMetadata
 {
     /** რამდენი ბაიტი წავიკითხოთ — `<head>` ამაზე ბევრად ადრე მთავრდება */
     private const MAX_BYTES = 200_000;
+
+    public function __construct(private readonly SafeHttp $http) {}
 
     /**
      * @return array{title: ?string, description: ?string, image_url: ?string,
@@ -41,25 +51,25 @@ class LinkMetadata
             'domain' => $this->domain($url),
         ];
 
-        try {
-            $res = Http::timeout(12)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem'), 'allow_redirects' => true])
-                // ბოტად აღქმული რექვესთი ხშირად 403-ს იღებს; ბრაუზერული UA ამას ხსნის
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
-                    'Accept' => 'text/html,application/xhtml+xml',
-                ])
-                ->get($url);
-        } catch (\Throwable) {
+        $res = $this->http->fetch(
+            $url,
+            self::MAX_BYTES,
+            // ბოტად აღქმული რექვესთი ხშირად 403-ს იღებს; ბრაუზერული UA ამას ხსნის
+            [
+                'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
+                'Accept' => 'text/html,application/xhtml+xml',
+            ],
+            timeout: 12,
+        );
+
+        if ($res === null) {
             return $empty;
         }
 
-        if (! $res->successful()) {
-            return $empty;
-        }
-
-        $html = substr($res->body(), 0, self::MAX_BYTES);
+        $html = $res['body'];
+        // ⚠️ ფარდობითი ბმულები **საბოლოო** მისამართს ეყრდნობა და არა საწყისს:
+        // redirect-ის შემდეგ `og:image="/x.png"` სხვა ჰოსტზე იქნებოდა
+        $url = $res['url'];
 
         return [
             'title' => $this->firstOf($html, [

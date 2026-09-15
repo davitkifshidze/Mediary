@@ -326,7 +326,91 @@ class ChatTest extends TestCase
 
         // ⚠️ **რიგი ბაზაში რჩება** — აღდგენა შესაძლებელი უნდა იყოს
         $this->assertSame(1, Message::count());
-        $this->assertSame('self', Message::first()->removed_scope);
+        /* ⚠️ **დამალვა ცალკე ცხრილშია** (აუდიტი 2026-09-14, §B2) და არა
+           `messages.removed_*`-ში: ეს ფაქტი **მაყურებლისაა** და არა
+           შეტყობინებისა — იხ. მომდევნო ტესტი. */
+        $this->assertNull(Message::first()->removed_at);
+        $this->assertDatabaseHas('message_hides', [
+            'message_id' => $message,
+            'user_id' => $this->alice->id,
+        ]);
+    }
+
+    /**
+     * **მთავარი რეგრესია (აუდიტი 2026-09-14, §B2):** ერთი მხარის „ჩემთან
+     * წაშლა" მეორისას **არ** უნდა აუქმებდეს.
+     *
+     * ⚠️ ადრე სამივე ფაქტი ერთ სამეულში ეწერა (`removed_at`/`removed_by`/
+     * `removed_scope`), ე.ი. მეორე დამალვა პირველს **გადააწერდა**: B მალავდა,
+     * მერე A მალავდა, `removed_by` ხდებოდა A და წერილი **B-სთან ისევ ჩნდებოდა**.
+     */
+    public function test_both_sides_can_hide_the_same_message_independently(): void
+    {
+        $id = $this->open($this->alice, 'bob');
+
+        $message = $this->actingAs($this->alice)
+            ->postJson("/api/chat/{$id}", ['body' => 'ორივემ დამალა'])
+            ->json('data.id');
+
+        // ჯერ მიმღები მალავს თავისთვის
+        $this->actingAs($this->bob)
+            ->deleteJson("/api/chat/messages/{$message}", ['scope' => 'self'])
+            ->assertNoContent();
+
+        $this->actingAs($this->alice)->getJson("/api/chat/{$id}")->assertJsonCount(1, 'data');
+        $this->actingAs($this->bob)->getJson("/api/chat/{$id}")->assertJsonCount(0, 'data');
+
+        // მერე ავტორიც — და ეს **არ** უნდა დაუბრუნოს წერილი მიმღებს
+        $this->actingAs($this->alice)
+            ->deleteJson("/api/chat/messages/{$message}", ['scope' => 'self'])
+            ->assertNoContent();
+
+        $this->actingAs($this->alice)->getJson("/api/chat/{$id}")->assertJsonCount(0, 'data');
+        $this->actingAs($this->bob)->getJson("/api/chat/{$id}")->assertJsonCount(0, 'data');
+
+        $this->assertSame(1, Message::count());
+        $this->assertDatabaseCount('message_hides', 2);
+    }
+
+    /** ორჯერ დამალვა იგივე ქმედებაა — უნიკალურ ინდექსზე 500 არ უნდა იყოს */
+    public function test_hiding_the_same_message_twice_is_harmless(): void
+    {
+        $id = $this->open($this->alice, 'bob');
+
+        $message = $this->actingAs($this->alice)
+            ->postJson("/api/chat/{$id}", ['body' => 'ორჯერ'])
+            ->json('data.id');
+
+        foreach ([1, 2] as $_) {
+            $this->actingAs($this->alice)
+                ->deleteJson("/api/chat/messages/{$message}", ['scope' => 'self'])
+                ->assertNoContent();
+        }
+
+        $this->assertDatabaseCount('message_hides', 1);
+    }
+
+    /**
+     * ⚠️ **ჩემთვის დამალული წაუკითხავადაც აღარ ითვლება** — თორემ badge
+     * იმ წერილზე ენთებოდა, რომელიც ეკრანზე საერთოდ აღარ ჩანს.
+     */
+    public function test_a_message_hidden_for_me_is_not_unread(): void
+    {
+        $id = $this->open($this->alice, 'bob');
+
+        $message = $this->actingAs($this->alice)
+            ->postJson("/api/chat/{$id}", ['body' => 'წაუკითხავი'])
+            ->json('data.id');
+
+        $this->actingAs($this->bob)->getJson('/api/chat/unread')->assertJsonPath('unread', 1);
+
+        $this->actingAs($this->bob)
+            ->deleteJson("/api/chat/messages/{$message}", ['scope' => 'self'])
+            ->assertNoContent();
+
+        $this->actingAs($this->bob)->getJson('/api/chat/unread')->assertJsonPath('unread', 0);
+        // ⚠️ ავტორს ეს არ ეხება — მისი საკუთარი წერილი ისედაც არ ითვლებოდა
+        $this->actingAs($this->alice)->getJson('/api/chat/unread')->assertJsonPath('unread', 0);
     }
 
     /** `both` ორივეს მალავს, მაგრამ **მხოლოდ ავტორს** შეუძლია */

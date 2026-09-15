@@ -2,7 +2,7 @@
 
 namespace App\Services\Notes;
 
-use Illuminate\Support\Facades\Http;
+use App\Support\SourceLog;
 
 /**
  * ტელეგრამის მიწოდება (Tasks §13.3) — Telegram Bot API, **სრულიად უფასო**
@@ -26,10 +26,8 @@ class TelegramNotifier
     public function send(string $token, string $chatId, string $text): ?string
     {
         try {
-            $response = Http::asJson()
-                // ⚠️ Windows-ის PHP cURL-ს CA bundle არ აქვს — პროექტის საერთო წესი
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->timeout(self::TIMEOUT)
+            $response = SourceLog::request(self::TIMEOUT)
+                ->asJson()
                 ->post(sprintf(self::ENDPOINT, $token), [
                     'chat_id' => $chatId,
                     'text' => $text,
@@ -41,8 +39,15 @@ class TelegramNotifier
             }
 
             // ტელეგრამი მიზეზს `description`-ში წერს („chat not found"…)
-            return (string) ($response->json('description') ?? "http_{$response->status()}");
+            $reason = (string) ($response->json('description') ?? "http_{$response->status()}");
+            /* ⚠️ მიზეზი **ორივეგან** ინახება: `note_notifications.error`-ში
+               (მომხმარებელი ხედავს) და წყაროების ლოგში (დიაგნოსტიკა). */
+            SourceLog::failed('telegram', $reason, ['status' => $response->status()]);
+
+            return $reason;
         } catch (\Throwable $e) {
+            SourceLog::threw('telegram', $e);
+
             return $e->getMessage();
         }
     }

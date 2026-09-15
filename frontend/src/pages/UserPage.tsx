@@ -289,7 +289,7 @@ export function UserPage() {
           {user.profile_visibility === 'public' && user.username && (
             <Link
               to={`/u/${user.username}`}
-              className="inline-flex h-10 items-center gap-1.5 text-sm text-primary hover:underline"
+              className="inline-flex h-10 items-center gap-1.5 text-sm text-primary hover:text-primary/70"
             >
               <Globe className="size-4" />
               /u/{user.username}
@@ -298,7 +298,7 @@ export function UserPage() {
 
           <Link
             to={user.role_id ? `/roles/${user.role_id}` : '/roles'}
-            className="inline-flex h-10 items-center gap-1.5 text-sm text-primary hover:underline"
+            className="inline-flex h-10 items-center gap-1.5 text-sm text-primary hover:text-primary/70"
           >
             <ShieldCheck className="size-4" />
             {t('roles.openRole')}

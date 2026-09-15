@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { fieldErrors, errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { LanguageDropdown } from '@/components/LanguageDropdown'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -77,12 +78,12 @@ export function LoginPage() {
 
             <div>
               <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="current-password"
+               
                 value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                onChange={(value) => setForm((f) => ({ ...f, password: value }))}
               />
               {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
             </div>
@@ -101,7 +102,7 @@ export function LoginPage() {
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary hover:underline">
+            <Link to="/register" className="text-primary hover:text-primary/70">
               {t('auth.register')}
             </Link>
           </p>

@@ -68,7 +68,7 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="min-w-0 flex-1 truncate text-primary hover:underline"
+                    className="min-w-0 flex-1 truncate text-primary hover:text-primary/70"
                   >
                     {link.label || link.url}
                   </a>

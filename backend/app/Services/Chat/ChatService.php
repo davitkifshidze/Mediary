@@ -4,6 +4,7 @@ namespace App\Services\Chat;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\MessageHide;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\Storage\StorageMeter;
@@ -149,20 +150,37 @@ class ChatService
      * ⚠️ **ფაილი დისკზე რჩება და კვოტიდან არ თავისუფლდება.** ის აღდგენის
      * ნაწილია; ადგილის გასათავისუფლებლად ცალკე, ცხადი მოქმედება არსებობს
      * (`deleteAttachment()`), რომელიც სწორედ ფაილს შლის.
+     *
+     * ⚠️ **ორი სკოუპი ორ სხვადასხვა ადგილას იწერება** (აუდიტი 2026-09-14, §B2)
+     * და ეს არ არის დეტალი: `both` შეტყობინების ფაქტია (ავტორმა წაშალა
+     * ყველასთვის), `self` კი **მაყურებლის**. ერთ საერთო სამეულში —
+     * `removed_at`/`removed_by` — ორივე რომ ეწერა, **მეორე მონაწილის
+     * დამალვა პირველისას აუქმებდა**: B მალავდა, მერე A მალავდა, `removed_by`
+     * გადაეწერებოდა და წერილი B-სთან ისევ ჩნდებოდა.
      */
     public function deleteMessage(Message $message, User $me, string $scope): Message
     {
-        if ($scope === 'both' && $message->user_id !== $me->id) {
-            $this->fail('not_the_author', 403);
+        if ($scope === 'both') {
+            if ($message->user_id !== $me->id) {
+                $this->fail('not_the_author', 403);
+            }
+
+            $message->forceFill([
+                'removed_at' => now(),
+                'removed_by' => $me->id,
+            ])->save();
+
+            return $message;
         }
 
-        $message->forceFill([
-            'removed_at' => now(),
-            'removed_by' => $me->id,
-            'removed_scope' => $scope,
-        ])->save();
+        /* ⚠️ `firstOrCreate` და არა `create`: ორჯერ დამალვა ერთი და იგივე
+           ქმედებაა და უნიკალურ ინდექსზე 500-ით არ უნდა დასრულდეს. */
+        MessageHide::firstOrCreate(
+            ['message_id' => $message->getKey(), 'user_id' => $me->id],
+            ['hidden_at' => now()],
+        );
 
-        return $message;
+        return $message->load('hides');
     }
 
     /** წაკითხულად ნიშვნა — მრიცხველი ამაზე დგას */
@@ -188,13 +206,15 @@ class ChatService
             })
             ->where('messages.user_id', '!=', $user->id)
             // §4.6 — წაშლილი წერილი ბაზაში რჩება, მაგრამ წაუკითხავად აღარ ითვლება
-            ->where(function ($q) use ($user) {
-                $q->whereNull('messages.removed_at')
-                    ->orWhere(function ($s) use ($user) {
-                        $s->where('messages.removed_scope', 'self')
-                            ->where('messages.removed_by', '!=', $user->id);
-                    });
-            })
+            ->whereNull('messages.removed_at')
+            /* ⚠️ **ჩემთვის დამალულიც წაუკითხავი აღარ არის** (§B2). `NOT EXISTS`
+               და არა `leftJoin`: join-ი `COUNT(*)`-ს გააორმაგებდა იმ დღეს,
+               როცა ერთ წერილს ორი დამალვა ექნება. */
+            ->whereNotExists(fn ($q) => $q
+                ->selectRaw('1')
+                ->from('message_hides')
+                ->whereColumn('message_hides.message_id', 'messages.id')
+                ->where('message_hides.user_id', $user->id))
             ->where(function ($q) {
                 $q->whereNull('conversation_user.last_read_at')
                     ->orWhereColumn('messages.created_at', '>', 'conversation_user.last_read_at');

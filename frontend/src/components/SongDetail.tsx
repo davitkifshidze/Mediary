@@ -258,7 +258,7 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
                     <button
                       type="button"
                       onClick={() => viewer.open(f)}
-                      className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm hover:underline"
+                      className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm hover:text-primary"
                       title={t('files.viewerOpen')}
                     >
                       {f.original_name}

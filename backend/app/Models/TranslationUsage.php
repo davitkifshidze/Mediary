@@ -57,19 +57,29 @@ class TranslationUsage extends Model
         return CarbonImmutable::now(self::QUOTA_TIMEZONE)->startOfDay()->utc();
     }
 
-    /** დღეს დახარჯული გამოძახებები */
-    public static function usedToday(string $provider = self::PROVIDER_GEMINI): int
+    /**
+     * დღეს დახარჯული გამოძახებები.
+     *
+     * ⚠️ **`$userId` სამ ფაქტს არჩევს (Tasks §21.4)**: `null` = მთელი
+     * ინსტალაცია (საერთო `.env` გასაღები — ზუსტად ის, რასაც ზემოთ
+     * დოკბლოკი აღწერს), რიცხვი = მხოლოდ ამ მომხმარებლის ხარჯი (მას
+     * თავისი გასაღები აქვს, ე.ი. სხვისი თარგმანი მის კვოტას არ ეხება).
+     * არგუმენტის უგულებელყოფა „თავისი ლიმიტის" დაპირებას ტყუილად აქცევს.
+     */
+    public static function usedToday(string $provider = self::PROVIDER_GEMINI, ?int $userId = null): int
     {
         return static::where('provider', $provider)
             ->where('created_at', '>=', self::dayStart())
+            ->when($userId !== null, fn ($q) => $q->where('user_id', $userId))
             ->count();
     }
 
     /** ბოლო წუთში გასული გამოძახებები — უფასო დონეზე RPM-იც ლიმიტია */
-    public static function usedThisMinute(string $provider = self::PROVIDER_GEMINI): int
+    public static function usedThisMinute(string $provider = self::PROVIDER_GEMINI, ?int $userId = null): int
     {
         return static::where('provider', $provider)
             ->where('created_at', '>=', CarbonImmutable::now()->subMinute())
+            ->when($userId !== null, fn ($q) => $q->where('user_id', $userId))
             ->count();
     }
 }

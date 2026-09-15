@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\User;
-use App\Models\VideoType;
-
-class VideoTypePolicy
-{
-    public function view(User $user, VideoType $type): bool
-    {
-        return $type->user_id === $user->id;
-    }
-
-    public function update(User $user, VideoType $type): bool
-    {
-        return $this->view($user, $type);
-    }
-
-    public function delete(User $user, VideoType $type): bool
-    {
-        return $this->view($user, $type);
-    }
-}
+/**
+ * VideoType-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\VideoType` → `App\Policies\VideoTypePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class VideoTypePolicy extends OwnedRecordPolicy {}

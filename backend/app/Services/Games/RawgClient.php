@@ -2,7 +2,9 @@
 
 namespace App\Services\Games;
 
-use Illuminate\Support\Facades\Http;
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use Throwable;
 
 /**
@@ -52,7 +54,7 @@ class RawgClient
 
     public function configured(): bool
     {
-        return (bool) config('services.rawg.key');
+        return (bool) CredentialStore::value(CredentialProviders::RAWG);
     }
 
     /** ბოლო რექვესთი **დაბლოკილი** იყო და არა უბრალოდ უშედეგო */
@@ -137,15 +139,21 @@ class RawgClient
         }
 
         try {
-            $res = Http::timeout(20)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->get($url);
-        } catch (Throwable) {
-            return null;
+            $res = SourceLog::request(20)->get($url);
+        } catch (Throwable $e) {
+            return SourceLog::threw('rawg', $e, ['url' => $url]);
         }
 
-        return $res->successful() && strlen($res->body()) > 1000 ? $res->body() : null;
+        if (! $res->successful()) {
+            return SourceLog::status('rawg', $res->status(), $res->body(), ['url' => $url]);
+        }
+
+        /* ⚠️ **1000 ბაიტზე მცირე პასუხი ყდად არ ითვლება** — RAWG-ის CDN
+           ხანდახან შეცდომის პატარა სურათს აბრუნებს 200-ით. ესეც ჩავარდნაა
+           და ლოგში უნდა ჩანდეს, თორემ „ყდა რატომ არ ჩამოვიდა" უპასუხოა. */
+        return strlen($res->body()) > 1000
+            ? $res->body()
+            : SourceLog::failed('rawg', 'cover too small', ['url' => $url, 'bytes' => strlen($res->body())]);
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -160,17 +168,18 @@ class RawgClient
         }
 
         try {
-            $res = Http::timeout(20)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->get(self::BASE.$path, $query + ['key' => config('services.rawg.key')]);
+            $res = SourceLog::request(20)
+                ->get(self::BASE.$path, $query + ['key' => CredentialStore::value(CredentialProviders::RAWG)]);
 
             $this->lastStatus = $res->status();
 
-            return $res->successful() ? $res->json() : null;
-        } catch (Throwable) {
+            return $res->successful()
+                ? $res->json()
+                : SourceLog::status('rawg', $res->status(), $res->body(), ['path' => $path]);
+        } catch (Throwable $e) {
             $this->lastStatus = 0;
 
-            return null;
+            return SourceLog::threw('rawg', $e, ['path' => $path]);
         }
     }
 

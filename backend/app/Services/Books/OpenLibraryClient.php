@@ -2,8 +2,8 @@
 
 namespace App\Services\Books;
 
+use App\Support\SourceLog;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -150,23 +150,25 @@ class OpenLibraryClient
     {
         try {
             $res = $this->http()->get($url, $query);
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             $this->failed = true;
 
-            return null;
+            return SourceLog::threw('openlibrary', $e, ['url' => $url]);
         }
 
         // 5xx-იც წყაროს ჩავარდნაა და არა „ასეთი წიგნი არ არსებობს"
         $this->failed = $res->serverError();
+
+        if (! $res->successful()) {
+            SourceLog::status('openlibrary', $res->status(), $res->body(), ['url' => $url]);
+        }
 
         return $res;
     }
 
     private function http()
     {
-        return Http::timeout(20)
-            // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-            ->withOptions(['verify' => storage_path('cacert.pem')])
+        return SourceLog::request(20)
             ->withHeaders(['User-Agent' => 'Mediary/1.0 (personal library)']);
     }
 

@@ -119,7 +119,9 @@ class ChatController extends Controller
             ->visibleTo($me->id)
             ->with('author:id,name,username,avatar_path')
             ->orderByDesc('id')
-            ->paginate(min((int) $request->integer('per_page', 50), 100));
+            // ⚠️ `max(…, 1)` — უარყოფითს `limit()` ჩუმად უგულებელყოფს და
+            // მთელი მიმოწერა ერთ პასუხში მოვიდოდა (§B4)
+            ->paginate(min(max((int) $request->integer('per_page', 50), 1), 100));
 
         $other = $conversation->otherThan($me->id);
 

@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasDictionaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 /**
  * ვიდეოს ტიპი (Tasks 5.1) — per-user მართვადი ლექსიკონი.
@@ -16,6 +16,9 @@ use Illuminate\Support\Str;
 class VideoType extends Model
 {
     use BelongsToUser;
+
+    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (5.1) */
     public const DEFAULTS = [
@@ -28,6 +31,12 @@ class VideoType extends Model
     protected $casts = [
         'sort_order' => 'integer',
     ];
+
+    /** უსახელო გასაღების ნაცვალი — იხ. `HasDictionaryKey` */
+    protected static function keyFallback(): string
+    {
+        return 'type';
+    }
 
     public function videos(): HasMany
     {
@@ -51,20 +60,5 @@ class VideoType extends Model
                 'sort_order' => $i + 1,
             ]);
         }
-    }
-
-    /** სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს */
-    public static function makeKey(int $userId, string $name): string
-    {
-        $base = Str::slug($name) ?: 'type';
-        $key = $base;
-        $n = 2;
-
-        while (static::withoutGlobalScope('owner')->where('user_id', $userId)->where('key', $key)->exists()) {
-            $key = "{$base}-{$n}";
-            $n++;
-        }
-
-        return mb_substr($key, 0, 60);
     }
 }

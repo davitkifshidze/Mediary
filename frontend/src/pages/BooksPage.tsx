@@ -9,7 +9,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  Pencil,
+  SquarePen,
   Plus,
   Quote,
   Search,
@@ -51,6 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -314,7 +315,7 @@ export function BooksPage() {
                   <div className="min-w-0 flex-1">
                     <button
                       onClick={() => setOpened(book)}
-                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:underline"
+                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
                       title={title(book)}
                     >
                       {title(book)}
@@ -377,18 +378,13 @@ export function BooksPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    <span
-                      className={cn(
-                        'mr-1 rounded-[5px] px-1.5 py-0.5 text-xs',
-                        STATUS_TONE[book.status] ?? 'bg-secondary',
-                      )}
-                    >
+                    <Badge className={cn('mr-1', STATUS_TONE[book.status] ?? 'bg-secondary')}>
                       {t(`books.statuses.${book.status}`)}
-                    </span>
+                    </Badge>
                     {book.rating != null && (
-                      <span className="mr-1 rounded-[5px] bg-secondary px-1.5 py-0.5 text-xs tabular-nums">
+                      <Badge className="mr-1 bg-secondary tabular-nums">
                         {book.rating}/{BOOK_MAX_RATING}
-                      </span>
+                      </Badge>
                     )}
                     <button
                       onClick={() => favorite.mutate(book.id)}
@@ -413,7 +409,7 @@ export function BooksPage() {
                       </a>
                     )}
                     <Button variant="ghost" size="sm" onClick={() => setEditing(book)}>
-                      <Pencil className="size-3.5" />
+                      <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>
                     <Button

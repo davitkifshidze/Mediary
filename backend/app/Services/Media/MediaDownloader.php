@@ -2,9 +2,9 @@
 
 namespace App\Services\Media;
 
+use App\Support\SourceLog;
 use App\Support\StorageFolder;
 use App\Support\UserSettings;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class MediaDownloader
@@ -44,11 +44,14 @@ class MediaDownloader
             return null;
         }
 
-        $res = Http::timeout(20)
-            ->withOptions(['verify' => storage_path('cacert.pem')])
-            ->get("{$this->img}/{$size}{$tmdbPath}");
+        $res = SourceLog::request(20)->get("{$this->img}/{$size}{$tmdbPath}");
 
-        return $res->successful() ? $res->body() : null;
+        /* ⚠️ **პოსტერის ჩამოუსვლელობა ჩუმი იყო** (აუდიტი §D): ჩანაწერი
+           ისედაც იქმნება, ე.ი. „რატომ არ ჩამოვიდა სურათი" პასუხგაუცემელი
+           რჩებოდა — არადა მიზეზი ხშირად ტრივიალურია (404 ან rate limit). */
+        return $res->successful()
+            ? $res->body()
+            : SourceLog::status('tmdb', $res->status(), '', ['image' => $tmdbPath, 'size' => $size]);
     }
 
     private function download(?string $tmdbPath, string $size, string $dest): ?string
@@ -59,7 +62,7 @@ class MediaDownloader
             return null;
         }
 
-        Storage::disk('public')->put($dest, $body);
+        Storage::disk(StorageFolder::diskFor($dest))->put($dest, $body);
 
         return $dest;
     }

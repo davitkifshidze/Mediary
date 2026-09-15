@@ -2,7 +2,7 @@
 
 namespace App\Services\BoardGames;
 
-use Illuminate\Support\Facades\Http;
+use App\Support\SourceLog;
 use SimpleXMLElement;
 use Throwable;
 
@@ -102,15 +102,18 @@ class BggClient
         }
 
         try {
-            $res = Http::timeout(20)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->get($url);
-        } catch (Throwable) {
-            return null;
+            $res = SourceLog::request(20)->get($url);
+        } catch (Throwable $e) {
+            return SourceLog::threw('bgg', $e, ['url' => $url]);
         }
 
-        return $res->successful() && strlen($res->body()) > 1000 ? $res->body() : null;
+        if (! $res->successful()) {
+            return SourceLog::status('bgg', $res->status(), $res->body(), ['url' => $url]);
+        }
+
+        return strlen($res->body()) > 1000
+            ? $res->body()
+            : SourceLog::failed('bgg', 'image too small', ['url' => $url, 'bytes' => strlen($res->body())]);
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -144,15 +147,14 @@ class BggClient
     private function get(string $path, array $query): ?SimpleXMLElement
     {
         try {
-            $res = Http::timeout(25)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
+            $res = SourceLog::request(25)
                 ->withHeaders(['User-Agent' => 'Mediary/1.0 (personal library)'])
                 ->get(self::BASE.$path, $query);
 
             $this->lastStatus = $res->status();
 
             if (! $res->successful()) {
-                return null;
+                return SourceLog::status('bgg', $res->status(), $res->body(), ['path' => $path]);
             }
 
             // ⚠️ libxml-ის შეცდომები გლობალურია — ვთიშავთ, რომ warning არ გაჟონოს
@@ -161,11 +163,14 @@ class BggClient
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
 
-            return $xml ?: null;
-        } catch (Throwable) {
+            /* ⚠️ **გატეხილი XML ცალკე მიზეზია.** BGG 200-ითაც აბრუნებს
+               ცარიელ ან დაუსრულებელ დოკუმენტს (რიგში მდგარი მოთხოვნა), და
+               ეს „თამაში ვერ ვიპოვე"-სგან უნდა გაირჩეს. */
+            return $xml ?: SourceLog::failed('bgg', 'unparseable XML', ['path' => $path]);
+        } catch (Throwable $e) {
             $this->lastStatus = 0;
 
-            return null;
+            return SourceLog::threw('bgg', $e, ['path' => $path]);
         }
     }
 

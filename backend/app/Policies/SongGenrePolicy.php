@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\SongGenre;
-use App\Models\User;
-
-class SongGenrePolicy
-{
-    public function view(User $user, SongGenre $genre): bool
-    {
-        return $genre->user_id === $user->id;
-    }
-
-    public function update(User $user, SongGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-
-    public function delete(User $user, SongGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-}
+/**
+ * SongGenre-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\SongGenre` → `App\Policies\SongGenrePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class SongGenrePolicy extends OwnedRecordPolicy {}

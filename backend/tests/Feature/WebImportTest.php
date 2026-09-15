@@ -20,6 +20,13 @@ use Tests\TestCase;
  * TMDB-ის საზიარო ფაილი), ესკიზზე გადასვლა მკვდარ `original`-ზე, დუბლის
  * მოჭრა და 403-ის HTML-ის „ფოტოდ" შენახვის აკრძალვა.
  */
+/*
+ * ⚠️ **ჰოსტი ლიტერატურული IP-ია და არა `example.com`** (აუდიტი 2026-09-14):
+ * ჩამოტვირთვა ახლა `SafeHttp`-ზე გადის, რომელიც ჰოსტის სახელს **ნამდვილად**
+ * ხსნის (DNS) — ე.ი. სახელზე დაწერილი ტესტი ქსელზე გახდებოდა დამოკიდებული.
+ * `203.0.113.10` RFC 5737-ის საბუთების დიაპაზონია: ფილტრი მას საჯაროდ
+ * თვლის და DNS საერთოდ არ ერევა.
+ */
 class WebImportTest extends TestCase
 {
     use RefreshDatabase;
@@ -35,7 +42,7 @@ class WebImportTest extends TestCase
         $this->user = User::create([
             'name' => 'imp',
             'username' => 'imp',
-            'email' => 'imp@example.com',
+            'email' => 'imp@203.0.113.10',
             'password' => 'password',
         ]);
         $this->user->modules()->sync(Module::whereIn('key', ['gallery', 'movie'])->pluck('id')->all());
@@ -56,7 +63,7 @@ class WebImportTest extends TestCase
     /** ⚠️ ჩამოტვირთული ფოტო **კვოტას ეხება** — TMDB-ის საზიარო ფაილისგან განსხვავებით */
     public function test_an_imported_photo_counts_against_the_quota(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $before = $this->user->fresh()->storage_used_bytes;
 
@@ -64,9 +71,9 @@ class WebImportTest extends TestCase
             'target' => 'cast_member',
             'id' => $this->actor()->id,
             'images' => [[
-                'original' => 'https://example.com/keanu.jpg',
-                'thumbnail' => 'https://example.com/keanu-t.jpg',
-                'link' => 'https://example.com/page',
+                'original' => 'https://203.0.113.10/keanu.jpg',
+                'thumbnail' => 'https://203.0.113.10/keanu-t.jpg',
+                'link' => 'https://203.0.113.10/page',
                 'title' => 'Keanu',
                 'engine' => 'google_images_light',
                 'width' => 800,
@@ -80,8 +87,8 @@ class WebImportTest extends TestCase
         $this->assertSame('actor', $image->category);
         // §7.6.5 — წყარო engine-იანია, რომ მერე გაფილტვრა შეიძლებოდეს
         $this->assertSame('serpapi:google_images_light', $image->source);
-        $this->assertSame('https://example.com/keanu.jpg', $image->remote_path);
-        $this->assertSame('https://example.com/page', $image->source_url);
+        $this->assertSame('https://203.0.113.10/keanu.jpg', $image->remote_path);
+        $this->assertSame('https://203.0.113.10/page', $image->source_url);
         $this->assertFalse((bool) $image->is_thumbnail);
         $this->assertSame(800, $image->width);
 
@@ -96,16 +103,16 @@ class WebImportTest extends TestCase
     public function test_a_dead_original_falls_back_to_the_thumbnail_and_says_so(): void
     {
         Http::fake([
-            'example.com/big.jpg' => Http::response('nope', 403),
-            'example.com/small.jpg' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg']),
+            '203.0.113.10/big.jpg' => Http::response('nope', 403),
+            '203.0.113.10/small.jpg' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
         $res = $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'cast_member',
             'id' => $this->actor()->id,
             'images' => [[
-                'original' => 'https://example.com/big.jpg',
-                'thumbnail' => 'https://example.com/small.jpg',
+                'original' => 'https://203.0.113.10/big.jpg',
+                'thumbnail' => 'https://203.0.113.10/small.jpg',
                 'engine' => 'yandex_images',
                 'width' => 1200,
                 'height' => 900,
@@ -118,7 +125,7 @@ class WebImportTest extends TestCase
         $image = GalleryImage::withoutGlobalScope('owner')->firstOrFail();
         $this->assertTrue((bool) $image->is_thumbnail);
         // ვინაობა ისევ ორიგინალია — დუბლის გასაღები ის არის
-        $this->assertSame('https://example.com/big.jpg', $image->remote_path);
+        $this->assertSame('https://203.0.113.10/big.jpg', $image->remote_path);
         // ⚠️ ზომები ორიგინალისაა და ესკიზს არ ეხება → არ ვწერთ ცრუ რიცხვს
         $this->assertNull($image->width);
     }
@@ -126,12 +133,12 @@ class WebImportTest extends TestCase
     /** ⚠️ 403-ის HTML „ფოტოდ" არ ინახება — `content-type` წყვეტს */
     public function test_a_non_image_response_is_never_stored(): void
     {
-        Http::fake(['example.com/*' => Http::response('<html>403</html>', 200, ['Content-Type' => 'text/html'])]);
+        Http::fake(['203.0.113.10/*' => Http::response('<html>403</html>', 200, ['Content-Type' => 'text/html'])]);
 
         $res = $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'cast_member',
             'id' => $this->actor()->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light']],
         ])->assertOk();
 
         $this->assertSame(0, $res->json('added'));
@@ -142,13 +149,13 @@ class WebImportTest extends TestCase
     /** ხელახლა გაშვება იმავე ფოტოს არ ამატებს */
     public function test_the_same_original_is_not_imported_twice(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $actor = $this->actor();
         $payload = [
             'target' => 'cast_member',
             'id' => $actor->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light']],
         ];
 
         $this->actingAs($this->user)->postJson('/api/web/import', $payload)->assertOk();
@@ -166,7 +173,7 @@ class WebImportTest extends TestCase
      */
     public function test_running_out_of_quota_returns_413_and_keeps_what_was_saved(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         // ერთ ფოტოზე ოდნავ მეტი ადგილი — მეორეზე ამოიწურება
         $this->user->forceFill([
@@ -178,8 +185,8 @@ class WebImportTest extends TestCase
             'target' => 'cast_member',
             'id' => $this->actor()->id,
             'images' => [
-                ['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light'],
-                ['original' => 'https://example.com/b.jpg', 'engine' => 'google_images_light'],
+                ['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light'],
+                ['original' => 'https://203.0.113.10/b.jpg', 'engine' => 'google_images_light'],
             ],
         ])->assertStatus(413);
 
@@ -191,12 +198,12 @@ class WebImportTest extends TestCase
     /** ფოტოს წაშლა კვოტას ათავისუფლებს (`StoredFile`-ის hook) */
     public function test_deleting_an_imported_photo_releases_the_quota(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'cast_member',
             'id' => $this->actor()->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light']],
         ])->assertOk();
 
         $image = GalleryImage::withoutGlobalScope('owner')->firstOrFail();
@@ -212,18 +219,18 @@ class WebImportTest extends TestCase
     /** სხვისი ჩანაწერი — 404, არა 403 („არსებობს" თვითონ ინფორმაციაა) */
     public function test_another_users_record_is_a_404(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $other = User::create([
             'name' => 'other', 'username' => 'other',
-            'email' => 'other@example.com', 'password' => 'password',
+            'email' => 'other@203.0.113.10', 'password' => 'password',
         ]);
         $movie = Movie::withoutGlobalScope('owner')->create(['user_id' => $other->id, 'slug' => 'x', 'year' => 2020]);
 
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'movie',
             'id' => $movie->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light']],
         ])->assertStatus(404);
     }
 
@@ -237,7 +244,7 @@ class WebImportTest extends TestCase
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'movie',
             'id' => $movie->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'google_images_light']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'google_images_light']],
         ])->assertStatus(403);
     }
 
@@ -247,7 +254,7 @@ class WebImportTest extends TestCase
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'bookmark',
             'id' => 1,
-            'images' => [['original' => 'https://example.com/a.jpg']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg']],
         ])->assertStatus(422);
     }
 
@@ -258,12 +265,12 @@ class WebImportTest extends TestCase
      */
     public function test_the_source_label_is_ours_not_the_clients(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'cast_member',
             'id' => $this->actor()->id,
-            'images' => [['original' => 'https://example.com/a.jpg', 'engine' => 'evil_engine']],
+            'images' => [['original' => 'https://203.0.113.10/a.jpg', 'engine' => 'evil_engine']],
         ])->assertOk();
 
         $this->assertSame('web', GalleryImage::withoutGlobalScope('owner')->firstOrFail()->source);
@@ -285,7 +292,7 @@ class WebImportTest extends TestCase
      */
     public function test_import_distributes_photos_between_actors_and_falls_back_to_the_record(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 550, 'year' => 1999]);
         $keanu = $this->actor();
@@ -298,13 +305,13 @@ class WebImportTest extends TestCase
             'distribute' => [$keanu->id, $helena->id],
             'images' => [
                 // 1. სათაურში გვარი წერია → Keanu
-                ['original' => 'https://example.com/1.jpg', 'title' => 'Keanu Reeves on set'],
+                ['original' => 'https://203.0.113.10/1.jpg', 'title' => 'Keanu Reeves on set'],
                 // 2. ქართული სახელი — იმავე წესით უნდა დაიჭიროს
-                ['original' => 'https://example.com/2.jpg', 'title' => 'ჰელენა ბონემ კარტერი პრემიერაზე'],
+                ['original' => 'https://203.0.113.10/2.jpg', 'title' => 'ჰელენა ბონემ კარტერი პრემიერაზე'],
                 // 3. ბმულში გვარი — სათაური ცარიელია
-                ['original' => 'https://example.com/3.jpg', 'link' => 'https://example.com/reeves/photo'],
+                ['original' => 'https://203.0.113.10/3.jpg', 'link' => 'https://203.0.113.10/reeves/photo'],
                 // 4. ვერაფერი გაირკვა → ფილმზე
-                ['original' => 'https://example.com/4.jpg', 'title' => 'Fight Club still'],
+                ['original' => 'https://203.0.113.10/4.jpg', 'title' => 'Fight Club still'],
             ],
         ])->assertOk();
 
@@ -325,7 +332,7 @@ class WebImportTest extends TestCase
     /** ხელით მითითებული სამიზნე ავტომატიკას აჯობებს — ვარაუდი განაჩენი არაა */
     public function test_a_manual_target_overrides_the_name_guess(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 550, 'year' => 1999]);
         $keanu = $this->actor();
@@ -337,7 +344,7 @@ class WebImportTest extends TestCase
             'distribute' => [$keanu->id, $helena->id],
             'images' => [
                 // სათაური Keanu-ს ეძახის, ხელით კი Helena-ზეა მიბმული
-                ['original' => 'https://example.com/1.jpg', 'title' => 'Keanu Reeves', 'target_id' => $helena->id],
+                ['original' => 'https://203.0.113.10/1.jpg', 'title' => 'Keanu Reeves', 'target_id' => $helena->id],
             ],
         ])->assertOk();
 
@@ -348,7 +355,7 @@ class WebImportTest extends TestCase
     /** განაწილების გარეშე ყველაფერი ჩანაწერზე ჯდება — ძველი ქცევა უცვლელია */
     public function test_without_distribution_everything_lands_on_the_record(): void
     {
-        Http::fake(['example.com/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
+        Http::fake(['203.0.113.10/*' => Http::response($this->jpeg(), 200, ['Content-Type' => 'image/jpeg'])]);
 
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 550, 'year' => 1999]);
         $this->actor();
@@ -356,7 +363,7 @@ class WebImportTest extends TestCase
         $this->actingAs($this->user)->postJson('/api/web/import', [
             'target' => 'movie',
             'id' => $movie->id,
-            'images' => [['original' => 'https://example.com/1.jpg', 'title' => 'Keanu Reeves']],
+            'images' => [['original' => 'https://203.0.113.10/1.jpg', 'title' => 'Keanu Reeves']],
         ])->assertOk()->assertJsonPath('added', 1);
 
         $this->assertSame(1, $movie->galleryImages()->withoutGlobalScope('owner')->count());

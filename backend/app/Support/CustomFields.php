@@ -13,7 +13,6 @@ use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 /**
  * **მორგებული ველების რუკა (Tasks §6, ფაზა 3).**
@@ -164,15 +163,16 @@ final class CustomFields
      */
     public static function makeKey(string $name, array $taken): string
     {
-        $base = Str::slug($name, '_') ?: 'field';
-        $key = mb_substr($base, 0, 50);
-        $n = 2;
-
-        while (in_array($key, $taken, true)) {
-            $key = mb_substr($base, 0, 46)."_{$n}";
-            $n++;
-        }
-
-        return $key;
+        /* ⚠️ **ეს იყო ერთადერთი სწორი ასლი** ათიდან (აუდიტი §B3): ის ჯერ
+           ჭრიდა და მერე ამოწმებდა. ახლა ალგორითმი საერთოა, ხოლო აქაური
+           განსხვავებები — `_` გამყოფი, 50 სიმბოლო და მზა სია `$taken` —
+           პარამეტრებად გადმოვიდა. */
+        return DictionaryKey::make(
+            $name,
+            fn (string $key) => in_array($key, $taken, true),
+            'field',
+            max: 50,
+            separator: '_',
+        );
     }
 }

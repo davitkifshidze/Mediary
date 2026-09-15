@@ -10,7 +10,7 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
-  Pencil,
+  SquarePen,
   Plus,
   Trash2,
 } from 'lucide-react'
@@ -80,7 +80,7 @@ export function DictionariesPage() {
   if (!available.length) {
     return (
       <PageContainer>
-        <PageHeader title={t('dictionaries.title')} />
+        <PageHeader tool="dictionaries" title={t('dictionaries.title')} />
         <p className="text-sm text-muted-foreground">
           {loading ? t('common.loading') : t('dictionaries.noModules')}
         </p>
@@ -145,6 +145,7 @@ function DictionaryIndex({ available, lang }: { available: DictionaryDef[]; lang
       {/* ⚠️ ორი გასაღები ერთდება იმიტომ, რომ **პირველი წინადადება საიდბარშიც
           წერია** (ეტაპი 9) — ერთი წყარო, თორემ ორი ტექსტი გაშორდებოდა */}
       <PageHeader
+        tool="dictionaries"
         title={t('dictionaries.title')}
         subtitle={`${t('dictionaries.navHint')} ${t('dictionaries.indexAction')}`}
       />
@@ -363,6 +364,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
   return (
     <>
       <PageHeader
+        tool="dictionaries"
         module={def.module}
         title={t(def.titleKey)}
         subtitle={t(domain ? 'dictionaries.subtitleStatuses' : 'dictionaries.subtitle')}
@@ -483,7 +485,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                   {item && (
                     <>
                       <Button variant="ghost" size="sm" onClick={() => setEditing(item)}>
-                        <Pencil className="size-3.5" />
+                        <SquarePen className="size-3.5" />
                         {t('actions.edit')}
                       </Button>
                       <Button

@@ -98,7 +98,7 @@ export function PublicProfileCard() {
           <div className="min-w-0 flex-1 text-sm font-medium">{t('publicProfile.link')}</div>
           <Link
             to={`/u/${user.username}`}
-            className="inline-flex shrink-0 items-center gap-1.5 text-sm text-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1.5 text-sm text-primary hover:text-primary/70"
           >
             /u/{user.username}
             <ExternalLink className="size-3.5" />

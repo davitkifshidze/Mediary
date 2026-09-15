@@ -2,25 +2,56 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Lock, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { Lock, Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
 import { createRole, deleteRole, fetchRoles, type Role } from '@/api/account'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
+import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
+import { roleIcon, roleScope, roleTone } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { cn } from '@/lib/utils'
 
 /* ============================================================
-   როლების სექცია (Tasks 1.6).
+   როლების სექცია (Tasks 1.6 → UI/UX 2026-09-15).
 
    უფლება = **მოდულის შიდა** CRUD (გადაწყდა 19.8) და იმართება როლის შიდა
-   გვერდზე (`/roles/{id}`). აქ მხოლოდ სია, დამატება და წაშლაა.
+   გვერდზე (`/roles/{id}`). აქ სია, დამატება და წაშლაა.
    მოდულზე **წვდომა** ცალკე მექანიზმია (`/modules`).
+
+   **რა შეიცვალა და რატომ** (შენი მითითება: „სრულიად შემიცვალე და
+   განმიახლე როლების UI/UX").
+
+   ⚠️ **სია ბარათებად გადავიდა, რადგან მთავარი ინფორმაცია ტექსტში იყო
+   ჩამარხული**: ერთი ნაცრისფერი სტრიქონი წერდა „`editor` · 3 მოდული ·
+   2 მომხმარებელი", ე.ი. „რომელი როლი რამდენად ძლიერია" მხოლოდ კითხვით
+   ირჩეოდა. ახლა ამას **ფერი და ხატულა** პასუხობს (`lib/roles.ts`) — იგივე
+   ენა, რომლითაც აპი მოდულებზე ლაპარაკობს.
+
+   ⚠️ **„ადმინის სექციები" ცალკე ფაქტად გამოვიდა.** სიაში ის საერთოდ არ
+   ჩანდა: `admin:users` უბრალოდ ერთ გასაღებად ითვლებოდა `moduleCount`-ში,
+   ე.ი. როლი, რომელსაც სხვისი ანგარიშები და აუდიტ-ლოგი უხსნია, გარეგნულად
+   არაფრით განსხვავდებოდა იმისგან, ვისაც სამი ფილმის უფლება აქვს.
+
+   ⚠️ **შეჯამება ცარიელ გასაღებებს აღარ ითვლის** (`roleScope()`): ძველი
+   `Object.keys(r.permissions).length` ცარიელმასივიანსაც („მოდული, სადაც
+   ყველა მონიშვნა მოხსნილია") მოდულად თვლიდა, ე.ი. სიაში „1 მოდული"
+   ეწერა იქ, სადაც სინამდვილეში არცერთი უფლება არ იყო.
+
+   ⚠️ **ბარათი მთლიანად ბმული არ არის.** წაშლის ღილაკი მის შიგნითაა,
+   ღილაკი `<a>`-ში კი არასწორი HTML-ია — ამიტომ სახელი იჭიმება
+   `after:inset-0`-ით და წაშლა `relative`-ით მის ზემოთ დგება.
    ============================================================ */
+
+/** ბარათის შემოსვლის საფეხური და ჭერი (იხ. `index.css`-ის `fb-card`) */
+const STAGGER_MS = 40
+const STAGGER_MAX_MS = 240
 
 export function RolesPage() {
   const { t, i18n } = useTranslation()
@@ -51,82 +82,148 @@ export function RolesPage() {
 
   const name = (r: Role) => (i18n.language === 'ka' ? r.name_ka : r.name_en)
 
-  /** რამდენ მოდულზე აქვს რამე უფლება — სიაში მოკლე შეჯამება */
-  const summary = (r: Role) => {
-    if (r.permissions === null) return t('roles.fullAccess')
-    const modules = Object.keys(r.permissions)
-    if (!modules.length) return t('roles.noAccess')
-    if (modules.includes('*')) return t('roles.allModules')
-    return t('roles.moduleCount', { count: modules.length })
-  }
-
   return (
     <PageContainer>
       <PageHeader
+        tool="roles"
         title={t('roles.title')}
         subtitle={t('roles.subtitle')}
         actions={
-          <>
-            <Button onClick={() => setAdding(true)}>
-              <Plus className="size-4" />
-              {t('roles.add')}
-            </Button>
-          </>
+          <Button onClick={() => setAdding(true)}>
+            <Plus className="size-4" />
+            {t('roles.add')}
+          </Button>
         }
       />
 
       {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
 
-      <ul className="space-y-2">
-        {roles.map((role) => (
-          <li
-            key={role.id}
-            className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted">
-              {role.is_system ? <Lock className="size-4" /> : <ShieldCheck className="size-4" />}
-            </span>
-
-            <Link to={`/roles/${role.id}`} className="min-w-0 flex-1">
-              <span className="block truncate font-medium hover:text-primary hover:underline">
-                {name(role)}
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                <code>{role.key}</code> · {summary(role)} ·{' '}
-                {t('admin.usersCount', { count: role.users_count ?? 0 })}
-              </span>
-            </Link>
-
-            {role.is_system && (
-              <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-[11px] leading-relaxed">
-                {t('roles.system')}
-              </span>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0 text-destructive"
-              // სისტემური როლი და გამოყენებული როლი არ იშლება (backend-ზეც 422)
-              disabled={role.is_system || !!role.users_count || remove.isPending}
-              title={role.is_system ? t('roles.system') : undefined}
-              onClick={async () => {
-                const ok = await confirm({
-                  title: t('roles.deleteTitle'),
-                  description: t('roles.deleteHint', { name: name(role) }),
-                  variant: 'destructive',
-                })
-                if (ok) remove.mutate(role.id)
-              }}
-            >
-              <Trash2 className="size-3.5" />
+      {!isLoading && !roles.length && (
+        <EmptyState
+          icon={<ShieldCheck className="size-6" />}
+          title={t('roles.emptyTitle')}
+          hint={t('roles.emptyHint')}
+          actions={
+            <Button onClick={() => setAdding(true)}>
+              <Plus className="size-4" />
+              {t('roles.add')}
             </Button>
-          </li>
-        ))}
-      </ul>
+          }
+        />
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {roles.map((role, i) => {
+          const scope = roleScope(role)
+          const Icon = roleIcon(scope)
+          // სისტემური როლი და გამოყენებული როლი არ იშლება (backend-ზეც 422)
+          const deletable = !role.is_system && !role.users_count
+
+          return (
+            <div
+              key={role.id}
+              style={{
+                ...(modAccent(roleTone(scope)) ?? MODULE_ACCENT_FALLBACK),
+                animationDelay: `${Math.min(i * STAGGER_MS, STAGGER_MAX_MS)}ms`,
+              }}
+              className="fb-card relative flex flex-col rounded-2xl border border-border bg-card p-5 transition-[border-color,transform] hover:-translate-y-0.5 hover:border-[var(--mod)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+                  <Icon className="size-5 text-[var(--mod)]" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  {/* ⚠️ სახელი იჭიმება მთელ ბარათზე (`after:inset-0`) — მთელი
+                      ბარათი `<a>`-დ ვერ გახდება, რადგან შიგნით ღილაკია */}
+                  <Link
+                    to={`/roles/${role.id}`}
+                    className="block truncate font-medium after:absolute after:inset-0 hover:text-primary"
+                  >
+                    {name(role)}
+                  </Link>
+                  <code className="block truncate text-xs text-muted-foreground">{role.key}</code>
+                </div>
+
+                {role.is_system && (
+                  <span className="relative inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[11px] leading-relaxed">
+                    <Lock className="size-3" />
+                    {t('roles.system')}
+                  </span>
+                )}
+              </div>
+
+              {/* ---------- რა შეუძლია ----------
+                  ⚠️ მოდულები და ადმინის სექციები **ორი სხვადასხვა
+                  ძალაუფლებაა** და ცალკე ითვლება — ერთ სტრიქონში შეკრული
+                  ისინი აქამდე განურჩეველი იყო. */}
+              <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px]">
+                {scope.full ? (
+                  <Tag tone="mod">{t('roles.fullAccess')}</Tag>
+                ) : (
+                  <>
+                    {scope.modules > 0 && <Tag>{t('roles.moduleCount', { count: scope.modules })}</Tag>}
+                    {scope.admin > 0 && <Tag tone="mod">{t('roles.adminCount', { count: scope.admin })}</Tag>}
+                    {!scope.modules && !scope.admin && <Tag tone="muted">{t('roles.noAccess')}</Tag>}
+                  </>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                <Users className="size-3.5" />
+                <span className="flex-1">{t('admin.usersCount', { count: role.users_count ?? 0 })}</span>
+
+                {/* ⚠️ წაშლა **იმალება** და არა გამორთულად იხატება: სისტემურ
+                    როლზე ის არასოდეს გააქტიურდება, ე.ი. მკრთალი ურნა
+                    მხოლოდ ცრუ იმედს იძლეოდა (backend-ზეც 422-ია) */}
+                {deletable && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative -my-1 text-destructive"
+                    disabled={remove.isPending}
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: t('roles.deleteTitle'),
+                        description: t('roles.deleteHint', { name: name(role) }),
+                        variant: 'destructive',
+                      })
+                      if (ok) remove.mutate(role.id)
+                    }}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       {adding && <AddRoleDialog onClose={() => setAdding(false)} />}
     </PageContainer>
+  )
+}
+
+/** პატარა ნიშანი ბარათზე — ტონი როლის აქცენტიდან მოდის, ე.ი. მეორე პალიტრა არ იბადება */
+function Tag({
+  tone = 'plain',
+  children,
+}: {
+  tone?: 'plain' | 'mod' | 'muted'
+  children: React.ReactNode
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-md px-2 py-0.5 leading-relaxed',
+        tone === 'mod' && 'bg-[var(--mod-soft)] text-foreground',
+        tone === 'plain' && 'bg-secondary',
+        tone === 'muted' && 'border border-dashed border-border text-muted-foreground',
+      )}
+    >
+      {children}
+    </span>
   )
 }
 

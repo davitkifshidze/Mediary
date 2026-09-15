@@ -36,6 +36,20 @@ class ReminderDispatcher
     private const BATCH = 200;
 
     /**
+     * **ბრაუზერის polling-ის ჭერი** (აუდიტი 2026-09-14).
+     *
+     * ⚠️ `GET /api/note-reminders/due` SPA-ს პერიოდული მოთხოვნაა, და
+     * `fire()` თითოეულზე **სინქრონულ** HTTPS-ს უშვებს ტელეგრამისკენ.
+     * დაგროვილი 200-იანი რიგი + ნელი ტელეგრამი ერთნაკადიან `artisan serve`-ს
+     * ათეული წამით აჩერებდა — ე.ი. მთელი აპლიკაცია იყინებოდა იმის გამო,
+     * რომ ფონური ტაიმერი მოვიდა.
+     *
+     * ⚠️ **cron-ს სრული 200 რჩება**: მას არავინ ელოდება და დაგვიანებული
+     * რიგის ერთბაშად დაძვრა სწორედ მისი საქმეა.
+     */
+    private const POLL_BATCH = 20;
+
+    /**
      * ⚠️ დიდი ხნით გამორთული ინტერვალური შეხსენება არ უნდა „აფეთქდეს" —
      * ერთი გამოტოვებული გასროლა ერთ შეტყობინებად ითვლება, დანარჩენი იკარგება.
      * (ამას `advanceAfterSending()` თავისით აკეთებს: ის „ახლადან" ითვლის.)
@@ -62,7 +76,8 @@ class ReminderDispatcher
             ->where('next_at', '<=', $now)
             ->when($user, fn ($q) => $q->where('user_id', $user->getKey()))
             ->orderBy('next_at')
-            ->limit(self::BATCH)
+            // ⚠️ polling (`$user !== null`) მოკლე პარტიით მიდის — იხ. `POLL_BATCH`
+            ->limit($user ? self::POLL_BATCH : self::BATCH)
             ->get();
 
         $fired = 0;

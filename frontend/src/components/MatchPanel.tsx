@@ -45,7 +45,7 @@ export function MatchPanel({ username }: { username: string }) {
         <Lock className="mx-auto size-6 text-muted-foreground" />
         <p className="mt-3 text-sm font-medium">{t('matches.needPublicTitle')}</p>
         <p className="mt-1 text-sm text-muted-foreground">{t('matches.needPublicHint')}</p>
-        <Link to="/profile" className="mt-4 inline-block text-sm text-primary hover:underline">
+        <Link to="/profile" className="mt-4 inline-block text-sm text-primary hover:text-primary/70">
           {t('publicProfile.title')}
         </Link>
       </div>

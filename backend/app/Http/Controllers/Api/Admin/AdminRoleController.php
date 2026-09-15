@@ -86,15 +86,31 @@ class AdminRoleController extends Controller
     }
 
     /**
-     * მხოლოდ არსებული მოდულის key-ები (+ `*`) და მხოლოდ ცნობილი მოქმედებები.
-     * ცარიელი ნაკრები საერთოდ არ ინახება, რომ JSON არ იბერებოდეს.
+     * მხოლოდ არსებული მოდულის key-ები **და ადმინის სექციები**; მხოლოდ
+     * ცნობილი მოქმედებები. ცარიელი ნაკრები საერთოდ არ ინახება, რომ JSON
+     * არ იბერებოდეს.
+     *
+     * ⚠️ **`admin:<resource>` აქ 2026-09-15-მდე არ ეწერა და ეს ცოცხალი
+     * შეცდომა იყო**: მატრიცაში ადმინის სექციის მონიშვნა ჩუმად ცვივდებოდა
+     * — ღილაკი ინიშნებოდა, „შენახულია" იწერებოდა და უფლება არ ჩნდებოდა.
+     * ტესტები ვერ აჭერდნენ, რადგან ისინი `permissions`-ს **მოდელზე
+     * პირდაპირ** წერდნენ და არა API-დან; `RoleApiTest` ახლა API-ს ამოწმებს.
+     *
+     * ⚠️ **`"*"` აქედან მოიხსნა** — იხ. `Role`-ის კომენტარი: ნიღაბი აღარ
+     * არსებობს, ე.ი. ძველი კლიენტის გამოგზავნილი `*` ჩუმად უნდა ჩამოცვივდეს
+     * და არა შეინახოს.
      *
      * @param  array<string, array<int, string>>  $input
      * @return array<string, list<string>>
      */
     private function cleanPermissions(array $input): array
     {
-        $allowed = Module::pluck('key')->push(Role::ANY_MODULE)->all();
+        $allowed = Module::pluck('key')
+            ->merge(array_map(
+                fn (string $resource) => Role::ADMIN_PREFIX.$resource,
+                Role::ADMIN_RESOURCES,
+            ))
+            ->all();
         $out = [];
 
         foreach ($input as $module => $actions) {

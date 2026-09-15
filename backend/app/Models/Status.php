@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Support\DictionaryKey;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 
@@ -164,16 +164,21 @@ class Status extends Model
      */
     public static function makeKey(int $userId, string $domain, string $name): string
     {
-        $base = Str::slug($name) ?: 'status';
-        $key = $base;
-        $n = 2;
-
-        while (in_array($key, StatusDomain::RESERVED_KEYS, true) || static::withoutGlobalScope('owner')
-            ->where('user_id', $userId)->where('module', $domain)->where('key', $key)->exists()) {
-            $key = "{$base}-{$n}";
-            $n++;
-        }
-
-        return mb_substr($key, 0, 60);
+        /* ⚠️ **ალგორითმი საერთოა** (`DictionaryKey`, აუდიტი §B3): აქ იდო
+           ცხრა ასლიდან ერთ-ერთი, რომელიც უნიკალურობას სრულ სტრიქონზე
+           ამოწმებდა და მხოლოდ შემდეგ ჭრიდა 60-მდე — ე.ი. გრძელ ქართულ
+           სახელზე ჩაწერილი გასაღები შემოწმებულს **არ** ემთხვეოდა.
+           აქაური განსხვავება მხოლოდ ისაა, რომ დაკავებულად ჩაითვლება
+           დაცული გასაღებიც (`all`/`favorite`/`downloaded`). */
+        return DictionaryKey::make(
+            $name,
+            fn (string $key) => in_array($key, StatusDomain::RESERVED_KEYS, true)
+                || static::withoutGlobalScope('owner')
+                    ->where('user_id', $userId)
+                    ->where('module', $domain)
+                    ->where('key', $key)
+                    ->exists(),
+            'status',
+        );
     }
 }

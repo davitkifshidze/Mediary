@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Check, Pencil, PlayCircle, Star, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, SquarePen, PlayCircle, Star, Trash2 } from 'lucide-react'
 import { PosterImage } from './PosterImage'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -175,7 +175,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => nav(`${detailBase}/${movie.id}/edit`)}>
-          <Pencil className="size-3.5" />
+          <SquarePen className="size-3.5" />
           {t('actions.edit')}
         </ContextMenuItem>
         <ContextMenuItem

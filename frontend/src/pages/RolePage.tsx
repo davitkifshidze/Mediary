@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Lock, Save, ShieldCheck, Undo2 } from 'lucide-react'
-import { fetchRoles, updateRole } from '@/api/account'
+import { ArrowLeft, ChevronDown, Save, Search, ShieldCheck, Undo2 } from 'lucide-react'
+import { fetchRoles, updateRole, type Role } from '@/api/account'
+import { actionStyle } from '@/lib/actionStyle'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
-import { moduleName, useModules } from '@/lib/modules'
+import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
+import { ADMIN_PREFIX, ADMIN_RESOURCES, roleIcon, roleScope, roleTone } from '@/lib/roles'
+import { TOOL_SECTIONS, type ToolSectionKey } from '@/lib/toolSections'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
@@ -17,26 +19,49 @@ import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   როლის შიდა გვერდი (Tasks 1.6) — სახელი + უფლებების მატრიცა.
+   როლის შიდა გვერდი (Tasks 1.6 → UI/UX 2026-09-15).
 
-   მატრიცა: რიგები = მოდულები (`GET /modules`-იდან, ე.ი. ახალი მოდული
-   თვითონ ჩნდება), სვეტები = **ნახვა · დამატება · რედაქტირება · წაშლა**.
-   „ყველა მოდული" (`*`) ცალკე რიგია: მისი მონიშვნა ხვალ დამატებულ მოდულზეც
-   იმუშავებს, ე.ი. ახალი მოდული ავტომატურად აკრძალული არ აღმოჩნდება.
+   რას აკეთებს: სახელი + **უფლებების მატრიცა**. მოდულები `GET /modules`-იდან
+   მოდის (ე.ი. ახალი მოდული თვითონ ჩნდება), მოქმედებები — backend-იდან.
+
+   **რატომ აღარაა ცხრილი** (შენი მითითება: „სრულიად შემიცვალე და განმიახლე").
+
+   ⚠️ **ცხრილი ოთხივე სვეტს უსახელოდ ტოვებდა**: `min-w-[520px]`-ის გამო
+   ტელეფონზე ჰორიზონტალურად ისრიალებდა, ე.ი. მონიშვნისას ხშირად ვერ
+   ხედავდი, „წაშლის" სვეტში იდექი თუ „რედაქტირების". ახლა თითო მოდული
+   **ბარათია** და თითო უფლება — **დასახელებული და ფერადი ღილაკი**
+   (`lib/actionStyle.ts`: წაშლა წითელი ურნით, დამატება მწვანე „+"-ით).
+
+   ⚠️ **სვეტის გადამრთველი დამალული იყო ცხრილის თავში** — `<th>`-ზე დაჭერა
+   მთელ სვეტს რთავდა და ამას მხოლოდ `title` ამბობდა. ახლა ის ცალკე,
+   **შეკეცილი ზოლია** მოდულების სიის თავზე („ყველა მოდულზე").
+
+   ⚠️ **მასობრივი ბარათი შეკეცილში გადავიდა** (შენი მითითება): ის ეკრანის
+   თავში იდგა და ყოველდღიური საქმე — მოდულების სია — მეორე ეკრანზე
+   იწყებოდა, თუმცა მასობრივი გადამრთველი იშვიათად სჭირდება.
+
+   ⚠️ **„ყველა მოდულის" ნიღაბი (`"*"`) სულ მოიხსნა** (შენი მითითება:
+   „ჩახსნიე ეს ფუნქციონალი"). ის ერთადერთი მექანიზმი იყო, რომლითაც ხვალ
+   დამატებული მოდული ავტომატურად იხსნებოდა — ე.ი. ფასი ცნობილია და
+   მიღებული: **ახალი მოდული ყველა როლზე ცხადად უნდა მოინიშნოს**. ძველი
+   ჩანაწერები მიგრაციამ თითოეულ მოდულად გაშალა (`expand_wildcard_role_permissions`),
+   ე.ი. არსებულ როლს უფლება არ დაუკარგავს. „ყველა მოდულზე" **ნიღაბი არაა**:
+   ის მხოლოდ დღევანდელ სიას ნიშნავს თითოეულად.
+
+   ⚠️ **ადმინის სექციები ცალკე ჯგუფია და საკუთარ ფერებს იღებს**
+   (`lib/toolSections.ts` — იგივე ტონები, რითიც საიდბარი და გვერდის ჰედერი
+   ხატავს მათ). ⚠️ ისინი მოდულები **არ** არიან: არც ერთი მოდულის უფლება
+   — რამდენიც უნდა იყოს — მათ არ ხსნის.
+
+   ⚠️ **შეჯამება ცოცხალია** — `roleScope()` **სამუშაო ასლს** კითხულობს და
+   არა შენახულს, ე.ი. „რამდენ მოდულს ვაძლევ" შენახვამდე ჩანს. იგივე
+   ფუნქციას სია კითხულობს, ე.ი. ორი რიცხვი ვერ დაშორდება.
    ============================================================ */
 
-/** ყველა მოდულის „ნიღაბი" — იგივე მუდმივი backend-ზე (`Role::ANY_MODULE`) */
-const ANY = '*'
-
-/**
- * ადმინის სექციები (Tasks 1.6) — სარკეა backend-ის
- * `Role::ADMIN_RESOURCES` / `Role::ADMIN_PREFIX`-ისა.
- * ⚠️ მოდულები არ არიან, ამიტომ `*` მათზე **არ** ვრცელდება.
- */
-const ADMIN_RESOURCES = ['users', 'roles', 'requests', 'audit'] as const
-const ADMIN_PREFIX = 'admin:'
-
 type Matrix = Record<string, string[]>
+
+/** ძებნის ველი მაშინ ჩნდება, როცა სია თვალით აღარ ისკანირება */
+const SEARCH_FROM = 8
 
 export function RolePage() {
   const { id } = useParams()
@@ -57,6 +82,9 @@ export function RolePage() {
 
   const [names, setNames] = useState({ name_ka: '', name_en: '' })
   const [matrix, setMatrix] = useState<Matrix>({})
+  const [query, setQuery] = useState('')
+  /** მასობრივი გადამრთველები შეკეცილია — ყოველდღიური საქმე მოდულების სიაა */
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   // სერვერიდან მოსული მდგომარეობა → სამუშაო ასლი
   useEffect(() => {
@@ -68,8 +96,7 @@ export function RolePage() {
   const actions = role?.actions ?? ['view', 'create', 'update', 'delete']
 
   const save = useMutation({
-    mutationFn: () =>
-      updateRole(roleId, { ...names, permissions: matrix }),
+    mutationFn: () => updateRole(roleId, { ...names, permissions: matrix }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] })
       qc.invalidateQueries({ queryKey: ['me'] })
@@ -87,6 +114,18 @@ export function RolePage() {
     )
   }, [role, names, matrix])
 
+  /**
+   * ცოცხალი შეჯამება — **სამუშაო ასლზე**, და არა შენახულზე.
+   * ⚠️ სუპერ-ადმინზე `permissions` `null`-ია, ე.ი. მატრიცა არ იკითხება.
+   */
+  const scope = useMemo(
+    () =>
+      role
+        ? roleScope({ ...role, permissions: role.permissions === null ? null : matrix } as Role)
+        : null,
+    [role, matrix],
+  )
+
   if (!isAdmin) return null
   if (isLoading) {
     return (
@@ -95,7 +134,7 @@ export function RolePage() {
       </PageContainer>
     )
   }
-  if (!role) {
+  if (!role || !scope) {
     return (
       <PageContainer>
         <p className="text-sm text-muted-foreground">{t('roles.notFound')}</p>
@@ -104,28 +143,29 @@ export function RolePage() {
   }
 
   const locked = role.is_super_admin
-  const has = (module: string, action: string) => (matrix[module] ?? []).includes(action)
+  const Icon = roleIcon(scope)
+  const has = (key: string, action: string) => (matrix[key] ?? []).includes(action)
 
-  const toggle = (module: string, action: string, on: boolean) =>
+  const toggle = (key: string, action: string, on: boolean) =>
     setMatrix((m) => {
-      const current = m[module] ?? []
+      const current = m[key] ?? []
       const next = on ? [...new Set([...current, action])] : current.filter((a) => a !== action)
       const out = { ...m }
-      if (next.length) out[module] = next
-      else delete out[module]
+      if (next.length) out[key] = next
+      else delete out[key]
       return out
     })
 
-  /** მთელი რიგი — მოდულზე ყველა უფლება ერთად */
-  const toggleRow = (module: string, on: boolean) =>
+  /** მთელი რიგი — ერთ გასაღებზე ყველა უფლება ერთად */
+  const toggleRow = (key: string, on: boolean) =>
     setMatrix((m) => {
       const out = { ...m }
-      if (on) out[module] = [...actions]
-      else delete out[module]
+      if (on) out[key] = [...actions]
+      else delete out[key]
       return out
     })
 
-  /** მთელი სვეტი — ერთი მოქმედება ყველა მოდულზე */
+  /** მთელი სვეტი — ერთი მოქმედება **დღეს არსებულ** ყველა მოდულზე */
   const toggleColumn = (action: string, on: boolean) =>
     setMatrix((m) => {
       const out: Matrix = { ...m }
@@ -138,8 +178,17 @@ export function RolePage() {
       return out
     })
 
-  const rowFull = (module: string) => actions.every((a) => has(module, a))
+  const rowFull = (key: string) => actions.every((a) => has(key, a))
   const columnFull = (action: string) => modules.length > 0 && modules.every((m) => has(m.key, action))
+
+  const term = query.trim().toLowerCase()
+  const shown = term
+    ? modules.filter(
+        (m) =>
+          moduleName(m, i18n.language).toLowerCase().includes(term) ||
+          m.key.toLowerCase().includes(term),
+      )
+    : modules
 
   return (
     <PageContainer>
@@ -151,9 +200,15 @@ export function RolePage() {
         {t('roles.title')}
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-md bg-muted">
-          <Lock className="size-5" />
+      {/* ---------- ვინ არის ეს როლი ----------
+          ⚠️ ფილა და ტონი `lib/roles.ts`-იდან — იგივე, რაც სიაში; ე.ი.
+          ბარათიდან შემოსული იმავე ფერს ხედავს და არ ეკარგება კონტექსტი. */}
+      <div
+        className="mb-6 flex flex-wrap items-center gap-3"
+        style={modAccent(roleTone(scope)) ?? MODULE_ACCENT_FALLBACK}
+      >
+        <span className="fb-header-icon grid size-11 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+          <Icon className="size-5 text-[var(--mod)]" />
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -161,6 +216,7 @@ export function RolePage() {
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             <code>{role.key}</code> · {t('admin.usersCount', { count: role.users_count ?? 0 })}
+            {role.is_system && ` · ${t('roles.system')}`}
           </p>
         </div>
       </div>
@@ -187,121 +243,141 @@ export function RolePage() {
         </div>
       </section>
 
-      {/* ---------- უფლებების მატრიცა ---------- */}
+      {/* ---------- უფლებები ---------- */}
       <section className="rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold tracking-tight">{t('roles.permissions')}</h2>
-        <p className="mb-4 mt-1 text-xs text-muted-foreground">{t('roles.permissionsHint')}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold tracking-tight">
+              {t('roles.permissions')}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t('roles.permissionsHint')}</p>
+          </div>
+
+          {/* ცოცხალი შეჯამება — რა ეწერება სიაში, თუ ახლა შევინახავთ */}
+          {!locked && (
+            <p className="shrink-0 text-xs text-muted-foreground">
+              {t('roles.moduleCount', { count: scope.modules })}
+              {scope.admin > 0 && ` · ${t('roles.adminCount', { count: scope.admin })}`}
+            </p>
+          )}
+        </div>
 
         {locked ? (
-          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
             {t('roles.superAdminHint')}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead className="border-b border-border text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-2.5 text-left font-medium">{t('roles.module')}</th>
-                  {actions.map((a) => (
-                    <th key={a} className="px-2 py-2.5 text-center font-medium">
-                      <button
-                        onClick={() => toggleColumn(a, !columnFull(a))}
-                        className="cursor-pointer transition-colors hover:text-foreground"
-                        title={t('roles.toggleColumn')}
-                      >
-                        {t(`roles.action.${a}`)}
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {/* „ყველა მოდული" — ხვალ დამატებულზეც იმუშავებს */}
-                <tr className="border-b border-border bg-muted/30">
-                  <td className="px-2 py-2.5">
-                    <button
-                      onClick={() => toggleRow(ANY, !rowFull(ANY))}
-                      className="cursor-pointer font-medium hover:text-primary"
-                      title={t('roles.toggleRow')}
-                    >
-                      {t('roles.anyModule')}
-                    </button>
-                    <p className="text-[11px] text-muted-foreground">{t('roles.anyModuleHint')}</p>
-                  </td>
-                  {actions.map((a) => (
-                    <td key={a} className="px-2 py-2.5 text-center">
-                      <Checkbox
-                        checked={has(ANY, a)}
-                        onCheckedChange={(v) => toggle(ANY, a, v === true)}
-                      />
-                    </td>
-                  ))}
-                </tr>
+          <div className="mt-5 space-y-5">
+            {/* ---------- მოდულები ---------- */}
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground">{t('roles.modulesTitle')}</p>
+                {modules.length >= SEARCH_FROM && (
+                  <label className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t('roles.searchModules')}
+                      className="h-8 w-48 pl-7 text-xs"
+                    />
+                  </label>
+                )}
+              </div>
 
-                {modules.map((m) => (
-                  <tr key={m.key} className="border-b border-border last:border-b-0">
-                    <td className="px-2 py-2.5">
-                      <button
-                        onClick={() => toggleRow(m.key, !rowFull(m.key))}
-                        className="inline-flex cursor-pointer items-center gap-2 hover:text-primary"
-                        title={t('roles.toggleRow')}
-                      >
-                        <ModuleIcon name={m.icon} className="size-4 text-muted-foreground" />
-                        <span className={cn(!m.is_active && 'text-muted-foreground line-through')}>
-                          {moduleName(m, i18n.language)}
-                        </span>
-                      </button>
-                    </td>
-                    {actions.map((a) => (
-                      <td key={a} className="px-2 py-2.5 text-center">
-                        <Checkbox
-                          // `*`-ით ნაგულისხმევად მიცემული უფლება ჩართულად ჩანს
-                          checked={has(m.key, a) || has(ANY, a)}
-                          disabled={has(ANY, a)}
-                          onCheckedChange={(v) => toggle(m.key, a, v === true)}
+              {/* ---------- მასობრივი გადამრთველი — ერთი შეკეცილი ზოლი ----------
+                  ⚠️ **დიდი ბარათი აქედან მოიხსნა** (შენი მითითება,
+                  2026-09-15): ის ეკრანის თავში იდგა და მოდულების სია მეორე
+                  ეკრანზე იწყებოდა, თუმცა ყოველდღიური საქმე სწორედ სიაა —
+                  მასობრივი გადამრთველი კი იშვიათი.
+
+                  ⚠️ **„ყველა მოდულზე" ნიღაბი არაა**: ის **დღევანდელ** სიას
+                  ნიშნავს თითოეულად და არაფერს იმახსოვრებს — ე.ი. ხვალ
+                  დამატებულ მოდულს ცხადად მონიშვნა დასჭირდება. სწორედ ეს
+                  დარჩა „ყველა მოდულის" (`*`) მოხსნის შემდეგ. */}
+              <div className="rounded-md border border-dashed border-border">
+                <button
+                  type="button"
+                  aria-expanded={bulkOpen}
+                  onClick={() => setBulkOpen((v) => !v)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/60"
+                >
+                  <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-sm font-medium">{t('roles.everyModule')}</span>
+                  <ChevronDown
+                    className={cn('size-4 shrink-0 transition-transform', bulkOpen ? '' : '-rotate-90')}
+                  />
+                </button>
+
+                {bulkOpen && (
+                  <div className="border-t border-border p-3">
+                    <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+                      {t('roles.everyModuleHint')}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {actions.map((a) => (
+                        <PermToggle
+                          key={a}
+                          action={a}
+                          on={columnFull(a)}
+                          onChange={(on) => toggleColumn(a, on)}
                         />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* ---------- Tasks 1.6 — ადმინის სექციები ----------
-                    ⚠️ ესენი მოდულები **არ არიან** და `*`-იც განზრახ არ ეხებათ:
-                    „ყველა მოდული" ჩვეულებრივ როლს ადმინის პანელს ჩუმად
-                    გაუხსნიდა. გასაღები `admin:<resource>`-ია (backend-ზეც). */}
-                <tr className="border-t-2 border-border bg-muted/30">
-                  <td colSpan={actions.length + 1} className="px-2 pb-1 pt-3">
-                    <p className="text-xs font-medium">{t('roles.adminSections')}</p>
-                    <p className="text-[11px] text-muted-foreground">{t('roles.adminSectionsHint')}</p>
-                  </td>
-                </tr>
+              <div className="mt-2 grid gap-2 lg:grid-cols-2">
+                {shown.map((m) => (
+                  <PermCard
+                    key={m.key}
+                    accent={m.color}
+                    icon={<ModuleIcon name={m.icon} className="size-5 text-[var(--mod)]" />}
+                    title={moduleName(m, i18n.language)}
+                    strike={!m.is_active}
+                    actions={actions}
+                    isOn={(a) => has(m.key, a)}
+                    onToggle={(a, on) => toggle(m.key, a, on)}
+                    rowOn={rowFull(m.key)}
+                    onRow={(on) => toggleRow(m.key, on)}
+                  />
+                ))}
+              </div>
+
+              {!shown.length && (
+                <p className="mt-2 text-sm text-muted-foreground">{t('roles.noModulesFound')}</p>
+              )}
+            </div>
+
+            {/* ---------- ადმინის სექციები ----------
+                ⚠️ მოდულები **არ** არიან და `*`-იც განზრახ არ ეხებათ:
+                „ყველა მოდული" ჩვეულებრივ როლს ადმინის პანელს ჩუმად
+                გაუხსნიდა. გასაღები `admin:<resource>`-ია (backend-ზეც). */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">{t('roles.adminSections')}</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">{t('roles.adminSectionsHint')}</p>
+
+              <div className="grid gap-2 lg:grid-cols-2">
                 {ADMIN_RESOURCES.map((resource) => {
                   const key = `${ADMIN_PREFIX}${resource}`
+                  const section = TOOL_SECTIONS[resource as ToolSectionKey]
                   return (
-                    <tr key={key} className="border-b border-border last:border-b-0">
-                      <td className="px-2 py-2.5">
-                        <button
-                          onClick={() => toggleRow(key, !rowFull(key))}
-                          className="inline-flex cursor-pointer items-center gap-2 hover:text-primary"
-                          title={t('roles.toggleRow')}
-                        >
-                          <ShieldCheck className="size-4 text-muted-foreground" />
-                          {t(`roles.adminResource.${resource}`)}
-                        </button>
-                      </td>
-                      {actions.map((a) => (
-                        <td key={a} className="px-2 py-2.5 text-center">
-                          <Checkbox
-                            checked={has(key, a)}
-                            onCheckedChange={(v) => toggle(key, a, v === true)}
-                          />
-                        </td>
-                      ))}
-                    </tr>
+                    <PermCard
+                      key={key}
+                      accent={section.color}
+                      icon={<section.icon className="size-5 text-[var(--mod)]" />}
+                      title={t(`roles.adminResource.${resource}`)}
+                      actions={actions}
+                      isOn={(a) => has(key, a)}
+                      onToggle={(a, on) => toggle(key, a, on)}
+                      rowOn={rowFull(key)}
+                      onRow={(on) => toggleRow(key, on)}
+                    />
                   )
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         )}
       </section>
@@ -336,5 +412,130 @@ export function RolePage() {
         </div>
       </div>
     </PageContainer>
+  )
+}
+
+/**
+ * ერთი რიგი მატრიცაში — მოდული, `*` ან ადმინის სექცია.
+ *
+ * ⚠️ **ერთი კომპონენტი სამივესთვის**: სამი ასლი იმავე კვირაში დაშორდებოდა
+ * (ერთგან „მთელი რიგი" იქნებოდა, მეორეგან — არა), ხოლო განსხვავება
+ * მხოლოდ ფერსა და მინიშნებაშია.
+ */
+function PermCard({
+  accent,
+  icon,
+  title,
+  hint,
+  strike,
+  actions,
+  isOn,
+  onToggle,
+  rowOn,
+  onRow,
+  highlight,
+}: {
+  accent?: string | null
+  icon: ReactNode
+  title: string
+  hint?: string
+  /** გამორთული მოდული — სახელი გადახაზულია, უფლება კი მაინც ინიშნება */
+  strike?: boolean
+  actions: string[]
+  isOn: (action: string) => boolean
+  onToggle: (action: string, on: boolean) => void
+  rowOn?: boolean
+  onRow?: (on: boolean) => void
+  /** `*` — ხაზგასმული ჩარჩო */
+  highlight?: boolean
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      style={modAccent(accent) ?? MODULE_ACCENT_FALLBACK}
+      className={cn(
+        'rounded-md border p-3',
+        highlight ? 'border-[var(--mod)] bg-[var(--mod-soft)]' : 'border-border',
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'block truncate text-sm font-medium',
+              strike && 'text-muted-foreground line-through',
+            )}
+          >
+            {title}
+          </span>
+          {hint && <span className="block text-[11px] leading-snug text-muted-foreground">{hint}</span>}
+        </div>
+
+        {/* მთელი რიგი — ღილაკს სახელი აქვს, ე.ი. `title`-ის მიღმა აღარ იმალება */}
+        {onRow && (
+          <button
+            type="button"
+            aria-pressed={!!rowOn}
+            onClick={() => onRow(!rowOn)}
+            className={cn(
+              'shrink-0 cursor-pointer rounded-md border px-2 py-1 text-[11px] transition-colors',
+              rowOn
+                ? 'border-[var(--mod)] bg-[var(--mod-soft)] font-medium text-foreground'
+                : 'border-border text-muted-foreground hover:border-[var(--mod)] hover:text-foreground',
+            )}
+          >
+            {t('roles.grantAll')}
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {actions.map((a) => (
+          <PermToggle key={a} action={a} on={isOn(a)} onChange={(on) => onToggle(a, on)} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ერთი უფლება — **დასახელებული და ფერადი**, checkbox-ის ნაცვლად.
+ *
+ * ⚠️ ფერი და ხატულა `lib/actionStyle.ts`-იდან მოდის, ე.ი. „წაშლა" აქაც
+ * წითელი ურნაა და აუდიტ-ლოგშიც. ⚠️ ანიმაცია არ იწერება: ღილაკია, ე.ი.
+ * `index.css`-ის გლობალური წესი ურნას ისედაც არხევს.
+ */
+function PermToggle({
+  action,
+  on,
+  onChange,
+}: {
+  action: string
+  on: boolean
+  onChange: (on: boolean) => void
+}) {
+  const { t } = useTranslation()
+  const tone = actionStyle(action)
+
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => onChange(!on)}
+      style={modAccent(tone.color)}
+      className={cn(
+        'inline-flex min-w-24 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors',
+        on
+          ? 'border-[var(--mod)] bg-[var(--mod-soft)] font-medium text-foreground'
+          : 'border-border text-muted-foreground hover:border-[var(--mod)] hover:text-foreground',
+      )}
+    >
+      <tone.icon className="size-3.5 text-[var(--mod)]" />
+      {t(`roles.action.${action}`)}
+    </button>
   )
 }

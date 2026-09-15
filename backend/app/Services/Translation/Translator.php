@@ -3,10 +3,12 @@
 namespace App\Services\Translation;
 
 use App\Models\TranslationUsage;
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -64,12 +66,26 @@ class Translator
     /** არის თუ არა თარჯიმანი (Gemini) ხელმისაწვდომი */
     public function configured(): bool
     {
-        return filled(config('services.gemini.key'));
+        return filled(CredentialStore::value(CredentialProviders::GEMINI));
     }
 
     public function lastError(): ?string
     {
         return $this->lastError;
+    }
+
+    /**
+     * მოქმედი მოდელი — **ერთი გამოთვლა** (Tasks §21).
+     *
+     * ⚠️ სამ ადგილს სჭირდება (გამოძახება, აღრიცხვა, `usage()`), და სამი
+     * ასლი იმ დღეს აცდებოდა, როცა მომხმარებელი თავის მოდელს ჩაწერდა:
+     * გამოძახება ერთით წავიდოდა, `translation_usages`-ში მეორე ჩაიწერებოდა.
+     */
+    private function model(): string
+    {
+        $model = trim((string) CredentialStore::value(CredentialProviders::GEMINI, 'model'));
+
+        return $model === '' ? self::DEFAULT_MODEL : $model;
     }
 
     /**
@@ -85,21 +101,27 @@ class Translator
      */
     public function usage(): array
     {
-        $limit = (int) config('services.gemini.daily_limit', 0);
-        $rpm = (int) config('services.gemini.rpm_limit', 0);
-        $used = TranslationUsage::usedToday();
+        $limit = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'daily');
+        $rpm = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'rpm');
+        /* §21.4 — თავისი გასაღებით მრიცხველიც თავისია. `null` = საერთო
+           გასაღები, ე.ი. ძველებურად მთელი ინსტალაციის ჯამი. */
+        $owner = CredentialStore::quotaOwner(CredentialProviders::GEMINI);
+        $used = TranslationUsage::usedToday(TranslationUsage::PROVIDER_GEMINI, $owner);
 
         return [
             'provider' => TranslationUsage::PROVIDER_GEMINI,
-            'model' => $this->configured() ? (string) config('services.gemini.model', self::DEFAULT_MODEL) : null,
+            'model' => $this->configured() ? $this->model() : null,
             'configured' => $this->configured(),
             'used' => $used,
             'limit' => $limit,
             // ⚠️ `null` = ლიმიტი გამორთულია; `0` = ამოიწურა — სხვადასხვა ფაქტია
             'remaining' => $limit > 0 ? max(0, $limit - $used) : null,
-            'rpm_used' => TranslationUsage::usedThisMinute(),
+            'rpm_used' => TranslationUsage::usedThisMinute(TranslationUsage::PROVIDER_GEMINI, $owner),
             'rpm_limit' => $rpm,
             'exhausted' => $limit > 0 && $used >= $limit,
+            // §21 — „ჩემი გასაღებია თუ საერთო": ლიმიტის რიცხვი ამის გარეშე
+            // ორაზროვანია (ჩემი 1500 თუ ყველასი?)
+            'source' => CredentialStore::source(CredentialProviders::GEMINI),
         ];
     }
 
@@ -235,7 +257,7 @@ class Translator
         TranslationUsage::create([
             'user_id' => Auth::id(),
             'provider' => TranslationUsage::PROVIDER_GEMINI,
-            'model' => (string) config('services.gemini.model', self::DEFAULT_MODEL),
+            'model' => $this->model(),
             'target_lang' => $to,
             'context' => mb_substr($context, 0, 60),
             'chars' => $chars,
@@ -271,7 +293,7 @@ class Translator
 
     private function gemini(string $prompt): ?string
     {
-        $model = config('services.gemini.model', self::DEFAULT_MODEL);
+        $model = $this->model();
 
         try {
             return $this->send($model, $prompt, true);
@@ -304,15 +326,11 @@ class Translator
             $config['thinkingConfig'] = ['thinkingBudget' => 0];
         }
 
-        $res = Http::withOptions([
-            // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-            'verify' => storage_path('cacert.pem'),
-        ])
-            ->timeout(self::TIMEOUT)
+        $res = SourceLog::request(self::TIMEOUT)
             /* ⚠️ გასაღები **ჰედერშია და არა query-ში**: `?key=` მისამართის ნაწილი
                ხდება, ე.ი. ლოგში, გამონაკლისის ტექსტსა და proxy-ის ჩანაწერში
                ჩაჯდებოდა. `X-goog-api-key` Google-ის სტანდარტული ჰედერია. */
-            ->withHeaders(['X-goog-api-key' => config('services.gemini.key')])
+            ->withHeaders(['X-goog-api-key' => CredentialStore::value(CredentialProviders::GEMINI)])
             /* ⚠️ **ხელახლა ცდა აუცილებელია და არა კომფორტი.** Gemini დროდადრო
                503-ს აბრუნებს („მოდელი გადატვირთულია") — ცოცხლად შემოწმებულია
                2026-09-14-ს. ერთი ცდის შემთხვევაში `translate()` null-ს

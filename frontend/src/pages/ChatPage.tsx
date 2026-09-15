@@ -7,7 +7,6 @@ import {
   Ban,
   FileText,
   Loader2,
-  MessageSquare,
   Paperclip,
   Send,
   ShieldOff,
@@ -34,6 +33,7 @@ import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
+import { PageHeader } from '@/components/ui/page-header'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
@@ -70,11 +70,10 @@ export function ChatPage() {
 
   return (
     <PageContainer>
-      <h1 className="mb-1 flex items-center gap-2 text-2xl font-semibold tracking-tight">
-        <MessageSquare className="size-5 text-muted-foreground" />
-        {t('chat.title')}
-      </h1>
-      <p className="mb-6 text-sm text-muted-foreground">{t('chat.subtitle')}</p>
+      {/* §23 — ჰედერი საერთო კომპონენტისაა: ხელით აწყობილი სათაური სექციის
+          ფერს ვერასდროს მიიღებდა, და თან ერთი სექცია დანარჩენებისგან
+          განსხვავებულად გამოიყურებოდა. */}
+      <PageHeader tool="chat" title={t('chat.title')} subtitle={t('chat.subtitle')} />
 
       <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
         {/* ---------- საუბრების სია ---------- */}
@@ -261,7 +260,7 @@ function Thread({ id }: { id: number }) {
         <Link to="/chat" className="lg:hidden">
           <ArrowLeft className="size-4 text-muted-foreground" />
         </Link>
-        <Link to={`/u/${profile?.username}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+        <Link to={`/u/${profile?.username}`} className="min-w-0 flex-1 truncate font-medium hover:text-primary">
           {profile?.display_name}
         </Link>
         {/* ⚠️ ღილაკი მხოლოდ მაშინ, თუ **მე** დავბლოკე — სხვისი დაბლოკვა ჩემი მოსახსნელი არაა */}
@@ -487,7 +486,7 @@ function Bubble({
           href={href}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-lg bg-black/10 px-2.5 py-2 hover:underline"
+          className="flex items-center gap-2 rounded-lg bg-black/10 px-2.5 py-2 hover:text-primary"
         >
           <FileText className="size-4 shrink-0" />
           <span className="min-w-0 truncate">{m.attachment.name}</span>
@@ -501,7 +500,7 @@ function Bubble({
           <button
             type="button"
             onClick={() => onDeleteFile(m.id)}
-            className="inline-flex cursor-pointer items-center gap-1 hover:underline"
+            className="inline-flex cursor-pointer items-center gap-1 hover:text-primary"
           >
             <Trash2 className="size-3" />
             {t('actions.delete')}
@@ -520,7 +519,7 @@ function Notice({ title, hint, to }: { title: string; hint: string; to: string }
     <div className="rounded-xl border border-border bg-card p-8 text-center">
       <p className="text-sm font-medium">{title}</p>
       <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
-      <Link to={to} className="mt-4 inline-block text-sm text-primary hover:underline">
+      <Link to={to} className="mt-4 inline-block text-sm text-primary hover:text-primary/70">
         {t('publicProfile.title')}
       </Link>
     </div>

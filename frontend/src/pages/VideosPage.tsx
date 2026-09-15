@@ -16,9 +16,10 @@ import {
   HardDriveDownload,
   ListVideo,
   Loader2,
-  Pencil,
+  SquarePen,
   Play,
   Plus,
+  RotateCcw,
   Search,
   Star,
   Tags,
@@ -222,7 +223,10 @@ export function VideosPage() {
   /* ⚠️ ჩამოწერა **ფონურად** მიდის (`artisan serve` ერთნაკადიანია), ე.ი.
      დასრულებას ვერავინ გვატყობინებს — სანამ თუნდაც ერთი `running`-ია,
      სია თვითონ იკითხება. ყველა სხვა დროს polling გამორთულია. */
-  const running = videos.some((v) => v.download_status === 'running')
+  /* ⚠️ **გაჭედილი გაშვება polling-ს არ იმსახურებს** (აუდიტი §B1): მკვდარი
+     ფონური პროცესის სტატუსი თვითონ ვერასდროს შეიცვლება, ე.ი. ტაიმერი
+     სამუდამოდ ურეკავდა სერვერს ყოველ 4 წამში და პასუხი არასდროს იცვლებოდა. */
+  const running = videos.some((v) => v.download_status === 'running' && !v.download_stale)
   useEffect(() => {
     if (!running) return
     const timer = setInterval(() => void qc.invalidateQueries({ queryKey: ['videos'] }), 4000)
@@ -239,7 +243,11 @@ export function VideosPage() {
     if (v.download_status === 'ready') {
       return [v.download_format, formatBytes(v.download_size)].filter(Boolean).join(' · ')
     }
-    if (v.download_status === 'running') return t('videos.local.running')
+    // ⚠️ „მიმდინარეობს" და „გაჩერდა" ორი სხვადასხვა ფაქტია: პირველზე ლოდინია
+    // საჭირო, მეორეზე — ხელახლა გაშვება. ერთი წარწერა ადამიანს ატყუებდა.
+    if (v.download_status === 'running') {
+      return v.download_stale ? t('videos.local.stalled') : t('videos.local.running')
+    }
     if (v.download_status === 'failed') return v.download_error || t('videos.local.failed')
     // ffmpeg-ის არქონა ხარისხს ჭრის და ეს დაწკაპუნებამდე უნდა ეწეროს
     return ytdlpQ.data && !ytdlpQ.data.ffmpeg
@@ -431,20 +439,23 @@ export function VideosPage() {
                         className={cn(
                           'absolute left-2 top-2 inline-flex items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-xs text-white',
                           v.download_status === 'ready' && 'bg-emerald-600/90',
-                          v.download_status === 'running' && 'bg-black/75',
+                          v.download_status === 'running' && !v.download_stale && 'bg-black/75',
+                          v.download_status === 'running' && v.download_stale && 'bg-amber-600/90',
                           v.download_status === 'failed' && 'bg-destructive/90',
                         )}
                       >
-                        {v.download_status === 'running' ? (
+                        {v.download_status === 'running' && !v.download_stale ? (
                           <Loader2 className="size-3 animate-spin" />
-                        ) : v.download_status === 'failed' ? (
+                        ) : v.download_status === 'failed' || v.download_stale ? (
                           <TriangleAlert className="size-3" />
                         ) : (
                           <HardDriveDownload className="size-3" />
                         )}
                         {v.download_status === 'ready'
                           ? formatBytes(v.download_size)
-                          : t(`videos.local.${v.download_status}`)}
+                          : /* ⚠️ გაჭედილს **თავისი** წარწერა აქვს: „მიმდინარეობს…"
+                               მკვდარ პროცესზე პირდაპირი მოტყუება იყო */
+                            t(v.download_stale ? 'videos.local.stalled' : `videos.local.${v.download_status}`)}
                       </span>
                     )}
                   </button>
@@ -471,7 +482,7 @@ export function VideosPage() {
                         </span>
                       )}
                       {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
-                      <StatusBadge status={v.status} className="px-1.5 py-0" />
+                      <StatusBadge status={v.status} />
                       <span className="capitalize">{v.platform}</span>
                       {v.watch_count > 0 && (
                         <span className="inline-flex items-center gap-1">
@@ -561,7 +572,10 @@ export function VideosPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={v.download_status === 'running' || download.isPending}
+                          disabled={
+                            (v.download_status === 'running' && !v.download_stale) ||
+                            download.isPending
+                          }
                           aria-label={t('videos.local.start')}
                           title={
                             ytdlpQ.data && !ytdlpQ.data.available
@@ -576,15 +590,19 @@ export function VideosPage() {
                             download.mutate(v.id)
                           }}
                         >
-                          {v.download_status === 'running' ? (
+                          {v.download_status === 'running' && !v.download_stale ? (
                             <Loader2 className="size-3.5 animate-spin" />
+                          ) : v.download_stale ? (
+                            /* ⚠️ დამტრიალებელი აქ ტყუილი იქნებოდა — არაფერი
+                               ტრიალებს; ხატულა „ხელახლა სცადე"-ს ამბობს */
+                            <RotateCcw className="size-3.5" />
                           ) : (
                             <Download className="size-3.5" />
                           )}
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => setEditing(v)}>
-                        <Pencil className="size-3.5" />
+                        <SquarePen className="size-3.5" />
                         {t('actions.edit')}
                       </Button>
                       <Button

@@ -2,40 +2,69 @@
 
 namespace App\Services\Tmdb;
 
-use Illuminate\Support\Facades\Http;
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use RuntimeException;
 
 class TmdbClient
 {
     private string $base = 'https://api.themoviedb.org/3';
 
-    private ?string $key;
+    /** ცხადად გადმოცემული გასაღები — ტესტებისა და CLI-ის გადაფარვისთვის */
+    private ?string $override;
 
     public function __construct(?string $key = null)
     {
-        $this->key = $key ?: config('services.tmdb.key');
+        $this->override = $key ?: null;
+    }
+
+    /**
+     * ⚠️ **გასაღები კონსტრუქტორში აღარ იკითხება (Tasks §21).** კლიენტი
+     * კონტეინერიდან იქმნება — ზოგჯერ იმაზე ადრე, ვიდრე მოთხოვნის
+     * მომხმარებელი ცნობილია — ე.ი. კონსტრუქტორში გაყინული გასაღები
+     * შემდეგ **სხვისი** აღმოჩნდებოდა. წაკითხვა გამოძახების მომენტშია.
+     */
+    private function key(): ?string
+    {
+        return $this->override ?? CredentialStore::value(CredentialProviders::TMDB);
     }
 
     public function configured(): bool
     {
-        return filled($this->key);
+        return filled($this->key());
     }
 
-    private function get(string $path, array $query = []): array
+    /**
+     * ⚠️ **429-ის გამეორებას ჭერი აქვს** (აუდიტი 2026-09-14). ადრე მეთოდი
+     * თავის თავს **უსასრულოდ** იძახებდა: TMDB-ის მხრიდან გახანგრძლივებული
+     * rate limit-ი რეკურსიას PHP-ის სტეკის ან რექვესთის timeout-ის
+     * ამოწურვამდე ატრიალებდა — და ეს ერთნაკადიან `artisan serve`-ზე მთელი
+     * აპლიკაციის გაჩერებას ნიშნავდა.
+     */
+    private const MAX_RETRIES = 3;
+
+    private function get(string $path, array $query = [], int $attempt = 1): array
     {
         if (! $this->configured()) {
             throw new RuntimeException('TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.');
         }
 
-        $res = Http::baseUrl($this->base)
-            ->timeout(15)
-            ->withOptions(['verify' => storage_path('cacert.pem')])
-            ->get($path, array_merge(['api_key' => $this->key], $query));
+        $res = SourceLog::request(15)
+            ->baseUrl($this->base)
+            ->get($path, array_merge(['api_key' => $this->key()], $query));
 
-        if ($res->status() === 429) {
+        if ($res->status() === 429 && $attempt < self::MAX_RETRIES) {
+            SourceLog::failed('tmdb', 'rate limited, retrying', ['path' => $path, 'attempt' => $attempt]);
             sleep(1);
 
-            return $this->get($path, $query);
+            return $this->get($path, $query, $attempt + 1);
+        }
+
+        if (! $res->successful()) {
+            // ⚠️ ჩაწერა **აგდებამდე**: ზემოთ ეს გამონაკლისი ჩუმად იჭერა
+            // (`MovieEnricher`/`TvEnricher`) და მიზეზი სამუდამოდ იკარგებოდა
+            SourceLog::status('tmdb', $res->status(), $res->body(), ['path' => $path]);
         }
 
         $res->throw();

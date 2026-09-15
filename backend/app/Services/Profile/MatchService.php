@@ -6,8 +6,10 @@ use App\Http\Resources\StatusResource;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Support\PublicDomain;
+use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * **Tasks §16.2 — დამთხვევები („ერთნაირად გავაკეთეთ").**
@@ -248,9 +250,9 @@ class MatchService
      * ერთი მხარის საჯარო ჩანაწერები ამ დომენში.
      * ⚠️ `PublicProfileService::query()`-ზე გადის — სამფენოვანი წესის ერთადერთი წყარო.
      */
-    private function records(User $user, string $domain): Collection
+    private function records(User $user, string $domain, bool $full = true): Collection
     {
-        $memo = "{$user->id}:{$domain}";
+        $memo = ($full ? 'full:' : 'thin:')."{$user->id}:{$domain}";
 
         if (! isset($this->memo[$memo])) {
             $q = $this->profiles->query($user, $domain);
@@ -261,10 +263,44 @@ class MatchService
                 $q->whereNotNull($column);
             }
 
+            if (! $full) {
+                $q->select($this->thinColumns($q->getModel()->getTable(), $domain));
+            }
+
             $this->memo[$memo] = $q->get();
         }
 
         return $this->memo[$memo];
+    }
+
+    /**
+     * **მხოლოდ საჭირო სვეტები** (აუდიტი 2026-09-14).
+     *
+     * ⚠️ `GET /api/matches` **ორმოცდაათ პროფილს** ადარებს, თითოს ცხრა
+     * დომენზე — ე.ი. ერთ მოთხოვნაში 450-მდე სრული `get()`. სათაურები,
+     * აღწერები და პოსტერების გზები აქ **არასდროს იკითხება**: შედარებას
+     * მხოლოდ იდენტობა და სტატუსი სჭირდება. ბარათების აწყობა `items()`-ის
+     * საქმეა და ის ერთ წყვილს ერთ დომენზე ეხება, ე.ი. სრულ ჩანაწერებს იღებს.
+     *
+     * ⚠️ **`id`/`user_id` მაინც შედის**: პირველი `keyBy`-სა და რესურსს
+     * სჭირდება, მეორე — `status` კავშირის მიბმას.
+     *
+     * @return list<string>
+     */
+    private function thinColumns(string $table, string $domain): array
+    {
+        $columns = ['id', 'user_id', ...PublicDomain::matchColumns($domain)];
+
+        // §6.4 — ექვს დომენს ლექსიკონი აქვს (`status_id`), სამს — `enum`
+        $columns[] = StatusDomain::usesDictionary($domain) ? 'status_id' : 'status';
+
+        return array_map(
+            fn (string $c) => "{$table}.{$c}",
+            array_values(array_unique(array_filter(
+                $columns,
+                fn (string $c) => Schema::hasColumn($table, $c),
+            ))),
+        );
     }
 
     /** @return list<string> უნიკალური იდენტობის გასაღებები */
@@ -272,7 +308,7 @@ class MatchService
     {
         $columns = PublicDomain::matchColumns($domain);
 
-        return $this->records($user, $domain)
+        return $this->records($user, $domain, full: false)
             ->map(fn (Model $r) => $this->keyOf($r, $columns))
             ->unique()
             ->values()
@@ -306,7 +342,7 @@ class MatchService
         /* ⚠️ **კრიტერიუმი `PublicDomain::isDone()`-ია და არა სახელის შედარება**
            (§6.4): ექვს დომენზე სტატუსი per-user ლექსიკონია, ე.ი. „ნანახი"
            ორ ანგარიშზე სხვადასხვა რიგია — მნიშვნელობას მხოლოდ `role` ატარებს. */
-        $doneKeys = fn (User $u) => $this->records($u, $domain)
+        $doneKeys = fn (User $u) => $this->records($u, $domain, full: false)
             ->filter(fn (Model $r) => PublicDomain::isDone($r, $domain))
             ->map(fn (Model $r) => $this->keyOf($r, $columns))
             ->filter(fn (string $k) => isset($shared[$k]))

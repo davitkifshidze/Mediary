@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasDictionaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Str;
 
 /**
  * თამაშის ჟანრი — **per-user მართვადი ლექსიკონი** (`book_genres`-ის ანალოგი).
@@ -21,6 +21,9 @@ use Illuminate\Support\Str;
 class GameGenre extends Model
 {
     use BelongsToUser;
+
+    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი ჟანრები (იგივე სია მიგრაციაშიც) */
     public const DEFAULTS = [
@@ -45,6 +48,12 @@ class GameGenre extends Model
         'sort_order' => 'integer',
     ];
 
+    /** უსახელო გასაღების ნაცვალი — იხ. `HasDictionaryKey` */
+    protected static function keyFallback(): string
+    {
+        return 'genre';
+    }
+
     public function games(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'game_genre_game', 'game_genre_id', 'game_id');
@@ -67,20 +76,5 @@ class GameGenre extends Model
                 'sort_order' => $i + 1,
             ]);
         }
-    }
-
-    /** სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს */
-    public static function makeKey(int $userId, string $name): string
-    {
-        $base = Str::slug($name) ?: 'genre';
-        $key = $base;
-        $n = 2;
-
-        while (static::withoutGlobalScope('owner')->where('user_id', $userId)->where('key', $key)->exists()) {
-            $key = "{$base}-{$n}";
-            $n++;
-        }
-
-        return mb_substr($key, 0, 60);
     }
 }

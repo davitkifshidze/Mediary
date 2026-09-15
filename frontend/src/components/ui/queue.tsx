@@ -1,8 +1,11 @@
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, SkipForward, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
 import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
+import { startBatch, type BatchKind } from '@/api/batches'
+import { errorMessage } from '@/lib/errors'
+import { useToast } from '@/components/ui/feedback'
 import {
   fetchActorGalleryImages,
   fetchGalleryItem,
@@ -495,6 +498,55 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const active = items.filter((i) => i.status === 'pending' || i.status === 'running').length
   const isBusy = active > 0
 
+  /* §D1 — რიგის სერვერზე გადაცემა.
+
+     ⚠️ **მხოლოდ ერთგვაროვანი ნარჩენი გადადის.** პარტიას ერთი `kind` აქვს,
+     ე.ი. შერეული რიგი (სინქრონი + თარგმანი ერთად) ორ პარტიად უნდა
+     დაიშალოს — ეს გაურკვევლობაა და ღილაკი ასეთ დროს უბრალოდ არ ჩანს.
+     ⚠️ `add`/`purge` არასდროს გადადის: პირველი ერთ რექვესთში სრულდება,
+     მეორე კი დესტრუქციულია და ცხად დადასტურებაზე დგას. */
+  const { toast } = useToast()
+  const [handingOff, setHandingOff] = React.useState(false)
+
+  const pendingItems = items.filter((i) => i.status === 'pending')
+  const handoffKinds = new Set(pendingItems.map((i) => i.kind))
+  const handoffKind =
+    handoffKinds.size === 1 &&
+    pendingItems.length > 0 &&
+    ['sync', 'gallery', 'translate'].includes(pendingItems[0].kind) &&
+    // ⚠️ მსახიობის ფოტოებს თავისი endpoint აქვს და ჩანაწერის პარტიაში არ ჯდება
+    !pendingItems.some((i) => i.galleryActor)
+      ? (pendingItems[0].kind as BatchKind)
+      : null
+
+  const handOff = async () => {
+    if (!handoffKind) return
+    setHandingOff(true)
+
+    try {
+      const first = pendingItems[0]
+      await startBatch(
+        handoffKind,
+        pendingItems.map((i) => ({ type: i.mediaType, id: i.itemId! })),
+        /* ⚠️ პარამეტრები **პირველი ერთეულიდან** მოდის: რიგი ერთი დიალოგიდან
+           იბადება, ე.ი. ისინი მთელ პარტიაზე ერთი და იგივეა. */
+        handoffKind === 'sync'
+          ? { ...(first.opts ?? {}) }
+          : handoffKind === 'gallery'
+            ? { ...(first.galleryOpts ?? {}) }
+            : { sources: first.sources, review: first.review },
+      )
+
+      // გადაცემულები კლიენტის რიგიდან ქრება — ორჯერ დამუშავება არ გვინდა
+      setItems((cur) => cur.filter((i) => i.status !== 'pending'))
+      toast({ title: t('queue.handedOff', { count: pendingItems.length }) })
+    } catch (e) {
+      toast({ title: errorMessage(e), variant: 'error' })
+    } finally {
+      setHandingOff(false)
+    }
+  }
+
   // refresh/close გაფრთხილება, სანამ რიგი აქტიურია
   React.useEffect(() => {
     if (!isBusy) return
@@ -675,6 +727,24 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
               ))}
+
+              {/* §D1 — **სერვერზე გადაცემა.** კლიენტის რიგი ტაბის დახურვაზე
+                  ჩერდება; ეს ღილაკი დარჩენილ ერთეულებს სერვერს აბარებს და
+                  ბრაუზერი აღარაფერს წყვეტს. ⚠️ ჩანს მხოლოდ მაშინ, როცა
+                  დარჩენილში **გადასატანი სახის** სამუშაოა: `add` და `purge`
+                  ფონურად არ მიდის (პირველი მყისიერია, მეორე დესტრუქციული). */}
+              {handoffKind && (
+                <div className="border-t border-border p-2">
+                  <button
+                    onClick={handOff}
+                    disabled={handingOff}
+                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
+                  >
+                    {handingOff ? <Loader2 className="size-3.5 animate-spin" /> : <Server className="size-3.5" />}
+                    {t('queue.handOff')}
+                  </button>
+                </div>
+              )}
 
               {(active > 0 || errors > 0) && (
                 <div className="flex gap-2 border-t border-border p-2">

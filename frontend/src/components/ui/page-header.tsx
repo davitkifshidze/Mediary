@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModules, moduleName } from '@/lib/modules'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { TOOL_SECTIONS, type ToolSectionKey } from '@/lib/toolSections'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -27,6 +28,17 @@ import { cn } from '@/lib/utils'
    ბაზიდან მოდის, ე.ი. `bg-[#6366f1]` კომპილაციისას არ არსებობს და Tailwind
    მას ვერ დააგენერირებდა. `color-mix()` ფონს გამჭვირვალეს ხდის, ე.ი. მუქ
    და ნათელ თემაზე ერთნაირად კითხვადია.
+
+   ⚠️ **`tool` — არა-მოდულური სექციის ფერი (Tasks §23).** ლექსიკონები,
+   სინქრონი, თარგმანები, ჩატი, აუდიტი და დანარჩენი თერთმეტი `modules`
+   ცხრილში არ არიან, ე.ი. `module`-ით ფერს ვერასდროს მიიღებდნენ და
+   თორმეტივე გვერდის სათაური ერთნაირად ნაცრისფერი იყო. ფერიც და ხატულაც
+   იმავე რეესტრიდან მოდის, რომელსაც საიდბარი კითხულობს — ე.ი. ორი ადგილი
+   ვერ დაშორდება.
+
+   ⚠️ **ორივე ერთად არ გადაეცემა**: `module` ბიბლიოთეკის სექციაა, `tool` —
+   ინსტრუმენტისა. ერთ ჰედერზე ორი აქცენტი იმას ნიშნავდა, რომ „სად ვდგავარ"
+   ორ სხვადასხვა პასუხს გასცემდა.
    ============================================================ */
 
 export function PageHeader({
@@ -34,6 +46,8 @@ export function PageHeader({
   subtitle,
   /** მოდულის key — აქედან მოდის ფონი, აიქონი და ზედა ხაზი (`undefined` = ნეიტრალური) */
   module,
+  /** არა-მოდულური სექციის key (`sync`, `audit`…) — ფერი და ხატულა §23-ის რეესტრიდან */
+  tool,
   actions,
   /** მარცხნივ — უკან დაბრუნების ბმული და მისთანები */
   before,
@@ -42,6 +56,7 @@ export function PageHeader({
   title: ReactNode
   subtitle?: ReactNode
   module?: string
+  tool?: ToolSectionKey
   actions?: ReactNode
   before?: ReactNode
   className?: string
@@ -49,7 +64,9 @@ export function PageHeader({
   const { i18n } = useTranslation()
   const { all } = useModules()
   const found = module ? all.find((m) => m.key === module) : undefined
-  const color = found?.color ?? null
+  const section = tool ? TOOL_SECTIONS[tool] : undefined
+  const color = section?.color ?? found?.color ?? null
+  const ToolIcon = section?.icon
 
   // ზედა წვრილი ხაზი — მოდულის სახელი; სათაურის გამეორებას ვერიდებით
   const name = found ? moduleName(found, i18n.language) : null
@@ -58,7 +75,8 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'mb-5 rounded-xl border border-border px-4 py-3',
+        // `fb-header` — შემოსვლის ანიმაცია (`index.css`, §23)
+        'fb-header mb-5 rounded-xl border border-border px-4 py-3',
         !color && 'bg-card',
         className,
       )}
@@ -75,12 +93,18 @@ export function PageHeader({
       {before && <div className="mb-2">{before}</div>}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {found && (
+        {(found || ToolIcon) && (
           <span
-            className="grid size-10 shrink-0 place-items-center rounded-lg"
-            style={color ? { backgroundColor: `color-mix(in oklab, ${color} 22%, transparent)` } : undefined}
+            /* `fb-header-icon` — შემოსვლის ანიმაცია `index.css`-ში (§23):
+               ერთ ადგილას, `prefers-reduced-motion`-ის დაცვით. */
+            className="fb-header-icon grid size-10 shrink-0 place-items-center rounded-lg"
+            style={color ? { backgroundColor: `color-mix(in oklab, ${color} 22%, transparent)`, '--mod': color } as CSSProperties : undefined}
           >
-            <ModuleIcon name={found.icon} className="size-5" />
+            {ToolIcon ? (
+              <ToolIcon className="size-5 text-[var(--mod)]" />
+            ) : (
+              <ModuleIcon name={found!.icon} className="size-5" />
+            )}
           </span>
         )}
 

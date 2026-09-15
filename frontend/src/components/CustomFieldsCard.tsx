@@ -274,7 +274,7 @@ function FileField({
           <PrivateFileLink
             url={file.url}
             name={file.name}
-            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/70"
           >
             <Paperclip className="size-3.5" />
             <span className="max-w-[16rem] truncate">{file.name ?? fieldKey}</span>

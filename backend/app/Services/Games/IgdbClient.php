@@ -2,8 +2,10 @@
 
 namespace App\Services\Games;
 
+use App\Services\Credentials\CredentialStore;
+use App\Support\CredentialProviders;
+use App\Support\SourceLog;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -34,6 +36,18 @@ class IgdbClient
     /** ტოკენის ქეშის გასაღები — ერთ ადგილას, რომ გასუფთავებაც ერთი იყოს */
     private const TOKEN_KEY = 'igdb.access_token';
 
+    /**
+     * ტოკენის ქეშის key **გასაღების ანაბეჭდით** (Tasks §21.5).
+     *
+     * ⚠️ Twitch-ის ტოკენი კონკრეტულ `client_id`-ს ეკუთვნის. ერთი, საერთო
+     * key ერთი მომხმარებლის ტოკენს მეორეს დაუბრუნებდა — და შედეგი იქნებოდა
+     * 401, რომლის მიზეზი არსად ჩანდა (ორივეს **სწორი** გასაღები აქვს).
+     */
+    private function tokenKey(): string
+    {
+        return self::TOKEN_KEY.'.'.CredentialStore::fingerprint(CredentialProviders::IGDB);
+    }
+
     /** IGDB-ის პლატფორმის id → ჩვენი `Game::PLATFORMS` key */
     private const PLATFORM_MAP = [
         6 => 'pc',          // PC (Microsoft Windows)
@@ -51,7 +65,7 @@ class IgdbClient
 
     public function configured(): bool
     {
-        return (bool) config('services.igdb.client_id') && (bool) config('services.igdb.client_secret');
+        return CredentialStore::configured(CredentialProviders::IGDB);
     }
 
     /** ბოლო რექვესთი **დაბლოკილი** იყო და არა უბრალოდ უშედეგო */
@@ -152,15 +166,18 @@ class IgdbClient
         }
 
         try {
-            $res = Http::timeout(20)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (იხ. CLAUDE.md)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
-                ->get($url);
-        } catch (Throwable) {
-            return null;
+            $res = SourceLog::request(20)->get($url);
+        } catch (Throwable $e) {
+            return SourceLog::threw('igdb', $e, ['url' => $url]);
         }
 
-        return $res->successful() && strlen($res->body()) > 1000 ? $res->body() : null;
+        if (! $res->successful()) {
+            return SourceLog::status('igdb', $res->status(), $res->body(), ['url' => $url]);
+        }
+
+        return strlen($res->body()) > 1000
+            ? $res->body()
+            : SourceLog::failed('igdb', 'cover too small', ['url' => $url, 'bytes' => strlen($res->body())]);
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -182,10 +199,9 @@ class IgdbClient
         }
 
         try {
-            $res = Http::timeout(20)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
+            $res = SourceLog::request(20)
                 ->withHeaders([
-                    'Client-ID' => (string) config('services.igdb.client_id'),
+                    'Client-ID' => (string) CredentialStore::value(CredentialProviders::IGDB, 'client_id'),
                     'Authorization' => 'Bearer '.$token,
                     'Accept' => 'application/json',
                 ])
@@ -196,12 +212,19 @@ class IgdbClient
 
             // ⚠️ 401 = ტოკენი გაუვიდა; ქეშს ვასუფთავებთ, რომ შემდეგი ცდა ახალს აიღოს
             if ($res->status() === 401) {
-                Cache::forget(self::TOKEN_KEY);
+                Cache::forget($this->tokenKey());
             }
 
-            return $res->successful() ? ($res->json() ?? []) : [];
-        } catch (Throwable) {
+            if (! $res->successful()) {
+                SourceLog::status('igdb', $res->status(), $res->body(), ['path' => $path]);
+
+                return [];
+            }
+
+            return $res->json() ?? [];
+        } catch (Throwable $e) {
             $this->lastStatus = 0;
+            SourceLog::threw('igdb', $e, ['path' => $path]);
 
             return [];
         }
@@ -220,21 +243,27 @@ class IgdbClient
             return null;
         }
 
-        return Cache::remember(self::TOKEN_KEY, now()->addDays(30), function () {
+        return Cache::remember($this->tokenKey(), now()->addDays(30), function () {
             try {
-                $res = Http::timeout(20)
-                    ->withOptions(['verify' => storage_path('cacert.pem')])
+                $res = SourceLog::request(20)
                     ->asForm()
                     ->post(self::TOKEN_URL, [
-                        'client_id' => config('services.igdb.client_id'),
-                        'client_secret' => config('services.igdb.client_secret'),
+                        'client_id' => CredentialStore::value(CredentialProviders::IGDB, 'client_id'),
+                        'client_secret' => CredentialStore::value(CredentialProviders::IGDB, 'client_secret'),
                         'grant_type' => 'client_credentials',
                     ]);
-            } catch (Throwable) {
-                return null;
+            } catch (Throwable $e) {
+                return SourceLog::threw('igdb', $e, ['step' => 'token']);
             }
 
-            return $res->successful() ? ($res->json('access_token') ?: null) : null;
+            /* ⚠️ **ტოკენის ჩავარდნა ცალკე უნდა ჩანდეს**: „IGDB-მ ვერაფერი
+               იპოვა" და „Twitch-მა ტოკენი არ მოგვცა" სრულიად სხვადასხვა
+               მიზეზებია, პასუხი კი ორივეზე ცარიელი სიაა. */
+            if (! $res->successful()) {
+                return SourceLog::status('igdb', $res->status(), $res->body(), ['step' => 'token']);
+            }
+
+            return $res->json('access_token') ?: null;
         });
     }
 

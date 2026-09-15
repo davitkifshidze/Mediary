@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Languages, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Languages, SquarePen, Plus, Trash2 } from 'lucide-react'
 import { createGenre, deleteGenre, fetchGenres, updateGenre, updateGenreItems } from '@/api/movies'
 import type { Genre } from '@/api/types'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
@@ -41,6 +41,7 @@ export function GenresPage() {
       </Link>
 
       <PageHeader
+        tool="genres"
         title={t('genres.title')}
         actions={
           <Button onClick={() => setEditing('new')}>
@@ -80,7 +81,7 @@ export function GenresPage() {
                 aria-label={t('genres.edit')}
                 className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Pencil className="size-4" />
+                <SquarePen className="size-4" />
               </button>
               <button
                 onClick={() => setDeleting(g)}

@@ -7,7 +7,7 @@ import { CalendarDays, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LAYER_POPUP } from '@/lib/layers'
 import { useDateFormat } from '@/lib/dates'
-import { Input } from '@/components/ui/input'
+import { TimePicker } from '@/components/ui/time-picker'
 import 'react-day-picker/style.css'
 
 /* ============================================================
@@ -161,11 +161,9 @@ export function DatePicker({
       {withTime && (
         <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
           <span className="text-xs text-muted-foreground">{t('dates.time')}</span>
-          <Input
-            type="time"
-            className="w-28"
+          <TimePicker
             value={time}
-            onChange={(e) => emit(selected ?? new Date(), e.target.value)}
+            onChange={(v) => emit(selected ?? new Date(), v ?? '09:00')}
           />
         </div>
       )}

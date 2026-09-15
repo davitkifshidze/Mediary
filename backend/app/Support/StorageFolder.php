@@ -112,11 +112,21 @@ final class StorageFolder
     public const CAST_PHOTOS = 'cast/photos';
 
     /**
+     * **ბაზის დამპი** (Tasks §22).
+     *
+     * ⚠️ **პრივატულ დისკზეა და ეს არ განიხილება.** ფაილი მთელი ბაზის ასლია —
+     * `/storage/*`-ით დადებული ის ყველა ანგარიშის ყველა ჩანაწერს, ჰეშირებულ
+     * პაროლსა და სესიას ინტერნეტში გამოიტანდა. გამოსვლის ერთადერთი გზა
+     * `super_admin`-ით დაცული `GET /api/admin/backups/{id}/download`-ია.
+     */
+    public const BACKUPS = 'backups';
+
+    /**
      * ატვირთვების **ფესვები** — 17.5-ის ობოლების სკანერი მხოლოდ აქ იყურება.
      * სკანირება რეკურსიულია, ე.ი. ქვესაქაღალდის დამატება აქ არაფერს მოითხოვს.
      */
     public const ROOTS = [
-        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'gallery', 'chat', 'cast',
+        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'gallery', 'chat', 'cast', 'backups',
     ];
 
     /**
@@ -131,7 +141,7 @@ final class StorageFolder
      * სურათებია და საჯარო პროფილზეც ჩანს (§16.1). პრივატულია ის, რაც
      * user-ის **პირადი დოკუმენტია** — `notes/`.
      */
-    public const PRIVATE_ROOTS = ['notes', 'chat'];
+    public const PRIVATE_ROOTS = ['notes', 'chat', 'backups'];
 
     /**
      * **პრივატული ქვესაქაღალდე საჯარო ფესვში (Tasks §7.1).**
@@ -182,6 +192,9 @@ final class StorageFolder
         'account' => 'account',
         'chat' => 'chat',
         'cast' => 'cast',
+        /* §22 — ფსევდომოდული, `chat`/`account`-ის წესით: `modules` ცხრილში
+           რიგი არ აქვს, ე.ი. ცალკე ლიმიტს ვერ იღებს და საერთო აუზში რჩება. */
+        'backups' => 'backup',
     ];
 
     /** გზა/საქაღალდე → მოდულის key; `null` — უცნობი ფესვი (მაგ. legacy) */

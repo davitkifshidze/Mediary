@@ -608,4 +608,39 @@ class StorageManagementTest extends TestCase
 
         $this->assertSame([], app(StorageMeter::class)->allocations($this->user->refresh()));
     }
+    /* ---------- კვოტის ატომურობა (აუდიტი 2026-09-14) ---------- */
+
+    /**
+     * **ჯავშანი ატომურია — ორი პარალელური ატვირთვა ლიმიტს ვერ გადალახავს.**
+     *
+     * ⚠️ ადრე `guard()` (კითხვა) და `add()` (ჩაწერა) ცალკე ნაბიჯები იყო:
+     * ორივე მოთხოვნა ერთსა და იმავე ნაშთს დაინახავდა, ორივე გაივლიდა და
+     * ორივე დაამატებდა — ე.ი. კვოტა გადალახვადი იყო. `reserve()` ერთი
+     * პირობითი `UPDATE`-ია, ე.ი. მეორე ცდა 0 რიგს ცვლის და უარს იღებს.
+     */
+    public function test_two_reservations_cannot_both_fit_into_one_slot(): void
+    {
+        $meter = app(StorageMeter::class);
+        $user = $this->user;
+
+        $user->forceFill(['storage_quota_bytes' => 1000, 'storage_used_bytes' => 0])->save();
+
+        $this->assertTrue($meter->reserve($user, 600));
+        // მეორეს ადგილი აღარ აქვს — და ეს **ბაზაშივე** წყდება
+        $this->assertFalse($meter->reserve($user->refresh(), 600));
+
+        $this->assertSame(600, (int) $user->refresh()->storage_used_bytes);
+    }
+
+    /** ზუსტად ჩატეული ჯავშანი გადის — ზღვარი „<=" არის და არა „<" */
+    public function test_a_reservation_that_exactly_fills_the_quota_is_allowed(): void
+    {
+        $meter = app(StorageMeter::class);
+        $user = $this->user;
+
+        $user->forceFill(['storage_quota_bytes' => 1000, 'storage_used_bytes' => 400])->save();
+
+        $this->assertTrue($meter->reserve($user, 600));
+        $this->assertFalse($meter->reserve($user->refresh(), 1));
+    }
 }

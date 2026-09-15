@@ -42,6 +42,12 @@ class VideoResource extends JsonResource
             'download_name' => $this->download_name,
             'download_error' => $this->download_error,
             'downloaded_at' => $this->downloaded_at?->toIso8601String(),
+            /* ⚠️ **„გაჭედილია" backend-ის სათქმელია** (აუდიტი 2026-09-14, §B1) —
+               იგივე წესი, რაც საცავის `private` დროშას აქვს. SPA-ს ჭერისა და
+               საწყისი დროის მეორე ასლი დასჭირდებოდა, ე.ი. ერთ დღეს ღილაკი
+               „მიმდინარეობს"-ს აჩვენებდა, სერვერი კი უკვე დაუშვებდა ხელახლა
+               გაშვებას (ან პირიქით). ერთი ფორმულა — `Video::downloadStale()`. */
+            'download_stale' => $this->downloadStale(),
             // მიმაგრებული შიგთავსი (K3)
             'images_count' => $this->whenCounted('images'),
             'documents_count' => $this->whenCounted('documents'),

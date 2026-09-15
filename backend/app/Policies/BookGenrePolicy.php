@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\BookGenre;
-use App\Models\User;
-
-class BookGenrePolicy
-{
-    public function view(User $user, BookGenre $genre): bool
-    {
-        return $genre->user_id === $user->id;
-    }
-
-    public function update(User $user, BookGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-
-    public function delete(User $user, BookGenre $genre): bool
-    {
-        return $this->view($user, $genre);
-    }
-}
+/**
+ * BookGenre-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\BookGenre` → `App\Policies\BookGenrePolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class BookGenrePolicy extends OwnedRecordPolicy {}

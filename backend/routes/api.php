@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AnimeSyncController;
 use App\Http\Controllers\Api\ApprovalRequestController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BatchController;
 use App\Http\Controllers\Api\BoardGameController;
 use App\Http\Controllers\Api\BoardGameFileController;
 use App\Http\Controllers\Api\BoardGameGenreController;
@@ -25,8 +26,10 @@ use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\CredentialController;
 use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GalleryVideoController;
@@ -53,6 +56,7 @@ use App\Http\Controllers\Api\NoteReminderController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\RecordCastController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
@@ -100,9 +104,14 @@ Route::get('/health', function () {
     ]);
 });
 
-/* ---------- ავტორიზაცია (საჯარო) ---------- */
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
+/* ---------- ავტორიზაცია (საჯარო) ----------
+   ⚠️ **`throttle:login` აუცილებელია და არა სიფრთხილე** (აუდიტი 2026-09-14, §A1):
+   რეგისტრაცია ღიაა, ე.ი. ამ ჭერის გარეშე პაროლის ბრუტფორსს არაფერი აჩერებდა.
+   ჭერი **IP + შეყვანილი login-ი ერთად** არის — იხ. `AppServiceProvider::rateLimiters()`. */
+Route::middleware('throttle:login')->group(function () {
+    Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/login', [AuthController::class, 'login']);
+});
 
 /* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
    ⚠️ **ერთადერთი დომენური endpoint-ები `auth:sanctum`-ის გარეთ.** ორივე
@@ -148,14 +157,34 @@ Route::middleware('auth:sanctum')->group(function () {
        სექცია. ოთხივე საძიებო მარშრუტი **`GET`-ია**: ძებნა კითხვაა, და POST-ის
        შემთხვევაში `EnsureModulePermission` მას `create`-ად წაიკითხავდა
        (`GET /board-games/shops`-ის იგივე მიზეზი).
-       ⚠️ `status` **უფასოა** — `GET /account` კვოტას არ ხარჯავს. */
+       ⚠️ `status` **უფასოა** — `GET /account` კვოტას არ ხარჯავს, ამიტომ ის
+       ჭერის გარეთაა: ღილაკის მდგომარეობა ლიმიტს არ უნდა ხარჯავდეს.
+       ⚠️ **დანარჩენ სამზე `throttle:web-search`** (აუდიტი §A1): თითოეული
+       გამოძახება ან SerpApi-ს კრედიტს ხარჯავს, ან Serper-ის გვერდს, და ეს
+       კვოტა **ინსტალაციისაა** — ერთი ანგარიში ყველა დანარჩენს ტოვებდა უკვოტოდ. */
     Route::get('/web/status', [WebSearchController::class, 'status']);
-    Route::get('/web/images', [WebSearchController::class, 'images']);
-    Route::get('/web/videos', [WebSearchController::class, 'videos']);
-    Route::get('/web/video', [WebSearchController::class, 'video']);
+    Route::middleware('throttle:web-search')->group(function () {
+        Route::get('/web/images', [WebSearchController::class, 'images']);
+        Route::get('/web/videos', [WebSearchController::class, 'videos']);
+        Route::get('/web/video', [WebSearchController::class, 'video']);
+    });
     /* ⚠️ **ეს ერთი `POST`-ია და განზრახ:** აქ მართლა იქმნება ჩანაწერი
        (`gallery_images`-ის რიგი + ფაილი დისკზე), ძებნა კი კითხვა იყო. */
     Route::post('/web/import', [WebSearchController::class, 'import']);
+
+    /* ---------- ფონური პარტია (აუდიტი §D1) ----------
+       ⚠️ **მოდულის ჯგუფის გარეთ**: ერთი პარტია სამ დომენს ერთდროულად
+       შეიძლება შეიცავდეს („ფილმები და სერიალები ერთად"), ე.ი. `module:@type`
+       ერთ კონკრეტულს მოითხოვდა. უფლებას კონტროლერი თითო ტიპზე ცხადად
+       ამოწმებს — იგივე გადაწყვეტილება, რაც `/visibility/{domain}`-ს აქვს. */
+    Route::post('/batches', [BatchController::class, 'store']);
+    Route::get('/batches/{batch}', [BatchController::class, 'show']);
+    Route::delete('/batches/{batch}', [BatchController::class, 'destroy']);
+
+    /* ---------- ჯვარედინი ძებნა (აუდიტი §D6) ----------
+       ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა
+       ერთს — რომელია ჩართული, ამას `GlobalSearch` წყვეტს. */
+    Route::get('/search', [SearchController::class, 'index']);
 
     /* ---------- აუდიტ-ლოგი: სექციაში შესვლა (Tasks §4.1) ----------
        SPA-ს მარშრუტის შეცვლა HTTP რექვესთი არ არის, ე.ი. სიგნალი ცხადად
@@ -165,6 +194,25 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ---------- დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები ----------
        მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    /* ---------- „მონაცემები": გასაღებები და ლიმიტები (Tasks §21) ---------- */
+    /* ⚠️ **`module:` ჯგუფს მიღმაა და განზრახ.** გასაღები კონტენტის მოდული
+       არაა (`modules` ცხრილში რიგი არ აქვს, იხ. `CredentialProviders`), და —
+       რაც მთავარია — მოდულის გამორთვა *ყველა* ანგარიშზე მოქმედებს, ე.ი.
+       ერთი გადამრთველი ყველას თარგმანს გათიშავდა.
+       ⚠️ `PUT`, არა `POST`: შვიდივე წყარო **არსებულ** ჩანაწერს ცვლის და
+       `EnsureModulePermission`-ის ლოგიკით POST `create`-ად იკითხებოდა. */
+    Route::get('/credentials', [CredentialController::class, 'index']);
+    Route::put('/credentials/{provider}', [CredentialController::class, 'update']);
+    Route::delete('/credentials/{provider}', [CredentialController::class, 'destroy']);
+    /* ⚠️ ცოცხალი შემოწმება გარეთ გადის — `throttle:web-search`-ის ოჯახში
+       ჯდება: SerpApi/Serper-ის შემოწმება ბიუჯეტს ეხება. */
+    Route::post('/credentials/{provider}/test', [CredentialController::class, 'test'])
+        ->middleware('throttle:web-search');
+    /* §21.8 — გასაღების ნახვა/კოპირება. ⚠️ **`GET` და არა სიის ველი**:
+       სრული გასაღები მხოლოდ ცხადი დაჭერისას გადის, და არა ყოველ გვერდის
+       გახსნაზე (სადაც ის ქეშსა და ქსელის ჩანართში დარჩებოდა). */
+    Route::get('/credentials/{provider}/reveal', [CredentialController::class, 'reveal']);
 
     /* ---------- მოდულები და მოთხოვნები ---------- */
     /* **ატვირთვის ლიმიტები** (2026-09-14) — ინტერფეისი ზუსტად იმას წერს,
@@ -300,7 +348,11 @@ Route::middleware('auth:sanctum')->group(function () {
         /* §7.1 — ლოკალური ასლი: ერთი მისამართი, სამი ზმნა (დაწყება · მიწოდება ·
            წაშლა). ⚠️ ფაილი **პრივატულ დისკზეა**, ე.ი. `/storage/*`-ით არ
            იხსნება — მხოლოდ ეს `GET` გამოიტანს მას, მფლობელობის შემოწმებით. */
-        Route::post('/videos/{video}/download', [VideoDownloadController::class, 'store']);
+        /* ⚠️ **მხოლოდ დაწყებას აქვს ჭერი** (აუდიტი §A1): ერთი გაშვება წუთებია
+           და გიგაბაიტები. `GET` (ფაილის მიწოდება) და `DELETE` იაფია და
+           ჭერის ქვეშ მოხვედრა მათ გამართულ მუშაობას გატეხდა. */
+        Route::post('/videos/{video}/download', [VideoDownloadController::class, 'store'])
+            ->middleware('throttle:download');
         Route::get('/videos/{video}/download', [VideoDownloadController::class, 'show']);
         Route::delete('/videos/{video}/download', [VideoDownloadController::class, 'destroy']);
 
@@ -582,13 +634,30 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
     });
 
-    /* ---------- გაზიარებული: დომენი `type` პარამეტრიდან (`module:@type`) ---------- */
-    Route::middleware(['module:@type', 'permission:@type'])->group(function () {
+    /* ---------- გაზიარებული: დომენი `type` პარამეტრიდან (`module:@type`) ----------
+
+       ⚠️ **სამივე ჯგუფს უფლება ცხადად უწერია** (აუდიტი 2026-09-14, §A4).
+       აქამდე ოთხივე მარშრუტი ერთ `permission:@type`-ში იდგა მოქმედების
+       გარეშე, ე.ი. `EnsureModulePermission::actionFor()` მას HTTP მეთოდიდან
+       იყვანდა — POST-ზე **`create`**. `/media/sync/{type}/{id}`-ის ბოლო
+       სეგმენტი რიცხვია, ე.ი. `UPDATE_ENDPOINTS`-ის ცნობაც არ მუშაობდა.
+       შედეგი ორმხრივად მცდარი იყო: როლი „ვქმნი, მაგრამ არ ვცვლი"
+       **არსებულ ჩანაწერს გადააწერდა** (`ItemSyncer` overwrite რეჟიმში —
+       სათაური, აღწერა, პოსტერი, ჟანრები, მსახიობები), ხოლო როლი
+       „ვცვლი, მაგრამ არ ვქმნი" ცრუ 403-ს იღებდა. ზუსტად ის ხაფანგი,
+       რომელსაც `/translations/{type}/{id}` და `/media/cast/…` უკვე არიდებენ. */
+
+    // ძებნა და აღმოჩენა მხოლოდ **კითხულობს** — TMDB-ს ეკითხება და არაფერს ინახავს
+    Route::middleware(['module:@type', 'permission:@type,view'])->group(function () {
         Route::post('/lookup/candidates', [LookupController::class, 'candidates']);
         Route::post('/lookup', [LookupController::class, 'lookup']);
         Route::get('/discover', [DiscoverController::class, 'index']);
-        Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item']);
     });
+
+    // სინქრონი **არსებულ ჩანაწერს ცვლის** — ე.ი. `update` და არა `create`
+    Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
 
     /* ---------- ჩანაწერის მსახიობები ხელით (ეტაპი 1) ----------
        ⚠️ **უფლება სამივეწე `update`-ია და არა მეთოდიდან გამოყვანილი.**
@@ -625,10 +694,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // ერთი ჩანაწერის თარგმნა — ჯგუფის გარეთ, რადგან POST-ია, მაგრამ **არსებულს ცვლის**:
     // მოქმედება ცხადად `update`-ია (მისამართის ბოლო სეგმენტი id-ია, ე.ი.
     // `UPDATE_ENDPOINTS`-ის ავტომატური ცნობა აქ არ მუშაობს და `create` გამოვიდოდა).
+    /* ⚠️ **`throttle:translate` ორივეზე** (აუდიტი §A1): Gemini-ის უფასო დონე
+       ~15 მოთხოვნას უშვებს წუთში და ეს ლიმიტი **მთელი ინსტალაციისაა**.
+       ნამდვილ მრიცხველს `TranslationUsage` იცავს; ეს ჭერი იმას აკეთებს,
+       რომ ერთმა გაქცეულმა ციკლმა დღიური კვოტა წუთებში არ შეჭამოს. */
     Route::post('/translations/{type}/{id}', [TranslationController::class, 'item'])
-        ->middleware(['module:@type', 'permission:@type,update'])
+        ->middleware(['module:@type', 'permission:@type,update', 'throttle:translate'])
         ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
-    Route::post('/translations/genres', [TranslationController::class, 'genres']);
+    Route::post('/translations/genres', [TranslationController::class, 'genres'])
+        ->middleware('throttle:translate');
 
     /* ---------- დამთხვევები (Tasks 16.2) ----------
        ⚠️ საჯარო პროფილისგან განსხვავებით **ავტორიზებულია**: შედარებას მეორე
@@ -786,5 +860,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/purge', [AdminPurgeController::class, 'run']);
         /* რიგის ერთი ნაბიჯი (20.2) — ფრონტი ციკლს queue-თი ატარებს */
         Route::post('/purge/item', [AdminPurgeController::class, 'item']);
+
+        /* **ბაზის დამპი და აღდგენა (Tasks §22)**.
+           ⚠️ `super_admin` და არა `admin_access:` — დამპი მთელი ბაზაა
+           (ყველა ანგარიში, ჰეშირებული პაროლები, პირადი ჩატები), ე.ი. ერთი
+           სექციის უფლება ვერ იქნება; იგივე მსჯელობა, რაც `admin/purge`-ს აქვს.
+           ⚠️ `download`/`restore` **`{backup}`-ის ქვემოთაა** — რიგს მნიშვნელობა
+           აქვს მხოლოდ იმიტომ, რომ `import` ციფრი არაა და `{backup}`-ად
+           წაიკითხებოდა; ამიტომ ის სიაშივე, პარამეტრიან მისამართებამდე დგას. */
+        Route::get('/backups', [DatabaseBackupController::class, 'index']);
+        Route::post('/backups', [DatabaseBackupController::class, 'store']);
+        Route::post('/backups/import', [DatabaseBackupController::class, 'import']);
+        Route::get('/backups/{backup}', [DatabaseBackupController::class, 'show'])->whereNumber('backup');
+        Route::get('/backups/{backup}/download', [DatabaseBackupController::class, 'download'])->whereNumber('backup');
+        Route::post('/backups/{backup}/restore', [DatabaseBackupController::class, 'restore'])->whereNumber('backup');
+        Route::delete('/backups/{backup}', [DatabaseBackupController::class, 'destroy'])->whereNumber('backup');
     });
 });

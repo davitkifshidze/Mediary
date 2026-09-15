@@ -149,7 +149,7 @@ export function AuditPage() {
 
   return (
     <PageContainer>
-      <PageHeader title={t('audit.title')} subtitle={t('audit.subtitle')} />
+      <PageHeader tool="audit" title={t('audit.title')} subtitle={t('audit.subtitle')} />
 
       {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
       <AuditScope

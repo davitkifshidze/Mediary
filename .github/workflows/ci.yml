@@ -1,0 +1,113 @@
+# ============================================================
+#  Mediary — CI (აუდიტი 2026-09-14, §D5)
+#
+#  ⚠️ ექვსივე შემოწმება უკვე არსებობდა და **ხელით** ეშვებოდა — სწორედ ამიტომ
+#  იდგა `Tasks.md`-ში „ჯანმრთელობის სურათი": ის CI-ის ხელით შესრულებული
+#  ჩანაცვლება იყო. ახლა ისინი ყოველ push-ზე გადის.
+#
+#  ⚠️ **ბაზა sqlite `:memory:`-ია** (`phpunit.xml`), ე.ი. CI-ს MySQL სერვისი
+#  არ სჭირდება. ეს პროექტის შეგნებული არჩევანია და აქაც ის მუშაობს.
+#
+#  ⚠️ **გარე გასაღებები არსად არ არის და არც უნდა იყოს.** ტესტები TMDB-ს,
+#  Gemini-ს და SerpApi-ს არ ურეკავენ (`phpunit.xml` `GEMINI_API_KEY`-ს
+#  ცარიელს აყენებს სწორედ ამიტომ), ე.ი. CI-ს secret არ სჭირდება.
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# ერთსა და იმავე ბრენჩზე ახალი push ძველ გაშვებას აჩერებს
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — PHPUnit + Pint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          # sqlite — ტესტების ბაზა; zip — `StorageMeter::archiveOwnFiles()`
+          extensions: mbstring, sqlite3, pdo_sqlite, zip, dom, curl
+          coverage: none
+
+      - name: Composer cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Install
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # ⚠️ `.env` git-ში არ არის (და არც უნდა იყოს) — ტესტს კი `APP_KEY` სჭირდება
+      - name: Prepare environment
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Tests
+        working-directory: backend
+        run: php artisan test
+
+      - name: Formatting
+        working-directory: backend
+        run: ./vendor/bin/pint --test
+
+  frontend:
+    name: Frontend — tsc + Vitest + oxlint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      # `npm run build` შიგნით `tsc -b`-საც უშვებს — ტიპები და build ერთად
+      - name: Typecheck and build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+  i18n:
+    name: i18n — ka/en სინქრონში
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ⚠️ სკრიპტი დამოკიდებულების გარეშეა (მხოლოდ stdlib) — `pip install` არ სჭირდება.
+      # ის ჩავარდნისას **არა-ნულოვან კოდს** აბრუნებს, ე.ი. CI-ს ცალკე შემოწმება არ უნდა.
+      - name: Audit translations
+        run: python frontend/src/i18n/audit.py

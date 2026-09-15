@@ -507,4 +507,79 @@ class RegistryConsistencyTest extends TestCase
             );
         }
     }
+    /* ---------- გარე ქსელი (აუდიტი 2026-09-14) ---------- */
+
+    /**
+     * **მომხმარებლის URL-ის ჩამოტვირთვა მხოლოდ `SafeHttp`-ით.**
+     *
+     * ⚠️ ორი ადგილია, სადაც სერვერი **მომხმარებლის ნაკარნახევ** მისამართს
+     * ხსნის (ბუკმარკის მეტამონაცემი და ვებიდან ნაპოვნი ფოტო) და ორივეს
+     * SSRF-ის ხვრელი ჰქონდა. მესამე ასეთი ადგილი ადვილი დასამატებელია და
+     * **ჩუმად** გაუვლიდა გვერდს ყველა დაცვას — ეს ტესტი სწორედ ამას იჭერს.
+     *
+     * ⚠️ სია **ცხადია და მოკლეა განზრახ**: თუ ახალი ფაილი გაჩნდა, ტესტი
+     * ჩავარდება და ავტორმა ან `SafeHttp`-ზე უნდა გადაიყვანოს, ან აქ
+     * დაამატოს მიზეზის ახსნით.
+     */
+    public function test_user_supplied_urls_only_leave_through_safe_http(): void
+    {
+        $fetchers = [
+            'app/Services/Bookmarks/LinkMetadata.php',
+            'app/Services/Serp/WebImageImporter.php',
+        ];
+
+        foreach ($fetchers as $file) {
+            $source = file_get_contents(base_path($file));
+
+            $this->assertStringContainsString('SafeHttp', $source, "{$file} — SafeHttp-ს არ იყენებს");
+            $this->assertStringNotContainsString(
+                'Http::',
+                $source,
+                "{$file} — პირდაპირ Http ფასადს იძახებს, ე.ი. SSRF-ის შემოწმებას გვერდს უვლის",
+            );
+        }
+    }
+
+    /**
+     * **CA bundle ორ ადგილას წყდება და არა თოთხმეტში.**
+     *
+     * ⚠️ Windows-ის cURL-ს სერტიფიკატების სია არ აქვს (პროექტის ცნობილი
+     * წესი), ე.ი. ერთი დავიწყებული `verify` ახალ კლიენტს **ჩუმად**
+     * ჩააგდებდა — ზუსტად ის, რის გამოც `SourceLog::request()` გაჩნდა.
+     */
+    public function test_the_ca_bundle_is_configured_in_one_place(): void
+    {
+        $allowed = ['app/Support/SourceLog.php', 'app/Support/SafeHttp.php'];
+
+        $offenders = [];
+
+        foreach ($this->phpFiles(app_path()) as $file) {
+            $relative = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file);
+            $relative = str_replace(DIRECTORY_SEPARATOR, '/', $relative);
+
+            if (in_array($relative, $allowed, true)) {
+                continue;
+            }
+
+            if (str_contains((string) file_get_contents($file), 'cacert.pem')) {
+                $offenders[] = $relative;
+            }
+        }
+
+        $this->assertSame([], $offenders, 'CA bundle ხელით წერია — გამოიყენე SourceLog::request()');
+    }
+
+    /** @return list<string> */
+    private function phpFiles(string $dir): array
+    {
+        $out = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir)) as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $out[] = $file->getPathname();
+            }
+        }
+
+        return $out;
+    }
 }

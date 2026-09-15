@@ -5,6 +5,7 @@ namespace App\Services\Cast;
 use App\Models\CastMember;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
+use App\Support\SourceLog;
 use Throwable;
 
 /**
@@ -63,8 +64,11 @@ class CastEnricher
 
         try {
             $person = $this->tmdb->person($member->tmdb_person_id);
-        } catch (Throwable) {
-            // წყარო არ პასუხობს — გვერდი მაინც უნდა გაიხსნას (BGG-ის წესი)
+        } catch (Throwable $e) {
+            // წყარო არ პასუხობს — გვერდი მაინც უნდა გაიხსნას (BGG-ის წესი),
+            // მაგრამ მიზეზი ლოგში რჩება (აუდიტი §D)
+            SourceLog::threw('tmdb', $e, ['person' => $member->tmdb_person_id]);
+
             return false;
         }
 

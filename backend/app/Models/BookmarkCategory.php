@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasDictionaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 /**
  * ბუკმარკის კატეგორია — **per-user მართვადი ლექსიკონი** (`note_categories`-ის
@@ -18,6 +18,9 @@ use Illuminate\Support\Str;
 class BookmarkCategory extends Model
 {
     use BelongsToUser;
+
+    /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
+    use HasDictionaryKey;
 
     /** ახალ ანგარიშზე ავტომატურად შექმნილი კატეგორიები (იგივე სია მიგრაციაშიც) */
     public const DEFAULTS = [
@@ -34,6 +37,12 @@ class BookmarkCategory extends Model
     protected $casts = [
         'sort_order' => 'integer',
     ];
+
+    /** უსახელო გასაღების ნაცვალი — იხ. `HasDictionaryKey` */
+    protected static function keyFallback(): string
+    {
+        return 'category';
+    }
 
     public function bookmarks(): HasMany
     {
@@ -57,20 +66,5 @@ class BookmarkCategory extends Model
                 'sort_order' => $i + 1,
             ]);
         }
-    }
-
-    /** სახელიდან უნიკალური key — ლათინური slug, ქართულ სახელზეც მუშაობს */
-    public static function makeKey(int $userId, string $name): string
-    {
-        $base = Str::slug($name) ?: 'category';
-        $key = $base;
-        $n = 2;
-
-        while (static::withoutGlobalScope('owner')->where('user_id', $userId)->where('key', $key)->exists()) {
-            $key = "{$base}-{$n}";
-            $n++;
-        }
-
-        return mb_substr($key, 0, 60);
     }
 }

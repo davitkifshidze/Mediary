@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { STATUS_BADGE } from '@/lib/statusStyles'
 import { statusName, statusTone } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
@@ -26,14 +27,8 @@ export function StatusBadge({
   if (!status) return null
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium',
-        STATUS_BADGE[statusTone(status)],
-        className,
-      )}
-    >
+    <Badge className={cn(STATUS_BADGE[statusTone(status)] ?? 'bg-secondary', className)}>
       {statusName(status, lang)}
-    </span>
+    </Badge>
   )
 }

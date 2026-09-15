@@ -2,23 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Bookmark;
-use App\Models\User;
-
-class BookmarkPolicy
-{
-    public function view(User $user, Bookmark $bookmark): bool
-    {
-        return $bookmark->user_id === $user->id;
-    }
-
-    public function update(User $user, Bookmark $bookmark): bool
-    {
-        return $this->view($user, $bookmark);
-    }
-
-    public function delete(User $user, Bookmark $bookmark): bool
-    {
-        return $this->view($user, $bookmark);
-    }
-}
+/**
+ * Bookmark-ის მფლობელობა — წესი `OwnedRecordPolicy`-შია (აუდიტი §A5).
+ *
+ * ⚠️ **კლასი ცარიელია და ეს განზრახაა.** ის Laravel-ის ავტომატური
+ * აღმოჩენისთვის არსებობს (`App\Models\Bookmark` → `App\Policies\BookmarkPolicy`)
+ * და იმისთვის, რომ ამ დომენს მომავალში საკუთარი წესის დამატება
+ * შეეძლოს — ლოგიკის ასლი კი აღარსად წერია.
+ */
+class BookmarkPolicy extends OwnedRecordPolicy {}

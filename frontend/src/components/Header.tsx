@@ -17,6 +17,8 @@ import { useAuth } from '@/lib/auth'
 import { storageUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { LAYER_POPUP } from '@/lib/layers'
+import { pageContainer } from '@/components/ui/page'
+import { GlobalSearch } from './GlobalSearch'
 import { LanguageDropdown } from './LanguageDropdown'
 import { StorageBar, storageLevel } from './StorageBar'
 import { ThemeToggle } from './ThemeToggle'
@@ -49,25 +51,70 @@ export function Header({ onMenu }: { onMenu: () => void }) {
     'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur">
-      <button
-        onClick={onMenu}
-        aria-label="menu"
-        className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
-      >
-        <Menu className="size-5" />
-      </button>
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur">
+      {/* ჰამბურგერი + ლოგო — საიდბარის სვეტი (`w-60`), რომ მისი მარჯვენა
+          კიდე ზუსტად საიდბარის კიდეს დაემთხვეს */}
+      <div className="flex shrink-0 items-center gap-3 px-4 lg:w-60">
+        <button
+          onClick={onMenu}
+          aria-label="menu"
+          className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+        >
+          <Menu className="size-5" />
+        </button>
 
-      <Link to="/" className="flex items-center gap-2.5">
-        <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
-          <Clapperboard className="size-[18px]" />
-        </span>
-        <span className="font-display text-[20px] font-semibold leading-none tracking-tight">
-          {t('app.title')}
-        </span>
-      </Link>
+        <Link to="/" className="flex items-center gap-2.5">
+          <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
+            <Clapperboard className="size-[18px]" />
+          </span>
+          <span className="font-display text-[20px] font-semibold leading-none tracking-tight">
+            {t('app.title')}
+          </span>
+        </Link>
+      </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      {/* ⚠️ **ძებნა გვერდის სვეტშია, მოქმედებები — ეკრანის კუთხეში**
+          (შენი მითითება, 2026-09-15).
+
+          2026-09-14-ს ორივე ერთ კონტეინერში იჯდა, ე.ი. ავატარი და ენა
+          **შიგთავსის** მარჯვენა კიდეზე ჩერდებოდა და ფართო ეკრანზე
+          კუთხემდე თითის სიგანე რჩებოდა — ზოლი დაუმთავრებელი ჩანდა.
+          ახლა მოქმედებები ჰედერის საკუთარი ბავშვია და მარჯვნივ,
+          კუთხემდე მიდის; ძებნა კი კონტეინერში რჩება, ე.ი. მისი
+          მარცხენა კიდე ისევ გვერდის სათაურის ხაზზეა.
+
+          ⚠️ **ფიქსირებული `calc(15rem…)` არ მუშაობდა** და სწორედ ეს იყო
+          პირველი მცდელობის შეცდომა: `<main>`-ის კონტეინერი `mx-auto max-w-7xl`-ია,
+          ე.ი. ფართო ეკრანზე ის **ცენტრშია** — შიგთავსი საიდბარიდან კიდევ
+          რამდენიმე სანტიმეტრით არის მოშორებული და ეს მანძილი ეკრანის
+          სიგანეზეა დამოკიდებული. ერთადერთი საიმედო გზა იმავე კონტეინერის
+          გამოყენებაა და არა რიცხვის გამეორება.
+
+          ⚠️ `flex-1` + `max-w-*` + `mx-auto`: flex-ის თავისუფალ ადგილს
+          ჯერ **ავტო-მარჯინები** ინაწილებენ, ე.ი. ბლოკი ზუსტად ისევე
+          ცენტრდება, როგორც გვერდის კონტეინერი.
+
+          ⚠️ **ეს ორი წესი ერთმანეთს ეჯიბრება მხოლოდ ძალიან ფართო ეკრანზე**:
+          მოქმედებები ახლა ნაკადშია, ე.ი. კონტეინერს ცენტრირებისთვის მათი
+          სიგანით ნაკლები ადგილი რჩება. სანამ სვეტი `max-w`-ს არ მიაღწევს
+          (ჩვეულებრივ ~1780px-მდე), ცენტრირება საერთოდ არ ირთვება და
+          მარცხენა კიდე ზუსტად ემთხვევა; მის ზემოთ ძებნა შეიძლება
+          რამდენიმე ათეული პიქსელით მარცხნივ დაიხაროს. აბსოლუტური
+          პოზიციონირება ამას მოხსნიდა, სამაგიეროდ `md`-ზე ავატარი ძებნის
+          ველს გადააფარებდა — ე.ი. ცხადი ხარვეზი უხილავის სანაცვლოდ. */}
+      <div className={cn('flex min-w-0 flex-1 items-center', pageContainer())}>
+        {/* ჯვარედინი ძებნა (აუდიტი §D6) — ⚠️ **ლოგოსა და მოქმედებებს შორის**:
+            ის ყველა მოდულს ეხება, ე.ი. არცერთ სექციას არ ეკუთვნის.
+            ვიწრო ეკრანზე იმალება — იქ ადგილი ჰამბურგერსა და ავატარს სჭირდება. */}
+        <div className="hidden max-w-xl flex-1 md:block">
+          <GlobalSearch />
+        </div>
+      </div>
+
+      {/* ⚠️ **ჰედერის ბავშვია და არა კონტეინერის** — სწორედ ეს აყენებს
+        მას ეკრანის კუთხეში. მარჯვენა padding ისეთივეა, როგორიც მარცხნივ
+        ლოგოს აქვს (`px-4`), ე.ი. ზოლი ორივე ბოლოში ერთნაირად სუნთქავს. */}
+      <div className="flex shrink-0 items-center gap-2 px-4">
         {/* Tasks 7 — ღილაკი მხოლოდ მაშინ ჩანს, როცა მართლა არის სათარგმნი */}
         {pending > 0 && (
           <Link

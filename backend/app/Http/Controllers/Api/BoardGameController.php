@@ -343,7 +343,7 @@ class BoardGameController extends Controller
         }
 
         $path = StorageFolder::BOARD_GAME_IMAGES."/bgg-{$game->bgg_id}.jpg";
-        Storage::disk('public')->put($path, $body);
+        Storage::disk(StorageFolder::diskFor($path))->put($path, $body);
 
         $game->forceFill(['image_path' => $path, 'image_source' => 'bgg'])->save();
     }

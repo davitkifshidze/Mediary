@@ -2,8 +2,8 @@
 
 namespace App\Services\Web;
 
+use App\Support\SourceLog;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -59,9 +59,7 @@ class WikimediaImages
         }
 
         try {
-            $res = Http::timeout(20)
-                // ⚠️ Windows-ის cURL-ს CA bundle არ აქვს (არსებული წესი)
-                ->withOptions(['verify' => storage_path('cacert.pem')])
+            $res = SourceLog::request(20)
                 // ⚠️ ამის გარეშე 403 (იხ. ზემოთ)
                 ->withHeaders(['User-Agent' => 'Mediary/1.0 (personal media library)'])
                 ->get(self::URL, [
@@ -76,11 +74,15 @@ class WikimediaImages
                     'iiprop' => 'url|size|mime|extmetadata',
                     'iiurlwidth' => 400,
                 ]);
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            SourceLog::threw('wikimedia', $e, ['query' => $query]);
+
             return $this->blank(false);
         }
 
         if (! $res->successful()) {
+            SourceLog::status('wikimedia', $res->status(), $res->body(), ['query' => $query]);
+
             return $this->blank(false);
         }
 

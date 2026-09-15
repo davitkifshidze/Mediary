@@ -19,6 +19,7 @@ import { notificationPermission, requestNotificationPermission } from '@/lib/not
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { TimePicker } from '@/components/ui/time-picker'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -296,7 +297,7 @@ export function NoteReminders({ noteId }: { noteId: number | null }) {
         />
       )}
 
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {sortReminders(reminders).map((reminder) => (
           <ReminderCard
             key={reminder.id}
@@ -513,12 +514,10 @@ function ReminderEditor({
                 ))}
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <Input
+                <TimePicker
                   id="rem-time"
-                  type="time"
-                  className="w-32"
                   value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
+                  onChange={(v) => setNewTime(v ?? '')}
                 />
                 <Button type="button" size="sm" variant="outline" onClick={addTime}>
                   <Plus className="size-3.5" />
@@ -618,7 +617,7 @@ function ReminderEditor({
             <button
               type="button"
               onClick={async () => setPermission(await requestNotificationPermission())}
-              className="shrink-0 cursor-pointer underline"
+              className="shrink-0 cursor-pointer text-primary hover:text-primary/70"
             >
               {t('notes.permissionAsk')}
             </button>

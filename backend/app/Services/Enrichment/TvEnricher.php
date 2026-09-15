@@ -8,6 +8,7 @@ use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Services\Translation\Translator;
 use App\Support\CastSync;
+use App\Support\SourceLog;
 use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -154,8 +155,8 @@ abstract class TvEnricher
     {
         try {
             return Trailer::pick($this->tmdb->tvVideos($id, 'ka'), $this->tmdb->tvVideos($id));
-        } catch (\Throwable) {
-            return null;
+        } catch (\Throwable $e) {
+            return SourceLog::threw('tmdb', $e, ['step' => 'trailer', 'id' => $id]);
         }
     }
 
