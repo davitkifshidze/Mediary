@@ -183,12 +183,28 @@ class AdminUserController extends Controller
             'module_keys.*' => ['string', 'exists:modules,key'],
         ]);
 
-        $ids = Module::whereIn('key', $data['module_keys'])
-            ->pluck('id')
-            ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])
-            ->all();
+        /* ⚠️ **`enabled_at` ყოველ შენახვაზე ხელახლა იწერებოდა** (Tasks §4.2):
+           `sync($ids)` უკვე მიბმულ რიგზე `updateExistingPivot`-ს იძახებს, ე.ი.
+           ადმინი, რომელიც მომხმარებელს **ერთ** მოდულს ამატებდა, ყველა
+           დანარჩენს „ახლა ჩაირთოო" აწერდა — სვეტი კი ზუსტად იმ კითხვას
+           პასუხობს, როდის ჩაერთო.
 
-        $user->modules()->sync($ids);
+           ⚠️ **`settings` არასდროს იშლებოდა** და ეს ცხადად ეწეროს, თორემ
+           მომდევნო გავლაზე ისევ „მონაცემის დაკარგვად" ჩაითვლება: `sync()`
+           პივოტს ხელახლა **არ** სვამს, ის არსებულ რიგს `UPDATE`-ით ეხება და
+           `settings` ამ ჩამონათვალში არაა (გადამოწმებულია `attachNew()`-ში
+           და ტესტითაც).
+
+           ამიტომ ნამდვილი სხვაობა ითვლება: **მოხსნა მხოლოდ მოხსნილს**,
+           **მიბმა მხოლოდ ახალს**; უცვლელ რიგს ხელი საერთოდ არ ეხება. */
+        $wanted = Module::whereIn('key', $data['module_keys'])->pluck('id')->all();
+        $current = $user->modules()->pluck('modules.id')->all();
+
+        $user->modules()->detach(array_values(array_diff($current, $wanted)));
+
+        foreach (array_diff($wanted, $current) as $id) {
+            $user->modules()->attach($id, ['enabled_at' => now()]);
+        }
 
         return new UserResource($user->load('modules', 'role'));
     }

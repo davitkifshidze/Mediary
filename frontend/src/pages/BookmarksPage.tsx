@@ -36,7 +36,7 @@ import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
-import { pickErrors } from '@/lib/requiredPicks'
+import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
@@ -576,6 +576,23 @@ function BookmarkForm({
     },
   })
 
+
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -587,6 +604,7 @@ function BookmarkForm({
     )
     if (Object.keys(picked).length > 0) {
       setErrors(picked)
+      warnHidden(Object.keys(picked))
 
       return
     }
@@ -613,8 +631,9 @@ function BookmarkForm({
   return (
     <ModalShell title={t(bookmark ? 'bookmarks.edit' : 'bookmarks.add')} onClose={onClose} wide>
       <form onSubmit={submit} className="mt-4 space-y-4">
-        <div>
-          {/* ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია */}
+        {/* ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
+            ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+        <div className={fields.shows('url') ? undefined : 'hidden'}>
           <FieldLabel htmlFor="b-url" required>
             {fields.label('url')}
           </FieldLabel>

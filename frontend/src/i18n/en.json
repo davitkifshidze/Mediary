@@ -1129,7 +1129,18 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "publicWarn": "The record's own visibility is a separate switch.",
-    "requiredWarn": "This is your own rule, not a database constraint — the column is optional anyway."
+    "requiredWarn": "This is your own rule, not a database constraint — the column is optional anyway.",
+    "unlock": "Unlock",
+    "unlockTitle": "Unlock this field?",
+    "unlockWarning": "“{{field}}” is a field the server refuses to save a record without. Turn it off and it disappears from the form, while saving still fails with an error on a field that is no longer on screen — i.e. you see the error but can no longer fix it from the form, and adding a new record in this module becomes impossible. The only way back is this page: switch the field on again. No existing record or data is deleted. Not advisable.",
+    "unlockWarningTmdb": "“{{field}}” is a field the server refuses to save a record without. Turn it off and it disappears from the form, and filling it in by hand fails with an error on a field that is no longer on screen. Adding from TMDB in one click still works — that is true of these three modules only. The only way back is this page: switch the field on again. No existing record or data is deleted. Not advisable.",
+    "unlocked": "Unlocked",
+    "unlockedHint": "You unlocked this field. With it off you will not be able to add a record in this module — switching it back on is right here.",
+    "relock": "Lock again",
+    "reset": "Reset to defaults",
+    "resetTitle": "Reset the fields to defaults?",
+    "resetHint": "Every switch, label and unlock you set for this module is dropped and the defaults written in code come back. Records are not affected.",
+    "resetDone": "Fields reset to defaults"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2831,7 +2842,8 @@
   },
   "validation": {
     "pickOne": "Pick at least one",
-    "choose": "Choose…"
+    "choose": "Choose…",
+    "hiddenRequired": "A required field is hidden on the form: {{fields}}. Switch it back on in the module’s field settings."
   },
   "icons": {
     "search": "Search icons…",

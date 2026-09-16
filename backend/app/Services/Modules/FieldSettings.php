@@ -102,11 +102,31 @@ class FieldSettings
             $value = (array) $value;
             $current = (array) ($fields[$key] ?? []);
 
+            /* ⚠️ **`unlocked` მხოლოდ `super_admin`-ს შეუძლია** (Tasks §4, შენი
+               პასუხი 2026-09-16). კონფიგი თავისია და ზიანიც თავისივე ფორმებია,
+               მაგრამ ჩაკეტვის მთელი ღირებულება შემთხვევითი დაჭერის შეჩერებაა —
+               ე.ი. მოხსნა იმას რჩება, ვინც ცხადად თქვა, რომ შედეგს იღებს.
+               ⚠️ უარი **ჩუმია და არა 422** — ფაილის არსებული წესი უცნობ
+               გასაღებზე (ძველი ფრონტი არ უნდა ტყდებოდეს). */
+            if (array_key_exists('unlocked', $value) && $user->isSuperAdmin()) {
+                $current['unlocked'] = (bool) $value['unlocked'];
+
+                /* ⚠️ **ხელახლა ჩაკეტვა დროშებსაც აბრუნებს** — თორემ დამალული
+                   და თან „ჩაკეტილი" ველი დარჩებოდა, ე.ი. ფორმა გატეხილი
+                   იქნებოდა და გვერდი კი იტყოდა, რომ ყველაფერი წესრიგშია. */
+                if (! $current['unlocked']) {
+                    foreach (FieldCatalog::FLAGS as $flag) {
+                        unset($current[$flag]);
+                    }
+                }
+            }
+
             /* ⚠️ **`locked` ველზე დროშები არ ინახება** (§6.5): სახელის ან
                ბმულის გამორთვა/არასავალდებულოდ გამოცხადება ჩაწერას გატეხავდა.
                `FieldCatalog::for()` ისედაც აიძულებს `true`-ს, ე.ი. ჩაწერა
-               მხოლოდ ნაგავს დატოვებდა settings-ში. */
-            if (! FieldCatalog::isLocked($module, (string) $key)) {
+               მხოლოდ ნაგავს დატოვებდა settings-ში. ⚠️ მოხსნილ ველზე კი
+               ინახება — სწორედ ეს არის მოხსნის აზრი. */
+            if (! FieldCatalog::isLocked($module, (string) $key) || ! empty($current['unlocked'])) {
                 foreach (FieldCatalog::FLAGS as $flag) {
                     if (array_key_exists($flag, $value)) {
                         $current[$flag] = (bool) $value[$flag];
@@ -137,6 +157,30 @@ class FieldSettings
         }
 
         $settings['fields'] = $fields;
+        $this->write($user, $module, $settings);
+
+        return $this->for($user, $module);
+    }
+
+    /**
+     * **ნაგულისხმევზე დაბრუნება** (Tasks §4) — ჩაშენებული ველების მთელი
+     * გადახრა იშლება: ჩამრთველები, ლეიბლები და მოხსნილი ჩაკეტვები.
+     *
+     * ⚠️ **მხოლოდ `fields` გასაღები** ქრება. `module_user.settings` ერთი
+     * საერთო JSON ბლოკია — იქვე ზის გალერეის ნაგულისხმევები, ჩანაწერების
+     * არხები (ტელეგრამის ჩათვლით) და სტატუსების საიდბარული განლაგება;
+     * მთელი ბლოკის წაშლა ოთხ სხვა ფუნქციას წაშლიდა.
+     *
+     * ⚠️ **მორგებულ ველებს არ ეხება** — ისინი `settings['custom_fields']`-ია
+     * და თავისი რედაქტორი აქვთ; „ველები ნაგულისხმევზე" მათ წაშლას არ
+     * ნიშნავს (ეს მონაცემის დაკარგვა იქნებოდა, აქ კი კონფიგია).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function reset(User $user, string $module): array
+    {
+        $settings = $this->settings($user, $module);
+        unset($settings['fields']);
         $this->write($user, $module, $settings);
 
         return $this->for($user, $module);

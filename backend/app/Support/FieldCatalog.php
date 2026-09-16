@@ -209,7 +209,7 @@ final class FieldCatalog
      * არჩევანია და ისე რჩება.
      *
      * @param  array<string, mixed>  $overrides  `module_user.settings['fields']`
-     * @return list<array{key: string, type: string, locked: bool, enabled: bool, required: bool, public: bool, sort_order: int, label_ka: ?string, label_en: ?string, placeholder_ka: ?string, placeholder_en: ?string}>
+     * @return list<array{key: string, type: string, locked: bool, unlocked: bool, enabled: bool, required: bool, public: bool, sort_order: int, label_ka: ?string, label_en: ?string, placeholder_ka: ?string, placeholder_en: ?string}>
      */
     public static function for(string $module, array $overrides = []): array
     {
@@ -226,11 +226,20 @@ final class FieldCatalog
                 'sort_order' => $field['sort_order'],
             ];
 
-            /* ⚠️ **`locked` ველზე გადახრა არ მოქმედებს** და ეს აქ წყდება, არა
-               UI-ში: სახელის/ბმულის გამორთვა ჩაწერას გატეხავდა, ე.ი. ხელით
-               გაგზავნილ რექვესთსაც უნდა შეხვდეს უარი. */
+            /* ⚠️ **`locked` კატალოგის ფაქტია და ისე რჩება** — ის სქემაზე
+               ამბობს სიმართლეს („ამ ველის გარეშე ჩანაწერი არ ჩაიწერება").
+               მესამე მდგომარეობა `unlocked`-ია: **მომხმარებლის ცხადი
+               არჩევანი** (Tasks §4.3), რომელსაც მხოლოდ `super_admin` წერს.
+
+               ⚠️ ორივე ბრუნდება განზრახ: `locked: true, unlocked: true`
+               ინტერფეისს აძლევს იმის თქმის საშუალებას, რომ „ჩაკეტილია,
+               მაგრამ შენ მოხსენი" — მარტო `locked: false`-ის დაბრუნება
+               გაფრთხილებას სამუდამოდ წაშლიდა. */
+            $unlocked = $field['locked'] && ! empty($override['unlocked']);
+            $row['unlocked'] = $unlocked;
+
             foreach (self::FLAGS as $flag) {
-                $row[$flag] = $field['locked']
+                $row[$flag] = ($field['locked'] && ! $unlocked)
                     ? true
                     : (array_key_exists($flag, $override) ? (bool) $override[$flag] : $field[$flag]);
             }

@@ -181,6 +181,11 @@ class ModuleController extends Controller
             // მხოლოდ დადასტურებულ გასაღებებს აბრუნებს და ჩაუწერელი ატრიბუტი
             // მთელ `fields`-ს პასუხიდან აგდებს.
             'fields.*.public' => ['nullable', 'boolean'],
+            /* §4.3 — ჩაკეტვის მოხსნა (მხოლოდ `super_admin`; `FieldSettings`
+               თვითონ ამოწმებს). ⚠️ აქ ჩაწერა **სავალდებულოა** ზუსტად იმავე
+               მიზეზით, რაც ზემოთ `public`-ზე წერია: დაუსახელებელი ატრიბუტი
+               მთელ `fields` მასივს აგდებს და `PUT` 500-ით ვარდება. */
+            'fields.*.unlocked' => ['nullable', 'boolean'],
             /* ⚠️ §6.5 — `sort_order` **აღარ არის** დაშვებული ატრიბუტი: რიგის
                UI მოიხსნა და თანმიმდევრობა კატალოგისაა. `validate()` მას
                ისედაც ჩამოაგდებდა, ე.ი. ძველი ფრონტის რექვესთი არ ტყდება —
@@ -194,5 +199,30 @@ class ModuleController extends Controller
         return response()->json([
             'fields' => $fields->save($request->user(), $key, $data['fields'] ?? []),
         ]);
+    }
+
+    /**
+     * **ველების კონფიგის ნაგულისხმევზე დაბრუნება** (Tasks §4, შენი პასუხი).
+     *
+     * ⚠️ ეს საგარანტიო გასასვლელია: ველის გამორთვა ფორმას **გატეხილად**
+     * ტოვებს (შენახვა 422-ით ვარდება ეკრანზე აღარმყოფ ველზე), და თუმცა
+     * უკან ჩართვა იმავე გვერდზეა, ერთი ღილაკი, რომელიც ყველაფერს აბრუნებს,
+     * ბევრად ნაკლებ ძებნას ითხოვს.
+     *
+     * ⚠️ **მხოლოდ `fields` იშლება.** `module_user.settings` ერთი JSON
+     * ბლოკია, სადაც გალერეის ნაგულისხმევები, ჩანაწერების არხები და
+     * სტატუსების განლაგებაც ზის — მთელი ბლოკის წაშლა ოთხ სხვა ფუნქციას
+     * წაშლიდა (იგივე წესი, რაც `FieldSettings::save()`-ს აქვს).
+     *
+     * ⚠️ **`DELETE` და არა `POST`** — `EnsureModulePermission` POST-იდან
+     * `create`-ს გამოიყვანდა; `delete` კი ზუსტად ის უფლებაა, რასაც ეს
+     * მოქმედება ითხოვს.
+     */
+    public function resetFields(Request $request, string $key, FieldSettings $fields)
+    {
+        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        abort_unless($request->user()->hasModule($key), 403);
+
+        return response()->json(['fields' => $fields->reset($request->user(), $key)]);
     }
 }

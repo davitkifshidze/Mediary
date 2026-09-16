@@ -29,7 +29,7 @@ import { PageContainer } from '@/components/ui/page'
 import { GenreSelect } from '@/components/GenreSelect'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
-import { missingPicks } from '@/lib/requiredPicks'
+import { hiddenPicks, missingPicks } from '@/lib/requiredPicks'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
 
@@ -200,6 +200,22 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   const lookupBusy = candidatesMut.isPending || pickMut.isPending
 
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const mut = useMutation({
     mutationFn: async () => {
       const saved = editing
@@ -296,6 +312,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           const missing = missingPicks({ status: form.status, genres: form.genres })
           if (missing.length > 0) {
             setErrors(Object.fromEntries(missing.map((key) => [key, [t('validation.pickOne')]])))
+            warnHidden(missing)
 
             return
           }
@@ -370,10 +387,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           <div className="mb-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {t('detail.content')} · {i18n.language === 'ka' ? 'ქართული' : 'English'}
           </div>
-          {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა,
-              ე.ი. `fields.shows('title')`-ს შემოწმებას აზრი არ აქვს — backend
-              მას მაინც `true`-ს დაუბრუნებს. */}
-          {i18n.language === 'ka' ? (
+          {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა.
+              ⚠️ **`shows()` მაინც ისმის (Tasks §4.5)** — ჩაკეტვა ახლა
+              სუპერ-ადმინს ცხადად ეხსნება, ე.ი. „აზრი არ აქვს" აღარ მართლდება:
+              ჩამრთველი, რომელიც ფორმაზე არაფერს ცვლის, ღილაკის არარსებობაზე
+              უარესია. ⚠️ ერთი პირობა ორივე ენას ფარავს — თარგმანადი ბლოკი
+              ერთია და ენა მხოლოდ იმას წყვეტს, რომელი `Input` დაიხატება. */}
+          {!fields.shows('title') ? null : i18n.language === 'ka' ? (
             <>
               <FieldLabel required hint={t('form.requiredEitherLang')}>
                 {fields.label('title')}

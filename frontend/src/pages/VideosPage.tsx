@@ -51,7 +51,7 @@ import { useDateFormat } from '@/lib/dates'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
-import { pickErrors } from '@/lib/requiredPicks'
+import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
@@ -830,6 +830,23 @@ function VideoForm({
     },
   })
 
+
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -841,6 +858,7 @@ function VideoForm({
     )
     if (Object.keys(picked).length > 0) {
       setErrors(picked)
+      warnHidden(Object.keys(picked))
 
       return
     }
@@ -870,8 +888,10 @@ function VideoForm({
   return (
     <ModalShell title={t(video ? 'videos.edit' : 'videos.add')} onClose={onClose} wide>
       <form onSubmit={submit} className="mt-4 space-y-4">
-        <div>
-          {/* ⚠️ `url` `locked`-ია (§6.5): მისი გამორთვა ჩაწერას გატეხავდა */}
+        {/* ⚠️ `url` `locked`-ია (§6.5): მისი გამორთვა ჩაწერას გატეხავდა — და
+            სწორედ ამიტომ ითხოვს ჩაკეტვის ცხად მოხსნას (§4). ⚠️ `shows()`-ს
+            მაინც ეკითხება, თორემ მოხსნის შემდეგ ჩამრთველი ტყუილი იქნებოდა. */}
+        <div className={fields.shows('url') ? undefined : 'hidden'}>
           <FieldLabel htmlFor="v-url" required>{fields.label('url')}</FieldLabel>
           <Input
             id="v-url"

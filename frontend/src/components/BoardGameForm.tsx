@@ -20,7 +20,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
-import { pickErrors } from '@/lib/requiredPicks'
+import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
@@ -229,6 +229,23 @@ export function BoardGameForm({
 
   const num = (value: string) => (value === '' ? null : Number(value))
 
+
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -240,6 +257,7 @@ export function BoardGameForm({
     )
     if (Object.keys(picked).length > 0) {
       setErrors(picked)
+      warnHidden(Object.keys(picked))
 
       return
     }
@@ -427,8 +445,9 @@ export function BoardGameForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-2">
-            {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება */}
+          {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+          <div className={fields.shows('title') ? 'sm:col-span-2' : 'hidden'}>
             <FieldLabel htmlFor="bg-title" required>{fields.label('title')}</FieldLabel>
             <Input
               id="bg-title"

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Clock, Loader2, Lock, SquarePen, Send, Users, X } from 'lucide-react'
+import { ArrowLeft, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, Users, X } from 'lucide-react'
 import {
   cancelRequest,
   fetchAdminModules,
@@ -10,6 +10,7 @@ import {
   fetchMyRequests,
   fetchUsers,
   requestModule,
+  resetModuleFields,
   saveModuleFields,
   setModuleEnabled,
   syncUserModules,
@@ -37,7 +38,7 @@ import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -437,6 +438,8 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const confirm = useConfirm()
+  const { isAdmin } = useAuth()
   const [open, setOpen] = useState<string | null>(null)
 
   const { data: all = [] } = useQuery({
@@ -453,15 +456,65 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  const reset = useMutation({
+    mutationFn: () => resetModuleFields(moduleKey),
+    onSuccess: (next) => {
+      qc.setQueryData(['module-fields', moduleKey], next)
+      toast({ title: t('fields.resetDone'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /* ⚠️ **ჩაკეტვის მოხსნა `super_admin`-ს რჩება** (შენი პასუხი, 2026-09-16):
+     კონფიგი თავისია და ზიანიც თავისივე ფორმებია, მაგრამ ჩაკეტვის მთელი
+     ღირებულება შემთხვევითი დაჭერის შეჩერებაა. backend იმავეს ამოწმებს —
+     აქაური შემოწმება მხოლოდ ღილაკს მალავს. */
+  const unlock = async (field: ModuleField, label: string) => {
+    /* ⚠️ **ფილმზე/სერიალზე/ანიმეზე ტექსტი სხვაა**: discover → `from-tmdb`
+       ბარე `Request`-ს იღებს და სტატუსს `HasStatus`-ის hook-ი ავსებს, ე.ი.
+       დამატება მაინც მუშაობს. ერთი ტექსტი, რომელიც 11-დან 3 მოდულზე
+       მცდარია, გაფრთხილებას სანდოობას დაუკარგავდა. */
+    const tmdb = ['movie', 'series', 'anime'].includes(moduleKey)
+
+    const ok = await confirm({
+      title: t('fields.unlockTitle'),
+      description: t(tmdb ? 'fields.unlockWarningTmdb' : 'fields.unlockWarning', { field: label }),
+      confirmText: t('fields.unlock'),
+      variant: 'destructive',
+    })
+
+    if (ok) save.mutate({ [field.key]: { unlocked: true } })
+  }
+
   if (!enabled || !fields.length) return null
 
   return (
     <section className="mb-4 rounded-xl border border-border bg-card p-5">
-      <div className="mb-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('fields.title')}
           <InfoHint info={t('fields.hint')} />
         </h2>
+
+        {/* ⚠️ საგარანტიო გასასვლელი (შენი პასუხი): ველის გამორთვა ფორმას
+            გატეხილად ტოვებს, და თუმცა უკან ჩართვა იმავე გვერდზეა, ერთი
+            ღილაკი, რომელიც ყველაფერს აბრუნებს, ბევრად ნაკლებ ძებნას ითხოვს. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={reset.isPending}
+          onClick={async () => {
+            const ok = await confirm({
+              title: t('fields.resetTitle'),
+              description: t('fields.resetHint'),
+              confirmText: t('fields.reset'),
+            })
+            if (ok) reset.mutate()
+          }}
+        >
+          <RotateCcw className="size-3.5" />
+          {t('fields.reset')}
+        </Button>
       </div>
 
       {fields.map((field) => {
@@ -483,17 +536,27 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
                   )}
                   {/* ⚠️ ჩაკეტილ ველზე მიზეზი **ცხადად** წერია, თორემ გამორთული
                       გადამრთველი „გატეხილად" იკითხება */}
-                  {field.locked && (
+                  {field.locked && !field.unlocked && (
                     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
                       <Lock className="size-3" />
                       {t('fields.locked')}
                     </span>
                   )}
+                  {/* ⚠️ `locked` მოხსნის შემდეგაც `true` რჩება — ნიშანი იცვლება
+                      და არა ფაქტი, ე.ი. გაფრთხილება არ იკარგება */}
+                  {field.unlocked && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-[11px] font-normal text-destructive">
+                      <LockOpen className="size-3" />
+                      {t('fields.unlocked')}
+                    </span>
+                  )}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  {field.locked
-                    ? t('fields.lockedHint')
-                    : t(`fields.desc.${moduleKey}.${field.key}`, { defaultValue: '' })}
+                  {field.unlocked
+                    ? t('fields.unlockedHint')
+                    : field.locked
+                      ? t('fields.lockedHint')
+                      : t(`fields.desc.${moduleKey}.${field.key}`, { defaultValue: '' })}
                 </span>
               </span>
 
@@ -502,9 +565,24 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
                   <SquarePen className="size-3.5" />
                   {t('fields.edit')}
                 </Button>
+                {field.locked && isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={save.isPending}
+                    onClick={() =>
+                      field.unlocked
+                        ? save.mutate({ [field.key]: { unlocked: false } })
+                        : unlock(field, own || fallback)
+                    }
+                  >
+                    {field.unlocked ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                    {t(field.unlocked ? 'fields.relock' : 'fields.unlock')}
+                  </Button>
+                )}
                 <Switch
                   checked={field.enabled}
-                  disabled={field.locked || save.isPending}
+                  disabled={(field.locked && !field.unlocked) || save.isPending}
                   onCheckedChange={(v) => save.mutate({ [field.key]: { enabled: v } })}
                   aria-label={t('fields.enabled')}
                 />
@@ -584,7 +662,7 @@ function FieldEditor({
       <label className="flex cursor-pointer items-start gap-2 text-sm">
         <Checkbox
           checked={field.required}
-          disabled={field.locked}
+          disabled={field.locked && !field.unlocked}
           onCheckedChange={(v) => onSave({ required: v === true })}
         />
         <span>
@@ -598,7 +676,7 @@ function FieldEditor({
       <label className="flex cursor-pointer items-start gap-2 text-sm">
         <Checkbox
           checked={field.public}
-          disabled={field.locked}
+          disabled={field.locked && !field.unlocked}
           onCheckedChange={(v) => onSave({ public: v === true })}
         />
         <span>

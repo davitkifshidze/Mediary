@@ -600,17 +600,18 @@ class VideoModuleTest extends TestCase
     }
 
     /**
-     * **§6.5 — რედაქტორში ყველა ველი ჩანს, `locked` კი არ იმართება.**
+     * **§6.5 → §4 — `locked` ველი ჩანს, იმართება მხოლოდ მოხსნის შემდეგ.**
      *
      * ვიდეოს `url`-ის გარეშე ჩანაწერი არ არსებობს, ამიტომ ველი სიაშია
-     * (რომ სია არ ტყუოდეს), მაგრამ მისი გამორთვა/არასავალდებულოობა
-     * **backend-ზე** იგნორირდება და არა მხოლოდ UI-ში.
+     * (რომ სია არ ტყუოდეს) და მისი გამორთვა **backend-ზე** იგნორირდება —
+     * არა მხოლოდ UI-ში. ⚠️ ჩვეულებრივი მომხმარებლისთვის ეს უცვლელია
+     * მაშინაც, როცა ის `unlocked`-ს ცხადად გზავნის.
      */
     public function test_locked_field_is_listed_but_cannot_be_disabled(): void
     {
         $fields = $this->actingAs($this->user)
             ->putJson('/api/modules/video/fields', [
-                'fields' => ['url' => ['enabled' => false, 'required' => false, 'public' => false]],
+                'fields' => ['url' => ['unlocked' => true, 'enabled' => false, 'required' => false, 'public' => false]],
             ])
             ->assertOk()
             ->json('fields');
@@ -618,6 +619,8 @@ class VideoModuleTest extends TestCase
         $url = collect($fields)->firstWhere('key', 'url');
 
         $this->assertTrue($url['locked']);
+        // ⚠️ მოხსნა `super_admin`-ს რჩება (Tasks §4) — უარი ჩუმია და არა 422
+        $this->assertFalse($url['unlocked']);
         $this->assertTrue($url['enabled']);
         $this->assertTrue($url['required']);
         $this->assertTrue($url['public']);
@@ -626,5 +629,76 @@ class VideoModuleTest extends TestCase
         $title = collect($fields)->firstWhere('key', 'title');
         $this->assertFalse($title['locked']);
         $this->assertTrue($title['enabled']);
+    }
+
+    /**
+     * **ჩაკეტილი → მოხსნილი → გამორთული → ისევ ჩაკეტილი** (Tasks §4.6).
+     *
+     * ⚠️ ბოლო ნაბიჯი ყველაზე მნიშვნელოვანია: ხელახლა ჩაკეტვამ დროშები
+     * `true`-ზე უნდა დააბრუნოს, თორემ დარჩებოდა **დამალული და თან
+     * „ჩაკეტილი"** ველი — ე.ი. ფორმა გატეხილი იქნებოდა, გვერდი კი
+     * იტყოდა, რომ ყველაფერი წესრიგშია.
+     */
+    public function test_a_super_admin_can_unlock_a_locked_field_and_lock_it_back(): void
+    {
+        $admin = User::factory()->create(['role_id' => Role::where('key', 'super_admin')->value('id')]);
+        $admin->modules()->syncWithoutDetaching([Module::where('key', 'video')->value('id')]);
+
+        $field = fn (array $fields) => collect($fields)->firstWhere('key', 'url');
+
+        // 1. მოხსნა — ჩაკეტვა ფაქტად რჩება, დროშები კი იმართებადი ხდება
+        $url = $field($this->actingAs($admin)
+            ->putJson('/api/modules/video/fields', ['fields' => ['url' => ['unlocked' => true]]])
+            ->assertOk()->json('fields'));
+
+        $this->assertTrue($url['locked'], 'კატალოგის ფაქტი უცვლელია');
+        $this->assertTrue($url['unlocked']);
+        $this->assertTrue($url['enabled'], 'მოხსნა თავისთავად არაფერს რთავს');
+
+        // 2. გამორთვა — ახლა უკვე ინახება
+        $url = $field($this->actingAs($admin)
+            ->putJson('/api/modules/video/fields', ['fields' => ['url' => ['enabled' => false]]])
+            ->assertOk()->json('fields'));
+
+        $this->assertFalse($url['enabled']);
+
+        // 3. ხელახლა ჩაკეტვა — დროშები უსაფრთხო მდგომარეობას უბრუნდება
+        $url = $field($this->actingAs($admin)
+            ->putJson('/api/modules/video/fields', ['fields' => ['url' => ['unlocked' => false]]])
+            ->assertOk()->json('fields'));
+
+        $this->assertFalse($url['unlocked']);
+        $this->assertTrue($url['enabled'], 'ჩაკეტვამ დამალული ველი არ უნდა დატოვოს');
+        $this->assertTrue($url['required']);
+        $this->assertTrue($url['public']);
+    }
+
+    /**
+     * **ნაგულისხმევზე დაბრუნება** — საგარანტიო გასასვლელი (Tasks §4).
+     *
+     * ⚠️ მხოლოდ `fields` იშლება: იმავე JSON ბლოკში გალერეის
+     * ნაგულისხმევები და სტატუსების განლაგებაც ზის.
+     */
+    public function test_resetting_the_fields_keeps_the_rest_of_the_module_settings(): void
+    {
+        $this->actingAs($this->user)
+            ->putJson('/api/modules/video/settings', ['settings' => ['gallery' => ['limit' => 7]]])
+            ->assertOk();
+
+        $this->actingAs($this->user)
+            ->putJson('/api/modules/video/fields', ['fields' => ['tags' => ['enabled' => false]]])
+            ->assertOk();
+
+        $fields = $this->actingAs($this->user)
+            ->deleteJson('/api/modules/video/fields')
+            ->assertOk()
+            ->json('fields');
+
+        $this->assertTrue(collect($fields)->firstWhere('key', 'tags')['enabled']);
+
+        $settings = $this->actingAs($this->user)->getJson('/api/modules')->json();
+        $video = collect($settings['data'] ?? $settings)->firstWhere('key', 'video');
+
+        $this->assertSame(7, data_get($video, 'user_settings.gallery.limit'));
     }
 }

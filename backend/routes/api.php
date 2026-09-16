@@ -228,6 +228,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // `PUT`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა.
     Route::get('/modules/{key}/fields', [ModuleController::class, 'fields']);
     Route::put('/modules/{key}/fields', [ModuleController::class, 'updateFields']);
+    Route::delete('/modules/{key}/fields', [ModuleController::class, 'resetFields']);
     /* §6 (ფაზა 3) — **მორგებული** ველები: განსაზღვრებები მოდულზე,
        მნიშვნელობები ჩანაწერზე. ერთი endpoint რვავე მოდულზე —
        `/visibility/{domain}/{id}`-ის იგივე ნიმუში. */

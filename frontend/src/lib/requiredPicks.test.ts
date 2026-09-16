@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isEmptyPick, missingPicks, pickErrors } from './requiredPicks'
+import { catalogueKey, hiddenPicks, isEmptyPick, missingPicks, pickErrors } from './requiredPicks'
 
 describe('isEmptyPick', () => {
   it('სამივე „ცარიელს" ერთნაირად კითხულობს', () => {
@@ -41,5 +41,42 @@ describe('pickErrors', () => {
       status: 'აირჩიე',
       genres: 'აირჩიე',
     })
+  })
+})
+
+describe('catalogueKey', () => {
+  it('translates a column name into the catalogue name', () => {
+    /* ⚠️ ორი სახელია და ეს შემთხვევითი არაა: backend შეცდომას **სვეტის**
+       სახელით აბრუნებს (`genre_id`), კატალოგი კი ველს `genre`-ს ეძახის. */
+    expect(catalogueKey('genre_id')).toBe('genre')
+    expect(catalogueKey('genre_ids')).toBe('genres')
+    expect(catalogueKey('category_id')).toBe('category')
+  })
+
+  it('leaves a name that is already the catalogue key', () => {
+    expect(catalogueKey('status')).toBe('status')
+    expect(catalogueKey('type_id')).toBe('type_id')
+  })
+})
+
+describe('hiddenPicks', () => {
+  it('keeps only what the form does not draw', () => {
+    /* ⚠️ ეს ცოცხალი ხარვეზია (Tasks §4.1): დამალული ველის შეცდომა
+       `hidden` ელემენტზე იხატება, ე.ი. ღილაკი „შენახვა" ვიზუალურად
+       არაფერს აკეთებს — ერთადერთი პასუხი ველის სახელით თქმაა. */
+    const shows = (key: string) => key !== 'status'
+
+    expect(hiddenPicks(['status', 'type_id'], shows)).toEqual(['status'])
+  })
+
+  it('asks about the catalogue key, not the column', () => {
+    // `genre_id` კატალოგში `genre`-ია — არასწორი გასაღები ჩუმად ვერაფერს იპოვიდა
+    const shows = (key: string) => key !== 'genre'
+
+    expect(hiddenPicks(['genre_id'], shows)).toEqual(['genre'])
+  })
+
+  it('is empty when everything is on screen', () => {
+    expect(hiddenPicks(['status', 'genre_id'], () => true)).toEqual([])
   })
 })

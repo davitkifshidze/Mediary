@@ -12,7 +12,7 @@ import {
 } from '@/api/notes'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors } from '@/lib/errors'
-import { pickErrors } from '@/lib/requiredPicks'
+import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useStatuses } from '@/lib/statuses'
@@ -91,6 +91,23 @@ export function NoteForm({
     },
   })
 
+
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -103,6 +120,7 @@ export function NoteForm({
     )
     if (Object.keys(picked).length > 0) {
       setErrors(picked)
+      warnHidden(Object.keys(picked))
 
       return
     }
@@ -147,8 +165,9 @@ export function NoteForm({
           მოსულს" ჰგავდა. HTML5-ის `form="…"` სწორედ ამისთვისაა: ღილაკი
           ფორმის გარეთ დგას და მაინც მას უშვებს. */}
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-4">
-        <div>
-          {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება */}
+        {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+            ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+        <div className={fields.shows('title') ? undefined : 'hidden'}>
           <FieldLabel htmlFor="note-title" required>{fields.label('title')}</FieldLabel>
           <Input
             id="note-title"

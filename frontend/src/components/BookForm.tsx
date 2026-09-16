@@ -19,7 +19,7 @@ import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
-import { pickErrors } from '@/lib/requiredPicks'
+import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BookGenreDialog } from '@/components/BookGenreDialog'
@@ -175,6 +175,23 @@ export function BookForm({
     },
   })
 
+
+  /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
+     `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
+     ვიზუალურად არაფერს აკეთებდა. ამიტომ ასეთი ველი თოსტით სახელდება. */
+  const warnHidden = (missing: string[]) => {
+    const hidden = hiddenPicks(missing, fields.shows)
+
+    if (hidden.length > 0) {
+      toast({
+        title: t('validation.hiddenRequired', {
+          fields: hidden.map((key) => fields.label(key)).join(', '),
+        }),
+        variant: 'error',
+      })
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -186,6 +203,7 @@ export function BookForm({
     )
     if (Object.keys(picked).length > 0) {
       setErrors(picked)
+      warnHidden(Object.keys(picked))
 
       return
     }
@@ -302,9 +320,10 @@ export function BookForm({
         </div>
 
         {/* ---------- სათაური ორ ენაზე ---------- */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={fields.shows('title') ? 'grid gap-4 sm:grid-cols-2' : 'hidden'}>
           <div>
             {/* ⚠️ სათაური `locked`-ია (§6.5) — ერთი ენა მაინც სავალდებულოა.
+                ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის.
                 ლეიბლი მაინც რედაქტორიდან მოდის, ენის მინიშნება კი ემატება,
                 თორემ ორივე ველი ერთნაირად დაიწერებოდა. */}
             <FieldLabel htmlFor="b-title-ka" required hint={t('form.requiredEitherLang')}>

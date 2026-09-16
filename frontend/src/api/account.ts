@@ -379,6 +379,14 @@ export interface ModuleField {
    */
   locked: boolean
   /**
+   * §4 — **ჩაკეტვა მოხსნილია** (`super_admin`-ის ცხადი არჩევანი).
+   *
+   * ⚠️ `locked` ამის შემდეგაც `true` რჩება: ის სქემაზე ამბობს სიმართლეს,
+   * ე.ი. ინტერფეისს შეუძლია თქვას „ჩაკეტილია, მაგრამ შენ მოხსენი" და
+   * გაფრთხილება არ იკარგება.
+   */
+  unlocked: boolean
+  /**
    * ⚠️ **§6.5-ის შემდეგ რიგი მხოლოდ backend-ისაა** — UI მას აღარ ცვლის და
    * `PUT` მას აღარ იღებს. მნიშვნელობა კითხვისთვის რჩება (ფორმის რიგი).
    */
@@ -536,7 +544,14 @@ export async function deleteCustomFieldFile(
 export type ModuleFieldPatch = Partial<
   Pick<
     ModuleField,
-    'enabled' | 'required' | 'public' | 'label_ka' | 'label_en' | 'placeholder_ka' | 'placeholder_en'
+    | 'enabled'
+    | 'required'
+    | 'public'
+    | 'unlocked'
+    | 'label_ka'
+    | 'label_en'
+    | 'placeholder_ka'
+    | 'placeholder_en'
   >
 >
 
@@ -551,6 +566,17 @@ export async function saveModuleFields(
   fields: Record<string, ModuleFieldPatch>,
 ): Promise<ModuleField[]> {
   const { data } = await api.put(`/modules/${key}/fields`, { fields })
+  return data.fields
+}
+
+/**
+ * **ველების კონფიგის ნაგულისხმევზე დაბრუნება** (§4).
+ *
+ * ⚠️ `DELETE` — `POST`-ს `permission:` middleware `create`-ად წაიკითხავდა,
+ * `delete` კი ზუსტად ის უფლებაა, რასაც ეს მოქმედება ითხოვს.
+ */
+export async function resetModuleFields(key: string): Promise<ModuleField[]> {
+  const { data } = await api.delete(`/modules/${key}/fields`)
   return data.fields
 }
 
