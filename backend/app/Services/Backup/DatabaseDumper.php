@@ -168,7 +168,9 @@ class DatabaseDumper
             throw new RuntimeException($this->reason($process));
         }
 
-        return ['tables' => $this->countTables($absolutePath, $compress)];
+        $map = $this->scanTables($absolutePath, $compress);
+
+        return ['tables' => count($map), 'table_map' => $map];
     }
 
     /**
@@ -178,7 +180,7 @@ class DatabaseDumper
      * მონაცემები ქრება. სწორედ ამიტომ დგას endpoint-ზე აკრეფილი `RESTORE`
      * და ავტომატური უსაფრთხოების დამპი (§22.5).
      */
-    public function restore(string $absolutePath): void
+    public function restore(string $absolutePath, ?string $database = null): void
     {
         $binary = $this->clientBinary();
 
@@ -198,7 +200,10 @@ class DatabaseDumper
             '--port='.$config['port'],
             '--user='.$config['username'],
             '--default-character-set=utf8mb4',
-            $config['database'],
+            /* ⚠️ **სამიზნე ბაზა პარამეტრია** (§11.3): ვიუერი დამპს
+               **დროებით** ბაზაში იტვირთავს, ე.ი. იმავე ფუნქციას ორი
+               მიმართულება აქვს. ნაგულისხმევი — მოქმედი ბაზა. */
+            $database ?? $config['database'],
         ];
 
         $process = new Process($args, null, $this->env($config), null, $this->timeout());
@@ -298,28 +303,61 @@ class DatabaseDumper
     }
 
     /**
-     * რამდენი ცხრილი ჩაიწერა — „ცარიელი დამპი" მხოლოდ ასე ჩანს.
+     * **დამპის შიგთავსი ერთი გავლით (Tasks §11.1).**
      *
-     * ⚠️ ფაილი **ხაზ-ხაზ** იკითხება: 4 მბ დღეს, შეიძლება 400 ხვალ.
+     * ⚠️ **ერთი გავლა და არა ორი.** ადრე ეს `countTables()` იყო და მხოლოდ
+     * `CREATE TABLE`-ებს ითვლიდა; ახლა იმავე კითხვაზე ცხრილის სახელი,
+     * მისი ბაიტები და `INSERT`-ების რაოდენობაც გროვდება. მეორე გავლა
+     * 400 მბ-იან დამპზე ორმაგი ფასი იქნებოდა.
+     *
+     * ⚠️ **ფაილი ხაზ-ხაზ იკითხება** — 4 მბ დღეს, შეიძლება 400 ხვალ.
+     *
+     * ⚠️ **ეს პარსერი არ არის.** სახელს `CREATE TABLE \`x\`` სტრიქონიდან
+     * იღებს და არა SQL-ის დაშლით: სვეტების ან ტუპლების გარჩევა სულ სხვა
+     * ამოცანაა (და სწორედ ამიტომ ვიუერი დროებით ბაზაში იმპორტზე დგას).
+     *
+     * @return array<string, array{bytes: int, inserts: int}>
      */
-    private function countTables(string $path, bool $compressed = false): int
+    public function scanTables(string $path, ?bool $compressed = null): array
     {
+        $compressed ??= $this->isGzip($path);
         $handle = $compressed ? @gzopen($path, 'rb') : @fopen($path, 'rb');
 
         if ($handle === false) {
-            return 0;
+            return [];
         }
 
-        $count = 0;
+        $map = [];
+        $current = null;
 
         while (($line = $compressed ? gzgets($handle) : fgets($handle)) !== false) {
             if (str_starts_with($line, 'CREATE TABLE')) {
-                $count++;
+                $current = $this->tableNameOf($line);
+
+                if ($current !== null && ! isset($map[$current])) {
+                    $map[$current] = ['bytes' => 0, 'inserts' => 0];
+                }
+            }
+
+            if ($current === null) {
+                continue;
+            }
+
+            $map[$current]['bytes'] += strlen($line);
+
+            if (str_starts_with($line, 'INSERT INTO')) {
+                $map[$current]['inserts']++;
             }
         }
 
         $compressed ? gzclose($handle) : fclose($handle);
 
-        return $count;
+        return $map;
+    }
+
+    /** `CREATE TABLE \`movies\` (` → `movies` */
+    private function tableNameOf(string $line): ?string
+    {
+        return preg_match('/^CREATE TABLE\s+`([^`]+)`/', $line, $m) === 1 ? $m[1] : null;
     }
 }

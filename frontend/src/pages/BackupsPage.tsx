@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Database,
   Download,
+  Table2,
   Loader2,
   Play,
   RotateCcw,
@@ -26,6 +27,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { BackupViewer } from '@/components/backups/BackupViewer'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { useAuth } from '@/lib/auth'
@@ -59,6 +61,8 @@ export function BackupsPage() {
 
   const [note, setNote] = useState('')
   const [restoring, setRestoring] = useState<Backup | null>(null)
+  // §11 — ასლის ვიუერი (ცხრილები, რიგები, ნაწილობრივი აღდგენა)
+  const [viewing, setViewing] = useState<Backup | null>(null)
   const [typed, setTyped] = useState('')
 
   const list = useQuery({
@@ -218,6 +222,16 @@ export function BackupsPage() {
               >
                 <Download className="size-4" />
               </Button>
+              {/* §11 — „რა არის შიგნით"; ცხრილების სია აღდგენას არ მოითხოვს */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewing(b)}
+                disabled={b.status !== 'ready'}
+                title={t('backups.viewerTitle')}
+              >
+                <Table2 className="size-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -249,6 +263,8 @@ export function BackupsPage() {
           </li>
         ))}
       </ul>
+
+      {viewing && <BackupViewer backup={viewing} onClose={() => setViewing(null)} />}
 
       {restoring && (
         <ModalShell

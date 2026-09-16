@@ -968,7 +968,15 @@
     "account_password_wrong": "The account password is wrong.",
     "no_tags_given": "Name at least one tag.",
     "scope_required": "Pick which records this applies to.",
-    "pin_limit_reached": "The pin limit is reached — unpin one first."
+    "pin_limit_reached": "The pin limit is reached — unpin one first.",
+    "table_restore_blocked": "Restoring this table on its own is blocked.",
+    "confirm_table_name": "Type the table name to confirm.",
+    "backup_not_inspected": "Open the backup first — the viewer is closed.",
+    "table_not_in_backup": "There is no such table in this backup.",
+    "row_not_in_backup": "There is no such record in this backup.",
+    "table_has_no_primary_key": "This table has no primary key — a single row cannot be restored.",
+    "row_key_incomplete": "The key is incomplete.",
+    "safety_backup_failed": "The safety copy failed — nothing was restored."
   },
   "fields": {
     "title": "Fields",
@@ -2938,7 +2946,29 @@
       "ready": "ready",
       "failed": "failed",
       "stale": "the process stopped"
-    }
+    },
+    "viewerTitle": "Backup viewer",
+    "viewerOpen": "The backup is open — queries run against real SQL.",
+    "viewerClosed": "The backup is closed — only the table list is shown.",
+    "viewerOpenAction": "Open the backup",
+    "viewerClose": "Close",
+    "viewerHint": "Opening imports the dump into a temporary database; that is the only way paging, sorting and filtering work.",
+    "viewerWarn": "The temporary database is a second copy of the data on disk and the quota cannot see it — closing removes it.",
+    "pickTable": "Pick a table on the left.",
+    "noTables": "No tables were found in this backup.",
+    "noRows": "This table has no rows.",
+    "rowCount": "{{count}} rows",
+    "insertCount": "{{count}} INSERTs",
+    "rowRange": "{{from}}–{{to}} of {{total}}",
+    "restoreTable": "Restore the table",
+    "restoreTableTitle": "Restore the “{{table}}” table",
+    "restoreTableHint": "The table is emptied first and refilled from the backup. A safety copy is taken before it runs.",
+    "typeTableName": "Type “{{table}}” to confirm",
+    "tableRestored": "Restored: {{deleted}} deleted, {{inserted}} written",
+    "restoreRow": "Restore the row",
+    "rowRestored": "The record is restored",
+    "cascadeWarn": "Emptying this table touches {{count}} related tables:",
+    "blockedHint": "Restoring this table on its own is blocked — far too many records depend on it."
   },
   "secret": {
     "show": "Show",

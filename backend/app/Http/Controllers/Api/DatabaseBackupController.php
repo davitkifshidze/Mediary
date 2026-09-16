@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DatabaseBackup;
 use App\Services\Audit\AuditLogger;
+use App\Services\Backup\BackupInspector;
+use App\Services\Backup\BackupRunner;
 use App\Services\Backup\DatabaseDumper;
+use App\Services\Backup\PartialRestore;
 use App\Services\Storage\StorageMeter;
 use App\Support\BackgroundProcess;
+use App\Support\RestoreScope;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\JsonResponse;
@@ -267,5 +271,188 @@ class DatabaseBackupController extends Controller
             'created_at' => $backup->created_at?->toIso8601String(),
             'finished_at' => $backup->finished_at?->toIso8601String(),
         ];
+    }
+
+    /* ================= §11 — ვიუერი და ნაწილობრივი აღდგენა ================= */
+
+    /**
+     * **ასლის გახსნა ვიუერისთვის (§11.3)** — `POST /admin/backups/{id}/inspect`.
+     *
+     * ⚠️ **დამპი დროებით ბაზაში იტვირთება და არა პარსდება.** SQL-ის
+     * პარსერი (`mysqldump` სვეტების სახელებს არ წერს, ტუპლების escape-ები
+     * კი ნამდვილი მდგომარეობის მანქანაა) **ჩუმად** ცდებოდა, და ყოველი
+     * გვერდი მთელ ფაილს ახლიდან დაშლიდა. იმპორტი გაზომილია: 4.2 მბ → 1.5 წმ.
+     *
+     * ⚠️ **დროებითი ბაზა კვოტას ვერ ეთვლება** — ის ფაილი არაა. ინტერფეისი
+     * ამას ცხადად ამბობს, დახურვა კი ბაზას შლის.
+     */
+    public function inspect(DatabaseBackup $backup, BackupInspector $inspector): JsonResponse
+    {
+        abort_if($backup->status !== DatabaseBackup::STATUS_READY || ! $backup->path, 404);
+
+        $inspector->open($backup);
+
+        return response()->json([
+            'open' => true,
+            'database' => $inspector->databaseName($backup),
+            'tables' => $inspector->tables($backup),
+        ]);
+    }
+
+    /** ვიუერის დახურვა — დროებითი ბაზა ქრება */
+    public function closeInspect(DatabaseBackup $backup, BackupInspector $inspector): JsonResponse
+    {
+        $inspector->close($backup);
+
+        return response()->json(['open' => false]);
+    }
+
+    /**
+     * **ცხრილების სია (§11.1/§11.3).**
+     *
+     * ⚠️ ვიუერის გახსნის გარეშეც პასუხობს: `database_backups.table_map`
+     * დამპის **ერთი გავლიდან** მოდის და აღდგენას არ მოითხოვს. გახსნილზე
+     * კი ნამდვილი `COUNT(*)` ბრუნდება — `information_schema`-ს `table_rows`
+     * InnoDB-ზე შეფასებაა და ხშირად ორჯერ ცდება.
+     */
+    public function tables(DatabaseBackup $backup, BackupInspector $inspector): JsonResponse
+    {
+        if ($inspector->isOpen($backup)) {
+            return response()->json(['open' => true, 'data' => $inspector->tables($backup)]);
+        }
+
+        $map = $backup->table_map ?? [];
+
+        return response()->json([
+            'open' => false,
+            'data' => array_map(fn (string $name) => [
+                'name' => $name,
+                // ⚠️ `inserts` **განცხადებების** რაოდენობაა და არა რიგებისა —
+                // ერთ `INSERT`-ში ასობით ტუპლეა. სია ამას ცხადად ამბობს.
+                'inserts' => (int) ($map[$name]['inserts'] ?? 0),
+                'bytes' => (int) ($map[$name]['bytes'] ?? 0),
+                'scope' => RestoreScope::scopeFor($name),
+            ], array_keys($map)),
+        ]);
+    }
+
+    /** ერთი ცხრილის რიგები — გვერდებით, სორტირებით და ფილტრით (§11.3) */
+    public function rows(Request $request, DatabaseBackup $backup, BackupInspector $inspector): JsonResponse
+    {
+        $data = $request->validate([
+            'table' => ['required', 'string', 'max:120'],
+            'page' => ['nullable', 'integer'],
+            'per_page' => ['nullable', 'integer'],
+            'sort' => ['nullable', 'string', 'max:120'],
+            'dir' => ['nullable', 'in:asc,desc'],
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $page = max((int) ($data['page'] ?? 1), 1);
+        $perPage = (int) ($data['per_page'] ?? 50);
+
+        $result = $inspector->rows(
+            $backup,
+            $data['table'],
+            $page,
+            $perPage,
+            $data['sort'] ?? null,
+            $data['dir'] ?? 'asc',
+            $data['q'] ?? null,
+        );
+
+        return response()->json([
+            'columns' => $result['columns'],
+            'data' => $result['data'],
+            'meta' => [
+                'page' => $page,
+                'per_page' => min(max($perPage, 1), BackupInspector::MAX_PER_PAGE),
+                'total' => $result['total'],
+                // §11.4 — „რამდენად საშიშია ამ ცხრილის აღდგენა" იქვე ჩანს
+                'scope' => RestoreScope::scopeFor($data['table']),
+                'children' => RestoreScope::children($data['table']),
+            ],
+        ]);
+    }
+
+    /**
+     * **ერთი ცხრილის აღდგენა (§11.4).**
+     *
+     * ⚠️ **აკრეფილი სიტყვა ცხრილის საკუთარი სახელია და არა `RESTORE`.**
+     * ღილაკიდან გადმოსაწერი სიტყვა სუსტია: ის ყოველთვის ერთი და იგივეა და
+     * თითს ავტომატურად აკრეფინებს. ცხრილის სახელი კი აიძულებს, რომ ზუსტად
+     * იმას უყურო, რასაც შლი.
+     *
+     * ⚠️ **`users` და ინფრასტრუქტურა სრულად აკრძალულია** (შენი პასუხი):
+     * `users`-ზე 61 შემომავალი უცხო გასაღები მიდის, ე.ი. „მხოლოდ users-ის
+     * აღდგენა" ყველა ანგარიშის მთელ ბიბლიოთეკას წაშლიდა.
+     *
+     * ⚠️ **უსაფრთხოების დამპი ჯერ** — შეუქცევადი ოპერაცია იმ ასლის გარეშე,
+     * რომელიც მას შექცევადს ხდის, ზუსტად ის ერთი რამეა, რაც ამ ფუნქციამ
+     * არ უნდა ქნას (§22-ის იგივე წესი).
+     */
+    public function restoreTable(
+        Request $request,
+        DatabaseBackup $backup,
+        BackupInspector $inspector,
+        PartialRestore $restore,
+        BackupRunner $runner,
+    ): JsonResponse {
+        $data = $request->validate([
+            'table' => ['required', 'string', 'max:120'],
+            'confirm' => ['required', 'string'],
+        ]);
+
+        abort_if($data['confirm'] !== $data['table'], 422, 'confirm_table_name');
+        abort_if(RestoreScope::isBlocked($data['table']), 422, 'table_restore_blocked');
+
+        $inspector->assertOpen($backup);
+
+        /* ⚠️ ლოგი **დესტრუქციულ ნაბიჯამდე** — აღდგენა `audit_logs`-საც
+           შეიძლება შეეხოს, ე.ი. შემდეგ ჩაწერილი რიგი აღარ იარსებებდა. */
+        $this->audit->log(AuditLog::ACTION_UPDATE, [
+            'subject_type' => 'database_backup',
+            'subject_id' => $backup->id,
+            'subject_label' => 'restore table: '.$data['table'],
+            'context' => ['table' => $data['table'], 'backup' => $backup->name],
+        ]);
+
+        /* ⚠️ **უსაფრთხოების ასლი ჯერ, და ჩავარდნაზე უარი.** შეუქცევადი
+           ოპერაცია იმ ასლის გარეშე, რომელიც მას შექცევადს ხდის, ზუსტად
+           ის ერთი რამეა, რაც ამ ფუნქციამ არ უნდა ქნას (§22-ის წესი). */
+        $safety = $runner->safetyDump($backup, 'auto: before table restore '.$data['table']);
+        abort_unless($safety, 500, 'safety_backup_failed');
+
+        return response()->json([
+            ...$restore->table($backup, $data['table']),
+            'safety_backup_id' => $safety->id,
+        ]);
+    }
+
+    /**
+     * **ერთი ჩანაწერის აღდგენა (§11.5).**
+     *
+     * ⚠️ აქ აკრეფილი სიტყვა **არ არის**: ერთი რიგის დაბრუნება შექცევადია
+     * და სექციის საკუთარ ბადეში წაშლას უტოლდება. აკრეფილი სიტყვა
+     * ცხრილსა და სრულ აღდგენას რჩება, თორემ ძალას დაკარგავდა.
+     */
+    public function restoreRow(
+        Request $request,
+        DatabaseBackup $backup,
+        PartialRestore $restore,
+    ): JsonResponse {
+        $data = $request->validate([
+            'table' => ['required', 'string', 'max:120'],
+            'key' => ['required', 'array', 'min:1'],
+        ]);
+
+        $this->audit->log(AuditLog::ACTION_UPDATE, [
+            'subject_type' => 'database_backup',
+            'subject_id' => $backup->id,
+            'subject_label' => 'restore row: '.$data['table'],
+            'context' => ['table' => $data['table'], 'key' => $data['key']],
+        ]);
+
+        return response()->json($restore->row($backup, $data['table'], $data['key']));
     }
 }

@@ -52,6 +52,8 @@ class DatabaseBackup extends Model
         'error',
         'driver',
         'tables',
+        // §11.1 — ცხრილი → [bytes, inserts]; დამპის ერთი გავლიდან
+        'table_map',
         'note',
         'source',
         'started_at',
@@ -63,6 +65,8 @@ class DatabaseBackup extends Model
         return [
             'size' => 'integer',
             'tables' => 'integer',
+            // §11.1 — ცხრილი → [bytes, inserts]; იმპორტირებულზე `null`, სანამ არ წაიკითხება
+            'table_map' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
         ];

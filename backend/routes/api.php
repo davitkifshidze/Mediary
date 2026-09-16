@@ -936,6 +936,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/backups/{backup}', [DatabaseBackupController::class, 'show'])->whereNumber('backup');
         Route::get('/backups/{backup}/download', [DatabaseBackupController::class, 'download'])->whereNumber('backup');
         Route::post('/backups/{backup}/restore', [DatabaseBackupController::class, 'restore'])->whereNumber('backup');
+
+        /* §11 — ასლის ვიუერი და ნაწილობრივი აღდგენა.
+           ⚠️ ყველა `super_admin`-ზეა (ჯგუფის შიგნით), რადგან ვიუერიც
+           მთელ ბაზას ახედებს — ეს ერთი სექციის უფლება ვერ იქნება. */
+        Route::post('/backups/{backup}/inspect', [DatabaseBackupController::class, 'inspect'])->whereNumber('backup');
+        Route::delete('/backups/{backup}/inspect', [DatabaseBackupController::class, 'closeInspect'])->whereNumber('backup');
+        Route::get('/backups/{backup}/tables', [DatabaseBackupController::class, 'tables'])->whereNumber('backup');
+        Route::get('/backups/{backup}/rows', [DatabaseBackupController::class, 'rows'])->whereNumber('backup');
+        Route::post('/backups/{backup}/restore-table', [DatabaseBackupController::class, 'restoreTable'])->whereNumber('backup');
+        Route::post('/backups/{backup}/restore-row', [DatabaseBackupController::class, 'restoreRow'])->whereNumber('backup');
         Route::delete('/backups/{backup}', [DatabaseBackupController::class, 'destroy'])->whereNumber('backup');
     });
 });

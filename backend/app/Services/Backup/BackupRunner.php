@@ -62,6 +62,8 @@ class BackupRunner
                 'path' => $path,
                 'size' => $size,
                 'tables' => $result['tables'],
+                // §11.1 — „რა არის შიგნით" აღდგენას აღარ მოითხოვს
+                'table_map' => $result['table_map'] ?? null,
                 'driver' => $this->dumper->driver(),
                 'status' => DatabaseBackup::STATUS_READY,
                 'error' => null,
@@ -78,6 +80,33 @@ class BackupRunner
                 @unlink($temp);
             }
         }
+    }
+
+    /**
+     * **უსაფრთხოების ასლი დესტრუქციულ ნაბიჯამდე (§22 → §11.6).**
+     *
+     * ⚠️ **ჩავარდნაზე `null` და არა გამონაკლისი**: გამომძახებელმა ეს
+     * *გადაწყვეტილებად* უნდა წაიკითხოს — შეუქცევადი ოპერაცია იმ ასლის
+     * გარეშე, რომელიც მას შექცევადს ხდის, საერთოდ არ უნდა დაიწყოს.
+     *
+     * ⚠️ **საჯარო გახდა §11.4-ისთვის**: ერთი ცხრილის აღდგენა იმავე დაცვას
+     * საჭიროებს, რასაც სრული — და მისი მეორედ დაწერა ერთ დღეს გაშორდებოდა.
+     */
+    public function safetyDump(DatabaseBackup $for, string $note): ?DatabaseBackup
+    {
+        $safety = DatabaseBackup::create([
+            'user_id' => $for->user_id,
+            'name' => 'mediary-before-restore-'.now()->format('Y-m-d-Hi').'.sql',
+            'status' => DatabaseBackup::STATUS_RUNNING,
+            'driver' => $this->dumper->driver(),
+            'source' => DatabaseBackup::SOURCE_DUMP,
+            'note' => $note,
+            'started_at' => now(),
+        ]);
+
+        $this->dump($safety);
+
+        return $safety->fresh()?->status === DatabaseBackup::STATUS_READY ? $safety->fresh() : null;
     }
 
     /**
@@ -113,19 +142,9 @@ class BackupRunner
            ფაილი მთელ ბიბლიოთეკას შლის; ავტომატური ასლი ერთადერთი გზაა
            უკან. თუ ისიც ჩავარდა, აღდგენა **საერთოდ არ იწყება** — თორემ
            დესტრუქციული ოპერაცია უკანდაუბრუნებლად გაიშვებოდა. */
-        $safety = DatabaseBackup::create([
-            'user_id' => $backup->user_id,
-            'name' => 'mediary-before-restore-'.now()->format('Y-m-d-Hi').'.sql',
-            'status' => DatabaseBackup::STATUS_RUNNING,
-            'driver' => $this->dumper->driver(),
-            'source' => DatabaseBackup::SOURCE_DUMP,
-            'note' => 'auto: before restore #'.$backup->id,
-            'started_at' => now(),
-        ]);
+        $safety = $this->safetyDump($backup, 'auto: before restore #'.$backup->id);
 
-        $this->dump($safety);
-
-        if ($safety->fresh()?->status !== DatabaseBackup::STATUS_READY) {
+        if (! $safety) {
             $backup->forceFill([
                 'status' => DatabaseBackup::STATUS_FAILED,
                 'error' => 'safety_backup_failed',

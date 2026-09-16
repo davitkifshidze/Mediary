@@ -41,6 +41,15 @@ const CODES = [
   'scope_required',
   // §10.7 — პინების ლიმიტი საუბარზე
   'pin_limit_reached',
+  /* §11 — ასლის ვიუერი და ნაწილობრივი აღდგენა */
+  'table_restore_blocked',
+  'confirm_table_name',
+  'backup_not_inspected',
+  'table_not_in_backup',
+  'row_not_in_backup',
+  'table_has_no_primary_key',
+  'row_key_incomplete',
+  'safety_backup_failed',
   // §16.3 — ჩატი
   'chat_blocked',
   'cannot_chat_with_self',
