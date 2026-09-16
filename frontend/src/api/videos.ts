@@ -333,16 +333,38 @@ export async function markVideoWatched(id: number): Promise<Video> {
 /* ---------- მასობრივი ოპერაცია (Tasks 4 / 19.9) ---------- */
 
 /** ვიდეოს სტატუსი არ აქვს, ამიტომ მასობრივად ტიპი და ტეგები იცვლება */
-export type VideoBulkAction = 'type' | 'tags_add' | 'tags_remove'
+export type VideoBulkAction = 'type' | 'tags_add' | 'tags_remove' | 'status'
 
-export interface VideoBulkInput {
+/**
+ * **ვის შეეხება (Tasks §9).**
+ *
+ * ⚠️ **ლექსიკა `PurgeService::TARGET_MODES`-ისაა და არა გამოგონილი** — იგივე
+ * სიტყვები, იგივე მნიშვნელობა. ორი ლექსიკონი ერთსა და იმავე ცნებაზე
+ * ერთ დღეს დაშორდებოდა.
+ */
+export const VIDEO_BULK_SCOPES = ['ids', 'type', 'tag', 'status', 'all'] as const
+export type VideoBulkScope = (typeof VIDEO_BULK_SCOPES)[number]
+
+/**
+ * ⚠️ **სკოუპის პარამეტრებს `scope_` პრეფიქსი აქვს და ეს სავალდებულოა**:
+ * `tags`/`type_id`/`status` **მოქმედების** დატვირთვაა, ე.ი. იმავე სახელით
+ * სკოუპი თავის თავზე მიუთითებდა — „დაამატე ტეგი X ყველას, ვისაც X აქვს".
+ */
+export interface VideoBulkScopeInput {
+  scope: VideoBulkScope
+  scope_ids?: number[]
+  /** `0` = ტიპის გარეშე (`type_id IS NULL`) */
+  scope_type_id?: number
+  scope_tag?: string
+  scope_status?: string
+}
+
+export interface VideoBulkInput extends VideoBulkScopeInput {
   action: VideoBulkAction
-  /** კონკრეტული ვიდეოები; ცარიელზე `from_type_id` მოქმედებს */
-  ids?: number[]
-  /** „ამ ტიპის ყველა ვიდეო"; `0` = ტიპის გარეშე */
-  from_type_id?: number
-  /** action=type: null = ტიპის მოხსნა */
-  type_id?: number | null
+  /** action=type — ⚠️ `null` აღარ არსებობს: ტიპი სავალდებულია */
+  type_id?: number
+  /** action=status — სტატუსის **გასაღები** */
+  status?: string
   tags?: string[]
 }
 
@@ -350,6 +372,24 @@ export interface VideoBulkInput {
 export async function bulkUpdateVideos(input: VideoBulkInput): Promise<number> {
   const { data } = await api.post('/videos/bulk', input)
   return data.updated as number
+}
+
+export interface VideoBulkPreview {
+  count: number
+  sample: { id: number; title: string }[]
+}
+
+/**
+ * „რამდენს შეეხება" — **სერვერის პასუხი და არა კლიენტზე დათვლილი რიცხვი**
+ * (Tasks §9.2/§9.4): ორი განმარტება ნიშნავდა, რომ ნაჩვენები რიცხვი და
+ * შეხებული რიგები ერთმანეთს აცდებოდა.
+ *
+ * ⚠️ **`GET`**: `preview` `UPDATE_ENDPOINTS`-ში არ არის, ე.ი. POST-ს
+ * შუამავალი `create`-ად წაიკითხავდა.
+ */
+export async function previewVideoBulk(scope: VideoBulkScopeInput): Promise<VideoBulkPreview> {
+  const { data } = await api.get('/videos/bulk-preview', { params: scope })
+  return data
 }
 
 /** per-user per-module პარამეტრები (`module_user.settings`) */

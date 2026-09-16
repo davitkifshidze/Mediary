@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { fetchDashboard } from '@/api/dashboard'
 import { mediaApi } from '@/api/media'
-import { type MediaType } from '@/lib/media'
+import { mediaKey, type MediaType } from '@/lib/media'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -74,7 +74,7 @@ export function StatusBulkPage() {
       <PageHeader
         tool="bulk"
         title={t('bulkStatus.title')}
-        hint={<InfoHint info={t(active === 'video' ? 'bulkVideo.subtitle' : 'bulkStatus.subtitle')} />}
+        hint={<InfoHint info={t(active === 'video' ? 'bulkVideo.subtitle' : mediaKey('bulkStatus.subtitle', active))} />}
       />
 
       {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) ----------
@@ -148,7 +148,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: [type] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
-      toast({ title: t('bulkStatus.done', { count: updated }), variant: 'success' })
+      toast({ title: t(mediaKey('bulkStatus.done', type), { count: updated }), variant: 'success' })
       setIds([])
       setFromStatus('')
       setTarget('')
@@ -160,7 +160,10 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
     if (!canApply) return
     const ok = await confirm({
       title: t('bulkStatus.confirmTitle'),
-      description: t('bulkStatus.confirmDesc', {
+      /* §9.7 — ⚠️ ტექსტები სიტყვასიტყვით „ფილმს" ამბობდა იმ პანელზე,
+         რომელიც სერიალსაც და ანიმესაც ემსახურება. `mediaKey()` სწორედ
+         ამისთვის არსებობს (`lib/media.ts`). */
+      description: t(mediaKey('bulkStatus.confirmDesc', type), {
         count: affectedCount,
         status: statusName(statuses.find((s) => s.key === target), lang),
       }),
@@ -174,7 +177,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
     <div className="space-y-6 rounded-xl border border-border bg-card p-5">
       {/* რას ვცვლით */}
       <div>
-        <Label className="mb-2 block">{t('bulkStatus.whichLabel')}</Label>
+        <Label className="mb-2 block">{t(mediaKey('bulkStatus.whichLabel', type))}</Label>
         <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="gap-3">
           <div
             className={cn(
@@ -212,7 +215,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
           >
             <label className="flex cursor-pointer items-center gap-3">
               <RadioGroupItem value="specific" />
-              <span className="text-sm font-medium">{t('bulkStatus.modeSpecific')}</span>
+              <span className="text-sm font-medium">{t(mediaKey('bulkStatus.modeSpecific', type))}</span>
             </label>
             {mode === 'specific' && (
               <div className="mt-3 pl-8">
@@ -220,7 +223,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
                   movies={movies}
                   value={ids}
                   onChange={setIds}
-                  placeholder={moviesQ.isLoading ? t('api.loading') : t('bulkStatus.moviesPick')}
+                  placeholder={moviesQ.isLoading ? t('api.loading') : t(mediaKey('bulkStatus.moviesPick', type))}
                   key={type}
                 />
               </div>
@@ -248,7 +251,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
 
       <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
         <span className="text-sm text-muted-foreground">
-          {t('bulkStatus.affected', { count: affectedCount })}
+          {t(mediaKey('bulkStatus.affected', type), { count: affectedCount })}
         </span>
         <Button onClick={apply} disabled={!canApply || mut.isPending}>
           {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}

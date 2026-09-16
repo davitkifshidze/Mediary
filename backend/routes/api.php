@@ -345,6 +345,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // მასობრივი ოპერაცია (Tasks 4 / 19.9): ტიპი · ტეგის დამატება/მოხსნა.
         // `{video}`-ზე ზემოთ უნდა იყოს, თორემ „bulk" id-ად წაიკითხება.
         Route::post('/videos/bulk', [VideoBulkController::class, 'update']);
+        /* §9.2 — „რამდენს შეეხება". ⚠️ **`GET` და არა `POST`**: `preview`
+           `UPDATE_ENDPOINTS`-ში არ არის, ე.ი. POST-ს შუამავალი `create`-ად
+           წაიკითხავდა და view+update როლი უსაფუძვლო 403-ს მიიღებდა. */
+        Route::get('/videos/bulk-preview', [VideoBulkController::class, 'preview']);
         /* §6.4 — ვიდეოს სტატუსი. **ახალი ველი**: ამ მოდულს სტატუსი აქამდე
            არ ჰქონდა. ⚠️ `{video}`-ზე ზემოთ, თორემ „bulk-status" id-ად წაიკითხება. */
         Route::post('/videos/bulk-status', [VideoStatusController::class, 'bulkUpdate']);

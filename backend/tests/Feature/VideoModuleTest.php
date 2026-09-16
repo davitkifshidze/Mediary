@@ -321,7 +321,14 @@ class VideoModuleTest extends TestCase
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
-    /** Tasks 4 / 19.9 — მასობრივი ოპერაცია: ტიპი და ტეგები (სტატუსი ვიდეოს არ აქვს) */
+    /**
+     * Tasks 4 → §9 — მასობრივი ოპერაცია: ტიპი, ტეგები და **სტატუსი**.
+     *
+     * ⚠️ წყარო ახლა ცხადი `scope`-ია (`ids | type | tag | status | all`) —
+     * იგივე ლექსიკა, რასაც `PurgeService::TARGET_MODES` იყენებს. სკოუპის
+     * პარამეტრებს `scope_` პრეფიქსი აქვს, თორემ „დაამატე ტეგი X ყველას,
+     * ვისაც X აქვს" თავის თავზე მიუთითებდა.
+     */
     public function test_bulk_changes_type_and_tags(): void
     {
         $types = $this->actingAs($this->user)->getJson('/api/video-types')->json('data');
@@ -351,7 +358,7 @@ class VideoModuleTest extends TestCase
 
         // „ამ ტიპის ყველა" → ახალი ტიპი
         $this->actingAs($this->user)
-            ->postJson('/api/videos/bulk', ['action' => 'type', 'from_type_id' => $info, 'type_id' => $fun])
+            ->postJson('/api/videos/bulk', ['action' => 'type', 'scope' => 'type', 'scope_type_id' => $info, 'type_id' => $fun])
             ->assertOk()
             ->assertJsonPath('updated', 2);
 
@@ -363,7 +370,8 @@ class VideoModuleTest extends TestCase
         $this->actingAs($this->user)
             ->postJson('/api/videos/bulk', [
                 'action' => 'tags_add',
-                'ids' => [$a->id, $b->id],
+                'scope' => 'ids',
+                'scope_ids' => [$a->id, $b->id],
                 'tags' => ['music', 'meme'],
             ])
             ->assertOk()
@@ -376,7 +384,8 @@ class VideoModuleTest extends TestCase
         $this->actingAs($this->user)
             ->postJson('/api/videos/bulk', [
                 'action' => 'tags_remove',
-                'ids' => [$a->id, $b->id],
+                'scope' => 'ids',
+                'scope_ids' => [$a->id, $b->id],
                 'tags' => [' MUSIC '],
             ])
             ->assertOk()
@@ -387,17 +396,84 @@ class VideoModuleTest extends TestCase
 
         // ცვლილების გარეშე — 0, არა შეცდომა
         $this->actingAs($this->user)
-            ->postJson('/api/videos/bulk', ['action' => 'tags_remove', 'ids' => [$a->id], 'tags' => ['nope']])
+            ->postJson('/api/videos/bulk', ['action' => 'tags_remove', 'scope' => 'ids', 'scope_ids' => [$a->id], 'tags' => ['nope']])
             ->assertOk()
             ->assertJsonPath('updated', 0);
 
-        // არჩევანის გარეშე 422; სხვისი ტიპი — ვალიდაციის შეცდომა
+        // სკოუპის გარეშე 422 — „ყველა" ცხადი არჩევანია და არა ცარიელი ფილტრი
         $this->actingAs($this->user)
             ->postJson('/api/videos/bulk', ['action' => 'type', 'type_id' => $fun])
             ->assertStatus(422);
         $this->actingAs($this->user)
-            ->postJson('/api/videos/bulk', ['action' => 'tags_add', 'ids' => [$a->id], 'tags' => []])
-            ->assertStatus(422);
+            ->postJson('/api/videos/bulk', [
+                'action' => 'tags_add', 'scope' => 'ids', 'scope_ids' => [$a->id], 'tags' => [],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'no_tags_given');
+    }
+
+    /**
+     * **§9.1 — ტეგის სკოუპი: „ვისაც ეს ტეგი აქვს".**
+     *
+     * ⚠️ ქართული ტეგი JSON სვეტში **escape-ულად** ზის, ე.ი. `LIKE` ვერასდროს
+     * დაემთხვეოდა — შედარება `Video::tagKey()`-ით PHP-შია.
+     */
+    public function test_the_tag_scope_matches_georgian_tags(): void
+    {
+        $types = $this->actingAs($this->user)->getJson('/api/video-types')->json('data');
+
+        $hit = Video::create([
+            'user_id' => $this->user->id, 'title' => 'ერთი',
+            'url' => 'https://youtu.be/ddddddddddd',
+            'type_id' => $types[0]['id'], 'tags' => ['ინფორმაცია'],
+        ]);
+        Video::create([
+            'user_id' => $this->user->id, 'title' => 'ორი',
+            'url' => 'https://youtu.be/eeeeeeeeeee',
+            'type_id' => $types[0]['id'], 'tags' => ['სხვა'],
+        ]);
+
+        // პრევიუ და ჩაწერა **ერთი query-დან** მოდის
+        $this->actingAs($this->user)
+            ->getJson('/api/videos/bulk-preview?scope=tag&scope_tag='.urlencode('ინფორმაცია'))
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('sample.0.title', 'ერთი');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', [
+                'action' => 'tags_add', 'scope' => 'tag', 'scope_tag' => 'ინფორმაცია', 'tags' => ['ახალი'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('updated', 1);
+
+        $this->assertSame(['ინფორმაცია', 'ახალი'], $hit->refresh()->tags);
+    }
+
+    /**
+     * **§9.6 — მასობრივი სტატუსი იმავე სკოუპებით.**
+     *
+     * ⚠️ `POST /videos/bulk-status` მხოლოდ `ids`/`from_status`-ს იცნობს,
+     * ე.ი. SPA აქ მოდის — თორემ სკოუპის მეორე განმარტება დაიბადებოდა.
+     */
+    public function test_bulk_status_uses_the_same_scopes(): void
+    {
+        $types = $this->actingAs($this->user)->getJson('/api/video-types')->json('data');
+        $statuses = $this->actingAs($this->user)->getJson('/api/statuses/video')->json('data');
+        $target = collect($statuses)->firstWhere('role', 'done') ?? $statuses[0];
+
+        $video = Video::create([
+            'user_id' => $this->user->id, 'title' => 'C',
+            'url' => 'https://youtu.be/fffffffffff', 'type_id' => $types[0]['id'],
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', [
+                'action' => 'status', 'scope' => 'all', 'status' => $target['key'],
+            ])
+            ->assertOk();
+
+        $this->assertSame($target['key'], $video->refresh()->status->key);
     }
 
     /** bulk = `update` უფლება და არა `create` (POST-ის მიუხედავად) */

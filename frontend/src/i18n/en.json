@@ -758,7 +758,21 @@
     "apply": "Apply",
     "confirmTitle": "Change status",
     "confirmDesc": "{{count}} movies will change status to \"{{status}}\". Continue?",
-    "done": "Status changed on {{count}} movies"
+    "done": "Status changed on {{count}} movies",
+    "subtitleSeries": "Change the status of a whole group or of specific series at once.",
+    "subtitleAnime": "Change the status of a whole group or of specific anime at once.",
+    "whichLabelSeries": "Which series?",
+    "whichLabelAnime": "Which anime?",
+    "modeSpecificSeries": "Specific series",
+    "modeSpecificAnime": "Specific anime",
+    "moviesPickSeries": "Pick series…",
+    "moviesPickAnime": "Pick anime…",
+    "affectedSeries": "{{count}} series will change",
+    "affectedAnime": "{{count}} anime will change",
+    "confirmDescSeries": "{{count}} series will get the status “{{status}}”. Continue?",
+    "confirmDescAnime": "{{count}} anime will get the status “{{status}}”. Continue?",
+    "doneSeries": "The status changed on {{count}} series",
+    "doneAnime": "The status changed on {{count}} anime"
   },
   "toast": {
     "deleted": "Movie removed from your collection",
@@ -951,7 +965,9 @@
     "invalid_backup_file": "only .sql or .sql.gz files",
     "album_locked": "The album is locked — enter its password first.",
     "album_password_wrong": "Wrong password.",
-    "account_password_wrong": "The account password is wrong."
+    "account_password_wrong": "The account password is wrong.",
+    "no_tags_given": "Name at least one tag.",
+    "scope_required": "Pick which records this applies to."
   },
   "fields": {
     "title": "Fields",
@@ -1268,7 +1284,6 @@
   },
   "bulkVideo": {
     "whichLabel": "Which videos?",
-    "modeByType": "By type",
     "modeSpecific": "Specific videos",
     "fromTypePick": "Pick a type",
     "videosPick": "Pick videos…",
@@ -1288,7 +1303,20 @@
     "action_tags_remove": "Remove tags",
     "confirm_type": "{{count}} video(s) will get the type „{{target}}\". Continue?",
     "confirm_tags_add": "Tags {{target}} will be added to {{count}} video(s); existing tags stay.",
-    "confirm_tags_remove": "Tags {{target}} will be removed from {{count}} video(s); other tags stay."
+    "confirm_tags_remove": "Tags {{target}} will be removed from {{count}} video(s); other tags stay.",
+    "action_status": "Change the status",
+    "confirm_status": "{{count}} videos will get the status: {{target}}. Continue?",
+    "targetStatusLabel": "New status",
+    "targetStatusPick": "Pick the new status",
+    "scope_ids": "Specific",
+    "scope_type": "By type",
+    "scope_tag": "By tag",
+    "scope_status": "By status",
+    "scope_all": "All",
+    "scopeAllHint": "This touches every video in the library — the count is below.",
+    "scopeMissing": "First pick which videos this applies to.",
+    "fromTagPick": "Pick a tag",
+    "fromStatusPick": "Pick a status"
   },
   "translate": {
     "sourcesTitle": "Translate with",

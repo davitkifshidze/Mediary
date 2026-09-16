@@ -35,6 +35,10 @@ const CODES = [
   // §7.8 — ალბომის ლოკს ახლა **ანგარიშის** პაროლი ცვლის
   'account_password_wrong',
   'album_password_wrong',
+  /* §9.5 — მასობრივი ცვლილება ადრე **ქართულ წინადადებებს** აბრუნებდა, ე.ი.
+     422 ნედლად იხატებოდა და ენას არ მიჰყვებოდა. */
+  'no_tags_given',
+  'scope_required',
   // §16.3 — ჩატი
   'chat_blocked',
   'cannot_chat_with_self',

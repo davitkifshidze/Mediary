@@ -758,7 +758,21 @@
     "apply": "შეცვლა",
     "confirmTitle": "სტატუსის შეცვლა",
     "confirmDesc": "{{count}} ფილმს სტატუსი შეეცვლება — „{{status}}“. გავაგრძელო?",
-    "done": "სტატუსი შეიცვალა {{count}} ფილმზე"
+    "done": "სტატუსი შეიცვალა {{count}} ფილმზე",
+    "subtitleSeries": "შეუცვალე სტატუსი ერთ ჯგუფს ან კონკრეტულ სერიალებს ერთდროულად.",
+    "subtitleAnime": "შეუცვალე სტატუსი ერთ ჯგუფს ან კონკრეტულ ანიმეებს ერთდროულად.",
+    "whichLabelSeries": "რომელ სერიალებს?",
+    "whichLabelAnime": "რომელ ანიმეებს?",
+    "modeSpecificSeries": "კონკრეტული სერიალები",
+    "modeSpecificAnime": "კონკრეტული ანიმეები",
+    "moviesPickSeries": "აირჩიე სერიალები…",
+    "moviesPickAnime": "აირჩიე ანიმეები…",
+    "affectedSeries": "შეიცვლება {{count}} სერიალი",
+    "affectedAnime": "შეიცვლება {{count}} ანიმე",
+    "confirmDescSeries": "{{count}} სერიალს სტატუსი შეეცვლება — „{{status}}“. გავაგრძელო?",
+    "confirmDescAnime": "{{count}} ანიმეს სტატუსი შეეცვლება — „{{status}}“. გავაგრძელო?",
+    "doneSeries": "სტატუსი შეიცვალა {{count}} სერიალზე",
+    "doneAnime": "სტატუსი შეიცვალა {{count}} ანიმეზე"
   },
   "toast": {
     "deleted": "ფილმი წაიშალა კოლექციიდან",
@@ -951,7 +965,9 @@
     "invalid_backup_file": "მხოლოდ .sql ან .sql.gz ფაილი",
     "album_locked": "ალბომი ჩაკეტილია — ჯერ პაროლი შეიყვანე.",
     "album_password_wrong": "პაროლი არასწორია.",
-    "account_password_wrong": "ანგარიშის პაროლი არასწორია."
+    "account_password_wrong": "ანგარიშის პაროლი არასწორია.",
+    "no_tags_given": "მიუთითე ერთი ტეგი მაინც.",
+    "scope_required": "აირჩიე, რომელ ჩანაწერებს შეეხოს."
   },
   "fields": {
     "title": "ველები",
@@ -1268,7 +1284,6 @@
   },
   "bulkVideo": {
     "whichLabel": "რომელ ვიდეოებს?",
-    "modeByType": "ტიპის მიხედვით",
     "modeSpecific": "კონკრეტული ვიდეოები",
     "fromTypePick": "აირჩიე ტიპი",
     "videosPick": "აირჩიე ვიდეოები…",
@@ -1288,7 +1303,20 @@
     "action_tags_remove": "ტეგების მოხსნა",
     "confirm_type": "{{count}} ვიდეოს ტიპი შეიცვლება: {{target}}. გავაგრძელო?",
     "confirm_tags_add": "{{count}} ვიდეოს დაემატება ტეგები: {{target}}. არსებული ტეგები რჩება.",
-    "confirm_tags_remove": "{{count}} ვიდეოს მოეხსნება ტეგები: {{target}}. დანარჩენი ტეგები რჩება."
+    "confirm_tags_remove": "{{count}} ვიდეოს მოეხსნება ტეგები: {{target}}. დანარჩენი ტეგები რჩება.",
+    "action_status": "სტატუსის შეცვლა",
+    "confirm_status": "{{count}} ვიდეოს სტატუსი შეიცვლება: {{target}}. გავაგრძელო?",
+    "targetStatusLabel": "ახალი სტატუსი",
+    "targetStatusPick": "აირჩიე ახალი სტატუსი",
+    "scope_ids": "კონკრეტული",
+    "scope_type": "ტიპის მიხედვით",
+    "scope_tag": "ტეგის მიხედვით",
+    "scope_status": "სტატუსის მიხედვით",
+    "scope_all": "ყველა",
+    "scopeAllHint": "შეეხება ბიბლიოთეკის ყველა ვიდეოს — რიცხვი ქვემოთ წერია.",
+    "scopeMissing": "ჯერ აირჩიე, რომელ ვიდეოებს შეეხოს.",
+    "fromTagPick": "აირჩიე ტეგი",
+    "fromStatusPick": "აირჩიე სტატუსი"
   },
   "translate": {
     "sourcesTitle": "რითი ითარგმნოს",
