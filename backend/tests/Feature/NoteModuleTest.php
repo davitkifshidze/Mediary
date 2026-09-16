@@ -27,6 +27,12 @@ use Tests\TestCase;
  */
 class NoteModuleTest extends TestCase
 {
+    /* ⚠️ **„ახლა" ცხადად UTC-შია მოცემული** (Tasks §8). აპლიკაციის ზონა
+       `Asia/Tbilisi` გახდა, ე.ი. ბარე `Carbon::setTestNow('2026-09-04 12:00:00')`
+       თბილისის 12:00-ს ნიშნავდა და ყველა UTC-ზე დაწერილი მოლოდინი 4 საათით
+       აცდებოდა. ტესტები თავიდანვე UTC მომენტებზე იწერებოდა — ახლა ეს
+       ცხადად წერია და არა ნაგულისხმევად. */
+
     use RefreshDatabase;
 
     private User $user;
@@ -194,7 +200,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_daily_reminder_respects_the_users_timezone(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -217,7 +223,7 @@ class NoteModuleTest extends TestCase
     /** ინტერვალი ველია და არა ჩაშენებული კონსტანტა (§13.2) */
     public function test_interval_reminder_uses_the_given_minutes(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -242,7 +248,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_weekly_reminder_takes_the_nearest_of_several_days(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -393,7 +399,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_monthly_reminder_clamps_the_day_to_the_month_length(): void
     {
-        Carbon::setTestNow('2026-01-31 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-01-31 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -416,7 +422,7 @@ class NoteModuleTest extends TestCase
     /** §5.5 — ყოველწლიური: თვე + რიცხვი, გასული თარიღი მომავალ წელს ჯდება */
     public function test_yearly_reminder_moves_to_the_next_year_when_past(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -442,7 +448,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_daily_reminder_takes_the_nearest_of_several_times(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -473,7 +479,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_monthly_reminder_takes_the_nearest_of_several_days(): void
     {
-        Carbon::setTestNow('2026-09-20 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-20 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -501,7 +507,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_a_window_start_delays_the_first_firing(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -539,7 +545,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_a_window_end_stops_the_reminder(): void
     {
-        Carbon::setTestNow('2026-09-04 08:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 08:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -556,7 +562,7 @@ class NoteModuleTest extends TestCase
         $dispatcher = app(ReminderDispatcher::class);
 
         // ფანჯრის შიგნით — ჩვეულებრივ ისვრის
-        Carbon::setTestNow('2026-09-04 09:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 09:00:00', 'UTC'));
         $this->assertSame(1, $dispatcher->run($this->user));
 
         // ხვალინდელი 09:00 ფანჯარას სცდება → აღარ ისვრის და ითიშება
@@ -602,7 +608,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_repeat_count_stops_a_recurring_reminder(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
         $noteId = $this->makeNote();
 
         $reminderId = $this->actingAs($this->user)
@@ -617,7 +623,7 @@ class NoteModuleTest extends TestCase
         $dispatcher = app(ReminderDispatcher::class);
 
         // პირველი გასროლა — ჯერ კიდევ აქტიურია
-        Carbon::setTestNow('2026-09-04 12:10:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:10:00', 'UTC'));
         $this->assertSame(1, $dispatcher->run());
 
         $reminder = NoteReminder::withoutGlobalScope('owner')->find($reminderId);
@@ -625,7 +631,7 @@ class NoteModuleTest extends TestCase
         $this->assertSame(1, (int) $reminder->sent_count);
 
         // მეორე — ჯერადობა ამოიწურა
-        Carbon::setTestNow('2026-09-04 12:20:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:20:00', 'UTC'));
         $this->assertSame(1, $dispatcher->run());
 
         $reminder = NoteReminder::withoutGlobalScope('owner')->find($reminderId);
@@ -634,7 +640,7 @@ class NoteModuleTest extends TestCase
         $this->assertSame(2, (int) $reminder->sent_count);
 
         // მესამედ აღარაფერი ისროლებს
-        Carbon::setTestNow('2026-09-04 12:30:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:30:00', 'UTC'));
         $this->assertSame(0, $dispatcher->run());
 
         Carbon::setTestNow();
@@ -646,7 +652,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_due_reminder_fires_once_and_deactivates(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
         $noteId = $this->makeNote();
 
         $reminderId = $this->actingAs($this->user)
@@ -822,7 +828,7 @@ class NoteModuleTest extends TestCase
      */
     public function test_a_fired_reminder_stays_in_the_readable_log(): void
     {
-        Carbon::setTestNow('2026-09-04 12:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:00:00', 'UTC'));
 
         $noteId = $this->makeNote();
 
@@ -834,7 +840,7 @@ class NoteModuleTest extends TestCase
             ])
             ->assertStatus(201);
 
-        Carbon::setTestNow('2026-09-04 12:31:00');
+        Carbon::setTestNow(Carbon::parse('2026-09-04 12:31:00', 'UTC'));
 
         // ბრაუზერის polling-ი თვითონ ისვრის (cron-ზე დამოკიდებულების გარეშე)
         $this->actingAs($this->user)->getJson('/api/note-reminders/due')->assertOk();

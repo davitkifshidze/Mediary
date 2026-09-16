@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Support\AppTime;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -106,9 +108,51 @@ class NoteReminder extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * **მომხმარებლისგან მოსული აბსოლუტური მომენტები (Tasks §8).**
+     *
+     * ⚠️ **ეს სამი ველი ერთადერთია, სადაც Carbon **ჩვენს ზონაში არ** მოდის:**
+     * SPA მათ ISO-8601-ად აგზავნის ცხადი წანაცვლებით
+     * (`2026-10-01T00:00:00+00:00`). Eloquent კი ჩაწერისას ზონას **არ**
+     * გარდაქმნის — ის სტრიქონს მნიშვნელობის *საკუთარი* ზონის კედლის
+     * საათით ბეჭდავს, წაკითხვისას კი აპლიკაციის ზონით კითხულობს. ე.ი.
+     * `Asia/Tbilisi`-ზე ეს წყვილი ოთხსაათიან შეცდომას აბრუნებდა თითოეულ
+     * round-trip-ზე — ფანჯარა 20:00-ზე იხსნებოდა 00:00-ის ნაცვლად.
+     *
+     * ⚠️ დანარჩენი დროშტამპები (`next_at`, `last_sent_at`, `created_at`…)
+     * `now()`-იდან ან `AppTime::at()`-იდან მოდიან, ე.ი. უკვე შენახვის
+     * ზონაშია და მუტატორი არ სჭირდებათ.
+     *
+     * ⚠️ `times_of_day` **კედლის საათია** და აქ არ არის — მას თავისი
+     * `timezone` სვეტი აქვს და კონვერტაცია მისთვის ორმაგი წანაცვლება იქნებოდა.
+     */
+    protected function remindAt(): Attribute
+    {
+        return self::momentAttribute();
+    }
+
+    protected function startsAt(): Attribute
+    {
+        return self::momentAttribute();
+    }
+
+    protected function endsAt(): Attribute
+    {
+        return self::momentAttribute();
+    }
+
+    private static function momentAttribute(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => $value === null || $value === ''
+                ? null
+                : AppTime::at(Carbon::parse($value)),
+        );
+    }
+
     protected $casts = [
         'remind_at' => 'datetime',
-        // ⚠️ ფანჯარა აბსოლუტურია — `next_at`-საც UTC აქვს, შედარება პირდაპირია
+        // ⚠️ ფანჯარა აბსოლუტური მომენტია — `next_at`-ის მსგავსად; შედარება პირდაპირია
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'next_at' => 'datetime',
@@ -143,9 +187,13 @@ class NoteReminder extends Model
      */
     public function computeNextAt(?CarbonInterface $from = null): ?Carbon
     {
-        $from = ($from ? Carbon::instance($from) : now())->copy()->utc();
+        /* ⚠️ **შენახვის ზონა აპლიკაციისაა და არა ჩაბეტონებული UTC** (Tasks §8):
+           Eloquent ჩაწერისას ზონას არ გარდაქმნის, წაკითხვისას კი აპლიკაციის
+           ზონით კითხულობს — ე.ი. `->utc()` `Asia/Tbilisi`-ზე 4-საათიან
+           წანაცვლებას დაბადებდა. შედარებას ეს არ ცვლის (ინსტანტი იგივეა). */
+        $from = AppTime::at($from ?: now())->copy();
 
-        $opensAt = $this->starts_at?->copy()->utc();
+        $opensAt = AppTime::at($this->starts_at);
         // ფანჯრის გახსნამდე ათვლა არ დაწყებულა — ე.ი. ვითვლით გახსნის მომენტიდან
         $opening = $opensAt && $from->lessThan($opensAt);
 
@@ -155,7 +203,7 @@ class NoteReminder extends Model
 
         $next = match ($this->mode) {
             // ერთჯერადი — თვითონ არჩეული აბსოლუტური მომენტი
-            self::MODE_ONCE => $this->remind_at?->copy()->utc(),
+            self::MODE_ONCE => AppTime::at($this->remind_at),
             // ⚠️ ფანჯრის გახსნა **თვითონაა** პირველი გასროლა: „09:00-დან 18:00-მდე
             // ყოველ 15 წუთში" 09:15-ზე კი არ უნდა დაიწყოს, 09:00-ზე.
             self::MODE_INTERVAL => $this->nextInterval($from, $opening),
@@ -191,7 +239,7 @@ class NoteReminder extends Model
         return [
             'next_at' => $next,
             'is_active' => $next !== null,
-            'last_sent_at' => Carbon::instance($sentAt)->utc(),
+            'last_sent_at' => AppTime::at($sentAt),
             'sent_count' => $sentCount,
         ];
     }
@@ -269,7 +317,7 @@ class NoteReminder extends Model
                 $local->add($weekday === null ? '1 day' : '1 week');
             }
 
-            $candidates[] = $local->copy()->utc();
+            $candidates[] = AppTime::at($local);
         }
 
         return $candidates;
@@ -300,7 +348,7 @@ class NoteReminder extends Model
                     $candidate = $this->atDay($year, $periodMonth, $day, $hour, $minute);
 
                     if ($candidate->greaterThan($from)) {
-                        $candidates[] = $candidate->copy()->utc();
+                        $candidates[] = AppTime::at($candidate);
 
                         break;
                     }

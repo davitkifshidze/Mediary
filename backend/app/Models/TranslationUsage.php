@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AppTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,7 +55,10 @@ class TranslationUsage extends Model
     /** მიმდინარე კვოტის დღის დასაწყისი (UTC-ში გადაყვანილი) */
     public static function dayStart(): CarbonImmutable
     {
-        return CarbonImmutable::now(self::QUOTA_TIMEZONE)->startOfDay()->utc();
+        /* ⚠️ ფანჯარა Pacific-ისაა (Google-ის ლიმიტი), **ნორმალიზება კი
+           აპლიკაციის ზონისა** (Tasks §8): `created_at` ამ ზონით იწერება და
+           იკითხება, ე.ი. `->utc()` შედარებას 4 საათით ააცდენდა. */
+        return CarbonImmutable::now(self::QUOTA_TIMEZONE)->startOfDay()->setTimezone(AppTime::zone());
     }
 
     /**

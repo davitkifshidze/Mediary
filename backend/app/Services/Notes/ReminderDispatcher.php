@@ -5,6 +5,7 @@ namespace App\Services\Notes;
 use App\Models\NoteNotification;
 use App\Models\NoteReminder;
 use App\Models\User;
+use App\Support\AppTime;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -67,7 +68,9 @@ class ReminderDispatcher
      */
     public function run(?User $user = null, ?CarbonInterface $now = null): int
     {
-        $now = $now ? Carbon::instance($now)->utc() : now()->utc();
+        // ⚠️ შენახვის ზონა აპლიკაციისაა (Tasks §8) — `->utc()` `Asia/Tbilisi`-ზე
+        // ოთხსაათიან შეცდომას დაბადებდა `next_at`-თან შედარებაში
+        $now = AppTime::at($now ?: now());
 
         $due = NoteReminder::withoutGlobalScope('owner')
             ->with(['noteEntry', 'user'])
