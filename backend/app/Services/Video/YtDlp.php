@@ -2,6 +2,7 @@
 
 namespace App\Services\Video;
 
+use App\Support\ProcessEnv;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\ExecutableFinder;
@@ -64,7 +65,7 @@ class YtDlp
             return null;
         }
 
-        $process = new Process([$binary, '--version']);
+        $process = new Process([$binary, '--version'], null, ProcessEnv::for());
         $process->setTimeout(20);
 
         try {
@@ -105,7 +106,7 @@ class YtDlp
             '--print', '%(filesize,filesize_approx)s',
             '-f', $this->formatSelector(),
             $url,
-        ]);
+        ], null, ProcessEnv::for());
         $process->setTimeout((int) config('mediary.ytdlp.probe_timeout', 60));
 
         try {
@@ -174,7 +175,7 @@ class YtDlp
 
         $args[] = $url;
 
-        $process = new Process($args);
+        $process = new Process($args, null, ProcessEnv::for());
         $process->setTimeout((int) config('mediary.ytdlp.timeout', 1800));
 
         try {
@@ -233,7 +234,7 @@ class YtDlp
             '--print', '%(resolution)s',
             '-f', $this->formatSelector(),
             $url,
-        ]);
+        ], null, ProcessEnv::for());
         $process->setTimeout((int) config('mediary.ytdlp.probe_timeout', 60));
 
         try {

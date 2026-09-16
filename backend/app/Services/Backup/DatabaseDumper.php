@@ -2,6 +2,7 @@
 
 namespace App\Services\Backup;
 
+use App\Support\ProcessEnv;
 use RuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -272,11 +273,19 @@ class DatabaseDumper
      * ⚠️ `MYSQL_PWD` — პაროლის ერთადერთი უსაფრთხო გზა: არგუმენტი პროცესების
      * სიაში ჩანს, გარემოს ცვლადი — არა.
      *
+     * ⚠️ **`ProcessEnv::for()` აქ სავალდებულოა და ეს გაზომილი ავარიაა**
+     * (2026-09-17): `artisan serve`-ზე ბავშვი პროცესი მხოლოდ `.env`-ის
+     * ცვლადებს იღებდა — `SystemRoot`-ის გარეშე კი Winsock არ ეშვება და
+     * `mysql.exe` **`ERROR 2004 … socket (10106)`**-ით ცვიოდა. იხ. მიზეზის
+     * სრული აღწერა `App\Support\ProcessEnv`-ში.
+     *
      * @return array<string, string>
      */
     private function env(array $config): array
     {
-        return $config['password'] === '' ? [] : ['MYSQL_PWD' => $config['password']];
+        return ProcessEnv::for(
+            $config['password'] === '' ? [] : ['MYSQL_PWD' => $config['password']],
+        );
     }
 
     private function timeout(): int
