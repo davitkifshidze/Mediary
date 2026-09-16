@@ -39,6 +39,8 @@ const CODES = [
      422 ნედლად იხატებოდა და ენას არ მიჰყვებოდა. */
   'no_tags_given',
   'scope_required',
+  // §10.7 — პინების ლიმიტი საუბარზე
+  'pin_limit_reached',
   // §16.3 — ჩატი
   'chat_blocked',
   'cannot_chat_with_self',

@@ -3,12 +3,15 @@
 namespace App\Services\Chat;
 
 use App\Models\Conversation;
+use App\Models\ConversationNickname;
 use App\Models\Message;
 use App\Models\MessageHide;
+use App\Models\MessageReaction;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -223,6 +226,184 @@ class ChatService
             ->selectRaw('messages.conversation_id, COUNT(*) as total')
             ->pluck('total', 'messages.conversation_id')
             ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
+    /* ---------- დადუმება (Tasks §10.5) ---------- */
+
+    /**
+     * **დადუმება/ჩართვა.** `$until === null` = სამუდამოდ.
+     *
+     * ⚠️ **ორი სვეტია და არა ერთი**: „სამუდამოდ" სენტინელ-თარიღით
+     * („3000 წელი") არ უნდა გამოიხატოს — `muted_at` ამბობს *რომ* დადუმდა,
+     * `muted_until` კი *სანამ*.
+     */
+    public function mute(Conversation $conversation, User $user, ?Carbon $until = null): void
+    {
+        $conversation->participants()->updateExistingPivot($user->id, [
+            'muted_at' => now(),
+            'muted_until' => $until,
+        ]);
+    }
+
+    public function unmute(Conversation $conversation, User $user): void
+    {
+        $conversation->participants()->updateExistingPivot($user->id, [
+            'muted_at' => null,
+            'muted_until' => null,
+        ]);
+    }
+
+    /**
+     * დადუმებულია თუ არა **ახლა**.
+     *
+     * ⚠️ **გასული ვადა ჩუმად ითვლება ჩართულად** და ცალკე გასუფთავებას არ
+     * ითხოვს: ერთი `where` ყოველთვის სწორ პასუხს იძლევა, cron-ი კი, რომელიც
+     * ვადებს წმენდს, ერთი კიდევ გასაშვები პროცესი იქნებოდა.
+     */
+    public function isMuted(Conversation $conversation, User $user): bool
+    {
+        $pivot = $conversation->participants()->whereKey($user->id)->first()?->pivot;
+
+        if (! $pivot || $pivot->muted_at === null) {
+            return false;
+        }
+
+        return $pivot->muted_until === null || Carbon::parse($pivot->muted_until)->isFuture();
+    }
+
+    /**
+     * **ჰედერის badge — დადუმებულის გარეშე (§10.5).**
+     *
+     * ⚠️ **რიგის რიცხვი პატიოსანი რჩება**: დადუმება ნიშნავს „ნუ მაწუხებ"
+     * და არა „დამალე". ამიტომ `unreadCounts()` ხელუხლებელია და მხოლოდ
+     * **ჯამი** ჭრის დადუმებულებს.
+     */
+    public function unreadTotal(User $user): int
+    {
+        $muted = $this->mutedConversationIds($user);
+
+        $counts = $this->unreadCounts($user);
+
+        foreach ($muted as $id) {
+            unset($counts[$id]);
+        }
+
+        return array_sum($counts);
+    }
+
+    /** @return list<int> */
+    public function mutedConversationIds(User $user): array
+    {
+        return DB::table('conversation_user')
+            ->where('user_id', $user->id)
+            ->whereNotNull('muted_at')
+            ->where(fn ($q) => $q->whereNull('muted_until')->orWhere('muted_until', '>', now()))
+            ->pluck('conversation_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /* ---------- დაპინვა (Tasks §10.7) ---------- */
+
+    /** რამდენი პინი ეტევა ერთ საუბარში */
+    public const PIN_LIMIT = 20;
+
+    /**
+     * **დაპინვა/მოხსნა — ორივე მონაწილეს შეუძლია.**
+     *
+     * ⚠️ განსხვავებით „ორივესთვის წაშლისგან", პინი **დესტრუქციული არაა** და
+     * საუბრის დონეზე დგას — ე.ი. ავტორობას არ ითხოვს. სამაგიეროდ ვინ
+     * დააპინა, იწერება: `pinned_by`.
+     */
+    public function pin(Message $message, User $me, bool $pinned): Message
+    {
+        if ($pinned && ! $message->isPinned()) {
+            $count = Message::where('conversation_id', $message->conversation_id)
+                ->whereNotNull('pinned_at')
+                ->count();
+
+            if ($count >= self::PIN_LIMIT) {
+                $this->fail('pin_limit_reached', 422);
+            }
+        }
+
+        $message->forceFill([
+            'pinned_at' => $pinned ? now() : null,
+            'pinned_by' => $pinned ? $me->id : null,
+        ])->save();
+
+        return $message;
+    }
+
+    /* ---------- რეაქციები (Tasks §10.10) ---------- */
+
+    /**
+     * **რეაქციის დადება/შეცვლა/მოხსნა.** `$emoji === null` = მოხსნა.
+     *
+     * ⚠️ **თითო ადამიანზე ერთი** — იმავე ემოჯის ხელახალი დაჭერა მოხსნაა
+     * (Messenger-ის ქცევა), სხვისი კი ჩანაცვლება. `updateOrCreate` სწორედ
+     * ამიტომაა და არა `create`: უნიკალურ ინდექსზე 500 არ უნდა დაბრუნდეს.
+     */
+    public function react(Message $message, User $me, ?string $emoji): void
+    {
+        $existing = MessageReaction::where('message_id', $message->id)
+            ->where('user_id', $me->id)
+            ->first();
+
+        if ($emoji === null || ($existing && $existing->emoji === $emoji)) {
+            $existing?->delete();
+
+            return;
+        }
+
+        MessageReaction::updateOrCreate(
+            ['message_id' => $message->id, 'user_id' => $me->id],
+            ['emoji' => $emoji],
+        );
+    }
+
+    /* ---------- ნიკნეიმები (Tasks §10.11) ---------- */
+
+    /**
+     * **ნიკნეიმი — მხოლოდ ჩემს ხედში.**
+     *
+     * ⚠️ ცარიელი მნიშვნელობა **შლის** რიგს და არ წერს ცარიელ სტრიქონს:
+     * „ნიკნეიმი არ აქვს" და „ნიკნეიმი ცარიელია" ერთი ფაქტია.
+     */
+    public function setNickname(Conversation $conversation, User $me, User $target, ?string $nickname): void
+    {
+        $nickname = $nickname !== null ? trim($nickname) : null;
+
+        if ($nickname === null || $nickname === '') {
+            ConversationNickname::where('conversation_id', $conversation->id)
+                ->where('user_id', $me->id)
+                ->where('target_user_id', $target->id)
+                ->delete();
+
+            return;
+        }
+
+        ConversationNickname::updateOrCreate(
+            [
+                'conversation_id' => $conversation->id,
+                'user_id' => $me->id,
+                'target_user_id' => $target->id,
+            ],
+            ['nickname' => $nickname],
+        );
+    }
+
+    /**
+     * ამ საუბარში ჩემი დარქმეული სახელები: `target_user_id => nickname`.
+     *
+     * @return array<int, string>
+     */
+    public function nicknames(Conversation $conversation, User $me): array
+    {
+        return ConversationNickname::where('conversation_id', $conversation->id)
+            ->where('user_id', $me->id)
+            ->pluck('nickname', 'target_user_id')
             ->all();
     }
 

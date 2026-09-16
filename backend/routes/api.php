@@ -780,10 +780,22 @@ Route::middleware('auth:sanctum')->group(function () {
     /* წერილის წაშლა (§4.6) — `scope=self|both`. ⚠️ **რიგი ბაზაში რჩება**
        (აღდგენისთვის), ე.ი. ეს „დამალვაა" და არა `delete`. */
     Route::delete('/chat/messages/{message}', [ChatController::class, 'deleteMessage']);
+    /* §10.7/§10.10 — ⚠️ **`PATCH`/`PUT` და არა `POST`**: `EnsureModulePermission`
+       POST-ს `create`-ად კითხულობს. ⚠️ ორივე `{conversation}`-ზე
+       ზემოთაა, თორემ „messages" საუბრის id-ად წაიკითხება. */
+    Route::patch('/chat/messages/{message}/pin', [ChatController::class, 'pin']);
+    Route::put('/chat/messages/{message}/reaction', [ChatController::class, 'react']);
     Route::get('/chat/{conversation}', [ChatController::class, 'messages']);
     Route::post('/chat/{conversation}', [ChatController::class, 'send']);
     // ⚠️ `PATCH` — POST-ს `permission:` middleware `create`-ად წაიკითხავდა
     Route::patch('/chat/{conversation}/read', [ChatController::class, 'read']);
+    // §10.9 — ძებნა ერთ საუბარში (დამალული წერილი არ იძებნება)
+    Route::get('/chat/{conversation}/search', [ChatController::class, 'search']);
+    // §10.7 — პინების სია; წაშლილი თავისით ცვივა
+    Route::get('/chat/{conversation}/pins', [ChatController::class, 'pins']);
+    Route::put('/chat/{conversation}/mute', [ChatController::class, 'mute']);
+    Route::put('/chat/{conversation}/theme', [ChatController::class, 'theme']);
+    Route::put('/chat/{conversation}/nickname', [ChatController::class, 'nickname']);
 
     /* ---------- ერთი ჩანაწერის ხილვადობა (Tasks 16.1) ----------
        ერთი endpoint რვავე დომენზე. `module:@type`/`permission:@type` აქ

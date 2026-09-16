@@ -967,7 +967,8 @@
     "album_password_wrong": "Wrong password.",
     "account_password_wrong": "The account password is wrong.",
     "no_tags_given": "Name at least one tag.",
-    "scope_required": "Pick which records this applies to."
+    "scope_required": "Pick which records this applies to.",
+    "pin_limit_reached": "The pin limit is reached — unpin one first."
   },
   "fields": {
     "title": "Fields",
@@ -2318,7 +2319,47 @@
     "deleteForMe": "Only for me",
     "deleteForBoth": "For both",
     "messageDeleted": "Message deleted",
-    "subtitleWarn": "You can only write between two public profiles."
+    "subtitleWarn": "You can only write between two public profiles.",
+    "emoji": "Emoji",
+    "emojiGroup": {
+      "smileys": "Smileys",
+      "feelings": "Feelings",
+      "hands": "Hands",
+      "hearts": "Hearts",
+      "things": "Things"
+    },
+    "react": "React",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinned": "Pinned",
+    "pins": "Pinned messages",
+    "pinsEmpty": "Nothing is pinned yet.",
+    "search": "Search the chat",
+    "searchPlaceholder": "Text or a file name…",
+    "searchEmpty": "Nothing matched in this conversation.",
+    "loadOlder": "Load older",
+    "newMessages": "New messages",
+    "jumpNotice": "You are in the history — this is not the latest view.",
+    "backToLatest": "Back to the latest",
+    "seen": "Seen",
+    "sent": "Sent",
+    "settingsTitle": "Conversation settings",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "muteHint": "The badge goes quiet; the unread count stays in the list.",
+    "theme": "Theme",
+    "themeHint": "Both sides see the colour — it belongs to the conversation.",
+    "themeName": {
+      "default": "Default",
+      "ocean": "Ocean",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "rose": "Rose",
+      "graphite": "Graphite"
+    },
+    "nickname": "Nickname",
+    "nicknameHint": "Only you see it; the real name stays unchanged.",
+    "nicknameSaved": "The nickname is saved"
   },
   "customFields": {
     "title": "Extra fields",

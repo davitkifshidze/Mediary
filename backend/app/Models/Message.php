@@ -41,7 +41,21 @@ class Message extends Model
     protected $casts = [
         'attachment_size' => 'integer',
         'removed_at' => 'datetime',
+        // §10.7 — დაპინვა `removed_at`/`removed_by`-ის ზუსტი ფორმით
+        'pinned_at' => 'datetime',
     ];
+
+    /** §10.7 — დაპინილია ზუსტად მაშინ, როცა დროშტამპი არსებობს */
+    public function isPinned(): bool
+    {
+        return $this->pinned_at !== null;
+    }
+
+    /** §10.10 — რეაქციები; თითო კაცზე ერთი */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
 
     /** §4.6/§B2 — ვინ დაიმალა ეს წერილი **თავისთვის** */
     public function hides(): HasMany

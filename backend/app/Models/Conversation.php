@@ -16,15 +16,37 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Conversation extends Model
 {
+    /**
+     * **ჩატის თემები (Tasks §10.6).**
+     *
+     * ⚠️ **ეს გასაღებია და არა hex.** ფერები SPA-შია (ღია და
+     * მუქი ვარიანტით), ე.ი. პალიტრის შეცვლა ბაზას არ ეხება —
+     * `modules.color`-ის საპირისპირო შემთხვევა, სადაც ფერი მართლა მონაცემია.
+     */
+    public const THEMES = ['default', 'ocean', 'forest', 'sunset', 'rose', 'graphite'];
+
     protected $guarded = ['id'];
 
     protected $casts = [
         'last_message_at' => 'datetime',
     ];
 
+    /**
+     * ⚠️ **დადუმება პივოტზეა და არა საუბარზე** (§10.5): ერთმა
+     * მონაწილემ შეუძლია დაადუმოს, მეორეს — არა. `theme` პირიქით
+     * საუბრისაა, რადგან Messenger-ში ორივე ერთსა და იმავე ფერს ხედავს.
+     */
     public function participants(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)->withPivot('last_read_at')->withTimestamps();
+        return $this->belongsToMany(User::class)
+            ->withPivot(['last_read_at', 'muted_at', 'muted_until'])
+            ->withTimestamps();
+    }
+
+    /** §10.11 — ვინ რას ეძახება ამ საუბარში */
+    public function nicknames(): HasMany
+    {
+        return $this->hasMany(ConversationNickname::class);
     }
 
     public function messages(): HasMany

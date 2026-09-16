@@ -17,6 +17,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Support\CustomFields;
+use App\Support\Like;
 use App\Support\Snippet;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -666,9 +667,10 @@ class GlobalSearch
 
     /* ---------- helpers ---------- */
 
+    /** ⚠️ შაბლონი `App\Support\Like`-შია (§10.9) — ჩატის ძებნას იგივე სჭირდება */
     private function like(string $term): string
     {
-        return '%'.$this->escape($term).'%';
+        return Like::contains($term);
     }
 
     /**
@@ -708,6 +710,6 @@ class GlobalSearch
      */
     private function escape(string $term): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $term);
+        return Like::escape($term);
     }
 }

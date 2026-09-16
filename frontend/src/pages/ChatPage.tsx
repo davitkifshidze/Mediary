@@ -1,15 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowDown,
   ArrowLeft,
-  Ban,
+  BellOff,
+  ChevronUp,
   FileText,
   Loader2,
   Paperclip,
+  Pin,
+  PinOff,
+  Search,
   Send,
-  ShieldOff,
+  Settings2,
+  Smile,
   Trash2,
   X,
 } from 'lucide-react'
@@ -18,20 +24,30 @@ import {
   deleteAttachment,
   deleteMessage,
   fetchConversations,
+  fetchPins,
   fetchThread,
   mediaTypeOf,
+  pinMessage,
+  reactToMessage,
+  searchThread,
   sendAttachment,
   sendMessage,
-  setBlocked,
   type ChatConversation,
   type ChatMessage,
   type RemovalScope,
 } from '@/api/chat'
 import { storageUrl } from '@/lib/api'
+import { chatThemeStyle } from '@/lib/chatThemes'
+import { QUICK_REACTIONS } from '@/lib/emoji'
 import { errorMessage, isApiCode } from '@/lib/errors'
+import { highlightParts } from '@/lib/searchResults'
+import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
+import { ChatThreadMenu } from '@/components/chat/ChatThreadMenu'
 import { Button } from '@/components/ui/button'
+import { EmojiPicker } from '@/components/ui/emoji-picker'
 import { InfoHint } from '@/components/ui/info-hint'
+import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -39,20 +55,34 @@ import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ჩატი (Tasks §16.3) — `/chat` და `/chat/:id`.
+   ჩატი (Tasks §16.3 → §10) — `/chat` და `/chat/:id`.
 
    ⚠️ **რეალურ დროში მიწოდება polling-ია და არა WebSocket** — §16.3-ის
    ცხადი გადაწყვეტილება: worker-ს არ ითხოვს. ღია საუბარი 5 წამში ერთხელ
    ახლდება, სია — 15 წამში.
 
-   **მედია გაკეთდა 2026-09-06-ს** (`docs/DECISIONS.md` §1).
+   **§10 — Messenger-ის დონე.** ხუთი წესი, რომელიც ადვილად იშლება ჩუმად:
 
-   ⚠️ **ფაილის წაშლა ორივესთან შლის** — შეტყობინების ბუშტი რჩება და
-   ნაცრისფერ „ფაილი წაშლილია"-დ იხატება. ასე გამგზავნის კვოტა მართლა
-   თავისუფლდება და საუბრის ძაფიც იკითხება.
+   ⚠️ **სქროლი „ბოლოშია?"-ზე დგას და არა სიის სიგრძეზე.** ძველი ეფექტი
+   `data.length`-ზე იყო მიბმული, ე.ი. (ა) სხვა საუბარზე გადასვლისას,
+   თუ გვერდს იგივე სიგრძე ჰქონდა, **საერთოდ არ ირთვებოდა** და შუაში
+   აღმოჩნდებოდი; (ბ) 5-წამიანი გამოკითხვა სიგრძეს ზრდიდა, ე.ი. ისტორიის
+   კითხვისას ახალი წერილი ქვემოთ გადაგაგდებდა.
 
-   ⚠️ **წაშლა მხოლოდ გამგზავნს შეუძლია** — ფაილი მისი კვოტიდან იხარჯება
-   (§16.4), ე.ი. მიმღების ღილაკი ჩუმად სხვის ადგილს ათავისუფლებდა.
+   ⚠️ **ისტორია კურსორითაა** (§10.8): SPA ბოლო 50 წერილზე მეტს ვერ
+   კითხულობდა — `meta.last_page` არსად გამოიყენებოდა და „ძველის ჩატვირთვის"
+   ღილაკი არ არსებობდა.
+
+   ⚠️ **ძებნიდან/პინიდან ნახტომი ცალკე ხედია** და არა სიაში ჩამატება:
+   `around_id`-ის ფანჯარასა და უახლეს გვერდს შორის ხვრელი შეიძლება იყოს,
+   ე.ი. შერწყმა ჩუმად „გამოტოვებულ" საუბარს დახატავდა. ნახტომში ვზივართ
+   მანამ, სანამ „ბოლოზე დაბრუნებას" არ დააჭერ.
+
+   ⚠️ **რეაქცია თითო კაცზე ერთია** (backend-ის წესი) — იმავეს ხელახლა
+   დაჭერა მოხსნაა.
+
+   ⚠️ **ნიკნეიმი ნამდვილ სახელს არ შლის**: ორივე მოდის და პროფილის ბმული
+   ისევ ნამდვილზე მიდის.
    ============================================================ */
 
 const THREAD_POLL_MS = 5_000
@@ -115,7 +145,8 @@ export function ChatPage() {
 
 function ConversationRow({ conversation: c, active }: { conversation: ChatConversation; active: boolean }) {
   const { t } = useTranslation()
-  const name = c.profile?.display_name ?? '—'
+  // §10.11 — ნიკნეიმი ჩემი ხედია; ნამდვილი სახელი `profile`-შია და არ იკარგება
+  const name = c.nickname ?? c.profile?.display_name ?? '—'
   const avatar = c.profile?.avatar_path ? storageUrl(c.profile.avatar_path) : null
 
   return (
@@ -136,7 +167,11 @@ function ConversationRow({ conversation: c, active }: { conversation: ChatConver
         )}
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{name}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="min-w-0 truncate text-sm font-medium">{name}</span>
+            {/* §10.5 — გაჩუმებული საუბარი ბეჯს არ ანთებს; ნიშანი ამას ამბობს */}
+            {c.muted && <BellOff className="size-3.5 shrink-0 text-muted-foreground" />}
+          </span>
           <span className="block truncate text-xs text-muted-foreground">
             {c.last_message
               ? `${c.last_message.mine ? `${t('chat.you')}: ` : ''}${
@@ -148,7 +183,13 @@ function ConversationRow({ conversation: c, active }: { conversation: ChatConver
         </span>
 
         {c.unread > 0 && (
-          <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-xs leading-none text-primary-foreground">
+          <span
+            className={cn(
+              'shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none',
+              // ⚠️ დადუმებულზე რიცხვი **რჩება**, უბრალოდ ხმას არ იღებს
+              c.muted ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground',
+            )}
+          >
             {c.unread}
           </span>
         )}
@@ -162,12 +203,25 @@ function Thread({ id }: { id: number }) {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const fmt = useDateFormat()
+
   const [body, setBody] = useState('')
   const [file, setFile] = useState<File | null>(null)
   // §4.6 — რომელ წერილს ვშლით (დიალოგი კითხულობს, ვისთან)
   const [removing, setRemoving] = useState<ChatMessage | null>(null)
+  const [panel, setPanel] = useState<'none' | 'search' | 'pins' | 'settings'>('none')
+  /** §10.8 — ჩატვირთული ძველი წერილები (უახლესი გვერდის წინ) */
+  const [older, setOlder] = useState<ChatMessage[]>([])
+  /** §10.8 — ნახტომის ხედი: ცალკე სია + „ბოლოზე დაბრუნება" */
+  const [jump, setJump] = useState<{ at: number; items: ChatMessage[] } | null>(null)
+  const [newBelow, setNewBelow] = useState(false)
+
+  const scroller = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
+  /** „ბოლოშია?" — სქროლის ერთადერთი კრიტერიუმი (§10.1) */
+  const atBottom = useRef(true)
+  const lastSeenId = useRef<number | null>(null)
 
   const thread = useQuery({
     queryKey: ['chat', id],
@@ -177,10 +231,54 @@ function Thread({ id }: { id: number }) {
     retry: false,
   })
 
-  // ახალ შეტყობინებაზე ბოლოში ჩამოსქროლვა
+  /* ⚠️ საუბრის შეცვლაზე ყველაფერი ნულდება: ძველი ძაფის „ჩატვირთული
+     ძველები" ახალში ჩარეულიყო. */
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' })
-  }, [thread.data?.data.length])
+    setOlder([])
+    setJump(null)
+    setPanel('none')
+    setNewBelow(false)
+    atBottom.current = true
+    lastSeenId.current = null
+  }, [id])
+
+  const head = useMemo(() => thread.data?.data ?? [], [thread.data])
+
+  /** ჩვენებისთვის — ძველიდან ახლისკენ, დუბლების გარეშე */
+  const messages = useMemo(() => {
+    const source = jump ? jump.items : [...older, ...head]
+    const byId = new Map<number, ChatMessage>()
+    for (const m of source) byId.set(m.id, m)
+
+    return [...byId.values()].sort((a, b) => a.id - b.id)
+  }, [jump, older, head])
+
+  const newestId = messages.length ? messages[messages.length - 1].id : null
+
+  const toBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    bottom.current?.scrollIntoView({ block: 'end', behavior })
+    atBottom.current = true
+    setNewBelow(false)
+  }, [])
+
+  /* ⚠️ **მონტაჟზე/საუბრის ცვლილებაზე მყისიერი სქროლი** — ეს ის შემთხვევაა,
+     რომელსაც ძველი `data.length`-ეფექტი საერთოდ ვერ იჭერდა. */
+  useEffect(() => {
+    if (!thread.data || jump) return
+    if (lastSeenId.current === null && newestId !== null) {
+      lastSeenId.current = newestId
+      requestAnimationFrame(() => toBottom())
+    }
+  }, [thread.data, jump, newestId, toBottom])
+
+  /* ახალი წერილი: ბოლოში ვდგავართ → ჩამოვყვებით; არა → „ახალი წერილები ↓" */
+  useEffect(() => {
+    if (newestId === null || lastSeenId.current === null || jump) return
+    if (newestId === lastSeenId.current) return
+
+    lastSeenId.current = newestId
+    atBottom.current ? toBottom('smooth') : setNewBelow(true)
+  }, [newestId, jump, toBottom])
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['chat'] })
@@ -199,7 +297,33 @@ function Thread({ id }: { id: number }) {
     onSuccess: () => {
       setBody('')
       setFile(null)
+      setJump(null)
+      atBottom.current = true
+      qc.invalidateQueries({ queryKey: ['chat', id] })
       refresh()
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const loadOlder = useMutation({
+    mutationFn: () => fetchThread(id, { before_id: messages[0]?.id }),
+    onSuccess: (page) => {
+      jump
+        ? setJump((j) => (j ? { ...j, items: [...page.data, ...j.items] } : j))
+        : setOlder((prev) => [...page.data, ...prev])
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /** §10.8 — ნახტომი ძებნიდან ან პინიდან; **წაკითხულად არ ნიშნავს** */
+  const goTo = useMutation({
+    mutationFn: (messageId: number) => fetchThread(id, { around_id: messageId }),
+    onSuccess: (page, messageId) => {
+      setJump({ at: messageId, items: page.data })
+      setPanel('none')
+      requestAnimationFrame(() => {
+        document.getElementById(`chat-msg-${messageId}`)?.scrollIntoView({ block: 'center' })
+      })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
@@ -207,6 +331,7 @@ function Thread({ id }: { id: number }) {
   const removeFile = useMutation({
     mutationFn: (messageId: number) => deleteAttachment(messageId),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chat', id] })
       refresh()
       toast({ title: t('chat.fileDeleted'), variant: 'success' })
     },
@@ -230,6 +355,8 @@ function Thread({ id }: { id: number }) {
       deleteMessage(messageId, scope),
     onSuccess: () => {
       setRemoving(null)
+      setOlder([])
+      setJump(null)
       qc.invalidateQueries({ queryKey: ['chat', id] })
       refresh()
       toast({ title: t('chat.messageDeleted'), variant: 'success' })
@@ -237,9 +364,22 @@ function Thread({ id }: { id: number }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const block = useMutation({
-    mutationFn: (next: boolean) => setBlocked(thread.data!.profile!.username, next),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['chat'] }),
+  /** §10.10 — რეაქცია; იმავე ემოჯის ხელახლა დაჭერა backend-ზე მოხსნაა */
+  const react = useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string | null }) =>
+      reactToMessage(messageId, emoji),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', id] }),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /** §10.7 — დაპინვა; **ორივე მონაწილეს შეუძლია** */
+  const pin = useMutation({
+    mutationFn: ({ messageId, pinned }: { messageId: number; pinned: boolean }) =>
+      pinMessage(messageId, pinned),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chat', id] })
+      qc.invalidateQueries({ queryKey: ['chat-pins', id] })
+    },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
@@ -254,66 +394,35 @@ function Thread({ id }: { id: number }) {
     )
   }
 
-  const { profile, blocked, blocked_by_me: mine } = thread.data
-  // ⚠️ სია ახლიდან ძველისკენ მოდის — ჩვენებისთვის ვაბრუნებთ
-  const messages = [...thread.data.data].reverse()
+  const data = thread.data
+  const { profile, blocked, blocked_by_me: mine } = data
+  // §10.11 — ჩემი ნიკნეიმი; ბმული მაინც ნამდვილ პროფილზე მიდის
+  const name = data.nickname ?? profile?.display_name
 
-  return (
-    <div className="flex h-[70vh] flex-col rounded-xl border border-border bg-card">
-      {/* header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <Link to="/chat" className="lg:hidden">
-          <ArrowLeft className="size-4 text-muted-foreground" />
-        </Link>
-        <Link to={`/u/${profile?.username}`} className="min-w-0 flex-1 truncate font-medium hover:text-primary">
-          {profile?.display_name}
-        </Link>
-        {/* ⚠️ ღილაკი მხოლოდ მაშინ, თუ **მე** დავბლოკე — სხვისი დაბლოკვა ჩემი მოსახსნელი არაა */}
-        {(!blocked || mine) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={mine ? undefined : 'text-destructive'}
-            disabled={block.isPending}
-            onClick={async () => {
-              if (mine) return block.mutate(false)
-              if (await confirm({ title: t('chat.blockConfirm'), variant: 'destructive' })) block.mutate(true)
-            }}
-          >
-            {mine ? <ShieldOff className="size-4" /> : <Ban className="size-4" />}
-            {t(mine ? 'chat.unblock' : 'chat.block')}
-          </Button>
-        )}
-      </div>
+  /* §10.3 — „ნანახია": მეორე მხარემ წაიკითხა ყველაფერი ჩემი ბოლო წერილის
+     ჩათვლით. ⚠️ ნიშანი **მხოლოდ ბოლო ჩემს ბუშტზე** — თითოზე რომ გვეხატა,
+     ძაფი ნიშნების კედელი გახდებოდა. */
+  const lastMine = [...messages].reverse().find((m) => m.mine)
+  const seen =
+    !!lastMine &&
+    !!data.other_read_at &&
+    !!lastMine.created_at &&
+    new Date(data.other_read_at) >= new Date(lastMine.created_at)
 
-      {/* messages */}
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">{t('chat.noMessages')}</p>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={cn('group flex items-center gap-1.5', m.mine ? 'justify-end' : 'justify-start')}
-          >
-            {/* §4.6 — წაშლა ორივე მხარეს შეუძლია; **სკოუპს დიალოგი ეკითხება**
-                (მხოლოდ ჩემთან თუ ორივესთან), ე.ი. სხვისი წერილის დამალვაც
-                მხოლოდ ჩემს ხედს ეხება. */}
-            {m.mine && <DeleteButton onClick={() => setRemoving(m)} />}
-            <div
-              className={cn(
-                'max-w-[75%] space-y-1.5 whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm',
-                m.mine ? 'bg-primary text-primary-foreground' : 'bg-muted',
-              )}
-            >
-              <Bubble message={m} onDeleteFile={m.mine ? askDeleteFile : undefined} />
-            </div>
-            {!m.mine && <DeleteButton onClick={() => setRemoving(m)} />}
-          </div>
-        ))}
-        <div ref={bottom} />
-      </div>
-
+  const panels = (
+    <>
+      {panel === 'settings' && <ChatThreadMenu id={id} thread={data} onClose={() => setPanel('none')} />}
+      {panel === 'search' && (
+        <SearchPanel id={id} onClose={() => setPanel('none')} onJump={(m) => goTo.mutate(m)} />
+      )}
+      {panel === 'pins' && (
+        <PinsPanel
+          id={id}
+          onClose={() => setPanel('none')}
+          onJump={(m) => goTo.mutate(m)}
+          onUnpin={(m) => pin.mutate({ messageId: m, pinned: false })}
+        />
+      )}
       {/* §4.6 — „მხოლოდ შენთან წავშალო თუ ორივესთან?" */}
       {removing && (
         <ModalShell title={t('chat.deleteTitle')} destructive onClose={() => setRemoving(null)}>
@@ -345,6 +454,157 @@ function Thread({ id }: { id: number }) {
           </div>
         </ModalShell>
       )}
+    </>
+  )
+
+  return (
+    /* §10.6 — თემა inline ცვლადებით; „ღია თუ მუქი" CSS წყვეტს (`index.css`) */
+    <div
+      className="fb-chat flex h-[70vh] flex-col rounded-xl border border-border bg-card"
+      style={chatThemeStyle(data.theme)}
+    >
+      {/* header */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <Link to="/chat" className="lg:hidden">
+          <ArrowLeft className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
+          to={`/u/${profile?.username}`}
+          className="min-w-0 flex-1 truncate font-medium transition-colors hover:text-primary"
+        >
+          {name}
+        </Link>
+        {data.muted && <BellOff className="size-4 shrink-0 text-muted-foreground" />}
+        <Button variant="ghost" size="icon" aria-label={t('chat.search')} title={t('chat.search')} onClick={() => setPanel('search')}>
+          <Search className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label={t('chat.pins')} title={t('chat.pins')} onClick={() => setPanel('pins')}>
+          <Pin className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label={t('chat.settingsTitle')} title={t('chat.settingsTitle')} onClick={() => setPanel('settings')}>
+          <Settings2 className="size-4" />
+        </Button>
+      </div>
+
+      {/* §10.8 — ნახტომის ხედი ცხადად ამბობს, რომ ისტორიაში ვართ */}
+      {jump && (
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-xs">
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">{t('chat.jumpNotice')}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setJump(null)
+              requestAnimationFrame(() => toBottom())
+            }}
+          >
+            {t('chat.backToLatest')}
+          </Button>
+        </div>
+      )}
+
+      {/* messages */}
+      <div
+        ref={scroller}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+          if (atBottom.current) setNewBelow(false)
+        }}
+        className="relative min-h-0 flex-1 space-y-2 overflow-y-auto bg-[var(--chat-surface)] p-4"
+      >
+        {/* §10.8 — „ძველის ჩატვირთვა"; ღილაკი მხოლოდ მაშინ, თუ მართლა არის */}
+        {(jump || data.meta.has_more) && messages.length > 0 && (
+          <div className="flex justify-center pb-1">
+            <Button variant="outline" size="sm" disabled={loadOlder.isPending} onClick={() => loadOlder.mutate()}>
+              {loadOlder.isPending ? <Loader2 className="size-4 animate-spin" /> : <ChevronUp className="size-4" />}
+              {t('chat.loadOlder')}
+            </Button>
+          </div>
+        )}
+
+        {messages.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">{t('chat.noMessages')}</p>
+        )}
+
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            id={`chat-msg-${m.id}`}
+            className={cn(
+              'group flex items-center gap-1.5',
+              m.mine ? 'justify-end' : 'justify-start',
+              jump?.at === m.id && 'rounded-lg bg-primary/10',
+            )}
+          >
+            {/* §4.6 — წაშლა ორივე მხარეს შეუძლია; **სკოუპს დიალოგი ეკითხება** */}
+            {m.mine && <MessageTools message={m} onDelete={() => setRemoving(m)} onPin={pin.mutate} onReact={react.mutate} />}
+            <div className="max-w-[75%]">
+              <div
+                className={cn(
+                  'space-y-1.5 whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm',
+                  m.mine
+                    ? 'bg-[var(--chat-mine)] text-[var(--chat-mine-ink)]'
+                    : 'bg-muted text-foreground',
+                )}
+              >
+                {m.pinned && (
+                  <p className="flex items-center gap-1 text-[11px] opacity-70">
+                    <Pin className="size-3" />
+                    {t('chat.pinned')}
+                  </p>
+                )}
+                <Bubble message={m} onDeleteFile={m.mine ? askDeleteFile : undefined} />
+              </div>
+
+              {/* §10.10 — რეაქციები ბუშტის ქვეშ; დაჭერა ჩემსას ხსნის/ცვლის */}
+              {Object.keys(m.reactions).length > 0 && (
+                <div className={cn('mt-1 flex flex-wrap gap-1', m.mine && 'justify-end')}>
+                  {Object.entries(m.reactions).map(([emoji, count]) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => react.mutate({ messageId: m.id, emoji })}
+                      className={cn(
+                        'cursor-pointer rounded-md border px-1.5 py-0.5 text-xs transition-colors',
+                        m.my_reaction === emoji ? 'border-primary bg-secondary' : 'border-border hover:bg-muted',
+                      )}
+                    >
+                      {emoji} {count > 1 ? count : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* §10.3 — „ნანახია" მხოლოდ ბოლო ჩემს ბუშტზე */}
+              {m.mine && lastMine?.id === m.id && (
+                <p className="mt-0.5 text-right text-[11px] text-muted-foreground">
+                  {seen ? t('chat.seen') : t('chat.sent')}
+                  {m.created_at ? ` · ${fmt.dateTime(m.created_at)}` : ''}
+                </p>
+              )}
+            </div>
+            {!m.mine && <MessageTools message={m} onDelete={() => setRemoving(m)} onPin={pin.mutate} onReact={react.mutate} />}
+          </div>
+        ))}
+        <div ref={bottom} />
+      </div>
+
+      {/* §10.1 — „ახალი წერილები ↓": ისტორიას ვკითხულობდი და ქვემოთ არ გადამაგდო */}
+      {newBelow && (
+        <div className="relative">
+          <Button
+            size="sm"
+            className="absolute -top-12 left-1/2 -translate-x-1/2 shadow-lg"
+            onClick={() => toBottom('smooth')}
+          >
+            <ArrowDown className="size-4" />
+            {t('chat.newMessages')}
+          </Button>
+        </div>
+      )}
+
+      {panels}
 
       {/* composer */}
       <div className="border-t border-border p-3">
@@ -392,6 +652,17 @@ function Thread({ id }: { id: number }) {
               >
                 <Paperclip className="size-4" />
               </Button>
+
+              {/* §10.2 — ემოჯი კომპოზიტორში, დამოკიდებულების გარეშე */}
+              <EmojiPicker
+                onPick={(emoji) => setBody((b) => b + emoji)}
+                trigger={
+                  <Button variant="outline" size="icon" className="shrink-0" aria-label={t('chat.emoji')} title={t('chat.emoji')}>
+                    <Smile className="size-4" />
+                  </Button>
+                }
+              />
+
               <Textarea
                 rows={1}
                 value={body}
@@ -420,20 +691,190 @@ function Thread({ id }: { id: number }) {
   )
 }
 
-/** წერილის წაშლის ღილაკი — მიტანაზე ჩნდება, რომ ძაფი არ აჭრელდეს */
-function DeleteButton({ onClick }: { onClick: () => void }) {
+/**
+ * ბუშტის მოქმედებები — მიტანაზე ჩნდება, რომ ძაფი არ აჭრელდეს.
+ *
+ * ⚠️ **სწრაფი რეაქციები აქვეა და სრული ამრჩევიც**: მთელი ფანჯრის გახსნა
+ * ერთი გულისთვის ზედმეტი ნაბიჯია, ხოლო ექვსი ემოჯი ყველაფერს ვერ ფარავს.
+ */
+function MessageTools({
+  message: m,
+  onDelete,
+  onPin,
+  onReact,
+}: {
+  message: ChatMessage
+  onDelete: () => void
+  onPin: (input: { messageId: number; pinned: boolean }) => void
+  onReact: (input: { messageId: number; emoji: string | null }) => void
+}) {
   const { t } = useTranslation()
 
+  const iconClass =
+    'grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover:opacity-100'
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={t('chat.deleteTitle')}
-      title={t('chat.deleteTitle')}
-      className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover:opacity-100"
-    >
-      <Trash2 className="size-3.5" />
-    </button>
+    <div className="flex shrink-0 items-center gap-0.5">
+      {QUICK_REACTIONS.slice(0, 3).map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={() => onReact({ messageId: m.id, emoji })}
+          className={cn(iconClass, 'text-sm')}
+          title={t('chat.react')}
+        >
+          {emoji}
+        </button>
+      ))}
+
+      <EmojiPicker
+        align="end"
+        onPick={(emoji) => onReact({ messageId: m.id, emoji })}
+        trigger={
+          <button type="button" className={iconClass} aria-label={t('chat.react')} title={t('chat.react')}>
+            <Smile className="size-3.5" />
+          </button>
+        }
+      />
+
+      <button
+        type="button"
+        onClick={() => onPin({ messageId: m.id, pinned: !m.pinned })}
+        className={iconClass}
+        aria-label={t(m.pinned ? 'chat.unpin' : 'chat.pin')}
+        title={t(m.pinned ? 'chat.unpin' : 'chat.pin')}
+      >
+        {m.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+      </button>
+
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={t('chat.deleteTitle')}
+        title={t('chat.deleteTitle')}
+        className={iconClass}
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  )
+}
+
+/** §10.9 — ძებნა ერთ საუბარში; ნაჭერს სერვერი ჭრის, ხაზგასმას კლიენტი */
+function SearchPanel({
+  id,
+  onClose,
+  onJump,
+}: {
+  id: number
+  onClose: () => void
+  onJump: (messageId: number) => void
+}) {
+  const { t } = useTranslation()
+  const fmt = useDateFormat()
+  const [q, setQ] = useState('')
+  const [term, setTerm] = useState('')
+
+  const hits = useQuery({
+    queryKey: ['chat-search', id, term],
+    queryFn: () => searchThread(id, term),
+    enabled: term.length >= 2,
+  })
+
+  return (
+    <ModalShell title={t('chat.search')} onClose={onClose}>
+      <form
+        className="mt-4 space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setTerm(q.trim())
+        }}
+      >
+        <div className="flex gap-2">
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('chat.searchPlaceholder')} />
+          <Button type="submit" variant="outline">
+            <Search className="size-4" />
+          </Button>
+        </div>
+
+        {hits.isFetching && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
+        {hits.data?.length === 0 && <p className="text-sm text-muted-foreground">{t('chat.searchEmpty')}</p>}
+
+        <ul className="space-y-1.5">
+          {hits.data?.map((hit) => (
+            <li key={hit.id}>
+              <button
+                type="button"
+                onClick={() => onJump(hit.id)}
+                className="w-full cursor-pointer rounded-md border border-border px-3 py-2 text-left text-sm transition-colors hover:border-primary/40"
+              >
+                <span className="block">
+                  {highlightParts(hit.snippet ?? '', term).map((part, i) =>
+                    part.hit ? (
+                      <mark key={i} className="rounded-md bg-primary/20 text-foreground">
+                        {part.text}
+                      </mark>
+                    ) : (
+                      <span key={i}>{part.text}</span>
+                    ),
+                  )}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {hit.mine ? `${t('chat.you')} · ` : ''}
+                  {fmt.dateTime(hit.created_at)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </form>
+    </ModalShell>
+  )
+}
+
+/** §10.7 — პინების სია; წაშლილი წერილი თავისით ცვივა (`scopeVisibleTo`) */
+function PinsPanel({
+  id,
+  onClose,
+  onJump,
+  onUnpin,
+}: {
+  id: number
+  onClose: () => void
+  onJump: (messageId: number) => void
+  onUnpin: (messageId: number) => void
+}) {
+  const { t } = useTranslation()
+  const fmt = useDateFormat()
+
+  const pins = useQuery({ queryKey: ['chat-pins', id], queryFn: () => fetchPins(id) })
+
+  return (
+    <ModalShell title={t('chat.pins')} onClose={onClose}>
+      <div className="mt-4 space-y-2">
+        {pins.isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
+        {pins.data?.length === 0 && <p className="text-sm text-muted-foreground">{t('chat.pinsEmpty')}</p>}
+
+        {pins.data?.map((m) => (
+          <div key={m.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2">
+            <button
+              type="button"
+              onClick={() => onJump(m.id)}
+              className="min-w-0 flex-1 cursor-pointer text-left text-sm transition-colors hover:text-primary"
+            >
+              <span className="line-clamp-2 block">{m.body || m.attachment_name || t(`chat.type.${m.type}`)}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {m.mine ? `${t('chat.you')} · ` : ''}
+                {fmt.dateTime(m.created_at)}
+              </span>
+            </button>
+            <Button variant="ghost" size="icon" aria-label={t('chat.unpin')} title={t('chat.unpin')} onClick={() => onUnpin(m.id)}>
+              <PinOff className="size-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </ModalShell>
   )
 }
 

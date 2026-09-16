@@ -709,3 +709,27 @@
      რადიუსს ერთი ადგილი წყვეტს (ეტაპი 4) */
   --yarl__thumbnails_thumbnail_border_radius: var(--radius);
 }
+
+/* ჩატის თემები (Tasks §10.6).
+   ⚠️ **არჩევანს CSS აკეთებს და არა JS**: `chatThemeStyle()` ორივე ნაკრებს
+   ერთდროულად გადმოსცემს ცვლადებად, აქ კი `.dark` წყვეტს, რომელი მოქმედებს.
+   `useTheme()` ამისთვის გამოუსადეგარია — ის საკუთარ `useState`-ს კიდებს,
+   ე.ი. მეორე გამოძახება მეორე მდგომარეობაა და გადართვაზე არ განახლდებოდა.
+   ⚠️ Tailwind ცვლადიდან კლასს ვერ ააგებს, ე.ი. ეს ხელით დაწერილი CSS-ია
+   აუცილებლობით (იგივე მიზეზი, რაც `.lucide-*` წესებს აქვთ). */
+.fb-chat {
+  --chat-mine: var(--chat-mine-light);
+  --chat-mine-ink: var(--chat-mine-ink-light);
+  --chat-surface: var(--chat-surface-light);
+}
+.dark .fb-chat {
+  --chat-mine: var(--chat-mine-dark);
+  --chat-mine-ink: var(--chat-mine-ink-dark);
+  --chat-surface: var(--chat-surface-dark);
+}
+.fb-chat-swatch {
+  background: var(--sw-light);
+}
+.dark .fb-chat-swatch {
+  background: var(--sw-dark);
+}
