@@ -125,6 +125,10 @@ Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show
    „gallery-photos" და „albums" დომენებად წაიკითხება — იგივე წესი, რაც
    `/gallery/{type}/{id}`-ს აქვს. */
 Route::get('/public/profiles/{username}/gallery-photos', [PublicProfileController::class, 'photos']);
+/* 2026-09-17 — გახსნილი ჩაკეტილი ალბომის ფოტო პირად დისკზეა და მხოლოდ აქედან
+   გამოდის: შიდა `/gallery/images/{id}/file` უცხოსთვის `auth:sanctum`-ის უკანაა. */
+Route::get('/public/profiles/{username}/gallery-photos/{image}/file', [PublicProfileController::class, 'photoFile'])
+    ->whereNumber('image');
 Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileController::class, 'unlockAlbum'])
     ->whereNumber('album')
     // §7.13 — ანონიმზე გასაღები IP + ალბომია; უამისოდ ოთხსიმბოლოიანი პაროლი წუთებში ცვივა

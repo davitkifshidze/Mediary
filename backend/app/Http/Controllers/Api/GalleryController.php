@@ -602,7 +602,9 @@ class GalleryController extends Controller
                 ->where('source', $group['provider'])
                 ->orderByDesc('id')
                 ->limit($previews)
-                ->pluck('path')
+                ->get(['id', 'path'])
+                ->map(fn (GalleryImage $image) => $image->preview())
+                ->values()
                 ->all();
         }
 
@@ -670,7 +672,9 @@ class GalleryController extends Controller
                 ->where('album_id', $group['id'])
                 ->orderBy('sort_order')
                 ->limit($previews)
-                ->pluck('path')
+                ->get(['id', 'path'])
+                ->map(fn (GalleryImage $image) => $image->preview())
+                ->values()
                 ->all();
         }
 
@@ -856,7 +860,9 @@ class GalleryController extends Controller
             $out[$group['kind'].':0'] = $this->sourceQuery($group['from'])
                 ->orderBy('id')
                 ->limit($previews)
-                ->pluck('path')
+                ->get(['id', 'path'])
+                ->map(fn (GalleryImage $image) => $image->preview())
+                ->values()
                 ->all();
         }
 
@@ -866,8 +872,13 @@ class GalleryController extends Controller
     /**
      * ჯგუფის რამდენიმე ესკიზი — ბადეზე „რა დევს შიგნით" ერთი შეხედვით.
      *
+     * ⚠️ **ესკიზი `GalleryImage::preview()`-ია და არა `pluck('path')`** (2026-09-17):
+     * გახსნილი ჩაკეტილი ალბომის ფოტო პირად დისკზეა და მისი შიშველი გზა
+     * `/storage/*`-ზე 404-ია — დასტა ცარიელ ბარათებს ხატავდა. ოთხივე
+     * ესკიზების ამგები ერთსა და იმავე ფუნქციას კითხულობს.
+     *
      * @param  Collection<int, array<string, mixed>>  $groups
-     * @return array<string, list<string>>
+     * @return array<string, list<string|array{url: string, private: true}>>
      */
     private function previews($groups, ?string $morph, int $limit): array
     {
@@ -889,7 +900,9 @@ class GalleryController extends Controller
                 ->where('imageable_id', $group['id'])
                 ->orderBy('sort_order')
                 ->limit($limit)
-                ->pluck('path')
+                ->get(['id', 'path'])
+                ->map(fn (GalleryImage $image) => $image->preview())
+                ->values()
                 ->all();
         }
 

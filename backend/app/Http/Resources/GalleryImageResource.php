@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,8 +17,12 @@ class GalleryImageResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            // storage-ის გზა — ფრონტი `storageUrl()`-ით აწყობს სრულ URL-ს
-            'url' => $this->path,
+            /* storage-ის გზა — ფრონტი `storageUrl()`-ით აწყობს სრულ URL-ს;
+               ⚠️ **პირად დისკზე კი API-ის მარშრუტია** (`GalleryImage::servedUrl()`,
+               2026-09-17): ჩაკეტილი ალბომის ფაილი `gallery/locked`-შია და
+               `/storage/*` მას ვერ კითხულობს — შიშველი `path` გახსნილ ალბომს
+               გატეხილ სურათებად ხატავდა. */
+            'url' => $this->servedUrl(),
             'original_name' => $this->original_name,
             'mime' => $this->mime,
             'size' => $this->size,
@@ -38,7 +41,7 @@ class GalleryImageResource extends JsonResource
                (§7.9), ე.ი. `/storage/*` მას ვერ კითხულობს. `PRIVATE_ROOTS`-ის
                ასლი SPA-ში ერთ დღეს დაშორდებოდა და პირად ფაილს საჯარო
                URL-ქვეშ გამოაჩენდა. */
-            'private' => StorageFolder::isPrivate((string) $this->path),
+            'private' => $this->isPrivate(),
             'width' => $this->width,
             'height' => $this->height,
             'created_at' => $this->created_at?->toIso8601String(),

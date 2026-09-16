@@ -104,7 +104,7 @@ class PublicGallery
 
         return [
             'data' => collect($paginator->items())
-                ->map(fn (GalleryImage $image) => $this->row($image, $hidden))
+                ->map(fn (GalleryImage $image) => $this->row($user, $image, $hidden))
                 ->all(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
@@ -122,16 +122,46 @@ class PublicGallery
     }
 
     /**
+     * **ერთი ფოტო, რომელიც ამ მნახველს ახლა ჩანს (2026-09-17).**
+     *
+     * `GET /public/profiles/{username}/gallery-photos/{image}/file`-ის
+     * ერთადერთი კითხვა: ფოტო ამ პროფილის საჯარო გალერეაშია **და** მისი
+     * ალბომი ამ სესიაში ჩაკეტილი არ არის. სხვა ყველაფერზე `null` (→ 404).
+     *
+     * ⚠️ იგივე `query()` და იგივე `hiddenIdsFor()`, რაც სიას — მეორე
+     * „ვინ ხედავს" ფორმულა სწორედ ის ორი წყაროა, რაც ერთ დღეს გაშორდებოდა.
+     */
+    public function visible(User $user, int $imageId): ?GalleryImage
+    {
+        $image = $this->query($user)->whereKey($imageId)->first();
+
+        if (! $image) {
+            return null;
+        }
+
+        $hidden = AlbumLock::hiddenIdsFor((int) $user->id);
+
+        return $image->album_id !== null && in_array((int) $image->album_id, $hidden, true) ? null : $image;
+    }
+
+    /**
      * **ერთი ფოტოს ვიწრო ფორმა.**
      *
      * ⚠️ `PublicDomain::card()`-ის იგივე წესი: ველი მხოლოდ მაშინ ჩნდება,
      * თუ ცხადად ჩაიწერა. ჩაკეტილზე კი **მხოლოდ სამი ფაქტი** — რომ რიგი
      * არსებობს, რა პროპორციისაა და რომ ჩაკეტილია.
      *
+     * ⚠️ **გახსნილი ჩაკეტილი ალბომის ფოტო პირად დისკზეა** (§7.9), ე.ი. მისი
+     * `path` `/storage/*`-ზე 404-ია — უცხოსაც და მფლობელსაც. ამიტომ `path`
+     * აქ **მისამართია და არა სვეტი**: საჯაროზე storage-ის გზა, პრივატულზე
+     * საჯარო პროფილის საკუთარი ფაილის მარშრუტი, `private: true`-თი. შიდა
+     * `/gallery/images/{id}/file` აქ არ გამოდგება — ის `auth:sanctum`-ის
+     * უკანაა და უცხოსთვის 404 იქნებოდა (2026-09-17).
+     *
      * @param  list<int>  $hidden
      * @return array<string, mixed>
      */
-    private function row(GalleryImage $image, array $hidden): array
+    private function row(User $user, GalleryImage $image, array $hidden): array
     {
         $locked = $image->album_id !== null && in_array((int) $image->album_id, $hidden, true);
 
@@ -143,8 +173,17 @@ class PublicGallery
             'locked' => $locked,
         ];
 
-        return $locked ? $base : $base + [
-            'path' => $image->path,
+        if ($locked) {
+            return $base;
+        }
+
+        $private = $image->isPrivate();
+
+        return $base + [
+            'path' => $private
+                ? '/public/profiles/'.$user->username.'/gallery-photos/'.$image->getKey().'/file'
+                : $image->path,
+            'private' => $private,
             'category' => $image->category,
         ];
     }

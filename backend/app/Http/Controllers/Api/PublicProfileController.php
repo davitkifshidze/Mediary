@@ -8,9 +8,11 @@ use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
 use App\Support\AlbumLock;
+use App\Support\StorageFolder;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * **Tasks §16.1 — საჯარო პროფილი `/u/{username}`.**
@@ -120,6 +122,36 @@ class PublicProfileController extends Controller
         $perPage = min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
 
         return response()->json($this->gallery->page($user, $perPage, max(1, (int) $request->integer('page', 1))));
+    }
+
+    /**
+     * **საჯარო გალერეის ფაილი პირად დისკიდან (2026-09-17)** —
+     * `GET /public/profiles/{username}/gallery-photos/{image}/file`.
+     *
+     * გახსნილი ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია (§7.9), რასაც
+     * `/storage/*` ვერ კითხულობს; შიდა `/gallery/images/{id}/file` კი
+     * `auth:sanctum`-ის უკანაა და უცხოსთვის 404-ია. ე.ი. პაროლის შეყვანის
+     * შემდეგ საჯარო გვერდზე ფოტო **არსაიდან ვერ გამოვიდოდა**.
+     *
+     * ⚠️ **მოდელი როუტში არ იბმება** (`unlockAlbum`-ის იგივე მიზეზი):
+     * `EnsureRecordOwnership` ანონიმს ვერაფრის მფლობელად ჩათვლის.
+     * ხილვადობას `PublicGallery::visible()` წყვეტს — იმავე query-თი, რაც სია.
+     *
+     * ⚠️ **404 და არა 403** — „ეს ფოტო არსებობს" თვითონაც ინფორმაციაა.
+     */
+    public function photoFile(string $username, int $image)
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+        abort_unless(in_array('gallery_album', $this->profiles->domains($user), true), 404);
+
+        $galleryImage = $this->gallery->visible($user, $image);
+        abort_unless($galleryImage, 404);
+
+        $disk = Storage::disk(StorageFolder::diskFor((string) $galleryImage->path));
+        abort_unless($disk->exists($galleryImage->path), 404);
+
+        return $disk->response($galleryImage->path);
     }
 
     /**

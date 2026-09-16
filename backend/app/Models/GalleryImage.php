@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\StoredFile;
 use App\Support\AlbumLock;
+use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,6 +67,53 @@ class GalleryImage extends Model
     public function imageable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * **ფაილი პირად დისკზეა?** (Tasks §7.9 — ჩაკეტილი ალბომის `gallery/locked`).
+     *
+     * ⚠️ დისკს `StorageFolder` წყვეტს და არა აქაური `str_starts_with`: ერთი
+     * წესი, ერთი ადგილი (`StorageMeter::disk()`-ის იგივე მიზეზი).
+     */
+    public function isPrivate(): bool
+    {
+        return StorageFolder::isPrivate((string) $this->path);
+    }
+
+    /**
+     * **მისამართი, რომლითაც SPA ამ ფოტოს ხატავს (2026-09-17).**
+     *
+     * საჯარო დისკზე — storage-ის გზა (ფრონტი `storageUrl()`-ით აწყობს);
+     * პირად დისკზე — **API-ის მარშრუტი** `GET /gallery/images/{id}/file`
+     * (`ModulePhoto`-ს იგივე ფორმა: „საჯაროზე გზა, პრივატულზე მისამართი").
+     *
+     * ⚠️ **ეს იყო ცოცხალი ხარვეზი**: `AlbumVault` ჩაკეტილი ალბომის ფაილებს
+     * პირად დისკზე გადაიტანს, resource-ი კი შიშველ `path`-ს აბრუნებდა — ე.ი.
+     * პაროლის შეყვანის შემდეგ SPA `/storage/gallery/locked/…`-ს აწყობდა,
+     * რომელიც პირად დისკზე **არ არსებობს**, და გახსნილი ალბომი გატეხილ
+     * `<img>`-ებად იხატებოდა („პაროლი შევიყვანე და ფოტოები არ ჩანს").
+     * მისამართს backend ამბობს (§17.5-ის წესი) — `PRIVATE_FOLDERS`-ის ასლი
+     * SPA-ში ერთ დღეს დაშორდებოდა.
+     */
+    public function servedUrl(): string
+    {
+        return $this->isPrivate() ? '/gallery/images/'.$this->getKey().'/file' : (string) $this->path;
+    }
+
+    /**
+     * ერთი ესკიზი დასტისთვის (`previews`).
+     *
+     * ⚠️ **საჯაროზე უბრალო სტრიქონია, პრივატულზე ობიექტი** `{url, private}`:
+     * `PhotoStack`-ს პრივატული ფაილი blob-ად უნდა წაიკითხოს, სტრიქონი კი ამას
+     * ვერ ეტყოდა. ჩვეულებრივი გზა ხელუხლებელი რჩება (ტესტები და მოხმარებლები
+     * იმავე სტრიქონს ხედავენ), განსხვავება მხოლოდ იქ ჩნდება, სადაც მართლა
+     * არის.
+     *
+     * @return string|array{url: string, private: true}
+     */
+    public function preview(): string|array
+    {
+        return $this->isPrivate() ? ['url' => $this->servedUrl(), 'private' => true] : (string) $this->path;
     }
 
     /**

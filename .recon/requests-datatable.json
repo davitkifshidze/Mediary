@@ -1,0 +1,154 @@
+{
+ "area": "/requests page + shared DataTable",
+ "current_state": "**Backend.** `AdminRequestController::index()` (`backend/app/Http/Controllers/Api/Admin/AdminRequestController.php:16-48`) is **not paginated and does not go through `Controller::paginated()`** — it is a plain `ApprovalRequest::query()->when($status !== 'all', …)->with(['user','module','genre','reviewer'])->orderByDesc('id')->get()` (L20-24), returned as `ApprovalRequestResource::collection(...)->additional(['counts' => …])` (L40-47). The counts are one `selectRaw('status, count(*)')->groupBy('status')` over the **whole** table (L35-38), and the docblock at L26-34 states explicitly that facets here deliberately do **not** exclude their own cut (unlike `/admin/audit/summary`), because the four statuses are mutually exclusive. `ApprovalRequestController::index()` (the \"my requests\" side, `backend/app/Http/Controllers/Api/ApprovalRequestController.php:18-26`) is also a bare `->get()`.\n\n**Data volume is tiny and this is the decisive fact.** The committed dump `backend/mediary_backup.sql:185` holds **13** `approval_requests` rows total (2 storage_increase, 11 module_access, 0 genre_delete). Every row is created by an explicit human act (asking for a module, asking for quota, asking to delete a global genre), so growth is bounded by user actions, not by library size.\n\n**Frontend.** `frontend/src/pages/RequestsPage.tsx` renders: `PageHeader` (L124-128) → `ScopeGroup`/`ScopeCard` row for the four statuses (L131-147, driven by the `STATUSES` const at L48-53) → a hand-rolled **stack of bordered cards**, one per request (L156-258) — no table, no sorting, no search, no page-size, no pagination. Loading is a bare `<p>` (L149) and empty is a bare `<p className=\"rounded-xl border …\">{t('admin.noRequests')}</p>` (L150-154) rather than `EmptyState`. The \"my requests\" section below (L262-310) is a plain `<ul>`.\n\nEach pending card carries **inline editing controls**: a `Textarea` for `review_note` (L244-250, state `notes` at L64) and, for `storage_increase` only, a numeric MB `Input` for `granted_bytes` (L230-243, state `grants` at L66 + `grantOf()` at L117-120). Approve/Reject are two inline `Button`s (L192-213).\n\n**`DataTable`** (`frontend/src/components/ui/data-table.tsx`) API: `rows`, `columns: DataColumn<T>[]` (`{key, label, className?, value?: (row)=>string|number, render}` — L23-30; a column without `value` is not sortable), `rowKey`, `searchOf?: (row)=>(string|null|undefined)[]` (absent → the search box is not rendered, L98), `searchPlaceholder?`, `defaultSort?`, `pageSize?` (default 10), `empty?: string`, `minWidth?` (default `'640px'`). Toolbar = search + page-size `Select` over `PAGE_SIZES = [10,25,50,100]` (L32, L113-130) + a right-aligned `table.rowCount` line. Filtering/sorting/paging are **client-side by explicit design** (docblock L16-21: \"if thousands of rows ever appear, a server-side variant must be written **separately** and not hidden inside this one\"). Sorting is numeric subtraction or `String(x).localeCompare(String(y))` (L75-80). Page clamping guards the \"filtered past the last page → looks empty\" case (L83-87). Pager appears only when `lastPage > 1` (L188) and borrows `audit.pageOf` for its label (L200).\n\n**Its only caller** is the module-holders modal: `frontend/src/pages/ModulePage.tsx:338-400` (4 columns: checkbox / name / role / state; `searchOf` over display_name, first_name, last_name, email, username).\n\n**i18n today**: `table.{search,perPage,rowCount,empty,prev,next}` and `requests.status.{pending,approved,rejected,all}` exist in **both** `ka.json`/`en.json`. `admin.{colName,colLastName,colRole,colActions,searchUsers,approve,reject,noRequests,notePlaceholder,wantsModule,wantsStorage,wantsGenreDelete,genreDeleteWarning,storageRequestContext,storageGranted}` exist in both. There is **no** `requests.col*`, no `requests.type.*` label set, no `admin.searchRequests`.",
+ "gaps": [
+  "`/requests` has no sorting at all — the admin list is fixed at `orderByDesc('id')` on the server and the SPA never reorders it. There is no way to sort by date, by user, by type or by reviewer.",
+  "No search box on `/requests`. With 'all' selected there is no way to find one request by user name, e-mail, module name or note.",
+  "No page-size control and no pagination on `/requests` — the whole status bucket renders as one stack of cards.",
+  "No **type** axis anywhere: `approval_requests.type` is not a column in the UI, not a facet, not a filter, and `AdminRequestController::index()` returns no per-type counts (only `status` counts).",
+  "`DataTable` has **no slot for extra toolbar controls** — its toolbar is hard-coded as search + page-size + row count (L97-135). A type filter or a \"pending only\" switch has nowhere to live inside it.",
+  "`DataTable`'s `empty` is a `string` only (L52, L169) — it cannot render the project's `EmptyState` block, which is what `/requests` should show (it currently shows a bare `<p>`, already off-pattern).",
+  "`DataTable` has no expandable-row / detail-row support, and the pending request row needs one: a `Textarea` for the review note plus an MB input for `granted_bytes` do not fit a table cell.",
+  "`ApprovalRequestItem` (frontend/src/api/account.ts:227-240) has no flattened sort keys — `user.display_name`, `module.name_ka|name_en` and `genre.name_ka|name_en` are nested and language-dependent, so every `value:` accessor has to resolve the content language itself.",
+  "`RequestsPage` never imports `useDateFormat()` — it prints `new Date(r.created_at).toLocaleString()` (L164), which breaks the project's date rule and would be carried straight into a new 'date' column."
+ ],
+ "key_files": [
+  "frontend/src/pages/RequestsPage.tsx:48-53 (STATUSES scope-card map)",
+  "frontend/src/pages/RequestsPage.tsx:68-76 (queries: ['admin-requests', status] → {items, counts}; ['my-requests'])",
+  "frontend/src/pages/RequestsPage.tsx:131-147 (ScopeGroup/ScopeCard row)",
+  "frontend/src/pages/RequestsPage.tsx:149-154 (loading <p> + bare empty <p>, no EmptyState)",
+  "frontend/src/pages/RequestsPage.tsx:156-258 (the card stack that would become the table)",
+  "frontend/src/pages/RequestsPage.tsx:164 (bare toLocaleString() — date-rule violation)",
+  "frontend/src/pages/RequestsPage.tsx:192-252 (approve/reject buttons + note Textarea + MB grant Input)",
+  "frontend/src/pages/RequestsPage.tsx:262-310 (\"my requests\" <ul>)",
+  "frontend/src/components/ui/data-table.tsx:23-30 (DataColumn<T> contract)",
+  "frontend/src/components/ui/data-table.tsx:32 (PAGE_SIZES = [10,25,50,100])",
+  "frontend/src/components/ui/data-table.tsx:34-55 (full prop list)",
+  "frontend/src/components/ui/data-table.tsx:63-87 (client-side filter/sort/page + page clamping)",
+  "frontend/src/components/ui/data-table.tsx:97-135 (hard-coded toolbar — no extension slot)",
+  "frontend/src/components/ui/data-table.tsx:166-171 (empty cell: string only)",
+  "frontend/src/pages/ModulePage.tsx:338-400 (the one existing DataTable caller — copy its column shape)",
+  "backend/app/Http/Controllers/Api/Admin/AdminRequestController.php:16-48 (index: ->get(), not paginated; counts via additional())",
+  "backend/app/Http/Controllers/Api/ApprovalRequestController.php:18-26 (my requests, also ->get())",
+  "backend/app/Http/Resources/ApprovalRequestResource.php:10-45 (exact payload shape per type)",
+  "backend/app/Models/ApprovalRequest.php:18-23 (TYPE_MODULE / TYPE_GENRE_DELETE / TYPE_STORAGE)",
+  "backend/database/migrations/2026_09_04_000002_add_storage_increase_request_type.php (why `type` is a string, not an enum)",
+  "backend/mediary_backup.sql:185 (13 live rows — the data-volume answer)",
+  "frontend/src/lib/display.ts:70-104 (requestedQuota, grantedQuota, requestLabel — the one label renderer for all three views)",
+  "frontend/src/api/account.ts:227-240 (ApprovalRequestItem)",
+  "frontend/src/api/account.ts:726-750 (RequestCounts, AdminRequestPage, fetchAdminRequests)",
+  "frontend/src/components/ui/scope-card.tsx:37-104 (ScopeCard + ScopeGroup)",
+  "frontend/src/components/ui/empty-state.tsx:20-52 (EmptyState signature)",
+  "frontend/src/pages/UsersPage.tsx:188-250 (the *other* hand-rolled table — own Th/sort, no pagination)",
+  "frontend/src/pages/UserPage.tsx:363-404 (third consumer of requestLabel — inline approve/reject)",
+  "frontend/src/lib/dates.ts:87-110 (useDateFormat — date/dateTime/relative)",
+  "backend/routes/api.php:873-877 (admin_access:requests group — GET index)"
+ ],
+ "shared_primitives": [
+  "`components/ui/data-table.tsx` — `DataTable` + `DataColumn<T>`. Reuse as-is; copy the column shape from `ModulePage.tsx:338`. Do NOT fork it or add a server-side branch inside it (its own docblock L16-21 forbids exactly that).",
+  "`components/ui/scope-card.tsx` — `ScopeCard`/`ScopeGroup`. Already used by /audit, /requests, /status, /purge. Any new facet row (e.g. by type) must be these, never new pills.",
+  "`lib/display.ts` — `requestLabel()`, `requestedQuota()`, `grantedQuota()`. The single label renderer for /requests, /users/{id} and /settings; a table cell must call it, not re-derive the text.",
+  "`components/ui/empty-state.tsx` — `EmptyState`. The bare `<p>` at RequestsPage.tsx:150-154 should become this (it is the documented rule, and it also answers 'why is it empty — filter or nothing yet').",
+  "`lib/dates.ts` — `useDateFormat()` (`date`/`dateTime`/`relative`). Every date cell goes through it; `formatRelative` takes the UI language, not the date format.",
+  "`components/ui/action-menu.tsx` — `ActionMenu`/`ActionMenuClose`/`actionItemClass()`. If approve/reject move into a compact cell, this is the existing pattern (`UsersPage.tsx` uses it in its actions column). It sizes itself to Georgian content since 2026-09-14.",
+  "`components/ui/modal-shell.tsx` — `ModalShell` (+ its modal stack). The natural host for a 'review this request' form (note + granted MB), and the same primitive ModulePage already uses to host a DataTable.",
+  "`components/ui/badge.tsx` — `Badge` for the status/type pill in a cell; the background colour stays the caller's.",
+  "`components/ui/page.tsx` / `page-header.tsx` — `PageContainer`, `PageHeader tool=\"requests\"` (colour comes from `lib/toolSections.ts`). Already in place; do not hand-roll a header.",
+  "`lib/utils.ts` — `formatBytes`, `cn`.",
+  "`AdminRequestController::index()`'s `additional(['counts' => …])` — the counts must keep travelling in the list response (one source), never a second request."
+ ],
+ "traps": [
+  "⚠️ `DataTable`'s docblock (data-table.tsx:16-21) states client-side filtering/sorting/paging is deliberate and that a server-side variant must be a **separate** component, not a hidden branch. Adding `page`/`per_page`/`sort` params to `DataTable` for this page would violate the file's own stated rule.",
+  "⚠️ `AdminRequestController::index()` does **not** use `Controller::paginated()`. If you ever do paginate it, `paginated()` clamps `per_page` from below (`min(max(…,1), 500)`) — the §B4 rule; a hand-rolled `paginate()` without `max(…,1)` is the bug that hit ChatController and PublicProfileController.",
+  "⚠️ The counts are deliberately **non-faceted** here (AdminRequestController.php:26-34): the four statuses are mutually exclusive, so 'exclude your own cut' (the audit's rule) would print the total on every card. Do not 'fix' this to match /audit.",
+  "⚠️ Counts must stay inside the list response (`additional()`), not a second endpoint — 'the card says 4, inside are 3' is the failure this design avoids (api/account.ts:740-745).",
+  "⚠️ `admin_access:requests` derives the action from the HTTP method (`EnsureAdminAccess`, 'GET','HEAD' => 'view'). Any new list/summary route must be a **GET**, or a view-only role gets a spurious 403 (the `GET /admin/audit/plan` precedent).",
+  "⚠️ Dates must go through `useDateFormat()`. RequestsPage.tsx:164 currently uses a bare `new Date(...).toLocaleString()` — do not propagate it into a sortable date column (sort on the raw ISO string, render through `fmt.dateTime`).",
+  "⚠️ Every new i18n key goes into **both** `ka.json` and `en.json`, 2-space JSON with **CRLF** line endings, then `python frontend/src/i18n/audit.py` must exit 0. A missing key fails silently.",
+  "⚠️ The i18n audit's 'string-array literal paired with a t() prefix' check (added 2026-09-12) will inspect any `const COLUMNS = ['type','user','date', …]` you write next to `` t(`requests.col.${k}`) ``. Safest is what `ModulePage` already does: literal `t('…')` calls inline in the `columns` array, no key array.",
+  "⚠️ No `rounded-full` outside the thirteen documented exceptions, and no `hover:underline` anywhere (`grep -rn \"underline\" src` must stay clean). A clickable user name in a cell gets `hover:text-primary`, like `ModulePage.tsx:372`.",
+  "⚠️ `requestLabel()` must stay the single label source (lib/display.ts:85). A table that builds its own 'wants module X' string would make the fourth copy and drift on the next request type.",
+  "⚠️ `ApprovalRequest::TYPE_*` is the set of types (the column is a plain `string` since 2026-09-04) — a new type is one constant + one handler. A frontend `TYPES` map must mirror `ApprovalRequestItem['type']`'s union so `tsc` catches a fourth type, not a hand-written list.",
+  "⚠️ `DataTable`'s `columns`/`searchOf` are re-created on every render by the caller, and the `filtered` `useMemo` depends on both (data-table.tsx:81) — so the memo recomputes each render. Harmless at 13 rows; do not lean on it as if it were memoised.",
+  "⚠️ Sorting uses `String(x).localeCompare(String(y))` with no locale argument (data-table.tsx:79). For Georgian names the browser default locale decides the order; keep `value:` accessors returning `toLowerCase()`d strings the way ModulePage does.",
+  "⚠️ `/purge`-style caution does not apply here, but approve **is** irreversible for `genre_delete` (it runs `GenreRemover` across every user). The `admin.genreDeleteWarning` block (RequestsPage.tsx:169-176) must survive whatever layout change happens — it cannot be reduced to a table cell that is scrolled off-screen.",
+  "⚠️ `UsersPage.tsx:188-250` is a **second** hand-rolled table (own `Th`, own sort state, no pagination, no page-size). Converting it is not part of this request; if you touch `DataTable`'s API, check it does not silently invite a half-migration."
+ ],
+ "subtasks": [
+  {
+   "title": "Move the admin request list onto the shared DataTable",
+   "detail": "Replace the card stack in `RequestsPage.tsx:156-258` with `<DataTable rows={items} rowKey={r=>r.id} …>`. Columns (all shared by the three types): **type** (Badge + icon, `value: r=>r.type` — sortable), **request** (`requestLabel(r, i18n.language, t)` — `value` = the same string lowercased), **user** (`r.user?.display_name` + e-mail sub-line, `value` = display_name lowercased; the name links to `/users/{id}` with `hover:text-primary`, no underline), **date** (`value: r=>r.created_at ?? ''` so it sorts on the raw ISO string, `render` through `useDateFormat().dateTime`), **status** (`value: r=>r.status`, render = the existing `t('requests.status.'+r.status)` + reviewer name), **actions** (approve/reject for pending; the status/reviewer text otherwise). `searchOf = r => [requestLabel(...), r.user?.display_name, r.user?.email, r.module?.name_ka, r.module?.name_en, r.genre?.name_ka, r.genre?.name_en, r.message, r.review_note]`. `defaultSort = {key:'date', dir:'desc'}` to preserve today's `orderByDesc('id')` feel. `pageSize={25}` (the status bucket is usually small; 10 would paginate a 13-row table). `minWidth` around `'860px'`.",
+   "files": [
+    "frontend/src/pages/RequestsPage.tsx",
+    "frontend/src/components/ui/data-table.tsx"
+   ],
+   "effort": "M",
+   "risk": "The two per-type detail blocks currently rendered inside the card — the genre-delete warning (L169-176) and the storage context line (L179-189) — have no cell to live in. Dropping them silently removes the only place an admin sees 'this deletes the genre for 40 movies across all users' before approving.",
+   "depends_on": "none"
+  },
+  {
+   "title": "Give the pending row a review dialog instead of inline inputs",
+   "detail": "The note `Textarea` (L244-250) and the MB `granted_bytes` `Input` (L230-243) cannot live in a table cell. Move them into a `ModalShell` 'review request' window opened from the row's approve button (or an `ActionMenu` item), carrying: the full `requestLabel`, the message, the per-type context block (genre warning / storage `used`/`current`/`granted`), the note field, the MB field for `storage_increase`, and Approve/Reject. Keep `grantOf()`'s rule intact — empty MB field means 'exactly what was requested', i.e. `granted` stays `undefined` so the backend falls back to `payload.requested_bytes` (AdminRequestController.php:133).",
+   "files": [
+    "frontend/src/pages/RequestsPage.tsx",
+    "frontend/src/components/ui/modal-shell.tsx"
+   ],
+   "effort": "M",
+   "risk": "If the modal sends `granted_bytes: 0` (or `NaN`) instead of omitting it, `approveStorage()` falls into the `< 10485760` branch and answers 422 `storage_request_out_of_range` — a working approval turns into an unexplained error. Also: the note currently applies to **both** approve and reject; a modal that only wires it to approve loses rejection notes.",
+   "depends_on": "Move the admin request list onto the shared DataTable"
+  },
+  {
+   "title": "Keep the four status ScopeCards above the table, and consider a second card row for type",
+   "detail": "Leave `STATUSES` + `ScopeGroup` (RequestsPage.tsx:48-53, 131-147) exactly where they are — above the table, driven by `counts` from the same response. If a type facet is wanted, add a **second** `ScopeGroup` row (module / storage / genre / all) the way `/audit` stacks its module row over its action row, with `ACTION_STYLE`-like tones from `lib/actionStyle.ts` or `lib/toolSections.ts`. That needs `AdminRequestController::index()` to also return per-type counts in the same `additional()` array — one query, `selectRaw('type, count(*)')->groupBy('type')`, and unlike the status facet it *should* be computed within the current status cut (choosing 'pending' must change what the type numbers mean, or the card lies about what clicking it will show).",
+   "files": [
+    "frontend/src/pages/RequestsPage.tsx",
+    "backend/app/Http/Controllers/Api/Admin/AdminRequestController.php",
+    "frontend/src/api/account.ts"
+   ],
+   "effort": "M",
+   "risk": "Two card rows plus a table toolbar plus per-column sorting is three controls answering overlapping questions; if the type facet is added, the table must not *also* offer a type filter, or the two will disagree about what is on screen.",
+   "depends_on": "Move the admin request list onto the shared DataTable"
+  },
+  {
+   "title": "Let DataTable render an EmptyState and accept an optional toolbar slot",
+   "detail": "Two small, additive changes to `data-table.tsx`, both driven by this page: (1) widen `empty?: string` to `empty?: ReactNode` (L52, L169) so `/requests` can pass `<EmptyState title={t('admin.noRequests')} hint={…} />` instead of the bare `<p>` it has today; (2) add `toolbar?: ReactNode` rendered inside the existing toolbar row (before the `ml-auto` row-count span, L132) for page-specific controls. Both are strictly opt-in, so `ModulePage`'s call site is untouched.",
+   "files": [
+    "frontend/src/components/ui/data-table.tsx",
+    "frontend/src/pages/RequestsPage.tsx"
+   ],
+   "effort": "S",
+   "risk": "`empty` as a ReactNode goes inside a `<td colSpan>`; an `EmptyState` (a dashed-border block) inside a bordered table cell can look like a box in a box. Verify visually, or render the empty state *instead of* the table when `rows.length === 0`.",
+   "depends_on": "none"
+  },
+  {
+   "title": "Add the new i18n keys to both locales and run the audit",
+   "detail": "New keys needed: `requests.colType`, `requests.colRequest`, `requests.colUser`, `requests.colDate`, `requests.colStatus`, `requests.type.module_access`, `requests.type.genre_delete`, `requests.type.storage_increase`, `admin.searchRequests` (search placeholder), plus whatever the review dialog needs (`admin.reviewRequest`, an empty-state hint). Reuse `admin.colActions`, `admin.approve`, `admin.reject`, `admin.notePlaceholder`, `admin.noRequests`, `requests.status.*` and the whole `table.*` namespace, which already exist in both files. Write with `newline='\\r\\n'` and `json.dumps(..., ensure_ascii=False, indent=2)`, then run `python frontend/src/i18n/audit.py`.",
+   "files": [
+    "frontend/src/i18n/ka.json",
+    "frontend/src/i18n/en.json"
+   ],
+   "effort": "S",
+   "risk": "A one-sided key prints the raw key with no error; and an *empty string* value (the `dictionaries.navHint` trap) is not reported by the audit at all — check the ka values are actually filled, not just present.",
+   "depends_on": "none"
+  },
+  {
+   "title": "Decide the fate of the 'my requests' section",
+   "detail": "`RequestsPage.tsx:262-310` is a `<ul>` of the caller's own requests (`fetchMyRequests`, also un-paginated). It is short by nature (your own asks) and has one action (cancel). Either leave it as a list — the honest answer for 2-5 rows — or, if it becomes a DataTable for visual consistency, it needs its own `searchOf`/columns and would then be the third table on the page.",
+   "files": [
+    "frontend/src/pages/RequestsPage.tsx"
+   ],
+   "effort": "S",
+   "risk": "Turning a 3-row list into a table with a search box and a page-size select is the 'a control that lies' pattern the project refuses to draw.",
+   "depends_on": "none"
+  }
+ ],
+ "open_questions": [
+  "Is a table the right shape at all for the **pending** cut? Pending rows are the ones you act on and they carry a free-text note plus (for quota) a number — that is a form, not a row. One option the user may prefer: keep pending as today's cards, and render approved/rejected/all as the DataTable (the user's own wording was \"the approved one and the various tabs\", which reads that way).",
+  "Should approve/reject move into a `ModalShell` review dialog (needed to keep the note and the MB grant), or stay as two inline buttons in an actions cell with the note dropped for the table view?",
+  "Do you want a **type** axis (module / quota / genre) — as a second row of ScopeCards like /audit, as a sortable column only, or both? Per-type counts do not exist in the API today.",
+  "What default page size — 10 (DataTable's default) or 25? With 13 live rows, 10 would paginate a list that fits on one screen.",
+  "Should the 'my requests' block below stay a plain list, or become a second DataTable?",
+  "`/users` still has its own hand-rolled table (`UsersPage.tsx:188-250` — own `Th`, own sort state, no pagination, no page-size). Should it move onto `DataTable` in the same pass, or is that separate work?",
+  "The per-type context blocks (the red genre-delete warning, the storage used/current/granted line) currently sit inside the card. In a table they must go somewhere — an expandable row, the review dialog, or a second line inside the 'request' cell. Which?"
+ ]
+}
