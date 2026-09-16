@@ -13,6 +13,7 @@ import {
 } from '@/lib/modules'
 import { useAuth } from '@/lib/auth'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
@@ -84,7 +85,7 @@ export function ModulesPage() {
       <PageHeader
         tool="modules"
         title={t('modules.title')}
-        subtitle={isAdmin ? t('modules.subtitleAdmin') : t('modules.subtitle')}
+        hint={<InfoHint info={isAdmin ? t('modules.subtitleAdmin') : t('modules.subtitle')} />}
       />
 
       {loading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}

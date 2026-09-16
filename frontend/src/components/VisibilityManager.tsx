@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -206,8 +207,10 @@ export function VisibilityManager() {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <div className="text-sm font-medium">{t('visibility.manageTitle')}</div>
-      <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('visibility.manageHint')}</p>
+      <div className="mb-3 flex items-center gap-1.5 text-sm font-medium">
+        {t('visibility.manageTitle')}
+        <InfoHint info={t('visibility.manageHint')} />
+      </div>
 
       {/* ---------- დომენები ---------- */}
       <div className="mb-4">

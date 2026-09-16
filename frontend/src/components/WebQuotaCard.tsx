@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Globe } from 'lucide-react'
 import { webSearchStatus } from '@/api/web'
 import { useDateFormat } from '@/lib/dates'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    ვებძებნის კვოტა (Tasks §7.6.1 / §7.6.6).
@@ -47,8 +48,8 @@ export function WebQuotaCard() {
       <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-semibold">
         <Globe className="size-5 text-muted-foreground" />
         {t('web.quotaTitle')}
+        <InfoHint info={t('web.quotaHint')} />
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">{t('web.quotaHint')}</p>
 
       <div className="h-2 overflow-hidden rounded-md bg-muted">
         <div

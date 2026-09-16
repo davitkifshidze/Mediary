@@ -7,6 +7,7 @@ import { SyncDialog } from '@/components/SyncDialog'
 import { NumberSelect, SettingRow } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 
@@ -37,7 +38,7 @@ export function SyncPage() {
       <PageHeader
         tool="sync"
         title={t('sync.title')}
-        subtitle={t('settings.syncHint')}
+        hint={<InfoHint info={t('settings.syncHint')} />}
       />
 
       <section className="rounded-xl border border-border bg-card p-5">

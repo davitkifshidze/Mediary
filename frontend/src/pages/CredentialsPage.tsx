@@ -12,6 +12,7 @@ import {
   type CredentialSource,
 } from '@/api/credentials'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { SecretInput } from '@/components/ui/secret-input'
 import { CredentialHelpDialog } from '@/components/CredentialHelpDialog'
@@ -69,7 +70,11 @@ export function CredentialsPage() {
 
   return (
     <PageContainer width="narrow">
-      <PageHeader tool="credentials" title={t('credentials.title')} subtitle={t('credentials.subtitle')} />
+      <PageHeader
+        tool="credentials"
+        title={t('credentials.title')}
+        hint={<InfoHint info={t('credentials.subtitle')} />}
+      />
 
       <p className="mb-5 rounded-xl border border-border bg-card p-4 text-sm leading-relaxed text-muted-foreground">
         {t('credentials.intro')}
@@ -98,10 +103,10 @@ export function CredentialsPage() {
           სამართლიანი კითხვაა, ამიტომ აქვეა, ცხადი მინაწერით. */}
       {(data?.installation.length ?? 0) > 0 && (
         <section className="mt-6 rounded-xl border border-border bg-card p-5">
-          <h2 className="font-display text-lg font-semibold tracking-tight">
+          <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
             {t('credentials.installation')}
+            <InfoHint info={t('credentials.installationHint')} />
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t('credentials.installationHint')}</p>
 
           <dl className="mt-4 space-y-2">
             {data?.installation.map((row) => (

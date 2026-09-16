@@ -22,6 +22,7 @@ import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
@@ -166,20 +167,26 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
         )}
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('games.videosTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('games.videosHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('games.videosTitle')}
+            <InfoHint info={t('games.videosHint')} />
+          </h3>
           <Videos game={game} />
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('games.galleryTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('games.galleryHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('games.galleryTitle')}
+            <InfoHint info={t('games.galleryHint')} />
+          </h3>
           <Gallery game={game} />
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('games.docsTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('games.docsHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('games.docsTitle')}
+            <InfoHint info={t('games.docsHint')} />
+          </h3>
           <Files game={game} />
         </section>
 

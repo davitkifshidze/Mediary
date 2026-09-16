@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/errors'
 import { roleName } from '@/lib/display'
 import { UserAvatar } from '@/components/UserAvatar'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -141,7 +142,7 @@ export function UsersPage() {
       <PageHeader
         tool="users"
         title={t('admin.users')}
-        subtitle={t('admin.usersSubtitle')}
+        hint={<InfoHint info={t('admin.usersSubtitle')} />}
       />
 
       {/* ---------- ძებნა და ფილტრები ---------- */}

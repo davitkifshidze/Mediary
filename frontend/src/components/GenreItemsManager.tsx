@@ -14,6 +14,7 @@ import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Label } from '@/components/ui/label'
 import { GenreSingleSelect } from '@/components/GenreSelect'
 import { MovieMultiSelect } from '@/components/MovieMultiSelect'
@@ -296,8 +297,10 @@ export function GenreItemsPicker({
 
   return (
     <div className="mt-5 border-t border-border pt-4">
-      <Label className="mb-1 block">{t('genres.addItems')}</Label>
-      <p className="mb-3 text-xs text-muted-foreground">{t('genres.newItemsHint')}</p>
+      <Label className="mb-3 flex items-center gap-1.5">
+        {t('genres.addItems')}
+        <InfoHint info={t('genres.newItemsHint')} />
+      </Label>
       {DOMAINS.map((d) => (
         <DomainPicker
           key={d}

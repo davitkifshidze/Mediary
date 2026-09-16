@@ -35,6 +35,7 @@ import { SettingsSaveBar } from '@/components/SettingsSaveBar'
 import { StorageAllocations } from '@/components/StorageAllocations'
 import { UploadLimitsCard } from '@/components/UploadLimitsCard'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -79,7 +80,7 @@ export function SettingsPage() {
 
       <PageHeader
         title={t('settings.title')}
-        subtitle={t('settings.subtitle')}
+        hint={<InfoHint info={t('settings.subtitle')} />}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={reset}>
@@ -92,10 +93,10 @@ export function SettingsPage() {
 
       {/* ---------- ნაგულისხმევები (E4) ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">
+        <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
           {t('settings.defaults')}
+          <InfoHint info={t('settings.defaultsHint')} />
         </h2>
-        <p className="mb-2 text-xs text-muted-foreground">{t('settings.defaultsHint')}</p>
 
         <Row label={t('settings.defaultView')} hint={t('settings.defaultViewHint')} dirty={isDirty('defaultView')}>
           <Select
@@ -234,8 +235,10 @@ export function SettingsPage() {
 
       {/* ---------- სიები და გვერდები (E2) ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('settings.lists')}</h2>
-        <p className="mb-2 text-xs text-muted-foreground">{t('settings.listsHint')}</p>
+        <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('settings.lists')}
+          <InfoHint info={t('settings.listsHint')} />
+        </h2>
 
         <Row label={t('settings.actorMovies')} hint={t('settings.actorMoviesHint')} dirty={isDirty('actorMoviesPerPage')}>
           <NumberSelect
@@ -295,8 +298,10 @@ export function SettingsPage() {
 
       {/* ---------- მედია და TMDB (18) ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('settings.media')}</h2>
-        <p className="mb-2 text-xs text-muted-foreground">{t('settings.mediaHint')}</p>
+        <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('settings.media')}
+          <InfoHint info={t('settings.mediaHint')} />
+        </h2>
 
         <Row
           label={t('settings.posterQuality')}

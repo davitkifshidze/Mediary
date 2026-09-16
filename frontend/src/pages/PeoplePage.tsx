@@ -8,6 +8,7 @@ import { storageUrl } from '@/lib/api'
 import { isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -119,7 +120,7 @@ function Header() {
             {t('people.title')}
           </span>
         }
-        subtitle={t('people.subtitle')}
+        hint={<InfoHint info={t('people.subtitle')} />}
       />
     </>
   )

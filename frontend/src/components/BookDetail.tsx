@@ -17,6 +17,7 @@ import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -48,14 +49,18 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
         <ProgressCard book={book} />
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('books.filesTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('books.filesHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('books.filesTitle')}
+            <InfoHint info={t('books.filesHint')} />
+          </h3>
           <FilesCard book={book} />
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('books.notesTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('books.notesHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('books.notesTitle')}
+            <InfoHint info={t('books.notesHint')} />
+          </h3>
           <NotesCard book={book} />
         </section>
       </div>

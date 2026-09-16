@@ -29,6 +29,8 @@ const ALL_PER_PAGE = 1000
 export function GroupPhotos({
   title,
   subtitle,
+  /** მუდმივი ახსნა აიქონად — `subtitle` ცოცხალ ფაქტს რჩება (Tasks §3) */
+  hint,
   filters,
   cacheKey,
   onBack,
@@ -38,6 +40,7 @@ export function GroupPhotos({
 }: {
   title: ReactNode
   subtitle?: ReactNode
+  hint?: ReactNode
   /** `owner` · `from` · `provider` — რომელი ჯგუფია */
   filters: GalleryPhotoFilters
   /** ქეშის გასაღები — ფილტრის უნიკალური სახელი */
@@ -90,7 +93,10 @@ export function GroupPhotos({
           </Button>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-display text-lg font-semibold">{title}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="truncate font-display text-lg font-semibold">{title}</h2>
+            {hint}
+          </div>
           {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         <SortPick value={sort} onChange={(next) => { setSort(next); setPage(1) }} />

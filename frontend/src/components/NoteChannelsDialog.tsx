@@ -9,6 +9,7 @@ import {
   requestNotificationPermission,
 } from '@/lib/noteReminders'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -76,8 +77,10 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
       <div className="mt-4 space-y-5">
         {/* ---------- ბრაუზერი ---------- */}
         <section className="rounded-lg border border-border p-3">
-          <h3 className="text-sm font-semibold">{t('notes.channels.browser')}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{t('notes.browserHint')}</p>
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {t('notes.channels.browser')}
+            <InfoHint info={t('notes.browserHint')} />
+          </h3>
           <p className="mt-2 flex items-center gap-2 text-sm">
             <BellRing className="size-4 text-muted-foreground" />
             {t(`notes.permission.${permission}`)}
@@ -96,7 +99,10 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
         {/* ---------- ტელეგრამი ---------- */}
         <section className="rounded-lg border border-border p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold">{t('notes.channels.telegram')}</h3>
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+              {t('notes.channels.telegram')}
+              <InfoHint info={t('notes.telegramHint')} />
+            </h3>
             <span className="flex-1" />
             {/* ⚠️ იგივე მოდალია, რაც `/credentials`-ზე: ბოტის ტოკენიც
                 ზუსტად ისეთივე „საიდან მოვიტანო"-ა, და მეორე, თითქმის
@@ -106,7 +112,6 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
               {t('credentials.getKey')}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t('notes.telegramHint')}</p>
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="tg-token">{t('notes.telegramToken')}</Label>

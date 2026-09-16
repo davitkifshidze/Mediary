@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
 import { grantedQuota, requestLabel, requestedQuota } from '@/lib/display'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -114,7 +115,7 @@ export function RequestsPage() {
       <PageHeader
         tool="requests"
         title={t('admin.requests')}
-        subtitle={isAdmin ? t('admin.requestsSubtitle') : t('admin.requestsSubtitleUser')}
+        hint={<InfoHint info={isAdmin ? t('admin.requestsSubtitle') : t('admin.requestsSubtitleUser')} />}
       />
 
       {/* ---------- ადმინის ხედი ---------- */}

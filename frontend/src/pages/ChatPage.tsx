@@ -31,6 +31,7 @@ import { storageUrl } from '@/lib/api'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -73,7 +74,11 @@ export function ChatPage() {
       {/* §23 — ჰედერი საერთო კომპონენტისაა: ხელით აწყობილი სათაური სექციის
           ფერს ვერასდროს მიიღებდა, და თან ერთი სექცია დანარჩენებისგან
           განსხვავებულად გამოიყურებოდა. */}
-      <PageHeader tool="chat" title={t('chat.title')} subtitle={t('chat.subtitle')} />
+      <PageHeader
+        tool="chat"
+        title={t('chat.title')}
+        hint={<InfoHint info={t('chat.subtitle')} critical={t('chat.subtitleWarn')} />}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
         {/* ---------- საუბრების სია ---------- */}

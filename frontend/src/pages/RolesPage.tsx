@@ -10,6 +10,7 @@ import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
 import { roleIcon, roleScope, roleTone } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -87,7 +88,7 @@ export function RolesPage() {
       <PageHeader
         tool="roles"
         title={t('roles.title')}
-        subtitle={t('roles.subtitle')}
+        hint={<InfoHint info={t('roles.subtitle')} />}
         actions={
           <Button onClick={() => setAdding(true)}>
             <Plus className="size-4" />

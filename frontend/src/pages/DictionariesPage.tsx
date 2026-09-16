@@ -36,6 +36,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
 import { EmptyState } from '@/components/ui/empty-state'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -147,7 +148,7 @@ function DictionaryIndex({ available, lang }: { available: DictionaryDef[]; lang
       <PageHeader
         tool="dictionaries"
         title={t('dictionaries.title')}
-        subtitle={`${t('dictionaries.navHint')} ${t('dictionaries.indexAction')}`}
+        hint={<InfoHint info={`${t('dictionaries.navHint')} ${t('dictionaries.indexAction')}`} />}
       />
 
       <div className="space-y-8">
@@ -367,7 +368,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
         tool="dictionaries"
         module={def.module}
         title={t(def.titleKey)}
-        subtitle={t(domain ? 'dictionaries.subtitleStatuses' : 'dictionaries.subtitle')}
+        hint={<InfoHint info={t(domain ? 'dictionaries.subtitleStatuses' : 'dictionaries.subtitle')} />}
         actions={
           <>
             <Button variant="outline" onClick={() => navigate(def.recordsRoute)}>

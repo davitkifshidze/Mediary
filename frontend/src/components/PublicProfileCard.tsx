@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth'
 import { useModules, moduleName } from '@/lib/modules'
 import { errorMessage } from '@/lib/errors'
 import { VisibilityManager } from '@/components/VisibilityManager'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 
@@ -75,14 +76,16 @@ export function PublicProfileCard() {
       <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
         {isPublic ? <Globe className="size-4 text-primary" /> : <Lock className="size-4" />}
         {t('publicProfile.title')}
+        <InfoHint info={t('publicProfile.subtitle')} />
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">{t('publicProfile.subtitle')}</p>
 
       {/* ---------- ფენა 1: თვითონ პროფილი ---------- */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3.5">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">{t('publicProfile.enable')}</div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t('publicProfile.enableHint')}</p>
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            {t('publicProfile.enable')}
+            <InfoHint info={t('publicProfile.enableHint')} />
+          </div>
         </div>
         <Switch
           checked={isPublic}

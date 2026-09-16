@@ -12,6 +12,7 @@ import {
 } from '@/api/account'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -125,10 +126,10 @@ export function CustomFieldsEditor({
     <section className="mb-4 rounded-xl border border-border bg-card p-5">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-semibold tracking-tight">
+          <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
             {t('customFields.editorTitle')}
+            <InfoHint info={t('customFields.editorHint')} />
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t('customFields.editorHint')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={add}>
           <Plus className="size-4" />

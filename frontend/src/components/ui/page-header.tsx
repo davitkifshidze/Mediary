@@ -44,6 +44,18 @@ import { cn } from '@/lib/utils'
 export function PageHeader({
   title,
   subtitle,
+  /**
+   * გვერდის მუდმივი ახსნა — ლურჯი `i` და/ან წითელი სამკუთხედი (Tasks §3).
+   *
+   * ⚠️ **სათაურის რიგშია და არა `subtitle`-ის სლოტში**: `subtitle`
+   * `truncate`-ია, ე.ი. იქ ჩასმული ღილაკი ჩაიჭრებოდა.
+   * ⚠️ `subtitle` **ცოცხალი ფაქტისთვის რჩება** (რაოდენობა, ბაზის სახელი,
+   * ნაპოვნის რიცხვი) — ის ხომ ყოველ ჩატვირთვაზე იცვლება; მუდმივი აღწერა
+   * კი აიქონში გადადის. სამი მათგანი (`audit` 81 სიმბოლო, `chat` 67,
+   * `purge` 64) **დღემდე სამწერტილით იჭრებოდა**, ე.ი. გადატანა
+   * ინფორმაციას აბრუნებს და არა მალავს.
+   */
+  hint,
   /** მოდულის key — აქედან მოდის ფონი, აიქონი და ზედა ხაზი (`undefined` = ნეიტრალური) */
   module,
   /** არა-მოდულური სექციის key (`sync`, `audit`…) — ფერი და ხატულა §23-ის რეესტრიდან */
@@ -55,6 +67,7 @@ export function PageHeader({
 }: {
   title: ReactNode
   subtitle?: ReactNode
+  hint?: ReactNode
   module?: string
   tool?: ToolSectionKey
   actions?: ReactNode
@@ -114,9 +127,12 @@ export function PageHeader({
               {eyebrow}
             </p>
           )}
-          <h1 className="truncate font-display text-xl font-semibold tracking-tight sm:text-2xl">
-            {title}
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="truncate font-display text-xl font-semibold tracking-tight sm:text-2xl">
+              {title}
+            </h1>
+            {hint}
+          </div>
           {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
         </div>
 

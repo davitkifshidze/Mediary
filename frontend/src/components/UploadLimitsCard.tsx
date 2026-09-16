@@ -4,6 +4,7 @@ import type { UploadKindLimit } from '@/api/account'
 import { useUploadLimits } from '@/lib/uploadLimits'
 import { formatBytes } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **ატვირთვის ლიმიტები პარამეტრებში (2026-09-14).**
@@ -33,8 +34,8 @@ export function UploadLimitsCard() {
       <h3 className="flex items-center gap-2 text-sm font-semibold">
         <HardDriveUpload className="size-4 text-muted-foreground" />
         {t('uploads.title')}
+        <InfoHint info={t('uploads.hint')} critical={t('uploads.hintWarn')} />
       </h3>
-      <p className="mt-1 text-xs text-muted-foreground">{t('uploads.hint')}</p>
 
       {isLoading && <p className="mt-3 text-xs text-muted-foreground">{t('common.loading')}</p>}
 

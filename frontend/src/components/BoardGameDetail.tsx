@@ -16,6 +16,7 @@ import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -109,14 +110,18 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
         )}
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('boardGames.galleryTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('boardGames.galleryHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('boardGames.galleryTitle')}
+            <InfoHint info={t('boardGames.galleryHint')} />
+          </h3>
           <Gallery game={game} />
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('boardGames.rulesTitle')}</h3>
-          <p className="mb-3 text-xs text-muted-foreground">{t('boardGames.rulesHint')}</p>
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            {t('boardGames.rulesTitle')}
+            <InfoHint info={t('boardGames.rulesHint')} />
+          </h3>
           <Files game={game} />
         </section>
 

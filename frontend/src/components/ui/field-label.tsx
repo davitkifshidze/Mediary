@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    ველის ლეიბლი — სავალდებულოს ნიშანი + ინფო-აიქონი (Tasks §2.2 / §2.3).
@@ -19,6 +18,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
    ⚠️ **trigger `<button type="button">`-ია** — ფორმის შიგნით `<button>`
    ტიპის გარეშე submit-ია, ე.ი. ერთი ჰოვერის მაგივრად ჩანაწერი შეინახებოდა.
+
+   ⚠️ **სხეული `ui/info-hint.tsx`-შია და აქ თხელი გარსი დარჩა** (Tasks §3).
+   ორი მიზეზი: გვერდის დონის ახსნებს **იგივე** აიქონი და იგივე ქცევა
+   სჭირდებათ, და ძველი `Tooltip` **შეხებაზე საერთოდ არ იხსნებოდა** —
+   ე.ი. 179 გამოძახების ადგილი ტელეფონზე უჩუმრად უტექსტო იყო.
+   ⚠️ **სავალდებულოს ნიშანი წითელი `i`-დან წითელ სამკუთხედად შეიცვალა**
+   (შენი პასუხი, 2026-09-16): ორივე კრიტიკული ნიშანი ერთი ფიგურა უნდა
+   იყოს მთელ აპში, თორემ „წითელი" ორ სხვადასხვა რამეს ნიშნავს.
    ============================================================ */
 
 export function FieldHint({
@@ -26,38 +33,20 @@ export function FieldHint({
   required,
   className,
 }: {
-  /** ახსნა გაუგებარ ველზე (§2.3) — მაგ. ბორდგეიმის „მექანიკები" */
+  /** ახსნა გაუგებარ ველზე (§2.3) — მაგ. ბორდგეიმის „ბმულები" */
   hint?: string
-  /** სავალდებულო ველი (§2.2) — აიქონი წითელია */
+  /** სავალდებულო ველი (§2.2) — წითელი სამკუთხედი */
   required?: boolean
   className?: string
 }) {
   const { t } = useTranslation()
-  if (!hint && !required) return null
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={required ? t('form.requiredHint') : hint}
-          className={cn(
-            'inline-grid size-4 shrink-0 cursor-help place-items-center rounded-md align-text-bottom transition-colors',
-            required
-              ? 'text-destructive hover:bg-destructive/15'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            className,
-          )}
-        >
-          <Info className="size-3.5" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {required && <p className="font-medium text-destructive">{t('form.requiredHint')}</p>}
-        {hint && <p className={cn(required && 'mt-1')}>{hint}</p>}
-      </TooltipContent>
-    </Tooltip>
+    <InfoHint
+      info={hint}
+      critical={required ? t('form.requiredHint') : undefined}
+      className={className}
+    />
   )
 }
 

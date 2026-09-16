@@ -15,6 +15,7 @@ import { storageUrl } from '@/lib/api'
 import { isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    დამთხვევები ორ საჯარო პროფილს შორის (Tasks §16.2).
@@ -88,8 +89,8 @@ export function MatchPanel({ username }: { username: string }) {
           <p className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
             <Sparkles className="size-4 text-primary" />
             {t('matches.sharedTotal', { count: total.shared })}
+            <InfoHint info={t('matches.percentHint')} />
           </p>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t('matches.percentHint')}</p>
         </div>
       </div>
 

@@ -19,6 +19,7 @@ import { useContentLang } from '@/lib/settings'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -499,8 +500,8 @@ export function GroupsCut({
         )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {by === 'source' && <p className="text-xs text-muted-foreground">{t('gallery.bySourceHint')}</p>}
-          {by === 'provider' && <p className="text-xs text-muted-foreground">{t('gallery.byProviderHint')}</p>}
+          {by === 'source' && <InfoHint info={t('gallery.bySourceHint')} />}
+          {by === 'provider' && <InfoHint info={t('gallery.byProviderHint')} />}
           <span className="ml-auto text-xs text-muted-foreground">
             {t('gallery.groupCount', { count: groups.length })}
           </span>
@@ -510,7 +511,7 @@ export function GroupsCut({
         {filters.layout === 'mixed' && (by === 'record' || by === 'actor') ? (
           <GroupPhotos
             title={t('gallery.allPhotos')}
-            subtitle={t('gallery.mixedHint')}
+            hint={<InfoHint info={t('gallery.mixedHint')} />}
             filters={flatFilters}
             cacheKey={`flat:${by}:${type ?? from ?? 'all'}`}
             showOwner

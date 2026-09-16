@@ -3,7 +3,9 @@
     "title": "Mediary"
   },
   "common": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "info": "Information",
+    "warning": "Warning"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -30,7 +32,7 @@
     "super_admin": "Super admin",
     "user": "User",
     "adminSections": "Admin sections",
-    "adminSectionsHint": "Not modules. ⚠️ “All modules” does not open these — access must be granted explicitly. Bulk delete and the global module switches stay super-admin only.",
+    "adminSectionsHint": "Not modules — access must be granted explicitly.",
     "adminResource": {
       "users": "Users",
       "roles": "Roles",
@@ -71,7 +73,8 @@
     "everyModuleHint": "Marks every module that exists today, one by one; a module added tomorrow is not included.",
     "searchModules": "Find a module",
     "modulesTitle": "Modules",
-    "noModulesFound": "No such module"
+    "noModulesFound": "No such module",
+    "adminSectionsWarn": "Bulk delete and the global module switches stay super-admin only."
   },
   "profile": {
     "title": "Profile",
@@ -1115,16 +1118,18 @@
     "placeholderKa": "Placeholder (Georgian)",
     "placeholderEn": "Placeholder (English)",
     "required": "Don't save it empty",
-    "requiredHint": "The form won't let this field through empty. ⚠️ This is your own rule, not a database constraint — the column is optional anyway.",
+    "requiredHint": "The form won't let this field through empty.",
     "public": "Visible on the public profile",
-    "publicHint": "Turned off, this field disappears from your public card and from matches. ⚠️ The record's own visibility is a separate switch.",
+    "publicHint": "Turned off, this field disappears from your public card and from matches.",
     "enabled": "Enabled",
     "locked": "Locked",
     "lockedHint": "A record cannot be saved without this field, so its visibility and required flag are not editable. The label still is.",
     "langKa": "in Georgian",
     "langEn": "in English",
     "moveUp": "Move up",
-    "moveDown": "Move down"
+    "moveDown": "Move down",
+    "publicWarn": "The record's own visibility is a separate switch.",
+    "requiredWarn": "This is your own rule, not a database constraint — the column is optional anyway."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1132,7 +1137,7 @@
   },
   "purge": {
     "title": "Bulk delete",
-    "subtitle": "⚠️ This cannot be undone. Check the scope first, then confirm.",
+    "subtitle": "This cannot be undone. Check the scope first, then confirm.",
     "target": "What to delete",
     "scope": "Which records",
     "pickScope": "Pick a scope",
@@ -1202,8 +1207,9 @@
     "deletedOne": "“{{name}}” deleted",
     "deleteOneFailed": "“{{name}}” could not be deleted",
     "keepGallery": "Keep the photos in the gallery",
-    "keepGalleryHint": "The record goes, its photos move to “uncategorized”. ⚠️ No space is freed — the files stay on disk.",
-    "willKeepPhotos": "{{count}} photos stay in the gallery"
+    "keepGalleryHint": "The record goes, its photos stay behind with no album.",
+    "willKeepPhotos": "{{count}} photos stay in the gallery",
+    "keepGalleryWarn": "No space is freed — the files stay on disk."
   },
   "videoTypes": {
     "title": "Video types",
@@ -1565,7 +1571,7 @@
     "castSum": "{{actors}} actor(s) × {{each}} each = up to {{total}} photos",
     "recordSum": "{{records}} record(s) × {{each}} each = up to {{total}} photos",
     "pickPerActor": "Pick how many photos to download per actor",
-    "bySourceHint": "Whether a photo came from a film or a series. ⚠️ A cast photo hangs off the actor (so it is never duplicated across films), which is why an actor who plays in both shows up in both groups.",
+    "bySourceHint": "Whether a photo came from a film or a series. A cast photo hangs off the actor (so it is never duplicated across films), which is why an actor who plays in both shows up in both groups.",
     "cut": {
       "all": "All photos",
       "records": "Library",
@@ -2205,7 +2211,7 @@
   },
   "chat": {
     "title": "Chat",
-    "subtitle": "Private messages. ⚠️ You can only write between two public profiles.",
+    "subtitle": "Private messages.",
     "empty": "No conversations yet.",
     "pickConversation": "Pick a conversation on the left.",
     "noMessages": "No messages yet.",
@@ -2235,7 +2241,8 @@
     "deleteHint": "The message stays in the database (for recovery) — pick who should stop seeing it.",
     "deleteForMe": "Only for me",
     "deleteForBoth": "For both",
-    "messageDeleted": "Message deleted"
+    "messageDeleted": "Message deleted",
+    "subtitleWarn": "You can only write between two public profiles."
   },
   "customFields": {
     "title": "Extra fields",
@@ -2368,7 +2375,7 @@
   },
   "audit": {
     "title": "Audit log",
-    "subtitle": "Who changed what and when. ⚠️ The log is kept forever — cleanup is manual only.",
+    "subtitle": "Who changed what and when.",
     "total": "{{count}} entries",
     "empty": "Nothing matches this filter.",
     "pageOf": "Page {{page}} / {{last}}",
@@ -2474,7 +2481,8 @@
       "conversation": "conversation",
       "message": "message",
       "user_block": "block"
-    }
+    },
+    "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
   "table": {
     "search": "Search…",
@@ -2544,8 +2552,9 @@
     "limitLabel": "How many photos",
     "limitHint": "Up to {{max}}. Type any number.",
     "pagesLabel": "Pages",
-    "pagesHint": "Up to {{max}}. ⚠️ Each page costs one credit.",
-    "pagesOnlySerper": "Only Google Images (Serper) has pages."
+    "pagesHint": "Up to {{max}}.",
+    "pagesOnlySerper": "Only Google Images (Serper) has pages.",
+    "pagesCostWarn": "Each page costs one credit."
   },
   "empty": {
     "filteredHint": "A filter or the search is cutting the list — clear it and the records come back.",
@@ -2675,7 +2684,7 @@
   },
   "uploads": {
     "title": "Upload limits",
-    "hint": "What the server accepts, by size and format. ⚠️ Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`.",
+    "hint": "What the server accepts, by size and format.",
     "moreFormats": "+{{count}}",
     "perFile": "per file",
     "perRequest": "per request",
@@ -2688,7 +2697,8 @@
       "book": "E-books",
       "rules": "Rules (PDF)"
     },
-    "anyFormat": "any format"
+    "anyFormat": "any format",
+    "hintWarn": "Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`."
   },
   "files": {
     "viewerTitle": "File",

@@ -12,6 +12,7 @@ import { ADMIN_PREFIX, ADMIN_RESOURCES, roleIcon, roleScope, roleTone } from '@/
 import { TOOL_SECTIONS, type ToolSectionKey } from '@/lib/toolSections'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
@@ -247,10 +248,10 @@ export function RolePage() {
       <section className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="font-display text-lg font-semibold tracking-tight">
+            <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
               {t('roles.permissions')}
+              <InfoHint info={t('roles.permissionsHint')} />
             </h2>
-            <p className="mt-1 text-xs text-muted-foreground">{t('roles.permissionsHint')}</p>
           </div>
 
           {/* ცოცხალი შეჯამება — რა ეწერება სიაში, თუ ახლა შევინახავთ */}
@@ -355,8 +356,13 @@ export function RolePage() {
                 „ყველა მოდული" ჩვეულებრივ როლს ადმინის პანელს ჩუმად
                 გაუხსნიდა. გასაღები `admin:<resource>`-ია (backend-ზეც). */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground">{t('roles.adminSections')}</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">{t('roles.adminSectionsHint')}</p>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                {t('roles.adminSections')}
+                <InfoHint
+                  info={t('roles.adminSectionsHint')}
+                  critical={t('roles.adminSectionsWarn')}
+                />
+              </p>
 
               <div className="grid gap-2 lg:grid-cols-2">
                 {ADMIN_RESOURCES.map((resource) => {

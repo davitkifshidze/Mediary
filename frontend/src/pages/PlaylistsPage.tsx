@@ -28,6 +28,7 @@ import { songItem, usePlayer } from '@/lib/player'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -80,7 +81,7 @@ export function PlaylistsPage() {
       <PageHeader
         module="song"
         title={t('playlists.title')}
-        subtitle={t('playlists.subtitle')}
+        hint={<InfoHint info={t('playlists.subtitle')} />}
         actions={
           <>
             <Button onClick={() => setEditing('new')}>

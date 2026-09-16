@@ -8,6 +8,7 @@ import { mediaApi } from '@/api/media'
 import { type MediaType } from '@/lib/media'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -73,7 +74,7 @@ export function StatusBulkPage() {
       <PageHeader
         tool="bulk"
         title={t('bulkStatus.title')}
-        subtitle={t(active === 'video' ? 'bulkVideo.subtitle' : 'bulkStatus.subtitle')}
+        hint={<InfoHint info={t(active === 'video' ? 'bulkVideo.subtitle' : 'bulkStatus.subtitle')} />}
       />
 
       {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) ----------

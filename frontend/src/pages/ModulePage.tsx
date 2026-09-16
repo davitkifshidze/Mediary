@@ -27,6 +27,7 @@ import { roleName } from '@/lib/display'
 import { CustomFieldsEditor } from '@/components/CustomFieldsEditor'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { DataTable } from '@/components/ui/data-table'
+import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { UserAvatar } from '@/components/UserAvatar'
 import { Button } from '@/components/ui/button'
@@ -314,10 +315,10 @@ export function ModulePage() {
               ღილაკი ხსნის მოდალს, შიგნით კი საერთო `DataTable` (ძებნა ·
               დალაგება · გვერდები) — იგივე, რაც `/users`-ს აქვს. */}
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">
+            <h2 className="mb-4 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
               {t('admin.moduleAssign')}
+              <InfoHint info={t('admin.userModulesHint')} />
             </h2>
-            <p className="mb-4 text-xs text-muted-foreground">{t('admin.userModulesHint')}</p>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
@@ -457,8 +458,10 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
   return (
     <section className="mb-4 rounded-xl border border-border bg-card p-5">
       <div className="mb-2">
-        <h2 className="font-display text-lg font-semibold tracking-tight">{t('fields.title')}</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t('fields.hint')}</p>
+        <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('fields.title')}
+          <InfoHint info={t('fields.hint')} />
+        </h2>
       </div>
 
       {fields.map((field) => {
@@ -586,6 +589,7 @@ function FieldEditor({
         />
         <span>
           {t('fields.required')}
+          <InfoHint critical={t('fields.requiredWarn')} />
           <span className="block text-xs text-muted-foreground">{t('fields.requiredHint')}</span>
         </span>
       </label>
@@ -599,6 +603,7 @@ function FieldEditor({
         />
         <span>
           {t('fields.public')}
+          <InfoHint critical={t('fields.publicWarn')} />
           <span className="block text-xs text-muted-foreground">{t('fields.publicHint')}</span>
         </span>
       </label>

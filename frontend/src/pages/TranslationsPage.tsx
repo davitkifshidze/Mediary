@@ -10,6 +10,7 @@ import { TranslateDialog } from '@/components/TranslateDialog'
 import { NumberSelect, SettingRow } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
@@ -59,7 +60,7 @@ export function TranslationsPage() {
       <PageHeader
         tool="translations"
         title={t('translate.title')}
-        subtitle={t('translate.pageHint')}
+        hint={<InfoHint info={t('translate.pageHint')} />}
       />
 
       <section className="rounded-xl border border-border bg-card p-5">

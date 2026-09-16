@@ -37,6 +37,7 @@ import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
@@ -412,7 +413,7 @@ export function PurgePage() {
       <PageHeader
         tool="purge"
         title={t('purge.title')}
-        subtitle={t('purge.subtitle')}
+        hint={<InfoHint critical={t('purge.subtitle')} />}
       />
 
       <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
@@ -585,6 +586,7 @@ export function PurgePage() {
             <Checkbox checked={keepGallery} onCheckedChange={() => setKeepGallery((v) => !v)} />
             <span>
               {t('purge.keepGallery')}
+              <InfoHint critical={t('purge.keepGalleryWarn')} />
               <span className="block text-xs text-muted-foreground">{t('purge.keepGalleryHint')}</span>
             </span>
           </label>

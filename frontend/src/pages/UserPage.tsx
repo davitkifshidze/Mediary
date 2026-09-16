@@ -36,6 +36,7 @@ import { StorageBar } from '@/components/StorageBar'
 import { StorageLibrary } from '@/components/StorageLibrary'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -312,8 +313,10 @@ export function UserPage() {
 
       {/* ---------- მოდულები ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('admin.modules')}</h2>
-        <p className="mb-4 text-xs text-muted-foreground">{t('admin.userModulesHint')}</p>
+        <h2 className="mb-4 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('admin.modules')}
+          <InfoHint info={t('admin.userModulesHint')} />
+        </h2>
 
         <div className="space-y-2">
           {modules.map((m) => {
@@ -351,8 +354,10 @@ export function UserPage() {
 
       {/* ---------- ატვირთული ფაილები (1.3) ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('admin.filesTitle')}</h2>
-        <p className="mb-4 text-xs text-muted-foreground">{t('admin.filesHint')}</p>
+        <h2 className="mb-4 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('admin.filesTitle')}
+          <InfoHint info={t('admin.filesHint')} />
+        </h2>
 
         {/* სია საერთო კომპონენტია `/settings`-თან (17.5) — ერთი ხედი, ერთი წყარო.
             ადმინის მხარეს წაშლა განზრახ არ არის: სხვისი ფაილი მას არ ეკუთვნის. */}
@@ -362,8 +367,10 @@ export function UserPage() {
       {/* ---------- მოთხოვნები (Tasks 1.3 — აქვე დამტკიცება, არა მხოლოდ ისტორია) ---------- */}
       {requests.length > 0 && (
         <section className="mb-6 rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('admin.requests')}</h2>
-          <p className="mb-3 text-xs text-muted-foreground">{t('admin.userRequestsHint')}</p>
+          <h2 className="mb-3 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+            {t('admin.requests')}
+            <InfoHint info={t('admin.userRequestsHint')} />
+          </h2>
           <ul className="space-y-2 text-sm">
             {requests.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-2 border-b border-border pb-2 last:border-b-0">

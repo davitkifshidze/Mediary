@@ -25,6 +25,7 @@ import { formatBytes } from '@/lib/utils'
 import { StorageBar } from '@/components/StorageBar'
 import { StorageLibrary, type BulkScope } from '@/components/StorageLibrary'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -96,8 +97,10 @@ export function StorageCard() {
 
   return (
     <section className="mb-6 rounded-xl border border-border bg-card p-5">
-      <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('storage.title')}</h2>
-      <p className="mb-4 text-xs text-muted-foreground">{t('storage.hint')}</p>
+      <h2 className="mb-4 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+        {t('storage.title')}
+        <InfoHint info={t('storage.hint')} />
+      </h2>
 
       {usageQ.isLoading || !usage ? (
         <div className="h-12 animate-pulse rounded-md bg-muted" />
@@ -120,8 +123,8 @@ export function StorageCard() {
             </p>
           )}
 
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">{t('storage.recalcHint')}</p>
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
+            <InfoHint info={t('storage.recalcHint')} />
             <Button
               variant="outline"
               size="sm"
@@ -231,8 +234,10 @@ function UploadedFiles() {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <h3 className="mb-1 text-sm font-semibold">{t('storage.filesTitle')}</h3>
-      <p className="mb-3 text-xs text-muted-foreground">{t('storage.filesHint')}</p>
+      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+        {t('storage.filesTitle')}
+        <InfoHint info={t('storage.filesHint')} />
+      </h3>
 
       {filesQ.isLoading ? (
         <div className="h-10 animate-pulse rounded-md bg-muted" />
@@ -296,8 +301,10 @@ function QuotaRequest({ quota }: { quota: number }) {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <h3 className="mb-1 text-sm font-semibold">{t('storage.requestTitle')}</h3>
-      <p className="mb-3 text-xs text-muted-foreground">{t('storage.requestHint')}</p>
+      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+        {t('storage.requestTitle')}
+        <InfoHint info={t('storage.requestHint')} />
+      </h3>
 
       {pending ? (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
@@ -405,13 +412,18 @@ function OrphanFiles() {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <h3 className="mb-1 text-sm font-semibold">{t('storage.orphansTitle')}</h3>
-      {/* §6.3 — ტექსტი ხსნის, **რა არის** და **რატომ გამოჩნდა**: ადრე მხოლოდ
-          „დისკზე არიან, ბაზაში კი არავინ იხსენიებს" ეწერა, რაც არ პასუხობდა
-          კითხვას „საიდან მოვიდა და უსაფრთხოა თუ არა წაშლა". */}
-      <p className="mb-1.5 text-xs text-muted-foreground">{t('storage.orphansHint')}</p>
-      <p className="mb-1.5 text-xs text-muted-foreground">{t('storage.orphansWhy')}</p>
-      <p className="mb-3 text-xs text-muted-foreground">{t('storage.orphansSafe')}</p>
+      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+        {t('storage.orphansTitle')}
+        <InfoHint
+          info={
+            <>
+              <span className="block">{t('storage.orphansHint')}</span>
+              <span className="mt-1 block">{t('storage.orphansWhy')}</span>
+            </>
+          }
+          critical={t('storage.orphansSafe')}
+        />
+      </h3>
 
       {orphansQ.isLoading ? (
         <div className="h-10 animate-pulse rounded-md bg-muted" />

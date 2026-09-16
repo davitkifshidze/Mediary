@@ -14,6 +14,7 @@ import { useDeleteGroupPhotos } from '@/lib/galleryDelete'
 import { formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
@@ -149,7 +150,7 @@ export function AlbumsCut() {
         {dialogs}
         <GroupPhotos
           title={open.title}
-          subtitle={t('gallery.albumHint')}
+          hint={<InfoHint info={t('gallery.albumHint')} />}
             filters={{ owner: `album:${open.id}` }}
           cacheKey={`album:${open.id}`}
           onBack={() => setOpen(null)}
@@ -163,7 +164,7 @@ export function AlbumsCut() {
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <p className="text-xs text-muted-foreground">{t('gallery.albumsHint')}</p>
+        <InfoHint info={t('gallery.albumsHint')} />
 
         <div className="ml-auto flex items-center gap-2">
           <LayoutToggle value={layout} onChange={setLayout} />
@@ -181,7 +182,7 @@ export function AlbumsCut() {
       {layout === 'mixed' ? (
         <GroupPhotos
           title={t('gallery.cut.albums')}
-          subtitle={t('gallery.mixedHint')}
+          hint={<InfoHint info={t('gallery.mixedHint')} />}
           filters={{ album: 'any' }}
           cacheKey="flat:albums"
           emptyText={t('gallery.albumsEmpty')}

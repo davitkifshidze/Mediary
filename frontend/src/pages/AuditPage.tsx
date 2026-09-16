@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DateRangePicker } from '@/components/ui/date-picker'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -149,7 +150,11 @@ export function AuditPage() {
 
   return (
     <PageContainer>
-      <PageHeader tool="audit" title={t('audit.title')} subtitle={t('audit.subtitle')} />
+      <PageHeader
+        tool="audit"
+        title={t('audit.title')}
+        hint={<InfoHint info={t('audit.subtitle')} critical={t('audit.subtitleWarn')} />}
+      />
 
       {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
       <AuditScope
