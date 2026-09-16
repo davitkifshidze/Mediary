@@ -40,6 +40,7 @@ export function DataTable<T>({
   defaultSort,
   pageSize: initialPageSize = 10,
   empty,
+  toolbar,
   minWidth = '640px',
 }: {
   rows: T[]
@@ -50,7 +51,24 @@ export function DataTable<T>({
   searchPlaceholder?: string
   defaultSort?: { key: string; dir: 'asc' | 'desc' }
   pageSize?: number
-  empty?: string
+  /**
+   * ცარიელი ცხრილის შიგთავსი.
+   *
+   * ⚠️ **`ReactNode` და არა `string`** (Tasks §5.5): პროექტის ცარიელი
+   * მდგომარეობა `EmptyState`-ია — „რა ცარიელია · რატომ · რა არის შემდეგი
+   * ღილაკი" — და სტრიქონი მას ვერ იტევდა, ე.ი. ცხრილზე გადასული გვერდი
+   * იძულებული იყო ერთი ნაცრისფერი წინადადებით დაბრუნებულიყო იქ, საიდანაც
+   * §2.4 გამოვიდა.
+   */
+  empty?: ReactNode
+  /**
+   * გვერდის საკუთარი კონტროლი ძებნისა და გვერდის ზომის გვერდით
+   * (როლისა და სტატუსის ფილტრები `/users`-ზე).
+   *
+   * ⚠️ **ხელსაწყოების იმავე ზოლში და არა მის ზემოთ** — ცალკე რიგში ისინი
+   * ცხრილს აღარ ეკუთვნოდნენ და ორ სხვადასხვა ზოლად იკითხებოდა.
+   */
+  toolbar?: ReactNode
   minWidth?: string
 }) {
   const { t } = useTranslation()
@@ -129,6 +147,8 @@ export function DataTable<T>({
           </SelectContent>
         </Select>
 
+        {toolbar}
+
         <span className="ml-auto text-xs text-muted-foreground">
           {t('table.rowCount', { shown: shown.length, total: filtered.length })}
         </span>
@@ -165,7 +185,17 @@ export function DataTable<T>({
           <tbody>
             {!shown.length ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-6 text-center text-muted-foreground">
+                {/* ⚠️ ცენტრირებული, ნაცრისფერი სტილი მხოლოდ **ტექსტს** ეხება —
+                    `EmptyState`-ს თავისი ტიპოგრაფია აქვს და მემკვიდრეობით
+                    მიღებული `text-muted-foreground` მის სათაურსაც გაფერმკრთალებდა. */}
+                <td
+                  colSpan={columns.length}
+                  className={
+                    empty === undefined || typeof empty === 'string'
+                      ? 'px-3 py-6 text-center text-muted-foreground'
+                      : 'p-3'
+                  }
+                >
                   {empty ?? t('table.empty')}
                 </td>
               </tr>

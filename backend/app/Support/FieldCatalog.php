@@ -141,7 +141,9 @@ final class FieldCatalog
             ['key' => 'publisher', 'type' => 'text', 'sort_order' => 30],
             ['key' => 'year', 'type' => 'number', 'sort_order' => 40],
             ['key' => 'pages', 'type' => 'number', 'sort_order' => 50],
-            ['key' => 'language', 'type' => 'text', 'sort_order' => 60],
+            // ⚠️ `key` **არ იცვლება** (Tasks §6.1) — გასაღების ცვლილება ყველა
+            // მომხმარებლის `module_user.settings.fields` overrides-ს ობოლს ტოვებს
+            ['key' => 'language', 'type' => 'select', 'sort_order' => 60],
             ['key' => 'source_url', 'type' => 'link', 'sort_order' => 70],
             // ⚠️ **ფორმატი პროგრესის ერთეულს წყვეტს** (`Book::syncProgress()`:
             // აუდიოწიგნზე მხოლოდ პროცენტია), ე.ი. მისი დამალვა გააზრებული

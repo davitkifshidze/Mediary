@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Loader2, Plus, Search } from 'lucide-react'
 import {
   BOOK_FORMATS,
+  BOOK_LANGUAGES,
   BOOK_STATUSES,
   createBook,
   fetchBookCandidates,
@@ -406,12 +407,30 @@ export function BookForm({
             <FieldLabel htmlFor="b-language" required={fields.required('language')} hint={fields.hint('language')}>
               {fields.label('language')}
             </FieldLabel>
-            <Input
-              id="b-language"
-              placeholder="ka / en / ru"
+            <Select
               value={form.language}
-              onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-            />
+              onValueChange={(v) => setForm((f) => ({ ...f, language: v }))}
+            >
+              <SelectTrigger id="b-language">
+                <SelectValue placeholder={t('validation.choose')} />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`books.languages.${value}`)}
+                  </SelectItem>
+                ))}
+                {/* ⚠️ **ჩანაწერის საკუთარი მნიშვნელობა, თუ ის სიაში არაა.**
+                    ჩვენივე `OpenLibraryClient` აბრუნებს `de`/`fr`-საც და
+                    დანარჩენზე ნედლ MARC კოდს (`spa`, `ita`, `jpn`…). ასეთი
+                    მნიშვნელობა მკაცრ სიაში **ცარიელ სელექტად** დაიხატებოდა
+                    და პირველივე შენახვა `language`-ს `null`-ად გადააწერდა —
+                    ე.ი. მონაცემს დაკარგავდა. */}
+                {form.language && !(BOOK_LANGUAGES as readonly string[]).includes(form.language) && (
+                  <SelectItem value={form.language}>{form.language}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
           {/* §5.7 — „ჩემი ქულა" ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება) */}
         </div>

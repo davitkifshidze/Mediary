@@ -204,7 +204,28 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "all": "All"
-    }
+    },
+    "type": {
+      "module_access": "Module access",
+      "storage_increase": "Quota increase",
+      "genre_delete": "Genre deletion"
+    },
+    "col": {
+      "type": "Type",
+      "request": "Request",
+      "user": "User",
+      "date": "Date",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "search": "Search by user, module or note…",
+    "review": "Review",
+    "details": "Details",
+    "emptyHint": "There are no requests in this cut — pick another card or clear the search.",
+    "reviewedBy": "Reviewed by {{name}}",
+    "noteLabel": "Note",
+    "grantLabel": "Amount granted",
+    "grantHint": "Empty = exactly what was requested."
   },
   "admin": {
     "title": "Admin",
@@ -1829,7 +1850,8 @@
       "add": "To links",
       "added": "Added"
     },
-    "playersAnyHint": "Fits at least one of them (not all of them at once)."
+    "playersAnyHint": "Fits at least one of them (not all of them at once).",
+    "notesEmpty": "No notes yet."
   },
   "books": {
     "title": "Books",
@@ -1921,7 +1943,12 @@
     "notePlaceholder": "Note text…",
     "quotePlaceholder": "Quote text…",
     "sourceUrl": "Source / reading link",
-    "lookupManualOnly": "Georgian titles are not searched — no free catalogue knows them. Fill the fields by hand (searching by the English title works)."
+    "lookupManualOnly": "Georgian titles are not searched — no free catalogue knows them. Fill the fields by hand (searching by the English title works).",
+    "languages": {
+      "ka": "Georgian",
+      "en": "English",
+      "ru": "Russian"
+    }
   },
   "games": {
     "title": "Games",
@@ -2060,7 +2087,8 @@
     "franchiseAdd": "Add a new part to the library",
     "franchiseAddHint": "Find it on RAWG and add it — the new game lands in this franchise right away.",
     "franchiseAddManual": "Add manually: “{{name}}”",
-    "minutesShort": "min"
+    "minutesShort": "min",
+    "notesEmpty": "No notes yet."
   },
   "notes": {
     "title": "Notes",
@@ -2860,5 +2888,18 @@
       "life": "Everyday",
       "other": "Other"
     }
+  },
+  "recordNotes": {
+    "title": "Note",
+    "quoteTitle": "Quote",
+    "search": "Search the notes…",
+    "clearSearch": "Clear the search",
+    "noMatch": "Nothing matched the search.",
+    "noMatchHint": "Try another word or clear the search.",
+    "emptyHint": "Write the first note in the field above.",
+    "addedAt": "Added",
+    "editedAt": "Edited",
+    "deleteTitle": "Delete the note",
+    "deleteHint": "This note will be deleted for good."
   }
 }

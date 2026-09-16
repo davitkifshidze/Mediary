@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Image as ImageIcon, Plus, Quote, Trash2, Upload } from 'lucide-react'
+import { Download, FileText, Image as ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react'
 import {
   createBookNote,
   deleteBookFile,
@@ -9,6 +9,7 @@ import {
   fetchBookFiles,
   fetchBookNotes,
   setBookProgress,
+  updateBookNote,
   uploadBookFiles,
   type Book,
   type BookFile,
@@ -16,15 +17,17 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
+import { RecordNotes } from '@/components/RecordNotes'
 import { Button } from '@/components/ui/button'
+import { Chip, ChipRow } from '@/components/ui/chip'
+import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn, formatBytes } from '@/lib/utils'
+import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
    წიგნის დეტალები — პროგრესი, ფაილები (pdf/epub) და ციტატები (Tasks §12).
@@ -202,19 +205,14 @@ function FilesCard({ book }: { book: Book }) {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      {/* ⚠️ სახეობის გადამრთველი `Chip`-ია და არა ხელით აწყობილი პილული
+          (Tasks §6.6) — `ui/chip.tsx` სწორედ იმისთვის გამოვიდა, რომ თორმეტი
+          ასლი ხუთი სხვადასხვა პადინგით არ ეხატა. */}
+      <ChipRow className="mb-3">
         {FILE_KINDS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setKind(value)}
-            className={cn(
-              'cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors',
-              kind === value ? 'bg-secondary font-medium' : 'text-muted-foreground hover:bg-muted',
-            )}
-          >
+          <Chip key={value} active={kind === value} onClick={() => setKind(value)}>
             {t(`books.fileKinds.${value}`)}
-          </button>
+          </Chip>
         ))}
 
         <Button
@@ -239,11 +237,23 @@ function FilesCard({ book }: { book: Book }) {
             e.target.value = ''
           }}
         />
-      </div>
+      </ChipRow>
 
       {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
       {!isLoading && !files.length && (
-        <p className="text-xs text-muted-foreground">{t('books.filesEmpty')}</p>
+        /* ⚠️ ბარე ნაცრისფერი `<p>` იყო — ზუსტად ის შემთხვევა, რისთვისაც
+           `EmptyState` დაიწერა (რა ცარიელია · რატომ · რა არის შემდეგი). */
+        <EmptyState
+          icon={<Paperclip className="size-6" />}
+          title={t('books.filesEmpty')}
+          hint={t('books.filesHint')}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => input.current?.click()}>
+              <Upload className="size-3.5" />
+              {t('books.fileUpload')}
+            </Button>
+          }
+        />
       )}
 
       <ul className="space-y-1.5">
@@ -309,116 +319,27 @@ function FilesCard({ book }: { book: Book }) {
 
 function NotesCard({ book }: { book: Book }) {
   const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
 
-  const [body, setBody] = useState('')
-  const [page, setPage] = useState('')
-  const [isQuote, setIsQuote] = useState(false)
-
-  const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['book-notes', book.id],
-    queryFn: () => fetchBookNotes(book.id),
-  })
-
-  const done = () => {
-    qc.invalidateQueries({ queryKey: ['book-notes', book.id] })
-    qc.invalidateQueries({ queryKey: ['books'] })
-  }
-  const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
-
-  const add = useMutation({
-    mutationFn: () =>
-      createBookNote(book.id, {
-        body,
-        is_quote: isQuote,
-        page: page ? Number(page) : null,
-      }),
-    onSuccess: () => {
-      setBody('')
-      setPage('')
-      done()
-    },
-    onError: fail,
-  })
-
-  const remove = useMutation({ mutationFn: deleteBookNote, onSuccess: done, onError: fail })
-
+  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.2/§6.7) —
+     წიგნი ერთადერთია, სადაც `quotes` ჩართულია: `is_quote` და `page` მხოლოდ
+     `book_notes`-ს აქვს. დანარჩენ ოთხ მოდულს ზუსტად იგივე კომპონენტი
+     ემსახურება ამ ორი ველის გარეშე. */
   return (
-    <div>
-      <div className="mb-3 space-y-2">
-        <Textarea
-          rows={2}
-          placeholder={t(isQuote ? 'books.quotePlaceholder' : 'books.notePlaceholder')}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={isQuote}
-              onChange={(e) => setIsQuote(e.target.checked)}
-              className="cursor-pointer"
-            />
-            {t('books.isQuote')}
-          </label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            className="w-24"
-            placeholder={t('books.notePage')}
-            value={page}
-            onChange={(e) => setPage(e.target.value)}
-          />
-          <Button
-            size="sm"
-            className="ml-auto"
-            disabled={!body.trim() || add.isPending}
-            onClick={() => add.mutate()}
-          >
-            <Plus className="size-3.5" />
-            {t('actions.add')}
-          </Button>
-        </div>
-      </div>
-
-      {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
-      {!isLoading && !notes.length && (
-        <p className="text-xs text-muted-foreground">{t('books.notesEmpty')}</p>
-      )}
-
-      <ul className="space-y-2">
-        {notes.map((note) => (
-          <li
-            key={note.id}
-            className={cn(
-              'rounded-md border px-3 py-2 text-sm',
-              note.is_quote ? 'border-primary/40 bg-secondary/40 italic' : 'border-border',
-            )}
-          >
-            <div className="flex items-start gap-2">
-              {note.is_quote && <Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-              <p className="min-w-0 flex-1 whitespace-pre-wrap break-words">{note.body}</p>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-destructive"
-                onClick={() => remove.mutate(note.id)}
-                aria-label={t('actions.delete')}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-            {note.page != null && (
-              <p className="mt-1 text-xs not-italic text-muted-foreground">
-                {t('books.pageShort', { page: note.page })}
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <RecordNotes
+      queryKey={['book-notes', book.id]}
+      invalidate={[['books']]}
+      api={{
+        list: () => fetchBookNotes(book.id),
+        create: (input) => createBookNote(book.id, input),
+        update: (id, input) => updateBookNote(id, input),
+        remove: deleteBookNote,
+      }}
+      quotes
+      placeholder={t('books.notePlaceholder')}
+      quotePlaceholder={t('books.quotePlaceholder')}
+      addLabel={t('actions.add')}
+      emptyTitle={t('books.notesEmpty')}
+      emptyHint={t('recordNotes.emptyHint')}
+    />
   )
 }

@@ -10,6 +10,7 @@ import {
   deleteGameVideo,
   fetchGameFiles,
   fetchGameNotes,
+  updateGameNote,
   fetchGameVideos,
   GAME_VIDEO_KINDS,
   uploadGameFiles,
@@ -19,6 +20,7 @@ import {
 } from '@/api/games'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
+import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
@@ -29,7 +31,6 @@ import { PhotoGrid } from '@/components/ui/photo-grid'
 import { formatMinutes } from '@/lib/videoDuration'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { formatBytes } from '@/lib/utils'
@@ -479,76 +480,25 @@ function Files({ game }: { game: Game }) {
 
 function Notes({ game }: { game: Game }) {
   const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  const [body, setBody] = useState('')
 
-  const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['game-notes', game.id],
-    queryFn: () => fetchGameNotes(game.id),
-  })
-
-  const done = () => {
-    qc.invalidateQueries({ queryKey: ['game-notes', game.id] })
-    qc.invalidateQueries({ queryKey: ['games'] })
-  }
-  const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
-
-  const add = useMutation({
-    mutationFn: () => createGameNote(game.id, body),
-    onSuccess: () => {
-      setBody('')
-      done()
-    },
-    onError: fail,
-  })
-
-  const remove = useMutation({ mutationFn: deleteGameNote, onSuccess: done, onError: fail })
-
+  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.7).
+     აქ ადრე `books.notesEmpty` იყო ნასესხები — გაზიარებულ კომპონენტს
+     ტექსტი გამომძახებლისგან მოაქვს, ე.ი. თითოეულ მოდულს თავისი გასაღები
+     უნდა ჰქონდეს და არა მეზობლის სივრცე. */
   return (
-    <div>
-      <div className="mb-3 space-y-2">
-        <Textarea
-          rows={2}
-          placeholder={t('games.notePlaceholder')}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-        <Button
-          size="sm"
-          className="ml-auto flex"
-          disabled={!body.trim() || add.isPending}
-          onClick={() => add.mutate()}
-        >
-          <Plus className="size-3.5" />
-          {t('actions.add')}
-        </Button>
-      </div>
-
-      {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
-      {!isLoading && !notes.length && (
-        <p className="text-xs text-muted-foreground">{t('books.notesEmpty')}</p>
-      )}
-
-      <ul className="space-y-2">
-        {notes.map((note) => (
-          <li
-            key={note.id}
-            className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
-          >
-            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words">{note.body}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
-              onClick={() => remove.mutate(note.id)}
-              aria-label={t('actions.delete')}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <RecordNotes
+      queryKey={['game-notes', game.id]}
+      invalidate={[['games']]}
+      api={{
+        list: () => fetchGameNotes(game.id),
+        create: (input) => createGameNote(game.id, input.body),
+        update: (id, input) => updateGameNote(id, input.body),
+        remove: deleteGameNote,
+      }}
+      placeholder={t('games.notePlaceholder')}
+      addLabel={t('actions.add')}
+      emptyTitle={t('games.notesEmpty')}
+      emptyHint={t('recordNotes.emptyHint')}
+    />
   )
 }

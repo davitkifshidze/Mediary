@@ -305,6 +305,12 @@ export async function createBoardGameNote(gameId: number, body: string): Promise
   return data.data
 }
 
+/** იგივე, რაც თამაშზე — `PATCH` არსებობდა, ჰელპერი აკლდა (Tasks §6.5) */
+export async function updateBoardGameNote(id: number, body: string): Promise<BoardGameNote> {
+  const { data } = await api.patch(`/board-game-notes/${id}`, { body })
+  return data.data
+}
+
 export async function deleteBoardGameNote(id: number): Promise<void> {
   await api.delete(`/board-game-notes/${id}`)
 }

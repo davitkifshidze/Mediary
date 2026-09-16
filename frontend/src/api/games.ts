@@ -410,6 +410,15 @@ export async function createGameNote(gameId: number, body: string): Promise<Game
   return data.data
 }
 
+/**
+ * ⚠️ **`PATCH` მარშრუტი დასაწყისიდან არსებობდა, ფრონტის ჰელპერი კი არა** —
+ * ე.ი. ჩანიშვნის რედაქტირება UI-ში შეუძლებელი იყო (Tasks §6.5).
+ */
+export async function updateGameNote(id: number, body: string): Promise<GameNote> {
+  const { data } = await api.patch(`/game-notes/${id}`, { body })
+  return data.data
+}
+
 export async function deleteGameNote(id: number): Promise<void> {
   await api.delete(`/game-notes/${id}`)
 }

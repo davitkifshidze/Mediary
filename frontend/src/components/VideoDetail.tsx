@@ -15,16 +15,15 @@ import {
 } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
+import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
-import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import { useConfirm, useToast } from '@/components/ui/feedback'
+import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
    ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · ჩანიშვნები · დოკუმენტები.
@@ -53,10 +52,7 @@ export function VideoDetail({
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('video')
-  const [noteBody, setNoteBody] = useState('')
-  const [editing, setEditing] = useState<{ id: number; body: string } | null>(null)
 
   const filesQ = useQuery({
     queryKey: ['video-files', video.id],
@@ -85,24 +81,6 @@ export function VideoDetail({
   /* ონლაინ მნახველი (2026-09-14) — ⚠️ `resolve: storageUrl` იმიტომაა, რომ ეს
      მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => removeFile.mutate(id) })
-
-  const addNote = useMutation({
-    mutationFn: (body: string) => createVideoNote(video.id, body),
-    onSuccess: () => {
-      setNoteBody('')
-      refresh()
-    },
-    onError: fail,
-  })
-  const saveNote = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: string }) => updateVideoNote(id, body),
-    onSuccess: () => {
-      setEditing(null)
-      refresh()
-    },
-    onError: fail,
-  })
-  const removeNote = useMutation({ mutationFn: deleteVideoNote, onSuccess: refresh, onError: fail })
 
   const pick = (kind: 'image' | 'doc') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -185,83 +163,23 @@ export function VideoDetail({
         {tab === 'notes' && (
           <>
             <TabInfo>{t('videos.notesInfo')}</TabInfo>
-            <div className="mb-4">
-              <Textarea
-                rows={2}
-                placeholder={t('videos.notePlaceholder')}
-                value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
-              />
-              <div className="mt-2 flex justify-end">
-                <Button
-                  size="sm"
-                  disabled={!noteBody.trim() || addNote.isPending}
-                  onClick={() => addNote.mutate(noteBody.trim())}
-                >
-                  <Plus className="size-4" />
-                  {t('videos.addNote')}
-                </Button>
-              </div>
-            </div>
-
-            {notes.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                {t('videos.noNotes')}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {notes.map((n) => (
-                  <li key={n.id} className="rounded-lg border border-border p-3">
-                    {editing?.id === n.id ? (
-                      <>
-                        <Textarea
-                          rows={3}
-                          value={editing.body}
-                          onChange={(e) => setEditing({ id: n.id, body: e.target.value })}
-                        />
-                        <div className="mt-2 flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
-                            {t('actions.cancel')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            disabled={!editing.body.trim()}
-                            onClick={() => saveNote.mutate({ id: n.id, body: editing.body.trim() })}
-                          >
-                            {t('actions.save')}
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="whitespace-pre-line text-sm">{n.body}</p>
-                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          {n.created_at && new Date(n.created_at).toLocaleString()}
-                          <button
-                            onClick={() => setEditing({ id: n.id, body: n.body })}
-                            className="ml-auto cursor-pointer hover:text-foreground"
-                          >
-                            {t('actions.edit')}
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('videos.deleteVideoNote'),
-                                variant: 'destructive',
-                              })
-                              if (ok) removeNote.mutate(n.id)
-                            }}
-                            className="cursor-pointer text-destructive hover:opacity-80"
-                          >
-                            {t('actions.delete')}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* ⚠️ სხეული გაზიარებულია (Tasks §6.7) — აქ ადრე ხელით აწყობილი
+                სია იდგა თავისი inline რედაქტირებით, წაშლის დადასტურების
+                გარეშე და `toLocaleString()`-ით. */}
+            <RecordNotes
+              queryKey={['video-notes', video.id]}
+              invalidate={[['videos']]}
+              api={{
+                list: () => fetchVideoNotes(video.id),
+                create: (input) => createVideoNote(video.id, input.body),
+                update: (id, input) => updateVideoNote(id, input.body),
+                remove: deleteVideoNote,
+              }}
+              placeholder={t('videos.notePlaceholder')}
+              addLabel={t('videos.addNote')}
+              emptyTitle={t('videos.noNotes')}
+              emptyHint={t('recordNotes.emptyHint')}
+            />
           </>
         )}
 

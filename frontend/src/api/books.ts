@@ -13,6 +13,19 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 /** „ჩემი ქულის" ჭერი — იგივე რიცხვი `Book::MAX_RATING`-შია */
 export const BOOK_MAX_RATING = 10
 
+/**
+ * წიგნის ენა — **პრესეტები და არა დახურული სია** (Tasks §6.1, შენი არჩევანი).
+ *
+ * ⚠️ **მკაცრი სამვარიანტიანი სია მონაცემს დაკარგავდა.** ჩვენივე
+ * `OpenLibraryClient::language()` `de`-სა და `fr`-საც აბრუნებს, დანარჩენზე კი
+ * ნედლ MARC კოდს (`spa`, `ita`, `jpn`…): ასეთი მნიშვნელობა სელექტში ვერ
+ * მოიძებნებოდა, ველი ცარიელად დაიხატებოდა და პირველივე შენახვა
+ * `language`-ს `null`-ად გადააწერდა. ამიტომ ფორმა ჩანაწერის საკუთარ
+ * მნიშვნელობას **თვითონ უმატებს** სიას, backend-ზე კი `Rule::in` **არ
+ * ემატება** — ის 422-ს დააბრუნებდა იმაზე, რაც ჩვენმა იმპორტიორმა ჩაწერა.
+ */
+export const BOOK_LANGUAGES = ['ka', 'en', 'ru'] as const
+
 export const BOOK_FORMATS = ['print', 'ebook', 'audio'] as const
 export type BookFormat = (typeof BOOK_FORMATS)[number]
 

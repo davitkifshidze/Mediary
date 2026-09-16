@@ -1,26 +1,27 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Plus, Trash2, Upload, Users } from 'lucide-react'
+import { Download, FileText, Trash2, Upload, Users } from 'lucide-react'
 import {
   createBoardGameNote,
   deleteBoardGameFile,
   deleteBoardGameNote,
   fetchBoardGameFiles,
   fetchBoardGameNotes,
+  updateBoardGameNote,
   uploadBoardGameFiles,
   type BoardGame,
   type BoardGameFile,
 } from '@/api/boardGames'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
+import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { formatBytes } from '@/lib/utils'
 
@@ -316,73 +317,22 @@ function Files({ game }: { game: BoardGame }) {
 
 function Notes({ game }: { game: BoardGame }) {
   const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
-  const [body, setBody] = useState('')
 
-  const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['board-game-notes', game.id],
-    queryFn: () => fetchBoardGameNotes(game.id),
-  })
-
-  const done = () => {
-    qc.invalidateQueries({ queryKey: ['board-game-notes', game.id] })
-    qc.invalidateQueries({ queryKey: ['board-games'] })
-  }
-  const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
-
-  const add = useMutation({
-    mutationFn: () => createBoardGameNote(game.id, body),
-    onSuccess: () => {
-      setBody('')
-      done()
-    },
-    onError: fail,
-  })
-
-  const remove = useMutation({ mutationFn: deleteBoardGameNote, onSuccess: done, onError: fail })
-
+  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.7) */
   return (
-    <div>
-      <div className="mb-3 space-y-2">
-        <Textarea
-          rows={2}
-          placeholder={t('boardGames.notePlaceholder')}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-        <Button
-          size="sm"
-          className="ml-auto flex"
-          disabled={!body.trim() || add.isPending}
-          onClick={() => add.mutate()}
-        >
-          <Plus className="size-3.5" />
-          {t('actions.add')}
-        </Button>
-      </div>
-
-      {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
-      {!isLoading && !notes.length && (
-        <p className="text-xs text-muted-foreground">{t('books.notesEmpty')}</p>
-      )}
-
-      <ul className="space-y-2">
-        {notes.map((note) => (
-          <li key={note.id} className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm">
-            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words">{note.body}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
-              onClick={() => remove.mutate(note.id)}
-              aria-label={t('actions.delete')}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <RecordNotes
+      queryKey={['board-game-notes', game.id]}
+      invalidate={[['board-games']]}
+      api={{
+        list: () => fetchBoardGameNotes(game.id),
+        create: (input) => createBoardGameNote(game.id, input.body),
+        update: (id, input) => updateBoardGameNote(id, input.body),
+        remove: deleteBoardGameNote,
+      }}
+      placeholder={t('boardGames.notePlaceholder')}
+      addLabel={t('actions.add')}
+      emptyTitle={t('boardGames.notesEmpty')}
+      emptyHint={t('recordNotes.emptyHint')}
+    />
   )
 }
