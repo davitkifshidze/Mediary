@@ -34,6 +34,16 @@ import { cn } from '@/lib/utils'
    წერს). აქ დამატებული `hover:scale` მას გადაახურებდა.
    ============================================================ */
 
+/**
+ * ზომა — `md` გვერდის დონისაა (ნაგულისხმევი), `sm` კი **ბარათის ან
+ * ხელსაწყოთა ზოლის შიგნითაა**.
+ *
+ * ⚠️ ცალკე ვარიანტი საჭიროა და არა „უბრალოდ პატარა": `/profile`-ის
+ * ხილვადობის ჭრილი და საცავის ბიბლიოთეკა **უკვე ბარათის შიგნით** ზის,
+ * სადაც გვერდის დონის ფილა მეორე გვერდის სათაურად იკითხება.
+ */
+export type ScopeCardSize = 'sm' | 'md'
+
 export function ScopeCard({
   active,
   color,
@@ -41,6 +51,8 @@ export function ScopeCard({
   label,
   count,
   hint,
+  size = 'md',
+  disabled,
   onClick,
 }: {
   active: boolean
@@ -52,27 +64,45 @@ export function ScopeCard({
   count?: number
   /** რიცხვის ნაცვლად — მოკლე ახსნა (მაგ. „ფოტოები რჩება") */
   hint?: string
+  size?: ScopeCardSize
+  disabled?: boolean
   onClick: () => void
 }) {
+  const sm = size === 'sm'
+
   return (
     <button
       type="button"
       aria-pressed={active}
+      disabled={disabled}
       onClick={onClick}
       style={modAccent(color) ?? MODULE_ACCENT_FALLBACK}
       className={cn(
-        'flex cursor-pointer items-center gap-2.5 rounded-md border p-2.5 text-left transition-colors',
+        'flex cursor-pointer items-center rounded-md border text-left transition-colors',
+        sm ? 'gap-2 p-2' : 'gap-2.5 p-2.5',
         active
           ? 'border-[var(--mod)] bg-[var(--mod-soft)] text-foreground'
           : 'border-border hover:border-[var(--mod)]',
         !active && count === 0 && 'opacity-60',
+        disabled && 'pointer-events-none opacity-40',
       )}
     >
-      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+      <span
+        className={cn(
+          'grid shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]',
+          sm ? 'size-7' : 'size-8',
+        )}
+      >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate text-sm', active ? 'font-semibold' : 'font-medium')}>
+        <span
+          className={cn(
+            'block truncate',
+            sm ? 'text-[13px]' : 'text-sm',
+            active ? 'font-semibold' : 'font-medium',
+          )}
+        >
           {label}
         </span>
         {count !== undefined && (
@@ -92,11 +122,35 @@ export function ScopeCard({
  * ⚠️ სათაურზე `uppercase` განზრახ არ დგას: CSS-ის `text-transform`
  * მხედრულს **მთავრულად** აქცევს (იგივე წესი, რაც `FilterPanel`-ს აქვს).
  */
-export function ScopeGroup({ label, children }: { label?: string; children: ReactNode }) {
+export function ScopeGroup({
+  label,
+  layout = 'grid',
+  children,
+}: {
+  label?: string
+  /**
+   * `grid` — გვერდის დონის ბადე (ნაგულისხმევი).
+   * `inline` — თავისუფალი რიგი.
+   *
+   * ⚠️ ფიქსირებული `xl:grid-cols-6` სამვარიანტიან ჭრილს („ყველა · საჯარო ·
+   * პირადი") ექვს სვეტზე ჭიმავს და შუაში ცარიელ უჯრებს ტოვებს, ორვარიანტიანს
+   * კი ორ ნახევარსიგანიან ფილად აქცევს. `inline` ბარათს შიგთავსის ზომაზე
+   * ტოვებს, ე.ი. ხელსაწყოთა ზოლში სხვა კონტროლების გვერდით დგება.
+   */
+  layout?: 'grid' | 'inline'
+  children: ReactNode
+}) {
   return (
     <div>
       {label && <p className="mb-1.5 text-xs font-medium text-muted-foreground">{label}</p>}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div
+        className={cn(
+          'gap-2',
+          layout === 'inline'
+            ? 'flex flex-wrap [&>*]:min-w-36'
+            : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
+        )}
+      >
         {children}
       </div>
     </div>

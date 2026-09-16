@@ -16,7 +16,8 @@ import { storageUrl } from '@/lib/api'
 import { useContentLang } from '@/lib/settings'
 import { PageContainer } from '@/components/ui/page'
 import { Button } from '@/components/ui/button'
-import { Chip } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { MatchPanel } from '@/components/MatchPanel'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -90,6 +91,25 @@ export function PublicProfilePage() {
     setDomain(d)
     setPage(1)
     setItems([])
+  }
+
+  /**
+   * ⚠️ დომენის ტონი და ხატულა **მოდულისაა** — იგივე, რასაც მფლობელი
+   * ხედავს საიდბარში. `playlist` მოდული არ არის (სიმღერის შიგნითაა),
+   * ე.ი. მისთვის არაფერი ბრუნდება და პასუხს `lib/cutStyle.ts` აგებს.
+   */
+  const domainIdentity = (d: PublicDomainKey) => {
+    if (d === 'playlist') return {}
+
+    const key = profile?.domain_modules[d]
+    const m = key ? profile?.modules[key] : undefined
+
+    return m
+      ? {
+          color: m.color,
+          node: <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />,
+        }
+      : {}
   }
 
   const moduleLabel = useMemo(
@@ -207,19 +227,18 @@ export function PublicProfilePage() {
         ) : (
           <>
             {/* ---------- დომენების ტაბები რაოდენობებით ---------- */}
-            <nav className="fb-scroll -mx-1 flex gap-2 overflow-x-auto py-5">
-              {profile.domains.map((d) => (
-                <Chip
-                  key={d}
-                  size="md"
-                  active={d === domain}
-                  onClick={() => switchDomain(d)}
-                  count={profile.counts[d] ?? 0}
-                >
-                  {moduleLabel(d)}
-                </Chip>
-              ))}
-            </nav>
+            <div className="py-5">
+              <CutTabs
+                options={profile.domains.map((d) => ({
+                  key: d,
+                  label: moduleLabel(d),
+                  count: profile.counts[d] ?? 0,
+                  ...domainIdentity(d),
+                }))}
+                value={domain ?? ''}
+                onChange={(key) => switchDomain(key as PublicDomainKey)}
+              />
+            </div>
 
             {/* ---------- ბადე ---------- */}
             {itemsQuery.isLoading && items.length === 0 ? (

@@ -14,7 +14,7 @@ import { NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Chip, ChipRow } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { errorMessage } from '@/lib/errors'
@@ -110,18 +110,17 @@ export function NoteRemindersPage() {
       />
 
       {reminders.length > 0 && (
-        <ChipRow className="mb-4">
-          {CUTS.map((value) => (
-            <Chip
-              key={value}
-              active={cut === value}
-              count={value === 'all' ? reminders.length : counts[value]}
-              onClick={() => setCut(value)}
-            >
-              {t(`notes.reminderCut.${value}`)}
-            </Chip>
-          ))}
-        </ChipRow>
+        <div className="mb-4">
+          <CutTabs
+            options={CUTS.map((value) => ({
+              key: value,
+              label: t(`notes.reminderCut.${value}`),
+              count: value === 'all' ? reminders.length : counts[value],
+            }))}
+            value={cut}
+            onChange={(key) => setCut(key as Cut)}
+          />
+        </div>
       )}
 
       {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}

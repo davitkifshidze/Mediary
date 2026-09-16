@@ -81,7 +81,7 @@ export interface PublicProfile {
   }
   domains: PublicDomainKey[]
   counts: Record<string, number>
-  modules: Record<string, { name_ka: string; name_en: string; icon: string }>
+  modules: Record<string, { name_ka: string; name_en: string; icon: string; color: string | null }>
   domain_modules: Record<string, string>
 }
 

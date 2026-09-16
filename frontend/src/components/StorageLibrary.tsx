@@ -18,7 +18,8 @@ import { useDateFormat } from '@/lib/dates'
 import { moduleName, useModules } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -93,6 +94,22 @@ export function StorageLibrary({
           const m = all.find((mod) => mod.key === key)
           return m ? moduleName(m, i18n.language) : key
         })()
+
+  /**
+   * ⚠️ **`account`/`chat`/`backup` მოდულები არ არიან** (ფსევდო-მოდულები —
+   * `modules` ცხრილში რიგი არ აქვთ), ე.ი. `modules.color` მათ ვერ
+   * უპასუხებს და ტონი `lib/cutStyle.ts`-იდან მოდის.
+   */
+  const moduleIdentity = (key: string) => {
+    const m = all.find((mod) => mod.key === key)
+
+    return m
+      ? {
+          color: m.color ?? null,
+          node: <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />,
+        }
+      : {}
+  }
 
   const moduleChips = useMemo(() => {
     const counts = new Map<string, number>()
@@ -195,38 +212,46 @@ export function StorageLibrary({
       </div>
 
       {/* ---------- ჩიპები: მოდული და ფაილის სახე ---------- */}
+      {/* ⚠️ **ორი დამოუკიდებელი ჭრილია და არა ერთი** (მოდული და ფაილის
+          სახეობა), ამიტომ ორ ბლოკად დგას: ერთ რიგში გამყოფით ჩაწყობილი
+          ბარათები ერთ სიად წაიკითხებოდა და „ყველა"-ს ორი ბარათი
+          გვერდიგვერდ ორაზროვანი გახდებოდა. */}
       {(moduleChips.length > 1 || kindChips.length > 1) && (
-        <ChipRow className="mb-4">
+        <div className="mb-4 space-y-2">
           {moduleChips.length > 1 && (
-            <>
-              <Chip active={module === 'all'} onClick={() => setModule('all')} count={files.length}>
-                {t('filter.all')}
-              </Chip>
-              {moduleChips.map((c) => (
-                <Chip
-                  key={c.key}
-                  active={module === c.key}
-                  onClick={() => setModule(c.key)}
-                  count={c.count}
-                >
-                  {label(c.key)}
-                </Chip>
-              ))}
-            </>
+            <CutTabs
+              options={[
+                { key: 'all', label: t('filter.all'), count: files.length },
+                ...moduleChips.map((c) => ({
+                  key: c.key,
+                  label: label(c.key),
+                  count: c.count,
+                  ...moduleIdentity(c.key),
+                })),
+              ]}
+              value={module}
+              onChange={setModule}
+              size="sm"
+              layout="inline"
+            />
           )}
           {kindChips.length > 1 && (
-            <ChipRow className="ml-1 border-l border-border pl-3">
-              <Chip active={kind === 'all'} onClick={() => setKind('all')}>
-                {t('storage.allKinds')}
-              </Chip>
-              {kindChips.map((c) => (
-                <Chip key={c.key} active={kind === c.key} onClick={() => setKind(c.key)} count={c.count}>
-                  {t(`storage.fileKind.${c.key}`)}
-                </Chip>
-              ))}
-            </ChipRow>
+            <CutTabs
+              options={[
+                { key: 'all', label: t('storage.allKinds') },
+                ...kindChips.map((c) => ({
+                  key: c.key,
+                  label: t(`storage.fileKind.${c.key}`),
+                  count: c.count,
+                })),
+              ]}
+              value={kind}
+              onChange={setKind}
+              size="sm"
+              layout="inline"
+            />
           )}
-        </ChipRow>
+        </div>
       )}
 
       {/* ---------- §6.2 — მასობრივი მოქმედებები ----------

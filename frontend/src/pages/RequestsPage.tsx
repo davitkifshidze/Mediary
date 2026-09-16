@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, CircleCheck, CircleX, Clock, LayoutGrid, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -11,7 +11,7 @@ import {
   rejectRequest,
   type ApprovalRequestItem,
 } from '@/api/account'
-import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
 import { grantedQuota, requestLabel, requestedQuota } from '@/lib/display'
@@ -36,21 +36,11 @@ const MB = 1024 * 1024
  * **ჭრილები ბარათებად** (2026-09-15, შენი მითითებით: „მინდა მსგავსი
  * ვიზუალის იყოს, რაც მაქვს აუდიტ-ლოგში").
  *
- * ⚠️ **ბარათი `ui/scope-card.tsx`-იდან მოდის და აქ არ იწერება** — იმავე
- * კომპონენტს აუდიტ-ლოგი, სტატუსის მასობრივი შეცვლა და მასობრივი წაშლა
- * კითხულობენ; ასლი პირველივე შესწორებაზე დაშორდებოდა.
- *
- * ⚠️ **ფერი მდგომარეობისაა და არა დეკორაცია**: რიგი — ნეიტრალური
- * „ჯერ არ გადაწყვეტილა", დამტკიცებული — მწვანე, უარყოფილი — წითელი.
- * სწორედ ეს ფერი ცვლის იმ ოთხ ერთნაირ პილულას, სადაც მხოლოდ კითხვით
- * ირჩეოდა, რომელზე დგახარ.
+ * ⚠️ **ხატულა და ტონი `lib/cutStyle.ts`-შია და აქ აღარ იწერება** (Tasks §2):
+ * იმავე ცნებებს — „რიგი / დამტკიცებული / უარყოფილი" — სხვა ჭრილებიც
+ * ხატავენ, ლოკალური ასლი კი პირველივე შესწორებაზე დაშორდებოდა.
  */
-const STATUSES = [
-  { key: 'pending', icon: Clock, color: 'var(--status-undecided)' },
-  { key: 'approved', icon: CircleCheck, color: 'var(--icon-ok)' },
-  { key: 'rejected', icon: CircleX, color: 'var(--destructive)' },
-  { key: 'all', icon: LayoutGrid, color: 'var(--primary)' },
-] as const
+const STATUSES = ['pending', 'approved', 'rejected', 'all'] as const
 
 export function RequestsPage() {
   const { t, i18n } = useTranslation()
@@ -131,19 +121,15 @@ export function RequestsPage() {
       {isAdmin && (
         <section className="mb-8">
           <div className="mb-4">
-            <ScopeGroup>
-              {STATUSES.map((s) => (
-                <ScopeCard
-                  key={s.key}
-                  active={status === s.key}
-                  color={s.color}
-                  icon={<s.icon className="size-4 text-[var(--mod)]" />}
-                  label={t(`requests.status.${s.key}`)}
-                  count={counts?.[s.key]}
-                  onClick={() => setStatus(s.key)}
-                />
-              ))}
-            </ScopeGroup>
+            <CutTabs
+              options={STATUSES.map((key) => ({
+                key,
+                label: t(`requests.status.${key}`),
+                count: counts?.[key],
+              }))}
+              value={status}
+              onChange={(key) => setStatus(key as (typeof STATUSES)[number])}
+            />
           </div>
 
           {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}

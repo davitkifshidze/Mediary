@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { fetchGallerySummary } from '@/api/gallery'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
-import { GalleryScope } from '@/components/gallery/GalleryScope'
+import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
    „ყველა ფოტო" — **არეული ხედი** (§8.5).
@@ -59,7 +59,7 @@ export function AllPhotosCut() {
   return (
     <div>
       <div className="mb-4">
-        <GalleryScope
+        <CutTabs
           label={t('gallery.categoryScope')}
           options={options}
           value={category}

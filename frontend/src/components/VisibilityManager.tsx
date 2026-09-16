@@ -17,7 +17,8 @@ import { useContentLang } from '@/lib/settings'
 import { errorMessage } from '@/lib/errors'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
+import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -77,6 +78,24 @@ export function VisibilityManager() {
   useEffect(() => {
     if (domain === null && domains.length) setDomain(domains[0])
   }, [domains, domain])
+
+  /**
+   * ⚠️ ბარათის ტონი და ხატულა **მოდულისაა** — იგივე, რასაც საიდბარი
+   * ხატავს. `playlist` მოდული არაა (სიმღერის შიგნითაა), ე.ი. მისთვის
+   * არაფერი ბრუნდება და პასუხს `lib/cutStyle.ts` აგებს.
+   */
+  const domainIdentity = (d: PublicDomainKey) => {
+    if (d === 'playlist') return {}
+
+    const module = enabled.find((m) => m.key === DOMAIN_MODULE[d])
+
+    return module
+      ? {
+          color: module.color ?? null,
+          node: <ModuleIcon name={module.icon} className="size-4 text-[var(--mod)]" />,
+        }
+      : {}
+  }
 
   const domainLabel = (d: PublicDomainKey) => {
     // `playlist` და `song` ერთ მოდულს ეკუთვნის — დომენს საკუთარი სახელი სჭირდება
@@ -191,13 +210,19 @@ export function VisibilityManager() {
       <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('visibility.manageHint')}</p>
 
       {/* ---------- დომენები ---------- */}
-      <ChipRow className="mb-4">
-        {domains.map((d) => (
-          <Chip key={d} active={d === domain} onClick={() => switchDomain(d)}>
-            {domainLabel(d)}
-          </Chip>
-        ))}
-      </ChipRow>
+      <div className="mb-4">
+        <CutTabs
+          options={domains.map((d) => ({
+            key: d,
+            label: domainLabel(d),
+            ...domainIdentity(d),
+          }))}
+          value={domain ?? ''}
+          onChange={(key) => switchDomain(key as PublicDomainKey)}
+          size="sm"
+          layout="inline"
+        />
+      </div>
 
       {/* ---------- ძებნა + ჭრილი ---------- */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -211,21 +236,20 @@ export function VisibilityManager() {
           />
         </form>
 
-        <ChipRow>
-          {(['all', 'public', 'private'] as const).map((v) => (
-            <Chip
-              key={v}
-              active={only === v}
-              onClick={() => {
-                setOnly(v)
-                setPage(1)
-              }}
-              count={meta && v !== 'all' ? meta[v] : undefined}
-            >
-              {v === 'all' ? t('filter.all') : t(`visibility.${v}`)}
-            </Chip>
-          ))}
-        </ChipRow>
+        <CutTabs
+          options={(['all', 'public', 'private'] as const).map((v) => ({
+            key: v,
+            label: v === 'all' ? t('filter.all') : t(`visibility.${v}`),
+            count: meta && v !== 'all' ? meta[v] : undefined,
+          }))}
+          value={only}
+          onChange={(key) => {
+            setOnly(key as 'all' | 'public' | 'private')
+            setPage(1)
+          }}
+          size="sm"
+          layout="inline"
+        />
       </div>
 
       {/* ---------- მასობრივი მოქმედებები ---------- */}

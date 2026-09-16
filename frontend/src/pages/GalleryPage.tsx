@@ -24,7 +24,7 @@ import { RecordsCut } from '@/components/gallery/RecordsCut'
 import { ModulesCut } from '@/components/gallery/ModulesCut'
 import { VideosCut } from '@/components/gallery/VideosCut'
 import { AlbumsCut } from '@/components/gallery/AlbumsCut'
-import { GalleryScope } from '@/components/gallery/GalleryScope'
+import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
    გალერეა — `/gallery` და მისი ქვე-გვერდები (Tasks 10 → **§8**).
@@ -164,7 +164,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
               წყარომ მოიტანა" და „რომელი დომენიდან მოვიდა". §24.3-ის შემდეგ
               ისინი ბარათებია და არა ჩიპები — იგივე ვიზუალი, რაც აუდიტ-ლოგს. */}
           <div className="mb-4">
-            <GalleryScope
+            <CutTabs
               label={t('gallery.sourceScope')}
               options={(['provider', 'source'] as const).map((key) => ({
                 key,

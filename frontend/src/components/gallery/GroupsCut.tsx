@@ -25,7 +25,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
 import { EMPTY_GROUP_FILTERS, GroupFilters, type GroupFilterState } from '@/components/gallery/GroupFilters'
-import { GalleryScope } from '@/components/gallery/GalleryScope'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
 
@@ -467,7 +467,7 @@ export function GroupsCut({
             ჩამოვიდოდა და ბარათი პასუხს აღარ გასცემდა. */}
         {by === 'actor' && (
           <div className="mb-4">
-            <GalleryScope
+            <CutTabs
               label={t('gallery.castScope')}
               options={(['all', 'female', 'male'] as const).map((key) => ({
                 key,

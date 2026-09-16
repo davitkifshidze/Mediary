@@ -21,6 +21,8 @@ import type { NoteReminder, ReminderChannel, ReminderMode } from '@/api/notes'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useDateFormat } from '@/lib/dates'
+import { cutStyle } from '@/lib/cutStyle'
+import { modAccent } from '@/lib/modules'
 import { reminderState, type ReminderState } from '@/lib/reminders'
 import { cn } from '@/lib/utils'
 
@@ -118,22 +120,23 @@ const CHANNEL_ICON: Record<ReminderChannel, typeof BellRing> = {
 }
 
 /**
- * მდგომარეობის ტონი — **სამი მდგომარეობა, სამი სახე** (`lib/reminders.ts`).
- * ⚠️ „შეჩერებული" და „აღარ გაისვრის" ერთნაირად რომ გამოიყურებოდა, სწორედ
- * იმიტომ იყო სია უაზრო: პირველი ერთი დაჭერით ბრუნდება, მეორეს რედაქტირება სჭირდება.
+ * მდგომარეობის **ჩარჩო** — „მუშაობს" თუ „არა" (`lib/reminders.ts`).
+ *
+ * ⚠️ **ფერი აქ აღარ იწერება — `lib/cutStyle.ts`-შია** (Tasks §2). იმავე
+ * სამ მდგომარეობას ახლა `/notes/reminders`-ის ჭრილის ბარათებიც ხატავენ,
+ * ე.ი. ორი ნაკრები ნიშნავდა, რომ ერთსა და იმავე შეხსენებას ბარათზე ერთი
+ * ფერი ექნებოდა და ტაბზე მეორე.
+ *
+ * ⚠️ დაშლილი ღერძი განზრახაა: **ჩარჩო** ამბობს „მუშაობს/არა" (უწყვეტი ↔
+ * წყვეტილი), **ფერი** კი სამივეს ერთმანეთისგან არჩევს — ადრე ორივეს
+ * ერთი კლასი პასუხობდა და „შეჩერებული" და „აღარ გაისვრის" ერთნაირად
+ * ნაცრისფერი იყო, თუმცა პირველი ერთი დაჭერით ბრუნდება და მეორეს
+ * რედაქტირება სჭირდება.
  */
-const STATE_TONE: Record<ReminderState, { stripe: string; icon: string; card: string }> = {
-  active: { stripe: 'bg-primary', icon: 'bg-primary/15 text-primary', card: 'border-border bg-card' },
-  paused: {
-    stripe: 'bg-muted-foreground/40',
-    icon: 'bg-muted text-muted-foreground',
-    card: 'border-dashed border-border bg-card/50',
-  },
-  done: {
-    stripe: 'bg-muted-foreground/25',
-    icon: 'bg-muted text-muted-foreground',
-    card: 'border-dashed border-border bg-card/50',
-  },
+const STATE_TONE: Record<ReminderState, { card: string }> = {
+  active: { card: 'border-border bg-card' },
+  paused: { card: 'border-dashed border-border bg-card/50' },
+  done: { card: 'border-dashed border-border bg-card/50' },
 }
 
 /** წვრილი მეტა-ნიშანი ბარათზე (არხი, ჯერადობა, ფანჯარა) — დაუჭერელი */
@@ -171,17 +174,21 @@ export function ReminderCard({
 
   const state = reminderState(reminder)
   const tone = STATE_TONE[state]
+  const accent = modAccent(cutStyle(state).color) ?? undefined
   const Icon = MODE_ICON[reminder.mode]
   const repeat = repeatLabel(reminder, t)
   const period = windowLabel(reminder, t, dateTime)
 
   return (
-    <li className={cn('relative overflow-hidden rounded-xl border p-4 pl-5 transition-colors', tone.card)}>
+    <li
+      style={accent}
+      className={cn('relative overflow-hidden rounded-xl border p-4 pl-5 transition-colors', tone.card)}
+    >
       {/* მარცხენა ზოლი — მდგომარეობა ტექსტის წაკითხვამდე */}
-      <span className={cn('absolute inset-y-0 left-0 w-1.5', tone.stripe)} />
+      <span className="absolute inset-y-0 left-0 w-1.5 bg-[var(--mod)]" />
 
       <div className="flex items-start gap-3">
-        <span className={cn('grid size-9 shrink-0 place-items-center rounded-md', tone.icon)}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] text-[var(--mod)]">
           <Icon className="size-4" />
         </span>
 

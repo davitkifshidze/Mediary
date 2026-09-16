@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GalleryCastImage, GalleryImage } from '@/api/gallery'
 import { formatBytes } from '@/lib/utils'
-import { Chip, ChipRow } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
 
@@ -26,7 +26,7 @@ import { galleryPhotoInfo } from '@/lib/galleryPhoto'
  * ფილტრის ჩიპი — კატეგორიით ჭრა (ყველა · კადრები · პოსტერები · მსახიობები).
  * `logo` ახლა აღარ ჩამოდის, მაგრამ ძველ ჩანაწერებზე არსებობს — ამიტომ ჩიპებში რჩება.
  */
-type CategoryChip = 'all' | 'backdrop' | 'poster' | 'logo' | 'actor'
+type CategoryCut = 'all' | 'backdrop' | 'poster' | 'logo' | 'actor'
 
 export function GalleryPanel({
   images,
@@ -52,11 +52,11 @@ export function GalleryPanel({
   categories?: boolean
 }) {
   const { t } = useTranslation()
-  const [chip, setChip] = useState<CategoryChip>('all')
+  const [cut, setCut] = useState<CategoryCut>('all')
 
   const shown = useMemo(
-    () => (chip === 'all' ? images : images.filter((i) => i.category === chip)),
-    [images, chip],
+    () => (cut === 'all' ? images : images.filter((i) => i.category === cut)),
+    [images, cut],
   )
 
   const present = useMemo(() => {
@@ -99,18 +99,19 @@ export function GalleryPanel({
 
       {/* კატეგორიის ჩიპები — მხოლოდ მაშინ, თუ ერთზე მეტი სახეა */}
       {categories && present.length > 1 && (
-        <ChipRow className="mb-4">
-          {(['all', ...present] as CategoryChip[]).map((c) => (
-            <Chip
-              key={c}
-              active={chip === c}
-              onClick={() => setChip(c)}
-              count={c === 'all' ? images.length : images.filter((i) => i.category === c).length}
-            >
-              {c === 'all' ? t('filter.all') : t(`gallery.category.${c}`)}
-            </Chip>
-          ))}
-        </ChipRow>
+        <div className="mb-4">
+          <CutTabs
+            options={(['all', ...present] as CategoryCut[]).map((c) => ({
+              key: c,
+              label: c === 'all' ? t('filter.all') : t(`gallery.category.${c}`),
+              count: c === 'all' ? images.length : images.filter((i) => i.category === c).length,
+            }))}
+            value={cut}
+            onChange={(key) => setCut(key as CategoryCut)}
+            size="sm"
+            layout="inline"
+          />
+        </div>
       )}
 
       {/* ბადე, lightbox და მონიშვნები — საერთო `PhotoGrid` (§2.9).

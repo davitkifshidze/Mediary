@@ -38,7 +38,7 @@ import { Label } from '@/components/ui/label'
 import { NumberPick } from '@/components/ui/number-pick'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs } from '@/components/ui/tabs'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
 
@@ -357,16 +357,21 @@ export function GalleryDownloadDialog({
         </DialogTitle>
 
         {/* ---------- ორი ნაკადი — ორი ტაბი ---------- */}
+        {/* ⚠️ **ორი სკოუპია და არა ერთის ორი ხედი** — „ჩანაწერის კადრები" და
+            „მსახიობების ფოტოები" სხვადასხვა რამეს ჩამოტვირთავს, ამიტომ
+            ჭრილის ბარათებია და არა ქვედახაზული ტაბები. */}
         {!pin?.actor && (
-          <Tabs
-            className="mt-3"
-            value={flow}
-            onChange={(v) => setFlow(v)}
-            items={[
-              { value: 'record', label: t('gallery.tab.record') },
-              { value: 'cast', label: t('gallery.tab.cast') },
-            ]}
-          />
+          <div className="mt-3">
+            <CutTabs
+              options={[
+                { key: 'record', label: t('gallery.tab.record') },
+                { key: 'cast', label: t('gallery.tab.cast') },
+              ]}
+              value={flow}
+              onChange={(key) => setFlow(key as 'record' | 'cast')}
+              layout="inline"
+            />
+          </div>
         )}
 
         <div className="fb-scroll mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">

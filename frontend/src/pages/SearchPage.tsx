@@ -9,7 +9,7 @@ import { moduleName, useModules } from '@/lib/modules'
 import { highlightParts, resultPath } from '@/lib/searchResults'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
@@ -112,6 +112,23 @@ export function SearchPage() {
     [modules],
   )
 
+  /**
+   * ⚠️ **სამი დომენი მოდული არ არის** (`cast` გლობალური ლექსიკონია,
+   * `playlist` სიმღერის შიგნითაა), ე.ი. `modules.color` მათ ვერ უპასუხებს.
+   * ასეთ დროს არც `color` ბრუნდება და არც `node` — და ბარათი ტონსა და
+   * ხატულას `lib/cutStyle.ts`-იდან იღებს.
+   */
+  const cutIdentity = (group: SearchGroup) => {
+    const found = modules.find((m) => m.key === group.module)
+
+    return found
+      ? {
+          color: found.color ?? null,
+          node: <ModuleIcon name={found.icon} className="size-4 text-[var(--mod)]" />,
+        }
+      : {}
+  }
+
   const labelOf = (group: SearchGroup) => {
     if (OWN_LABEL.includes(group.key)) return t(`search.group.${group.key}`)
     const found = modules.find((m) => m.key === group.module)
@@ -144,16 +161,21 @@ export function SearchPage() {
       {/* ⚠️ ჩიპები **მიმოხილვიდან** იწერება, ე.ი. არჩეული დომენის მიღმაც
           ჩანს, სად რამდენი შედეგია */}
       {(overview.data?.groups.length ?? 0) > 1 && (
-        <ChipRow className="mb-5">
-          <Chip active={!domain} onClick={() => setDomain(null)} count={total}>
-            {t('search.allDomains')}
-          </Chip>
-          {overview.data?.groups.map((g) => (
-            <Chip key={g.key} active={domain === g.key} onClick={() => setDomain(g.key)} count={g.total}>
-              {labelOf(g)}
-            </Chip>
-          ))}
-        </ChipRow>
+        <div className="mb-5">
+          <CutTabs
+            options={[
+              { key: 'all', label: t('search.allDomains'), count: total },
+              ...(overview.data?.groups ?? []).map((g) => ({
+                key: g.key,
+                label: labelOf(g),
+                count: g.total,
+                ...cutIdentity(g),
+              })),
+            ]}
+            value={domain ?? 'all'}
+            onChange={(key) => setDomain(key === 'all' ? null : key)}
+          />
+        </div>
       )}
 
       {q.length < 2 && (

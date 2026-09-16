@@ -12,7 +12,7 @@ import type { MediaType } from '@/lib/media'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { GroupsCut } from '@/components/gallery/GroupsCut'
-import { GalleryScope } from '@/components/gallery/GalleryScope'
+import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
    ბიბლიოთეკის ჭრილი — **დომენის ბარათები და მსახიობები შიგნით**.
@@ -93,7 +93,7 @@ export function RecordsCut({
       {/* ---------- დომენის ბარათები ---------- */}
       {parents.length > 1 && (
         <div className="mb-4">
-          <GalleryScope
+          <CutTabs
             label={t('gallery.domainScope')}
             options={[
               { key: 'all', label: t('filter.all'), count: counts.all },
@@ -117,7 +117,7 @@ export function RecordsCut({
           „ჩანაწერები": სწორედ ეს სიტყვა იყო შენი შენიშვნა. */}
       {showActors && (
         <div className="mb-4">
-          <GalleryScope
+          <CutTabs
             options={[
               {
                 key: 'records',

@@ -122,12 +122,15 @@ class PublicProfileService
         $keys = array_unique(array_map(PublicDomain::module(...), $domains));
 
         return Module::whereIn('key', $keys)
-            ->get(['key', 'name_ka', 'name_en', 'icon'])
+            ->get(['key', 'name_ka', 'name_en', 'icon', 'color'])
             ->keyBy('key')
             ->map(fn (Module $m) => [
                 'name_ka' => $m->name_ka,
                 'name_en' => $m->name_en,
                 'icon' => $m->icon,
+                // ⚠️ ფერი საჯარო პროფილის ჭრილის ბარათს სჭირდება (Tasks §2):
+                // მოდულის იდენტობა ისედაც გამოჩნდება — ხატულა უკვე აქაა
+                'color' => $m->color,
             ])
             ->all();
     }
