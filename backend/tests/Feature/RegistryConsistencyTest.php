@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Api\DashboardController;
+use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Module;
+use App\Models\NoteCategory;
+use App\Models\VideoType;
 use App\Services\Gallery\ModuleImages;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
@@ -567,6 +570,89 @@ class RegistryConsistencyTest extends TestCase
         }
 
         $this->assertSame([], $offenders, 'CA bundle ხელით წერია — გამოიყენე SourceLog::request()');
+    }
+
+    /**
+     * **ყოველი ნაგულისხმევი ხატულა ჩანქის ჩამოტვირთვის გარეშე უნდა დაიხატოს (Tasks §1.2).**
+     *
+     * ⚠️ ეს ცოცხალი ხარვეზი იყო და **სრულიად ჩუმი**: `ModuleIcon`-ის რუკაში
+     * 21 სახელი ეწერა, უცნობი კი `LayoutGrid`-ად იხატებოდა. შედეგად `note`
+     * მოდულს, ვიდეოს „ჩამოწერილებს", „რჩეულს" და მედია-დომენების ოთხი
+     * სტატუსიდან სამს (`undecided` · `watching` · `watched`) **ერთი და
+     * იგივე ნაცრისფერი ბადე** ჰქონდათ. ვერც `tsc` ხედავდა, ვერც lint,
+     * ვერც ტესტი — სახელი ხომ უბრალოდ `string`-ია.
+     *
+     * ახლა უცნობი სახელი ზარმაცად იხსნება, ე.ი. „არასწორი სურათი" აღარაა —
+     * მაგრამ **კოდში ჩაწერილი** ნაგულისხმევი მაინც სტატიკურ რუკაში უნდა
+     * იყოს: საიდბარის რიგს ცალკე ჩანქის მოტანა არ უნდა სჭირდებოდეს.
+     */
+    public function test_every_default_icon_is_drawn_without_a_lazy_fetch(): void
+    {
+        $path = base_path('../frontend/src/components/ModuleIcon.tsx');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('ფრონტი ამ გარემოში არ არის');
+        }
+
+        $known = $this->staticIconNames((string) file_get_contents($path));
+
+        // ⚠️ ანკერები — გატეხილმა პარსერმა ცარიელი სია არ უნდა „ჩააბაროს"
+        $this->assertGreaterThan(60, count($known), 'ModuleIcon-ის ჯგუფები ვერ წავიკითხე');
+        $this->assertContains('Film', $known);
+        $this->assertContains('LayoutGrid', $known);
+
+        $used = Module::whereNotNull('icon')->pluck('icon')->all();
+
+        foreach (StatusDomain::keys() as $domain) {
+            $used = array_merge($used, array_column(StatusDomain::defaults($domain), 'icon'));
+        }
+
+        /* ლექსიკონების საწყისი ნაკრებები — ჟანრებს ხატულა არ აქვთ, ამიტომ
+           `array_column` მათზე უბრალოდ ცარიელს აბრუნებს */
+        foreach ([VideoType::class, NoteCategory::class, BookmarkCategory::class] as $model) {
+            $used = array_merge($used, array_column($model::DEFAULTS, 'icon'));
+        }
+
+        /* ფსევდო-განყოფილებები („ყველა" · „რჩეული" · „ჩამოწერილები") მხოლოდ
+           ფრონტზე იწერება, მაგრამ იმავე რუკას გადის */
+        $sections = base_path('../frontend/src/lib/statusSections.ts');
+        preg_match_all("/icon: '([A-Za-z0-9]+)'/", (string) file_get_contents($sections), $m);
+        $this->assertNotEmpty($m[1], 'PSEUDO_SECTIONS-ის ხატულები ვერ წავიკითხე');
+        $used = array_merge($used, $m[1]);
+
+        $missing = array_values(array_unique(array_diff(array_filter($used), $known)));
+        sort($missing);
+
+        $this->assertSame([], $missing,
+            'ხატულა `ModuleIcon`-ის სტატიკურ რუკაში არ წერია: '.implode(', ', $missing)
+        );
+    }
+
+    /**
+     * `ModuleIcon.tsx`-ის `GROUPS`-იდან ხატულების სახელები.
+     *
+     * ⚠️ წყაროდან იკითხება და არა ხელით ნაწერი სიიდან — ხელით სია ზუსტად
+     * იმ დღეს დაშორდებოდა, როცა ვინმე ხატულას დაამატებდა.
+     *
+     * @return list<string>
+     */
+    private function staticIconNames(string $source): array
+    {
+        preg_match_all('/icons:\s*\{([^}]*)\}/', $source, $groups);
+
+        $names = [];
+
+        foreach ($groups[1] as $body) {
+            foreach (explode(',', $body) as $name) {
+                $name = trim($name);
+
+                if ($name !== '') {
+                    $names[] = $name;
+                }
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 
     /** @return list<string> */

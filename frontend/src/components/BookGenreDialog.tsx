@@ -8,13 +8,12 @@ import {
   type BookGenreInput,
 } from '@/api/books'
 import { errorMessage, fieldErrors } from '@/lib/errors'
-import { ICON_NAMES, ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
+import { IconPicker } from '@/components/ui/icon-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    წიგნის ჟანრის დამატება/რედაქტირება.
@@ -93,25 +92,11 @@ export function BookGenreDialog({
 
         <div>
           <Label>{t('videoTypes.icon')}</Label>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {ICON_NAMES.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, icon: name }))}
-                aria-label={name}
-                aria-pressed={form.icon === name}
-                className={cn(
-                  'grid size-9 cursor-pointer place-items-center rounded-md border transition-colors',
-                  form.icon === name
-                    ? 'border-primary bg-secondary text-foreground'
-                    : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <ModuleIcon name={name} className="size-4" />
-              </button>
-            ))}
-          </div>
+          <IconPicker
+            value={form.icon}
+            onChange={(icon) => setForm((f) => ({ ...f, icon }))}
+            className="mt-1"
+          />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

@@ -50,7 +50,7 @@ final class StatusDomain
     /** მედია-დომენების საერთო ნაკრები — ვიდეოსაც იგივე ჰქონდეს (ის ხომ იყურება) */
     private const WATCH_DEFAULTS = [
         ['key' => 'undecided', 'name_ka' => 'გადაუწყვეტელი', 'name_en' => 'Undecided', 'role' => 'todo', 'icon' => 'HelpCircle', 'is_default' => true],
-        ['key' => 'to_watch', 'name_ka' => 'საყურებელი', 'name_en' => 'To watch', 'role' => 'todo', 'icon' => 'Bookmark'],
+        ['key' => 'to_watch', 'name_ka' => 'საყურებელი', 'name_en' => 'To watch', 'role' => 'todo', 'icon' => 'Clock'],
         ['key' => 'watching', 'name_ka' => 'ვუყურებ', 'name_en' => 'Watching', 'role' => 'doing', 'icon' => 'Eye'],
         ['key' => 'watched', 'name_ka' => 'ნანახი', 'name_en' => 'Watched', 'role' => 'done', 'icon' => 'CheckCircle2'],
     ];
@@ -67,14 +67,14 @@ final class StatusDomain
         'anime' => ['model' => Anime::class, 'module' => 'anime', 'defaults' => self::WATCH_DEFAULTS],
         'video' => ['model' => Video::class, 'module' => 'video', 'defaults' => self::WATCH_DEFAULTS],
         'note' => ['model' => NoteEntry::class, 'module' => 'note', 'defaults' => [
-            ['key' => 'open', 'name_ka' => 'ღია', 'name_en' => 'Open', 'role' => 'todo', 'icon' => 'Bookmark', 'is_default' => true],
-            ['key' => 'done', 'name_ka' => 'დასრულებული', 'name_en' => 'Done', 'role' => 'done', 'icon' => 'ListChecks'],
-            ['key' => 'archived', 'name_ka' => 'დაარქივებული', 'name_en' => 'Archived', 'role' => 'done', 'icon' => 'Wrench'],
+            ['key' => 'open', 'name_ka' => 'ღია', 'name_en' => 'Open', 'role' => 'todo', 'icon' => 'Circle', 'is_default' => true],
+            ['key' => 'done', 'name_ka' => 'დასრულებული', 'name_en' => 'Done', 'role' => 'done', 'icon' => 'CheckCheck'],
+            ['key' => 'archived', 'name_ka' => 'დაარქივებული', 'name_en' => 'Archived', 'role' => 'done', 'icon' => 'Archive'],
         ]],
         'bookmark' => ['model' => Bookmark::class, 'module' => 'bookmark', 'defaults' => [
-            ['key' => 'to_read', 'name_ka' => 'წასაკითხი', 'name_en' => 'To read', 'role' => 'todo', 'icon' => 'Bookmark', 'is_default' => true],
-            ['key' => 'read', 'name_ka' => 'წაკითხული', 'name_en' => 'Read', 'role' => 'done', 'icon' => 'ListChecks'],
-            ['key' => 'archived', 'name_ka' => 'არქივი', 'name_en' => 'Archived', 'role' => 'done', 'icon' => 'Wrench'],
+            ['key' => 'to_read', 'name_ka' => 'წასაკითხი', 'name_en' => 'To read', 'role' => 'todo', 'icon' => 'Clock', 'is_default' => true],
+            ['key' => 'read', 'name_ka' => 'წაკითხული', 'name_en' => 'Read', 'role' => 'done', 'icon' => 'BookOpenCheck'],
+            ['key' => 'archived', 'name_ka' => 'არქივი', 'name_en' => 'Archived', 'role' => 'done', 'icon' => 'Archive'],
         ]],
     ];
 

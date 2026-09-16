@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ContactRound,
   DatabaseBackup,
   DownloadCloud,
   Inbox,
@@ -13,7 +14,7 @@ import {
   ShieldCheck,
   Tags,
   Trash2,
-  Users,
+  UserCog,
 } from 'lucide-react'
 import { modAccent } from '@/lib/modules'
 
@@ -65,11 +66,11 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   bulk: { color: 'var(--tool-bulk)', icon: ListChecks },
   sync: { color: 'var(--tool-sync)', icon: DownloadCloud },
   translations: { color: 'var(--tool-translations)', icon: Languages },
-  people: { color: 'var(--tool-people)', icon: Users },
+  people: { color: 'var(--tool-people)', icon: ContactRound },
   chat: { color: 'var(--tool-chat)', icon: MessageSquare },
   modules: { color: 'var(--tool-modules)', icon: Puzzle },
   requests: { color: 'var(--tool-requests)', icon: Inbox },
-  users: { color: 'var(--tool-users)', icon: Users },
+  users: { color: 'var(--tool-users)', icon: UserCog },
   roles: { color: 'var(--tool-roles)', icon: ShieldCheck },
   audit: { color: 'var(--tool-audit)', icon: ScrollText },
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },

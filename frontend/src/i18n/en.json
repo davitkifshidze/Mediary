@@ -2822,5 +2822,21 @@
   "validation": {
     "pickOne": "Pick at least one",
     "choose": "Choose…"
+  },
+  "icons": {
+    "search": "Search icons…",
+    "noResults": "No icon matches that",
+    "selected": "Selected",
+    "group": {
+      "media": "Media",
+      "books": "Books & knowledge",
+      "games": "Games",
+      "state": "State",
+      "marks": "Marks",
+      "files": "Files & organising",
+      "people": "People & places",
+      "life": "Everyday",
+      "other": "Other"
+    }
   }
 }
