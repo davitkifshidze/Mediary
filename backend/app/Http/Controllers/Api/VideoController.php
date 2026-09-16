@@ -160,6 +160,11 @@ class VideoController extends Controller
 
     private function validated(Request $request, ?Video $video = null): array
     {
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $video ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             // სათაური არასავალდებულოა — ცარიელზე ბმულიდან წამოვა (K2)
             'title' => ['nullable', 'string', 'max:255'],
@@ -167,12 +172,12 @@ class VideoController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             // ტიპი მხოლოდ **საკუთარი** ლექსიკონიდან (5.1)
             'type_id' => [
-                'nullable',
+                ...$must,
                 'integer',
                 Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
             ],
             // §6.4 — სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
-            'status' => ['nullable', 'string', Status::rule('video')],
+            'status' => [...$must, 'string', Status::rule('video')],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'duration' => ['nullable', 'integer', 'min:0', 'max:864000'],
             'tags' => ['nullable', 'array', 'max:20'],

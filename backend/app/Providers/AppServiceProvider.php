@@ -155,5 +155,25 @@ class AppServiceProvider extends ServiceProvider
          */
         RateLimiter::for('download', fn (Request $r) => Limit::perMinute(10)
             ->by('u:'.($r->user()?->getAuthIdentifier() ?? $r->ip())));
+
+        /*
+         * **ალბომის პაროლი — 10 მცდელობა წუთში ალბომზე (2026-09-16).**
+         *
+         * ⚠️ ეს ერთადერთი ადგილია, სადაც *პაროლი* მოწმდება `login`-ის გარდა,
+         * ე.ი. ჭერის გარეშე ოთხნიშნა კოდს სკრიპტი წუთებში გატეხდა.
+         *
+         * ⚠️ გასაღები **user + ალბომი** ერთად: ერთ ალბომზე შეცდომა მეორეს
+         * არ კეტავს, თორემ ერთი დავიწყებული პაროლი მთელ გალერეას გაყინავდა.
+         */
+        RateLimiter::for('album-unlock', function (Request $r) {
+            /* ⚠️ `route()` აქ **მოდელია და არა id**: route-middleware
+               `SubstituteBindings`-ის შემდეგ მუშაობს, ე.ი. პირდაპირი
+               კონკატენაცია ობიექტის სტრიქონად ქცევას ცდილობდა. */
+            $album = $r->route('galleryAlbum');
+            $id = is_object($album) ? ($album->id ?? '') : $album;
+
+            return Limit::perMinute(10)
+                ->by('album-unlock:'.($r->user()?->getAuthIdentifier() ?? $r->ip()).':'.$id);
+        });
     }
 }

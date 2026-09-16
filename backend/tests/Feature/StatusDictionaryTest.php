@@ -96,7 +96,12 @@ class StatusDictionaryTest extends TestCase
     public function test_video_has_a_status_now(): void
     {
         $id = $this->actingAs($this->user)
-            ->postJson('/api/videos', ['title' => 'Clip', 'url' => 'https://youtu.be/abc'])
+            ->postJson('/api/videos', [
+                'title' => 'Clip',
+                'url' => 'https://youtu.be/abc',
+                'status' => 'to_watch',
+                'type_id' => $this->actingAs($this->user)->getJson('/api/video-types')->json('data.0.id'),
+            ])
             ->assertStatus(201)
             ->json('data.id');
 

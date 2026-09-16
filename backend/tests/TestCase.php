@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Services\Credentials\CredentialStore;
+use App\Support\AlbumLock;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -18,5 +19,9 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         CredentialStore::forget();
+        // ⚠️ იგივე ხაფანგი: `AlbumLock`-ის მემოც სტატიკურია (ჩაკეტილი
+        // ალბომების სია), ე.ი. წინა ტესტის `id = 1` მომხმარებლის პასუხი
+        // შემდეგზე გადავიდოდა და ლოკი შემთხვევით „უკვე გახსნილი" იქნებოდა
+        AlbumLock::flush();
     }
 }

@@ -270,6 +270,11 @@ class GameController extends Controller
     {
         $userId = $request->user()->id;
 
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $game ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             // ერთი ენა მაინც — ორივე ცარიელი სათაური უსახელო ჩანაწერს დატოვებდა
             'title_ka' => ['nullable', 'string', 'max:255', 'required_without:title_en'],
@@ -288,7 +293,7 @@ class GameController extends Controller
             'modes' => ['nullable', 'array', 'max:10'],
             'modes.*' => [Rule::in(Game::MODES)],
 
-            'genre_ids' => ['nullable', 'array', 'max:10'],
+            'genre_ids' => [...$must, 'array', 'min:1', 'max:10'],
             'genre_ids.*' => [
                 'integer',
                 Rule::exists('game_genres', 'id')->where('user_id', $userId),
@@ -310,7 +315,7 @@ class GameController extends Controller
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
             'links.*.kind' => ['nullable', Rule::in(Game::LINK_KINDS)],
 
-            'status' => ['nullable', Rule::in(Game::STATUSES)],
+            'status' => [...$must, Rule::in(Game::STATUSES)],
             'is_favorite' => ['nullable', 'boolean'],
 
             'age_rating' => ['nullable', 'string', 'max:20'],

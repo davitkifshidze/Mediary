@@ -129,11 +129,16 @@ class NoteEntryController extends Controller
     {
         $userId = $request->user()->id;
 
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $entry ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             'title' => [$entry ? 'sometimes' : 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:20000'],
             'category_id' => [
-                'nullable', 'integer',
+                ...$must, 'integer',
                 Rule::exists('note_categories', 'id')->where('user_id', $userId),
             ],
             'tags' => ['nullable', 'array', 'max:20'],
@@ -145,7 +150,7 @@ class NoteEntryController extends Controller
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
 
             'due_at' => ['nullable', 'date'],
-            'status' => ['nullable', 'string', Status::rule('note')],
+            'status' => [...$must, 'string', Status::rule('note')],
             'is_favorite' => ['nullable', 'boolean'],
             // ⚠️ `public` აქაც დაშვებულია სქემის დონეზე, მაგრამ 16.1-ის მიხედვით
             // ეს მოდული საჯარო პროფილზე მაინც არ ჩანს — ეს განზრახაა

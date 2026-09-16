@@ -223,6 +223,11 @@ class BoardGameController extends Controller
     {
         $userId = $request->user()->id;
 
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $game ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             'title' => [$game ? 'sometimes' : 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:20000'],
@@ -231,7 +236,7 @@ class BoardGameController extends Controller
             'designer' => ['nullable', 'string', 'max:255'],
             'publisher' => ['nullable', 'string', 'max:255'],
             'genre_id' => [
-                'nullable', 'integer',
+                ...$must, 'integer',
                 Rule::exists('board_game_genres', 'id')->where('user_id', $userId),
             ],
 
@@ -249,7 +254,7 @@ class BoardGameController extends Controller
             ],
             'bgg_rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
 
-            'status' => ['nullable', Rule::in(BoardGame::STATUSES)],
+            'status' => [...$must, Rule::in(BoardGame::STATUSES)],
             'rating' => ['nullable', 'integer', 'min:1', 'max:'.BoardGame::MAX_RATING],
             'is_favorite' => ['nullable', 'boolean'],
 

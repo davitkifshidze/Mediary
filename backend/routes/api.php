@@ -636,6 +636,18 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereNumber('galleryAlbum');
         Route::delete('/gallery/albums/{galleryAlbum}', [GalleryAlbumController::class, 'destroy'])
             ->whereNumber('galleryAlbum');
+        /* **ჩაკეტილი ალბომი (2026-09-16).**
+           ⚠️ `unlock` `throttle:album-unlock`-ზეა: პაროლის შემოწმება
+           სწორედ ის კარია, რომელსაც სკრიპტი აბრახუნებს — უამისოდ
+           ოთხნიშნა პაროლი წუთების საკითხია.
+           ⚠️ ორივე `POST`-ია, ბოლო სეგმენტი კი სიტყვაა და არა id, ე.ი.
+           `EnsureModulePermission` მოდულს URL-იდან კითხულობს; `unlock`
+           `UPDATE_ENDPOINTS`-შია, თორემ view+update user-ს 403 დახვდებოდა. */
+        Route::post('/gallery/albums/{galleryAlbum}/unlock', [GalleryAlbumController::class, 'unlock'])
+            ->whereNumber('galleryAlbum')
+            ->middleware('throttle:album-unlock');
+        Route::post('/gallery/albums/{galleryAlbum}/lock', [GalleryAlbumController::class, 'lock'])
+            ->whereNumber('galleryAlbum');
 
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
         Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);

@@ -169,9 +169,15 @@ export function VideoBulkPanel() {
                         {videoTypeName(ty, lang)} ({countOfType(String(ty.id))})
                       </SelectItem>
                     ))}
-                    <SelectItem value={NO_TYPE}>
-                      {t('bulkVideo.typeNone')} ({countOfType(NO_TYPE)})
-                    </SelectItem>
+                    {/* ⚠️ „ტიპის გარეშე" მხოლოდ მაშინ, თუ ასეთი ვიდეო მართლა არსებობს.
+                        ტიპი ახლა სავალდებულია, ე.ი. ეს სია ჩვეულებრივ ცარიელია და მხოლოდ
+                        ძველი ჩანაწერების გასასწორებლად არის საჭირო. არჩევანი, რომელიც ვერაფერს
+                        ვერ იპოვნის, დახატული კონტროლია. */}
+                    {countOfType(NO_TYPE) > 0 && (
+                      <SelectItem value={NO_TYPE}>
+                        {t('bulkVideo.typeNone')} ({countOfType(NO_TYPE)})
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -211,12 +217,13 @@ export function VideoBulkPanel() {
               <SelectValue placeholder={t('bulkVideo.targetTypePick')} />
             </SelectTrigger>
             <SelectContent>
+              {/* ⚠️ „ტიპის მოხსნა" აღარ არის — ტიპი სავალდებულია, ე.ი.
+                  ეს ვარიანტი იმას აკეთებდა, რასაც წესი კრძალავს (backend აქაურ 422-ით პასუხობს). */}
               {types.map((ty) => (
                 <SelectItem key={ty.id} value={String(ty.id)}>
                   {videoTypeName(ty, lang)}
                 </SelectItem>
               ))}
-              <SelectItem value={NO_TYPE}>{t('bulkVideo.typeNone')}</SelectItem>
             </SelectContent>
           </Select>
         </div>

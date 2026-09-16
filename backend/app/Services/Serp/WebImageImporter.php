@@ -68,13 +68,13 @@ class WebImageImporter
 
         // დუბლი ორიგინალი ლინკით იჭრება — ხელახლა გაშვება იმავე ფოტოს არ ამატებს
         $existing = $parent->galleryImages()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->pluck('remote_path')
             ->filter()
             ->flip();
 
-        $sort = (int) $parent->galleryImages()->withoutGlobalScope('owner')->max('sort_order');
+        $sort = (int) $parent->galleryImages()->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->max('sort_order');
 
         foreach ($images as $image) {
             $original = $this->httpUrl($image['original'] ?? null);

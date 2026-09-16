@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, ImageOff } from 'lucide-react'
+import { ChevronDown, ChevronUp, ImageOff, Lock } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -70,6 +70,7 @@ export function PhotoStack({
   onClick,
   aspect = 'portrait',
   badge,
+  locked,
   actions,
   menu,
   className,
@@ -89,6 +90,16 @@ export function PhotoStack({
   aspect?: 'portrait' | 'wide'
   /** ზედა მარცხენა ნიშანი (მაგ. „პრივატული") */
   badge?: ReactNode
+  /**
+   * **ჩაკეტილი ჯგუფი (2026-09-16)** — ბადის ნაცვლად ბუნდოვანი ზედაპირი
+   * და ბოქლომი.
+   *
+   * ⚠️ **აქ ფოტო არ იხატება და ვერც დაიხატება**: სერვერი ჩაკეტილ ალბომს
+   * ესკიზს საერთოდ არ უგზავნის (`previews` ცარიელია), ე.ი. ბუნდოვანება
+   * ნამდვილია და არა ფარდა — devtools-ში მის მოხსნასაც ვერაფერს გამოაჩენს,
+   * იმიტომ რომ ქვეშ არაფერია. სწორედ ეს იყო შენი პირობა.
+   */
+  locked?: boolean
   /** ქვედა მარჯვენა კონტროლები — ჩამოტვირთვა, ვებძებნა და მისთანები */
   actions?: ReactNode
   /**
@@ -131,8 +142,31 @@ export function PhotoStack({
           )}
         >
           {cards.length === 0 && (
-            <span className="absolute inset-0 grid place-items-center rounded-xl border border-dashed border-border bg-muted/40 text-muted-foreground">
-              <ImageOff className="size-6" />
+            <span
+              className={cn(
+                'absolute inset-0 grid place-items-center rounded-xl border text-muted-foreground',
+                locked
+                  ? 'overflow-hidden border-border bg-muted'
+                  : 'border-dashed border-border bg-muted/40',
+              )}
+            >
+              {locked ? (
+                <>
+                  {/* ბუნდოვანი ზედაპირი — მხოლოდ გრადიენტი, არცერთი ფაილი */}
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 blur-xl"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 30% 30%, var(--muted-foreground), transparent 55%), radial-gradient(circle at 70% 70%, var(--primary), transparent 50%)',
+                      opacity: 0.55,
+                    }}
+                  />
+                  <Lock className="relative size-6" />
+                </>
+              ) : (
+                <ImageOff className="size-6" />
+              )}
             </span>
           )}
 

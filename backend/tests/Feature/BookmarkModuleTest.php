@@ -46,6 +46,20 @@ class BookmarkModuleTest extends TestCase
     }
 
     /** მოდულის gate + ველების ნაკრები */
+    /**
+     * ⚠️ სტატუსი და კატეგორია სავალდებულოა — ბუკმარკი ვერცერთის გარეშე ვერ იქმნება.
+     * `+`-ით ერთვება, ამიტომ ტესტის საკუთარი კატეგორია უპირატესობით რჩება.
+     */
+    private function bookmarkDefaults(?User $user = null): array
+    {
+        $user ??= $this->user;
+
+        return [
+            'status' => 'to_read',
+            'category_id' => $this->actingAs($user)->getJson('/api/bookmark-categories')->json('data.0.id'),
+        ];
+    }
+
     public function test_module_gate_and_field_set(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -62,7 +76,7 @@ class BookmarkModuleTest extends TestCase
                 'category_id' => $categoryId,
                 'tags' => ['php', 'php', ' Laravel '],
                 'autofill' => 0,
-            ])
+            ] + $this->bookmarkDefaults())
             ->assertStatus(201)
             ->assertJsonPath('data.title', 'Laravel-ის დოკუმენტაცია')
             ->assertJsonPath('data.category_id', $categoryId)
@@ -83,7 +97,7 @@ class BookmarkModuleTest extends TestCase
                 'title' => 'X',
                 'url' => 'https://WWW.Example.COM/a/b?c=1',
                 'autofill' => 0,
-            ])
+            ] + $this->bookmarkDefaults())
             ->assertStatus(201)
             ->assertJsonPath('data.domain', 'example.com');
     }
@@ -92,7 +106,7 @@ class BookmarkModuleTest extends TestCase
     public function test_status_is_bounded(): void
     {
         $id = $this->actingAs($this->user)
-            ->postJson('/api/bookmarks', ['title' => 'X', 'url' => 'https://a.com', 'autofill' => 0])
+            ->postJson('/api/bookmarks', ['title' => 'X', 'url' => 'https://a.com', 'autofill' => 0] + $this->bookmarkDefaults())
             ->json('data.id');
 
         $this->actingAs($this->user)
@@ -109,7 +123,7 @@ class BookmarkModuleTest extends TestCase
     public function test_visit_counter(): void
     {
         $id = $this->actingAs($this->user)
-            ->postJson('/api/bookmarks', ['title' => 'X', 'url' => 'https://a.com', 'autofill' => 0])
+            ->postJson('/api/bookmarks', ['title' => 'X', 'url' => 'https://a.com', 'autofill' => 0] + $this->bookmarkDefaults())
             ->json('data.id');
 
         $this->actingAs($this->user)->postJson("/api/bookmarks/{$id}/visited")->assertOk();
@@ -157,7 +171,7 @@ class BookmarkModuleTest extends TestCase
                 'url' => 'https://a.com',
                 'category_id' => $from,
                 'autofill' => 0,
-            ])
+            ] + $this->bookmarkDefaults())
             ->json('data.id');
 
         $this->actingAs($this->user)
@@ -179,11 +193,11 @@ class BookmarkModuleTest extends TestCase
         $this->actingAs($this->user)->postJson('/api/bookmarks', [
             'title' => 'A', 'url' => 'https://a.com', 'category_id' => $work,
             'tags' => ['php', 'docs'], 'autofill' => 0,
-        ]);
+        ] + $this->bookmarkDefaults());
         $this->actingAs($this->user)->postJson('/api/bookmarks', [
             'title' => 'B', 'url' => 'https://b.com', 'category_id' => $tools,
             'tags' => ['docs'], 'autofill' => 0,
-        ]);
+        ] + $this->bookmarkDefaults());
 
         // ⚠️ კატეგორია **სვეტია**, ე.ი. მძიმით გამოყოფილი სია OR-ია
         $this->actingAs($this->user)
@@ -205,7 +219,7 @@ class BookmarkModuleTest extends TestCase
         $other = $this->makeUser('otto', ['bookmark']);
 
         $id = $this->actingAs($other)
-            ->postJson('/api/bookmarks', ['title' => 'Theirs', 'url' => 'https://a.com', 'autofill' => 0])
+            ->postJson('/api/bookmarks', ['title' => 'Theirs', 'url' => 'https://a.com', 'autofill' => 0] + $this->bookmarkDefaults($other))
             ->json('data.id');
 
         $this->actingAs($this->user)->getJson("/api/bookmarks/{$id}")->assertStatus(404);
@@ -230,7 +244,7 @@ class BookmarkModuleTest extends TestCase
                 'url' => 'https://a.com',
                 'autofill' => 0,
                 'thumbnail' => UploadedFile::fake()->image('shot.jpg', 40, 40),
-            ])
+            ] + $this->bookmarkDefaults())
             ->assertStatus(201)
             ->json('data.id');
 

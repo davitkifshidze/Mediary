@@ -65,6 +65,18 @@ class VideoModuleTest extends TestCase
         $this->assertNull($other['embed_url']);
     }
 
+    /**
+     * ⚠️ ტიპიც და სტატუსიც სავალდებულოა — ვიდეო ვერცერთის გარეშე ვერ იქმნება.
+     * ტიპების ლექსიკონი ზარმაცად ითესება, ამიტომ პირველი გამოძახება იანგარიშებს.
+     */
+    private function videoDefaults(): array
+    {
+        return [
+            'status' => 'to_watch',
+            'type_id' => $this->actingAs($this->user)->getJson('/api/video-types')->json('data.0.id'),
+        ];
+    }
+
     public function test_module_gate_and_crud(): void
     {
         $outsider = $this->makeUser('nomodule', []);
@@ -75,7 +87,7 @@ class VideoModuleTest extends TestCase
                 'title' => 'Rick',
                 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
                 'tags' => ['music', 'meme'],
-            ])
+            ] + $this->videoDefaults())
             ->assertStatus(201)
             ->assertJsonPath('data.platform', 'youtube')
             ->assertJsonPath('data.embed_url', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
@@ -190,6 +202,7 @@ class VideoModuleTest extends TestCase
                 'title' => 'Laravel intro',
                 'url' => 'https://youtu.be/dQw4w9WgXcQ',
                 'type_id' => $lesson,
+                'status' => 'to_watch',
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.type_id', $lesson)
@@ -245,7 +258,7 @@ class VideoModuleTest extends TestCase
                 'title' => 'Tagged',
                 'url' => 'https://youtu.be/dQw4w9WgXcQ',
                 'tags' => ['Music', 'music', ' music ', 'meme'],
-            ])
+            ] + $this->videoDefaults())
             ->assertStatus(201)
             ->assertJsonPath('data.tags', ['Music', 'meme']);
     }

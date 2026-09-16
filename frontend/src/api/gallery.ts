@@ -300,6 +300,9 @@ export interface GalleryGroup {
   previews?: string[]
   /** მოდულების ჭრილი პრივატულ დისკზეც ცხოვრობს (`note`) */
   private?: boolean
+  /** ალბომების ჭრილში — ჩაკეტილ ჯგუფს ესკიზი არ მოსდევს (2026-09-16) */
+  locked?: boolean
+  unlocked?: boolean
 
   /* ---------- ეტაპი 2: შიდა დაჯგუფების საკვები ----------
      ⚠️ **სამივე ჯგუფშივე მოდის და ცალკე არ იკითხება.** „ჟანრი / წელი /
@@ -355,6 +358,13 @@ export interface GalleryPhotoFilters {
   /** §28 — ერთ დომენზე ჭრა („არეული" ხედი ერთი ტაბის შიგნით) */
   type?: GalleryParentKind
   album_id?: number
+  /**
+   * ⚠️ **„ალბომების" ჭრილის ბრტყელი ხედი** (2026-09-16): `any` — რომელიმე
+   * ალბომში დევს, `none` — არცერთში. `album_id`-ით ეს ვერ ითქმებოდა, და
+   * „ალბომის გარეშე" ბარათის მოხსნის შემდეგ „არეული" ხედს სხვა პასუხი
+   * აღარ ჰქონდა — `owner: 'none'` იმავე წაშლილ საქაღალდეს დააბრუნებდა.
+   */
+  album?: 'any' | 'none'
   /** „წყაროს" ჭრილი — დომენის ყველა ფოტო (ჩანაწერისაც და მსახიობებისაც) */
   from?: MediaType
   /** „მომწოდებლის" ჭრილი — `tmdb` · `wikimedia` · `serpapi:*` */
@@ -607,6 +617,14 @@ export interface GalleryAlbum {
   description: string | null
   sort_order: number
   photos: number
+  /**
+   * **ჩაკეტილი ალბომი (2026-09-16).**
+   *
+   * ⚠️ ორი ცალკე ფაქტია და ორივე სჭირდება ინტერფეისს: `locked` — პაროლი
+   * ადევს; `unlocked` — ამ სესიაში უკვე გაიხსნა. hash არასდროს მოდის.
+   */
+  locked: boolean
+  unlocked: boolean
 }
 
 export async function fetchGalleryAlbums(): Promise<GalleryAlbum[]> {
@@ -617,6 +635,7 @@ export async function fetchGalleryAlbums(): Promise<GalleryAlbum[]> {
 export async function createGalleryAlbum(body: {
   name: string
   description?: string | null
+  password?: string | null
 }): Promise<GalleryAlbum> {
   const { data } = await api.post('/gallery/albums', body)
   return data
@@ -624,9 +643,34 @@ export async function createGalleryAlbum(body: {
 
 export async function updateGalleryAlbum(
   id: number,
-  body: { name?: string; description?: string | null },
+  body: {
+    name?: string
+    description?: string | null
+    /** ახალი პაროლი — ლოკის დადება ან შეცვლა */
+    password?: string | null
+    /** ლოკის მოხსნა */
+    remove_password?: boolean
+    /**
+     * ⚠️ **მოქმედი პაროლი სავალდებულოა ლოკის შეცვლისას** — უამისოდ
+     * ბრაუზერთან მისული კაცი უბრალოდ „მოხსნას" დააჭერდა და ლოკს აზრი
+     * არ ექნებოდა. ამ სესიაში უკვე გახსნილს ის აღარ სჭირდება.
+     */
+    current_password?: string
+  },
 ): Promise<GalleryAlbum> {
   const { data } = await api.patch(`/gallery/albums/${id}`, body)
+  return data
+}
+
+/** პაროლის შემოწმება — სწორზე ალბომი **სერვერის სესიაში** იხსნება */
+export async function unlockGalleryAlbum(id: number, password: string): Promise<GalleryAlbum> {
+  const { data } = await api.post(`/gallery/albums/${id}/unlock`, { password })
+  return data
+}
+
+/** „ისევ ჩაკეტე" — პაროლი ხელუხლებელია, უბრალოდ სესია იხურება */
+export async function lockGalleryAlbum(id: number): Promise<GalleryAlbum> {
+  const { data } = await api.post(`/gallery/albums/${id}/lock`)
   return data
 }
 
@@ -652,6 +696,7 @@ export async function moveGalleryImages(body: {
   ids: number[]
   /** `none` = უკატეგორიოში; `movie:12` / `cast_member:5` = მშობელზე */
   target?: string
+  /** ⚠️ ცხადი `null` = „ალბომიდან ამოღება"; გამოტოვებული = „არ შეეხო" */
   album_id?: number | null
 }): Promise<{ moved: number }> {
   const { data } = await api.post('/gallery/images/move', body)

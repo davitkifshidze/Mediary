@@ -29,6 +29,7 @@ import { PageContainer } from '@/components/ui/page'
 import { GenreSelect } from '@/components/GenreSelect'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
+import { missingPicks } from '@/lib/requiredPicks'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
 
@@ -287,6 +288,18 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       <form
         onSubmit={(e) => {
           e.preventDefault()
+
+          /* ⚠️ სტატუსიც და ჟანრიც სავალდებულოა. აქ `errors` სიას იჭერს
+             (backend-ი ველზე რამდენიმე შეცდომას აბრუნებს), ამიტომ `missingPicks`-ის
+             პასუხი ერთწევრიან სიად ეხვევა, რომ ერთი და იგივე ველი
+             ორივე შემთხვევაში ერთნაირად გაწითლდეს. */
+          const missing = missingPicks({ status: form.status, genres: form.genres })
+          if (missing.length > 0) {
+            setErrors(Object.fromEntries(missing.map((key) => [key, [t('validation.pickOne')]])))
+
+            return
+          }
+
           setErrors({})
           mut.mutate()
         }}
@@ -527,11 +540,22 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             <FieldLabel required={fields.required('genres')} hint={fields.hint('genres')}>
               {fields.label('genres')}
             </FieldLabel>
-            <GenreSelect
-              genres={genresQ.data ?? []}
-              value={form.genres}
-              onChange={(v) => setForm((f) => ({ ...f, genres: v }))}
-            />
+            {/* ⚠️ `GenreSelect` react-select-ია — ჩარჩოს მას თავისი სტილები ხატავს,
+                ამიტომ წითელდება მისი გარსა ედება და არა `className`-ით */}
+            <div
+              className={cn(
+                errors.genres && 'rounded-md ring-1 ring-destructive',
+              )}
+            >
+              <GenreSelect
+                genres={genresQ.data ?? []}
+                value={form.genres}
+                onChange={(v) => setForm((f) => ({ ...f, genres: v }))}
+              />
+            </div>
+            {errors.genres && (
+              <p className="mt-1 text-xs text-destructive">{errors.genres[0]}</p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
@@ -539,8 +563,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
               <FieldLabel required={fields.required('status')} hint={fields.hint('status')}>
                 {fields.label('status')}
               </FieldLabel>
-              <div className="flex flex-wrap gap-1.5">
-                {/* §6.4 — სია ლექსიკონიდან; ცარიელზე backend ნაგულისხმევს დაადებს */}
+              <div
+                className={cn(
+                  'flex flex-wrap gap-1.5',
+                  errors.status && 'rounded-md border border-destructive p-1.5',
+                )}
+              >
+                {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
                 {statuses.map((s) => (
                   <button
                     key={s.id}
@@ -555,6 +584,9 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                   </button>
                 ))}
               </div>
+              {errors.status && (
+                <p className="mt-1 text-xs text-destructive">{errors.status[0]}</p>
+              )}
             </div>
             {fields.shows('is_favorite') && (
               <div className="flex items-center gap-2 pt-6">

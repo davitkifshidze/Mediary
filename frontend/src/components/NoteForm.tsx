@@ -12,6 +12,7 @@ import {
 } from '@/api/notes'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useStatuses } from '@/lib/statuses'
@@ -92,6 +93,20 @@ export function NoteForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და კატეგორიაც სავალდებულოა. შემოწმება ქსელამდეა,
+       რათა პასუხი იმავე წამს იყოს და ველი გაწითლდეს; backend-ის 422 მეორე კარიბჭეა.
+       გასაღებები იგივეა, რაც backend-ის შეცდომებისა, ე.ი. შეცდომის ჩვენება ერთია. */
+    const picked = pickErrors(
+      { category_id: form.categoryId, status: form.status },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     save.mutate({
@@ -152,14 +167,16 @@ export function NoteForm({
             </FieldLabel>
             <div className="flex gap-1">
               <Select
-                value={form.categoryId || 'none'}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v === 'none' ? '' : v }))}
+                value={form.categoryId}
+                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
               >
-                <SelectTrigger id="note-category">
-                  <SelectValue />
+                <SelectTrigger
+                  id="note-category"
+                  className={errors.category_id ? 'border-destructive' : undefined}
+                >
+                  <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('noteCategories.none')}</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={String(category.id)}>
                       {dictionaryName(category, lang)}
@@ -179,6 +196,9 @@ export function NoteForm({
                 <Plus className="size-4" />
               </Button>
             </div>
+            {errors.category_id && (
+              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
+            )}
           </div>
 
           <div className={fields.shows('status') ? undefined : 'hidden'}>
@@ -189,8 +209,11 @@ export function NoteForm({
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
             >
-              <SelectTrigger id="note-status">
-                <SelectValue />
+              <SelectTrigger
+                id="note-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {/* §6.4 — სტატუსები per-user ლექსიკონიდან */}
@@ -201,6 +224,7 @@ export function NoteForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
 
           {fields.shows('due_at') && (

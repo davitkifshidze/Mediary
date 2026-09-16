@@ -241,6 +241,11 @@ class BookController extends Controller
     {
         $userId = $request->user()->id;
 
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $book ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             // ერთი ენა მაინც სავალდებულოა — უსათაურო წიგნი სიაში ვერ იძებნება
             'title_ka' => ['nullable', 'string', 'max:255', 'required_without:title_en'],
@@ -262,14 +267,14 @@ class BookController extends Controller
             'source_url' => ['nullable', 'string', 'max:1000', 'url'],
 
             'genre_id' => [
-                'nullable', 'integer',
+                ...$must, 'integer',
                 Rule::exists('book_genres', 'id')->where('user_id', $userId),
             ],
             'series_name' => ['nullable', 'string', 'max:255'],
             'series_number' => ['nullable', 'integer', 'min:0', 'max:9999'],
 
             'format' => ['nullable', Rule::in(Book::FORMATS)],
-            'status' => ['nullable', Rule::in(Book::STATUSES)],
+            'status' => [...$must, Rule::in(Book::STATUSES)],
             'rating' => ['nullable', 'integer', 'min:1', 'max:'.Book::MAX_RATING],
             'is_favorite' => ['nullable', 'boolean'],
             'progress_page' => ['nullable', 'integer', 'min:0', 'max:100000'],

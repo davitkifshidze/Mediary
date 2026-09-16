@@ -159,11 +159,12 @@ class SongModuleTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $both);
 
-        // ცარიელი მასივი ყველა ჟანრს ხსნის (და არა „ველი არ მოვიდა"-ს)
+        // ⚠️ ცარიელი მასივი აღარ „ხსნის" ჟანრებს — მინიმუმ ერთი სავალდებულოა.
+        // ძველი ქცევა („ცარიელი = თავისუფალდება") განზრახვედ შეიცვალა 422-ით.
         $this->actingAs($this->user)
             ->patchJson("/api/songs/{$both}", ['genre_ids' => [], 'autofill' => 0])
-            ->assertOk()
-            ->assertJsonPath('data.genre_ids', []);
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['genre_ids']);
     }
 
     /**
@@ -216,11 +217,15 @@ class SongModuleTest extends TestCase
     {
         Storage::fake('public');
 
+        // ⚠️ ჟანრი სავალდებულოა — უინგო, შექმნა 422-ით დაბრუნდება
+        $genreId = $this->actingAs($this->user)->getJson('/api/song-genres')->json('data.0.id');
+
         $id = $this->actingAs($this->user)
             ->post('/api/songs', [
                 'title' => 'X',
                 'url' => 'https://youtu.be/aaaaaaaaaaa',
                 'autofill' => 0,
+                'genre_ids' => [$genreId],
                 'thumbnail' => UploadedFile::fake()->image('cover.jpg'),
             ])
             ->assertStatus(201)

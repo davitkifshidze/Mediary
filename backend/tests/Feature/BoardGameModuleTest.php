@@ -48,10 +48,23 @@ class BoardGameModuleTest extends TestCase
         return $user->refresh();
     }
 
+    /**
+     * ⚠️ სტატუსი და ჟანრი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ იქმნება.
+     */
+    private function gameDefaults(?User $user = null): array
+    {
+        $user ??= $this->user;
+
+        return [
+            'status' => 'owned',
+            'genre_id' => $this->actingAs($user)->getJson('/api/board-game-genres')->json('data.0.id'),
+        ];
+    }
+
     private function makeGame(array $overrides = []): int
     {
         return $this->actingAs($this->user)
-            ->postJson('/api/board-games', $overrides + ['title' => 'Catan'])
+            ->postJson('/api/board-games', $overrides + $this->gameDefaults() + ['title' => 'Catan'])
             ->assertStatus(201)
             ->json('data.id');
     }
@@ -179,7 +192,7 @@ class BoardGameModuleTest extends TestCase
 
         $other = $this->makeUser('otto', ['board_game']);
         $this->actingAs($other)
-            ->postJson('/api/board-games', ['title' => 'Catan', 'bgg_id' => 13])
+            ->postJson('/api/board-games', ['title' => 'Catan', 'bgg_id' => 13] + $this->gameDefaults($other))
             ->assertStatus(201);
     }
 

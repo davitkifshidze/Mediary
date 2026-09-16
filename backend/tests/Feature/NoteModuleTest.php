@@ -52,10 +52,24 @@ class NoteModuleTest extends TestCase
         return $user->refresh();
     }
 
+    /**
+     * ⚠️ სტატუსი და კატეგორია სავალდებულოა — ჩანაწერი ვერცერთის გარეშე
+     * ვერ იქმნება, ამიტომ ყველა შექმნა ამ ნაგულისხმებს ეყრდნობა.
+     */
+    private function noteDefaults(?User $user = null): array
+    {
+        $user ??= $this->user;
+
+        return [
+            'status' => 'open',
+            'category_id' => $this->actingAs($user)->getJson('/api/note-categories')->json('data.0.id'),
+        ];
+    }
+
     private function makeNote(array $overrides = []): int
     {
         return $this->actingAs($this->user)
-            ->postJson('/api/notes', $overrides + ['title' => 'პასპორტის ვადა'])
+            ->postJson('/api/notes', $overrides + ['title' => 'პასპორტის ვადა'] + $this->noteDefaults())
             ->assertStatus(201)
             ->json('data.id');
     }
@@ -71,6 +85,7 @@ class NoteModuleTest extends TestCase
         $this->actingAs($this->user)
             ->postJson('/api/notes', [
                 'title' => 'ავტოსატესტო',
+                'status' => 'open',
                 'description' => 'რისთვისაა: ტექდათვალიერება',
                 'category_id' => $categoryId,
                 // დუბლი ტეგი უნდა მოიჭრას (`Video::normalizeTags()`-ის საერთო წესი)
@@ -268,7 +283,7 @@ class NoteModuleTest extends TestCase
         // სხვისი ჩანაწერი და სხვისი შეხსენება — ჩემ სიაში არ უნდა იყოს
         $other = $this->makeUser('otto', ['note']);
         $otherNote = $this->actingAs($other)
-            ->postJson('/api/notes', ['title' => 'სხვისი'])
+            ->postJson('/api/notes', ['title' => 'სხვისი'] + $this->noteDefaults($other))
             ->assertStatus(201)
             ->json('data.id');
         $this->actingAs($other)
@@ -674,9 +689,12 @@ class NoteModuleTest extends TestCase
         $admin = $this->makeUser('boss', ['note']);
         $admin->assignRole('super_admin')->save();
 
-        $categoryId = $this->actingAs($this->user)->getJson('/api/note-categories')->json('data.0.id');
+        $categories = $this->actingAs($this->user)->getJson('/api/note-categories')->json('data');
+        $categoryId = $categories[0]['id'];
         $this->makeNote(['category_id' => $categoryId]);
-        $this->makeNote(['title' => 'სხვა']);
+        // ⚠️ მეორე ჩანაწერი **სხვა** კატეგორიაში: კატეგორია ახლა სავალდებულოა,
+        // ამიტომ „კატეგორიის გარეშე" აღარ არსებობს — სკოუპი სხვანაირად იყოფილიყო.
+        $this->makeNote(['title' => 'სხვა', 'category_id' => $categories[1]['id']]);
 
         $plan = $this->actingAs($admin)
             ->postJson('/api/admin/purge/plan', [

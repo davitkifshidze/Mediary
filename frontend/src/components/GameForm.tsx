@@ -24,6 +24,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { GameFranchiseDialog } from '@/components/GameFranchiseDialog'
@@ -135,7 +136,8 @@ export function GameForm({
     rating: game?.rating != null ? String(game.rating) : '',
     age_rating: game?.age_rating ?? '',
     size_gb: game?.size_gb != null ? String(game.size_gb) : '',
-    status: game?.status ?? 'undecided',
+    // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
+    status: game?.status ?? '',
     rawgId: game?.rawg_id != null ? String(game.rawg_id) : '',
     rawgSlug: game?.rawg_slug ?? '',
     igdbId: game?.igdb_id != null ? String(game.igdb_id) : '',
@@ -272,6 +274,19 @@ export function GameForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და ჟანრიც სავალდებულოა — ჟანრი აქ pivot-ია, ე.ი. „მინიმუმ ერთი".
+       შემოწმება ქსელამდეა, რათა პასუხი იმავე წამს იყოს; backend-ის 422 მეორე კარიბჭეა. */
+    const picked = pickErrors(
+      { status: form.status, genre_ids: genreIds },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     save.mutate({
@@ -303,7 +318,8 @@ export function GameForm({
       rawg_slug: form.rawgSlug || null,
       igdb_id: num(form.igdbId),
       igdb_slug: form.igdbSlug || null,
-      status: form.status,
+      // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის
+      status: form.status as (typeof GAME_STATUSES)[number],
       rawg_cover_url: rawgCoverUrl,
       cover,
       remove_cover: removeCover,
@@ -508,7 +524,13 @@ export function GameForm({
                   {t('gameGenres.add')}
                 </Button>
               </div>
-              <div className={fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden'}>
+              <div
+                className={cn(
+                  fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden',
+                  // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
+                  errors.genre_ids && 'rounded-md border border-destructive p-1.5',
+                )}
+              >
                 {genres.map((genre) => (
                   <button
                     key={genre.id}
@@ -571,8 +593,11 @@ export function GameForm({
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
             >
-              <SelectTrigger id="g-status">
-                <SelectValue />
+              <SelectTrigger
+                id="g-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {GAME_STATUSES.map((value) => (
@@ -582,6 +607,7 @@ export function GameForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
           <div className={fields.shows('rawg_id') ? undefined : 'hidden'}>
             <FieldLabel htmlFor="g-rawg" required={fields.required('rawg_id')} hint={fields.hint('rawg_id')}>

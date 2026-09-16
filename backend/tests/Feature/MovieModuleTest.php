@@ -70,6 +70,8 @@ class MovieModuleTest extends TestCase
             'title_en' => 'The Matrix',
             'year' => 1999,
             'rating' => 8.7,
+            'status' => 'undecided',
+            'genres' => ['Action'],
         ])->assertStatus(201);
 
         $res->assertJsonPath('data.title_ka', 'მატრიცა')
@@ -110,11 +112,15 @@ class MovieModuleTest extends TestCase
         $this->actingAs($this->alice)->postJson('/api/movies', [
             'title_en' => 'The Matrix',
             'imdb_id' => 'tt0133093',
+            'status' => 'undecided',
+            'genres' => ['Action'],
         ])->assertStatus(201);
 
         $this->actingAs($this->bob)->postJson('/api/movies', [
             'title_en' => 'The Matrix',
             'imdb_id' => 'tt0133093',
+            'status' => 'undecided',
+            'genres' => ['Action'],
         ])->assertStatus(201);
 
         $this->assertSame(2, Movie::withoutGlobalScope('owner')->count());
@@ -126,11 +132,15 @@ class MovieModuleTest extends TestCase
         $this->actingAs($this->alice)->postJson('/api/movies', [
             'title_en' => 'The Matrix',
             'imdb_id' => 'tt0133093',
+            'status' => 'undecided',
+            'genres' => ['Action'],
         ])->assertStatus(201);
 
         $this->actingAs($this->alice)->postJson('/api/movies', [
             'title_en' => 'The Matrix Again',
             'imdb_id' => 'tt0133093',
+            'status' => 'undecided',
+            'genres' => ['Action'],
         ])->assertStatus(422)->assertJsonValidationErrors(['imdb_id']);
     }
 

@@ -19,6 +19,7 @@ import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BookGenreDialog } from '@/components/BookGenreDialog'
@@ -74,7 +75,8 @@ export function BookForm({
     series_name: book?.series_name ?? '',
     series_number: book?.series_number ? String(book.series_number) : '',
     format: book?.format ?? 'print',
-    status: book?.status ?? 'to_read',
+    // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
+    status: book?.status ?? '',
     rating: book?.rating ? String(book.rating) : '',
     tags: book?.tags ?? [],
     // §5.7 — ერთი „წყაროს / წასაკითხი ლინკი" (ადრე მხოლოდ ატვირთული ebook იყო)
@@ -175,6 +177,19 @@ export function BookForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და ჟანრიც სავალდებულოა — შემოწმება ქსელამდე, რათა ველი
+       იმავე წამს გაწითლდეს. გასაღებები backend-ის შეცდომებისაა, ე.ი. ცემა ერთია. */
+    const picked = pickErrors(
+      { status: form.status, genre_id: form.genreId },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     const { tags, removed } = dedupeTags(form.tags)
@@ -198,7 +213,8 @@ export function BookForm({
       series_name: form.series_name || null,
       series_number: form.series_number ? Number(form.series_number) : null,
       format: form.format,
-      status: form.status,
+      // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის — ეს მხოლოდ ტიპის დავიწროებაა
+      status: form.status as (typeof BOOK_STATUSES)[number],
       source_url: form.source_url || null,
       /* ⚠️ §5.7 — ეს სამი ველი **ფორმაზე აღარ ჩანს**, მაგრამ payload-ში რჩება
          განზრახ: `rating`/`series_*` არსებულ ჩანაწერს რომ არ წაეშალოს
@@ -426,8 +442,11 @@ export function BookForm({
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
             >
-              <SelectTrigger id="b-status">
-                <SelectValue />
+              <SelectTrigger
+                id="b-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {BOOK_STATUSES.map((value) => (
@@ -437,6 +456,7 @@ export function BookForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
           {/* §5.7 — სერია/ნომერი ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება
               და სიაში ისევ ჩანს; დალაგებაც მუშაობს) */}
@@ -450,14 +470,16 @@ export function BookForm({
             </FieldLabel>
             <div className="flex gap-1">
               <Select
-                value={form.genreId || 'none'}
-                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v === 'none' ? '' : v }))}
+                value={form.genreId}
+                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
               >
-                <SelectTrigger id="b-genre">
-                  <SelectValue />
+                <SelectTrigger
+                  id="b-genre"
+                  className={errors.genre_id ? 'border-destructive' : undefined}
+                >
+                  <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('bookGenres.none')}</SelectItem>
                   {genres.map((genre) => (
                     <SelectItem key={genre.id} value={String(genre.id)}>
                       {dictionaryName(genre, lang)}
@@ -477,6 +499,7 @@ export function BookForm({
                 <Plus className="size-4" />
               </Button>
             </div>
+            {errors.genre_id && <p className="mt-1 text-xs text-destructive">{errors.genre_id}</p>}
 
             {/* §5.7 — ტეგები და მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ახლა
                 ერთი „წყაროს ლინკი" ცვლის, ტეგებს კი Open Library ავსებს

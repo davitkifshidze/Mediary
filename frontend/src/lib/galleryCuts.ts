@@ -1,4 +1,4 @@
-import { Boxes, Film, Images, Inbox, Radio, Users, Video } from 'lucide-react'
+import { Boxes, Film, FolderHeart, Images, Radio, Users, Video } from 'lucide-react'
 
 /* ============================================================
    გალერეის ჭრილები (§8.5) — **ერთი რუკა** გვერდისთვისაც და საიდბარისთვისაც.
@@ -17,7 +17,7 @@ export type GalleryCut =
   | 'all'
   | 'records'
   | 'actors'
-  | 'uncategorized'
+  | 'albums'
   | 'videos'
   | 'sources'
   | 'modules'
@@ -27,8 +27,14 @@ export const GALLERY_CUTS = [
   { key: 'all', path: '/gallery', icon: Images },
   { key: 'records', path: '/gallery/records', icon: Film },
   { key: 'actors', path: '/gallery/actors', icon: Users },
-  // §26 — უმშობლო ფოტოები და მათი ალბომები
-  { key: 'uncategorized', path: '/gallery/uncategorized', icon: Inbox },
+  /* ⚠️ **„უკატეგორიო" → „ალბომები" (შენი მითითება, 2026-09-16).** ჭრილის
+     სახელი მისი **ნარჩენით** ერქვა — „ის ფოტოები, რომლებსაც მშობელი არ
+     ჰყავთ" —, თუმცა მისი შინაარსი ალბომებია: სწორედ აქ ალაგებ, ქმნი
+     საქაღალდეს და ჩააგდებ ფოტოს. „უკატეგორიო" ახლა ერთი ბარათია შიგნით
+     („ალბომის გარეშე") და არა მთელი სექციის სახელი.
+     ⚠️ ძველი მისამართი `/gallery/uncategorized` ცოცხალია და აქ
+     გადმოამისამართებს — შენახული ბმული არ უნდა გატყდეს. */
+  { key: 'albums', path: '/gallery/albums', icon: FolderHeart },
   { key: 'videos', path: '/gallery/videos', icon: Video },
   { key: 'sources', path: '/gallery/sources', icon: Radio },
   { key: 'modules', path: '/gallery/modules', icon: Boxes },

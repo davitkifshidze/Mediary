@@ -20,6 +20,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
@@ -79,7 +80,8 @@ export function BoardGameForm({
     complexity: game?.complexity ? String(game.complexity) : '',
     bggId: game?.bgg_id ? String(game.bgg_id) : '',
     bggRating: game?.bgg_rating ? String(game.bgg_rating) : '',
-    status: game?.status ?? 'owned',
+    // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
+    status: game?.status ?? '',
   })
   const [links, setLinks] = useState<BoardGameLink[]>(game?.links ?? [])
   const [bggImageUrl, setBggImageUrl] = useState<string | null>(null)
@@ -229,6 +231,19 @@ export function BoardGameForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და ჟანრიც სავალდებულოა — შემოწმება ქსელამდე, რათა ველი
+       იმავე წამს გაწითლდეს. გასაღებები backend-ის შეცდომებისაა, ე.ი. ცემა ერთია. */
+    const picked = pickErrors(
+      { status: form.status, genre_id: form.genreId },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     save.mutate({
@@ -248,7 +263,8 @@ export function BoardGameForm({
       bgg_rating: num(form.bggRating),
       // ⚠️ §5.2 — „ჩემი ქულა" ფორმიდან მოიხსნა და **საერთოდ აღარ იგზავნება**:
       // ცარიელი მნიშვნელობის გაგზავნა არსებულ ქულას ჩუმად წაშლიდა
-      status: form.status,
+      // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის
+      status: form.status as (typeof BOARD_GAME_STATUSES)[number],
       links: links.filter((l) => l.url.trim()),
       bgg_image_url: bggImageUrl,
       image,
@@ -581,8 +597,11 @@ export function BoardGameForm({
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
             >
-              <SelectTrigger id="bg-status">
-                <SelectValue />
+              <SelectTrigger
+                id="bg-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {BOARD_GAME_STATUSES.map((value) => (
@@ -592,6 +611,7 @@ export function BoardGameForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
         </div>
 
@@ -605,14 +625,16 @@ export function BoardGameForm({
             </div>
             <div className={fields.shows('genre') ? 'flex gap-1' : 'hidden'}>
               <Select
-                value={form.genreId || 'none'}
-                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v === 'none' ? '' : v }))}
+                value={form.genreId}
+                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
               >
-                <SelectTrigger id="bg-genre">
-                  <SelectValue />
+                <SelectTrigger
+                  id="bg-genre"
+                  className={errors.genre_id ? 'border-destructive' : undefined}
+                >
+                  <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('boardGameGenres.none')}</SelectItem>
                   {genres.map((genre) => (
                     <SelectItem key={genre.id} value={String(genre.id)}>
                       {dictionaryName(genre, lang)}
@@ -632,6 +654,7 @@ export function BoardGameForm({
                 <Plus className="size-4" />
               </Button>
             </div>
+            {errors.genre_id && <p className="mt-1 text-xs text-destructive">{errors.genre_id}</p>}
 
             {/* მაღაზიები: ბმული + ფასი (§14) */}
             <div className={fields.shows('links') ? 'mt-4' : 'hidden'}>

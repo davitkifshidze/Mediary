@@ -45,9 +45,9 @@ class StoreSeriesRequest extends FormRequest
             /* Tasks §6.4 — სტატუსი per-user ლექსიკონია, ე.ი. სია კოდში აღარ წერია.
                ⚠️ გასაღები **ამ ანგარიშის** ლექსიკონში უნდა არსებობდეს, თორემ
                უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */
-            'status' => ['nullable', 'string', Status::rule('series')],
+            'status' => ['required', 'string', Status::rule('series')],
             'is_favorite' => ['nullable', 'boolean'],
-            'genres' => ['nullable', 'array'],
+            'genres' => ['required', 'array', 'min:1'],
             'genres.*' => ['string', 'max:100'],
             'poster' => ['nullable', 'image', 'max:8192'],
             // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)

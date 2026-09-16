@@ -49,10 +49,23 @@ class BookModuleTest extends TestCase
         return $user->refresh();
     }
 
+    /**
+     * ⚠️ სტატუსი და ჟანრი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ იქმნება.
+     */
+    private function bookDefaults(?User $user = null): array
+    {
+        $user ??= $this->user;
+
+        return [
+            'status' => 'to_read',
+            'genre_id' => $this->actingAs($user)->getJson('/api/book-genres')->json('data.0.id'),
+        ];
+    }
+
     private function makeBook(array $overrides = []): int
     {
         return $this->actingAs($this->user)
-            ->postJson('/api/books', $overrides + [
+            ->postJson('/api/books', $overrides + $this->bookDefaults() + [
                 'title_ka' => 'ვეფხისტყაოსანი',
                 'title_en' => 'The Knight in the Panther\'s Skin',
             ])
@@ -157,7 +170,7 @@ class BookModuleTest extends TestCase
             ->assertStatus(422);
 
         $this->actingAs($this->user)
-            ->postJson('/api/books', ['title_en' => 'Only English'])
+            ->postJson('/api/books', ['title_en' => 'Only English'] + $this->bookDefaults())
             ->assertStatus(201);
     }
 
@@ -222,7 +235,7 @@ class BookModuleTest extends TestCase
 
         $other = $this->makeUser('otto', ['book']);
         $this->actingAs($other)
-            ->postJson('/api/books', ['title_en' => 'Same isbn', 'isbn' => '9789941234567'])
+            ->postJson('/api/books', ['title_en' => 'Same isbn', 'isbn' => '9789941234567'] + $this->bookDefaults($other))
             ->assertStatus(201);
     }
 

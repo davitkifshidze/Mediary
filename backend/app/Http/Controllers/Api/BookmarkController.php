@@ -154,6 +154,11 @@ class BookmarkController extends Controller
 
     private function validated(Request $request, ?Bookmark $bookmark = null): array
     {
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $bookmark ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             // სათაური არასავალდებულოა — ცარიელზე გვერდიდან წამოვა
             'title' => ['nullable', 'string', 'max:255'],
@@ -161,13 +166,13 @@ class BookmarkController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             // კატეგორია მხოლოდ **საკუთარი** ლექსიკონიდან
             'category_id' => [
-                'nullable',
+                ...$must,
                 'integer',
                 Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
             ],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
-            'status' => ['nullable', 'string', Status::rule('bookmark')],
+            'status' => [...$must, 'string', Status::rule('bookmark')],
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'image_url' => ['nullable', 'string', 'max:1000', 'url'],

@@ -20,7 +20,10 @@ class EnsureModulePermission
      * POST, რომელიც სინამდვილეში არსებულ ჩანაწერს ცვლის და არა ახალს ქმნის.
      * მისამართის ბოლო სეგმენტით ვცნობთ (`/movies/12/resync`).
      */
-    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download'];
+    /* ⚠️ `unlock`/`lock` (2026-09-16) — ალბომის გახსნა/ჩაკეტვა **არსებულ**
+       ჩანაწერს ეხება; მათ გარეშე POST-იდან `create` გამოიყვანებოდა და
+       view+update უფლების მქონე user-ს საკუთარი ალბომი 403-ით დაეხურებოდა. */
+    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock'];
 
     public function handle(Request $request, Closure $next, string $module, ?string $action = null): mixed
     {

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
+use App\Support\AlbumLock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
@@ -20,6 +22,11 @@ use Illuminate\Validation\Rule;
  * ივსება (ტიპები, ჟანრები, სტატუსები), რადგან მათ გარეშე ფორმა ცარიელია.
  * აქ პირიქითაა: ალბომი მხოლოდ მაშინ არსებობს, როცა user-მა დაახარისხა —
  * გამოგონილი „ჩემი ალბომი" ცარიელ საქაღალდედ იდებოდა.
+ *
+ * ⚠️ **ლოკი (2026-09-16).** პაროლი ალბომზეა და მისი ფოტოები `AlbumLock`-ის
+ * global scope-ით ქრება — იხ. `GalleryImage::booted()`. აქ მხოლოდ სამი
+ * კარია: დადება/შეცვლა/მოხსნა (`update`), გახსნა (`unlock`) და ისევ
+ * ჩაკეტვა (`lock`).
  */
 class GalleryAlbumController extends Controller
 {
@@ -27,7 +34,7 @@ class GalleryAlbumController extends Controller
     {
         return response()->json(
             GalleryAlbum::query()
-                ->withCount('images')
+                ->withCount($this->imagesCount())
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()
@@ -41,27 +48,117 @@ class GalleryAlbumController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'min:4', 'max:100'],
         ]);
+
+        $password = $data['password'] ?? null;
+        unset($data['password']);
 
         $album = GalleryAlbum::create([
             ...$data,
+            'password_hash' => $password ? Hash::make($password) : null,
             // ბოლოში ჩნდება — ახალი ალბომი არსებულ რიგს არ არევს
             'sort_order' => (int) GalleryAlbum::query()->max('sort_order') + 1,
         ]);
 
-        return response()->json($this->row($album->loadCount('images')), 201);
+        // პაროლით შექმნილი ალბომი მაშინვე ღიაა — შენ ახლა დაადე
+        if ($password) {
+            AlbumLock::unlock($album);
+        }
+
+        return response()->json($this->row($album->loadCount($this->imagesCount())), 201);
     }
 
+    /**
+     * სახელი, აღწერა და პაროლი.
+     *
+     * ⚠️ **პაროლის შეცვლა/მოხსნა მოქმედი პაროლის ცოდნას ითხოვს.** უამისოდ
+     * ლოკს აზრი არ ექნებოდა: ბრაუზერთან მისული კაცი უბრალოდ „მოხსნას"
+     * დააჭერდა. საკმარისია ისიც, რომ ალბომი **ამ სესიაში უკვე გახსნილია**
+     * — ე.ი. პაროლი ერთხელ ისედაც შეიყვანე.
+     *
+     * ⚠️ **`current_password` არასდროს გამოიყენება ახალ ლოკზე**: პაროლის
+     * გარეშე ალბომს დასაცავი არაფერი აქვს.
+     */
     public function update(Request $request, GalleryAlbum $galleryAlbum)
     {
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'min:4', 'max:100'],
+            'remove_password' => ['nullable', 'boolean'],
+            'current_password' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $galleryAlbum->update($data);
+        /* ⚠️ **`array_key_exists` აქ არ გამოდგება**: `ConvertEmptyStringsToNull`
+           ცარიელ ველს `null`-ად აქცევს, ე.ი. ფორმა, რომელიც ცარიელ პაროლს
+           მაინც აგზავნის, „ლოკის შეცვლად" ჩაითვლებოდა და მოქმედ პაროლს
+           უმიზეზოდ მოითხოვდა. ლოკს მხოლოდ ორი რამ ცვლის: ახალი პაროლი ან
+           ცხადი მოხსნა. */
+        $wantsLockChange = ($data['password'] ?? null) !== null || ($data['remove_password'] ?? false);
 
-        return response()->json($this->row($galleryAlbum->loadCount('images')));
+        if ($wantsLockChange && $galleryAlbum->isLocked() && ! AlbumLock::isUnlocked($galleryAlbum)) {
+            abort_unless(
+                ($data['current_password'] ?? null) !== null
+                    && Hash::check($data['current_password'], $galleryAlbum->password_hash),
+                422,
+                'album_password_wrong',
+            );
+        }
+
+        $changes = array_intersect_key($data, array_flip(['name', 'description']));
+
+        if ($data['remove_password'] ?? false) {
+            $changes['password_hash'] = null;
+        } elseif (($data['password'] ?? null) !== null) {
+            $changes['password_hash'] = Hash::make($data['password']);
+        }
+
+        $galleryAlbum->update($changes);
+
+        // ახლად დადებული/შეცვლილი პაროლი ამ სესიაში ღიად რჩება, თორემ
+        // „შევინახე" მაშინვე საკუთარ ალბომს დამიმალავდა
+        if (array_key_exists('password_hash', $changes)) {
+            $changes['password_hash'] === null
+                ? AlbumLock::lock($galleryAlbum)
+                : AlbumLock::unlock($galleryAlbum);
+        }
+
+        return response()->json($this->row($galleryAlbum->loadCount($this->imagesCount())));
+    }
+
+    /**
+     * პაროლის შემოწმება — `POST /gallery/albums/{album}/unlock`.
+     *
+     * ⚠️ **პასუხი არ ამბობს, რამდენად ახლოს იყავი** და არც ცალკე კოდი აქვს
+     * „ალბომს პაროლი არ აქვს"-ისთვის: ორივე უბრალოდ 422-ია.
+     *
+     * ⚠️ **throttle როუტზეა** (`throttle:album-unlock`) — უამისოდ ოთხნიშნა
+     * პაროლს სკრიპტი წუთებში გატეხდა.
+     */
+    public function unlock(Request $request, GalleryAlbum $galleryAlbum)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'max:100'],
+        ]);
+
+        abort_unless(
+            $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash),
+            422,
+            'album_password_wrong',
+        );
+
+        AlbumLock::unlock($galleryAlbum);
+
+        return response()->json($this->row($galleryAlbum->loadCount($this->imagesCount())));
+    }
+
+    /** „ისევ ჩაკეტე" — სესიიდან ამოვარდნა, პაროლი ხელუხლებელია */
+    public function lock(GalleryAlbum $galleryAlbum)
+    {
+        AlbumLock::lock($galleryAlbum);
+
+        return response()->json($this->row($galleryAlbum->loadCount($this->imagesCount())));
     }
 
     /**
@@ -71,9 +168,16 @@ class GalleryAlbumController extends Controller
      * ე.ი. ისინი უკატეგორიოში ბრუნდება; სურვილისამებრ `move_to`-თი სხვა
      * ალბომში გადადიან. ფოტოს წაშლა ცალკე მოქმედებაა (`DELETE
      * /gallery/images/{id}`) და „საქაღალდის" მოშორებას ვერ დაემალება.
+     *
+     * ⚠️ **ჩაკეტილი ალბომი ჯერ უნდა გაიხსნას და ეს ლოკის მთავარი კარია.**
+     * წაშლა ფოტოებს `album_id = null`-ზე აბრუნებს, ე.ი. უპაროლოდ
+     * დაშვებული „წაშალე ალბომი" ერთი კლიკით გააშიშვლებდა ყველაფერს,
+     * რაც ეს-ესაა დამალე — ლოკის სრული შემოვლა.
      */
     public function destroy(Request $request, GalleryAlbum $galleryAlbum)
     {
+        abort_if(! AlbumLock::isUnlocked($galleryAlbum), 423, 'album_locked');
+
         $data = $request->validate([
             'move_to' => [
                 'nullable',
@@ -115,6 +219,20 @@ class GalleryAlbumController extends Controller
         return $this->index();
     }
 
+    /**
+     * ფოტოების რიცხვი **ლოკის მიღმა** იწერება.
+     *
+     * ⚠️ global scope-ს რომ დაემორჩილა, ჩაკეტილი ალბომი „0 ფოტოს" აჩვენებდა
+     * — ე.ი. ბარათი იტყუებოდა. რიცხვი ფოტოს არ ამხელს; ამხელს გზა ფაილამდე,
+     * რომელიც არსად გამოდის.
+     *
+     * @return array<string, \Closure>
+     */
+    private function imagesCount(): array
+    {
+        return ['images' => fn ($q) => $q->withoutGlobalScope('album_lock')];
+    }
+
     /** @return array<string, mixed> */
     private function row(GalleryAlbum $album): array
     {
@@ -124,6 +242,10 @@ class GalleryAlbumController extends Controller
             'description' => $album->description,
             'sort_order' => $album->sort_order,
             'photos' => (int) ($album->images_count ?? 0),
+            // ⚠️ hash არასდროს — მხოლოდ ორი ფაქტი: „პაროლი ადევს" და
+            // „ამ სესიაში ღიაა". სწორედ ეს ორი წყვეტს, რას ხატავს ბარათი.
+            'locked' => $album->isLocked(),
+            'unlocked' => AlbumLock::isUnlocked($album),
         ];
     }
 }

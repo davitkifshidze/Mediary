@@ -23,7 +23,7 @@ import { GroupsCut } from '@/components/gallery/GroupsCut'
 import { RecordsCut } from '@/components/gallery/RecordsCut'
 import { ModulesCut } from '@/components/gallery/ModulesCut'
 import { VideosCut } from '@/components/gallery/VideosCut'
-import { UncategorizedCut } from '@/components/gallery/UncategorizedCut'
+import { AlbumsCut } from '@/components/gallery/AlbumsCut'
 import { GalleryScope } from '@/components/gallery/GalleryScope'
 
 /* ============================================================
@@ -154,7 +154,7 @@ export function GalleryPage({ cut = 'all' }: { cut?: GalleryCut }) {
         <GroupsCut by="actor" onDownloadRecord={fromRecordGroup} onDownloadActor={fromActorGroup} />
       )}
 
-      {cut === 'uncategorized' && <UncategorizedCut />}
+      {cut === 'albums' && <AlbumsCut />}
 
       {cut === 'videos' && <VideosCut />}
 

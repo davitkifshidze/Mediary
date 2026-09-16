@@ -51,6 +51,7 @@ import { useDateFormat } from '@/lib/dates'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
@@ -729,7 +730,8 @@ function VideoForm({
     url: video?.url ?? '',
     description: video?.description ?? '',
     // ახალ ვიდეოს პირველი ტიპი ენიჭება — select ცარიელი არ რჩება
-    typeId: video?.type_id ? String(video.type_id) : (types[0] ? String(types[0].id) : ''),
+    // ⚠️ აღარ იყენებს პირველ ტიპს ნაგულისხმევად: არჩევანი მომხმარებლისაა
+    typeId: video?.type_id ? String(video.type_id) : '',
     // §6.4 — გასაღები; ცარიელი = ნაგულისხმევი (backend დაადებს)
     status: video?.status?.key ?? '',
     tags: video?.tags ?? [],
@@ -830,6 +832,19 @@ function VideoForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და ტიპიც სავალდებულოა — შემოწმება ქსელამდე,
+       რათა პასუხი იმავე წამს იყოს; backend-ის 422 მეორე კარიბჭეა. */
+    const picked = pickErrors(
+      { status: form.status, type_id: form.typeId },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     // 5.3 — დუბლი submit-ზე იჭრება და user-ს ვატყობინებთ
@@ -964,8 +979,11 @@ function VideoForm({
                 value={form.typeId}
                 onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}
               >
-                <SelectTrigger id="v-type">
-                  <SelectValue placeholder={t('videoTypes.none')} />
+                <SelectTrigger
+                  id="v-type"
+                  className={errors.type_id ? 'border-destructive' : undefined}
+                >
+                  <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
                   {types.map((type) => (
@@ -987,6 +1005,7 @@ function VideoForm({
                 <Plus className="size-4" />
               </Button>
             </div>
+            {errors.type_id && <p className="mt-1 text-xs text-destructive">{errors.type_id}</p>}
           </div>
 
           {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
@@ -995,8 +1014,11 @@ function VideoForm({
               {fields.label('status')}
             </FieldLabel>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-              <SelectTrigger id="v-status">
-                <SelectValue />
+              <SelectTrigger
+                id="v-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {statuses.map((s) => (
@@ -1006,6 +1028,7 @@ function VideoForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
         </div>
 

@@ -424,13 +424,13 @@ class GalleryFetcher
         }
 
         $existing = $parent->galleryImages()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->pluck('remote_path')
             ->filter()
             ->flip();
 
-        $sort = (int) $parent->galleryImages()->withoutGlobalScope('owner')->max('sort_order');
+        $sort = (int) $parent->galleryImages()->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->max('sort_order');
 
         foreach ($candidates as $candidate) {
             if (isset($existing[$candidate['remote_path']])) {

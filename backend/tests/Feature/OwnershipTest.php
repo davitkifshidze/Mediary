@@ -97,7 +97,7 @@ class OwnershipTest extends TestCase
     public function test_created_record_belongs_to_current_user(): void
     {
         $this->actingAs($this->alice)
-            ->postJson('/api/movies', ['title_en' => 'Fresh', 'year' => 2024])
+            ->postJson('/api/movies', ['title_en' => 'Fresh', 'year' => 2024, 'status' => 'undecided', 'genres' => ['Action']])
             ->assertStatus(201);
 
         $this->assertSame($this->alice->id, Movie::withoutGlobalScope('owner')->first()->user_id);

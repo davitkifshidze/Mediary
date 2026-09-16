@@ -63,6 +63,7 @@ class AnimeModuleTest extends TestCase
                 'seasons' => 1,
                 'episodes' => 26,
                 'genres' => ['Action', 'Sci-Fi'],
+                'status' => 'undecided',
             ])
             ->assertCreated()
             ->assertJsonPath('data.title_ka', 'კაუბოი ბიბოპი')
@@ -104,10 +105,10 @@ class AnimeModuleTest extends TestCase
     public function test_genres_are_shared_with_the_other_media_domains(): void
     {
         $this->actingAs($this->user)
-            ->postJson('/api/anime', ['title_en' => 'Naruto', 'genres' => ['Action']])
+            ->postJson('/api/anime', ['title_en' => 'Naruto', 'genres' => ['Action'], 'status' => 'undecided'])
             ->assertCreated();
         $this->actingAs($this->user)
-            ->postJson('/api/movies', ['title_en' => 'Heat', 'genres' => ['Action']])
+            ->postJson('/api/movies', ['title_en' => 'Heat', 'genres' => ['Action'], 'status' => 'undecided'])
             ->assertCreated();
 
         $this->assertSame(1, Genre::where('slug', 'action')->count());

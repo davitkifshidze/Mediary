@@ -293,12 +293,16 @@ export function Sidebar({
    * ხატავს — ორ ადგილას ხელით რომ ეწერა, გვერდი ერთ რიგს აჩვენებდა,
    * საიდბარი მეორეს. დამალული სექცია **მხოლოდ აქ** ქრება.
    *
-   * ⚠️ **„სტატუსების მართვის" ბმული აქ აღარ არის** (შენი მითითება,
-   * 2026-09-14): ის ოთხივე ადგილას ეწერა — მედიის სამ დომენზე, ჩანაწერზე,
-   * სანიშნესა და ვიდეოზე — და იმას იმეორებდა, რაც `/dictionaries`-ს პირველ
-   * ჯგუფად ისედაც უწერია. **სექციები რჩება**: ისინი ფილტრია („ნანახი"),
-   * და არა მართვა. ლექსიკონების ბმულები (ტიპები, ჟანრები, კატეგორიები) —
-   * ასევე რჩება; მითითება მხოლოდ სტატუსებს ეხებოდა.
+   * ⚠️ **მოდულის შიგნით ლექსიკონის არცერთი ბმული აღარ არის** (შენი მითითება:
+   * ჯერ სტატუსებზე 2026-09-14, მერე დანარჩენებზე 2026-09-15). სტატუსები,
+   * ტიპები, ჟანრები და კატეგორიები ერთ სექციაშია — `/dictionaries` —, ე.ი.
+   * მოდულში ჩაწერილი „მართვა" იმას იმეორებდა, რაც იქ ისედაც ბარათად წერია,
+   * და ერთსა და იმავე გვერდზე ორ გზას ბადებდა. წაიშალა შვიდივე: ვიდეოს
+   * ტიპები, სიმღერის/წიგნის/ბორდგეიმის/თამაშის ჟანრები, ჩანაწერისა და
+   * ბუკმარკის კატეგორიები.
+   *
+   * ⚠️ **სექციები რჩება და ეს არ არის შეუსაბამობა**: ისინი ფილტრია
+   * („ნანახი", „რჩეული"), და არა მართვა — ე.ი. სიას ჭრიან და არა ლექსიკონს.
    */
   const sectionsFor = (domain: StatusDomain): VideoSection[] =>
     arrangeSections(statusMap[domain] ?? [], PSEUDO_SECTIONS[domain], layoutFor(enabled, domain))
@@ -333,8 +337,10 @@ export function Sidebar({
   const onPath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
 
-  const toolLink = (path: string, extra?: string) =>
-    cn(TOOL_ROW, onPath(path) ? TOOL_ROW_ACTIVE : TOOL_ROW_IDLE, extra)
+  // ⚠️ დამატებითი კლასის არგუმენტი მოიხსნა ქვეწარწერასთან ერთად — ის მხოლოდ
+  // ლექსიკონების ორხაზიან რიგს სჭირდებოდა, ე.ი. ახლა თექვსმეტივე რიგი ერთია
+  const toolLink = (path: string) =>
+    cn(TOOL_ROW, onPath(path) ? TOOL_ROW_ACTIVE : TOOL_ROW_IDLE)
 
   const nav = (
     <>
@@ -465,14 +471,6 @@ export function Sidebar({
                       {t('playlists.title')}
                     </Link>
                     <Link
-                      to="/dictionaries/song-genres"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/song-genres')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('songGenres.manage')}
-                    </Link>
-                    <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
                       className={SUB_ADD}
@@ -495,8 +493,8 @@ export function Sidebar({
 
             /* ⚠️ **სტატუსები აქ განზრახ არ არის** (Tasks §6.1): წიგნზე,
                ბორდგეიმზე და თამაშზე გვერდითი მენიუ მხოლოდ „ყველა · რჩეული ·
-               ლექსიკონი · დამატებაა" — შეგნებული გადახრა საერთო წესიდან,
-               user-ის მითითებით. სტატუსით ჭრა ფილტრების პანელში რჩება. */
+               დამატებაა" — შეგნებული გადახრა საერთო წესიდან, user-ის
+               მითითებით. სტატუსით ჭრა ფილტრების პანელში რჩება. */
             const sections: VideoSection[] = [
               { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
               { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
@@ -511,9 +509,7 @@ export function Sidebar({
                   aria-expanded={sectionOpen}
                   className={cn(
                     MODULE_ROW,
-                    onBooks || location.pathname === '/dictionaries/book-genres'
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
+                    onBooks ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
                   <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
@@ -538,14 +534,6 @@ export function Sidebar({
                         <span className="min-w-0 truncate">{sec.label}</span>
                       </button>
                     ))}
-                    <Link
-                      to="/dictionaries/book-genres"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/book-genres')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('bookGenres.manage')}
-                    </Link>
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
@@ -581,9 +569,7 @@ export function Sidebar({
                   aria-expanded={sectionOpen}
                   className={cn(
                     MODULE_ROW,
-                    onGames || location.pathname === '/dictionaries/board-game-genres'
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
+                    onGames ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
                   <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
@@ -608,14 +594,6 @@ export function Sidebar({
                         <span className="min-w-0 truncate">{sec.label}</span>
                       </button>
                     ))}
-                    <Link
-                      to="/dictionaries/board-game-genres"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/board-game-genres')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('boardGameGenres.manage')}
-                    </Link>
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
@@ -651,9 +629,7 @@ export function Sidebar({
                   aria-expanded={sectionOpen}
                   className={cn(
                     MODULE_ROW,
-                    onGames || location.pathname === '/dictionaries/game-genres'
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
+                    onGames ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
                   <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
@@ -678,14 +654,6 @@ export function Sidebar({
                         <span className="min-w-0 truncate">{sec.label}</span>
                       </button>
                     ))}
-                    <Link
-                      to="/dictionaries/game-genres"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/game-genres')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('gameGenres.manage')}
-                    </Link>
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
@@ -719,9 +687,7 @@ export function Sidebar({
                   aria-expanded={sectionOpen}
                   className={cn(
                     MODULE_ROW,
-                    onNotes || location.pathname === '/dictionaries/note-categories'
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
+                    onNotes ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
                   <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
@@ -757,14 +723,6 @@ export function Sidebar({
                       {t('notes.remindersTitle')}
                     </Link>
                     <Link
-                      to="/dictionaries/note-categories"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/note-categories')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('noteCategories.manage')}
-                    </Link>
-                    <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
                       className={SUB_ADD}
@@ -797,9 +755,7 @@ export function Sidebar({
                   aria-expanded={sectionOpen}
                   className={cn(
                     MODULE_ROW,
-                    onBookmarks || location.pathname === '/dictionaries/bookmark-categories'
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
+                    onBookmarks ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
                   )}
                 >
                   <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
@@ -824,14 +780,6 @@ export function Sidebar({
                         <span className="min-w-0 truncate">{sec.label}</span>
                       </button>
                     ))}
-                    <Link
-                      to="/dictionaries/bookmark-categories"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/dictionaries/bookmark-categories')}
-                    >
-                      <Tags className="size-4 shrink-0" />
-                      {t('bookmarkCategories.manage')}
-                    </Link>
                     <Link
                       to={`${m.route_base}?new=1`}
                       onClick={() => setDrawerOpen(false)}
@@ -929,8 +877,9 @@ export function Sidebar({
 
           /* „ყველა" · „რჩეული" (Tasks §2.7 → §5.4).
              ⚠️ **ტიპების სრული სია აქ აღარაა** — ის ლექსიკონია და ფილტრების
-             პანელს ეკუთვნის; საიდბარში მხოლოდ „ტიპის მართვა" რჩება. ერთი
-             წესი ყველა მოდულზე: ყველა → სტატუსები → რჩეული → მართვა → დამატება. */
+             პანელს ეკუთვნის; **„ტიპების მართვაც" აღარაა** (2026-09-15) —
+             ლექსიკონი `/dictionaries`-შია. ერთი წესი ყველა მოდულზე:
+             ყველა → სტატუსები → რჩეული → დამატება. */
           /* §6.4 — ვიდეოსაც სტატუსები აქვს; „ჩამოწერილები" მათ შორის ჯდება.
              §7.1 — ჩამოწერილები **ცალკე სექციაცაა და საერთო სიაშიც რჩება**
              (თასქის პირობა): აქ მხოლოდ ისინი ჩანს, „ყველაში" კი ხატულით
@@ -974,14 +923,6 @@ export function Sidebar({
                     </button>
                   ))}
                   <Link
-                    to="/dictionaries/video-types"
-                    onClick={() => setDrawerOpen(false)}
-                    className={subRow(location.pathname === '/dictionaries/video-types')}
-                  >
-                    <Tags className="size-4 shrink-0" />
-                    {t('videoTypes.manage')}
-                  </Link>
-                  <Link
                     to={`${m.route_base}?new=1`}
                     onClick={() => setDrawerOpen(false)}
                     className={SUB_ADD}
@@ -1003,22 +944,20 @@ export function Sidebar({
             ანგარიშისთვის ერთი, წაშლა ადმინის დასტურს ითხოვს), `/dictionaries`
             კი **ჩემი** სტატუსები, ჟანრები, ტიპები და კატეგორიები.
             ⚠️ ხატულაც ამას ამბობს: `Library` („ჩემი სიების თარო") vs `Tags`.
-            ⚠️ ქვეწარწერა იმიტომ აქვს, რომ მენიუშივე ჩანდეს — იქ **სტატუსებიც**
-            არის; ტექსტი ინდექსის გვერდის იმავე გასაღებიდან მოდის და არა ასლიდან. */}
+            ⚠️ **ქვეწარწერა მოიხსნა (შენი მითითება, 2026-09-15).** ის ერთადერთი
+            ორხაზიანი პუნქტი იყო მთელ ნავიგაციაში, ე.ი. თვითონვე ამტყუნებდა
+            იმ წესს, რომელსაც მენიუ ეყრდნობა — რიგი ერთი ხაზია. განმარტება
+            თავის ადგილას, ინდექსის გვერდის ქვესათაურში რჩება (`navHint`),
+            სადაც წაკითხვა უფასოა და მენიუს სიმაღლეს არ ზრდის. */}
         {DICTIONARIES.some((d) => has(d.module)) && (
           <Link
             to="/dictionaries"
             onClick={() => setDrawerOpen(false)}
             style={toolAccent('dictionaries')}
-            className={toolLink('/dictionaries', 'items-start')}
+            className={toolLink('/dictionaries')}
           >
-            <Library className="mt-0.5 size-4 shrink-0" />
-            <span className="min-w-0 flex-1">
-              <span className="block">{t('dictionaries.title')}</span>
-              <span className="block text-xs leading-snug text-muted-foreground/80">
-                {t('dictionaries.navHint')}
-              </span>
-            </span>
+            <Library className="size-4 shrink-0" />
+            {t('dictionaries.title')}
           </Link>
         )}
         {mediaModules.length > 0 && (

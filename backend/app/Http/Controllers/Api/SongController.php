@@ -147,6 +147,11 @@ class SongController extends Controller
 
     private function validated(Request $request, ?Song $song = null): array
     {
+        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
+        // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
+        $must = $song ? ['sometimes', 'required'] : ['required'];
+
         return $request->validate([
             // სათაური არასავალდებულოა — ცარიელზე ბმულიდან წამოვა
             'title' => ['nullable', 'string', 'max:255'],
@@ -155,7 +160,7 @@ class SongController extends Controller
             'year' => ['nullable', 'integer', 'min:1850', 'max:2200'],
             'url' => [$song ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
             // ჟანრები მხოლოდ **საკუთარი** ლექსიკონიდან; pivot-ია, ე.ი. მასივი
-            'genre_ids' => ['nullable', 'array', 'max:10'],
+            'genre_ids' => [...$must, 'array', 'min:1', 'max:10'],
             'genre_ids.*' => [
                 'integer',
                 Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),

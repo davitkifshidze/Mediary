@@ -25,6 +25,7 @@ import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
@@ -637,6 +638,17 @@ function SongForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ ჟანრი სავალდებულოა — pivot-ია, ე.ი. „მინიმუმ ერთი".
+       ⚠️ სტატუსი აქ **არ მოწმდება**: სიმღერას სტატუსი საერთოდ არ აქვს
+       (`StatusDomain`-ში არ არის) — აქ მისი მოთხოვნა წესის დარღვევა არ არის, არასებობაა. */
+    const picked = pickErrors({ genre_ids: genreIds }, t('validation.pickOne'))
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     const { tags, removed } = dedupeTags(form.tags)
@@ -804,7 +816,13 @@ function SongForm({
                 {t('songGenres.add')}
               </Button>
             </div>
-            <div className={fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden'}>
+            <div
+              className={cn(
+                fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden',
+                // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
+                errors.genre_ids && 'rounded-md border border-destructive p-1.5',
+              )}
+            >
               {genres.map((genre) => (
                 <button
                   key={genre.id}

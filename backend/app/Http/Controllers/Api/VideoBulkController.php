@@ -27,9 +27,12 @@ class VideoBulkController extends Controller
             'ids.*' => ['integer'],
             // 0 = „ტიპის გარეშე" (null type_id) — query string-ში null ვერ გადმოიცემა
             'from_type_id' => ['nullable', 'integer'],
-            // მხოლოდ action=type: null = ტიპის მოხსნა
+            /* ⚠️ `action=type`-ზე ტიპი **სავალდებულია**. აქამდე აქ `null` იყო
+               დაშვებული და „ტიპის მოხსნას" ნიშნავდა — ე.ი. ერთი მასობრივი
+               ცვლილებით შეიძლებოდა ზუსტად ის მდგომარეობა გამოგვენა, რომელსაც
+               ფორმა აღარ უშვებს (ეს იქნებოდა ვალიდაციის გვერდიყან შემოსვლა). */
             'type_id' => [
-                'nullable',
+                Rule::requiredIf(fn () => $request->input('action') === 'type'),
                 'integer',
                 Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
             ],
@@ -55,7 +58,7 @@ class VideoBulkController extends Controller
         $updated = 0;
         foreach ($query->get() as $video) {
             $changed = match ($data['action']) {
-                'type' => $this->setType($video, $data['type_id'] ?? null),
+                'type' => $this->setType($video, (int) $data['type_id']),
                 'tags_add' => $this->addTags($video, $tags),
                 'tags_remove' => $this->removeTags($video, $tags),
             };

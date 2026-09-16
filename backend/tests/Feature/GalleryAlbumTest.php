@@ -8,8 +8,10 @@ use App\Models\GalleryImage;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
+use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -232,5 +234,248 @@ class GalleryAlbumTest extends TestCase
             ->assertOk();
 
         $this->assertNull(GalleryImage::withoutGlobalScope('owner')->find($image->id));
+    }
+
+    /**
+     * ⚠️ **„ალბომის გარეშე" ბარათი აღარ არსებობს** (შენი მითითება,
+     * 2026-09-16). ჯგუფებში მხოლოდ ნამდვილი ალბომებია; უმშობლო ფოტო
+     * კვლავ არსებობს და `owner=none`-ზე იკითხება — უბრალოდ ალბომებში
+     * აღარ იხატება.
+     */
+    public function test_the_album_cut_holds_only_real_albums(): void
+    {
+        Storage::fake('public');
+        $this->photo(null);
+        $this->actingAs($this->user)->postJson('/api/gallery/albums', ['name' => 'A'])->assertCreated();
+        $this->actingAs($this->user)->postJson('/api/gallery/albums', ['name' => 'B'])->assertCreated();
+
+        $groups = $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=album')
+            ->assertOk()
+            ->json('groups');
+
+        $this->assertCount(2, $groups);
+        $this->assertSame(['A', 'B'], array_column($groups, 'title'));
+        $this->assertSame([], array_filter($groups, fn ($g) => $g['id'] === 0));
+
+        // უმშობლო ფოტო კი ისევ თავის ადგილზეა
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/photos?owner=none')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * „არეული" ხედი — **ალბომებში ჩალაგებული** ფოტოები.
+     *
+     * ⚠️ `owner=none` აქ არ გამოდგებოდა: ის სწორედ იმ „ალბომის გარეშე"
+     * საქაღალდეს დააბრუნებდა, რომელიც მოვხსენით.
+     */
+    public function test_the_flat_album_view_lists_photos_that_are_in_an_album(): void
+    {
+        Storage::fake('public');
+        $inside = $this->photo(null, 'gallery/images/in.jpg');
+        $this->photo(null, 'gallery/images/out.jpg');
+
+        $album = $this->actingAs($this->user)
+            ->postJson('/api/gallery/albums', ['name' => 'A'])->json();
+        $inside->update(['album_id' => $album['id']]);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/photos?album=any')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inside->id);
+    }
+
+    /* ============================================================
+       **ჩაკეტილი ალბომი (2026-09-16).**
+
+       შენი პირობა: „თუ ჩაკეტილია და პაროლი ადევს, არცერთი ფოტო არ ჩანდეს
+       და ვერც ინსპექტიდან ვერ შეძლო ნახვა". ე.ი. ამოწმებადი ფაქტი ერთია:
+       **ფაილის გზა პასუხში არ მოდის** — არც სიაში, არც ესკიზში, არც
+       სხვა ჭრილში.
+
+       ⚠️ **`Referer` აუცილებელია**: `/api`-ს სესია მხოლოდ stateful
+       მოთხოვნაზე აქვს (Sanctum-ის cookie რეჟიმი), ე.ი. ამ სათაურის
+       გარეშე „გახსნილობას" შესანახი ადგილი არ ექნებოდა.
+       ============================================================ */
+
+    /**
+     * stateful მოთხოვნა — ზუსტად ისეთი, როგორსაც SPA აგზავნის.
+     *
+     * ⚠️ **`withHeaders()` ტესტის დანარჩენ მოთხოვნებზეც რჩება** (ის
+     * `defaultHeaders`-ში ჯდება), ე.ი. ერთხელ გაგზავნილი `Referer` ყველა
+     * მომდევნო გამოძახებას stateful-ად აქცევს და `array` სესია მონაცემს
+     * ინახავს. ამიტომ **ჩაკეტილი ალბომი პირდაპირ მოდელით იქმნება** და არა
+     * API-ით: API-ით შექმნისას ის იმავე სესიაში ღია რჩება (განზრახ — შენ
+     * ახლა დაადე პაროლი) და ტესტი „ჩაკეტილს" ვეღარასდროს შეამოწმებდა.
+     */
+    private function spa()
+    {
+        return $this->actingAs($this->user)->withHeaders(['Referer' => 'http://localhost:5173']);
+    }
+
+    private function lockedAlbum(string $password = 'secret1'): GalleryAlbum
+    {
+        $album = GalleryAlbum::create([
+            'user_id' => $this->user->id,
+            'name' => 'პირადი',
+            'password_hash' => Hash::make($password),
+            'sort_order' => 1,
+        ]);
+
+        // სტატიკური მემო ერთ პროცესში ცოცხლობს — ახალი ლოკი უნდა დაინახოს
+        AlbumLock::flush();
+
+        return $album;
+    }
+
+    /** ჩაკეტილი ალბომის ფოტო არცერთი endpoint-იდან არ გამოდის */
+    public function test_a_locked_album_never_leaks_a_photo_path(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+        $image = $this->photo($this->makeMovie(), 'gallery/images/secret.jpg');
+        $image->update(['album_id' => $album->id]);
+        $open = $this->photo(null, 'gallery/images/open.jpg');
+
+        // სია
+        $this->actingAs($this->user)->getJson('/api/gallery/photos')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $open->id)
+            ->assertDontSee('secret.jpg');
+
+        // ჯგუფები — რიცხვი ჩანს, ესკიზი არა
+        $groups = $this->actingAs($this->user)->getJson('/api/gallery/groups?by=album')
+            ->assertOk()
+            ->assertDontSee('secret.jpg')
+            ->json();
+
+        $locked = collect($groups['groups'])->firstWhere('id', $album->id);
+        $this->assertTrue($locked['locked']);
+        $this->assertSame(1, $locked['photos'], 'the count must stay honest');
+        $this->assertArrayNotHasKey('album:'.$album->id, $groups['previews']);
+
+        // უკატეგორიოს ჭრილი — ფოტო იქაც არ ჩნდება
+        $this->actingAs($this->user)->getJson('/api/gallery/photos?owner=none')
+            ->assertOk()
+            ->assertDontSee('secret.jpg');
+
+        // შეჯამება — ჩაკეტილი ფოტო რიცხვშიც აღარაა
+        $this->actingAs($this->user)->getJson('/api/gallery')
+            ->assertOk()
+            ->assertJsonPath('photos', 1);
+    }
+
+    /** პირდაპირ ალბომის გახსნა — 423, ე.ი. „ჩაკეტილია" და არა „ცარიელია" */
+    public function test_opening_a_locked_album_answers_locked_not_empty(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+
+        $this->actingAs($this->user)
+            ->getJson('/api/gallery/photos?owner=album:'.$album->id)
+            ->assertStatus(423)
+            ->assertJsonPath('message', 'album_locked');
+    }
+
+    /** სწორი პაროლი ხსნის, არასწორი — 422 */
+    public function test_the_password_decides(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum('secret1');
+
+        $this->spa()
+            ->postJson('/api/gallery/albums/'.$album->id.'/unlock', ['password' => 'wrong'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'album_password_wrong');
+
+        $this->spa()
+            ->postJson('/api/gallery/albums/'.$album->id.'/unlock', ['password' => 'secret1'])
+            ->assertOk()
+            ->assertJsonPath('unlocked', true);
+    }
+
+    /**
+     * გახსნილი სესია ფოტოებს ისევ ხედავს.
+     *
+     * ⚠️ სესია ტესტებში `array` დრაივერზეა, ე.ი. მოთხოვნებს შორის არ
+     * გადადის — ამიტომ „გახსნილობა" `withSession()`-ით იდება: სწორედ ის
+     * მდგომარეობა, რომელსაც `unlock` წერს.
+     */
+    public function test_an_unlocked_session_sees_the_photos(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+        $image = $this->photo(null, 'gallery/images/secret.jpg');
+        $image->update(['album_id' => $album->id]);
+
+        $this->actingAs($this->user)
+            ->withHeaders(['Referer' => 'http://localhost:5173'])
+            ->withSession([AlbumLock::SESSION_KEY => [$album->id]])
+            ->getJson('/api/gallery/photos?owner=album:'.$album->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $image->id);
+    }
+
+    /**
+     * **ალბომის წაშლა ლოკის შემოვლა ვერ იქნება.**
+     *
+     * წაშლა ფოტოებს „უკატეგორიოში" აბრუნებს, ე.ი. უპაროლოდ დაშვებული
+     * ერთი კლიკით გააშიშვლებდა იმას, რაც ეს-ესაა დამალე.
+     */
+    public function test_a_locked_album_cannot_be_deleted_without_unlocking(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+
+        $this->actingAs($this->user)
+            ->deleteJson('/api/gallery/albums/'.$album->id)
+            ->assertStatus(423);
+
+        $this->assertNotNull(GalleryAlbum::withoutGlobalScope('owner')->find($album->id));
+    }
+
+    /** პაროლის მოხსნა მოქმედი პაროლის ცოდნას ითხოვს */
+    public function test_removing_the_password_needs_the_current_one(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum('secret1');
+
+        $this->actingAs($this->user)
+            ->putJson('/api/gallery/albums/'.$album->id, ['remove_password' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'album_password_wrong');
+
+        $this->actingAs($this->user)
+            ->putJson('/api/gallery/albums/'.$album->id, [
+                'remove_password' => true, 'current_password' => 'secret1',
+            ])
+            ->assertOk()
+            ->assertJsonPath('locked', false);
+    }
+
+    /**
+     * ⚠️ **ჩანაწერის წაშლა ჩაკეტილ ფოტოსაც შლის.** scope რომ აქაც
+     * მოქმედებდეს, ფაილი დისკზე ობლად დარჩებოდა და კვოტას სამუდამოდ
+     * დაიკავებდა — ლოკი დამალვაა და არა ხელშეუხებლობა.
+     */
+    public function test_deleting_the_record_still_deletes_a_locked_photo(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+        $movie = $this->makeMovie();
+        $image = $this->photo($movie, 'gallery/images/secret.jpg');
+        $image->update(['album_id' => $album->id]);
+
+        $movie->delete();
+
+        $this->assertNull(
+            GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->find($image->id),
+        );
+        Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
     }
 }

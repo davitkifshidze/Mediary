@@ -49,7 +49,7 @@ trait HasGallery
      */
     public function deleteGalleryMedia(): void
     {
-        foreach ($this->galleryImages()->withoutGlobalScope('owner')->cursor() as $image) {
+        foreach ($this->galleryImages()->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->cursor() as $image) {
             $image->delete();
         }
 

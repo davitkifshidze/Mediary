@@ -28,6 +28,11 @@ const CODES = [
   // §16.2 — დამთხვევა ორ **საჯარო** პროფილს შორის ითვლება
   'profile_not_public',
   'cannot_match_self',
+  /* 2026-09-16 — ჩაკეტილი ალბომი. ⚠️ ორი კოდია და ორივე საჭიროა:
+     `album_locked` მდგომარეობაა (ინტერფეისმა პაროლი უნდა ჰკითხოს),
+     `album_password_wrong` კი მცდელობის შედეგი. */
+  'album_locked',
+  'album_password_wrong',
   // §16.3 — ჩატი
   'chat_blocked',
   'cannot_chat_with_self',

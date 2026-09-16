@@ -58,10 +58,23 @@ class GameModuleTest extends TestCase
         return array_column(array_slice($data, 0, $count), 'id');
     }
 
+    /**
+     * ⚠️ სტატუსი და ჟანრი სავალდებულოა — ჟანრი აქ pivot-ია, ე.ი. მინიმუმ ერთი.
+     */
+    private function gameDefaults(?User $user = null): array
+    {
+        $user ??= $this->user;
+
+        return [
+            'status' => 'undecided',
+            'genre_ids' => [$this->actingAs($user)->getJson('/api/game-genres')->json('data.0.id')],
+        ];
+    }
+
     private function makeGame(array $overrides = []): int
     {
         return $this->actingAs($this->user)
-            ->postJson('/api/games', $overrides + ['title_en' => 'Hades'])
+            ->postJson('/api/games', $overrides + $this->gameDefaults() + ['title_en' => 'Hades'])
             ->assertStatus(201)
             ->json('data.id');
     }
@@ -228,7 +241,7 @@ class GameModuleTest extends TestCase
 
         $other = $this->makeUser('other', ['game']);
         $this->actingAs($other)
-            ->postJson('/api/games', ['title_en' => 'GTA V', 'rawg_id' => 3498])
+            ->postJson('/api/games', ['title_en' => 'GTA V', 'rawg_id' => 3498] + $this->gameDefaults($other))
             ->assertStatus(201);
     }
 
@@ -243,7 +256,7 @@ class GameModuleTest extends TestCase
 
         $other = $this->makeUser('other', ['game']);
         $this->actingAs($other)
-            ->postJson('/api/games', ['title_en' => 'The Witcher 3', 'igdb_id' => 1942])
+            ->postJson('/api/games', ['title_en' => 'The Witcher 3', 'igdb_id' => 1942] + $this->gameDefaults($other))
             ->assertStatus(201);
     }
 
@@ -357,7 +370,7 @@ class GameModuleTest extends TestCase
             ->post('/api/games', [
                 'title_en' => 'Celeste',
                 'cover' => UploadedFile::fake()->image('cover.jpg')->size(90),
-            ])
+            ] + $this->gameDefaults())
             ->assertStatus(201)
             ->json('data.id');
 

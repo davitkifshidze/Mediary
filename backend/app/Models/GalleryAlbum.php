@@ -29,6 +29,18 @@ class GalleryAlbum extends Model
         'sort_order' => 'integer',
     ];
 
+    /**
+     * ⚠️ hash **არასდროს ტოვებს სერვერს** — `row()` მას ისედაც არ წერს,
+     * მაგრამ `$hidden` იმ დღისთვისაა, როცა ვინმე მოდელს პირდაპირ დააბრუნებს.
+     */
+    protected $hidden = ['password_hash'];
+
+    /** ჩაკეტილია ზუსტად მაშინ, როცა პაროლი ადევს — ცალკე დროშა არ არსებობს */
+    public function isLocked(): bool
+    {
+        return $this->password_hash !== null;
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(GalleryImage::class, 'album_id');

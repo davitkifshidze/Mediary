@@ -14,6 +14,7 @@ use App\Services\Gallery\GalleryFetcher;
 use App\Services\Gallery\GalleryScope;
 use App\Services\Gallery\ModuleImages;
 use App\Services\Storage\StorageMeter;
+use App\Support\AlbumLock;
 use App\Support\GalleryParent;
 use App\Support\MediaDomain;
 use Illuminate\Database\Eloquent\Model;
@@ -615,30 +616,27 @@ class GalleryController extends Controller
      * სადაც ფოტოებს ეზიდები; თუ ის მანამდე გაქრებოდა, სანამ პირველ ფოტოს
      * ჩააგდებდი, გადატანა შეუძლებელი იქნებოდა.
      *
+     * ⚠️ **„ალბომის გარეშე" ფსევდო-ჯგუფი აღარ არსებობს** (შენი მითითება,
+     * 2026-09-16: „ალბომებში ნუა ალბომის გარეშე საქაღალდე"). აქ მხოლოდ
+     * ნამდვილი ალბომებია — ჯერ ბოლოში გადავიტანეთ, მერე კი სულ მოიხსნა:
+     * ის საქაღალდე არ იყო და სექციას, რომელსაც „ალბომები" ჰქვია,
+     * არაფერი ესაქმებოდა. უმშობლო ფოტოები ისევ „ყველა ფოტოშია" და
+     * `owner=none`-ზე ისევ იკითხება — უბრალოდ ბარათად აღარ იხატება.
+     *
      * ⚠️ **ალბომი ფოტოს მშობელს არ ცვლის**: ფილმის კადრიც შეიძლება
      * ალბომში იდოს. ამიტომ ჯგუფის რიცხვი `album_id`-ს ითვლის და არა
      * უმშობლოებს — თორემ „ჯგუფში 12 წერია, შიგნით 4-ია" გამოვიდოდა.
      */
     private function albumGroups(int $previews)
     {
-        $loose = GalleryImage::query()
-            ->whereNull('imageable_type')
-            ->whereNull('album_id')
-            ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
-            ->first();
-
-        $groups = collect([[
-            'kind' => 'album',
-            'id' => 0,
-            'title' => null,
-            'title_ka' => null,
-            'photos' => (int) ($loose->photos ?? 0),
-            'bytes' => (int) ($loose->bytes ?? 0),
-            'has_tmdb' => false,
-        ]]);
+        $groups = collect();
 
         foreach (GalleryAlbum::query()->orderBy('sort_order')->orderBy('id')->get() as $album) {
-            $totals = GalleryImage::query()
+            /* ⚠️ **რიცხვი ლოკის მიღმა იზომება** (2026-09-16): scope-ს რომ
+               დამორჩილებოდა, ჩაკეტილი ალბომი „0 ფოტოს" აჩვენებდა და
+               ბარათი იტყუებოდა. რიცხვი ფოტოს არ ამხელს — ამხელს გზა
+               ფაილამდე, რომელიც ქვემოთ, ესკიზებში, საერთოდ არ იწერება. */
+            $totals = GalleryImage::withoutGlobalScope('album_lock')
                 ->where('album_id', $album->id)
                 ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
                 ->first();
@@ -651,21 +649,26 @@ class GalleryController extends Controller
                 'photos' => (int) ($totals->photos ?? 0),
                 'bytes' => (int) ($totals->bytes ?? 0),
                 'has_tmdb' => false,
+                'locked' => $album->isLocked(),
+                'unlocked' => AlbumLock::isUnlocked($album),
             ]);
         }
 
         $out = [];
         foreach ($groups as $group) {
-            if ($group['photos'] < 1 || $previews <= 0) {
+            /* ⚠️ **ჩაკეტილ ალბომს ესკიზი არ აქვს და ეს მთელი ლოკის არსია.**
+               ერთი ესკიზიც კი `path`-ს გამოიტანდა, ე.ი. ფოტო `<img>`-ში
+               ჩაიტვირთებოდა და blur-ის მოხსნა devtools-ში ერთი კლიკი იქნებოდა. */
+            if ($group['photos'] < 1 || $previews <= 0 || ($group['locked'] ?? false) && ! $group['unlocked']) {
                 continue;
             }
 
-            $query = GalleryImage::query();
-            $group['id'] === 0
-                ? $query->whereNull('imageable_type')->whereNull('album_id')
-                : $query->where('album_id', $group['id']);
-
-            $out['album:'.$group['id']] = $query->orderBy('sort_order')->limit($previews)->pluck('path')->all();
+            $out['album:'.$group['id']] = GalleryImage::query()
+                ->where('album_id', $group['id'])
+                ->orderBy('sort_order')
+                ->limit($previews)
+                ->pluck('path')
+                ->all();
         }
 
         return response()->json([
@@ -673,6 +676,20 @@ class GalleryController extends Controller
             'groups' => $groups->values()->all(),
             'previews' => $out,
         ]);
+    }
+
+    /**
+     * ჩაკეტილი ალბომი — **423 და არა ცარიელი პასუხი**.
+     *
+     * ⚠️ ერთი ფუნქცია ორივე გზისთვის (`owner=album:N` და `album_id=N`):
+     * ერთი მათგანი რომ დაგვეტოვებინა, ლოკის შემოვლა ერთი query-პარამეტრის
+     * მოშორება იქნებოდა.
+     */
+    private function assertAlbumOpen(int $id): void
+    {
+        $album = GalleryAlbum::find($id);
+
+        abort_if($album && ! AlbumLock::isUnlocked($album), 423, 'album_locked');
     }
 
     /**
@@ -848,6 +865,12 @@ class GalleryController extends Controller
             'parent' => ['nullable', 'in:record,actor,none'],
             'type' => ['nullable', GalleryParent::recordRule()],
             'album_id' => ['nullable', 'integer'],
+            /* ⚠️ **`album=any` „ალბომების" ჭრილის ბრტყელი ხედისთვისაა**
+               (2026-09-16): მას შემდეგ, რაც „ალბომის გარეშე" ბარათი მოიხსნა,
+               „არეული" ხედი უმშობლო ფოტოებს ვეღარ აჩვენებს — ეს იმავე
+               წაშლილ საქაღალდეს დააბრუნებდა სხვა სახელით. `any` = რომელიმე
+               ალბომში დევს, `none` = არცერთში. `album_id`-ით ეს ვერ ითქმება. */
+            'album' => ['nullable', 'in:any,none'],
             'category' => ['nullable', 'in:backdrop,poster,logo,actor'],
             // §4.1 — „საიდან მოვიდა" ჭრილში შესვლა (დომენი და არა ერთეული)
             'from' => ['nullable', MediaDomain::rule()],
@@ -872,6 +895,11 @@ class GalleryController extends Controller
             if ($kind === 'none') {
                 $query->whereNull('imageable_type');
             } elseif ($kind === 'album') {
+                /* ⚠️ **ჩაკეტილი ალბომი 423-ია და არა ცარიელი სია** (2026-09-16):
+                   scope-ს ისედაც არაფერი გამოაქვს, მაგრამ „ცარიელია" და
+                   „ჩაკეტილია" სხვადასხვა ფაქტია — ცარიელ სიას ინტერფეისი
+                   „ფოტო არ არის"-ად წაიკითხავდა და პაროლს აღარ იკითხავდა. */
+                $this->assertAlbumOpen((int) $id);
                 $query->where('album_id', (int) $id);
             } elseif ($kind === 'actor') {
                 $query->where('imageable_type', GalleryParent::ACTOR)->where('imageable_id', (int) $id);
@@ -909,7 +937,14 @@ class GalleryController extends Controller
             $query->where('imageable_type', $kindFilter);
         }
 
+        if ($scope = $data['album'] ?? null) {
+            $scope === 'any'
+                ? $query->whereNotNull('album_id')
+                : $query->whereNull('album_id');
+        }
+
         if ($album = $data['album_id'] ?? null) {
+            $this->assertAlbumOpen((int) $album);
             $query->where('album_id', (int) $album);
         }
 

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Inbox, MoveRight } from 'lucide-react'
 import {
-  fetchGalleryAlbums,
   fetchGalleryGroups,
   moveGalleryImages,
   GALLERY_PARENTS,
@@ -19,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AlbumPicker } from '@/components/gallery/AlbumPicker'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { useToast } from '@/components/ui/feedback'
 
@@ -78,8 +78,6 @@ export function GalleryMoveDialog({
       })),
     [enabled, i18n.language],
   )
-
-  const albumsQ = useQuery({ queryKey: ['gallery-albums'], queryFn: fetchGalleryAlbums })
 
   const recordsQ = useQuery({
     queryKey: ['gallery-groups', 'record', { type: domain, have: 'all', previews: 0 }],
@@ -202,24 +200,14 @@ export function GalleryMoveDialog({
         </Row>
       </RadioGroup>
 
-      {/* ---------- 2. ალბომი ---------- */}
+      {/* ---------- 2. ალბომი ----------
+          ⚠️ **სია და არა ჩამოსაშლელი** (შენი მითითება, 2026-09-16): ალბომები
+          გადატანისასვე უნდა ჩანდეს და ახალიც იქვე იქმნებოდეს — „ფაილ
+          მენეჯერივით". `Select` მხოლოდ **არსებულს** სთავაზობდა, ე.ი. სანამ
+          პირველ ალბომს შექმნიდი, ეს ღერძი ცარიელი იყო. იხ. `AlbumPicker`. */}
       <div className="mt-4 border-t border-border pt-4">
         <Label className="mb-2 block">{t('gallery.moveAlbum')}</Label>
-        <Select value={album || 'keep'} onValueChange={(v) => setAlbum(v === 'keep' ? '' : v)}>
-          <SelectTrigger className="h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {/* ⚠️ სამი მდგომარეობა და სამივე საჭიროა: „არ შეეხო" · „ამოიღე" · კონკრეტული */}
-            <SelectItem value="keep">{t('gallery.moveAlbumKeep')}</SelectItem>
-            <SelectItem value="none">{t('gallery.moveAlbumNone')}</SelectItem>
-            {(albumsQ.data ?? []).map((a) => (
-              <SelectItem key={a.id} value={String(a.id)}>
-                {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <AlbumPicker value={album} onChange={setAlbum} />
       </div>
 
       <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">

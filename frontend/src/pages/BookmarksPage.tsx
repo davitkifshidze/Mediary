@@ -36,6 +36,7 @@ import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
+import { pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
@@ -577,6 +578,19 @@ function BookmarkForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    /* ⚠️ სტატუსიც და კატეგორიაც სავალდებულოა — შემოწმება ქსელამდე,
+       რათა პასუხი იმავე წამს იყოს; backend-ის 422 მეორე კარიბჭეა. */
+    const picked = pickErrors(
+      { status: form.status, category_id: form.categoryId },
+      t('validation.pickOne'),
+    )
+    if (Object.keys(picked).length > 0) {
+      setErrors(picked)
+
+      return
+    }
+
     setErrors({})
 
     // ⚠️ `TagSelect` უკვე ჭრის და ატყობინებს (§2.6) — ეს გარანტიაა
@@ -657,16 +671,16 @@ function BookmarkForm({
             </FieldLabel>
             <div className="flex gap-1">
               <Select
-                value={form.categoryId || 'none'}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, categoryId: v === 'none' ? '' : v }))
-                }
+                value={form.categoryId}
+                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
               >
-                <SelectTrigger id="b-category">
-                  <SelectValue />
+                <SelectTrigger
+                  id="b-category"
+                  className={errors.category_id ? 'border-destructive' : undefined}
+                >
+                  <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('bookmarkCategories.none')}</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={String(category.id)}>
                       {dictionaryName(category, lang)}
@@ -686,6 +700,9 @@ function BookmarkForm({
                 <Plus className="size-4" />
               </Button>
             </div>
+            {errors.category_id && (
+              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
+            )}
           </div>
 
           <div className={fields.shows('status') ? undefined : 'hidden'}>
@@ -696,8 +713,11 @@ function BookmarkForm({
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
             >
-              <SelectTrigger id="b-status">
-                <SelectValue />
+              <SelectTrigger
+                id="b-status"
+                className={errors.status ? 'border-destructive' : undefined}
+              >
+                <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
                 {statuses.map((s) => (
@@ -707,6 +727,7 @@ function BookmarkForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
         </div>
 

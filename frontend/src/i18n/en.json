@@ -921,7 +921,9 @@
     "upload_too_large": "The upload exceeds the server limit — {{file_limit}} per file, {{limit}} per request. See „Upload limits\" in Settings.",
     "mysqldump_unavailable": "mysqldump was not found on this machine",
     "background_unavailable": "the background process could not be started",
-    "invalid_backup_file": "only .sql or .sql.gz files"
+    "invalid_backup_file": "only .sql or .sql.gz files",
+    "album_locked": "The album is locked — enter its password first.",
+    "album_password_wrong": "Wrong password."
   },
   "fields": {
     "title": "Fields",
@@ -1335,7 +1337,7 @@
     "optLeaveEmpty": "Leave them without a genre and delete it"
   },
   "songGenres": {
-    "title": "Music genres",
+    "title": "Song genres",
     "subtitle": "Your own dictionary — it applies to your account only.",
     "manage": "Manage genres",
     "add": "Add genre",
@@ -1571,7 +1573,7 @@
       "videos": "Videos",
       "sources": "Sources",
       "modules": "Modules",
-      "uncategorized": "Uncategorized"
+      "albums": "Albums"
     },
     "statPhotos": "photos",
     "statRecords": "records",
@@ -1699,15 +1701,38 @@
     "moved": "{{count}} photos moved",
     "albumAdd": "Add an album",
     "albumName": "Album name",
-    "albumNone": "No album",
     "albumHint": "An album does not change the photo’s parent — it is your own sorting.",
     "albumEmpty": "Nothing in this album yet.",
     "albumDeleted": "Album deleted",
     "albumDeleteTitle": "Delete the album",
     "albumDeleteHint": "“{{name}}” goes, the photos stay — they return to uncategorized.",
-    "uncategorizedHint": "Photos that hang on no record. Sort them into albums or move them onto a record.",
-    "uncategorizedEmpty": "No uncategorized photos",
-    "uncategorizedEmptyHint": "Photos whose parent was removed show up here — for example when a record is deleted."
+    "albumsHint": "Sort photos into albums here. An album does not change a photo’s parent — a film still can sit in one too.",
+    "albumEdit": "Edit album",
+    "albumSaved": "Album saved",
+    "albumDescription": "Description",
+    "albumLockTitle": "Protect with a password",
+    "albumLockHint": "With a password set, this album’s photos never leave the server — not in the list, not as thumbnails. Only the name and the count stay visible.",
+    "albumLockedHint": "This album is locked. Changing or removing the password needs the current one.",
+    "albumPassword": "Password",
+    "albumNewPassword": "New password",
+    "albumRepeatPassword": "Repeat the password",
+    "albumCurrentPassword": "Current password",
+    "albumPasswordMismatch": "The passwords do not match.",
+    "albumPasswordWrong": "Wrong password.",
+    "albumRemoveLock": "Remove the lock",
+    "albumRemoveLockHint": "The password is removed and the photos show up everywhere again.",
+    "albumLocked": "Locked",
+    "albumOpen": "Unlocked",
+    "albumUnlock": "Unlock",
+    "albumUnlockHint": "This album is locked — enter the password to see its photos.",
+    "albumRelock": "Lock",
+    "albumRelocked": "The album is locked again",
+    "albumNew": "New album",
+    "albumCreate": "Create",
+    "albumPickerEmpty": "You have no albums yet — create one right here.",
+    "albumLockedMoveHint": "This album is locked: a photo moved into it is hidden at once.",
+    "albumsEmpty": "You have no albums yet.",
+    "albumsEmptyHint": "An album is a folder: it does not change a photo’s parent, it is your own sorting."
   },
   "boardGames": {
     "title": "Board games",
@@ -2793,5 +2818,9 @@
     "hide": "Hide",
     "copy": "Copy",
     "change": "Change"
+  },
+  "validation": {
+    "pickOne": "Pick at least one",
+    "choose": "Choose…"
   }
 }

@@ -406,7 +406,7 @@ class PurgeService
         $morph = $this->morphAlias($target);
 
         // გალერეის ფოტოები — ცხრილი სექციისაა, ე.ი. `collection`-ის ფილტრი აღარაა
-        $photos = GalleryImage::withoutGlobalScope('owner')
+        $photos = GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->where('imageable_type', $morph)
             ->whereIn('imageable_id', $ids)
@@ -499,7 +499,7 @@ class PurgeService
             return [];
         }
 
-        $photos = fn (string $morph) => GalleryImage::withoutGlobalScope('owner')
+        $photos = fn (string $morph) => GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->where('imageable_type', $morph);
 
@@ -569,7 +569,7 @@ class PurgeService
             return false;
         }
 
-        GalleryImage::withoutGlobalScope('owner')
+        GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->where('imageable_type', $this->morphAlias($target))
             ->whereIn('imageable_id', $ids)
@@ -709,7 +709,7 @@ class PurgeService
                 ->all()
             : [];
 
-        return GalleryImage::withoutGlobalScope('owner')
+        return GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')
             ->where('user_id', $user->getKey())
             ->where(function ($q) use ($morph, $ids, $castIds) {
                 $q->where(fn ($inner) => $inner->where('imageable_type', $morph)->whereIn('imageable_id', $ids));

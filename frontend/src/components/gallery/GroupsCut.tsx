@@ -4,15 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, DownloadCloud, Globe, Images, Maximize2, Trash2, User, Video } from 'lucide-react'
 import {
-  deleteGalleryImage,
   fetchActorGalleryImages,
   fetchGalleryGroups,
-  fetchGalleryPhotos,
   type GalleryGroup,
   type GalleryGroupBy,
   type GalleryParentKind,
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
+import { useDeleteGroupPhotos } from '@/lib/galleryDelete'
 import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import type { PhotoAction } from '@/lib/photoActions'
 import { sectionGalleryGroups, sortGalleryGroups } from '@/lib/galleryGroups'
@@ -59,11 +58,6 @@ import { WebVideoDialog } from '@/components/WebVideoDialog'
    აუცილებლად გაშორდებოდა — ერთში „წაშლა" იქნებოდა, მეორეში არა.
    ============================================================ */
 
-/** ერთ წრეზე რამდენი ფოტო წაიშალოს — ჯგუფი 1000-ზე დიდიც შეიძლება იყოს */
-const DELETE_CHUNK = 200
-
-/** ⚠️ უსასრულო ციკლის დამცავი: თუ წაშლა ჩუმად ვერ ხერხდება, ვჩერდებით */
-const DELETE_MAX_ROUNDS = 50
 
 export function GroupsCut({
   by,
@@ -174,40 +168,17 @@ export function GroupsCut({
     group.from ? `from:${group.from}` : group.provider ? `provider:${group.provider}` : `${group.kind}:${group.id}`
 
   /**
-   * ჯგუფის **ყველა** ფოტოს წაშლა (ეტაპი 2).
+   * ჯგუფის **ყველა** ფოტოს წაშლა.
    *
-   * ⚠️ **ერთიანი endpoint არ არსებობს** — `DELETE /gallery/images/{id}` თითოზეა,
-   * ე.ი. სია გვერდ-გვერდ იკითხება და თითოეული იშლება. ყოველ წრეზე **პირველივე
-   * გვერდი** მოგვაქვს ხელახლა, რადგან წინა წრემ ის უკვე წაშალა.
+   * ⚠️ **ლოგიკა `lib/galleryDelete.ts`-შია** (2026-09-16): ალბომების ჭრილსაც
+   * ზუსტად იგივე დასჭირდა, ე.ი. აქ დატოვებული მეორე ასლი ერთ დღეს
+   * გაშორდებოდა — ერთგან ქეშის გაუქმება დაემატებოდა, მეორეგან არა.
    *
    * ⚠️ **დადასტურება დათვლილია** (`group.photos`) — „წყაროს"/„მომწოდებლის"
    * ჭრილში ჯგუფი მთელი დომენია და რიცხვის დანახვის გარეშე ეს მოქმედება
    * ბრმა იქნებოდა.
    */
-  const removeGroup = useMutation({
-    mutationFn: async (group: GalleryGroup) => {
-      let removed = 0
-
-      for (let round = 0; round < DELETE_MAX_ROUNDS; round++) {
-        const page = await fetchGalleryPhotos({ ...filtersFor(group), per_page: DELETE_CHUNK })
-        if (!page.data.length) break
-
-        for (const image of page.data) {
-          await deleteGalleryImage(image.id)
-          removed++
-        }
-      }
-
-      return removed
-    },
-    onSuccess: (removed) => {
-      ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'storage', 'me'].forEach(
-        (key) => qc.invalidateQueries({ queryKey: [key] }),
-      )
-      toast({ title: t('gallery.groupDeleted', { count: removed }), variant: 'success' })
-    },
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
+  const removeGroup = useDeleteGroupPhotos()
 
   /**
    * ბარათის მოქმედებები — **ერთი სია ღილაკებისთვისაც და მენიუსთვისაც**.
@@ -283,7 +254,7 @@ export function GroupsCut({
             confirmText: t('confirm.delete'),
             variant: 'destructive',
           })
-          if (ok) removeGroup.mutate(group)
+          if (ok) removeGroup.mutate(filtersFor(group))
         },
       })
     }
