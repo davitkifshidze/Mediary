@@ -10,6 +10,7 @@ use App\Models\CastMember;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
+use App\Services\Gallery\AlbumVault;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Gallery\GalleryScope;
 use App\Services\Gallery\ModuleImages;
@@ -17,12 +18,14 @@ use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\GalleryParent;
 use App\Support\MediaDomain;
+use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -679,17 +682,63 @@ class GalleryController extends Controller
     }
 
     /**
-     * ჩაკეტილი ალბომი — **423 და არა ცარიელი პასუხი**.
+     * ეს ალბომი ჩაკეტილია ამ სესიაში? (`null` — ღიაა ან საერთოდ არ არსებობს)
      *
      * ⚠️ ერთი ფუნქცია ორივე გზისთვის (`owner=album:N` და `album_id=N`):
      * ერთი მათგანი რომ დაგვეტოვებინა, ლოკის შემოვლა ერთი query-პარამეტრის
      * მოშორება იქნებოდა.
      */
-    private function assertAlbumOpen(int $id): void
+    private function lockedAlbum(int $id): ?GalleryAlbum
     {
         $album = GalleryAlbum::find($id);
 
-        abort_if($album && ! AlbumLock::isUnlocked($album), 423, 'album_locked');
+        return $album && ! AlbumLock::isUnlocked($album) ? $album : null;
+    }
+
+    /**
+     * **ჩაკეტილი ალბომი ცარიელი აღარაა — ის შიშვლდება (Tasks §7.11/§7.15).**
+     *
+     * შენი სიტყვები: „ჩაკეტილ ფოტოებს ბლარიანი ფოტო დაუდგეს … თუ პაროლს
+     * შეიყვანს, მერე გამოჩნდეს რეალური".
+     *
+     * ⚠️ **423-ს ეს არ ანაცვლებს — ის აღარ ჩანს, რადგან პასუხი თვითონ
+     * ამბობს „ჩაკეტილია".** რიგი არსებობს (ე.ი. ბადე ბლარიან ფილებს ხატავს
+     * და პაროლს ითხოვს), მაგრამ **`path`, `remote_path`, `source_url` —
+     * არცერთი არ მიდის**. სწორედ ეს არის „ინსპექტიდანაც ვერაფერს ნახავ":
+     * რაც არასდროს გაიგზავნა, იმის პოვნა შეუძლებელია.
+     *
+     * ⚠️ **`withoutGlobalScope('album_lock')` აქ აუცილებელია და უვნებელი**:
+     * scope-ს ეს რიგები ისედაც ამოღებული აქვს, ე.ი. მათ დათვლა მხოლოდ
+     * ასე შეიძლება — ხოლო რაც პასუხში მიდის, ისედაც სამი რიცხვია.
+     *
+     * ⚠️ **ზომები განზრახ მიდის**: უამისოდ ბადე პროპორციას ვერ დაიცავდა და
+     * პაროლის შეყვანისას ყველა ფილა ახტებოდა.
+     */
+    private function lockedPhotos(GalleryAlbum $album, int $perPage)
+    {
+        $page = GalleryImage::withoutGlobalScope('album_lock')
+            ->where('album_id', $album->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return response()->json([
+            'locked' => true,
+            'album' => ['id' => (int) $album->id, 'name' => $album->name],
+            'data' => collect($page->items())->map(fn (GalleryImage $image) => [
+                'id' => $image->id,
+                'width' => $image->width,
+                'height' => $image->height,
+                'locked' => true,
+            ])->all(),
+            'meta' => [
+                'page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
     }
 
     /**
@@ -705,8 +754,13 @@ class GalleryController extends Controller
      * იშლება. „არ მომიტანია" და „გაასუფთავე" ერთ მნიშვნელობად რომ
      * გვექცია, ალბომში ჩაგდება ჩუმად მშობელსაც მოხსნიდა.
      *
-     * ⚠️ **ფაილი არსად მოძრაობს.** გადატანა მხოლოდ ორი სვეტია — დისკზე
-     * ფოტო იმავე ადგილას რჩება, ე.ი. არც კვოტა იცვლება და არც `path`.
+     * ⚠️ **ფაილი მხოლოდ ჩაკეტილ ალბომთან მოძრაობს** (Tasks §7.9). დანარჩენ
+     * შემთხვევაში გადატანა ორი სვეტია და დისკზე ფოტო იმავე ადგილას რჩება;
+     * ჩაკეტილ ალბომში კი ის **პირად დისკზე გადადის** (და გამოსვლისას
+     * ბრუნდება), თორემ ერთი `POST /gallery/images/move` ლოკს გვერდს
+     * აუვლიდა — `seal()` მხოლოდ ჩაკეტვის მომენტს ფარავს.
+     *
+     * ⚠️ **კვოტა არც მაშინ იცვლება**: იგივე ფაილია, უბრალოდ სხვა საქაღალდეში.
      *
      * ⚠️ **სკოუპი `owner`-ია**: `GalleryImage`-ს `BelongsToUser` აქვს, ე.ი.
      * სხვისი ფოტოს id უბრალოდ ვერ მოიძებნება — „გამოტოვებული" და არა 403.
@@ -751,7 +805,20 @@ class GalleryController extends Controller
 
         abort_if(! $changes, 422, 'nothing_to_move');
 
-        $moved = GalleryImage::whereIn('id', array_map('intval', $data['ids']))->update($changes);
+        $ids = array_map('intval', $data['ids']);
+        $moved = GalleryImage::whereIn('id', $ids)->update($changes);
+
+        /* ⚠️ ალბომის ღერძს რომ შეეხო, ფაილებიც უნდა გაჰყვეს (§7.9).
+           ⚠️ `withoutGlobalScope('album_lock')` — ახლახან ჩაკეტილ ალბომში
+           გადატანილი ფოტო scope-მა უკვე დამალა, ე.ი. მისი წაკითხვა
+           მხოლოდ ასე შეიძლება. */
+        if (array_key_exists('album_id', $changes)) {
+            $album = $changes['album_id'] ? GalleryAlbum::find((int) $changes['album_id']) : null;
+
+            foreach (GalleryImage::withoutGlobalScope('album_lock')->whereIn('id', $ids)->get() as $image) {
+                AlbumVault::place($image, $album);
+            }
+        }
 
         return response()->json(['moved' => $moved]);
     }
@@ -899,7 +966,10 @@ class GalleryController extends Controller
                    scope-ს ისედაც არაფერი გამოაქვს, მაგრამ „ცარიელია" და
                    „ჩაკეტილია" სხვადასხვა ფაქტია — ცარიელ სიას ინტერფეისი
                    „ფოტო არ არის"-ად წაიკითხავდა და პაროლს აღარ იკითხავდა. */
-                $this->assertAlbumOpen((int) $id);
+                if ($locked = $this->lockedAlbum((int) $id)) {
+                    return $this->lockedPhotos($locked, (int) ($data['per_page'] ?? 24));
+                }
+
                 $query->where('album_id', (int) $id);
             } elseif ($kind === 'actor') {
                 $query->where('imageable_type', GalleryParent::ACTOR)->where('imageable_id', (int) $id);
@@ -944,7 +1014,10 @@ class GalleryController extends Controller
         }
 
         if ($album = $data['album_id'] ?? null) {
-            $this->assertAlbumOpen((int) $album);
+            if ($locked = $this->lockedAlbum((int) $album)) {
+                return $this->lockedPhotos($locked, (int) ($data['per_page'] ?? 24));
+            }
+
             $query->where('album_id', (int) $album);
         }
 
@@ -1558,6 +1631,35 @@ class GalleryController extends Controller
     }
 
     /** ერთი ფოტოს წაშლა — ფაილიც და კვოტაც `GalleryImage`-ის ივენთებზეა */
+    /**
+     * **ჩაკეტილი ალბომის ფოტოს გაცემა (Tasks §7.9)** —
+     * `GET /api/gallery/images/{galleryImage}/file`.
+     *
+     * ⚠️ **პირად დისკზე მდგომი ფაილი სერვერს მხოლოდ ერთი კარიდან ტოვებს**
+     * (`notes`/`chat`/`backups`-ის იგივე წესი): `/storage/*` ავტორიზაციას
+     * არ ამოწმებს, ე.ი. ორი გზა ერთ დღეს პირად ფაილს საჯარო URL-ქვეშ
+     * გამოაჩენდა.
+     *
+     * ⚠️ **პასუხი 404-ია და არა 403** — „ეს ფოტო არსებობს" თვითონაც
+     * ინფორმაციაა (პროექტის არსებული წესი).
+     *
+     * ⚠️ **ლოკი აქაც მოწმდება**: მარშრუტზე მისვლა ალბომის გახსნას არ
+     * ნიშნავს, ე.ი. სესიაში ჩაკეტილი ალბომის ფაილი აქედანაც არ გამოდის.
+     */
+    public function imageFile(GalleryImage $galleryImage)
+    {
+        $album = $galleryImage->album_id
+            ? GalleryAlbum::withoutGlobalScope('owner')->find($galleryImage->album_id)
+            : null;
+
+        abort_if($album && ! AlbumLock::isUnlocked($album), 404);
+
+        $disk = Storage::disk(StorageFolder::diskFor((string) $galleryImage->path));
+        abort_unless($disk->exists($galleryImage->path), 404);
+
+        return $disk->response($galleryImage->path);
+    }
+
     public function destroyImage(GalleryImage $galleryImage)
     {
         // თუ ეს ფოტო ჩანაწერის პოსტერია, ბმული არ უნდა დაეკიდოს

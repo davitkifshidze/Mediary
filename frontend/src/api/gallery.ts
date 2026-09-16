@@ -229,6 +229,26 @@ export interface GalleryImage {
   album_id: number | null
   width: number | null
   height: number | null
+  /**
+   * ⚠️ **დისკს backend ამბობს** (§17.5-ის წესი): ჩაკეტილი ალბომის ფოტო
+   * პირად დისკზეა (§7.9) და `/storage/*` მას ვერ კითხულობს —
+   * `PrivateImage`-ით უნდა დაიხატოს.
+   */
+  private?: boolean
+}
+
+/**
+ * **ჩაკეტილი ალბომის ფოტო — მხოლოდ სამი ფაქტი (Tasks §7.11).**
+ *
+ * ⚠️ `url` აქ **არ არსებობს** და ეს არ არის დავიწყებული ველი: სერვერი
+ * ბილიკს საერთოდ არ აგზავნის, ე.ი. ინსპექტორშიც არაფერია საპოვნელი.
+ * ზომები კი მოდის, თორემ ბადე პროპორციას ვერ დაიცავდა.
+ */
+export interface GalleryLockedImage {
+  id: number
+  width: number | null
+  height: number | null
+  locked: true
 }
 
 /** ფოტო მშობლის მითითებით — ბრტყელ სიას სჭირდება */
@@ -335,9 +355,31 @@ export interface GalleryGroups {
   previews: Record<string, string[]>
 }
 
+export interface GalleryPageMeta {
+  page: number
+  per_page: number
+  total: number
+  last_page: number
+}
+
 export interface GalleryPhotoPage {
   data: GalleryOwnedImage[]
-  meta: { page: number; per_page: number; total: number; last_page: number }
+  meta: GalleryPageMeta
+}
+
+/**
+ * **ჩაკეტილი ალბომის გვერდი (Tasks §7.11).**
+ *
+ * ⚠️ **ცალკე ტიპია და არა „`url` არჩევითი"**: სერვერი ბილიკს საერთოდ არ
+ * აგზავნის, ე.ი. ერთ ტიპში შერევა კომპილატორს ატყუებდა და ბადე
+ * `undefined`-ს ჩასვამდა `<img src>`-ში. `'locked' in page` ერთადერთი
+ * განშტოებაა, რაც გამომძახებელს სჭირდება.
+ */
+export interface GalleryLockedPage {
+  locked: true
+  album: { id: number; name: string }
+  data: GalleryLockedImage[]
+  meta: GalleryPageMeta
 }
 
 /** „არეული / ახალი / ძველი" — §8.3-ის გადამრთველი */
@@ -602,7 +644,9 @@ export async function fetchGalleryGroups(
   return data
 }
 
-export async function fetchGalleryPhotos(filters: GalleryPhotoFilters = {}): Promise<GalleryPhotoPage> {
+export async function fetchGalleryPhotos(
+  filters: GalleryPhotoFilters = {},
+): Promise<GalleryPhotoPage | GalleryLockedPage> {
   const { data } = await api.get('/gallery/photos', {
     params: { ...filters, with_cast: filters.with_cast === false ? 0 : undefined },
   })
@@ -625,6 +669,12 @@ export interface GalleryAlbum {
    */
   locked: boolean
   unlocked: boolean
+  /**
+   * §7.5 — ალბომი გალერეაში ერთადერთია, რასაც საკუთარი ხილვადობა აქვს:
+   * ფოტო მშობლის ხილვადობას იმემკვიდრებს, **უმშობლოს** კი მემკვიდრეობით
+   * არაფერი მოსდის.
+   */
+  visibility: 'private' | 'public'
 }
 
 export async function fetchGalleryAlbums(): Promise<GalleryAlbum[]> {
@@ -636,6 +686,7 @@ export async function createGalleryAlbum(body: {
   name: string
   description?: string | null
   password?: string | null
+  visibility?: 'private' | 'public'
 }): Promise<GalleryAlbum> {
   const { data } = await api.post('/gallery/albums', body)
   return data
@@ -651,11 +702,13 @@ export async function updateGalleryAlbum(
     /** ლოკის მოხსნა */
     remove_password?: boolean
     /**
-     * ⚠️ **მოქმედი პაროლი სავალდებულოა ლოკის შეცვლისას** — უამისოდ
-     * ბრაუზერთან მისული კაცი უბრალოდ „მოხსნას" დააჭერდა და ლოკს აზრი
-     * არ ექნებოდა. ამ სესიაში უკვე გახსნილს ის აღარ სჭირდება.
+     * ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა** (Tasks §7.8, შენი
+     * გადაწყვეტილება): ლოკის შეცვლა/მოხსნა მფლობელობის დამტკიცებას
+     * ითხოვს, „ალბომის პაროლი დამავიწყდა" კი აღარ არის ჩიხი. ამ სესიაში
+     * უკვე გახსნილს ის აღარ სჭირდება.
      */
-    current_password?: string
+    account_password?: string
+    visibility?: 'private' | 'public'
   },
 ): Promise<GalleryAlbum> {
   const { data } = await api.patch(`/gallery/albums/${id}`, body)

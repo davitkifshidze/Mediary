@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\GalleryAlbum;
 use App\Services\Modules\FieldSettings;
+use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
+use App\Support\AlbumLock;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * **Tasks §16.1 — საჯარო პროფილი `/u/{username}`.**
@@ -25,6 +29,7 @@ class PublicProfileController extends Controller
     public function __construct(
         private PublicProfileService $profiles,
         private FieldSettings $fields,
+        private PublicGallery $gallery,
     ) {}
 
     /** პროფილის თავი: ავატარი/სახელი/ბიო + ხილვადი დომენები რაოდენობებით */
@@ -41,7 +46,13 @@ class PublicProfileController extends Controller
         return response()->json([
             'profile' => $this->profiles->header($user),
             'domains' => $domains,
-            'counts' => $this->profiles->stats($user, $domains),
+            /* ⚠️ **გალერეის ტაბის რიცხვი ალბომების რაოდენობა არ არის** (Tasks §7.4):
+               `gallery_album` დომენის ჩანაწერი საქაღალდეა, ჩანართში კი ფოტოები
+               იხატება. ბარათი რომ ალბომებს დაეთვალა, „3" ეწერებოდა და შიგნით
+               ორასი ფოტო იდებოდა. */
+            'counts' => in_array('gallery_album', $domains, true)
+                ? ['gallery_album' => $this->gallery->count($user)] + $this->profiles->stats($user, $domains)
+                : $this->profiles->stats($user, $domains),
             'modules' => $this->profiles->moduleMeta($domains),
             // რომელი მოდულს ეკუთვნის დომენი — ფრონტს ტაბის სახელისთვის სჭირდება
             'domain_modules' => array_combine(
@@ -85,5 +96,81 @@ class PublicProfileController extends Controller
                 'total' => $page->total(),
             ],
         ]);
+    }
+
+    /**
+     * **საჯარო გალერეა (Tasks §7.4)** — `GET /public/profiles/{username}/gallery-photos`.
+     *
+     * ⚠️ **ცალკე endpoint-ია და არა `{domain}`-ის კიდევ ერთი მნიშვნელობა**:
+     * აქ ჩანაწერის ბარათი კი არა, ფოტოს რიგი ბრუნდება — სხვა ფორმა, ე.ი.
+     * `PublicDomain::card()`-ში ჩატენვა მას ორ სხვადასხვა ფიგურად აქცევდა.
+     *
+     * ⚠️ **მარშრუტი `{domain}`-ზე ზემოთ უნდა იდგეს**, თორემ „gallery-photos"
+     * დომენად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს).
+     */
+    public function photos(Request $request, string $username)
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+
+        // მოდული საჯარო არაა → გალერეა ამ პროფილისთვის არ არსებობს
+        abort_unless(in_array('gallery_album', $this->profiles->domains($user), true), 404);
+
+        // ⚠️ ქვედა ზღვარიც (§B4): `?per_page=-1` `LIMIT`-ს ჩუმად აშორებს
+        $perPage = min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
+
+        return response()->json($this->gallery->page($user, $perPage, max(1, (int) $request->integer('page', 1))));
+    }
+
+    /**
+     * **ჩაკეტილი ალბომის გახსნა საჯარო გვერდზეც (Tasks §7.12).**
+     *
+     * შენი სიტყვები: „საჯაროშიც პაროლიან ალბომებს პაროლი ჭირდება".
+     *
+     * ⚠️ **პაროლი მფლობელისაა** — ე.ი. უცხოსთვის ალბომი პრაქტიკულად
+     * ჩაკეტილი რჩება, მაგრამ მექანიზმი უნდა არსებობდეს: უამისოდ საჯარო
+     * გვერდზე „ჩაკეტილი" სამუდამო კედელი იქნებოდა და თვითონ მფლობელიც კი
+     * ვერ გახსნიდა საკუთარ ბმულზე შესვლისას.
+     *
+     * ⚠️ **გახსნილობა სესიაშია** (`AlbumLock::unlock()`) და არა კლიენტის
+     * ტოკენში — ზუსტად იგივე მიზეზი, რაც შიდა გვერდზე.
+     *
+     * ⚠️ **throttle როუტზეა** და ანონიმზე **IP + ალბომი** (§7.13): უამისოდ
+     * ოთხსიმბოლოიანი პაროლი წუთებში ცვივა.
+     */
+    public function unlockAlbum(Request $request, string $username, int $album)
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+
+        /* ⚠️ **მოდელი როუტში განზრახ არ იბმება.** `EnsureRecordOwnership`
+           ყოველ ჩაბმულ მოდელს ამოწმებს და ავტორიზაციის გარეშე მას მფლობელი
+           ვერ ეყოლება — ე.ი. უცხოსთვის ეს endpoint **ყოველთვის 404** იქნებოდა.
+           აქ საკუთრებას ქვემოთ ცხადად ვამოწმებთ: ალბომი ამ პროფილისაა. */
+        $galleryAlbum = GalleryAlbum::query()->withoutGlobalScope('owner')->find($album);
+        abort_unless($galleryAlbum, 404);
+
+        /* ⚠️ ალბომი **ამ პროფილისა** უნდა იყოს და **საჯარო** — თორემ ეს
+           endpoint სხვისი პირადი ალბომის პაროლის გამოცნობის კარი გახდებოდა. */
+        abort_unless(
+            (int) $galleryAlbum->user_id === (int) $user->id
+                && $galleryAlbum->visibility === 'public'
+                && in_array('gallery_album', $this->profiles->domains($user), true),
+            404,
+        );
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'max:100'],
+        ]);
+
+        abort_unless(
+            $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash),
+            422,
+            'album_password_wrong',
+        );
+
+        AlbumLock::unlock($galleryAlbum);
+
+        return response()->json(['id' => $galleryAlbum->id, 'unlocked' => true]);
     }
 }

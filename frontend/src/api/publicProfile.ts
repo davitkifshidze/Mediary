@@ -29,6 +29,11 @@ export const PUBLIC_DOMAINS = [
   'playlist',
   // §18 — ბუკმარკები; იდენტობა თვითონ ბმულია (`PublicDomain::MATCH`)
   'bookmark',
+  /* §7.5 — გალერეის **ალბომი**. ⚠️ ეს „ჩანაწერი" არ არის: ფოტო მშობლის
+     ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე გადამრთველი არ
+     სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით არაფერი მოსდის და
+     ერთადერთი, რითიც ის შეიძლება გაზიარდეს, ალბომია. */
+  'gallery_album',
 ] as const
 export type PublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
 
@@ -49,6 +54,7 @@ export const DOMAIN_MODULE: Record<PublicDomainKey, string> = {
   song: 'song',
   playlist: 'song',
   bookmark: 'bookmark',
+  gallery_album: 'gallery',
 }
 
 /** ვიწრო ბარათი — backend განზრახ **არ** აბრუნებს ჩანაწერის სრულ რესურსს */
@@ -273,4 +279,48 @@ export async function setDomainVisibility(
 /** ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე (`module_user.is_public`) */
 export async function setModulePublic(key: string, isPublic: boolean): Promise<void> {
   await api.put(`/modules/${key}/public`, { is_public: isPublic })
+}
+
+/* ---------- საჯარო გალერეა (Tasks §7.4) ---------- */
+
+/**
+ * ერთი ფოტო საჯარო პროფილზე.
+ *
+ * ⚠️ **ჩაკეტილ ალბომში მდგომს `path` საერთოდ არ აქვს** (§7.11) — მხოლოდ
+ * `id`, ზომები და `locked: true`. ე.ი. ინსპექტორში საპოვნელი არაფერია.
+ */
+export interface PublicGalleryPhoto {
+  id: number
+  width: number | null
+  height: number | null
+  album_id: number | null
+  locked: boolean
+  path?: string
+  category?: string | null
+}
+
+export interface PublicGalleryPage {
+  data: PublicGalleryPhoto[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+}
+
+export async function fetchPublicGalleryPhotos(
+  username: string,
+  page = 1,
+): Promise<PublicGalleryPage> {
+  const { data } = await api.get(`/public/profiles/${username}/gallery-photos`, { params: { page } })
+  return data
+}
+
+/**
+ * ⚠️ **პაროლი მფლობელისაა** — უცხოსთვის ალბომი პრაქტიკულად ჩაკეტილი
+ * რჩება, მაგრამ მექანიზმი საჯარო გვერდზეც უნდა არსებობდეს (შენი სიტყვები:
+ * „საჯაროშიც პაროლიან ალბომებს პაროლი ჭირდება"). გახსნილობა **სერვერის
+ * სესიაშია** და არა კლიენტის ტოკენში.
+ */
+export async function unlockPublicAlbum(username: string, albumId: number, password: string) {
+  const { data } = await api.post(`/public/profiles/${username}/albums/${albumId}/unlock`, {
+    password,
+  })
+  return data as { id: number; unlocked: boolean }
 }

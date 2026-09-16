@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Lock, LockOpen, ShieldAlert } from 'lucide-react'
+import { Globe, Lock, LockOpen, ShieldAlert } from 'lucide-react'
 import {
   createGalleryAlbum,
   updateGalleryAlbum,
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PasswordInput } from '@/components/ui/secret-input'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 
@@ -28,10 +29,14 @@ import { useToast } from '@/components/ui/feedback'
    კითხვაა. ცალკე რომ ყოფილიყო, „პაროლი დავადე თუ არა" ორ ადგილას
    იკითხებოდა.
 
-   ⚠️ **პაროლის შეცვლა/მოხსნა მოქმედი პაროლის ცოდნას ითხოვს** (`current_password`)
-   — გარდა იმ შემთხვევისა, როცა ალბომი ამ სესიაში უკვე გახსნილია, ე.ი.
-   პაროლი ისედაც შეიყვანე. სერვერზეც ზუსტად ეს წესია; აქ მხოლოდ იმას
-   ვწყვეტთ, ველი გამოჩნდეს თუ არა.
+   ⚠️ **პაროლის შეცვლა/მოხსნა ანგარიშის პაროლს ითხოვს** (`account_password`,
+   Tasks §7.8) — გარდა იმ შემთხვევისა, როცა ალბომი ამ სესიაში უკვე
+   გახსნილია, ე.ი. მფლობელობა ისედაც დამტკიცდა. სერვერზეც ზუსტად ეს
+   წესია; აქ მხოლოდ იმას ვწყვეტთ, ველი გამოჩნდეს თუ არა.
+
+   ⚠️ **ხილვადობა აქვეა** (§7.5): ალბომი გალერეაში ერთადერთია, რასაც
+   საკუთარი გადამრთველი აქვს — ფოტო მშობლის ხილვადობას იმემკვიდრებს,
+   უმშობლოს კი მემკვიდრეობით არაფერი მოსდის.
    ============================================================ */
 
 export function AlbumDialog({
@@ -54,6 +59,7 @@ export function AlbumDialog({
   const [repeat, setRepeat] = useState('')
   const [current, setCurrent] = useState('')
   const [removing, setRemoving] = useState(false)
+  const [isPublic, setIsPublic] = useState(album?.visibility === 'public')
 
   const locked = !!album?.locked
   /** მოქმედი პაროლი მაშინ ჰკითხე, როცა ლოკი უკვე დგას და სესია ღია არაა */
@@ -68,18 +74,20 @@ export function AlbumDialog({
           name: trimmed,
           description: description.trim() || null,
           password: password ? password : undefined,
+          visibility: isPublic ? 'public' : 'private',
         })
       }
 
       return updateGalleryAlbum(album.id, {
         name: trimmed,
         description: description.trim() || null,
+        visibility: isPublic ? 'public' : 'private',
         ...(removing
           ? { remove_password: true }
           : password
             ? { password }
             : {}),
-        ...(needsCurrent && (removing || password) ? { current_password: current } : {}),
+        ...(needsCurrent && (removing || password) ? { account_password: current } : {}),
       })
     },
     onSuccess: () => {
@@ -131,6 +139,22 @@ export function AlbumDialog({
           />
         </div>
 
+        {/* ---------- ხილვადობა (§7.5) ---------- */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Globe className={isPublic ? 'size-4 text-primary' : 'size-4 text-muted-foreground'} />
+              {t('gallery.albumPublic')}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('gallery.albumPublicHint')}</p>
+          </div>
+          <Switch
+            checked={isPublic}
+            onCheckedChange={setIsPublic}
+            aria-label={t('gallery.albumPublic')}
+          />
+        </div>
+
         {/* ---------- ლოკი ---------- */}
         <section className="rounded-md border border-border p-3">
           <div className="mb-2 flex items-center gap-2">
@@ -148,8 +172,16 @@ export function AlbumDialog({
 
           {needsCurrent && (removing || password) && (
             <div className="mb-3">
-              <Label htmlFor="album-current">{t('gallery.albumCurrentPassword')}</Label>
-              <PasswordInput id="album-current" value={current} onChange={setCurrent} />
+              <Label htmlFor="album-current">{t('gallery.albumAccountPassword')}</Label>
+              <PasswordInput
+                id="album-current"
+                value={current}
+                onChange={setCurrent}
+                autoComplete="current-password"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('gallery.albumAccountPasswordHint')}
+              </p>
             </div>
           )}
 

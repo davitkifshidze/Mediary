@@ -103,6 +103,16 @@ final class StorageFolder
 
     public const GALLERY_IMAGES = 'gallery/images';
 
+    /**
+     * **ჩაკეტილი ალბომის ფოტოები (Tasks §7.9) — პირად დისკზე.**
+     *
+     * ⚠️ `videos/downloads`-ის ზუსტი პრეცედენტი: საჯარო ფესვის შიგნით
+     * პრივატული ქვესაქაღალდე. უამისოდ ლოკი მხოლოდ **პასუხს** ფარავდა,
+     * ფაილი კი საჯარო დისკზე რჩებოდა — ე.ი. დამახსოვრებული
+     * `/storage/gallery/images/…` ბმული მაინც იხსნებოდა.
+     */
+    public const GALLERY_LOCKED = 'gallery/locked';
+
     public const CHAT_IMAGES = 'chat/files/images';
 
     public const CHAT_VIDEOS = 'chat/files/videos';
@@ -156,7 +166,7 @@ final class StorageFolder
      * მოხვდეს ცალკე: ობოლების სკანერი დისკს **ფესვზე** ირჩევს, ე.ი. საჯარო
      * `videos`-ის სკანი პრივატულ `videos/downloads`-ს ვერ დაინახავდა.
      */
-    public const PRIVATE_FOLDERS = ['videos/downloads'];
+    public const PRIVATE_FOLDERS = ['videos/downloads', 'gallery/locked'];
 
     /**
      * 2026-09-04-მდე გამოყენებული ბრტყელი საქაღალდეები. მიგრაცია ბაზაში

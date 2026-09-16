@@ -7,6 +7,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\Playlist;
@@ -54,6 +55,13 @@ final class PublicDomain
         'song' => ['model' => Song::class, 'module' => 'song'],
         'playlist' => ['model' => Playlist::class, 'module' => 'song'],
         'bookmark' => ['model' => Bookmark::class, 'module' => 'bookmark'],
+        /* ⚠️ **`gallery_album` დომენია, თუმცა „ჩანაწერი" არ არის** (Tasks §7.5).
+           ფოტო მშობლის ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე
+           გადამრთველი არ სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით
+           არაფერი მოსდის და ერთადერთი, რითიც ის შეიძლება გაზიარდეს,
+           ალბომია. `playlist`-ის ზუსტი ფორმა: მოდული `gallery`-ია,
+           იდენტობა (`MATCH`) — არ აქვს. */
+        'gallery_album' => ['model' => GalleryAlbum::class, 'module' => 'gallery'],
     ];
 
     /**
@@ -119,6 +127,7 @@ final class PublicDomain
         'song' => ['relation' => null, 'columns' => ['title', 'artist']],
         'playlist' => ['relation' => null, 'columns' => ['name']],
         'bookmark' => ['relation' => null, 'columns' => ['title', 'url']],
+        'gallery_album' => ['relation' => null, 'columns' => ['name']],
     ];
 
     /** @return list<string> */
@@ -283,6 +292,16 @@ final class PublicDomain
             'playlist' => [
                 'title_en' => $record->name,
                 'songs_count' => $record->songs_count ?? 0,
+            ],
+            /* ⚠️ **ჩაკეტილ ალბომს არც ესკიზი მიჰყვება** (Tasks §7.11): `locked`
+               ერთადერთი ფაქტია, რაც გარეთ გამოდის — რიცხვი ფოტოს არ ამხელს,
+               ამხელს გზა ფაილამდე. `image` მხოლოდ ღია ალბომს აქვს და მას
+               `PublicGallery` ავსებს. */
+            'gallery_album' => [
+                'title_en' => $record->name,
+                'subtitle' => $record->description,
+                'photos' => (int) ($record->images_count ?? 0),
+                'locked' => $record->isLocked(),
             ],
             'bookmark' => [
                 'title_en' => $record->title,

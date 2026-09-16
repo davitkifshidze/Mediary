@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { MatchPanel } from '@/components/MatchPanel'
+import { PublicGalleryTab } from '@/components/PublicGalleryTab'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -74,7 +75,10 @@ export function PublicProfilePage() {
   const itemsQuery = useQuery({
     queryKey: ['public-profile-items', username, domain, page],
     queryFn: () => fetchPublicItems(username, domain as PublicDomainKey, page),
-    enabled: !!domain,
+    /* ⚠️ გალერეის ჩანართს **სხვა endpoint** ემსახურება (§7.4) — ბარათების
+       წამოღება იქ არათუ ზედმეტია, „მეტის ჩვენებასაც" ალბომების რიცხვით
+       დახატავდა. */
+    enabled: !!domain && domain !== 'gallery_album',
   })
 
   // გვერდები გროვდება („მეტის ჩვენება"), ტაბის შეცვლა კი სიას ანულებს
@@ -240,8 +244,15 @@ export function PublicProfilePage() {
               />
             </div>
 
-            {/* ---------- ბადე ---------- */}
-            {itemsQuery.isLoading && items.length === 0 ? (
+            {/* ---------- ბადე ----------
+                ⚠️ **გალერეის ჩანართი ბარათებს არ ხატავს** (Tasks §7.4): მისი
+                ჩანაწერი ალბომია (საქაღალდე), ჩვენება კი ფოტოებია — ბარათებად
+                „3 ალბომი" ეწერებოდა იქ, სადაც ორასი ფოტოა. */}
+            {domain === 'gallery_album' ? (
+              <div className="pt-1">
+                <PublicGalleryTab username={profile.profile.username} />
+              </div>
+            ) : itemsQuery.isLoading && items.length === 0 ? (
               <div className="grid place-items-center py-16">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
@@ -257,7 +268,7 @@ export function PublicProfilePage() {
               </div>
             )}
 
-            {hasMore && (
+            {hasMore && domain !== 'gallery_album' && (
               <div className="flex justify-center pb-12">
                 <Button
                   variant="outline"

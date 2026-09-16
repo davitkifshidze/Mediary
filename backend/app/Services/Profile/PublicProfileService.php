@@ -97,6 +97,14 @@ class PublicProfileService
             $q->withCount('songs');
         }
 
+        /* ⚠️ **ალბომის რიცხვი ლოკის მიღმა იზომება** (Tasks §7.5): scope-ს
+           რომ დამორჩილებოდა, ჩაკეტილი ალბომი „0 ფოტოს" იტყოდა და ბარათი
+           იტყუებოდა. რიცხვი ფოტოს არ ამხელს — ამხელს გზა ფაილამდე,
+           რომელიც `PublicGallery::row()`-ში საერთოდ არ იწერება. */
+        if ($domain === 'gallery_album') {
+            $q->withCount(['images' => fn ($i) => $i->withoutGlobalScope('album_lock')]);
+        }
+
         return $q->orderByDesc('id');
     }
 

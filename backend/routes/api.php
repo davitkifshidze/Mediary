@@ -120,6 +120,16 @@ Route::middleware('throttle:login')->group(function () {
    ჩანაწერი), ყველა default-ით `private`. მთელი მექანიზმი ერთი ცვლადით
    ითიშება: `PUBLIC_PROFILES=false`. დეტალები `PublicProfileController`-ში. */
 Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show']);
+
+/* ⚠️ **ორივე `{domain}`-ზე ზემოთ დგას** (Tasks §7.4/§7.12), თორემ
+   „gallery-photos" და „albums" დომენებად წაიკითხება — იგივე წესი, რაც
+   `/gallery/{type}/{id}`-ს აქვს. */
+Route::get('/public/profiles/{username}/gallery-photos', [PublicProfileController::class, 'photos']);
+Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileController::class, 'unlockAlbum'])
+    ->whereNumber('album')
+    // §7.13 — ანონიმზე გასაღები IP + ალბომია; უამისოდ ოთხსიმბოლოიანი პაროლი წუთებში ცვივა
+    ->middleware('throttle:album-unlock');
+
 Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -652,6 +662,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
         Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);
+        /* §7.9 — ჩაკეტილი ალბომის ფოტო **პირად დისკზეა**, ე.ი. `/storage/*`
+           მას ვერ კითხულობს; ერთადერთი კარი ეს მარშრუტია და ის ლოკსაც
+           ამოწმებს (404, არასდროს 403). */
+        Route::get('/gallery/images/{galleryImage}/file', [GalleryController::class, 'imageFile']);
         Route::delete('/gallery/images/{galleryImage}', [GalleryController::class, 'destroyImage']);
         Route::post('/gallery/images/{galleryImage}/primary', [GalleryController::class, 'setPrimary']);
         // მსახიობის გალერეა — მშობელი მსახიობია, ე.ი. ფოტო მის გვერდზეც ჩანს

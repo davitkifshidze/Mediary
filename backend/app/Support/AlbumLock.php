@@ -70,13 +70,33 @@ final class AlbumLock
             return [];
         }
 
+        return self::hiddenIdsFor((int) $userId);
+    }
+
+    /**
+     * **იმავე კითხვა კონკრეტული მფლობელისთვის (Tasks §7.12).**
+     *
+     * ⚠️ **საჯარო პროფილს `Auth::id()` არ გამოადგება და ეს კარი §7.4-მა
+     * გააღო.** ანონიმზე ის ცარიელია (ე.ი. ლოკი საერთოდ არ იმუშავებდა), ხოლო
+     * **შესული უცხო** მნახველისთვის მისივე ჩაკეტილ ალბომებს დაითვლიდა —
+     * სულ სხვა ადამიანის სია. ამიტომ საჯარო query მფლობელის id-ს **ცხადად**
+     * გადმოსცემს, ზუსტად ისე, როგორც `PublicProfileService::query()` აკეთებს
+     * `owner` scope-თან.
+     *
+     * ⚠️ გახსნილთა ნაკრები კი **სესიისაა და არა მფლობელისა**: ალბომის id
+     * გლობალურია, პაროლი მფლობელისაა და მას უცხოც აკრეფს, თუ იცის.
+     *
+     * @return list<int>
+     */
+    public static function hiddenIdsFor(int $ownerId): array
+    {
         $open = self::unlockedIds();
-        $key = $userId.':'.implode(',', $open);
+        $key = $ownerId.':'.implode(',', $open);
 
         if (! isset(self::$memo[$key])) {
             $locked = GalleryAlbum::query()
                 ->withoutGlobalScope('owner')
-                ->where('user_id', $userId)
+                ->where('user_id', $ownerId)
                 ->whereNotNull('password_hash')
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)

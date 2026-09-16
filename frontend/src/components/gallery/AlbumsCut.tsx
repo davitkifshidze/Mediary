@@ -151,11 +151,17 @@ export function AlbumsCut() {
         <GroupPhotos
           title={open.title}
           hint={<InfoHint info={t('gallery.albumHint')} />}
-            filters={{ owner: `album:${open.id}` }}
+          filters={{ owner: `album:${open.id}` }}
           cacheKey={`album:${open.id}`}
           onBack={() => setOpen(null)}
           showOwner
           emptyText={t('gallery.albumEmpty')}
+          /* §7.15 — ჩაკეტილი ალბომი ბლარიან ფილებად იხატება და პაროლს
+             აქვე ითხოვს; ადრე აქ 423 ჩერდებოდა და ბადე საერთოდ არ ჩანდა */
+          onUnlock={() => {
+            const album = albumOf(open.id)
+            if (album) setUnlocking(album)
+          }}
         />
       </>
     )

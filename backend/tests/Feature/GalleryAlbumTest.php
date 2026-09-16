@@ -369,16 +369,29 @@ class GalleryAlbumTest extends TestCase
             ->assertJsonPath('photos', 1);
     }
 
-    /** პირდაპირ ალბომის გახსნა — 423, ე.ი. „ჩაკეტილია" და არა „ცარიელია" */
-    public function test_opening_a_locked_album_answers_locked_not_empty(): void
+    /**
+     * პირდაპირ ალბომის გახსნა — **რიგები ჩანს, ბილიკი არა** (Tasks §7.11/§7.15).
+     *
+     * ⚠️ ადრე ეს 423 იყო. შენი მითითებით („ჩაკეტილ ფოტოებს ბლარიანი ფოტო
+     * დაუდგეს") ის შეიცვალა: ბადემ უნდა დახატოს ბლარიანი ფილები და პაროლი
+     * იკითხოს — ე.ი. რიგები საჭიროა. სამაგიეროდ **`url`/`path`/`source_url`
+     * არცერთი არ მიდის**, ე.ი. ინსპექტორს ისევ საპოვნელი არაფერი აქვს.
+     */
+    public function test_a_locked_album_returns_rows_without_any_path(): void
     {
         Storage::fake('public');
         $album = $this->lockedAlbum();
+        $this->photo($this->makeMovie(), 'gallery/images/secret.jpg')->update(['album_id' => $album->id]);
 
-        $this->actingAs($this->user)
+        $response = $this->actingAs($this->user)
             ->getJson('/api/gallery/photos?owner=album:'.$album->id)
-            ->assertStatus(423)
-            ->assertJsonPath('message', 'album_locked');
+            ->assertOk()
+            ->assertJsonPath('locked', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.locked', true);
+
+        $this->assertStringNotContainsString('secret.jpg', $response->getContent());
+        $this->assertArrayNotHasKey('url', $response->json('data.0'));
     }
 
     /** სწორი პაროლი ხსნის, არასწორი — 422 */
@@ -439,8 +452,13 @@ class GalleryAlbumTest extends TestCase
         $this->assertNotNull(GalleryAlbum::withoutGlobalScope('owner')->find($album->id));
     }
 
-    /** პაროლის მოხსნა მოქმედი პაროლის ცოდნას ითხოვს */
-    public function test_removing_the_password_needs_the_current_one(): void
+    /**
+     * **პაროლის მოხსნა ანგარიშის პაროლს ითხოვს** (Tasks §7.8, შენი გადაწყვეტილება).
+     *
+     * ⚠️ ადრე ის ალბომის მოქმედ პაროლს ითხოვდა, ე.ი. „დამავიწყდა" ჩიხი იყო.
+     * ანგარიშის პაროლი მფლობელობას ისევე ამტკიცებს და აღდგენასაც აძლევს გზას.
+     */
+    public function test_removing_the_password_needs_the_account_password(): void
     {
         Storage::fake('public');
         $album = $this->lockedAlbum('secret1');
@@ -448,11 +466,19 @@ class GalleryAlbumTest extends TestCase
         $this->actingAs($this->user)
             ->putJson('/api/gallery/albums/'.$album->id, ['remove_password' => true])
             ->assertStatus(422)
-            ->assertJsonPath('message', 'album_password_wrong');
+            ->assertJsonPath('message', 'account_password_wrong');
+
+        // ალბომის საკუთარი პაროლი აქ **აღარ** გამოდგება
+        $this->actingAs($this->user)
+            ->putJson('/api/gallery/albums/'.$album->id, [
+                'remove_password' => true, 'account_password' => 'secret1',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'account_password_wrong');
 
         $this->actingAs($this->user)
             ->putJson('/api/gallery/albums/'.$album->id, [
-                'remove_password' => true, 'current_password' => 'secret1',
+                'remove_password' => true, 'account_password' => 'password',
             ])
             ->assertOk()
             ->assertJsonPath('locked', false);

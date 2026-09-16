@@ -169,7 +169,10 @@ class AppServiceProvider extends ServiceProvider
             /* ⚠️ `route()` აქ **მოდელია და არა id**: route-middleware
                `SubstituteBindings`-ის შემდეგ მუშაობს, ე.ი. პირდაპირი
                კონკატენაცია ობიექტის სტრიქონად ქცევას ცდილობდა. */
-            $album = $r->route('galleryAlbum');
+            /* ⚠️ საჯარო როუტზე პარამეტრი **`album`-ია და არა `galleryAlbum`**
+               (Tasks §7.13): იქ მოდელი განზრახ არ იბმება, თორემ
+               `EnsureRecordOwnership` უცხოს ყოველთვის 404-ს დაუბრუნებდა. */
+            $album = $r->route('galleryAlbum') ?? $r->route('album');
             $id = is_object($album) ? ($album->id ?? '') : $album;
 
             return Limit::perMinute(10)

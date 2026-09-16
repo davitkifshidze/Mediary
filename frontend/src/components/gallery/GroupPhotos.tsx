@@ -10,6 +10,7 @@ import {
 import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { Button } from '@/components/ui/button'
 import { GalleryPhotoGrid } from '@/components/gallery/GalleryPhotoGrid'
+import { LockedPhotos } from '@/components/gallery/LockedPhotos'
 import { SortPick } from '@/components/gallery/SortPick'
 
 /* ============================================================
@@ -37,6 +38,7 @@ export function GroupPhotos({
   actions,
   showOwner,
   emptyText,
+  onUnlock,
 }: {
   title: ReactNode
   subtitle?: ReactNode
@@ -49,6 +51,8 @@ export function GroupPhotos({
   actions?: ReactNode
   showOwner?: boolean
   emptyText?: string
+  /** §7.15 — ჩაკეტილ ალბომში „პაროლის შეყვანა" */
+  onUnlock?: () => void
 }) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
@@ -83,6 +87,14 @@ export function GroupPhotos({
 
   const meta = query.data?.meta
 
+  /* ⚠️ **ჩაკეტილი ალბომი ცარიელი აღარაა — ის ბლარიან ფილებად იხატება**
+     (Tasks §7.11/§7.15). ადრე სერვერი 423-ს აბრუნებდა და ბადე საერთოდ
+     არ იხატებოდა; შენი მითითებით ახლა რიგები ჩანს (მხოლოდ `id` და
+     ზომები), პაროლის ღილაკი კი აქვეა. */
+  const locked = query.data && 'locked' in query.data ? query.data : null
+  const photos = query.data && !('locked' in query.data) ? query.data.data : []
+  const lightbox = allQ.data && !('locked' in allQ.data) ? allQ.data.data : undefined
+
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -103,19 +115,23 @@ export function GroupPhotos({
         {actions}
       </div>
 
-      <GalleryPhotoGrid
-        images={query.data?.data ?? []}
-        lightboxImages={allQ.data?.data}
-        loading={query.isLoading}
-        showOwner={showOwner}
-        emptyText={emptyText}
-        pageSize={perPage}
-        onPageSizeChange={(size) => {
-          setPerPage(size)
-          setPage(1)
-        }}
-        total={meta?.total}
-      />
+      {locked ? (
+        <LockedPhotos photos={locked.data} total={locked.meta.total} onUnlock={onUnlock} />
+      ) : (
+        <GalleryPhotoGrid
+          images={photos}
+          lightboxImages={lightbox}
+          loading={query.isLoading}
+          showOwner={showOwner}
+          emptyText={emptyText}
+          pageSize={perPage}
+          onPageSizeChange={(size) => {
+            setPerPage(size)
+            setPage(1)
+          }}
+          total={meta?.total}
+        />
+      )}
 
       {meta && meta.last_page > 1 && (
         <Pager page={meta.page} lastPage={meta.last_page} total={meta.total} onChange={setPage} />

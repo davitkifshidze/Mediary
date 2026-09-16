@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils'
 
 const PER_PAGE = 24
 
-export function VisibilityManager() {
+export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -183,7 +183,7 @@ export function VisibilityManager() {
 
   if (!domains.length) {
     return (
-      <p className="mt-4 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+      <p className={cn('rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground', !bare && 'mt-4')}>
         {t('publicProfile.noShareable')}
       </p>
     )
@@ -205,12 +205,17 @@ export function VisibilityManager() {
 
   const allPicked = rows.length > 0 && rows.every((r) => picked.includes(r.id))
 
+  /* ⚠️ `bare` — მოდალში სათაური და ზედა ხაზი ზედმეტია (Tasks §7.3): ფანჯარას
+     თავისი სათაური აქვს, ბლოკის საკუთარი კი მეორე სათაურად წაიკითხებოდა.
+     ბარათზე პირიქით — ის განმასხვავებელი ხაზია სამ ფენას შორის. */
   return (
-    <div className="mt-4 border-t border-border pt-4">
-      <div className="mb-3 flex items-center gap-1.5 text-sm font-medium">
-        {t('visibility.manageTitle')}
-        <InfoHint info={t('visibility.manageHint')} />
-      </div>
+    <div className={bare ? undefined : 'mt-4 border-t border-border pt-4'}>
+      {!bare && (
+        <div className="mb-3 flex items-center gap-1.5 text-sm font-medium">
+          {t('visibility.manageTitle')}
+          <InfoHint info={t('visibility.manageHint')} />
+        </div>
+      )}
 
       {/* ---------- დომენები ---------- */}
       <div className="mb-4">

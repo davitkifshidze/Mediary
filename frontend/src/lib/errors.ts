@@ -32,6 +32,8 @@ const CODES = [
      `album_locked` მდგომარეობაა (ინტერფეისმა პაროლი უნდა ჰკითხოს),
      `album_password_wrong` კი მცდელობის შედეგი. */
   'album_locked',
+  // §7.8 — ალბომის ლოკს ახლა **ანგარიშის** პაროლი ცვლის
+  'account_password_wrong',
   'album_password_wrong',
   // §16.3 — ჩატი
   'chat_blocked',

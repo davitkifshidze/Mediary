@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,12 @@ class GalleryImageResource extends JsonResource
             /* §26 — ალბომი (user-ის თავისი დახარისხება). `null` = ალბომის
                გარეშე; მშობლისგან დამოუკიდებელია, ე.ი. ორივე შეიძლება იყოს. */
             'album_id' => $this->album_id,
+            /* ⚠️ **დისკს backend ამბობს და არა ფრონტი** (§17.5-ის წესი):
+               ჩაკეტილი ალბომის ფოტო `gallery/locked`-შია, პირად დისკზე
+               (§7.9), ე.ი. `/storage/*` მას ვერ კითხულობს. `PRIVATE_ROOTS`-ის
+               ასლი SPA-ში ერთ დღეს დაშორდებოდა და პირად ფაილს საჯარო
+               URL-ქვეშ გამოაჩენდა. */
+            'private' => StorageFolder::isPrivate((string) $this->path),
             'width' => $this->width,
             'height' => $this->height,
             'created_at' => $this->created_at?->toIso8601String(),

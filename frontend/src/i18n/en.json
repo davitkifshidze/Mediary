@@ -813,7 +813,10 @@
     "emptyDomain": "No public records in this section.",
     "forcePrivate": "Force private",
     "forcePrivateHint": "An admin can close a profile in case of abuse; the module and record choices stay untouched.",
-    "records": "Records"
+    "records": "Records",
+    "manage": "Manage",
+    "modulesCount": "{{count}} of {{total}} public",
+    "profilePrivateNotice": "While the profile itself is private these switches change nothing — open the profile first."
   },
   "matches": {
     "title": "Matches",
@@ -947,7 +950,8 @@
     "background_unavailable": "the background process could not be started",
     "invalid_backup_file": "only .sql or .sql.gz files",
     "album_locked": "The album is locked — enter its password first.",
-    "album_password_wrong": "Wrong password."
+    "album_password_wrong": "Wrong password.",
+    "account_password_wrong": "The account password is wrong."
   },
   "fields": {
     "title": "Fields",
@@ -1770,7 +1774,12 @@
     "albumPickerEmpty": "You have no albums yet — create one right here.",
     "albumLockedMoveHint": "This album is locked: a photo moved into it is hidden at once.",
     "albumsEmpty": "You have no albums yet.",
-    "albumsEmptyHint": "An album is a folder: it does not change a photo’s parent, it is your own sorting."
+    "albumsEmptyHint": "An album is a folder: it does not change a photo’s parent, it is your own sorting.",
+    "albumPublic": "The album is public",
+    "albumPublicHint": "A photo normally inherits its parent’s visibility; for a photo with no parent the album is the only way.",
+    "albumAccountPassword": "Account password",
+    "albumAccountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten album password is no longer a dead end.",
+    "lockedGridHint": "The album is locked — {{count}} photos are hidden. The files never leave the server."
   },
   "boardGames": {
     "title": "Board games",

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
+use App\Services\Gallery\AlbumVault;
 use App\Support\AlbumLock;
+use App\Support\PublicDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -49,6 +51,8 @@ class GalleryAlbumController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
+            // §7.5 — ალბომი ერთადერთია გალერეაში, რასაც საკუთარი ჩამრთველი აქვს
+            'visibility' => ['nullable', 'in:'.implode(',', PublicDomain::VALUES)],
         ]);
 
         $password = $data['password'] ?? null;
@@ -72,13 +76,18 @@ class GalleryAlbumController extends Controller
     /**
      * სახელი, აღწერა და პაროლი.
      *
-     * ⚠️ **პაროლის შეცვლა/მოხსნა მოქმედი პაროლის ცოდნას ითხოვს.** უამისოდ
-     * ლოკს აზრი არ ექნებოდა: ბრაუზერთან მისული კაცი უბრალოდ „მოხსნას"
-     * დააჭერდა. საკმარისია ისიც, რომ ალბომი **ამ სესიაში უკვე გახსნილია**
-     * — ე.ი. პაროლი ერთხელ ისედაც შეიყვანე.
+     * ⚠️ **პაროლის შეცვლა/მოხსნა ანგარიშის პაროლს ითხოვს** (Tasks §7.8, შენი
+     * გადაწყვეტილება). უამისოდ ლოკს აზრი არ ექნებოდა: ბრაუზერთან მისული კაცი
+     * უბრალოდ „მოხსნას" დააჭერდა. საკმარისია ისიც, რომ ალბომი **ამ სესიაში
+     * უკვე გახსნილია** — ე.ი. პაროლი ერთხელ ისედაც შეიყვანე.
      *
-     * ⚠️ **`current_password` არასდროს გამოიყენება ახალ ლოკზე**: პაროლის
-     * გარეშე ალბომს დასაცავი არაფერი აქვს.
+     * ⚠️ **ანგარიშის პაროლი და აღარ ალბომისა.** ძველი წესი („აღდგენა არ
+     * არსებობს") ამით უქმდება და ეს კარგია: „დამავიწყდა ალბომის პაროლი"
+     * აღარაა ჩიხი, მფლობელობა კი მაინც მტკიცდება — ანგარიშის პაროლი
+     * ისედაც უფრო ძლიერი საიდუმლოა.
+     *
+     * ⚠️ **პაროლი ახალ ლოკზე არასდროს იკითხება**: პაროლის გარეშე ალბომს
+     * დასაცავი არაფერი აქვს.
      */
     public function update(Request $request, GalleryAlbum $galleryAlbum)
     {
@@ -87,7 +96,12 @@ class GalleryAlbumController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
             'remove_password' => ['nullable', 'boolean'],
-            'current_password' => ['nullable', 'string', 'max:100'],
+            /* ⚠️ **ანგარიშის პაროლია და აღარ ალბომისა** (Tasks §7.8, შენი
+               გადაწყვეტილება). ეს აუქმებს ძველ წესს „აღდგენა არ არსებობს":
+               „ალბომის პაროლი დამავიწყდა" აღარაა ჩიხი, მფლობელობა კი მაინც
+               მტკიცდება — და ის ისედაც უფრო ძლიერი საიდუმლოა. */
+            'account_password' => ['nullable', 'string', 'max:255'],
+            'visibility' => ['nullable', 'in:'.implode(',', PublicDomain::VALUES)],
         ]);
 
         /* ⚠️ **`array_key_exists` აქ არ გამოდგება**: `ConvertEmptyStringsToNull`
@@ -99,14 +113,14 @@ class GalleryAlbumController extends Controller
 
         if ($wantsLockChange && $galleryAlbum->isLocked() && ! AlbumLock::isUnlocked($galleryAlbum)) {
             abort_unless(
-                ($data['current_password'] ?? null) !== null
-                    && Hash::check($data['current_password'], $galleryAlbum->password_hash),
+                ($data['account_password'] ?? null) !== null
+                    && Hash::check($data['account_password'], $request->user()->password),
                 422,
-                'album_password_wrong',
+                'account_password_wrong',
             );
         }
 
-        $changes = array_intersect_key($data, array_flip(['name', 'description']));
+        $changes = array_intersect_key($data, array_flip(['name', 'description', 'visibility']));
 
         if ($data['remove_password'] ?? false) {
             $changes['password_hash'] = null;
@@ -114,6 +128,7 @@ class GalleryAlbumController extends Controller
             $changes['password_hash'] = Hash::make($data['password']);
         }
 
+        $wasLocked = $galleryAlbum->isLocked();
         $galleryAlbum->update($changes);
 
         // ახლად დადებული/შეცვლილი პაროლი ამ სესიაში ღიად რჩება, თორემ
@@ -122,6 +137,15 @@ class GalleryAlbumController extends Controller
             $changes['password_hash'] === null
                 ? AlbumLock::lock($galleryAlbum)
                 : AlbumLock::unlock($galleryAlbum);
+
+            /* ⚠️ **ფაილები ფიზიკურად გადადის** (§7.9): პასუხიდან ამოღება
+               საკმარისი არ არის, სანამ `/storage/gallery/images/…` ბმული
+               იხსნება. `AlbumVault` პოსტერსაც წმენდს (§7.14). */
+            if ($changes['password_hash'] === null && $wasLocked) {
+                AlbumVault::reveal($galleryAlbum);
+            } elseif ($changes['password_hash'] !== null && ! $wasLocked) {
+                AlbumVault::seal($galleryAlbum);
+            }
         }
 
         return response()->json($this->row($galleryAlbum->loadCount($this->imagesCount())));
@@ -192,7 +216,20 @@ class GalleryAlbumController extends Controller
             'cannot_move_into_itself',
         );
 
-        $moved = $galleryAlbum->images()->update(['album_id' => $data['move_to'] ?? null]);
+        /* ⚠️ **ფაილები ჯერ ბრუნდება საჯარო საქაღალდეში** (§7.9), მერე
+           ჩანაწერები გადადიან: სხვა შემთხვევაში ამ ალბომის ფოტოები
+           `gallery/locked`-ში დარჩებოდა — მშობლის გარეშე, პირად დისკზე,
+           ე.ი. აპლიკაციაში ხილულად და `/storage/*`-ით მიუწვდომლად. */
+        $target = ($data['move_to'] ?? null)
+            ? GalleryAlbum::find((int) $data['move_to'])
+            : null;
+
+        $target && $target->isLocked()
+            ? AlbumVault::seal($galleryAlbum)
+            : AlbumVault::reveal($galleryAlbum);
+
+        $moved = $galleryAlbum->images()->withoutGlobalScope('album_lock')
+            ->update(['album_id' => $data['move_to'] ?? null]);
         $galleryAlbum->delete();
 
         return response()->json(['moved' => $moved]);
@@ -241,6 +278,7 @@ class GalleryAlbumController extends Controller
             'name' => $album->name,
             'description' => $album->description,
             'sort_order' => $album->sort_order,
+            'visibility' => $album->visibility,
             'photos' => (int) ($album->images_count ?? 0),
             // ⚠️ hash არასდროს — მხოლოდ ორი ფაქტი: „პაროლი ადევს" და
             // „ამ სესიაში ღიაა". სწორედ ეს ორი წყვეტს, რას ხატავს ბარათი.

@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, Globe, Lock } from 'lucide-react'
+import { ExternalLink, Globe, Lock, SlidersHorizontal } from 'lucide-react'
 import { updateProfile } from '@/api/account'
-import { setModulePublic } from '@/api/publicProfile'
 import { useAuth } from '@/lib/auth'
-import { useModules, moduleName } from '@/lib/modules'
+import { useModules } from '@/lib/modules'
 import { errorMessage } from '@/lib/errors'
+import { PublicModulesDialog } from '@/components/PublicModulesDialog'
 import { VisibilityManager } from '@/components/VisibilityManager'
+import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 
@@ -27,19 +28,21 @@ import { useToast } from '@/components/ui/feedback'
    ============================================================ */
 
 export function PublicProfileCard() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { user, setUser } = useAuth()
   const { enabled } = useModules()
   const { toast } = useToast()
-  const qc = useQueryClient()
 
   const [busy, setBusy] = useState<string | null>(null)
+  /** რომელი ფანჯარაა ღია — `null` არცერთი (Tasks §7.2/§7.3) */
+  const [open, setOpen] = useState<'modules' | 'records' | null>(null)
 
   if (!user) return null
 
   const isPublic = user.profile_visibility === 'public'
   // მოდულები, რომელთა გასაჯაროებაც საერთოდ შეიძლება (`note` — არასდროს, 16.5)
   const shareable = enabled.filter((m) => m.shareable)
+  const publicModules = shareable.filter((m) => m.is_public).length
 
   const toggleProfile = async (next: boolean) => {
     setBusy('profile')
@@ -51,19 +54,6 @@ export function PublicProfileCard() {
         title: next ? t('publicProfile.turnedOn') : t('publicProfile.turnedOff'),
         variant: 'success',
       })
-    } catch (err) {
-      toast({ title: errorMessage(err), variant: 'error' })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const toggleModule = async (key: string, next: boolean) => {
-    setBusy(key)
-    try {
-      await setModulePublic(key, next)
-      // `is_public` `GET /modules`-იდან მოდის — სია უნდა გადმოიკითხოს
-      await qc.invalidateQueries({ queryKey: ['modules'] })
     } catch (err) {
       toast({ title: errorMessage(err), variant: 'error' })
     } finally {
@@ -109,40 +99,56 @@ export function PublicProfileCard() {
         </div>
       )}
 
-      {/* ---------- ფენა 2: მოდულები ---------- */}
-      <div className="pt-4">
-        <div className="text-sm font-medium">{t('publicProfile.modules')}</div>
-        <p className="mt-0.5 mb-1 text-xs text-muted-foreground">
-          {t('publicProfile.modulesHint')}
-        </p>
-
-        {shareable.length === 0 ? (
-          <p className="py-3 text-xs text-muted-foreground">{t('publicProfile.noShareable')}</p>
-        ) : (
-          shareable.map((m) => (
-            <div
-              key={m.key}
-              className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-b-0"
-            >
-              <span className="min-w-0 flex-1 truncate text-sm">
-                {moduleName(m, i18n.language)}
-              </span>
-              <Switch
-                checked={!!m.is_public}
-                disabled={!isPublic || busy === m.key}
-                onCheckedChange={(v) => toggleModule(m.key, v)}
-                aria-label={moduleName(m, i18n.language)}
-              />
-            </div>
-          ))
-        )}
+      {/* ---------- ფენა 2: მოდულები (Tasks §7.2) ----------
+          ⚠️ ჩამრთველების სია **მოდალშია**: ბარათზე ის თერთმეტ რიგად იშლებოდა
+          და მესამე ფენას ეკრანს ქვემოთ აგდებდა. აქ მხოლოდ შემაჯამებელი
+          რიგი და ღილაკი რჩება. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            {t('publicProfile.modules')}
+            <InfoHint info={t('publicProfile.modulesHint')} />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {shareable.length === 0
+              ? t('publicProfile.noShareable')
+              : t('publicProfile.modulesCount', { count: publicModules, total: shareable.length })}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setOpen('modules')}>
+          <SlidersHorizontal className="size-4" />
+          {t('publicProfile.manage')}
+        </Button>
       </div>
 
-      {/* ---------- ფენა 3: ჩანაწერები (§6.1) ----------
-          ⚠️ ადრე აქ მხოლოდ მინიშნება იდო („გახსენი ჩანაწერი და იქ ნახავ
-          გადამრთველს"). ახლა მესამე ფენაც აქვეა, ე.ი. ხილვადობა **ერთ
-          ადგილას** იმართება და ჩანაწერის გვერდზე გადამრთველი აღარაა. */}
-      <VisibilityManager />
+      {/* ---------- ფენა 3: ჩანაწერები (§6.1 → §7.3) ----------
+          ⚠️ იგივე მიზეზი: მმართველს ძებნა, მასობრივი ზოლი და გვერდები აქვს,
+          ე.ი. ბარათის შიგნით ის ცალკე გვერდად იკითხებოდა. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            {t('visibility.manageTitle')}
+            <InfoHint info={t('visibility.manageHint')} />
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setOpen('records')}>
+          <SlidersHorizontal className="size-4" />
+          {t('publicProfile.manage')}
+        </Button>
+      </div>
+
+      {/* ⚠️ ორივე ფანჯარა **ამ კომპონენტის ერთადერთ `return`-შია** — მდგომარეობა
+          და პორტალის JSX ერთ ადგილას (`GroupsCut`-ის ცოცხალი ბაგის წესი). */}
+      {open === 'modules' && (
+        <PublicModulesDialog profilePublic={isPublic} onClose={() => setOpen(null)} />
+      )}
+      {open === 'records' && (
+        <ModalShell title={t('visibility.manageTitle')} onClose={() => setOpen(null)} size="wide">
+          <div className="mt-4">
+            <VisibilityManager bare />
+          </div>
+        </ModalShell>
+      )}
     </section>
   )
 }
