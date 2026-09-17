@@ -196,38 +196,69 @@ class User extends Authenticatable
     }
 
     /**
+     * აქტიური მოდულების key-ები — **მხოლოდ super_admin-ის შტოსთვის** (იხ. `hasModule()`).
+     *
+     * ⚠️ ის ერთადერთი კითხვაა, რომელზეც pivot-ი ვერ პასუხობს: super_admin-ს
+     * მოდული შეიძლება საერთოდ არ ჰქონდეს მინიჭებული და მაინც ჰქონდეს. მემოც
+     * სწორედ ამიტომ ცალკეა — ჩვეულებრივი მომხმარებელი მას არასდროს ეკითხება.
+     */
+    private ?array $activeModuleKeys = null;
+
+    private function activeModuleKeys(): array
+    {
+        return $this->activeModuleKeys ??= Module::where('is_active', true)->pluck('key')->all();
+    }
+
+    /**
      * ჩართული აქვს თუ არა მოდული. super_admin-ს ყველა აქტიური მოდული აქვს.
      *
      * K13: pivot-ის `is_hidden` ნიშნავს „მე თვითონ გამოვრთე" — უფლება რჩება,
      * მაგრამ მოდული ჩემთვის ჩაკეტილია (UI-შიც და API-შიც).
+     *
+     * ⚠️ **პასუხი მეხსიერებიდან მოდის** (Tasks PERF-01). `$this->modules()`
+     * query-builder-ია, ე.ი. **eager-loaded რელაციას იგნორირებდა** და ყოველ
+     * გამოძახებაზე ბაზას ეკითხებოდა — ეს კი `foreach ($modules as $m) { if (!
+     * $user->hasModule($m->key)) … }` შაბლონშია Dashboard-ში, `GalleryController`-ში,
+     * `ModuleImages`-ში, `GlobalSearch`-სა და `MediaDomain`-ში. გაზომილი:
+     * `/api/dashboard` 11 `module_user`-query, `/api/gallery` 14 — ერთისთვის,
+     * რომელიც უკვე მეხსიერებაშია.
+     *
+     * ⚠️ **`loadMissing()` და არა საკუთარი მემო**: ეს Eloquent-ის საკუთარი
+     * რელაციის ქეშია, ე.ი. `with('modules')`-ით წამოღებული სია ავტომატურად
+     * იკითხება (PERF-04), და გაუქმებაც ჩვეულებრივი `refresh()`/`unsetRelation()`-ია.
+     * ⚠️ თუ იმავე ინსტანციაზე წევრობას ან `is_hidden`-ს შეცვლი და მერე
+     * ხელახლა ეკითხები — `unsetRelation('modules')` საჭიროა. დღეს ასეთი გზა
+     * არ არსებობს: `setEnabled()`/`syncModules()` ჯერ ამოწმებენ და მერე წერენ,
+     * ხოლო `enabledModules()`/`moduleKeys()` ისედაც ყოველ ჯერზე ბაზას კითხულობენ.
      */
     public function hasModule(string $key): bool
     {
-        $row = $this->modules()
-            ->where('key', $key)
-            ->where('modules.is_active', true)
-            ->first();
+        $this->loadMissing('modules');
+
+        // ⚠️ არააქტიური მოდულის pivot-ი `null`-ია და არა `false` — ქვემოთ
+        // super_admin-ის შტო მასაც ისევე უარყოფს, როგორც ადრე
+        $row = $this->modules->first(fn (Module $m) => $m->key === $key && $m->is_active);
 
         if ($row) {
             return ! $row->pivot->is_hidden;
         }
 
-        if (! $this->isSuperAdmin()) {
-            return false;
-        }
-
-        return Module::where('key', $key)->where('is_active', true)->exists();
+        return $this->isSuperAdmin() && in_array($key, $this->activeModuleKeys(), true);
     }
 
-    /** აქვს თუ არა უფლება (ადმინმა ჩართო), თუნდაც თვითონ გამორთული ჰქონდეს */
+    /**
+     * აქვს თუ არა უფლება (ადმინმა ჩართო), თუნდაც თვითონ გამორთული ჰქონდეს.
+     * ⚠️ `is_active`-ს **განზრახ არ ამოწმებს** — კითხვა წევრობაზეა და არა ხილვადობაზე.
+     */
     public function isGrantedModule(string $key): bool
     {
-        if ($this->modules()->where('key', $key)->exists()) {
+        $this->loadMissing('modules');
+
+        if ($this->modules->contains(fn (Module $m) => $m->key === $key)) {
             return true;
         }
 
-        return $this->isSuperAdmin()
-            && Module::where('key', $key)->where('is_active', true)->exists();
+        return $this->isSuperAdmin() && in_array($key, $this->activeModuleKeys(), true);
     }
 
     /** ჩართული მოდულების key-ები (ნავიგაციისთვის) */

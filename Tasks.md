@@ -19,7 +19,7 @@
 | BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ✅ შესრულებულია |
 | GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ✅ შესრულებულია |
 | GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ✅ შესრულებულია |
-| PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ⬜ |
+| PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ✅ შესრულებულია |
 | PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ⬜ |
 | PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M | ⬜ |
 | DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ⬜ |
@@ -310,14 +310,21 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-01] `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `hasModule()` და `isGrantedModule()` `loadMissing('modules')`-ს იყენებენ და პასუხს **მეხსიერებიდან** აძლევენ; super_admin-ის შტოს (მოდული pivot-ის გარეშეც აქვს) აქტიური key-ების per-instance მემო ემსახურება
+  - ⚠️ **`loadMissing()` და არა საკუთარი მემო** — ეს Eloquent-ის საკუთარი რელაციის ქეშია, ე.ი. `with('modules')`-ით წამოღებული სია ავტომატურად იკითხება და გაუქმებაც ჩვეულებრივი `refresh()`/`unsetRelation()`-ია. საკუთარი მემო მესამე მექანიზმი იქნებოდა იმავე ფაქტზე
+  - ⚠️ **სტალურობის გზა დღეს არ არსებობს და ეს შემოწმებულია, და არა ნავარაუდევი**: `setEnabled()`/`syncModules()`/`approveModule()` ჯერ ამოწმებენ და მერე წერენ, `register()` ბოლოს `load('modules')`-ს (და არა `loadMissing`-ს) იძახებს, ხოლო `enabledModules()`/`moduleKeys()` ისედაც ყოველ ჯერზე ბაზას კითხულობენ. წესი docblock-შია ჩაწერილი
+  - ✅ **გაზომილი, ყოველ მოთხოვნაზე ახალი `User` ინსტანციით** (თორემ წინა მოთხოვნის ქეში შედეგს ალამაზებს): `/api/dashboard` 25 → **15** query (`module_user` 11 → **1**), `/api/gallery` 43 → **30** (14 → **1**), `/api/gallery/groups?by=record` 14 → **8** (7 → **1**), `/api/modules` 28 → **8** (13 → **3**), `/api/admin/modules` **164 → 11** (133 → **1**)
+  - ✅ `DashboardTest::test_the_dashboard_asks_the_module_pivot_once` — ძველ მოდელზე ცვივა სიტყვებით „11 is identical to 1", ე.ი. ზუსტად ის რიცხვი, რომელზეც ტასკი წერია. ⚠️ **მთლიანი query-რაოდენობა განზრახ არ მოწმდება** — ის ყოველი ახალი მრიცხველით შეიცვლება და ტესტი მყიფე გახდებოდა
+  - ⚠️ **PERF-04-ის დიაგნოზი გასასწორებელია და ტასკი ღიაა.** ის ამტკიცებს, რომ „PERF-01-ის შემდეგ ავტომატურად წყდება" — არ წყდება: `/api/admin/modules` კვლავ **წრფივია** მომხმარებელთა რიცხვზე (3 → 9, 12 → 18, 30 → 36 query). მიზეზი pivot არაა (ის უკვე 1-ია), არამედ **`role`-ის eager load-ის არყოფნა**: `User::with('modules')` `role`-ს არ იღებს, `users_list` კი ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება — 12 მომხმარებელზე 18 query-დან **14 `roles`-ზეა**
 - **ტიპი:** performance
 - **სად:** `backend/app/Models/User.php:197-206`; გამომძახებლები მაგ. `backend/app/Http/Controllers/Api/DashboardController.php:71-75`
 - **პრობლემა:** `$this->modules()->where(...)->first()` query-builder-ია — eager-loaded `modules` რელაციას იგნორირებს. `foreach ($modules as $module) { if (! $user->hasModule($module->key)) …}` შაბლონი Dashboard-ში, `GalleryController`-ში, `ModuleImages`-ში, `GlobalSearch`-ში, `MediaDomain`-ში და `AdminModuleController`-შია — თითო გვერდზე 10–14 ზედმეტი query.
 - **რატომ:** მთავარი გვერდი, გალერეის ინდექსი და ყოველი გლობალური ძებნა სერიულად 10+ round-trip-ს იხდის იმ პასუხისთვის, რომელიც უკვე მეხსიერებაშია.
 - **გადაწყვეტა:** `loadMissing('modules')` + `$this->modules->firstWhere('key', $key)`-ით პასუხი; ან per-instance memo `array $moduleCache`.
 - **Acceptance criteria:**
-  - [ ] `GET /api/dashboard`-ზე `DB::getQueryLog()`-ში `module_user`-ის query ერთია
-  - [ ] `DashboardTest`-ში query-რაოდენობის assertion
+  - [x] `GET /api/dashboard`-ზე `DB::getQueryLog()`-ში `module_user`-ის query ერთია
+  - [x] `DashboardTest`-ში query-რაოდენობის assertion
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
@@ -498,6 +505,7 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-04] `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query
+- **სტატუსი:** ⬜ ღია — მაგრამ **დიაგნოზი არასწორია** (გაზომილი PERF-01-ის შესრულებისას, 2026-09-17). PERF-01-ის შემდეგ `module_user` აქ **1 query-ია** და მაინც: 3 მომხმარებელი → 9 query, 12 → 18, 30 → 36, ე.ი. წრფივობა დარჩა. ნამდვილი მიზეზი `role`-ის eager load-ის არყოფნაა — `User::with('modules')` `role`-ს არ იღებს, `users_list` კი ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება: 12 მომხმარებელზე 18 query-დან **14 `roles`-ზეა**. გადაწყვეტა ერთი სიტყვაა — `User::with('modules', 'role')` — და acceptance criteria უცვლელი რჩება.
 - **ტიპი:** performance
 - **სად:** `backend/app/Http/Controllers/Api/Admin/AdminModuleController.php:29-34`
 - **პრობლემა:** `User::with('modules')` `:29`-ზე იტვირთება, მაგრამ `isGrantedModule()`/`hasModule()` `$this->modules()` query-builder-ს იყენებენ (PERF-01) — 12 მოდული × 20 მომხმარებელი ≈ 500 query ერთ ადმინ-გვერდზე.

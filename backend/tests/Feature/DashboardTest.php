@@ -7,6 +7,7 @@ use App\Models\Movie;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -118,5 +119,32 @@ class DashboardTest extends TestCase
 
         $this->assertArrayHasKey('movie', $cards);
         $this->assertArrayNotHasKey('book', $cards);
+    }
+
+    /**
+     * **მოდულის შემოწმება ერთ query-ს იხდის და არა თითოს** (Tasks PERF-01).
+     *
+     * ⚠️ `User::hasModule()` `$this->modules()`-ს — query-builder-ს — იყენებდა, ე.ი.
+     * eager-loaded რელაციას იგნორირებდა და ყოველ გამოძახებაზე ბაზას ეკითხებოდა.
+     * დეშბორდი კი ზუსტად `foreach ($modules as $m) { if (! $user->hasModule($m->key)) … }`
+     * შაბლონია, ამიტომ ერთ გვერდზე **11** ზედმეტი query გამოდიოდა (გაზომილი).
+     *
+     * ⚠️ **მთლიანი რიცხვი განზრახ არ მოწმდება** — ის ყოველი ახალი მრიცხველით
+     * იცვლება და ტესტი მყიფე გახდებოდა. `module_user`-ის რაოდენობა კი ზუსტად
+     * ის ფაქტია, რომელზეც ეს ტასკია.
+     */
+    public function test_the_dashboard_asks_the_module_pivot_once(): void
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->actingAs($this->user)->getJson('/api/dashboard')->assertOk();
+
+        $pivot = collect(DB::getQueryLog())
+            ->filter(fn (array $q) => str_contains($q['query'], 'module_user'))
+            ->count();
+        DB::disableQueryLog();
+
+        $this->assertSame(1, $pivot, 'module_user უნდა წაიკითხოს ერთხელ');
     }
 }
