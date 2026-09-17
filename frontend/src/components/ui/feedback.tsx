@@ -159,8 +159,13 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
         {/* Toasts */}
         <div className="pointer-events-none fixed top-4 right-4 z-[70] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2">
+          {/* ⚠️ **`dismiss` პირდაპირ და არა `() => dismiss(t.id)`** (Tasks BUG-10):
+              ისრიანი ფუნქცია პროვაიდერის **ყოველ** რენდერზე ახალია, ე.ი.
+              `ToastCard`-ის ეფექტი ტაიმერს თავიდან აწყობდა ყოველ ახალ toast-ზე,
+              ყოველ დახურვაზე და confirm-ის გახსნაზეც. `dismiss` კი
+              `useCallback([])`-ია — ე.ი. სტაბილური, და ტაიმერი თითოზე ერთხელ იწერება. */}
           {toasts.map((t) => (
-            <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+            <ToastCard key={t.id} toast={t} onDismiss={dismiss} />
           ))}
         </div>
       </ToastContext.Provider>
@@ -174,11 +179,21 @@ const TOAST_STYLES: Record<ToastVariant, { bar: string; icon: React.ReactNode }>
   error: { bar: 'bg-destructive', icon: <XCircle className="size-5 text-destructive" /> },
 }
 
-function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
+function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number) => void }) {
+  const { id, duration } = toast
+
+  /* ⚠️ სამივე დამოკიდებულება **უცვლელია ამ ბარათის სიცოცხლეში**: `id` და
+     `duration` toast-ის საკუთარი მნიშვნელობებია, `onDismiss` კი სტაბილური
+     `useCallback`. ე.ი. ტაიმერი ერთხელ ეშვება — და სწორედ ეს იყო გატეხილი:
+     დამოკიდებულება ყოველ რენდერზე იცვლებოდა, ტაიმერი თავიდან იწყებოდა და
+     რიგის გაშვებისას ადრეული toast-ები ვადას ვერ აღწევდნენ. ⚠️ ქვედა
+     ზოლის CSS-ანიმაცია პირიქით **არ** იწყებოდა თავიდან, ე.ი. ზოლი
+     სრულდებოდა და ბარათი რჩებოდა — თვალსაჩინო შეუსაბამობა. */
   React.useEffect(() => {
-    const id = setTimeout(onDismiss, toast.duration)
-    return () => clearTimeout(id)
-  }, [toast.duration, onDismiss])
+    const timer = setTimeout(() => onDismiss(id), duration)
+
+    return () => clearTimeout(timer)
+  }, [id, duration, onDismiss])
 
   const s = TOAST_STYLES[toast.variant]
 
@@ -193,7 +208,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
           )}
         </div>
         <button
-          onClick={onDismiss}
+          onClick={() => onDismiss(id)}
           aria-label="dismiss"
           className="-mr-1 -mt-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted"
         >

@@ -1,87 +1,116 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { FeedbackProvider, useConfirm } from '@/components/ui/feedback'
-import { errorMessage } from '@/lib/errors'
-import i18n from '@/i18n'
-import en from '@/i18n/en.json'
-import ka from '@/i18n/ka.json'
+import { FeedbackProvider, useToast } from '@/components/ui/feedback'
+import '@/i18n'
 
 /* ============================================================
-   რეგრესია: **confirm-ის ღილაკები UI-ს ენას მიჰყვება** (Tasks BUG-01).
+   რეგრესია: **toast-ის ტაიმერი მეზობლის გამო არ უნდა გადაიწიოს** (Tasks BUG-10).
 
-   ⚠️ ნაგულისხმევი ტექსტები `'გაუქმება'`/`'დადასტურება'` literal-ები
-   იყო, და 49 `confirm({`-იდან უმეტესობა `cancelText`-ს არ აწვდის — ე.ი.
-   ინგლისურ ინტერფეისში თითქმის ყველა წაშლის დიალოგი ქართულ ღილაკს
-   ხატავდა. `tsc`-ც და lint-იც literal-ს ვალიდურად თვლის, ე.ი. ამას მხოლოდ
-   **დახატვა** ამჟღავნებს.
+   ⚠️ ხარვეზი ისეთი იყო, რომ არც `tsc` და არც lint ვერ დაინახავდა:
+   `onDismiss={() => dismiss(t.id)}` პროვაიდერის **ყოველ** რენდერზე ახალი
+   ფუნქციაა, ე.ი. `ToastCard`-ის `useEffect(..., [duration, onDismiss])`
+   `setTimeout`-ს ყოველ ჯერზე თავიდან აწყობდა — ყოველ ახალ toast-ზე, ყოველ
+   დახურვაზე და confirm-ის გახსნაზეც. რიგის გაშვებისას (`ui/queue.tsx`
+   ციკლში toast-ებს უშვებს) ადრეული toast-ები ვადას ვერ აღწევდნენ და
+   ეკრანზე გროვდებოდნენ.
 
-   ⚠️ ბიბლიოთეკა არ დამატებულა (`react-dom/client` + `act()`), ფაილი `.ts`-ია.
+   ⚠️ ერთადერთი, რაც ამას იჭერს, არის კომპონენტის ნამდვილი მიმაგრება ცრუ
+   ტაიმერებით — სუფთა ფუნქციის ტესტს აქ საქმე არ აქვს.
    ============================================================ */
 
+// React 19-ის `act()` ამ დროშას ითხოვს, თორემ ეფექტებს არ ატარებს
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
-afterEach(async () => {
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
   act(() => root?.unmount())
   container?.remove()
   root = null
   container = null
-  await act(async () => {
-    await i18n.changeLanguage('ka')
-  })
+  vi.useRealTimers()
 })
 
-/** ღილაკის ტექსტის გარეშე confirm — ზუსტად ის, რასაც უმეტესი გამომძახებელი აკეთებს */
-function Ask() {
-  const confirm = useConfirm()
-  useEffect(() => {
-    void confirm({ title: 'Delete?' })
-  }, [confirm])
-  return null
-}
+const DURATION = 1000
 
-async function openConfirmIn(lang: 'ka' | 'en') {
-  await act(async () => {
-    await i18n.changeLanguage(lang)
-  })
+/** ერთი ცალკე მიმაგრებული ბავშვი, რომელიც toast-ს `title`-ით უშვებს */
+function mount() {
+  let fire: (title: string) => void = () => {}
+
+  function Harness() {
+    const { toast } = useToast()
+
+    useEffect(() => {
+      fire = (title: string) => toast({ title, duration: DURATION })
+    }, [toast])
+
+    return null
+  }
 
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  act(() => root!.render(h(FeedbackProvider, null, h(Ask))))
+
+  act(() => {
+    root!.render(h(FeedbackProvider, null, h(Harness)))
+  })
+
+  return {
+    fire: (title: string) => act(() => fire(title)),
+    advance: (ms: number) => act(() => vi.advanceTimersByTime(ms)),
+  }
 }
 
-const buttonLabels = () => [...document.querySelectorAll('button')].map((b) => b.textContent?.trim())
+/** ეკრანზე მდგარი toast-ების სათაურები */
+const titles = () =>
+  [...document.body.querySelectorAll('.fb-toast p.font-medium')].map((n) => n.textContent)
 
-describe('FeedbackProvider — confirm', () => {
-  it('speaks English in an English UI', async () => {
-    await openConfirmIn('en')
+describe('FeedbackProvider', () => {
+  it('პირველი toast ვადაზე ქრება მაშინაც, როცა მის შემდეგ სხვები დაემატა', () => {
+    const { fire, advance } = mount()
 
-    expect(buttonLabels()).toEqual(expect.arrayContaining([en.confirm.cancel, en.confirm.confirm]))
-    expect(document.body.textContent).not.toContain('გაუქმება')
-    expect(document.body.textContent).not.toContain('დადასტურება')
+    fire('პირველი')
+    advance(400)
+
+    // ⚠️ სწორედ აქ იწყებოდა პირველის ტაიმერი თავიდან
+    fire('მეორე')
+    advance(400)
+    fire('მესამე')
+
+    expect(titles()).toEqual(['პირველი', 'მეორე', 'მესამე'])
+
+    // პირველიდან სულ 1000 მწ — ე.ი. მან უნდა დაასრულოს
+    advance(200)
+    expect(titles(), 'პირველს ვადა უნდა გასვლოდა').toEqual(['მეორე', 'მესამე'])
+
+    // დანარჩენებიც თავის დროზე, და არა ერთად
+    advance(400)
+    expect(titles()).toEqual(['მესამე'])
+
+    advance(400)
+    expect(titles()).toEqual([])
   })
 
-  it('reads the Georgian labels from the locale, not from a literal', async () => {
-    await openConfirmIn('ka')
+  it('დახურვის ღილაკი მხოლოდ თავის toast-ს შლის', () => {
+    const { fire, advance } = mount()
 
-    expect(buttonLabels()).toEqual(expect.arrayContaining([ka.confirm.cancel, ka.confirm.confirm]))
-  })
-})
+    fire('პირველი')
+    fire('მეორე')
 
-describe('errorMessage — fallback', () => {
-  it('follows the UI language at call time', async () => {
-    await act(async () => {
-      await i18n.changeLanguage('en')
-    })
-    expect(errorMessage({})).toBe(en.toast.error)
+    const close = document.body.querySelectorAll<HTMLButtonElement>('button[aria-label="dismiss"]')
+    expect(close.length).toBe(2)
 
-    await act(async () => {
-      await i18n.changeLanguage('ka')
-    })
-    expect(errorMessage({})).toBe(ka.toast.error)
+    act(() => close[0].click())
+    expect(titles()).toEqual(['მეორე'])
+
+    // ⚠️ დარჩენილს ტაიმერი არ გადასწეულა — 1000 მწ მისი დაბადებიდან ისევ ძალაშია
+    advance(DURATION)
+    expect(titles()).toEqual([])
   })
 })
