@@ -7,6 +7,7 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
@@ -129,6 +130,83 @@ class GalleryAlbumTest extends TestCase
             ->assertOk();
 
         $this->assertNull($image->refresh()->imageable_type);
+    }
+
+    /**
+     * SEC-07 — გალერეის `$actions` უფლების მქონე ანგარიში (მოდული ჩართული)
+     * და მისი ერთი ფოტო, ფილმზე.
+     *
+     * @param  list<string>  $actions
+     * @return array{0: User, 1: GalleryImage}
+     */
+    private function galleryRoleUser(string $key, array $actions): array
+    {
+        $role = Role::create([
+            'key' => $key,
+            'name_ka' => $key,
+            'name_en' => $key,
+            'permissions' => ['gallery' => $actions, 'movie' => ['view']],
+        ]);
+
+        $user = User::create([
+            'name' => $key,
+            'username' => $key,
+            'email' => "{$key}@example.com",
+            'password' => 'password',
+        ]);
+        $user->forceFill(['role_id' => $role->id])->save();
+        $user->modules()->sync(Module::whereIn('key', ['movie', 'gallery'])->pluck('id')->all());
+
+        Storage::disk('public')->put("gallery/images/{$key}.jpg", 'x');
+
+        $image = GalleryImage::create([
+            'user_id' => $user->id,
+            'imageable_type' => null,
+            'imageable_id' => null,
+            'source' => 'tmdb',
+            'category' => 'backdrop',
+            'path' => "gallery/images/{$key}.jpg",
+            'size' => 100,
+        ]);
+
+        return [$user->refresh(), $image];
+    }
+
+    /**
+     * ⚠️ **SEC-07 (High, 2026-09-17).** გადატანა `POST`-ია და `create`-ად
+     * იკითხებოდა: create-only როლი **არსებულ** ფოტოებს გადაიტანდა
+     * (ჩაკეტილ ალბომში — ე.ი. დამალვა), update-only კი ცრუ 403-ს იღებდა.
+     */
+    public function test_a_create_only_role_cannot_move_photos(): void
+    {
+        Storage::fake('public');
+
+        [$creator, $photo] = $this->galleryRoleUser('gallery-creator', ['view', 'create']);
+        $movie = Movie::create(['user_id' => $creator->id, 'year' => 1986]);
+        $photo->forceFill(['imageable_type' => 'movie', 'imageable_id' => $movie->id])->save();
+
+        $this->actingAs($creator)
+            ->postJson('/api/gallery/images/move', ['ids' => [$photo->id], 'target' => 'none'])
+            ->assertForbidden()
+            ->assertJson(['message' => 'forbidden_permission', 'permission' => 'gallery.update']);
+
+        $this->assertSame('movie', $photo->refresh()->imageable_type);
+    }
+
+    /** SEC-07 — ⚠️ და update-only როლი (create-ის გარეშე) **გადაიტანს**, ცრუ 403-ის გარეშე */
+    public function test_an_update_only_role_can_move_photos(): void
+    {
+        Storage::fake('public');
+
+        [$editor, $editorsPhoto] = $this->galleryRoleUser('gallery-editor', ['view', 'update']);
+        $movie = Movie::create(['user_id' => $editor->id, 'year' => 1986]);
+
+        $this->actingAs($editor)
+            ->postJson('/api/gallery/images/move', ['ids' => [$editorsPhoto->id], 'target' => 'movie:'.$movie->id])
+            ->assertOk()
+            ->assertJsonPath('moved', 1);
+
+        $this->assertSame('movie', $editorsPhoto->refresh()->imageable_type);
     }
 
     /** სხვისი ფოტო უბრალოდ ვერ მოიძებნება — `owner` სკოუპი */

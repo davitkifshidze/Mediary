@@ -14,7 +14,7 @@
 | SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ✅ შესრულებულია |
 | SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ✅ შესრულებულია |
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
-| SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ⬜ |
+| SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ✅ შესრულებულია |
 | SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ⬜ |
 | BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ⬜ |
 | GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ⬜ |
@@ -205,14 +205,19 @@
 - **დამოკიდებულება:** SEC-01
 
 ### [SEC-07] `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `move` `EnsureModulePermission::UPDATE_ENDPOINTS`-ში → `POST /gallery/images/move` `gallery.update`-ს ითხოვს; მიზეზის კომენტარი middleware-შიც და `routes/api.php`-შიც (ძველი „უფლება ცხადად `gallery`-ზეა" გასწორდა)
+  - ⚠️ **გადაწყვეტა აუდიტის ფორმულირებიდან განსხვავდება, და ეს აუცილებელი იყო**: როუტზე `->middleware('permission:gallery,update')` **არ იმუშავდა** — ჯგუფის შიშველი `permission:gallery` რჩება და **ორივე** ეშვება, ე.ი. update-only როლი ჯგუფის `create`-შემოწმებაზე ისევ 403-ს მიიღებდა (ამისთვის `withoutMiddleware` + ცხადი middleware სჭირდებოდა). **ემპირიულად დადასტურდა**: აუდიტის ვარიანტზე `route:list -v` `EnsureModulePermission:gallery`-სა და `:gallery,update`-ს ერთად აჩვენებს, და update-only ტესტი 403-ს იღებს. `UPDATE_ENDPOINTS` ზუსტად ამ შემთხვევის დოკუმენტირებული მექანიზმია (`primary`, `unlock`, `lock`), და ბოლო სეგმენტი (`move`) ამბობს, რა ხდება — §A4-ის წესი დაცულია
+  - ✅ `GalleryAlbumTest`-ში 2 ახალი ტესტი (create-only → 403 `gallery.update` და ფოტო უცვლელი · update-only → 200 და ფოტო გადაიტანდა). **მუტაციის შემოწმება:** `move`-ის ამოღებაზე 2-ივე წითლდება
+  - ✅ backend 708/708, Pint მწვანეა; SPA გალერეის ქმედებებს უფლებით არ ფილტრავს — frontend-ის ცვლილება არ სჭირდება
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Middleware/EnsureModulePermission.php:26`, `:47-57`; `backend/routes/api.php:626`, `:645-650`, `:672`
 - **პრობლემა:** ჯგუფის middleware შიშველი `permission:gallery`-ა (მოქმედების არგუმენტის გარეშე), `UPDATE_ENDPOINTS`-ში `move` არ არის → `actionFor()` POST-ს `create`-ად კითხულობს. კომენტარი `:648-650` ამბობს, რომ „უფლება ცხადად `gallery` მოდულზეა" — ეს არასწორია.
 - **რატომ:** create-only როლი არსებული ფოტოებს გადაარჭიმავს (ჩაკეტილ ალბომში/ალბომიდან ჩათვლით — ე.ი. დამალვა/გამოჩენა), view+update როლი კი უსაფუძვლო 403-ს იღებს — ზუსტად §A4-ის შეცდომა, რომელიც `/media/sync/{type}/{id}`-ზე გასწორდა.
 - **გადაწყვეტა:** როუტს `->middleware('permission:gallery,update')` (წესი „მოქმედება მხოლოდ მაშინ გამოიყვანე, როცა ბოლო სეგმენტი ამბობს რა ხდება"); კომენტარი შესაბამისად გასწორდეს.
 - **Acceptance criteria:**
-  - [ ] create-only როლით `POST /gallery/images/move` 403-ია, update-only როლით 200
-  - [ ] `GalleryAlbumTest`-ში ორივე ტესტი
+  - [x] create-only როლით `POST /gallery/images/move` 403-ია, update-only როლით 200
+  - [x] `GalleryAlbumTest`-ში ორივე ტესტი
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

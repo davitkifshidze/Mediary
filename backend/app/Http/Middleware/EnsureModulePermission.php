@@ -23,7 +23,14 @@ class EnsureModulePermission
     /* ⚠️ `unlock`/`lock` (2026-09-16) — ალბომის გახსნა/ჩაკეტვა **არსებულ**
        ჩანაწერს ეხება; მათ გარეშე POST-იდან `create` გამოიყვანებოდა და
        view+update უფლების მქონე user-ს საკუთარი ალბომი 403-ით დაეხურებოდა. */
-    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock'];
+    /* ⚠️ `move` (Tasks SEC-07, 2026-09-17) — `POST /gallery/images/move`
+       **არსებულ** ფოტოებს მშობელს/ალბომს უცვლის (ჩაკეტილ ალბომში/ალბომიდან
+       ჩათვლით, ე.ი. დამალვა/გამოჩენა). სიის გარეშე `create`-ად იკითხებოდა:
+       create-only როლი სხვის ნებართვის გარეშე ფოტოებს აჩრადავდა, update-only
+       კი ცრუ 403-ს იღებდა. ⚠️ **როუტზე ცხადი `permission:gallery,update`
+       აქ არ შველის** — ჯგუფის `permission:gallery` რჩება და **ორივე**
+       ეშვება, ე.ი. update-only როლი ისევ 403-ს მიიღებდა. */
+    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock', 'move'];
 
     public function handle(Request $request, Closure $next, string $module, ?string $action = null): mixed
     {

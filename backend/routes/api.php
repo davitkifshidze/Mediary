@@ -645,9 +645,11 @@ Route::middleware('auth:sanctum')->group(function () {
         /* **ალბომები და ფოტოს გადატანა (Tasks §26).**
            ⚠️ `albums`/`images/move` `{type}/{id}`-ზე **ზემოთ** — იგივე წესი,
            რაც „groups"/„photos"/„videos"-ს აქვს.
-           ⚠️ გადატანა `POST`-ია და `EnsureModulePermission` მას `create`-ად
-           წაიკითხავდა, ამიტომ ბოლო სეგმენტი `move`-ია და არა id — ე.ი.
-           უფლება ცხადად `gallery` მოდულზეა და არა მოქმედებიდან ნაგულისხმევი. */
+           ⚠️ გადატანა `POST`-ია, ე.ი. `EnsureModulePermission` მას ნაგულისხმევად
+           `create`-ად კითხულობს — და 2026-09-17-მდე **ზუსტად ასე კითხულობდა**
+           (Tasks SEC-07: ძველი კომენტარი „უფლება ცხადად `gallery`-ზეა"-ს
+           ამტკიცებდა, რაც მოქმედებას არ ეხებოდა). ⚠️ ბოლო სეგმენტი სიტყვაა
+           (`move`), და ის `UPDATE_ENDPOINTS`-შია → `update`. */
         Route::get('/gallery/albums', [GalleryAlbumController::class, 'index']);
         Route::post('/gallery/albums', [GalleryAlbumController::class, 'store']);
         Route::post('/gallery/albums/reorder', [GalleryAlbumController::class, 'reorder']);
