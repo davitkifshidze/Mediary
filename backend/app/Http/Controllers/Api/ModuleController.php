@@ -43,7 +43,10 @@ class ModuleController extends Controller
                 // ორის სხვაობა = მომხმარებელმა თვითონ გამორთო (K13).
                 $m->granted = $user->isGrantedModule($m->key);
                 $m->request_status = $requests->get($m->id)?->first()?->status;
-                $m->user_settings = json_decode($pivots->get($m->id)?->pivot?->settings ?? '', true) ?: [];
+                // ⚠️ SEC-12 — ღია ბოტის ტოკენი (ძველი ადგილი) ბრაუზერს არასდროს ეგზავნება
+                $m->user_settings = ModuleSettings::withoutRetired(
+                    json_decode($pivots->get($m->id)?->pivot?->settings ?? '', true) ?: []
+                );
                 // Tasks 16.1 — საჯარო პროფილი. `shareable = false` ნიშნავს, რომ
                 // გადამრთველიც არ უნდა დაიხატოს (`note` — 16.5-ის მკაცრი წესი).
                 $m->shareable = (bool) PublicDomain::forModule($m->key);
@@ -143,8 +146,8 @@ class ModuleController extends Controller
         $merged = ModuleSettings::merge($request->user(), $module, $data['settings']);
 
         // ⚠️ პასუხი **შერწყმულს** აბრუნებს და არა მოსულს — კლიენტმა უნდა
-        // დაინახოს, რა ჩაიწერა მართლა
-        return response()->json(['settings' => $merged]);
+        // დაინახოს, რა ჩაიწერა მართლა; ⚠️ SEC-12 — ღია ტოკენის გარეშე
+        return response()->json(['settings' => ModuleSettings::withoutRetired($merged)]);
     }
 
     /**

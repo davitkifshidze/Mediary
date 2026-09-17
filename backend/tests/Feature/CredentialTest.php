@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Module;
 use App\Models\TranslationUsage;
 use App\Models\User;
 use App\Models\UserCredential;
@@ -10,7 +11,9 @@ use App\Services\Credentials\CredentialStore;
 use App\Services\Notes\NoteChannelSettings;
 use App\Services\Translation\Translator;
 use App\Support\CredentialProviders;
+use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -412,6 +415,119 @@ class CredentialTest extends TestCase
 
         $this->assertSame('123:ABC', $settings['telegram_bot_token']);
         $this->assertSame('987654', $settings['telegram_chat_id']);
+    }
+
+    /* ---------- SEC-12 — ღია ტოკენი `module_user.settings`-ში ---------- */
+
+    /** `note` მოდული ჩართული, pivot-ის settings — ზუსტად `$settings` */
+    private function notePivot(User $user, array $settings): int
+    {
+        $moduleId = (int) Module::where('key', 'note')->value('id');
+
+        $user->modules()->syncWithoutDetaching([
+            $moduleId => ['settings' => json_encode($settings), 'enabled_at' => now()],
+        ]);
+
+        return $moduleId;
+    }
+
+    private function pivotSettings(User $user, int $moduleId): string
+    {
+        return (string) DB::table('module_user')
+            ->where('user_id', $user->id)
+            ->where('module_id', $moduleId)
+            ->value('settings');
+    }
+
+    /**
+     * ⚠️ **SEC-12 (High, 2026-09-17).** §21.9-ის მიგრაცია ტოკენს pivot-ში
+     * ტოვებდა, `GET /api/modules` კი pivot-ის JSON-ს ფილტრის გარეშე
+     * აბრუნებდა — ღია ტოკენი ყოველ მოდულების სიაში ბრაუზერს ეგზავნებოდა.
+     */
+    public function test_the_modules_list_never_carries_the_plaintext_bot_token(): void
+    {
+        $this->seed(ModulesSeeder::class);
+        $this->notePivot($this->user, [
+            'telegram_bot_token' => '123456:LEGACY-PLAINTEXT',
+            'telegram_chat_id' => '42',
+            'status_sections' => ['hidden' => ['done']],
+        ]);
+
+        $res = $this->actingAs($this->user)->getJson('/api/modules')->assertOk();
+
+        $this->assertStringNotContainsString('LEGACY-PLAINTEXT', (string) $res->getContent());
+
+        $note = collect($res->json('data'))->firstWhere('key', 'note');
+        $this->assertArrayNotHasKey('telegram_bot_token', $note['user_settings']);
+        $this->assertArrayNotHasKey('telegram_chat_id', $note['user_settings']);
+        // ⚠️ დანარჩენი ფენები უცვლელია
+        $this->assertSame(['hidden' => ['done']], $note['user_settings']['status_sections']);
+    }
+
+    /** SEC-12 — ⚠️ settings-ის `PUT` ღია ასლს **ხელახლა** არ შქმნის */
+    public function test_module_settings_never_write_the_bot_token_back(): void
+    {
+        $this->seed(ModulesSeeder::class);
+        $noteId = $this->notePivot($this->user, []);
+
+        $res = $this->actingAs($this->user)
+            ->putJson('/api/modules/note/settings', [
+                'settings' => ['telegram_bot_token' => '999:WRITTEN-BACK', 'gallery' => ['limit' => 5]],
+            ])
+            ->assertOk();
+
+        $this->assertStringNotContainsString('WRITTEN-BACK', (string) $res->getContent());
+        $this->assertStringNotContainsString('WRITTEN-BACK', $this->pivotSettings($this->user, $noteId));
+        $this->assertSame(['limit' => 5], json_decode($this->pivotSettings($this->user, $noteId), true)['gallery']);
+    }
+
+    /**
+     * SEC-12 — მიგრაცია: ⚠️ **ჯერ ავსება, მერე წაშლა, და ველ-ველ.**
+     * `kate`-ს `user_credentials`-ში არაფერი აქვს → ორივე ველი pivot-იდან
+     * გადადის; `nino`-ს ტოკენი უკვე აქვს, `chat_id` — არა → **თავისი** ტოკენი
+     * რჩება, `chat_id` pivot-იდან ივსება. ორივეს pivot-იდან ღია გასაღებები
+     * ქრება, დანარჩენი JSON — უცვლელი.
+     */
+    public function test_the_migration_backfills_credentials_then_strips_the_pivot(): void
+    {
+        $this->seed(ModulesSeeder::class);
+
+        $noteId = $this->notePivot($this->user, [
+            'telegram_bot_token' => '111:ONLY-IN-PIVOT',
+            'telegram_chat_id' => '11',
+            'status_sections' => ['hidden' => ['done']],
+        ]);
+        $this->own($this->other, CredentialProviders::TELEGRAM, ['bot_token' => '222:ALREADY-ENCRYPTED']);
+        $this->notePivot($this->other, ['telegram_bot_token' => '222:STALE-PIVOT', 'telegram_chat_id' => '22']);
+
+        (require database_path('migrations/2026_09_17_000001_strip_plaintext_telegram_from_module_settings.php'))->up();
+        CredentialStore::forget();
+
+        foreach ([$this->user, $this->other] as $user) {
+            $this->assertStringNotContainsString('telegram_', $this->pivotSettings($user, $noteId));
+        }
+
+        $this->assertSame(
+            ['hidden' => ['done']],
+            json_decode($this->pivotSettings($this->user, $noteId), true)['status_sections'],
+        );
+
+        $channels = app(NoteChannelSettings::class);
+
+        $this->assertSame(
+            ['telegram_bot_token' => '111:ONLY-IN-PIVOT', 'telegram_chat_id' => '11'],
+            $channels->for($this->user),
+        );
+        $this->assertSame(
+            ['telegram_bot_token' => '222:ALREADY-ENCRYPTED', 'telegram_chat_id' => '22'],
+            $channels->for($this->other),
+        );
+
+        // ⚠️ ახლა ტოკენი დაშიფრულია — ბაზაში ღიად არსად
+        $this->assertStringNotContainsString(
+            '111:ONLY-IN-PIVOT',
+            (string) DB::table('user_credentials')->where('user_id', $this->user->id)->value('credentials'),
+        );
     }
 
     /** ⚠️ ბაზაში ტოკენი ღიად აღარ დევს (ადრე `module_user.settings`-ში იდო) */
