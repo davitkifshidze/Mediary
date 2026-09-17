@@ -12,7 +12,7 @@
 | SEC-02 | `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს | Critical | security | S | ✅ შესრულებულია |
 | SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S | ✅ შესრულებულია |
 | SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ✅ შესრულებულია |
-| SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ⬜ |
+| SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ✅ შესრულებულია |
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
 | SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ⬜ |
 | SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ⬜ |
@@ -170,14 +170,20 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-05] SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `svg` `CustomFields::FILE_MIMES`-იდან ამოვიდა, კომენტარით: SVG/HTML/XML საჯარო დისკზე stored XSS-ია და არასდროს დაბრუნდეს
+  - ✅ **დადასტურდა, რომ წესი ფორმატს შიგთავსიდან ადგენს**: ამ PHP-ის `finfo` SVG-ს (XML-prolog-ითაც) `image/svg+xml`-ად კითხულობს → `guessExtension()` = `svg`, ე.ი. `.png`-ად და `image/png`-ად შენიღბული SVG-ც 422-ია
+  - ✅ `CustomFieldTest`-ში 2 ახალი ტესტი: `.svg` და შენიღბული SVG → 422 (ცხრილში რიგი და დისკზე ფაილი არ რჩება) · **აპის არც ერთი ატვირთვის სია** (`FILE_MIMES` + `UploadLimits::KINDS`-ის ყველა `mimes`) აქტიური კონტენტის 16 ფორმატიდან (svg/svgz/html/htm/xhtml/xht/xml/xsl/xslt/js/mjs/php/phtml/phar/shtml/swf) არც ერთს არ შეიცავს. **მუტაციის შემოწმება:** `svg`-ის დაბრუნებაზე 2-ივე წითლდება
+  - ✅ ცოცხალ ბაზაში custom-field ფაილი საერთოდ არ არის, `storage/app/public`-ში `.svg` — 0, ე.ი. ძველი ფაილების მიგრაცია არ სჭირდება
+  - ✅ backend 706/706, Pint მწვანეა; SPA SVG-ს არსად ახსენებს (`accept`-ი ან მინიშნება არ არის) — frontend-ის ცვლილება არ სჭირდება
 - **ტიპი:** security
 - **სად:** `backend/app/Support/CustomFields.php:54`; დისკის წესი `backend/app/Support/StorageFolder.php:154`, `:169`
 - **პრობლემა:** `FILE_MIMES`-ში `svg`-ა; `CustomFieldService::storeFile()` ფაილს `<module>/fields`-ში წერს, რაც `PRIVATE_ROOTS`/`PRIVATE_FOLDERS`-ში არ არის (`notes`, `chat`, `backups` და ორი ქვესაქაღალდე მხოლოდ). ატვირთული `.svg` `/storage/movies/fields/<name>.svg`-ზე `image/svg+xml`-ით ავტორიზაციის გარეშე იხსნება და ბრაუზერი მასში სკრიპტს ასრულებს. (`UploadLimits`-ის `image` წესი SVG-ს გამორიცხავს — ხვრელი მხოლოდ აქაა.)
 - **რატომ:** `/storage/*`-ის საჯაროობა შეგნებული წესია, აქტიური კონტენტის ფორმატი კი ამ დისკზე — არა; სკრიპტი API-ს origin-ზე ნებისმიერი ავტორიზებული მნახველის სესიით მოქმედებს.
 - **გადაწყვეტა:** `svg` `FILE_MIMES`-იდან ამოღება; თუ საჭიროა — სერვერზე სანიტიზაცია + `text/plain`/`attachment`-ით მიწოდება მხოლოდ API-როუტიდან.
 - **Acceptance criteria:**
-  - [ ] `POST /custom-fields/{module}/{id}/file` `.svg`-ზე 422-ს აბრუნებს
-  - [ ] `CustomFieldsTest`-ში ტესტი, რომ არც ერთი აქტიური-კონტენტის MIME `FILE_MIMES`-ში არ არის
+  - [x] `POST /custom-fields/{module}/{id}/file` `.svg`-ზე 422-ს აბრუნებს
+  - [x] `CustomFieldsTest`-ში ტესტი, რომ არც ერთი აქტიური-კონტენტის MIME `FILE_MIMES`-ში არ არის (`CustomFieldTest`)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

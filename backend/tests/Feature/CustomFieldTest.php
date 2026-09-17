@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
+use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -382,6 +383,68 @@ class CustomFieldTest extends TestCase
             ->assertJsonPath('message', 'storage_quota_exceeded');
 
         $this->assertDatabaseCount('video_field_values', 0);
+    }
+
+    /**
+     * ⚠️ **SEC-05 (High, 2026-09-17).** SVG `<module>/fields`-ში — **საჯარო**
+     * დისკზე — ხვდებოდა და `/storage/*`-იდან აპის origin-ზე სკრიპტს
+     * ასრულებდა. ⚠️ მეორე შემთხვევა — `.png`-ად და `image/png`-ად
+     * შენიღბული SVG — ამტკიცებს, რომ წესი ფორმატს **შიგთავსიდან** ადგენს.
+     */
+    public function test_svg_uploads_are_rejected_even_when_disguised(): void
+    {
+        Storage::fake('public');
+        $this->defineFileField();
+        $video = $this->makeVideo();
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><script>alert(document.cookie)</script></svg>';
+
+        $this->actingAs($this->user)
+            ->post("/api/custom-fields/video/{$video->id}/file", [
+                'key' => 'ticket',
+                'file' => UploadedFile::fake()->createWithContent('logo.svg', $svg),
+            ])
+            ->assertStatus(422);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'sec05');
+        file_put_contents($tmp, $svg);
+
+        $this->actingAs($this->user)
+            ->post("/api/custom-fields/video/{$video->id}/file", [
+                'key' => 'ticket',
+                'file' => new UploadedFile($tmp, 'logo.png', 'image/png', null, true),
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(0, DB::table('video_field_values')->where('field_key', 'ticket')->count());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    /**
+     * SEC-05 — ⚠️ **აპის არც ერთი ატვირთვის წესი აქტიურ კონტენტს არ იღებს.**
+     * ფორმატი, რომელსაც ბრაუზერი დოკუმენტად ხატავს და სკრიპტს ასრულებს,
+     * საჯარო დისკზე stored XSS-ია. სია ზოგადია, და ერთ სტრიქონის დამატება
+     * `FILE_MIMES`-ში ან `UploadLimits::KINDS`-ში ამ ტესტს აწითლებს.
+     */
+    public function test_no_upload_rule_accepts_active_content(): void
+    {
+        $active = ['svg', 'svgz', 'html', 'htm', 'xhtml', 'xht', 'xml', 'xsl', 'xslt', 'js', 'mjs', 'php', 'phtml', 'phar', 'shtml', 'swf'];
+
+        $lists = ['CustomFields::FILE_MIMES' => CustomFields::FILE_MIMES];
+
+        foreach (UploadLimits::KINDS as $kind => $limit) {
+            if ($limit['mimes'] !== null) {
+                $lists["UploadLimits::KINDS[{$kind}]"] = $limit['mimes'];
+            }
+        }
+
+        foreach ($lists as $name => $mimes) {
+            $this->assertSame(
+                [],
+                array_values(array_intersect($active, explode(',', $mimes))),
+                "{$name} accepts active content",
+            );
+        }
     }
 
     /** არა-`file` ველზე ატვირთვა 422-ია და არა ჩუმი იგნორი */

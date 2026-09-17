@@ -50,8 +50,17 @@ final class CustomFields
     /**
      * დაშვებული გაფართოებები. ⚠️ **სია ცხადია და არა „ყველაფერი"**: ველი
      * ზოგადი დანიშნულებისაა, ე.ი. `.php`/`.exe` ატვირთვა აქ არაფერს ემსახურება.
+     *
+     * ⚠️ **`svg` 2026-09-17-ს ამოვიდა (Tasks SEC-05) და არასდროს დაბრუნდეს** —
+     * ისევე `html`/`xhtml`/`xml`-ც. ფაილი `<module>/fields`-ში, **საჯარო**
+     * დისკზე ხვდება, ე.ი. `/storage/…/fields/<hash>.svg` ავტორიზაციის გარეშე,
+     * `image/svg+xml`-ით, **აპის origin-ზე** იხსნება და ბრაუზერი მასში სკრიპტს
+     * ასრულებს — ნებისმიერი მნახველის სესიით. ⚠️ `mimes:` ფორმატს
+     * **შიგთავსიდან** ადგენს (`guessExtension()` → `finfo`), ე.ი. `.png`-ად
+     * გადარქმეული SVG-ც ამ სიაზე ცვივა. `CustomFieldTest` ამ და
+     * `UploadLimits`-ის ყველა სიას აქტიური კონტენტის ფორმატებზე ამოწმებს.
      */
-    public const FILE_MIMES = 'jpg,jpeg,png,webp,gif,svg,pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx,zip,epub,mp3,mp4,webm';
+    public const FILE_MIMES = 'jpg,jpeg,png,webp,gif,pdf,doc,docx,txt,rtf,odt,xls,xlsx,csv,ppt,pptx,zip,epub,mp3,mp4,webm';
 
     /**
      * რამდენი ფაილი ერთ ველზე (Tasks §7.3, 2026-09-11).
