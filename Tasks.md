@@ -11,7 +11,7 @@
 | SEC-01 | პროდ-ბაზის dump პაროლის ჰეშებით, `remember_token`-ებით, სესიით და პირადი ჩატით git-ში და GitHub-ზეა | Critical | security | M | 🟡 ნაწილობრივ |
 | SEC-02 | `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს | Critical | security | S | ✅ შესრულებულია |
 | SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S | ✅ შესრულებულია |
-| SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ⬜ |
+| SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ✅ შესრულებულია |
 | SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ⬜ |
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
 | SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ⬜ |
@@ -148,16 +148,24 @@
 - **დამოკიდებულება:** SEC-02
 
 ### [SEC-04] ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ **`App\Support\SafeMime`** — ატვირთული ფაილის გაცემის ერთადერთი გზა (SEC-08 მასვე გამოიყენებს): MIME **ფაილის შიგთავსიდან** (`finfo`, local adapter-ის `mimeType()`), `inline` — მხოლოდ allow-list-იდან (raster-სურათი, ვიდეო, აუდიო, PDF, `text/plain`/`text/csv`/`application/json`), დანარჩენი `application/octet-stream` + `attachment`, ყოველთვის `nosniff`. ⚠️ SVG/HTML/XML სიაში განზრახ არ არის
+  - ✅ ⚠️ allow-list აუდიტის მინიმუმს (jpeg/png/gif/webp · mp4/webm · pdf) **ცალკე გასწორდა**: ჩატი ვიდეოს `ogg`/`mov`/`m4v`-შიც იღებს (`UploadLimits`), და ისინი ფიქსის შემდეგ ჩამოსატვირთ ფაილად იქცეოდნენ
+  - ✅ `ChatController::send()` `attachment_mime`-ს სერვერის `finfo`-ით ინახავს (`SafeMime::ofUpload()`), `file()` შენახულ სვეტს **საერთოდ არ კითხულობს** — ძველ რიგზე ის კლიენტის ჰედერი იყო
+  - ✅ **`SetSecurityHeaders`** — `X-Content-Type-Options: nosniff` **გლობალურად** (`$middleware->append`), throttle/auth/404-ის პასუხების ჩათვლით; ⚠️ `/storage/*` სტატიკას Laravel-ის გარეშე web-სერვერი აწვდის და მას ეს არ ეხება
+  - ✅ `ChatParityTest`-ში 4 ახალი ტესტი (HTML → ჩამოტვირთვა · ნამდვილი JPEG `text/html`-ად შეთხზული ჰედერით → `image/jpeg` შენახვაშიც, payload-შიც და პასუხშიც · JPEG/PDF კვლავ `inline` · `nosniff` JSON-ზე და 404-ზე). **მუტაციის შემოწმება:** `isInline()` → `true` და `ofUpload()` → კლიენტის MIME — 2 ტესტი წითლდება
+  - ✅ backend 704/704, Pint მწვანეა
+  - ℹ️ ძველ რიგებზე `messages.attachment_mime` კლიენტის ჰედერად რჩება (payload-ში ჩანს) — XSS-ის ვექტორი ეს არ არის (`file()` მას არ კითხულობს, ChatPage `type`-ით ხატავს), ამიტომ data-migration არ გაკეთდა
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/ChatController.php:421-428` (ვალიდაცია), `:438` (`getClientMimeType()`), `:462-467` (`response(..., 'inline')`)
 - **პრობლემა:** დოკუმენტის ტიპი `['file', 'max:…']`-ია — ფორმატი არ იზღუდება; `attachment_mime` კლიენტის multipart ჰედერიდან იწერება და `file()` მას `Content-Type`-ად `inline`-ით აბრუნებს. A აგზავნის `.html`-ს `text/html`-ით → B-ს ბრაუზერში დოკუმენტად API-ს origin-ზე იხატება, B-ს ქუქით.
 - **რატომ:** same-origin სკრიპტი `/sanctum/csrf-cookie`-ს იღებს და B-ს სახელით ნებისმიერ endpoint-ს უძახის — ანგარიშის მიტაცება ჩატის ერთი შეტყობინებით. მონაწილეობის შემოწმება არ შველის: B ლეგიტიმური მონაწილეა.
 - **გადაწყვეტა:** კლიენტის MIME არასდროს დაბრუნდეს — სერვერზე `finfo`/`$disk->mimeType()`-ით განისაზღვროს; რენდერ-უსაფრთხო allow-list-ის (`image/jpeg|png|gif|webp`, `video/mp4|webm`, `application/pdf`) გარეთ ყველაფერი `application/octet-stream` + `Content-Disposition: attachment`; გლობალურად `X-Content-Type-Options: nosniff`.
 - **Acceptance criteria:**
-  - [ ] `text/html`-ად გამოგზავნილი ფაილი `attachment`-ით და `octet-stream`-ით ბრუნდება
-  - [ ] JPEG/PDF კვლავ `inline` იხატება
-  - [ ] ყველა `file`-პასუხს `X-Content-Type-Options: nosniff` აქვს
-  - [ ] `ChatParityTest`-ში ტესტი: შეთხზული MIME სერვერის პასუხში არ ჩანს
+  - [x] `text/html`-ად გამოგზავნილი ფაილი `attachment`-ით და `octet-stream`-ით ბრუნდება
+  - [x] JPEG/PDF კვლავ `inline` იხატება
+  - [x] ყველა `file`-პასუხს `X-Content-Type-Options: nosniff` აქვს
+  - [x] `ChatParityTest`-ში ტესტი: შეთხზული MIME სერვერის პასუხში არ ჩანს
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

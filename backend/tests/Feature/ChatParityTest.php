@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Services\Chat\ChatService;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -298,5 +300,95 @@ class ChatParityTest extends TestCase
         $this->actingAs($this->alice)
             ->putJson("/api/chat/{$this->conversation}/theme", ['theme' => '#ff0000'])
             ->assertStatus(422);
+    }
+
+    /* ---------- SEC-04 ფაილის უსაფრთხო გაცემა ---------- */
+
+    /** alice ფაილს აგზავნის; ბრუნდება შეტყობინების id */
+    private function aliceSends(UploadedFile $file, string $type = 'file'): int
+    {
+        return $this->actingAs($this->alice)
+            ->post("/api/chat/{$this->conversation}", ['type' => $type, 'file' => $file])
+            ->assertStatus(201)
+            ->json('data.id');
+    }
+
+    /**
+     * ⚠️ **SEC-04 (High, 2026-09-17).** HTML-ფაილი `text/html`-ით `inline`
+     * ბრუნდებოდა, ე.ი. ბობის ბრაუზერში აპის origin-ზე, ბობის ქუქით
+     * სრულდებოდა. ახლა — `octet-stream` + `attachment` + `nosniff`.
+     */
+    public function test_an_html_attachment_is_downloaded_never_rendered(): void
+    {
+        Storage::fake('private');
+
+        $id = $this->aliceSends(UploadedFile::fake()->createWithContent(
+            'page.html',
+            '<!doctype html><html><body><script>fetch("/api/auth/me")</script></body></html>',
+        ));
+
+        $response = $this->actingAs($this->bob)->get("/api/chat/files/{$id}")->assertOk();
+
+        $this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('attachment', (string) $response->headers->get('Content-Disposition'));
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    /**
+     * SEC-04 — ⚠️ **კლიენტის MIME არც ინახება, არც ბრუნდება**: ნამდვილი JPEG,
+     * `text/html`-ად შეთხზული ჰედერით, `image/jpeg`-ად ინახება და ისე იხატება.
+     */
+    public function test_the_client_mime_never_reaches_the_response(): void
+    {
+        Storage::fake('private');
+
+        $jpeg = UploadedFile::fake()->image('cat.jpg', 20, 20);
+        $forged = new UploadedFile($jpeg->getPathname(), 'cat.jpg', 'text/html', null, true);
+
+        $id = $this->aliceSends($forged);
+
+        $this->assertSame('image/jpeg', Message::findOrFail($id)->attachment_mime);
+
+        $this->actingAs($this->bob)->getJson("/api/chat/{$this->conversation}")
+            ->assertOk()
+            ->assertJsonFragment(['mime' => 'image/jpeg'])
+            ->assertJsonMissing(['mime' => 'text/html']);
+
+        $response = $this->actingAs($this->bob)->get("/api/chat/files/{$id}")->assertOk();
+
+        $this->assertSame('image/jpeg', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    /** SEC-04 — ⚠️ ფიქსი ლეგიტიმურ ფაილს **არ** ამტვრევს: JPEG და PDF კვლავ `inline`-ია */
+    public function test_images_and_pdfs_still_render_inline(): void
+    {
+        Storage::fake('private');
+
+        $image = $this->aliceSends(UploadedFile::fake()->image('cat.jpg', 20, 20), 'image');
+        $pdf = $this->aliceSends(UploadedFile::fake()->createWithContent(
+            'doc.pdf',
+            "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n",
+        ));
+
+        foreach ([$image => 'image/jpeg', $pdf => 'application/pdf'] as $id => $mime) {
+            $response = $this->actingAs($this->bob)->get("/api/chat/files/{$id}")->assertOk();
+
+            $this->assertSame($mime, $response->headers->get('Content-Type'));
+            $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
+        }
+    }
+
+    /** SEC-04 — `nosniff` გლობალურია: JSON-ზეც და `abort(404)`-ზეც */
+    public function test_nosniff_is_on_every_response(): void
+    {
+        $this->actingAs($this->alice)->getJson('/api/chat/unread')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+        $this->actingAs($this->alice)->get('/api/chat/files/999999')
+            ->assertNotFound()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureRecordOwnership;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -53,6 +54,9 @@ return Application::configure(basePath: dirname(__DIR__))
          * ციკლით ებმევა.
          */
         $middleware->api(append: [EnsureRecordOwnership::class]);
+
+        // SEC-04 — `nosniff` ყოველ პასუხზე; ⚠️ გლობალურად (იხ. კლასის docblock)
+        $middleware->append(SetSecurityHeaders::class);
 
         $middleware->alias([
             'module' => EnsureModuleEnabled::class,

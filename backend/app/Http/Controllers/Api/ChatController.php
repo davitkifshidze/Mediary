@@ -12,6 +12,7 @@ use App\Services\Chat\ChatService;
 use App\Services\Profile\PublicProfileService;
 use App\Services\Storage\StorageMeter;
 use App\Support\Like;
+use App\Support\SafeMime;
 use App\Support\Snippet;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
@@ -435,7 +436,8 @@ class ChatController extends Controller
         $message = $this->chat->send($conversation, $me, $type, $request->input('body'), [
             'attachment_path' => $path,
             'attachment_name' => $upload->getClientOriginalName(),
-            'attachment_mime' => $upload->getClientMimeType(),
+            // ⚠️ SEC-04 — სერვერის `finfo`, და არასდროს კლიენტის ჰედერი
+            'attachment_mime' => SafeMime::ofUpload($upload),
             'attachment_size' => (int) $upload->getSize(),
         ]);
 
@@ -458,13 +460,12 @@ class ChatController extends Controller
 
         abort_unless($disk->fileExists($message->attachment_path), 404);
 
-        // `inline` — სურათი/ვიდეო ძაფშივე უნდა დაიხატოს
-        return $disk->response(
-            $message->attachment_path,
-            $message->attachment_name,
-            array_filter(['Content-Type' => $message->attachment_mime]),
-            'inline',
-        );
+        /* ⚠️ SEC-04 — სურათი/ვიდეო ძაფშივე `inline` იხატება, **დანარჩენი
+           ჩამოიტვირთება**. `attachment_mime` აქ **განზრახ არ იკითხება**: ის
+           (ძველ რიგზე) კლიენტის ჰედერი იყო, და HTML-ფაილი `text/html`-ით აპის
+           origin-ზე მეორე მონაწილის ქუქით ხატდებოდა — ჩატის ერთი შეტყობინებით
+           ანგარიშის მიტაცება. */
+        return SafeMime::response($disk, $message->attachment_path, $message->attachment_name);
     }
 
     /**
