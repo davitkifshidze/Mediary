@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Notes\ReminderDispatcher;
 use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -687,6 +688,27 @@ class NoteModuleTest extends TestCase
         );
 
         Carbon::setTestNow();
+    }
+
+    /**
+     * **scheduler-ის mutex-ს ვადა აქვს** (Tasks BUG-09).
+     *
+     * `withoutOverlapping()` ნაგულისხმევად **1440 წუთია** (24 საათი) და
+     * mutex მხოლოდ ნორმალურ დასრულებაზე თავისუფლდება: Ctrl-C, მანქანის
+     * დაძინება ან fatal გაშვების შუაში მას ჩაკეტილს ტოვებს — ე.ი. **მთელი
+     * დღე არც ერთი შეხსენება არ გაეშვება, და უხმოდ**.
+     *
+     * ⚠️ ტესტი რიცხვს არ აფიქსირებს, ჭერს აფიქსირებს: მნიშვნელოვანია
+     * მხოლოდ ის, რომ ვადა **ცხადადაა** და დღეზე მოკლეა.
+     */
+    public function test_the_reminder_schedule_does_not_lock_itself_for_a_day(): void
+    {
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn ($e) => str_contains((string) $e->command, 'notes:remind'));
+
+        $this->assertNotNull($event, 'შეხსენებების ბრძანება დაგეგმილი უნდა იყოს');
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertLessThan(1440, $event->expiresAt, 'mutex-ის ვადა ცხადად უნდა ეწეროს');
     }
 
     /** მასობრივი წაშლა (Tasks 20) ჩანაწერებსაც ფარავს */
