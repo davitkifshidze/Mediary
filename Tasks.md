@@ -28,7 +28,7 @@
 | BUG-02 | საჯარო ალბომის unlock სესიის გარეშე უხმაუროდ არაფერს აკეთებს და პაროლის ორაკული ხდება | Medium | bug | S | ✅ შესრულებულია |
 | BUG-03 | `AlbumVault::relocate()` — ფაილის გადატანა DB-ტრანზაქციაშია, რომელიც მას ვერ აბრუნებს; არარსებულ ფაილზეც `path` იწერება | Medium | bug | M | ✅ შესრულებულია |
 | BUG-04 | ალბომის წაშლა: vault → images update → delete სამი დაუცველი ნაბიჯია | Medium | bug | S | ✅ შესრულებულია |
-| BUG-05 | ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit) | Medium | bug | M | ⬜ |
+| BUG-05 | ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit) | Medium | bug | M | ✅ შესრულებულია |
 | BUG-06 | მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს | Medium | bug | S | ⬜ |
 | BUG-07 | `ChatService::between()` — check-then-create race ორმაგ საუბარს ქმნის | Medium | bug | S | ⬜ |
 | BUG-08 | `RunBatchItem` ყველა გამონაკლისს ყლაპავს — პარტია არასდროს „ჩავარდნილია" | Medium | bug | M | ⬜ |
@@ -490,14 +490,21 @@
 - **დამოკიდებულება:** BUG-03
 
 ### [BUG-05] ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit)
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `DictionaryRecords::move(Builder $records, callable $apply)` — წაშლის ბრანჩის ზუსტი ტყუპი (`lazyById(100)` + მოდელი). **ერთი დიალოგის ორი ბრანჩი ერთნაირად მუშაობს ახლა**
+  - ✅ ექვსივე ლექსიკონი მასზე გადავიდა: სტატუსი (`applyStatus()`), წიგნისა და ბორდგეიმის ჟანრი, ვიდეოს ტიპი, ჩანაწერისა და ბუკმარკის კატეგორია. ⚠️ სიმღერა/თამაში პივოტზეა და `syncWithoutDetaching`-ს იყენებს — სხვა გზა, ამ ბაგის გარეშე
+  - ✅ **მოდელური ციკლი აირჩა და არა „ერთი ცხადი `AuditLogger` ჩანაწერი"**: `watched_at`-ს მხოლოდ `applyStatus()` წერს, ე.ი. სტატუსზე ციკლი ისედაც აუცილებელი იყო — ხოლო ორი სხვადასხვა მექანიზმი ერთი დიალოგის ორ ბრანჩზე ზუსტად ის არის, რაც დაშორდებოდა. `PurgeService`-ის პრეცედენტიც ეს არის: ასი ჩანაწერის წაშლა ასი ლოგის რიგია
+  - ✅ `callable $apply` და არა ორი მეთოდი (`move` + `moveStatus`): გამოძახების ადგილი ცხადად ამბობს, **რა** იცვლება (სვეტი თუ `applyStatus()`), კლასს კი მოდელების ცოდნა არ სჭირდება
+  - ✅ ტესტები: `StatusDictionaryTest` — `done` → `todo` გადატანა `watched_at`-ს ანულებს, და გადატანა `audit_logs`-ში ჩანს (⚠️ ლოგში **გასაღებია და არა `status_id`** — `AuditLogger`-ის §6.4-ის წესი); `DictionaryDeletionTest` — იგივე ვიდეოს ტიპზე. სამივე ძველ კოდზე ცვივა
+  - ✅ pint, 744 backend ტესტი — მწვანე
 - **ტიპი:** bug
 - **სად:** `backend/app/Http/Controllers/Api/StatusController.php:135-143`; იგივე `BookGenreController.php:74`, `BoardGameGenreController.php:74`, `VideoTypeController.php:79`, `NoteCategoryController.php:74`, `BookmarkCategoryController.php:79`
 - **პრობლემა:** `$records->update(['status_id' => …])` `HasStatus::applyStatus()`-ს (`watched_at` როლიდან) და `AuditObserver::updated()`-ს არ უშვებს. `done` სტატუსის წაშლა და `todo`-ზე გადატანა ყველა ჩანაწერს შევსებული `watched_at`-ით ტოვებს; audit-ლოგში ჩანაწერი არ რჩება. წაშლის ბრანჩი (`DictionaryRecords::delete()`) სწორად მოდელით მუშაობს.
 - **რატომ:** ერთი სვეტი ორ ფაქტს ეწინააღმდეგება (ის ხაფანგი, რომელსაც `watched_at`-ის წესი აღწერს) და მასობრივი ცვლილება ლოგიდან უჩინარია.
 - **გადაწყვეტა:** წაშლის ბრანჟის მსგავსად `lazyById()` + `applyStatus()`/`save()`; ხუთ ლექსიკონზეც მოდელური ციკლი ან ერთი ცხადი `AuditLogger` ჩანაწერი.
 - **Acceptance criteria:**
-  - [ ] ტესტი: `done` სტატუსის წაშლა `todo`-ზე გადატანით `watched_at`-ს `null`-ავს
-  - [ ] ტესტი: გადატანის შემდეგ `audit_logs`-ში ჩანაწერია
+  - [x] ტესტი: `done` სტატუსის წაშლა `todo`-ზე გადატანით `watched_at`-ს `null`-ავს
+  - [x] ტესტი: გადატანის შემდეგ `audit_logs`-ში ჩანაწერია
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

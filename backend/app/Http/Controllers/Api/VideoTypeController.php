@@ -76,7 +76,10 @@ class VideoTypeController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data, $videoType->id);
 
-        $moved = Video::where('type_id', $videoType->id)->update(['type_id' => $moveTo]);
+        $moved = DictionaryRecords::move(
+            Video::where('type_id', $videoType->id),
+            fn ($video) => $video->type_id = $moveTo,
+        );
 
         $videoType->delete();
 

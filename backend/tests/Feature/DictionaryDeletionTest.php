@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Song;
 use App\Models\User;
@@ -65,6 +66,35 @@ class DictionaryDeletionTest extends TestCase
         $this->assertNull(Video::find($gone->id));
         $this->assertNotNull(Video::find($kept->id));
         $this->assertNull(VideoType::find($first));
+    }
+
+    /**
+     * **გადატანაც მოდელზეა და ლოგში ჩანს** (Tasks BUG-05).
+     *
+     * ერთი დიალოგის ორი ბრანჩი ორნაირად მუშაობდა: წაშლა მოდელით, გადატანა
+     * კი query-builder-ის `update()`-ით — ე.ი. „ჩემი ასი ვიდეო სხვა ტიპზე
+     * გადავიდა" აუდიტის ლოგში **არსად** ჩანდა. `AuditObserver` მოდელის
+     * ივენთებზე ზის და მასობრივ `update()`-ს ვერ ხედავს.
+     */
+    public function test_moving_records_to_another_type_is_written_to_the_audit_log(): void
+    {
+        $this->actingAs($this->user);
+
+        [$first, $second] = collect($this->getJson('/api/video-types')->json('data'))->pluck('id')->all();
+
+        $video = Video::create(['title' => 'a', 'url' => 'https://youtu.be/aaaaaaaaaaa', 'type_id' => $first]);
+
+        $this->deleteJson("/api/video-types/{$first}", ['move_to' => $second])
+            ->assertOk()
+            ->assertJsonPath('moved', 1);
+
+        $this->assertSame($second, $video->refresh()->type_id);
+
+        $row = AuditLog::query()->where('subject_type', 'video')->where('subject_id', $video->id)
+            ->where('action', AuditLog::ACTION_UPDATE)->latest('id')->first();
+
+        $this->assertNotNull($row, 'ტიპის ცვლილება ლოგში უნდა იყოს');
+        $this->assertSame($second, ((array) $row->new_values)['type_id'] ?? null);
     }
 
     /** ⚠️ წაშლის ორ ბრძანება ერთად — 422, და ტიპიც ადგილზე რჩება */

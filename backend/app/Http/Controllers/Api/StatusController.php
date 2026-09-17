@@ -139,7 +139,17 @@ class StatusController extends Controller
             $moved = 0;
         } else {
             $deleted = 0;
-            $moved = $records->update(['status_id' => DictionaryRecords::moveTarget($data, $status->id)]);
+
+            /* ⚠️ **`applyStatus()` და არა `update(['status_id' => …])`**
+               (Tasks BUG-05): `watched_at`-ს მხოლოდ ის წერს, ე.ი. `done`
+               სტატუსის წაშლა `todo`-ზე გადატანით ყველა ჩანაწერს შევსებული
+               „როდის ვნახე"-თი ტოვებდა. მასობრივი `update()` `AuditObserver`-საც
+               გვერდს უვლიდა — ე.ი. ასი ფილმის სტატუსის შეცვლა ლოგში არსად ჩანდა. */
+            $target = ($targetId = DictionaryRecords::moveTarget($data, $status->id))
+                ? Status::find($targetId)
+                : null;
+
+            $moved = DictionaryRecords::move($records, fn ($record) => $record->applyStatus($target));
         }
 
         // განლაგებაში ამ სტატუსის შემდეგ მდგარი „რჩეული" მის წინა მეზობელზე

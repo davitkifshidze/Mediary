@@ -74,4 +74,40 @@ final class DictionaryRecords
 
         return $deleted;
     }
+
+    /**
+     * ჩანაწერების გადატანა — ისიც თითო-თითოდ, მოდელით (Tasks BUG-05).
+     *
+     * ⚠️ **ორივე ბრანჩი ერთი დიალოგისაა, ე.ი. ერთნაირადაც უნდა მუშაობდეს.**
+     * წაშლა მოდელზე იყო, გადატანა კი query-builder-ის `update()`-ით — და
+     * სწორედ ის ორი რამ იკარგებოდა, რისთვისაც ეს წესი არსებობს:
+     *
+     * ⚠️ **`watched_at`.** `done` სტატუსის წაშლა `todo`-ზე გადატანით
+     * ყველა ჩანაწერს **შევსებული** `watched_at`-ით ტოვებდა — ერთი სვეტი
+     * თავის ჩანაწერს ეწინააღმდეგებოდა. სვეტს მხოლოდ `HasStatus::applyStatus()`
+     * წერს, ე.ი. მასობრივი `update()` მას ვერ დაინახავდა.
+     *
+     * ⚠️ **აუდიტის ლოგი.** `AuditObserver` მოდელის ივენთებზე ზის, ე.ი.
+     * „ჩემი ასი ფილმი სხვა სტატუსზე გადავიდა" ლოგში **არსად** ჩანდა.
+     *
+     * ⚠️ `lazyById` და არა `get()`, იგივე მიზეზით, რაც წაშლაზე; ჭრა
+     * უსაფრთხოა, რადგან შეცვლილ რიგებს უფრო პატარა id აქვთ, ვიდრე
+     * მომდევნო ნაჭერს.
+     *
+     * @param  callable(Model): void  $apply  რას ვცვლით — სვეტს თუ `applyStatus()`-ს
+     */
+    public static function move(Builder $records, callable $apply): int
+    {
+        $moved = 0;
+
+        $records->lazyById(100)->each(function (Model $record) use ($apply, &$moved) {
+            $apply($record);
+
+            if ($record->save()) {
+                $moved++;
+            }
+        });
+
+        return $moved;
+    }
 }

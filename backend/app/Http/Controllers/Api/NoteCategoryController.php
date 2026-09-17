@@ -71,7 +71,10 @@ class NoteCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data, $noteCategory->id);
 
-        $moved = NoteEntry::where('category_id', $noteCategory->id)->update(['category_id' => $moveTo]);
+        $moved = DictionaryRecords::move(
+            NoteEntry::where('category_id', $noteCategory->id),
+            fn ($note) => $note->category_id = $moveTo,
+        );
 
         $noteCategory->delete();
 

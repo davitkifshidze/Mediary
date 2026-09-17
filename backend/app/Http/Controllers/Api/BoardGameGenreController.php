@@ -71,7 +71,10 @@ class BoardGameGenreController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data, $boardGameGenre->id);
 
-        $moved = BoardGame::where('genre_id', $boardGameGenre->id)->update(['genre_id' => $moveTo]);
+        $moved = DictionaryRecords::move(
+            BoardGame::where('genre_id', $boardGameGenre->id),
+            fn ($game) => $game->genre_id = $moveTo,
+        );
 
         $boardGameGenre->delete();
 

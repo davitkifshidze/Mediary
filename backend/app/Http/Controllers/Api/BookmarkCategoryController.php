@@ -75,8 +75,10 @@ class BookmarkCategoryController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data, $bookmarkCategory->id);
 
-        $moved = Bookmark::where('category_id', $bookmarkCategory->id)
-            ->update(['category_id' => $moveTo]);
+        $moved = DictionaryRecords::move(
+            Bookmark::where('category_id', $bookmarkCategory->id),
+            fn ($bookmark) => $bookmark->category_id = $moveTo,
+        );
 
         $bookmarkCategory->delete();
 

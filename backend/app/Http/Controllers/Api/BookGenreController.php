@@ -71,7 +71,10 @@ class BookGenreController extends Controller
 
         $moveTo = DictionaryRecords::moveTarget($data, $bookGenre->id);
 
-        $moved = Book::where('genre_id', $bookGenre->id)->update(['genre_id' => $moveTo]);
+        $moved = DictionaryRecords::move(
+            Book::where('genre_id', $bookGenre->id),
+            fn ($book) => $book->genre_id = $moveTo,
+        );
 
         $bookGenre->delete();
 

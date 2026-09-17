@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\Role;
@@ -385,6 +386,69 @@ class StatusDictionaryTest extends TestCase
         $this->assertSame(1, $fired);
         $this->assertNull(Movie::find($gone->id));
         $this->assertNotNull(Movie::find($kept->id));
+    }
+
+    /**
+     * **გადატანა `watched_at`-საც ასწორებს** (Tasks BUG-05).
+     *
+     * ⚠️ „როდის ვნახე" მხოლოდ `HasStatus::applyStatus()`-ს ეწერება, ე.ი.
+     * მასობრივი `update(['status_id' => …])` მას ვერ დაინახავდა: `done`
+     * სტატუსის წაშლა `todo`-ზე გადატანით ფილმს „ნანახის" თარიღით ტოვებდა,
+     * თან სტატუსში ეწერა, რომ ჯერ არ მინახავს — ერთი სვეტი თავის
+     * ჩანაწერს ეწინააღმდეგებოდა.
+     */
+    public function test_moving_records_to_another_status_fixes_watched_at(): void
+    {
+        $this->actingAs($this->user);
+
+        $watched = $this->dictionaryRow($this->user, 'movie', 'watched');
+        $target = $this->dictionaryRow($this->user, 'movie', 'to_watch');
+
+        $movie = Movie::create(['year' => 2013]);
+        $movie->applyStatusKey('watched');
+        $movie->save();
+        $this->assertNotNull($movie->refresh()->watched_at, 'აქამდე ის შევსებული უნდა იყოს');
+
+        $this->deleteJson("/api/statuses/movie/{$watched->id}", ['move_to' => $target->id])
+            ->assertOk()
+            ->assertJsonPath('moved', 1);
+
+        $this->assertSame('to_watch', $movie->refresh()->status_key);
+        $this->assertNull($movie->watched_at);
+    }
+
+    /**
+     * **მასობრივი გადატანა აუდიტის ლოგში ჩანს** (Tasks BUG-05).
+     *
+     * `AuditObserver` მოდელის ივენთებზე ზის, ე.ი. query-builder-ის
+     * `update()` მას გვერდს უვლიდა: „ჩემი ასი ფილმი სხვა სტატუსზე
+     * გადავიდა" ლოგში **არსად** ჩანდა.
+     */
+    public function test_moving_records_is_written_to_the_audit_log(): void
+    {
+        $this->actingAs($this->user);
+
+        $watched = $this->dictionaryRow($this->user, 'movie', 'watched');
+        $target = $this->dictionaryRow($this->user, 'movie', 'to_watch');
+
+        $movie = Movie::create(['year' => 2014]);
+        $movie->applyStatusKey('watched');
+        $movie->save();
+
+        $before = AuditLog::query()->count();
+
+        $this->deleteJson("/api/statuses/movie/{$watched->id}", ['move_to' => $target->id])->assertOk();
+
+        $row = AuditLog::query()->where('subject_type', 'movie')->where('subject_id', $movie->id)
+            ->where('action', AuditLog::ACTION_UPDATE)->latest('id')->first();
+
+        $this->assertGreaterThan($before, AuditLog::query()->count());
+        $this->assertNotNull($row, 'ჩანაწერის სტატუსის ცვლილება ლოგში უნდა იყოს');
+
+        // ⚠️ ლოგში **გასაღებია და არა `status_id`**: „3 → 4" წასაკითხი არ არის
+        // და ლექსიკონის რიგის წაშლა პასუხს საერთოდ გაანადგურებდა
+        $this->assertSame('to_watch', ((array) $row->new_values)['status'] ?? null);
+        $this->assertSame('watched', ((array) $row->old_values)['status'] ?? null);
     }
 
     /** ორი ურთიერთგამომრიცხავი ბრძანება — 422, და არაფერი იშლება */
