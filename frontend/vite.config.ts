@@ -12,6 +12,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
     port: 5173,
+    allowedHosts: ['mediary.local'],
+    hmr: {
+      host: 'mediary.local',
+      clientPort: 80,
+    },
   },
 })

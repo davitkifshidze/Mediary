@@ -32,6 +32,10 @@ Thumbs.db
 *.sql
 *.sql.gz
 
+# ── dev-სკრიპტის ლოგები (start-dev.sh ორივეს რეპოს root-ში წერს) ──
+/backend.log
+/frontend.log
+
 # ── graphify generated knowledge graph (regenerate with /graphify) ──
 /graphify-out/
 
