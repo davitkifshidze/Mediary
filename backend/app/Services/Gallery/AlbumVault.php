@@ -80,12 +80,28 @@ final class AlbumVault
      * მომენტს ფარავს, ხოლო უკვე ჩაკეტილ ალბომში ახალი ფოტოს გადატანა
      * იმავე ხვრელს თავიდან გახსნიდა.
      */
-    public static function place(GalleryImage $image, ?GalleryAlbum $album): void
+    public static function place(GalleryImage $image, ?GalleryAlbum $album): int
+    {
+        return self::placeMany([$image], $album);
+    }
+
+    /**
+     * იგივე, ცხადად გადმოცემულ ფოტოებზე (Tasks BUG-04).
+     *
+     * ⚠️ **ალბომის წაშლას სწორედ ეს სჭირდება და არა `seal`/`reveal`.** ისინი
+     * ფოტოებს `where('album_id', …)`-ით პოულობენ, ე.ი. მას შემდეგ, რაც
+     * რიგები უკვე გადავიდა (ან ალბომი წაიშალა), **ვეღარაფერს იპოვიან** —
+     * ხოლო თუ მათ ჯერ დავარეკავთ, ისევ იმ რიგში ვართ, რომელიც BUG-04-ია.
+     *
+     * @param  iterable<GalleryImage>  $images
+     * @return int რამდენი ფაილი გადავიდა
+     */
+    public static function placeMany(iterable $images, ?GalleryAlbum $album): int
     {
         $locked = $album && $album->isLocked();
 
-        self::relocateAll(
-            [$image],
+        return self::relocateAll(
+            $images,
             $locked ? StorageFolder::GALLERY_LOCKED : StorageFolder::GALLERY_IMAGES,
             $locked,
         );

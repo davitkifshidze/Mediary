@@ -8,6 +8,7 @@ use App\Services\Gallery\AlbumVault;
 use App\Support\AlbumLock;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -206,6 +207,10 @@ class GalleryAlbumController extends Controller
      * წაშლა ფოტოებს `album_id = null`-ზე აბრუნებს, ე.ი. უპაროლოდ
      * დაშვებული „წაშალე ალბომი" ერთი კლიკით გააშიშვლებდა ყველაფერს,
      * რაც ეს-ესაა დამალე — ლოკის სრული შემოვლა.
+     *
+     * ⚠️ **სამი ნაბიჯი ორად დაიყო (Tasks BUG-04):** რიგები ერთ ტრანზაქციაში,
+     * ფაილები — commit-ის შემდეგ. იხ. ქვემოთ, რატომ არის სწორედ ეს რიგი
+     * სწორი და არა პირიქით.
      */
     public function destroy(Request $request, GalleryAlbum $galleryAlbum)
     {
@@ -225,21 +230,37 @@ class GalleryAlbumController extends Controller
             'cannot_move_into_itself',
         );
 
-        /* ⚠️ **ფაილები ჯერ ბრუნდება საჯარო საქაღალდეში** (§7.9), მერე
-           ჩანაწერები გადადიან: სხვა შემთხვევაში ამ ალბომის ფოტოები
-           `gallery/locked`-ში დარჩებოდა — მშობლის გარეშე, პირად დისკზე,
-           ე.ი. აპლიკაციაში ხილულად და `/storage/*`-ით მიუწვდომლად. */
         $target = ($data['move_to'] ?? null)
             ? GalleryAlbum::find((int) $data['move_to'])
             : null;
 
-        $target && $target->isLocked()
-            ? AlbumVault::seal($galleryAlbum)
-            : AlbumVault::reveal($galleryAlbum);
+        /* ⚠️ ფოტოები **ცვლილებამდე** იკითხება: ქვემოთ ისინი ამ ალბომს
+           აღარ ეკუთვნიან, ე.ი. `where('album_id', …)` ვეღარაფერს იპოვიდა. */
+        $images = $galleryAlbum->images()->withoutGlobalScope('album_lock')->get();
 
-        $moved = $galleryAlbum->images()->withoutGlobalScope('album_lock')
-            ->update(['album_id' => $data['move_to'] ?? null]);
-        $galleryAlbum->delete();
+        /* ⚠️ **ჯერ რიგები — ერთ ტრანზაქციაში —, მერე ფაილები** (Tasks BUG-04).
+           ადრე პირველი ნაბიჯი `AlbumVault::reveal()` იყო, ე.ი. `update()`-ის
+           ან `delete()`-ის ჩავარდნაზე ჩაკეტილი ალბომის ფოტოები უკვე
+           `gallery/images`-ში იდო — საჯარო დისკზე, `/storage/...` ბმულით —
+           ალბომს კი `password_hash` ისევ ედო. ზუსტად ის ხვრელი, რომლის
+           დახურვასაც §7.9 ემსახურება.
+
+           ⚠️ **პირიქით ჩავარდნა უვნებელია და სწორედ ამიტომ არის ეს რიგი
+           სწორი**: ფაილი `gallery/locked`-ში დარჩა, მაგრამ `path` მასზე
+           მიუთითებს და `GalleryImage::servedUrl()` პირად დისკს API-ის
+           მარშრუტით ემსახურება — ფოტო ჩანს, უბრალოდ `/storage/*`-ის გარეთ. */
+        $moved = DB::transaction(function () use ($galleryAlbum, $data) {
+            $count = $galleryAlbum->images()->withoutGlobalScope('album_lock')
+                ->update(['album_id' => $data['move_to'] ?? null]);
+            $galleryAlbum->delete();
+
+            return $count;
+        });
+
+        /* ⚠️ კომპენსაცია აქ საჭირო აღარ არის: `placeMany()` თითო ფოტოს ან
+           ბოლომდე გადაიტანს, ან ხელს არ ახლებს (BUG-03-ის ასლი → commit →
+           წაშლა), ე.ი. ნახევრად გადატანილი ფაილი ვერ დარჩება. */
+        AlbumVault::placeMany($images, $target);
 
         return response()->json(['moved' => $moved]);
     }

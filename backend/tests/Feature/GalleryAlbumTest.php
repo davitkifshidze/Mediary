@@ -12,8 +12,10 @@ use App\Models\User;
 use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -394,6 +396,27 @@ class GalleryAlbumTest extends TestCase
         return $this->actingAs($this->user)->withHeaders(['Referer' => 'http://localhost:5173']);
     }
 
+    /** ჩაკეტილი ალბომის ფოტო — ფაილი **პირად** დისკზეა (§7.9) */
+    private function lockedPhoto(GalleryAlbum $album, string $path): GalleryImage
+    {
+        Storage::disk('private')->put($path, 'x');
+
+        return GalleryImage::create([
+            'user_id' => $this->user->id,
+            'album_id' => $album->id,
+            'source' => 'tmdb',
+            'category' => 'backdrop',
+            'path' => $path,
+            'size' => 100,
+        ]);
+    }
+
+    /** ეს ალბომი ამ სესიაში გახსნილია — ე.ი. წაშლის კარი ღიაა */
+    private function unlocked(GalleryAlbum $album)
+    {
+        return $this->spa()->withSession([AlbumLock::SESSION_KEY => [$album->id]]);
+    }
+
     private function lockedAlbum(string $password = 'secret1'): GalleryAlbum
     {
         $album = GalleryAlbum::create([
@@ -547,6 +570,74 @@ class GalleryAlbumTest extends TestCase
             ->assertStatus(423);
 
         $this->assertNotNull(GalleryAlbum::withoutGlobalScope('owner')->find($album->id));
+    }
+
+    /**
+     * გახსნილი ალბომის წაშლა ფაილებსაც აბრუნებს საჯარო საქაღალდეში.
+     *
+     * წინააღმდეგ შემთხვევაში ფოტოები `gallery/locked`-ში დარჩებოდა —
+     * მშობელი ალბომის გარეშე, ე.ი. სამუდამოდ პირად დისკზე.
+     */
+    public function test_deleting_an_album_brings_its_files_back(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $album = $this->lockedAlbum();
+        $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
+
+        $this->unlocked($album)
+            ->deleteJson('/api/gallery/albums/'.$album->id)
+            ->assertOk()
+            ->assertJsonPath('moved', 1);
+
+        $this->assertNull($image->refresh()->album_id);
+        $this->assertSame('gallery/images/secret.jpg', $image->path);
+        Storage::disk('public')->assertExists('gallery/images/secret.jpg');
+        Storage::disk('private')->assertMissing('gallery/locked/secret.jpg');
+    }
+
+    /**
+     * **BUG-04 — რიგების ჩავარდნა ფაილებს საჯაროდ არ ტოვებს.**
+     *
+     * ადრე პირველი ნაბიჯი `AlbumVault::reveal()` იყო: `update()`-ის ან
+     * `delete()`-ის ჩავარდნაზე ჩაკეტილი ალბომის ფოტოები უკვე
+     * `gallery/images`-ში იდო — საჯარო დისკზე, `/storage/...` ბმულით —
+     * ალბომს კი `password_hash` ისევ ედო. ე.ი. ჩავარდნილი წაშლა §7.9-ის
+     * ლოკს ერთ ნაბიჯში ხსნიდა.
+     *
+     * ⚠️ ჩავარდნა `DB::listen`-ით კეთდება: `delete()` მოდელისაა და მისი
+     * გატეხვა ერთადერთი გზაა, რომელიც ტესტს მოდელის გადაფარვას არ ათხოვებს.
+     */
+    public function test_a_failed_delete_leaves_the_files_locked(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $album = $this->lockedAlbum();
+        $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
+
+        DB::listen(function ($query) {
+            if (str_starts_with(strtolower(trim($query->sql)), 'delete') && str_contains($query->sql, 'gallery_albums')) {
+                throw new RuntimeException('boom');
+            }
+        });
+
+        $this->unlocked($album)
+            ->deleteJson('/api/gallery/albums/'.$album->id)
+            ->assertStatus(500);
+
+        /* ⚠️ პირველ რიგში ის, რაზეც ეს ტასქია: ფაილი საჯარო დისკზე არ
+           გასულა. ძველ კოდზე `reveal()` პირველი ნაბიჯი იყო, ე.ი. აქამდე ის
+           უკვე `gallery/images`-ში იდო. */
+        $this->assertSame('gallery/locked/secret.jpg', $image->refresh()->path);
+        Storage::disk('private')->assertExists('gallery/locked/secret.jpg');
+        Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
+
+        // ⚠️ ალბომიც და კავშირიც ადგილზეა: ტრანზაქციის გარეშე წაშლილი
+        // ალბომი 500-ის მიუხედავად ნამდვილად ქრებოდა
+        $this->assertNotNull(GalleryAlbum::withoutGlobalScope('owner')->find($album->id));
+        $this->assertSame($album->id, $image->album_id);
     }
 
     /**

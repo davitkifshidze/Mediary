@@ -819,9 +819,12 @@ class GalleryController extends Controller
         if (array_key_exists('album_id', $changes)) {
             $album = $changes['album_id'] ? GalleryAlbum::find((int) $changes['album_id']) : null;
 
-            foreach (GalleryImage::withoutGlobalScope('album_lock')->whereIn('id', $ids)->get() as $image) {
-                AlbumVault::place($image, $album);
-            }
+            // ⚠️ ერთი გამოძახება და არა ციკლი: თითო ფოტოზე `place()` თითო
+            // ტრანზაქციაა, ე.ი. ასი ფოტოს გადატანა ასი ტრანზაქცია იყო
+            AlbumVault::placeMany(
+                GalleryImage::withoutGlobalScope('album_lock')->whereIn('id', $ids)->get(),
+                $album,
+            );
         }
 
         return response()->json(['moved' => $moved]);
