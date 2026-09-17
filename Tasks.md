@@ -2,100 +2,126 @@
 
 აუდიტი 2026-09-17 (`audit-spec.md`-ის მიხედვით). ყველა `path:line` რეპოს root-იდანაა და `sed -n`-ით დადასტურებულია. კოდი არ შეცვლილა — ეს ფაილი ერთადერთი გამოსავალია.
 
+**შესრულება (2026-09-17-დან):** ტასკები სათითაოდ სრულდება, ყოველ შემდეგზე გადასვლა — მხოლოდ ნებართვით. შესრულებული ტასკი **არ იშლება**: მას სტატუსი ეძლევა (ცხრილის ბოლო სვეტი + ტასკის `სტატუსი` ველი), `path:line`-ები კი აუდიტის მომენტს ასახავენ და შესწორებების შემდეგ შეიძლება გადაიწიონ.
+სტატუსი: ⬜ ღია · 🟡 ნაწილობრივ (რჩება ნებართვა ან შენი ქმედება) · ✅ შესრულებულია
+
 ## Summary
-| ID | ტიტული | severity | ტიპი | estimate |
-|----|---------|----------|------|----------|
-| SEC-01 | პროდ-ბაზის dump პაროლის ჰეშებით, `remember_token`-ებით, სესიით და პირადი ჩატით git-ში და GitHub-ზეა | Critical | security | M |
-| SEC-02 | `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს | Critical | security | S |
-| SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S |
-| SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M |
-| SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S |
-| SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S |
-| SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S |
-| BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S |
-| GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M |
-| GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S |
-| PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S |
-| PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S |
-| PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M |
-| DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M |
-| SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S |
-| SEC-09 | `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს | Medium | security | S |
-| BUG-02 | საჯარო ალბომის unlock სესიის გარეშე უხმაუროდ არაფერს აკეთებს და პაროლის ორაკული ხდება | Medium | bug | S |
-| BUG-03 | `AlbumVault::relocate()` — ფაილის გადატანა DB-ტრანზაქციაშია, რომელიც მას ვერ აბრუნებს; არარსებულ ფაილზეც `path` იწერება | Medium | bug | M |
-| BUG-04 | ალბომის წაშლა: vault → images update → delete სამი დაუცველი ნაბიჯია | Medium | bug | S |
-| BUG-05 | ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit) | Medium | bug | M |
-| BUG-06 | მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს | Medium | bug | S |
-| BUG-07 | `ChatService::between()` — check-then-create race ორმაგ საუბარს ქმნის | Medium | bug | S |
-| BUG-08 | `RunBatchItem` ყველა გამონაკლისს ყლაპავს — პარტია არასდროს „ჩავარდნილია" | Medium | bug | M |
-| BUG-09 | `notes:remind`-ის `withoutOverlapping()` ვადის გარეშე 24 სთ-ით აჩერებს შეხსენებებს | Medium | bug | S |
-| BUG-10 | toast-ის ავტო-დახურვის ტაიმერი პროვაიდერის ყოველ რენდერზე თავიდან იწყება | Medium | bug | S |
-| BUG-11 | `key={i}` წაშლადი/გადაადგილებადი სტრიქონებზე სამ ფორმაში | Medium | bug | S |
-| PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S |
-| PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M |
-| PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S |
-| PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S |
-| PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M |
-| PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M |
-| GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S |
-| GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S |
-| DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S |
-| DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S |
-| DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S |
-| DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S |
-| SEC-10 | `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია | Low | security | S |
-| SEC-11 | `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე | Low | security | S |
-| BUG-12 | `updateOrInsert` ყოველ რედაქტირებაზე `created_at`-ს გადაწერს | Low | bug | S |
-| BUG-13 | `deleteResolved()`-ის custom-field ბრანჩი: დისკი + მრიცხველი + row ტრანზაქციის გარეშე | Low | bug | S |
-| BUG-14 | `errorMessage()` 422-ზე ვალიდაციის ტექსტს კოდზე წინ აყენებს | Low | bug | S |
-| BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S |
-| PERF-10 | `PurgeService::run()` plan-ს და id-სეტს ორჯერ ითვლის | Low | performance | S |
-| PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S |
-| PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S |
-| PERF-13 | `PhotoTile` ყოველ გახსნილ URL-ზე მთელ grid-ს ხელახლა ხატავს | Low | performance | S |
-| GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S |
-| GAP-06 | საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only") | Low | gap | S |
-| GAP-07 | `PUBLIC_PROFILES=false` `/matches`-ს არ თიშავს | Low | gap | S |
-| GAP-08 | გახსნილი ჩაკეტილი ალბომის ფოტო `Cache-Control`-ის გარეშე ბრუნდება | Low | gap | S |
-| GAP-09 | ლექსიკონის წაშლისას `move_to: null`, გამოტოვება და self ერთსა და იმავეს ნიშნავს — გადაწყვეტილება სჭირდება | Low | gap | S |
-| DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S |
-| DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S |
-| DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S |
-| DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S |
-| DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S |
-| DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S |
-| FEAT-01 | ტესტი: backend-ის ყველა მანქანური კოდი ⊆ `CODES` ⊆ ორივე ლოკალი | Backlog | feature | S |
-| FEAT-02 | `mediary:seed-demo` — ანონიმური საჩვენებელი მონაცემები კომიტებული dump-ის ნაცვლად | Backlog | feature | M |
-| FEAT-03 | პარტიის თითო ერთეულის შედეგი (`ok`/`skipped`/`failed` + მიზეზი) და მისი ჩვენება SPA-ში | Backlog | feature | M |
-| FEAT-04 | ალბომის პაროლის წარუმატებელი ცდების DB-მრიცხველი და დროებითი დაბლოკვა | Backlog | feature | S |
-| FEAT-05 | `mediary:doctor` — ბინარების, scheduler-ის და storage-მრიცხველის დრიფტის ერთი შემოწმება | Backlog | feature | M |
+| ID | ტიტული | severity | ტიპი | estimate | სტატუსი |
+|----|---------|----------|------|----------|----------|
+| SEC-01 | პროდ-ბაზის dump პაროლის ჰეშებით, `remember_token`-ებით, სესიით და პირადი ჩატით git-ში და GitHub-ზეა | Critical | security | M | 🟡 ნაწილობრივ |
+| SEC-02 | `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს | Critical | security | S | ✅ შესრულებულია |
+| SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S | ⬜ |
+| SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ⬜ |
+| SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ⬜ |
+| SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
+| SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ⬜ |
+| SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ⬜ |
+| BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ⬜ |
+| GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ⬜ |
+| GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ⬜ |
+| PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ⬜ |
+| PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ⬜ |
+| PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M | ⬜ |
+| DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ⬜ |
+| SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S | ⬜ |
+| SEC-09 | `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს | Medium | security | S | ⬜ |
+| BUG-02 | საჯარო ალბომის unlock სესიის გარეშე უხმაუროდ არაფერს აკეთებს და პაროლის ორაკული ხდება | Medium | bug | S | ⬜ |
+| BUG-03 | `AlbumVault::relocate()` — ფაილის გადატანა DB-ტრანზაქციაშია, რომელიც მას ვერ აბრუნებს; არარსებულ ფაილზეც `path` იწერება | Medium | bug | M | ⬜ |
+| BUG-04 | ალბომის წაშლა: vault → images update → delete სამი დაუცველი ნაბიჯია | Medium | bug | S | ⬜ |
+| BUG-05 | ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit) | Medium | bug | M | ⬜ |
+| BUG-06 | მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს | Medium | bug | S | ⬜ |
+| BUG-07 | `ChatService::between()` — check-then-create race ორმაგ საუბარს ქმნის | Medium | bug | S | ⬜ |
+| BUG-08 | `RunBatchItem` ყველა გამონაკლისს ყლაპავს — პარტია არასდროს „ჩავარდნილია" | Medium | bug | M | ⬜ |
+| BUG-09 | `notes:remind`-ის `withoutOverlapping()` ვადის გარეშე 24 სთ-ით აჩერებს შეხსენებებს | Medium | bug | S | ⬜ |
+| BUG-10 | toast-ის ავტო-დახურვის ტაიმერი პროვაიდერის ყოველ რენდერზე თავიდან იწყება | Medium | bug | S | ⬜ |
+| BUG-11 | `key={i}` წაშლადი/გადაადგილებადი სტრიქონებზე სამ ფორმაში | Medium | bug | S | ⬜ |
+| PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ⬜ |
+| PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ⬜ |
+| PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ⬜ |
+| PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ⬜ |
+| PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ⬜ |
+| PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ⬜ |
+| GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ⬜ |
+| GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
+| DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ⬜ |
+| DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ⬜ |
+| DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ⬜ |
+| DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S | ⬜ |
+| DEBT-12 | `NoteReminders.test.ts` სრულ `npm test`-ში 5-წამიან ტაიმაუტზე ცვივა (ცალკე გადის) — CI-ს flaky-ს ხდის (SEC-02-ის შესრულებისას ნაპოვნი) | Medium | debt | S | ⬜ |
+| SEC-10 | `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია | Low | security | S | ⬜ |
+| SEC-11 | `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე | Low | security | S | ⬜ |
+| BUG-12 | `updateOrInsert` ყოველ რედაქტირებაზე `created_at`-ს გადაწერს | Low | bug | S | ⬜ |
+| BUG-13 | `deleteResolved()`-ის custom-field ბრანჩი: დისკი + მრიცხველი + row ტრანზაქციის გარეშე | Low | bug | S | ⬜ |
+| BUG-14 | `errorMessage()` 422-ზე ვალიდაციის ტექსტს კოდზე წინ აყენებს | Low | bug | S | ⬜ |
+| BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S | ⬜ |
+| PERF-10 | `PurgeService::run()` plan-ს და id-სეტს ორჯერ ითვლის | Low | performance | S | ⬜ |
+| PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ⬜ |
+| PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ⬜ |
+| PERF-13 | `PhotoTile` ყოველ გახსნილ URL-ზე მთელ grid-ს ხელახლა ხატავს | Low | performance | S | ⬜ |
+| GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S | ⬜ |
+| GAP-06 | საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only") | Low | gap | S | ⬜ |
+| GAP-07 | `PUBLIC_PROFILES=false` `/matches`-ს არ თიშავს | Low | gap | S | ⬜ |
+| GAP-08 | გახსნილი ჩაკეტილი ალბომის ფოტო `Cache-Control`-ის გარეშე ბრუნდება | Low | gap | S | ⬜ |
+| GAP-09 | ლექსიკონის წაშლისას `move_to: null`, გამოტოვება და self ერთსა და იმავეს ნიშნავს — გადაწყვეტილება სჭირდება | Low | gap | S | ⬜ |
+| DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ⬜ |
+| DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ⬜ |
+| DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ⬜ |
+| DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ⬜ |
+| DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ⬜ |
+| DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S | ⬜ |
+| FEAT-01 | ტესტი: backend-ის ყველა მანქანური კოდი ⊆ `CODES` ⊆ ორივე ლოკალი | Backlog | feature | S | ⬜ |
+| FEAT-02 | `mediary:seed-demo` — ანონიმური საჩვენებელი მონაცემები კომიტებული dump-ის ნაცვლად | Backlog | feature | M | ⬜ |
+| FEAT-03 | პარტიის თითო ერთეულის შედეგი (`ok`/`skipped`/`failed` + მიზეზი) და მისი ჩვენება SPA-ში | Backlog | feature | M | ⬜ |
+| FEAT-04 | ალბომის პაროლის წარუმატებელი ცდების DB-მრიცხველი და დროებითი დაბლოკვა | Backlog | feature | S | ⬜ |
+| FEAT-05 | `mediary:doctor` — ბინარების, scheduler-ის და storage-მრიცხველის დრიფტის ერთი შემოწმება | Backlog | feature | M | ⬜ |
 
 ## Critical
 
 ### [SEC-01] პროდ-ბაზის dump პაროლის ჰეშებით, `remember_token`-ებით, სესიით და პირადი ჩატით git-ში და GitHub-ზეა
+- **სტატუსი:** 🟡 ნაწილობრივ შესრულებულია (2026-09-17) — რეპოს და ბაზის მხარე მზადაა; რჩება **მხოლოდ შენი ქმედება**: ორივე ანგარიშის პაროლის შეცვლა და Telegram ტოკენის გაუქმება (BotFather → `/revoke`) + ახალის ჩაწერა `/credentials`-ში.
+  - ✅ `git rm --cached` — dump-ი git-ში ვეღარ track-დება, ლოკალური ფაილი (4.7 MB) დისკზე დარჩა და ignore-დება
+  - ✅ ისტორია გადაიწერა (`git filter-branch`, SEC-06-თან ერთ ნაბიჯში): dump-ი 46-ივე კომიტიდან ამოვიდა, ორი მხოლოდ-dump კომიტი (`Refresh the committed DB dump`, `…after the §10/§11 migrations`) გაქრა → 44 კომიტი; ყოველი ახალი კომიტი ძველს ემთხვევა dump-ის, `.env.example`-ის გასაღებ-ხაზის და ერთ ადგილას Tasks.md-ის გარდა (ავტორები/თარიღები უცვლელი). `git push --force-with-lease` (`f730e0d` → `42350d0`) — `origin/main` ახლა ახალ ისტორიაზეა
+  - ✅ `UPDATE users SET remember_token = NULL` (2 ანგარიში) + `sessions` გასუფთავდა (3 სესია) — ყველა ხელახლა შედის
+  - ⚠️ **ძველ მანქანაზე (ან ნებისმიერ ძველ კლონში) `git push` არ გააკეთე** — ძველი ისტორია dump-ითა და გასაღებით თავიდან აიტვირთება. იქ: ლოკალური ცვლილებების შენახვა → `git fetch && git reset --hard origin/main` (ან ახალი კლონი)
+  - ℹ️ ლოკალურ reflog-ში ძველი კომიტები ~90 დღე რჩება (`git reflog expire --expire=now --all && git gc --prune=now` — შეუქცევადი, სურვილისამებრ); GitHub-ზე ძველი კომიტი SHA-ით კეში ვადამდე შეიძლება გაიხსნოს — სრულ purge-ს GitHub Support აკეთებს
+  - ✅ `.gitignore` ყველა `*.sql`/`*.sql.gz`-ს ბლოკავს (dump-ი ხეში სადაც არ უნდა იყოს)
+  - ✅ `setup.sh`/`setup.ps1` dump-ის ნაცვლად `php artisan migrate --seed`-ს იძახის და `mediary:bootstrap-admin`-სა და `/backups`-ზე მიუთითებს; ცარიელ MySQL-ბაზაზე ბოლომდე დადასტურდა (84 ცხრილი, 11 მოდული, 31 ჟანრი; სატესტო ბაზა შემდეგ წაიშალა)
+  - ✅ ამ დადასტურებისას ნაპოვნი და გასწორებული: (a) XAMPP-ის MariaDB-ს `default_storage_engine` MyISAM-ია, ე.ი. ცარიელ ბაზაზე `migrate` პირველსავე ცხრილზე ცვიოდა (`max key length is 1000 bytes`) — `config/database.php`-ში `'engine' => env('DB_ENGINE', 'InnoDB')`; (b) `setup.ps1` Windows PowerShell 5.1-ზე საერთოდ არ პარსირდებოდა (em dash-ის UTF-8 ბაიტები Windows-1252-ში `”`-ად იკითხება) — ფაილი ASCII-ია; (c) `--no-interaction` `--force`-ის გარეშე ბაზის შექმნას თიშავს, ამიტომ სკრიპტები მას არ იყენებენ
+  - ✅ README.md, `backend/.env.example` და CLAUDE.md ახალ წესს აღწერენ
+  - ⏳ ორივე ანგარიშის პაროლის შეცვლა და Telegram ტოკენის როტაცია — მხოლოდ შენ. ⚠️ ტოკენი dump-ში **ღია ტექსტადაც** იყო (`module_user.settings`, 46 სიმბოლო, 4 კომიტებულ ვერსიაში) — ე.ი. `APP_KEY` არ სჭირდებოდა, ისტორიის გადაწერა კი უკვე push-ილ ასლს არ აბრუნებს; იხ. SEC-12
+  - ℹ️ `api.github.com/repos/davitkifshidze/Mediary` ავტორიზაციის გარეშე 404-ს აბრუნებს — repo, სავარაუდოდ, **პრივატულია** (აუდიტი საჯაროს ვარაუდობდა). რისკი ნაკლებია, მაგრამ ისტორია საიდუმლოებს კვლავ ატარებს.
 - **ტიპი:** security
 - **სად:** `backend/mediary_backup.sql:2990` (users), `:2585` (sessions), `:1762` (messages), `:2944` (user_credentials); remote `origin/main`-ზეც
 - **პრობლემა:** `INSERT INTO \`users\`` სტრიქონი ორი რეალური ანგარიშის ელფოსტას, bcrypt-ჰეშს და 60-სიმბოლოიან `remember_token`-ს შეიცავს; `sessions`-ში დღევანდელი სესიის id-ა (`last_activity` 1789589889), `messages`-ში პირადი მიმოწერა, `user_credentials`-ში დაშიფრული Telegram ტოკენი. ფაილი 7 კომიტში განახლდა და `git ls-tree origin/main` ადასტურებს, რომ GitHub-ზეა (`README.md:26` საჯარო repo-ს ასახელებს).
 - **რატომ:** `remember_token` ავთენტიფიკაციის credential-ია — `remember_web_*` ქუქის შეთხზვით სუპერ-ადმინად შესვლა პაროლის გარეშე შეიძლება; სესიის id ვადის ამოწურვამდე hijack-ისთვის გამოსადეგია; ჰეშები offline brute-force-ისთვის; ელფოსტები და მიმოწერა პერსონალური მონაცემია.
 - **გადაწყვეტა:** `/backend/mediary_backup.sql` `.gitignore`-ში; ისტორიიდან ამოღება (`git filter-repo --path backend/mediary_backup.sql --invert-paths` + force-push); ორივე მომხმარებლის პაროლის შეცვლა, `UPDATE users SET remember_token = NULL`, `sessions` ცხრილის გასუფთავება, Telegram ტოკენის როტაცია; `README.md:94`/`setup.sh` და `backup.ps1` ისე გადაკეთდეს, რომ კომიტებული dump საერთოდ არ იყოს (იხ. FEAT-02).
 - **Acceptance criteria:**
-  - [ ] `git ls-files | grep mediary_backup.sql` ცარიელს აბრუნებს ყველა ბრენჩზე და ისტორიაში
-  - [ ] ორივე ანგარიშის პაროლი შეცვლილია, `remember_token`-ები `NULL`-ია, `sessions` ცარიელია
+  - [x] `git ls-files | grep mediary_backup.sql` ცარიელს აბრუნებს ყველა ბრენჩზე და ისტორიაში (`git log --all -- backend/mediary_backup.sql` → 0)
+  - [ ] ორივე ანგარიშის პაროლი შეცვლილია, `remember_token`-ები `NULL`-ია, `sessions` ცარიელია — ✅ ტოკენები `NULL`, ✅ `sessions` ცარიელი; ⏳ პაროლები (შენ)
   - [ ] Telegram ტოკენი გადახალისებულია და ძველი Telegram-ის მხრიდან გაუქმებულია
-  - [ ] `setup.sh`/`setup.ps1` dump-ის ნაცვლად `migrate --seed`-ს ან ანონიმურ seed-ს იყენებს
+  - [x] `setup.sh`/`setup.ps1` dump-ის ნაცვლად `migrate --seed`-ს ან ანონიმურ seed-ს იყენებს
 - **Estimate:** M
 - **დამოკიდებულება:** none
 
 ### [SEC-02] `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `Role::exceedsAdmin()` + `AdminUserController::outranks()`: ახალი `role_id`, რომელიც `super_admin`-ია ან ისეთ `admin:<resource>`-ს აძლევს, რაც მოქმედს არ აქვს → **403 `role_escalation`**; `super_admin` ყველაფერს გადის. ⚠️ ჯერ ესკალაცია, მერე „საკუთარი" — ე.ი. საკუთარ თავს `super_admin`-ად მინიჭება 403-ია (acceptance-ის მოთხოვნა), სხვა საკუთარ როლზე გადასვლა კი **422 `cannot_change_own_role`** (`super_admin`-ზეც; იგივე მნიშვნელობის გამოგზავნა ცვლილება არაა)
+  - ✅ **დამატებით, იმავე ხვრელის მეორე კარი:** მაღლა მდგომ ანგარიშს (მაგ. `super_admin`-ს) `admin:users`-ის მქონე ვეღარ ათიშავს, ვეღარ უცვლის კვოტას/მოდულებს და ვეღარ **შლის** (`DELETE` მთელ ბიბლიოთეკას შლიდა) — `update`/`syncModules`/`destroy`, 403 `role_escalation`
+  - ⚠️ **გადაწყვეტილება, რომელიც აუდიტის ფორმულირებიდან განსხვავდება:** „უფლებებით აღემატება" მხოლოდ **ადმინ-ძალაუფლებას** ადარებს (`super_admin` + `admin:*`), მოდულების CRUD-ს — არა. მოდულის უფლება მხოლოდ საკუთარ ბიბლიოთეკაზე მოქმედებს, და მისი დათვლა `admin:users`-ის მქონეს (მოდულების უფლების გარეშე) ჩვეულებრივ `user` როლის მინიჭებას და ჩვეულებრივ მომხმარებლების მართვას აკრძალავდა — ფიქსი სექციას გამოუსადეგარს გახდიდა
+  - ✅ `User::effectiveRole()` — „როლის გარეშე → `user`" ფოლბექი სამ ადგილას იწერებოდა; ახლა ერთია, და შედარება ზუსტად იმ როლს ადარებს, რასაც `hasPermission()` ამოწმებს
+  - ✅ `RoleApiTest`-ში 6 ახალი ტესტი (საკუთარი დაწინაურება · სხვის დაწინაურება · `admin:audit`-ის მიცემა vs ჩვეულებრივ `user` როლი · საკუთარი როლი · სუპერ-ადმინის გათიშვა/მოდულები/წაშლა · ჩვეულებრივი მართვა კვლავ მუშაობს). **მუტაციის შემოწმება:** დაცვის დროებით გამორთვაზე 4 ტესტი წითლდება
+  - ✅ SPA: `role_escalation`/`cannot_change_own_role` `CODES`-შია და ორივე ლოკალში; `UserPage`-ზე საკუთარი როლის ველი გათიშულია (+ ახსნა), `super_admin` როლი სიაში მხოლოდ `super_admin`-ს ჩანს — მოხერხებულობა, დაცვა სერვერშია
+  - ✅ backend 696/696 (6 ახალი), `npm run build`, oxlint და Pint მწვანეა; ყველა `CODES` ორივე ლოკალშია, ლოკალებს შორის დრიფტი 0 (Node-ით — Python ამ მანქანაზე არ არის, `audit.py` არ ეშვება)
+  - ℹ️ frontend Vitest: 118–119/125 — `NoteReminders.test.ts`-ის 6–7 ტესტი სრულ რანში ცვივა, **SEC-02-ის ცვლილებების stash-ის შემდეგაც** (ე.ი. უწინდელია), ცალკე კი 7/7 გადის → ჩაიწერა DEBT-12-ად
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/Admin/AdminUserController.php:149`, `:164-173`; როუტი `backend/routes/api.php:875-879`
 - **პრობლემა:** `PATCH /admin/users/{user}` `admin_access:users`-ის უკანაა (არა `super_admin`). ვალიდაცია `'role_id' => ['sometimes','integer', Rule::exists('roles','id')]`-ია, `wouldOrphanAdmins()` კი მხოლოდ *ჩამოქვეითებას* იცავს — *დაწინაურებას* არაფერი. `$user->forceFill($data)->save()` ნებისმიერ `role_id`-ს იღებს, საკუთარ ანგარიშზეც.
 - **რატომ:** `admin:users` უფლების მქონე ერთ მოთხოვნით (`role_id = <super_admin>`) იღებს `/admin/purge`-ს (სხვისი ბიბლიოთეკის წაშლა), `/admin/backups`-ს (მთელი ბაზა ჰეშებით და ჩატით) და orphan-cleanup-ს.
 - **გადაწყვეტა:** `update()`-ში: თუ `role_id` ისეთ როლზე მიუთითებს, რომელიც `isSuperAdmin()`-ია ან უფლებებით მოქმედს აღემატება — 403 `role_escalation`, გარდა იმ შემთხვევისა, თუ მოქმედი თვითონ `super_admin`-ია; საკუთარი `role_id`-ს შეცვლა ყოველთვის 422 `cannot_change_own_role`.
 - **Acceptance criteria:**
-  - [ ] `admin:users` როლით `PATCH /admin/users/{self}` `role_id=super_admin` 403-ს აბრუნებს
-  - [ ] `admin:users` როლით სხვა მომხმარებლის `super_admin`-ად დაწინაურება 403-ია; `super_admin`-ს კვლავ შეუძლია
-  - [ ] ორივე შემთხვევა `RoleApiTest`/`OwnershipTest`-ში ტესტითაა დაცული
+  - [x] `admin:users` როლით `PATCH /admin/users/{self}` `role_id=super_admin` 403-ს აბრუნებს
+  - [x] `admin:users` როლით სხვა მომხმარებლის `super_admin`-ად დაწინაურება 403-ია; `super_admin`-ს კვლავ შეუძლია
+  - [x] ორივე შემთხვევა `RoleApiTest`/`OwnershipTest`-ში ტესტითაა დაცული
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
@@ -141,13 +167,18 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-06] ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც)
+- **სტატუსი:** 🟡 ნაწილობრივ შესრულებულია (2026-09-17, SEC-01-თან ერთად, შენი ნებართვით) — რჩება **მხოლოდ შენი ქმედება**: themoviedb.org-ზე ძველი გასაღების გაუქმება/ახალის აღება და ახალის ჩაწერა `backend/.env`-ში (ან `/credentials`-ში). ⚠️ ამდე ძველი გასაღებს `backend/.env`-ში **ნუ წაშლე** — აპი TMDB-ს მასზე ეყრდნობა.
+  - ✅ `backend/.env.example`: `TMDB_API_KEY=` ცარიელია + კომენტარი, რომ ამ ფაილში რეალური გასაღები არასდროს ჩაიწეროს
+  - ✅ ისტორია: გასაღები 46-ივე კომიტის `.env.example`-იდან და აუდიტის კომიტის Tasks.md-იდან ამოვიდა (იგივე `filter-branch` + force-push, რაც SEC-01-ში); სრული გასაღებიც და მისი 8-სიმბოლოიანი პრეფიქსიც `git grep`-ით 0 blob-ში
+  - ✅ ამ ფაილიდანაც ამოიღოს (აუდიტის ტექსტი მას სრულად შეიცავდა)
+  - ℹ️ ისტორიის დანარჩენი ნაწილი სხვა საიდუმლოებზეც მოწმდა (Google `AIza…`, Telegram ტოკენის ფორმატი, bcrypt, `*_API_KEY=`, `APP_KEY=base64:`, `remember_token`) — dump-ის გარეთ არაფერი
 - **ტიპი:** security
 - **სად:** `backend/.env.example:76`
-- **პრობლემა:** `TMDB_API_KEY=` — ის იგივე მნიშვნელობაა, რაც `backend/.env`-ში (grep-ით დადასტურდა), ისტორიაშია `92e4872`-დან და `origin/main:backend/.env.example:74`-ზეც არის. ყველა სხვა გასაღები ფაილში სწორად ცარიელია.
+- **პრობლემა:** `TMDB_API_KEY=<32 hex სიმბოლო; 2026-09-17-ს ამ ფაილიდანაც ამოიღოს>` — ის იგივე მნიშვნელობაა, რაც `backend/.env`-ში (grep-ით დადასტურდა), ისტორიაშია `92e4872`-დან და `origin/main:backend/.env.example:74`-ზეც არის. ყველა სხვა გასაღები ფაილში სწორად ცარიელია.
 - **რატომ:** საჯარო repo-ში გასაღები ანგარიშს ეკუთვნის: სხვისი მოხმარება მის rate-limit-ს ხარჯავს და TMDB-ს ToS-ს არღვევს; `.env.example` არის ის ფაილი, რომელსაც `setup.sh` `.env`-ად კოპირებს.
 - **გადაწყვეტა:** მნიშვნელობა ცარიელი დარჩეს (`TMDB_API_KEY=`), გასაღები themoviedb.org-ზე გადახალისდეს, ისტორიიდან SEC-01-თან ერთად ამოიღოს.
 - **Acceptance criteria:**
-  - [ ] `grep -rn "<redacted>" $(git ls-files)` არაფერს აბრუნებს, ისტორიის ჩათვლით
+  - [x] ძველი გასაღები (`backend/.env`-ის მნიშვნელობა როტაციამდე) `git grep -F "<გასაღები>" $(git rev-list --all)`-ით არსად არ ჩანს — ⚠️ გასაღები ამ ფაილში არ იწერება
   - [ ] TMDB-ზე ძველი გასაღები გაუქმებულია, ახალი მხოლოდ `backend/.env`-შია
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-01
@@ -163,6 +194,19 @@
   - [ ] `GalleryAlbumTest`-ში ორივე ტესტი
 - **Estimate:** S
 - **დამოკიდებულება:** none
+
+### [SEC-12] Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს
+- **ტიპი:** security
+- **სად:** `backend/app/Http/Controllers/Api/ModuleController.php:46` (`user_settings` = pivot-ის მთელი JSON, ფილტრის გარეშე); `backend/app/Http/Resources/ModuleResource.php:37`; `backend/database/migrations/2026_09_15_000003_move_telegram_into_credentials.php` (ძველი გასაღებები „განზრახ" რჩება); fallback `backend/app/Services/Notes/NoteChannelSettings.php:49-50`
+- **პრობლემა:** §21.9-ის მიგრაციამ ტოკენი `user_credentials`-ში დაშიფრულად **დააკოპირა**, `telegram_bot_token`/`telegram_chat_id` კი pivot-ში დატოვა. `ModuleController::index()` pivot-ის settings-ს ყოველ მოდულზე `user_settings`-ად აბრუნებს, ე.ი. `note` მოდულის ყოველ სიაში ტოკენი ღიად ბრაუზერს ეგზავნება — ზუსტად ის, რის გამოც §21.9 გაკეთდა. იგივე ღია ტოკენი ყოველ dump-ში (`mediary_backup.sql`, 4 კომიტებული ვერსია) და `/backups`-ის ყოველ ფაილში ხვდება. SEC-01-ის შესრულებისას დადასტურდა: მნიშვნელობის სიგრძე 46 (მნიშვნელობა არ დაიბეჭდა).
+- **რატომ:** ტოკენი ბოტზე სრულ წვდომას იძლევა; `user_credentials`-ის ნიღაბი და „ნახვა ცხადი მოქმედებაა" დაპირება pivot-ის ღია ასლის გამო არაფერს ნიშნავს.
+- **გადაწყვეტა:** მიგრაცია, რომელიც ორ გასაღებს `module_user.settings`-იდან **მხოლოდ** იმ რიგებზე ამოჭრის, სადაც `user_credentials`-ში telegram-ის ჩანაწერი უკვე არსებობს (დანარჩენი JSON — ველები, გალერეა, `status_sections` — უცვლელი); `ModuleController::index()`-ში ეს ორი გასაღები თავდაცვითადაც ამოიჭრას; `NoteChannelSettings`-ის fallback-ი ძველი dump-ის აღდგენისთვის დარჩეს ან ავტომატურ გადატანით ჩანაცვლდეს.
+- **Acceptance criteria:**
+  - [ ] `GET /api/modules`-ის პასუხში `telegram_bot_token` არ ჩანს (ტესტი)
+  - [ ] მიგრაციის შემდეგ `module_user.settings`-ში ტოკენი არ არის, დანარჩენი გასაღებები უცვლელია (ტესტი)
+  - [ ] Telegram-ის შეხსენება `user_credentials`-იდან კვლავ მიდის
+- **Estimate:** S
+- **დამოკიდებულება:** none (ძველი ტოკენის როტაცია SEC-01-შია)
 
 ### [BUG-01] დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც
 - **ტიპი:** bug
@@ -521,6 +565,18 @@
 - **გადაწყვეტა:** ტესტი: ერთი due შეხსენება, `run()` ორჯერ (მოდელის ერთი snapshot-ით), ზუსტად ერთი `NoteNotification`.
 - **Acceptance criteria:**
   - [ ] ტესტი წერია და მწვანეა; claim-ის შეცვლა (`where('next_at')`-ის ამოღება) მას აწითლებს
+- **Estimate:** S
+- **დამოკიდებულება:** none
+
+### [DEBT-12] `NoteReminders.test.ts` სრულ `npm test`-ში 5-წამიან ტაიმაუტზე ცვივა (ცალკე გადის) — CI-ს flaky-ს ხდის
+- **ტიპი:** debt
+- **სად:** `frontend/src/components/NoteReminders.test.ts` (პირველი ტესტი „რიგზე დაჭერა რედაქტირებას ხსნის…"); სტატიკური იმპორტები `frontend/src/components/NoteReminders.tsx:22-23` (`TimePicker` — react-aria, `DatePicker` — react-day-picker); `frontend/vitest.config.ts` (`testTimeout` არ არის); CI `.github/workflows/ci.yml:93` (`npm test`)
+- **პრობლემა:** SEC-02-ის შემოწმებისას (2026-09-17) სრულ `npm test`-ში 6–7 ტესტი ცვივა: პირველი `Test timed out in 5000ms` (~5.1 წმ), დანარჩენი ჯაჭვურად (`expected '' to contain …`, `Cannot read properties of undefined (reading 'click')`). `npx vitest run src/components/NoteReminders.test.ts` ცალკე 7/7 გადის. **უწინდელია**: SEC-02-ის 4 frontend-ფაილის stash-ის შემდეგაც ზუსტად ისევ ცვივა. სავარაუდო მიზეზი — 19 jsdom გარემოს პარალელური შექმნის (`environment 87%`) დროს მძიმე picker-ების იმპორტი პირველ ტესტის 5 წამზე ჭრის. **დასადასტურებელი:** ტესტის ხანგრძლივობა ბოლო მწვანე CI-რანზე.
+- **რატომ:** CI-ს `npm test` ლოგიკური ცვლილების გარეშე წითლდება — ნამდვილი რეგრესია flaky ხმაურში დაიმალება, და ჩვეულებრივ „შეიძლება ისევ ტაიმაუტია"-ს ვარაუდით გადაიტანენ.
+- **გადაწყვეტა:** ფაილის `beforeAll`-ში picker-ების მოდულების წინასწარ `await import()` (warm-up, ტაიმაუტის გარეთ) ან ფაილზე `vi.setConfig({ testTimeout: 20_000 })`; სასურველია `vitest.config.ts`-ში jsdom-ის ერთხელ შექმნა (`pool: 'vmThreads'`), რასაც Vitest-ი თვითონ ურჩევს.
+- **Acceptance criteria:**
+  - [ ] სრული `npm test` 3 ზედიზედ რანში 125/125-ია
+  - [ ] ტესტის სემანტიკა უცვლელია (ტაიმაუტის ზრდა მიზეზის კომენტარით)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
