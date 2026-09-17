@@ -8,8 +8,8 @@ use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
 use App\Support\AlbumLock;
-use App\Support\StorageFolder;
 use App\Support\PublicDomain;
+use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -169,6 +169,14 @@ class PublicProfileController extends Controller
      *
      * ⚠️ **throttle როუტზეა** და ანონიმზე **IP + ალბომი** (§7.13): უამისოდ
      * ოთხსიმბოლოიანი პაროლი წუთებში ცვივა.
+     *
+     * ⚠️ **სესიის გარეშე პაროლი საერთოდ არ იცდება** (Tasks BUG-02, 409
+     * `session_required`) და ეს ორ სხვადასხვა ხვრელს ხურავს ერთდროულად:
+     * (ა) არა-stateful კლიენტს პასუხი `unlocked: true`-ს ეუბნებოდა, ალბომი
+     * კი ჩაკეტილი რჩებოდა — ე.ი. სწორ პაროლს უხმაურო ჩავარდნა მოჰყვებოდა;
+     * (ბ) რაკი შედეგის შესანახი არაფერი იყო, endpoint სუფთა **stateless
+     * ორაკულად** გამოდგებოდა — ქუქის გარეშე, მხოლოდ „სწორია/არა", რასაც
+     * IP-ის როტაცია throttle-საც არიდებს. ახლა ცდას სესია სჭირდება.
      */
     public function unlockAlbum(Request $request, string $username, int $album)
     {
@@ -190,6 +198,11 @@ class PublicProfileController extends Controller
                 && in_array('gallery_album', $this->profiles->domains($user), true),
             404,
         );
+
+        /* ⚠️ **ვალიდაციაზე და `Hash::check`-ზე ადრე.** გახსნილობა სესიაში
+           იწერება, ე.ი. სესიის გარეშე ცდას შედეგი არ აქვს — შემოწმება კი
+           მაინც პასუხობდა „სწორია თუ არა". */
+        abort_unless(AlbumLock::hasSession(), 409, 'session_required');
 
         $data = $request->validate([
             'password' => ['required', 'string', 'max:100'],

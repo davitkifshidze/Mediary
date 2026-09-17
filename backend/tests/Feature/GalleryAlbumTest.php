@@ -490,6 +490,25 @@ class GalleryAlbumTest extends TestCase
     }
 
     /**
+     * **სესიის გარეშე გახსნა 409-ია და არა ჩუმი „კარგი"** (Tasks BUG-02).
+     *
+     * ტოკენით მოსულ კლიენტს `/api`-ზე სესია არ აქვს, გახსნილობა კი სწორედ
+     * იქ იწერება — ე.ი. `AlbumLock::unlock()` უხმაუროდ არაფერს აკეთებდა და
+     * **სწორი პაროლი 200-ს აბრუნებდა ჩაკეტილ ალბომზე**. მფლობელობა აქ უკვე
+     * შემოწმებულია (ორაკულის საკითხი არ დგას), დაფარული ჩავარდნა კი იგივეა.
+     */
+    public function test_unlocking_without_a_session_says_so(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum('secret1');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/gallery/albums/'.$album->id.'/unlock', ['password' => 'secret1'])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'session_required');
+    }
+
+    /**
      * გახსნილი სესია ფოტოებს ისევ ხედავს.
      *
      * ⚠️ სესია ტესტებში `array` დრაივერზეა, ე.ი. მოთხოვნებს შორის არ

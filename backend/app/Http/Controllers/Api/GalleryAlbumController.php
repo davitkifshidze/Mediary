@@ -159,9 +159,18 @@ class GalleryAlbumController extends Controller
      *
      * ⚠️ **throttle როუტზეა** (`throttle:album-unlock`) — უამისოდ ოთხნიშნა
      * პაროლს სკრიპტი წუთებში გატეხდა.
+     *
+     * ⚠️ **სესიის გარეშე 409 `session_required`** (Tasks BUG-02) — ტოკენით
+     * მოსულ კლიენტს `/api`-ზე სესია არ აქვს, `AlbumLock::unlock()` კი მას
+     * უხმაუროდ იგდებდა: სწორი პაროლი 200-ს აბრუნებდა და ალბომი ჩაკეტილი
+     * რჩებოდა. აქ ორაკულის საკითხი არ დგას (მფლობელობა უკვე შემოწმებულია),
+     * ჩუმი ჩავარდნა კი იგივეა — და ერთი წესი ორივე კარზე უფრო იოლი
+     * დასამახსოვრებელია, ვიდრე ორი სხვადასხვა ქცევა.
      */
     public function unlock(Request $request, GalleryAlbum $galleryAlbum)
     {
+        abort_unless(AlbumLock::hasSession(), 409, 'session_required');
+
         $data = $request->validate([
             'password' => ['required', 'string', 'max:100'],
         ]);

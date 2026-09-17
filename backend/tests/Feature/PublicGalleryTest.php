@@ -83,6 +83,34 @@ class PublicGalleryTest extends TestCase
         ]);
     }
 
+    private function lockedPublicAlbum(string $password = 'secret1'): GalleryAlbum
+    {
+        $album = GalleryAlbum::create([
+            'user_id' => $this->alice->id,
+            'name' => 'ჩაკეტილი',
+            'sort_order' => 1,
+            'visibility' => 'public',
+            'password_hash' => Hash::make($password),
+        ]);
+
+        // სტატიკური მემო ერთ პროცესში ცოცხლობს — ახალი ლოკი უნდა დაინახოს
+        AlbumLock::flush();
+
+        return $album;
+    }
+
+    /**
+     * **stateful ანონიმური მნახველი** — ე.ი. ბრაუზერი, და არა სკრიპტი.
+     *
+     * ⚠️ `/api`-ს სესია მხოლოდ stateful წყაროდან აქვს (Sanctum-ის cookie
+     * რეჟიმი), ჩაკეტილი ალბომის „გახსნილობა" კი სწორედ სესიაშია — ამიტომ
+     * უბრალო `postJson()` ახლა 409-ია (BUG-02) და გახსნას `Referer` სჭირდება.
+     */
+    private function spa(): self
+    {
+        return $this->withHeaders(['Referer' => 'http://localhost:5173']);
+    }
+
     /** ფოტო მშობლის ხილვადობას იმემკვიდრებს — არც მეტს, არც ნაკლებს */
     public function test_only_photos_of_public_records_are_shown(): void
     {
@@ -150,18 +178,65 @@ class PublicGalleryTest extends TestCase
     /** არასწორი პაროლი — 422, და ბილიკი ისევ არ გამოდის */
     public function test_the_public_unlock_needs_the_right_password(): void
     {
-        $album = GalleryAlbum::create([
-            'user_id' => $this->alice->id,
-            'name' => 'ჩაკეტილი',
-            'sort_order' => 1,
-            'visibility' => 'public',
-            'password_hash' => Hash::make('secret1'),
-        ]);
-        AlbumLock::flush();
+        $album = $this->lockedPublicAlbum();
 
-        $this->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'wrong'])
+        $this->spa()
+            ->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'wrong'])
             ->assertStatus(422)
             ->assertJsonPath('message', 'album_password_wrong');
+    }
+
+    /**
+     * **სწორი პაროლი ხსნის და ფოტოც მაშინვე გამოდის** (Tasks BUG-02).
+     *
+     * ⚠️ ერთ ტესტში ორი მოთხოვნაა განზრახ: „გავხსენი" მხოლოდ მაშინ ნიშნავს
+     * რამეს, თუ მომდევნო კითხვა ნამდვილ `path`-ს აბრუნებს. სესია ტესტებში
+     * `array` დრაივერზეა, მაგრამ ერთი ტესტის შიგნით ინახება — `spa()`-ის
+     * `Referer` კი ყველა შემდეგ მოთხოვნას stateful-ად ტოვებს.
+     */
+    public function test_the_public_unlock_opens_the_album(): void
+    {
+        $album = $this->lockedPublicAlbum();
+        $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
+
+        $spa = $this->spa();
+
+        $spa->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertOk()
+            ->assertJsonPath('unlocked', true);
+
+        $photos = $spa->getJson('/api/public/profiles/alice/gallery-photos')
+            ->assertOk()
+            ->assertJsonPath('data.0.locked', false);
+
+        // სწორედ ეს იყო გატეხილი: „გავხსენი" მოდიოდა, რიგი კი გაშიშვლებული რჩებოდა
+        $this->assertArrayHasKey('path', $photos->json('data.0'));
+    }
+
+    /**
+     * **სესიის გარეშე პაროლი საერთოდ არ იცდება** (Tasks BUG-02).
+     *
+     * ⚠️ ორი სხვადასხვა ხვრელია და ორივეს ეს ერთი მცველი ხურავს: პასუხი
+     * `unlocked: true`-ს ამბობდა, ალბომი კი ჩაკეტილი რჩებოდა (შედეგის
+     * შესანახი სესია არ არსებობდა), და სწორედ იმიტომ, რომ შესანახი
+     * არაფერი იყო, endpoint ქუქის გარეშე მომუშავე **პაროლის ორაკულად**
+     * გამოდგებოდა — IP-ის როტაცია მის ერთადერთ დაცვას (throttle) არიდებს.
+     *
+     * ⚠️ `Hash::check`-ის არგაშვება ტესტდება და არა მხოლოდ სტატუსი:
+     * 409-ის დაბრუნება პაროლის შემოწმების **შემდეგ** იმავე ორაკულს
+     * დატოვებდა — უბრალოდ სხვა კოდით.
+     */
+    public function test_the_public_unlock_without_a_session_never_checks_the_password(): void
+    {
+        $album = $this->lockedPublicAlbum();
+
+        Hash::spy();
+
+        $this->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'session_required');
+
+        Hash::shouldNotHaveReceived('check');
     }
 
     /**

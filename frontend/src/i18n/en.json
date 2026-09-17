@@ -967,6 +967,7 @@
     "album_locked": "The album is locked — enter its password first.",
     "album_password_wrong": "Wrong password.",
     "account_password_wrong": "The account password is wrong.",
+    "session_required": "Unlocking needs a browser session — reload the page and try again.",
     "no_tags_given": "Name at least one tag.",
     "scope_required": "Pick which records this applies to.",
     "pin_limit_reached": "The pin limit is reached — unpin one first.",
