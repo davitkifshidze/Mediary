@@ -247,24 +247,34 @@ export function UserPage() {
         <h2 className="mb-4 font-display text-lg font-semibold tracking-tight">{t('admin.permissions')}</h2>
 
         <div className="flex flex-wrap items-end gap-6">
-          {/* Tasks 1.6 — როლი სიიდან აირჩევა; უფლებები `/roles`-ზე იმართება */}
+          {/* Tasks 1.6 — როლი სიიდან აირჩევა; უფლებები `/roles`-ზე იმართება.
+              ⚠️ SEC-02 — საკუთარ როლს სერვერი 422-ით არ ცვლის, და `super_admin`
+              მხოლოდ `super_admin`-ს ჩანს (ამჟამინდელ მნიშვნელობის გარდა, თორემ
+              ველი ცარიელად დაიხატებოდა). ⚠️ **ეს მოხერხებულობაა, არა დაცვა** —
+              სერვერი `role_escalation`-ით ამ ორის გარდა ყველაფერს ამოწმებს. */}
           <div className="min-w-52">
             <Label>{t('admin.colRole')}</Label>
             <Select
               value={user.role_id ? String(user.role_id) : ''}
               onValueChange={(v) => patch.mutate({ role_id: Number(v) })}
+              disabled={user.id === me?.id || patch.isPending}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {roles.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>
-                    {i18n.language === 'ka' ? r.name_ka : r.name_en}
-                  </SelectItem>
-                ))}
+                {roles
+                  .filter((r) => r.key !== 'super_admin' || me?.is_super_admin || r.id === user.role_id)
+                  .map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {i18n.language === 'ka' ? r.name_ka : r.name_en}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
+            {user.id === me?.id && (
+              <p className="mt-1 text-xs text-muted-foreground">{t('admin.ownRoleLocked')}</p>
+            )}
           </div>
 
           <label className="flex h-10 cursor-pointer items-center gap-2 text-sm">

@@ -143,6 +143,20 @@ class User extends Authenticatable
     }
 
     /**
+     * **ფაქტობრივად მოქმედი როლი.** როლის გარეშე დარჩენილი (ძველი რიგი)
+     * ჩვეულებრივი მომხმარებლის (`user`) უფლებებით ცხოვრობს.
+     *
+     * ⚠️ ერთ ადგილას, რადგან ეს ფოლბექი სამ მეთოდში იწერებოდა — და SEC-02-ის
+     * „აღემატება თუ არა" შედარება **ზუსტად იმავე** როლს უნდა ადარებდეს, რასაც
+     * `hasPermission()` ამოწმებს, თორემ ორი პასუხი ერთ კითხვაზე შეიძლება
+     * განსხვავდეს.
+     */
+    public function effectiveRole(): ?Role
+    {
+        return $this->role ?? Role::where('key', 'user')->first();
+    }
+
+    /**
      * მოდულის შიდა უფლება (Tasks 1.6 / 19.8) — `view` · `create` · `update` · `delete`.
      * ⚠️ ეს **მოდულზე წვდომას არ ამოწმებს** — ის `hasModule()`-ია. ორივე სჭირდება:
      * წვდომა → მოდული ჩართულია თუ არა, უფლება → ჩართულის შიგნით რა შეუძლია.
@@ -153,10 +167,7 @@ class User extends Authenticatable
             return true;
         }
 
-        // როლის გარეშე დარჩენილი (ძველი რიგი) — ჩვეულებრივი მომხმარებლის უფლებებით
-        $role = $this->role ?? Role::where('key', 'user')->first();
-
-        return (bool) $role?->allows($module, $action);
+        return (bool) $this->effectiveRole()?->allows($module, $action);
     }
 
     /**
@@ -171,9 +182,7 @@ class User extends Authenticatable
             return true;
         }
 
-        $role = $this->role ?? Role::where('key', 'user')->first();
-
-        return (bool) $role?->allowsAdmin($resource, $action);
+        return (bool) $this->effectiveRole()?->allowsAdmin($resource, $action);
     }
 
     /** რომელ ადმინის სექციებს ხედავს — საიდბარისა და `/auth/me`-სთვის */
@@ -183,9 +192,7 @@ class User extends Authenticatable
             return Role::ADMIN_RESOURCES;
         }
 
-        $role = $this->role ?? Role::where('key', 'user')->first();
-
-        return $role?->adminResources() ?? [];
+        return $this->effectiveRole()?->adminResources() ?? [];
     }
 
     /**

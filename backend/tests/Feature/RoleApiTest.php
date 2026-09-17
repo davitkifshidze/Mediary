@@ -114,6 +114,177 @@ class RoleApiTest extends TestCase
     }
 
     /**
+     * SEC-02 — `admin:users`-ის (ნახვა · რედაქტირება · წაშლა) მქონე, ოღონდ
+     * `super_admin` არა. ⚠️ მოდულების უფლება მას განზრახ **არ** აქვს:
+     * ტესტები ისიც ამოწმებენ, რომ ჩვეულებრივ მომხმარებლებს (ყველა მოდულზე
+     * CRUD-ით) მაინც მართავს.
+     */
+    private function usersAdmin(): User
+    {
+        $role = Role::create([
+            'key' => 'users-admin',
+            'name_ka' => 'მომხმარებლების ადმინი',
+            'name_en' => 'Users admin',
+            'permissions' => ['admin:users' => ['view', 'update', 'delete']],
+        ]);
+
+        $user = User::factory()->create();
+        $user->forceFill(['role_id' => $role->id])->save();
+
+        return $user;
+    }
+
+    private function superAdminRoleId(): int
+    {
+        return (int) Role::where('key', 'super_admin')->value('id');
+    }
+
+    /**
+     * ⚠️ **SEC-02 (Critical, 2026-09-17).** `PATCH /admin/users/{self}`
+     * `role_id = super_admin`-ით ერთ მოთხოვნაში `/admin/purge`-ს და
+     * `/admin/backups`-ს აძლევდა. ⚠️ პასუხი **403 `role_escalation`**-ია და
+     * **არა** 422 `cannot_change_own_role` — ესკალაცია ჯერ მოწმდება.
+     */
+    public function test_a_users_admin_cannot_make_themselves_super_admin(): void
+    {
+        $actor = $this->usersAdmin();
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$actor->id}", ['role_id' => $this->superAdminRoleId()])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertFalse($actor->refresh()->isSuperAdmin());
+    }
+
+    /** SEC-02 — სხვის დაწინაურება `super_admin`-ად: მხოლოდ `super_admin`-ს შეუძლია */
+    public function test_only_a_super_admin_can_promote_someone_to_super_admin(): void
+    {
+        $target = User::factory()->create();
+
+        $this->actingAs($this->usersAdmin())
+            ->patchJson("/api/admin/users/{$target->id}", ['role_id' => $this->superAdminRoleId()])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertFalse($target->refresh()->isSuperAdmin());
+
+        $this->actingAs($this->admin)
+            ->patchJson("/api/admin/users/{$target->id}", ['role_id' => $this->superAdminRoleId()])
+            ->assertOk();
+
+        $this->assertTrue($target->refresh()->isSuperAdmin());
+    }
+
+    /**
+     * SEC-02 — ⚠️ ესკალაცია `super_admin`-ით არ ამოიწურება: `admin:audit`-ის
+     * მიცემა `admin:users`-ის მქონეს ისეთ ძალაუფლებას მისცემდა, რაც
+     * თვითონ **არ** აქვს. ⚠️ მოდულების CRUD-ი კი ითვლება **არ** — `user`
+     * როლს ყველა მოდულზე CRUD აქვს და მისი მინიჭება ჩვეულებრივ საქმეა.
+     */
+    public function test_a_users_admin_cannot_hand_out_admin_power_they_lack(): void
+    {
+        $actor = $this->usersAdmin();
+        $target = User::factory()->create();
+
+        $auditor = Role::create([
+            'key' => 'auditor', 'name_ka' => 'აუდიტორი', 'name_en' => 'Auditor',
+            'permissions' => ['admin:audit' => ['view']],
+        ]);
+        $viewer = Role::create([
+            'key' => 'users-viewer', 'name_ka' => 'ნახვა', 'name_en' => 'Viewer',
+            'permissions' => ['admin:users' => ['view']],
+        ]);
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$target->id}", ['role_id' => $auditor->id])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$target->id}", ['role_id' => $viewer->id])
+            ->assertOk();
+
+        $userRole = Role::where('key', 'user')->firstOrFail();
+        $userRole->forceFill(['permissions' => ['movie' => Role::ACTIONS]])->save();
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$target->id}", ['role_id' => $userRole->id])
+            ->assertOk();
+
+        $this->assertSame($userRole->id, $target->refresh()->role_id);
+    }
+
+    /**
+     * SEC-02 — **საკუთარ როლს არავინ ცვლის, `super_admin`-ც** (422
+     * `cannot_change_own_role`), მაშინაც, როცა მეორე სუპერ-ადმინი არსებობს და
+     * `last_super_admin` არ შეაჩერებდა. იგივე მნიშვნელობის გამოგზავნა ცვლილება არაა.
+     */
+    public function test_nobody_changes_their_own_role(): void
+    {
+        $second = User::factory()->create();
+        $second->assignRole('super_admin')->save();
+
+        $userRoleId = (int) Role::where('key', 'user')->value('id');
+
+        $this->actingAs($this->admin)
+            ->patchJson("/api/admin/users/{$this->admin->id}", ['role_id' => $userRoleId])
+            ->assertUnprocessable()
+            ->assertJson(['message' => 'cannot_change_own_role']);
+
+        $this->assertTrue($this->admin->refresh()->isSuperAdmin());
+
+        $this->actingAs($this->admin)
+            ->patchJson("/api/admin/users/{$this->admin->id}", ['role_id' => $this->superAdminRoleId()])
+            ->assertOk();
+    }
+
+    /**
+     * SEC-02 — ⚠️ **მაღლა მდგომ ანგარიშს არ ეხება**: `admin:users.delete`-ით
+     * სუპერ-ადმინის მთელი ბიბლიოთეკის წაშლა, მისი გათიშვა ან მოდულების
+     * შეცვლა ისეთივე ესკალაციაა, როგორც დაწინაურება.
+     */
+    public function test_a_users_admin_cannot_touch_a_super_admin_account(): void
+    {
+        $actor = $this->usersAdmin();
+        $target = $this->admin;
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$target->id}", ['is_active' => false])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/users/{$target->id}/modules", ['module_keys' => []])
+            ->assertForbidden();
+
+        $this->actingAs($actor)
+            ->deleteJson("/api/admin/users/{$target->id}")
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertTrue($target->refresh()->is_active);
+        $this->assertTrue($target->isSuperAdmin());
+    }
+
+    /** SEC-02 — ⚠️ დაცვა ჩვეულებრივ მართვას **არ** ხურავს */
+    public function test_a_users_admin_still_manages_ordinary_users(): void
+    {
+        $actor = $this->usersAdmin();
+        $target = User::factory()->create();
+
+        $this->actingAs($actor)
+            ->patchJson("/api/admin/users/{$target->id}", ['is_active' => false])
+            ->assertOk();
+
+        $this->assertFalse($target->refresh()->is_active);
+
+        $this->actingAs($actor)
+            ->deleteJson("/api/admin/users/{$target->id}")
+            ->assertNoContent();
+    }
+
+    /**
      * ⚠️ **ნიღბის მოხსნის შემდეგ უფლება მხოლოდ ცხადად ჩაწერილია**: ერთ
      * მოდულზე მიცემული უფლება მეორეზე არ ვრცელდება.
      */

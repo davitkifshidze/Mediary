@@ -161,12 +161,36 @@ class AdminUserController extends Controller
             'profile_visibility' => ['sometimes', Rule::in(PublicDomain::VALUES)],
         ]);
 
+        $actor = $request->user();
+
+        // SEC-02 — საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
+        if ($this->outranks($user->effectiveRole(), $actor)) {
+            return response()->json(['message' => 'role_escalation'], 403);
+        }
+
+        if (array_key_exists('role_id', $data)) {
+            /* ⚠️ SEC-02 — **ჯერ ესკალაცია, მერე „საკუთარი"**: საკუთარ თავს
+               `super_admin`-ად მინიჭება ესკალაციაა (403), და ეს სწორედ ის
+               პასუხია, რომელიც აუდიტის მოთხოვნაა — 422 „საკუთარ როლს ნუ
+               ცვლი" ხვრელის ბუნებას დამალავდა. */
+            if ($this->outranks(Role::find($data['role_id']), $actor)) {
+                return response()->json(['message' => 'role_escalation'], 403);
+            }
+
+            /* ⚠️ საკუთარ როლს **არავინ** ცვლის, `super_admin`-ც: ჩამოქვეითება
+               ჭერს სამუდამოდ ხურავს (უკან აღარ დაიბრუნდება), და ამას მეორე
+               ადმინი უნდა აკეთებდეს. იგივე მნიშვნელობის გამოგზავნა ცვლილება არაა. */
+            if ($user->id === $actor->id && (int) $data['role_id'] !== (int) $user->role_id) {
+                return response()->json(['message' => 'cannot_change_own_role'], 422);
+            }
+        }
+
         // ბოლო super_admin-ის ჩამოქვეითება/გათიშვა აკრძალულია
         if ($this->wouldOrphanAdmins($user, $data)) {
             return response()->json(['message' => 'last_super_admin'], 422);
         }
 
-        if ($user->id === $request->user()->id && array_key_exists('is_active', $data) && ! $data['is_active']) {
+        if ($user->id === $actor->id && array_key_exists('is_active', $data) && ! $data['is_active']) {
             return response()->json(['message' => 'cannot_disable_self'], 422);
         }
 
@@ -182,6 +206,11 @@ class AdminUserController extends Controller
             'module_keys' => ['present', 'array'],
             'module_keys.*' => ['string', 'exists:modules,key'],
         ]);
+
+        // SEC-02 — საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
+        if ($this->outranks($user->effectiveRole(), $request->user())) {
+            return response()->json(['message' => 'role_escalation'], 403);
+        }
 
         /* ⚠️ **`enabled_at` ყოველ შენახვაზე ხელახლა იწერებოდა** (Tasks §4.2):
            `sync($ids)` უკვე მიბმულ რიგზე `updateExistingPivot`-ს იძახებს, ე.ი.
@@ -215,6 +244,11 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'cannot_delete_self'], 422);
         }
 
+        // SEC-02 — `admin:users.delete` სუპერ-ადმინის ბიბლიოთეკას არ შლის
+        if ($this->outranks($user->effectiveRole(), $request->user())) {
+            return response()->json(['message' => 'role_escalation'], 403);
+        }
+
         // წაშლა = ადმინის დაკარგვა; 0 = „აღარაა super_admin"
         if ($this->wouldOrphanAdmins($user, ['role_id' => 0])) {
             return response()->json(['message' => 'last_super_admin'], 422);
@@ -238,6 +272,27 @@ class AdminUserController extends Controller
         $user->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * **SEC-02 — `$role` მოქმედის უფლებებს აღემატება?**
+     *
+     * `admin_access:users` ამბობს „მომხმარებლებს მართავ", მაგრამ **არა** „ნებისმიერ
+     * უფლებას ნებისმიერს აძლევ" — თორემ ერთ `PATCH`-ით (`role_id =
+     * super_admin`) `/admin/purge`-ს და `/admin/backups`-ს იღებდა. ორ ადგილას
+     * მოწმდება: **ახალი** როლი (მინიჭება) და სამიზნის **ამჟამინდელი** როლი
+     * (მაღლა მდგომის რედაქტირება, გათიშვა, წაშლა). `super_admin` ორივეს
+     * გადის; შედარება `Role::exceedsAdmin()`-ია — ⚠️ **მოდულების CRUD-ი
+     * განზრახ არ ითვლება** (მიზეზი იქ წერია).
+     */
+    private function outranks(?Role $role, User $actor): bool
+    {
+        if ($role === null || $actor->isSuperAdmin()) {
+            return false;
+        }
+
+        // როლ-ფოლბექიც არ არსებობს → ცარიელი უფლებები (ყველა ადმინ-როლი მას აღემატება)
+        return $role->exceedsAdmin($actor->effectiveRole() ?? new Role(['permissions' => []]));
     }
 
     /** დარჩება თუ არა სისტემა სუპერ-ადმინის გარეშე (1.6 — როლი ცხრილშია) */

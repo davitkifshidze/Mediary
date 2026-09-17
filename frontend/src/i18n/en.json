@@ -296,7 +296,8 @@
     "moduleColorClear": "Clear colour",
     "moduleHoldersCount": "Enabled for {{count}} of {{total}} users",
     "moduleHoldersOpen": "Open the list",
-    "moduleState": "State"
+    "moduleState": "State",
+    "ownRoleLocked": "Your own role can only be changed by another admin."
   },
   "nav": {
     "movies": "Movies",
@@ -976,7 +977,9 @@
     "row_not_in_backup": "There is no such record in this backup.",
     "table_has_no_primary_key": "This table has no primary key — a single row cannot be restored.",
     "row_key_incomplete": "The key is incomplete.",
-    "safety_backup_failed": "The safety copy failed — nothing was restored."
+    "safety_backup_failed": "The safety copy failed — nothing was restored.",
+    "role_escalation": "You can't manage an account or assign a role with more admin power than your own — a super admin has to do it.",
+    "cannot_change_own_role": "You can't change your own role — another admin has to do it."
   },
   "fields": {
     "title": "Fields",

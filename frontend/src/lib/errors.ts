@@ -77,6 +77,10 @@ const CODES = [
   'mysqldump_unavailable',
   'background_unavailable',
   'invalid_backup_file',
+  /* SEC-02 — ადმინ-ზონის ესკალაცია. ⚠️ **ორი სხვადასხვა ფაქტია**: შენზე
+     მაღლა მდგომ ანგარიშს/როლს ეხები (403) · საკუთარ როლს ცვლი (422). */
+  'role_escalation',
+  'cannot_change_own_role',
 ] as const
 
 /**

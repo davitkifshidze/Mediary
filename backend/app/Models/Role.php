@@ -84,6 +84,51 @@ class Role extends Model
         return in_array($action, (array) $granted, true);
     }
 
+    /**
+     * **SEC-02 — აძლევს თუ არა ეს როლი ისეთ ადმინ-ძალაუფლებას, რაც `$other`-ს არ აქვს?**
+     *
+     * „`admin:users`-ის მქონე" სხვის — და საკუთარ — ანგარიშს როლს უცვლის;
+     * თუ ეს კითხვა არ ჰკითხოს, ერთ `PATCH`-ით `super_admin` ხდება, ე.ი.
+     * `/admin/purge`-ს, `/admin/backups`-ს (მთელი ბაზა ჰეშებით) და
+     * `admin/modules`-ს იღებს — ზუსტად ის, რაც `admin_access`-ის სექციებიდან
+     * განზრახ გარეთ დარჩა.
+     *
+     * ⚠️ **მოდულების CRUD-ი აქ განზრახ არ ითვლება.** მოდულის უფლება მხოლოდ
+     * **საკუთარ** ბიბლიოთეკაზე მოქმედებს (`owner` scope), ე.ი. ვინმესთვის
+     * `movie.delete`-ის მიცემა მიმცემს ახალ ძალაუფლებას არ აძლევს. თუ ის
+     * ითვლებოდა, `admin:users`-ის მქონე (მოდულების უფლებების გარეშე) ვეღარ
+     * მიანიჭებდა ჩვეულებრივ `user` როლს — რომელსაც ყველა მოდულზე CRUD
+     * აქვს — და ვეღარ მართავდა ჩვეულებრივ მომხმარებლებს: ფიქსი სექციას
+     * გამოუსადეგარს გახდიდა. ესკალაცია = `super_admin` და `admin:<resource>`.
+     *
+     * ⚠️ **შედარება `allowsAdmin()`-ითაა**, და არა JSON-ების პირდაპირ
+     * შედარებით — ზუსტად იმ ფუნქციით, რომლითაც `EnsureAdminAccess`
+     * უფლებას ამოწმებს; ცალკე ლოგიკა ერთ დღეს სხვა პასუხს მისცემდა.
+     * `permissions = null` (`allowsAdmin` → true) ამიტომ თავისთავად
+     * „ყველა სექციას" ნიშნავს.
+     */
+    public function exceedsAdmin(Role $other): bool
+    {
+        if ($other->isSuperAdmin()) {
+            return false;
+        }
+
+        // `super_admin` middleware მხოლოდ `key`-ს ცნობს — `null`-როლიც მას ჩამორჩება
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        foreach (self::ADMIN_RESOURCES as $resource) {
+            foreach (self::ACTIONS as $action) {
+                if ($this->allowsAdmin($resource, $action) && ! $other->allowsAdmin($resource, $action)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /** აქვს თუ არა როლს რომელიმე ადმინის სექცია — საიდბარის ბმულებისთვის */
     public function adminResources(): array
     {
