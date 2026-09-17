@@ -82,3 +82,35 @@ describe('errorMessage — GAP-01', () => {
     expect(text).not.toContain('{{')
   })
 })
+
+/* ============================================================
+   პასუხის გარეშე დარჩენილი მოთხოვნა (Tasks GAP-02).
+   ============================================================ */
+
+describe('errorMessage — GAP-02', () => {
+  const noResponse = (code: string) => new AxiosError(code === 'ERR_CANCELED' ? 'canceled' : 'Network Error', code)
+
+  it.each(['ka', 'en'] as const)('translates a network failure in %s', async (lang) => {
+    await i18n.changeLanguage(lang)
+
+    const text = errorMessage(noResponse(AxiosError.ERR_NETWORK))
+
+    expect(text).toBe(LOCALES[lang].network)
+    expect(text).not.toBe('Network Error')
+  })
+
+  /* ⚠️ გაუქმება ქსელის ჩავარდნა **არ არის**: გლობალურ ძებნაში ყოველი აკრეფილი
+     ასო წინა მოთხოვნას წყვეტს, ე.ი. „შეამოწმე ინტერნეტი" ყოველ ასოზე დაიწერებოდა. */
+  it('never calls a cancelled request a network failure', async () => {
+    await i18n.changeLanguage('en')
+
+    expect(errorMessage(noResponse('ERR_CANCELED'))).not.toBe(en.errors.network)
+  })
+
+  it('translates the 419 that survived the retry', async () => {
+    await i18n.changeLanguage('en')
+
+    // ⚠️ backend-ი მანქანურ კოდს აბრუნებს და არა `'CSRF token mismatch.'`-ს
+    expect(errorMessage(apiError(419, { message: 'csrf_token_mismatch' }))).toBe(en.errors.csrf_token_mismatch)
+  })
+})

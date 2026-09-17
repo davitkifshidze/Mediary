@@ -132,6 +132,13 @@ export const CODES = [
   'primary_not_supported_for_cast',
   'too_many_videos',
   'invalid_url',
+  /* GAP-02 — სესიის დასასრული. ⚠️ ორივე `bootstrap/app.php`-შია და არა
+     `backend/app`-ში (Laravel-ის საკუთარი გამონაკლისების გადაბმა) — ე.ი.
+     „ყველა კოდი ⊆ CODES"-ის სკანერი მხოლოდ `app/`-ს ვერ დასჯერდება.
+     ⚠️ `unauthenticated` **419-ზე ხშირია**: ვადაგასული სესიის პირველი
+     მოთხოვნა, როგორც წესი, ფონური poll-ია, ე.ი. GET — CSRF მას არ ეკითხება. */
+  'csrf_token_mismatch',
+  'unauthenticated',
   // წყაროები, თარგმანი, ფონური პარტია
   'no_tmdb_id',
   'no_translation_source',
@@ -168,6 +175,21 @@ export function fieldErrors(e: unknown): Record<string, string> {
  */
 export function errorMessage(e: unknown, fallback: string = i18n.t('toast.error')): string {
   if (!axios.isAxiosError(e)) return e instanceof Error ? e.message : fallback
+
+  /*
+   * **პასუხი საერთოდ არ მოსულა** (Tasks GAP-02) — გათიშული ქსელი, ჩამქრალი
+   * სერვერი, CORS. `e.message` აქ axios-ის ინგლისური „Network Error"-ია და
+   * სიტყვასიტყვით მიდიოდა toast-ში UI-ს ენის მიუხედავად.
+   *
+   * ⚠️ **გაუქმებული მოთხოვნა ქსელის ჩავარდნა არ არის** და აქ ვერ მოხვდება.
+   * `ERR_CANCELED`-საც ცარიელი `response` აქვს, მაგრამ ის მომხმარებლის
+   * ქმედებაა: გლობალურ ძებნაში ყოველი აკრეფილი ასო წინა მოთხოვნას წყვეტს
+   * (`api/search.ts`-ის `signal`), ხოლო რიგში „გაჩერება" ღილაკია — „შეამოწმე
+   * ინტერნეტი" ორივეზე მოტყუება იქნებოდა. `ui/queue.tsx` მას ცალკე უკვე
+   * კითხულობს.
+   */
+  if (!e.response && e.code !== 'ERR_CANCELED') return i18n.t('errors.network')
+
   const data = e.response?.data as
     | { message?: string; errors?: Record<string, string[]>; [k: string]: unknown }
     | undefined

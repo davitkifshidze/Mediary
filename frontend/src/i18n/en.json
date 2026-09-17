@@ -1019,7 +1019,10 @@
     "not_the_author": "Only the author of the message can do this.",
     "invalid_status": "This status doesn't belong to this module or account.",
     "mode_not_supported_for_target": "This way of picking records doesn't work for this target.",
-    "backup_file_missing": "The backup file is no longer on disk."
+    "backup_file_missing": "The backup file is no longer on disk.",
+    "network": "Couldn't reach the server — check your connection and try again.",
+    "csrf_token_mismatch": "Your session expired — please sign in again.",
+    "unauthenticated": "Your session has ended — please sign in again."
   },
   "fields": {
     "title": "Fields",

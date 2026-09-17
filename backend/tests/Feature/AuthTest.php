@@ -5,8 +5,13 @@ namespace Tests\Feature;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Tests\TestCase;
 
 /**
@@ -336,5 +341,70 @@ class AuthTest extends TestCase
             ->putJson('/api/auth/settings', ['settings' => 'ka'])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['settings']);
+    }
+
+    /* ================= CSRF (419) ================= */
+
+    /**
+     * **419-ის პასუხი მანქანური კოდია** (Tasks GAP-02).
+     *
+     * ⚠️ Laravel `TokenMismatchException`-ს `HttpException(419, 'CSRF token
+     * mismatch.')`-ად აქცევს, ე.ი. `message` **წინადადებაა** — SPA-ს
+     * `errorMessage()` კი უცნობ `message`-ს სიტყვასიტყვით ხატავს. ღია ტაბში
+     * ორი საათის შემდეგ (`SESSION_LIFETIME=120`) ყოველი მუტაცია სწორედ ამ
+     * ინგლისურ ტექსტს აჩვენებდა UI-ს ენის მიუხედავად.
+     *
+     * ⚠️ **ტესტი handler-ს პირდაპირ ეკითხება და არა როუტს.** `ValidateCsrfToken`
+     * ტესტებში საერთოდ არ მოწმდება (`runningUnitTests()`), ე.ი. ნამდვილი 419-ის
+     * გამოწვევა HTTP-ით შეუძლებელია — ერთადერთი, რისი დაცვაც აზრს ატარებს,
+     * `map()`-ის გაყვანილობაა.
+     *
+     * ⚠️ სწორედ ის, რომ ეს `map()`-ია და არა `render()`, ამ ტესტის საგანია:
+     * `Handler::render()` ჯერ `prepareException()`-ს იძახებს (რომელიც კლასს
+     * უკვე `HttpException`-ად აქცევს) და მხოლოდ მერე ეძებს callback-ებს —
+     * `render(TokenMismatchException …)` ჩუმად არასდროს გაისვრებოდა.
+     */
+    public function test_a_csrf_failure_answers_with_a_machine_code(): void
+    {
+        $response = app(ExceptionHandler::class)->render(
+            Request::create('/api/movies', 'POST'),
+            new TokenMismatchException('CSRF token mismatch.'),
+        );
+
+        $this->assertSame(419, $response->getStatusCode());
+        $this->assertSame('csrf_token_mismatch', json_decode($response->getContent(), true)['message']);
+    }
+
+    /**
+     * **401-იც მანქანური კოდია** (Tasks GAP-02).
+     *
+     * ⚠️ ვადაგასული სესიის **პირველი** მოთხოვნა, როგორც წესი, ფონური poll-ია —
+     * GET, რომელსაც CSRF არ ეკითხება — ე.ი. 419-მდე 401 მოდის. Laravel აქ
+     * `'Unauthenticated.'`-ს წერდა და toast ინგლისურად ჩანდა UI-ს ენის მიუხედავად.
+     */
+    public function test_an_expired_session_answers_with_a_machine_code(): void
+    {
+        $this->getJson('/api/movies')
+            ->assertStatus(401)
+            ->assertExactJson(['message' => 'unauthenticated']);
+    }
+
+    /**
+     * ⚠️ **callback-მა არა-JSON მოთხოვნა არ უნდა მიითვისოს.**
+     *
+     * `redirect()->guest()` აქ `route('login')`-ს ეძებს, რომელიც ამ API-აპლიკაციაში
+     * არ არსებობს (`routes/web.php`-ში მხოლოდ `/` არის) — და სწორედ ეს არის
+     * მტკიცებულება: ამ წერტილამდე მისვლა ნიშნავს, რომ callback-მა `null` დააბრუნა
+     * და framework-ის თავისი ლოგიკა ჩაირთო. JSON რომ დაებრუნებინა, აქამდე
+     * საერთოდ ვერ მივიდოდა.
+     */
+    public function test_a_browser_request_is_not_turned_into_json(): void
+    {
+        $this->expectException(RouteNotFoundException::class);
+
+        app(ExceptionHandler::class)->render(
+            Request::create('/dashboard', 'GET'),
+            new AuthenticationException,
+        );
     }
 }

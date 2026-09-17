@@ -6,11 +6,14 @@ use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureRecordOwnership;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\SetSecurityHeaders;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -71,6 +74,56 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        /*
+         * ⚠️ **CSRF-ის ვადის ამოწურვა ინგლისურ წინადადებად ჩანდა** (Tasks GAP-02).
+         * Laravel 419-ს `'CSRF token mismatch.'` ტექსტით აბრუნებს, ე.ი. `message`
+         * წინადადებაა და არა მანქანური კოდი — SPA-ს `errorMessage()` უცნობ
+         * `message`-ს სიტყვასიტყვით ხატავს, ამიტომ ღია ტაბში ორი საათის შემდეგ
+         * ყველა მუტაცია ინგლისურ toast-ს აჩვენებდა UI-ს ენის მიუხედავად.
+         *
+         * ⚠️ **`map()` და არა `render()`, და ეს არჩევანი გემოვნების არაა.**
+         * `Handler::render()` ჯერ `prepareException()`-ს იძახებს, რომელიც
+         * `TokenMismatchException`-ს **უკვე** `HttpException(419)`-ად აქცევს, და
+         * მხოლოდ ამის შემდეგ ამოწმებს `render()`-ის callback-ებს — ე.ი.
+         * `render(function (TokenMismatchException …))` არასდროს გაისვრებოდა.
+         * `mapException()` კი `render()`-ის პირველივე ნაბიჯია.
+         *
+         * ⚠️ **მოთხოვნის გამეორება უსაფრთხოა, და სწორედ ამიტომ იმეორებს SPA.**
+         * CSRF-ს `EnsureFrontendRequestsAreStateful`-ის pipeline ამოწმებს,
+         * `$next($request)`-**მდე**: კონტროლერამდე მოთხოვნა საერთოდ არ მისულა,
+         * ე.ი. გამეორება ორმაგ ჩანაწერს ვერ შექმნის.
+         */
+        $exceptions->map(
+            fn (TokenMismatchException $e) => new HttpException(419, 'csrf_token_mismatch', $e),
+        );
+
+        /*
+         * ⚠️ **ვადაგასულ სესიაზე 401 419-ზე ადრე მოდის** (Tasks GAP-02), ამიტომ
+         * მხოლოდ CSRF-ის გასწორება სიმპტომს ადგილზე დატოვებდა: `SESSION_LIFETIME`-ის
+         * გასვლის შემდეგ პირველი მოთხოვნა, როგორც წესი, SPA-ს ფონური poll-ია
+         * (ჩატი 30 წმ, შეხსენებები) — ე.ი. **GET**, რომელსაც CSRF საერთოდ არ ეკითხება
+         * და პირდაპირ `auth:sanctum`-ზე ცვივა.
+         *
+         * Laravel აქ `message`-ად `'Unauthenticated.'`-ს წერს — ესეც ინგლისური
+         * წინადადებაა და არა მანქანური კოდი (იგივე დარღვევა, რასაც GAP-01 მთელი
+         * ტასკი დაუთმო), ე.ი. toast-ში ინგლისურად ჩანდა UI-ს ენის მიუხედავად.
+         *
+         * ⚠️ **`render()` აქ მუშაობს და `map()` საჭირო არ არის**: `prepareException()`
+         * `AuthenticationException`-ს არ გარდაქმნის (`default => $e`) — `TokenMismatchException`-ს
+         * კი გარდაქმნის, სწორედ ამიტომ არის ის `map()`-ში. ერთი და იგივე პრობლემა,
+         * ორი სხვადასხვა კაკვი.
+         *
+         * ⚠️ **`null` არა-JSON მოთხოვნაზე სავალდებულოა** — თორემ ბრაუზერის
+         * login-ზე გადამისამართება (`redirect()->guest()`) დაიკარგებოდა.
+         */
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json(['message' => 'unauthenticated'], 401);
+        });
 
         /*
          * ⚠️ **PHP-ის ატვირთვის ჭერი ჩუმად კლავდა მოთხოვნას** (2026-09-14).

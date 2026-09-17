@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
 
 /** Backend API-ს ბაზისო URL (.env: VITE_API_URL) */
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -40,6 +40,21 @@ export const UNAUTHENTICATED_EVENT = 'mediary:unauthenticated'
  */
 export const STORAGE_CHANGED_EVENT = 'mediary:storage-changed'
 
+/**
+ * ერთხელ უკვე ვცადეთ CSRF-ის განახლება. მარკერი **თვითონ `config`-ზეა** და არა
+ * გარე ცვლადში: ერთდროულად რამდენიმე მოთხოვნა ცვივა და გლობალური დროშა
+ * მეორეს დაუმსახურებლად ჩამოართმევდა ცდას.
+ */
+type RetriedConfig = InternalAxiosRequestConfig & { _csrfRetried?: boolean }
+
+/**
+ * login/register-ის საკუთარი შეცდომები ფორმაში ჩანს და გლობალურ logout-ს არ იწვევს —
+ * გამოსული მომხმარებლის „გამოსვლა" უაზრობაა.
+ */
+function isAuthForm(url: string): boolean {
+  return url.startsWith('/auth/login') || url.startsWith('/auth/register')
+}
+
 api.interceptors.response.use(
   (r) => {
     const method = (r.config.method ?? 'get').toLowerCase()
@@ -48,13 +63,50 @@ api.interceptors.response.use(
     }
     return r
   },
-  (error) => {
+  async (error) => {
     const status = error?.response?.status
-    const url: string = error?.config?.url ?? ''
-    // login/register-ის საკუთარი შეცდომები ფორმაში ჩანს, გლობალურ logout-ს არ იწვევს
-    if (status === 401 && !url.startsWith('/auth/login') && !url.startsWith('/auth/register')) {
+    const config = error?.config as RetriedConfig | undefined
+    const url: string = config?.url ?? ''
+
+    /*
+     * **419 — CSRF ტოკენის/სესიის ვადა** (Tasks GAP-02).
+     *
+     * `SESSION_LIFETIME` 120 წუთია და იმავე ვადას ატარებს `XSRF-TOKEN` ქუქიც,
+     * ე.ი. ღია ტაბში ორი საათის შემდეგ ყოველი მუტაცია 419-ს იღებდა და
+     * მომხმარებელს ხელით გადატვირთვამდე არაფერი ეშველებოდა.
+     *
+     * ⚠️ **POST-ის გამეორება აქ ორმაგ ჩანაწერს ვერ შექმნის.** CSRF-ს
+     * `EnsureFrontendRequestsAreStateful`-ის pipeline ამოწმებს — `$next($request)`-მდე —
+     * ე.ი. 419 ნიშნავს, რომ მოთხოვნა კონტროლერამდე **საერთოდ არ მისულა**.
+     * სწორედ ეს ხდის გამეორებას უსაფრთხოს; სხვა სტატუსზე ასე არ იქნებოდა.
+     *
+     * ⚠️ **ახალ ტოკენს ხელით არსად ვწერთ.** axios `X-XSRF-TOKEN`-ს ყოველ
+     * გაგზავნაზე **ქუქიდან** კითხულობს (`helpers/resolveConfig.js`) და
+     * `headers.set()`-ით გადააწერს — ამიტომ იგივე `config` საკმარისია.
+     *
+     * ⚠️ `ensureCsrfCookie()` შიშველ `axios`-ს იყენებს და არა `api`-ს, ე.ი. ამ
+     * interceptor-ში არ ბრუნდება — რეკურსია გამორიცხულია.
+     */
+    if (status === 419 && config && !config._csrfRetried) {
+      config._csrfRetried = true
+      const refreshed = await ensureCsrfCookie().then(
+        () => true,
+        () => false,
+      )
+      if (refreshed) return api.request(config)
+    }
+
+    /*
+     * ⚠️ **გამეორების შემდეგაც 419 — ესე იგი სესია აღარ არსებობს**, და არა ის,
+     * რომ ტოკენი ჩამორჩა: ახალი ქუქი უკვე აღებულია. ორივე შემთხვევა login-ზე
+     * უნდა დაბრუნდეს, თორემ მომხმარებელი გვერდზე რჩება, სადაც ყველა ღილაკი
+     * ჩუმად ცვივა. (ხშირად ამ დრომდე 401 უკვე მოვიდა — გამეორებული მოთხოვნა
+     * ახალ, არაავტორიზებულ სესიაზე მიდის — და ეს იგივე შტოა.)
+     */
+    if ((status === 401 || status === 419) && !isAuthForm(url)) {
       window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT))
     }
+
     return Promise.reject(error)
   },
 )
