@@ -242,7 +242,17 @@ class StatusController extends Controller
         $user = $request->user();
 
         abort_unless($user?->hasModule($module), 403, 'module_not_enabled');
-        abort_unless($user->hasPermission($module, $action), 403, 'forbidden_permission');
+
+        /* ⚠️ `permission` **ყოველ** `forbidden_permission`-ს ახლავს
+           (`EnsureModulePermission`-ის ფორმა, Tasks GAP-01): SPA-ს ტექსტი
+           „უფლება არ გაქვს ({{permission}})"-ია, და მის გარეშე ცარიელ
+           ფრჩხილებს ხატავდა. */
+        if (! $user->hasPermission($module, $action)) {
+            abort(response()->json([
+                'message' => 'forbidden_permission',
+                'permission' => "{$module}.{$action}",
+            ], 403));
+        }
     }
 
     private function find(string $domain, int $id): Status

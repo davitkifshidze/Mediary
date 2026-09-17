@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\Role;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
@@ -311,6 +312,30 @@ class StatusDictionaryTest extends TestCase
         ]);
 
         $this->actingAs($outsider->refresh())->getJson('/api/statuses/movie')->assertStatus(403);
+    }
+
+    /**
+     * ⚠️ GAP-01 — `forbidden_permission` **ყოველთვის** `permission`-ით ბრუნდება,
+     * `EnsureModulePermission`-ის მსგავსად: SPA-ს ტექსტი მას ფრჩხილებში ასახელებს,
+     * და ეს ერთადერთი ადგილი მის გარეშე ბრუნდებოდა (`abort_unless(…, 'code')`).
+     */
+    public function test_a_missing_permission_names_itself(): void
+    {
+        $role = Role::create([
+            'key' => 'movie-viewer',
+            'name_ka' => 'movie-viewer',
+            'name_en' => 'movie-viewer',
+            'permissions' => ['movie' => ['view']],
+        ]);
+
+        $viewer = $this->makeUser('viewer');
+        $viewer->forceFill(['role_id' => $role->id])->save();
+
+        $this->actingAs($viewer->refresh())->getJson('/api/statuses/movie')->assertOk();
+
+        $this->postJson('/api/statuses/movie', ['name_ka' => 'ახალი', 'role' => 'todo'])
+            ->assertForbidden()
+            ->assertExactJson(['message' => 'forbidden_permission', 'permission' => 'movie.create']);
     }
 
     /** ვიდეოს ლექსიკონი ვიდეოსია — დომენები ერთმანეთს არ ერევა */

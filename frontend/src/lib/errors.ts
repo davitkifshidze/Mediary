@@ -4,9 +4,16 @@ import { formatBytes } from '@/lib/utils'
 
 /**
  * backend-ის მანქანური კოდები, რომლებსაც ადამიანური ტექსტი სჭირდება.
- * ⚠️ ახალი კოდის დამატებისას `errors.*` ორივე ენაზე ჩაწერე.
+ * ⚠️ ახალი კოდის დამატებისას `errors.*` ორივე ენაზე ჩაწერე — `errors.test.ts`
+ * ამას ამოწმებს (ექსპორტი მხოლოდ მისთვისაა).
+ *
+ * ⚠️ **კოდი `'message' => '…'`-ის გარდა სამ ადგილიდანაც მოდის**, და
+ * `grep`-ი მათ ვერ ხედავს (Tasks GAP-01): მრავალხაზიანი `abort_unless(…,
+ * 422, 'code')`, `ChatService::fail('code')` და `['reason' => 'code']`,
+ * რომელსაც კონტროლერი `message`-ად აბრუნებს (`GenreRemover`,
+ * `AdminRequestController`). აუდიტის grep-ი 26-ს ითვლდა, რეალურად 39 აკლდა.
  */
-const CODES = [
+export const CODES = [
   'storage_quota_exceeded',
   // 2026-09-14 — **სერვერის** ჭერი ერთ მოთხოვნაზე (`php.ini`), და არა კვოტა:
   // ⚠️ ორი სრულიად სხვადასხვა ზღვარია და ერთ ტექსტში რომ შერეულიყო,
@@ -84,6 +91,57 @@ const CODES = [
   'role_escalation',
   'cannot_change_own_role',
   'cannot_edit_own_role',
+  /* GAP-01 — ქვემოთ ყველა კოდი toast-ში **snake_case-ად** ჩანდა, რადგან
+     `errorMessage()` უცნობ კოდს სიტყვასიტყვით აბრუნებს. */
+  // წვდომა და მოდულები. ⚠️ `module_disabled` და `module_not_enabled` ერთი
+  // ფაქტია (`hasModule()` false) სხვადასხვა ადგილიდან — ტექსტიც ერთია
+  'forbidden',
+  'forbidden_permission',
+  'module_not_enabled',
+  'module_disabled',
+  'module_not_granted',
+  'module_inactive',
+  'module_already_enabled',
+  'module_not_shareable',
+  'registration_disabled',
+  // ადმინ-ზონა: მომხმარებლები, როლები, მოთხოვნები
+  'cannot_delete_self',
+  'cannot_disable_self',
+  'last_super_admin',
+  'system_role',
+  'role_in_use',
+  'already_reviewed',
+  'unknown_type',
+  'module_missing',
+  'user_missing',
+  /* ჟანრები. ⚠️ `approval_required` **202-ია და არა შეცდომა** — axios მას
+     არასდროს აგდებს; სიაშია, რომ „backend-ის ყველა კოდი ⊆ CODES" წესს
+     გამონაკლისი არ ჰქონდეს. */
+  'approval_required',
+  'genre_in_use',
+  'invalid_reassign_target',
+  'invalid_target_genre',
+  // მოთხოვნის ფორმა
+  'not_found',
+  'invalid_type',
+  'nothing_selected',
+  'file_not_found',
+  // გალერეა
+  'nothing_to_move',
+  'cannot_move_into_itself',
+  'primary_not_supported_for_cast',
+  'too_many_videos',
+  'invalid_url',
+  // წყაროები, თარგმანი, ფონური პარტია
+  'no_tmdb_id',
+  'no_translation_source',
+  'worker_unavailable',
+  // დანარჩენი
+  'custom_field_file_limit',
+  'not_the_author',
+  'invalid_status',
+  'mode_not_supported_for_target',
+  'backup_file_missing',
 ] as const
 
 /**
@@ -126,10 +184,14 @@ export function errorMessage(e: unknown, fallback: string = i18n.t('toast.error'
   )
 
   /* ⚠️ `limit`/`file_limit` **სტრიქონებია** (`php.ini`-ის „256M") და არა
-     ბაიტები — ისინი პირდაპირ გადადიან, თორემ `formatBytes` მათ გააფუჭებდა. */
-  for (const key of ['limit', 'file_limit'] as const) {
+     ბაიტები — ისინი პირდაპირ გადადიან, თორემ `formatBytes` მათ გააფუჭებდა.
+     `permission` (`movie.update`) — GAP-01, `forbidden_permission`-ის ტექსტი. */
+  for (const key of ['limit', 'file_limit', 'permission'] as const) {
     if (typeof data?.[key] === 'string') params[key] = data[key] as string
   }
+
+  // ⚠️ რიცხვი, მაგრამ **არა ბაიტები** — `custom_field_file_limit`-ის ფაილების ჭერი
+  if (typeof data?.max === 'number') params.max = String(data.max)
 
   return i18n.t(`errors.${message}`, params)
 }

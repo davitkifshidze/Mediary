@@ -17,7 +17,7 @@
 | SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ✅ შესრულებულია |
 | SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ✅ შესრულებულია |
 | BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ✅ შესრულებულია |
-| GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ⬜ |
+| GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ✅ შესრულებულია |
 | GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ⬜ |
 | PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ⬜ |
 | PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ⬜ |
@@ -262,15 +262,25 @@
 - **დამოკიდებულება:** none
 
 ### [GAP-01] backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ⚠️ **აუდიტის grep-მა 26 დათვალა, სინამდვილეში 39 აკლდა.** `'message' => '…'` კოდის ერთადერთი ფორმა არ არის: არის მრავალხაზიანი `abort_unless(…, 403, 'code')`, `ChatService::fail('code')` და `['reason' => 'code']`, რომელსაც კონტროლერი `message`-ად აბრუნებს (`GenreRemover`, `AdminRequestController`) — ე.ი. ერთხაზიან grep-ზე დაყრდნობა თავადვე იყო ხარვეზის წყარო
+  - ✅ `CODES` 43 → 82; ყველა 68 backend-კოდი მასშია (`comm -23` ცარიელია), ყველას აქვს `errors.*` ორივე ლოკალში (2678 = 2678 გასაღები, ცალმხრივი და ცარიელი — არცერთი)
+  - ⚠️ `approval_required` **202-ია და არა შეცდომა** (ჟანრის წაშლა → მოთხოვნა) — axios მას არასდროს აგდებს, სიაშია მხოლოდ იმისთვის, რომ „backend-ის ყველა კოდი ⊆ CODES" წესს გამონაკლისი არ ჰქონდეს
+  - ⚠️ `module_disabled` და `module_not_enabled` ერთი ფაქტია (`hasModule()` false) ორი ადგილიდან — ტექსტიც ერთია, თორემ ერთი და იგივე უარი ორნაირად იკითხებოდა
+  - ✅ **ორი ტექსტი პარამეტრს ითხოვდა და `errorMessage()` მას არ გადასცემდა** — `forbidden_permission` ცარიელ ფრჩხილებს ხატავდა და `custom_field_file_limit` `{{max}}`-ს სიტყვასიტყვით: `permission` (სტრიქონი) და `max` (რიცხვი, მაგრამ **არა ბაიტები** — `formatBytes` მას გააფუჭებდა) ახლა გადადის
+  - ✅ `StatusController::guard()` ერთადერთი იყო, ვინც `forbidden_permission`-ს `permission`-ის გარეშე აბრუნებდა (`abort_unless`-ს მესამე ველი არ აქვს) — ოთხივე გამომშვები ახლა ერთ ფორმას აბრუნებს
+  - ✅ `frontend/src/lib/errors.test.ts` (7 ტესტი) — `CODES` ⊆ ორივე ლოკალი და „არცერთი კოდი toast-ში ნედლად არ ხვდება"; `CODES` მხოლოდ ამისთვის გახდა `export`
+  - ⚠️ ეს ტესტი **FEAT-01-ს არ ცვლის**: ის `CODES` ↔ ლოკალს ამოწმებს, backend ↔ `CODES` კავშირს კი ვერა (frontend-ის ტესტი PHP-ს ვერ კითხულობს)
+  - ℹ️ `python frontend/src/i18n/audit.py` ამ მანქანაზე **ვერ გაეშვა — Python აქ არ არის** (მხოლოდ Microsoft Store-ის shim-ია); ლოკალების სინქრონი Node-ით შემოწმდა, იგივე კრიტერიუმით
 - **ტიპი:** gap
 - **სად:** `frontend/src/lib/errors.ts:9-109` (`CODES` და `includes` შემოწმება); მაგ. `backend/app/Http/Middleware/EnsureModuleEnabled.php:27`
 - **პრობლემა:** `grep -rhoE "'message' => '[a-z_]+'" backend/app | sort -u` 50 კოდს იძლევა, `CODES`-ში 40-ია; აკლია: `already_reviewed approval_required cannot_delete_self cannot_disable_self custom_field_file_limit file_not_found forbidden forbidden_permission invalid_target_genre invalid_type invalid_url last_super_admin module_already_enabled module_disabled module_inactive module_not_enabled module_not_shareable no_tmdb_id not_found nothing_selected primary_not_supported_for_cast registration_disabled role_in_use system_role too_many_videos worker_unavailable`. `errorMessage()` უცნობ კოდს სიტყვასიტყვით აბრუნებს.
 - **რატომ:** CLAUDE.md-ის წესი — „`message` *არის* მანქანური კოდი და ყველა კოდი `CODES`-შია და ორივე ლოკალში" — 26 კოდზე დარღვეულია; `module_not_enabled` middleware-დან ნებისმიერ მოდულურ როუტზე მოდის, `registration_disabled` რეგისტრაციის ფორმაზე.
 - **გადაწყვეტა:** 26 კოდი `CODES`-ში და `errors.*`-ში `ka.json`/`en.json`-ში; მუდმივი დაცვა — FEAT-01.
 - **Acceptance criteria:**
-  - [ ] `comm -23 <(backend codes) <(CODES)` ცარიელია
-  - [ ] `python frontend/src/i18n/audit.py` მწვანეა (ორივე ლოკალი სინქრონშია)
-  - [ ] `registration_disabled` 403-ზე toast-ში თარგმნილი ტექსტი ჩანს
+  - [x] `comm -23 <(backend codes) <(CODES)` ცარიელია
+  - [x] ორივე ლოკალი სინქრონშია (Node-ით — Python ამ მანქანაზე არ არის)
+  - [x] `registration_disabled` 403-ზე toast-ში თარგმნილი ტექსტი ჩანს
 - **Estimate:** M
 - **დამოკიდებულება:** none
 
