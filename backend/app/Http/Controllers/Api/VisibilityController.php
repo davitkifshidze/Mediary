@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -30,6 +32,17 @@ class VisibilityController extends Controller
 {
     /** სიის გვერდის ზომა — ჭერი, რომ ერთი პასუხი არ გაიბეროს */
     private const PER_PAGE_MAX = 100;
+
+    /**
+     * რამდენი id ჩაიწეროს ლოგში (Tasks BUG-06).
+     *
+     * ⚠️ ზუსტი რიცხვი `updated`-შია, ე.ი. სია მხოლოდ „რომელი ჩანაწერები"-ს
+     * პასუხია. `ids` 2000-მდე მოდის და მთლიანად ჩაწერილი ერთ ლოგის რიგს
+     * ათი კილობაიტით გაბერავდა, მოდალში კი წასაკითხი აღარ იქნებოდა.
+     */
+    private const LOG_IDS_MAX = 200;
+
+    public function __construct(private readonly AuditLogger $audit) {}
 
     /**
      * **§6.1 — ერთი დომენის ჩანაწერები ხილვადობით.**
@@ -112,8 +125,10 @@ class VisibilityController extends Controller
         ]);
 
         $query = $model::query();
+        $all = (bool) ($data['all'] ?? false);
+        $ids = [];
 
-        if (! ($data['all'] ?? false)) {
+        if (! $all) {
             $ids = array_values(array_unique(array_map('intval', $data['ids'] ?? [])));
 
             if (! $ids) {
@@ -128,6 +143,34 @@ class VisibilityController extends Controller
         // (CLI-კონტექსტი) მასობრივ განახლებას სხვის ჩანაწერზე გაუშვებდა.
         $updated = $query->where('user_id', $user->id)
             ->update(['visibility' => $data['visibility']]);
+
+        /* ⚠️ **ერთი ცხადი ჩანაწერი ლოგში** (Tasks BUG-06). მასობრივი
+           `update()` query-builder-ზეა, ე.ი. `AuditObserver` მას ვერ ხედავს:
+           `all: true`-ით მთელი ბიბლიოთეკა საჯარო ხდებოდა **ნულ ჩანაწერზე**,
+           მაშინ როცა იმავე ცვლილება თითო ჩანაწერზე (`update()`) ლოგდება.
+           „ვინ და როდის გახადა ჩემი ბიბლიოთეკა საჯარო" კი ზუსტად ის
+           კითხვაა, რისთვისაც `audit_logs` არსებობს.
+
+           ⚠️ **თითო ჩანაწერზე ციკლი აქ განზრახ არ არის** (BUG-05-ისგან
+           განსხვავებით): იქ `watched_at` მოდელის გავლას ითხოვდა, აქ კი
+           ერთადერთი ცვლილება თვითონ სვეტია — სამი ათასი რიგი ლოგში ერთ
+           კლიკზე კითხვას პასუხს კი არ გასცემდა, დამარხავდა.
+
+           ⚠️ `subject_*` ცარიელია, რადგან მასობრივ ცვლილებას ერთი სუბიექტი
+           **არ ჰყავს** — `visit`-ის იგივე ფორმა. დომენი `context`-შია:
+           `module` მას ვერ ცვლის (`playlist` → `song`, `gallery_album` →
+           `gallery`), ე.ი. მარტო მოდულით „რა გასაჯაროვდა" პასუხგაუცემელია. */
+        $this->audit->log(AuditLog::ACTION_UPDATE, [
+            'module' => PublicDomain::module($domain),
+            'new_values' => ['visibility' => $data['visibility']],
+            'context' => [
+                'bulk' => 'visibility',
+                'domain' => $domain,
+                'scope' => $all ? 'all' : 'ids',
+                'updated' => $updated,
+                'ids' => $all ? null : array_slice($ids, 0, self::LOG_IDS_MAX),
+            ],
+        ]);
 
         return response()->json([
             'domain' => $domain,

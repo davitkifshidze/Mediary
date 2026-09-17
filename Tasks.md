@@ -29,7 +29,7 @@
 | BUG-03 | `AlbumVault::relocate()` — ფაილის გადატანა DB-ტრანზაქციაშია, რომელიც მას ვერ აბრუნებს; არარსებულ ფაილზეც `path` იწერება | Medium | bug | M | ✅ შესრულებულია |
 | BUG-04 | ალბომის წაშლა: vault → images update → delete სამი დაუცველი ნაბიჯია | Medium | bug | S | ✅ შესრულებულია |
 | BUG-05 | ლექსიკონის „გადატანა" query-builder `update()`-ით მოდელის ჰუკებს გვერდს უვლის (`watched_at`, audit) | Medium | bug | M | ✅ შესრულებულია |
-| BUG-06 | მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს | Medium | bug | S | ⬜ |
+| BUG-06 | მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს | Medium | bug | S | ✅ შესრულებულია |
 | BUG-07 | `ChatService::between()` — check-then-create race ორმაგ საუბარს ქმნის | Medium | bug | S | ⬜ |
 | BUG-08 | `RunBatchItem` ყველა გამონაკლისს ყლაპავს — პარტია არასდროს „ჩავარდნილია" | Medium | bug | M | ⬜ |
 | BUG-09 | `notes:remind`-ის `withoutOverlapping()` ვადის გარეშე 24 სთ-ით აჩერებს შეხსენებებს | Medium | bug | S | ⬜ |
@@ -509,13 +509,21 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-06] მასობრივი visibility-ცვლილება audit-ლოგში არ ჩანს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `PATCH /visibility/{domain}` ერთ ცხად `AuditLogger::log(ACTION_UPDATE)` ჩანაწერს წერს
+  - ✅ **თითო ჩანაწერზე ციკლი აქ განზრახ არ არის** (BUG-05-ისგან განსხვავებით): იქ `watched_at` მოდელის გავლას **ითხოვდა**, აქ კი ერთადერთი ცვლილება თვითონ სვეტია — სამი ათასი რიგი ლოგში ერთ კლიკზე კითხვას პასუხს კი არ გასცემდა, დამარხავდა
+  - ✅ **ახალი `ACTION_*` კონსტანტა არ დაემატა** — `update` ზუსტად ის არის, რაც მოხდა; ახალი მოქმედება `ACTIONS`-ს, i18n-ს და `AuditPage`-ის `ACTION_STYLE`-ს შეეხებოდა (იგივე მსჯელობა, რაც §21-ის credentials-ზე იყო)
+  - ✅ `subject_*` ცარიელია — მასობრივ ცვლილებას **ერთი სუბიექტი არ ჰყავს** (`visit`-ის იგივე ფორმა, და UI ასეთ რიგს უკვე ხატავს). დომენი `context`-შია, რადგან `module` მას ვერ ცვლის: `playlist` → `song`, `gallery_album` → `gallery`, ე.ი. მარტო მოდულით „რა გასაჯაროვდა" პასუხგაუცემელია
+  - ✅ `context` = `bulk` · `domain` · `scope` (`all`/`ids`) · `updated` · `ids`. ⚠️ **`ids` 200-ზეა შეჭრილი** (`LOG_IDS_MAX`): ვალიდაცია 2000-ს უშვებს, სრული სია ერთ ლოგის რიგს ათი კილობაიტით გაბერავდა და მოდალში წასაკითხი აღარ იქნებოდა; ზუსტი რიცხვი `updated`-შია
+  - ✅ ტესტი `PublicProfileTest` — ძველ კოდზე ცვივა („ლოგში უნდა იყოს")
+  - ✅ pint, 745 backend ტესტი — მწვანე
 - **ტიპი:** bug
 - **სად:** `backend/app/Http/Controllers/Api/VisibilityController.php:129-130`
 - **პრობლემა:** `$query->where('user_id', …)->update(['visibility' => …])` — query-builder, `AuditObserver` არ ეშვება; ერთეული ცვლილება (`update()`) კი ლოგირდება. `all: true`-თი მთელი დომენი გასაჯაროვდება ნულ ჩანაწერით.
 - **რატომ:** „ვინ და როდის გახადა ჩემი ბიბლიოთეკა საჯარო" — სწორედ ის კითხვაა, რისთვისაც `audit_logs` არსებობს.
 - **გადაწყვეტა:** ერთი ცხადი `AuditLogger` ჩანაწერი (`domain`, `visibility`, `updated`, id-სია) ან მოდელური ციკლი.
 - **Acceptance criteria:**
-  - [ ] `PATCH /visibility/{domain}` `all: true`-ზე `audit_logs`-ში ჩანაწერი ჩნდება (`PublicProfileTest`)
+  - [x] `PATCH /visibility/{domain}` `all: true`-ზე `audit_logs`-ში ჩანაწერი ჩნდება (`PublicProfileTest`)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

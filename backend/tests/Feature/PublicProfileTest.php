@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -148,6 +149,38 @@ class PublicProfileTest extends TestCase
             ->assertOk()
             ->assertJsonPath('updated', 2);
         $this->assertSame('public', $two->refresh()->visibility);
+    }
+
+    /**
+     * **მასობრივი გადართვა ლოგში ჩანს** (Tasks BUG-06).
+     *
+     * ⚠️ `update()` query-builder-ზეა, ე.ი. `AuditObserver` მას ვერ ხედავს:
+     * `all: true`-ით მთელი ბიბლიოთეკა საჯარო ხდებოდა **ნულ ჩანაწერზე**,
+     * მაშინ როცა იმავე ცვლილება ერთ ჩანაწერზე ისედაც ლოგდებოდა.
+     *
+     * ⚠️ ჩანაწერი **ერთია და არა თითო ჩანაწერზე**: სუბიექტი ცარიელია
+     * (მასობრივ ცვლილებას ერთი სუბიექტი არ ჰყავს), დომენი კი `context`-შია —
+     * `module` მას ვერ ცვლის (`playlist` → `song`).
+     */
+    public function test_bulk_visibility_is_written_to_the_audit_log(): void
+    {
+        $this->makeMovie($this->alice, 'Dune');
+        $this->makeMovie($this->alice, 'Arrival');
+
+        $this->actingAs($this->alice)
+            ->patchJson('/api/visibility/movie', ['visibility' => 'public', 'all' => true])
+            ->assertOk()
+            ->assertJsonPath('updated', 2);
+
+        $row = AuditLog::query()->where('action', AuditLog::ACTION_UPDATE)
+            ->where('module', 'movie')->latest('id')->first();
+
+        $this->assertNotNull($row, 'მასობრივი გასაჯაროება ლოგში უნდა იყოს');
+        $this->assertSame('public', ((array) $row->new_values)['visibility'] ?? null);
+        $this->assertSame('movie', ((array) $row->context)['domain'] ?? null);
+        $this->assertSame('all', ((array) $row->context)['scope'] ?? null);
+        $this->assertSame(2, ((array) $row->context)['updated'] ?? null);
+        $this->assertSame($this->alice->id, $row->user_id);
     }
 
     /** სხვისი id მონიშვნაში ჩუმად გამოტოვდება და არა 404 — ციკლი არ უნდა გაწყდეს */
