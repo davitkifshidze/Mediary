@@ -10,6 +10,7 @@ use App\Models\MessageReaction;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\Storage\StorageMeter;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -39,30 +40,41 @@ class ChatService
      * ⚠️ **გახსნაც ამოწმებს წესებს** და არა მხოლოდ გაგზავნა: სხვაგვარად
      * დაბლოკილი მხარე ცარიელ საუბარს მაინც გახსნიდა და „აქ რატომ ვერ
      * ვწერ"-ის ნაცვლად გაუგებარ ეკრანს დაინახავდა.
+     *
+     * ⚠️ **უნიკალურობას სქემა იცავს და არა ეს კითხვა** (Tasks BUG-07).
+     * ადრე „არსებობს?" მხოლოდ `SELECT` იყო, ე.ი. ორი ტაბი (ან polling +
+     * ხელით გახსნა) ერთსა და იმავე წამში ორივე „არა"-ს იღებდა და **ორი**
+     * საუბარი იქმნებოდა — ძაფი სამუდამოდ იყოფოდა. ახლა `pair_key`-ს unique
+     * ინდექსი აქვს: წაკითხვა სწრაფი გზაა, ჩაწერაზე კი ბაზა წყვეტს.
      */
     public function between(User $me, User $other): Conversation
     {
         $this->guard($me, $other);
 
-        /* ⚠️ „ზუსტად ეს ორი" **`whereDoesntHave`-ით** ითქმის და არა
-           `withCount` + `having`-ით: sqlite (ტესტები) `having`-ს
-           არა-აგრეგატულ query-ზე არ იღებს, და აზრიც უფრო ცხადია —
-           „ორივე მონაწილეობს და მესამე არავინაა". */
-        $existing = Conversation::whereHas('participants', fn ($q) => $q->whereKey($me->id))
-            ->whereHas('participants', fn ($q) => $q->whereKey($other->id))
-            ->whereDoesntHave('participants', fn ($q) => $q->whereNotIn('users.id', [$me->id, $other->id]))
-            ->first();
+        $key = Conversation::pairKey($me->id, $other->id);
 
-        if ($existing) {
+        /* ⚠️ **`pair_key`-ით და აღარ სამმაგი `whereHas`-ით.** ძველი ფორმა
+           („ორივე მონაწილეობს და მესამე არავინაა") სწორი იყო, მაგრამ მას
+           შეზღუდვაში ვერ ჩასვამდი; ერთი სვეტი კი ინდექსდება. მიგრაციამდე
+           შექმნილ ან ორზე მეტმონაწილიან რიგს `pair_key` არ აქვს — ის ისედაც
+           1:1 საუბარი არ არის. */
+        if ($existing = Conversation::where('pair_key', $key)->first()) {
             return $existing;
         }
 
-        return DB::transaction(function () use ($me, $other) {
-            $conversation = Conversation::create([]);
-            $conversation->participants()->attach([$me->id, $other->id]);
+        try {
+            return DB::transaction(function () use ($me, $other, $key) {
+                $conversation = Conversation::create(['pair_key' => $key]);
+                $conversation->participants()->attach([$me->id, $other->id]);
 
-            return $conversation->load('participants');
-        });
+                return $conversation->load('participants');
+            });
+        } catch (UniqueConstraintViolationException) {
+            /* გვასწრეს. ⚠️ `INSERT` ინდექსზე დაელოდა მეორე ტრანზაქციის
+               დასრულებას, ე.ი. ამ მომენტისთვის მონაწილეებიც უკვე ჩაწერილია —
+               თორემ ცარიელ საუბარს დავაბრუნებდით. */
+            return Conversation::where('pair_key', $key)->firstOrFail()->load('participants');
+        }
     }
 
     /**

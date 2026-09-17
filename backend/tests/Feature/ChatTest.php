@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Chat\ChatService;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -83,6 +86,74 @@ class ChatTest extends TestCase
             ->assertJsonPath('data.0.body', 'გამარჯობა')
             ->assertJsonPath('data.0.mine', false)
             ->assertJsonPath('profile.username', 'alice');
+    }
+
+    /**
+     * **ერთი წყვილი — ერთი საუბარი, და ამას სქემა იცავს** (Tasks BUG-07).
+     *
+     * ⚠️ `conversation_user`-ის unique (`conversation_id`, `user_id`) ამას
+     * ვერ იჭერდა: ის „ერთი ადამიანი ერთ საუბარში ორჯერ არ არის"-ს ამბობს
+     * და არა „ეს ორი ერთხელ ხვდება ერთმანეთს" — ე.ი. ორი პარალელური
+     * გახსნა ორ სრულიად კანონიერ საუბარს ქმნიდა.
+     */
+    public function test_the_schema_refuses_a_second_conversation_for_the_same_pair(): void
+    {
+        $key = Conversation::pairKey($this->alice->id, $this->bob->id);
+        Conversation::create(['pair_key' => $key]);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+        Conversation::create(['pair_key' => $key]);
+    }
+
+    /** ⚠️ გასაღები მიმართულებისგან დამოუკიდებელია, თორემ A→B და B→A ორი რიგი იქნებოდა */
+    public function test_the_pair_key_does_not_depend_on_who_starts(): void
+    {
+        $this->assertSame(
+            Conversation::pairKey($this->alice->id, $this->bob->id),
+            Conversation::pairKey($this->bob->id, $this->alice->id),
+        );
+    }
+
+    /**
+     * **რბოლა: ვიღაცამ ჩვენს `SELECT`-სა და `INSERT`-ს შორის მოასწრო** (BUG-07).
+     *
+     * ⚠️ სიმულაცია `DB::listen`-ითაა და ეს დროის გამო არის ასე: კონკურენტი
+     * ზუსტად მაშინ იწერება, როცა `pair_key`-ის კითხვა უკვე გავიდა (ე.ი.
+     * „ვერაფერი ვიპოვე"), მაგრამ `DB::transaction()` **ჯერ არ დაწყებულა** —
+     * თორემ იგივე savepoint-ის rollback-ს კონკურენტიც წაშლიდა და ტესტი
+     * არა კოდს, არამედ საკუთარ თავს გატეხდა.
+     *
+     * შედეგი: `between()` არ ვარდება, დუბლიც არ ჩნდება — დამარცხებული
+     * მხარე გამარჯვებულის საუბარს წაიკითხავს.
+     */
+    public function test_a_conversation_created_between_the_read_and_the_write_is_picked_up(): void
+    {
+        $key = Conversation::pairKey($this->alice->id, $this->bob->id);
+        $rival = null;
+
+        DB::listen(function ($query) use (&$rival, $key) {
+            if ($rival !== null || ! str_contains($query->sql, 'pair_key')) {
+                return;
+            }
+
+            $rival = 0; // ⚠️ ჯერ დროშა, მერე ჩაწერა — თორემ listener თავის თავს გამოიძახებს
+            $rival = DB::table('conversations')->insertGetId([
+                'pair_key' => $key,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('conversation_user')->insert([
+                ['conversation_id' => $rival, 'user_id' => $this->alice->id, 'created_at' => now(), 'updated_at' => now()],
+                ['conversation_id' => $rival, 'user_id' => $this->bob->id, 'created_at' => now(), 'updated_at' => now()],
+            ]);
+        });
+
+        $conversation = app(ChatService::class)->between($this->alice, $this->bob);
+
+        $this->assertSame($rival, $conversation->id);
+        $this->assertSame(1, Conversation::count());
+        $this->assertCount(2, $conversation->participants);
     }
 
     /** ⚠️ საკუთარი შეტყობინება წაუკითხავში არ ითვლება */
