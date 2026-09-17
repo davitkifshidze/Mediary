@@ -58,7 +58,11 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // ⚠️ engine ცხადადაა, `null` არა: XAMPP-ის MariaDB-ზე `default_storage_engine`
+            // MyISAM-ია — ცარიელ ბაზაზე `migrate` MyISAM ცხრილებს ქმნის, პირველ
+            // varchar(255) PK-ზე 1000-ბაიტიან გასაღებზე ცვივა (`password_reset_tokens`),
+            // და FK/ტრანზაქციები, რომლებზეც აპი დგას, MyISAM-ზე საერთოდ არ არსებობს.
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -78,7 +82,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // იგივე მიზეზი, რაც `mysql`-ზე: engine ცხადად, სერვერის default-ზე არ ვეყრდნობით
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

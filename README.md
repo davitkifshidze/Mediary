@@ -41,8 +41,15 @@ chmod +x setup.sh && ./setup.sh
 ```
 
 სკრიპტი აკეთებს: `composer install`, `.env` ფაილების შექმნას `.env.example`-იდან,
-`php artisan key:generate`, `storage:link`, **ბაზის ბექაპის იმპორტს**
-(`backend/mediary_backup.sql`) და `npm install`-ს.
+`php artisan key:generate`, `storage:link`, **ბაზის მიგრაციასა და seed-ს**
+(`php artisan migrate --seed` — ჟანრები და მოდულები; თუ ბაზა `mediary` არ არსებობს,
+შექმნას შემოგთავაზებს) და `npm install`-ს.
+
+⚠️ **ბაზის dump git-ში არ ინახება.** ის პაროლების ჰეშებს, სესიებს, პირად ჩატს და
+API ტოკენებს შეიცავს (Tasks SEC-01), ე.ი. ახალი კლონი ცარიელი ბაზით იწყება:
+
+- პირველი სუპერ-ადმინი: `php artisan mediary:bootstrap-admin --name= --email= --username= --password=`
+- ძველი მანქანიდან ბიბლიოთეკის გადმოტანა: **`/backups`** — ძველზე ჩამოტვირთვა, ახალზე ატვირთვა და აღდგენა.
 
 ### ხელით აწყობა (თუ სკრიპტს არ იყენებ)
 
@@ -53,7 +60,7 @@ composer install
 cp .env.example .env          # Windows: copy .env.example .env
 php artisan key:generate
 php artisan storage:link
-mysql -u root < mediary_backup.sql   # ან: php artisan migrate --seed
+php artisan migrate --seed
 
 # frontend
 cd ../frontend
@@ -91,11 +98,14 @@ cd frontend && npm run dev
 ## ბაზა
 
 - ბაზა: `mediary` · მომხმარებელი `root` · პაროლი ცარიელი · `127.0.0.1:3306`
-- სრული SQL ბექაპი (სქემა + მონაცემები, 19 ცხრილი): **`backend/mediary_backup.sql`**
-- ბექაპის ხელახლა შესაქმნელად:
-  ```bash
-  mysqldump -u root --databases mediary --add-drop-database --result-file=backend/mediary_backup.sql
-  ```
+- ⚠️ **SQL dump-ი git-ში არასდროს ჩაიდება** — `.gitignore` ყველა `*.sql`/`*.sql.gz` ფაილს
+  ბლოკავს. ბექაპი ორ გზით კეთდება, ორივე **ლოკალურია**:
+  - აპიდან: **`/backups`** (super-admin) — ფაილი პირად დისკზე ინახება და ჩამოტვირთვადია;
+  - ხელით (ფაილი git-ის გარეთ რჩება):
+    ```bash
+    mysqldump -u root --databases mediary --add-drop-database --result-file=backend/mediary_backup.sql
+    ```
+- არც ერთი ასლი მანქანას არ ტოვებს — მანქანის გარეთ ასლის შენახვა (მაგ. პირად დისკზე) შენი საქმეა.
 - ⚠️ XAMPP-ის MySQL-სა და WAMP-ის MySQL-ს **ერთდროულად არ გაუშვა** — ორივე 3306-ს იყენებს.
 
 ## კონფიგურაცია

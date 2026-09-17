@@ -23,19 +23,17 @@ grep -q 'APP_KEY=base64:' .env || php artisan key:generate
 php artisan storage:link 2>/dev/null || true
 
 # --- database ---
+# No dump is committed any more (Tasks SEC-01): it carried password hashes,
+# remember tokens, sessions and private chat. A fresh clone starts from an empty
+# seeded database. `migrate` offers to create a missing `mediary` (default: yes).
+# No --no-interaction here: without --force it makes migrate skip that creation.
 echo ""
-echo "[2/4] Database: import backup"
-if command -v mysql >/dev/null 2>&1; then
-  echo "  Importing mediary_backup.sql (creates DB mediary)..."
-  if mysql -u root < "$root/backend/mediary_backup.sql" 2>/dev/null; then
-    echo "  DB imported."
-  else
-    echo "  Import failed — start MySQL, then run: mysql -u root < backend/mediary_backup.sql"
-  fi
+echo "[2/4] Database: migrate + seed"
+if php artisan migrate --seed; then
+  echo "  DB migrated and seeded (genres + modules)."
 else
-  echo "  mysql client not found. Start MySQL, then run:"
-  echo "    mysql -u root < backend/mediary_backup.sql"
-  echo "  (or use  php artisan migrate --seed  for an empty seeded DB)"
+  echo "  Migration failed — start MySQL, check DB_* in backend/.env, then run:"
+  echo "    php artisan migrate --seed"
 fi
 
 # --- frontend ---
@@ -55,6 +53,11 @@ Start the app (two terminals):
 Then open  http://localhost:5173
 
 Make sure MySQL is running before starting the backend.
-Tip: hit the "re-download media" button (or POST /api/media/redownload)
-to fetch posters & cast photos from TMDB on a fresh machine.
+
+Create the first super-admin (the seeded database has no users):
+  cd backend && php artisan mediary:bootstrap-admin --name= --email= --username= --password=
+Moving an existing library: /backups on the old machine (download),
+then /backups on this one (upload + restore).
+Tip: /sync (or php artisan media:redownload) fetches posters & cast photos
+from TMDB on a fresh machine.
 EOF

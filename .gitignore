@@ -22,9 +22,15 @@ Thumbs.db
 # ── Laravel runtime ─────────────────────────
 /backend/storage/*.key
 /backend/public/storage
-# NOTE: storage/app/public/{posters,actors} ARE committed so a fresh clone shows
-# real images immediately (the DB backup references them). They re-download from
-# TMDB on resync if missing.
+# NOTE: uploads and downloaded posters are NOT committed (storage/app/.gitignore
+# ignores them). A fresh clone re-downloads posters/cast photos from TMDB via
+# /sync (or `php artisan media:redownload`).
+
+# ── Database dumps — never commit (Tasks SEC-01) ──
+# A dump carries bcrypt hashes, remember tokens, live session ids, private chat
+# and API tokens. Keep it local; move a library between machines with /backups.
+*.sql
+*.sql.gz
 
 # ── graphify generated knowledge graph (regenerate with /graphify) ──
 /graphify-out/
