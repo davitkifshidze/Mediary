@@ -16,7 +16,7 @@
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
 | SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ✅ შესრულებულია |
 | SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ✅ შესრულებულია |
-| BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ⬜ |
+| BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ✅ შესრულებულია |
 | GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ⬜ |
 | GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ⬜ |
 | PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ⬜ |
@@ -245,14 +245,19 @@
 - **დამოკიდებულება:** none (ძველი ტოკენის როტაცია SEC-01-შია)
 
 ### [BUG-01] დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `FeedbackProvider`: `useTranslation()`, ნაგულისხმევ ღილაკებზე `t('confirm.cancel')`/`t('confirm.confirm')` (ორივე გასაღები ორივე ლოკალში უკვე იყო)
+  - ✅ `errorMessage()`-ის fallback — `i18n.t('toast.error')` default პარამეტრად, ე.ი. **ყოველ გამოძახებაზე** მიმდინარე ენით; ⚠️ `errors.generic` ახალ გასაღებად **არ** შეიქმნა — `toast.error` („Something went wrong" / „დაფიქსირდა შეცდომა") ზუსტად ამ ფაქტს ორივე ენაზე უკვე ამბობდა
+  - ✅ `src/components/ui/feedback.test.ts` (`react-dom/client` + `act`, ბიბლიოთეკის გარეშე): ინგლისურ UI-ში ორივე ღილაკი ინგლისურია და ქართული literal არსად · ქართულ UI-ში ტექსტი ლოკალიდანაა · `errorMessage`-ის fallback ენას მიჰყვება. **მუტაციის შემოწმება:** literal-ების დაბრუნებაზე 2 ტესტი წითლდება
+  - ✅ `npm run build` და lint (exit 0) მწვანეა; Vitest 121/128 — 7 წითელი **მხოლოდ** `NoteReminders.test.ts`-შია (უწინდელი DEBT-12, BUG-01-ს არ ეხება)
 - **ტიპი:** bug
 - **სად:** `frontend/src/components/ui/feedback.tsx:137-147`; `frontend/src/lib/errors.ts:100`
 - **პრობლემა:** `confirmState.cancelText ?? 'გაუქმება'` და `confirmText ?? 'დადასტურება'`; `errorMessage(e, fallback = 'შეცდომა')`. 49 `confirm({` გამოძახებიდან უმეტესობა `cancelText`-ს არ აწვდის, ე.ი. ინგლისურ ინტერფეისში თითქმის ყველა დესტრუქციული დიალოგს ქართული „გაუქმება" ღილაკი აქვს. `confirm.confirm`/`confirm.cancel` გასაღებები ლოკალებში უკვე არსებობს (`en.json:680-681`).
 - **რატომ:** მომხმარებლისთვის ხილული, ყველა წაშლის დიალოგზე; ინგლისურენოვანი მომხმარებელი ვერ კითხულობს, რომელი ღილაკი აჩერებს წაშლას.
 - **გადაწყვეტა:** `FeedbackProvider`-ში `useTranslation()` და default-ები `t('confirm.cancel')`/`t('confirm.confirm')`; `errorMessage`-ის fallback `t('errors.generic')`-ის მსგავს გასაღებზე.
 - **Acceptance criteria:**
-  - [ ] `grep -n "'გაუქმება'\|'დადასტურება'\|'შეცდომა'" src/components/ui/feedback.tsx src/lib/errors.ts` ცარიელია
-  - [ ] ინგლისურ UI-ში confirm-ის ორივე ღილაკი ინგლისურია (Vitest კომპონენტ-ტესტი `react-dom/client`-ით)
+  - [x] `grep -n "'გაუქმება'\|'დადასტურება'\|'შეცდომა'" src/components/ui/feedback.tsx src/lib/errors.ts` ცარიელია
+  - [x] ინგლისურ UI-ში confirm-ის ორივე ღილაკი ინგლისურია (Vitest კომპონენტ-ტესტი `react-dom/client`-ით)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

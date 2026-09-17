@@ -103,8 +103,12 @@ export function fieldErrors(e: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(errors).map(([k, v]) => [k, v[0]]))
 }
 
-/** ერთი ადამიანური შეტყობინება (toast-ისთვის) */
-export function errorMessage(e: unknown, fallback = 'შეცდომა'): string {
+/**
+ * ერთი ადამიანური შეტყობინება (toast-ისთვის).
+ * ⚠️ BUG-01 — fallback-ი **ყოველ გამოძახებაზე** ენიდან იკითხება (default
+ * პარამეტრი გამოძახების მომენტში ფასდება), და არა ქართულ literal-ით.
+ */
+export function errorMessage(e: unknown, fallback: string = i18n.t('toast.error')): string {
   if (!axios.isAxiosError(e)) return e instanceof Error ? e.message : fallback
   const data = e.response?.data as
     | { message?: string; errors?: Record<string, string[]>; [k: string]: unknown }

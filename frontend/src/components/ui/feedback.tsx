@@ -1,5 +1,6 @@
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -58,6 +59,7 @@ export function useToast() {
 let nextToastId = 1
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const [confirmState, setConfirmState] = React.useState<ConfirmState | null>(null)
   const [toasts, setToasts] = React.useState<ToastItem[]>([])
 
@@ -134,16 +136,19 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                       )}
                     </div>
                   </div>
+                  {/* ⚠️ BUG-01 — ნაგულისხმევი ტექსტი **ენის** და არა ქართულ literal-ის:
+                      49 `confirm({`-იდან უმეტესობა `cancelText`-ს არ აწვდის, ე.ი.
+                      ინგლისურ UI-ში თითქმის ყველა წაშლის დიალოგს „გაუქმება" ეწერა */}
                   <div className="mt-6 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => settle(false)}>
-                      {confirmState.cancelText ?? 'გაუქმება'}
+                      {confirmState.cancelText ?? t('confirm.cancel')}
                     </Button>
                     <Button
                       variant={confirmState.variant === 'destructive' ? 'destructive' : 'default'}
                       onClick={() => settle(true)}
                       autoFocus
                     >
-                      {confirmState.confirmText ?? 'დადასტურება'}
+                      {confirmState.confirmText ?? t('confirm.confirm')}
                     </Button>
                   </div>
                 </>
