@@ -284,6 +284,138 @@ class RoleApiTest extends TestCase
             ->assertNoContent();
     }
 
+    /** SEC-03 — `admin:roles`-ის (ყველა მოქმედება) მქონე, ოღონდ `super_admin` არა */
+    private function rolesAdmin(): User
+    {
+        $role = Role::create([
+            'key' => 'roles-admin',
+            'name_ka' => 'როლების ადმინი',
+            'name_en' => 'Roles admin',
+            'permissions' => ['admin:roles' => Role::ACTIONS],
+        ]);
+
+        $user = User::factory()->create();
+        $user->forceFill(['role_id' => $role->id])->save();
+
+        return $user;
+    }
+
+    /**
+     * ⚠️ **SEC-03 (High, 2026-09-17).** `PUT /admin/roles/{საკუთარი}`-ით
+     * `admin:users`-ის დამატება SEC-02-ის ჯაჭვის პირველი რგოლი იყო. ⚠️ პასუხი
+     * **403 `role_escalation`**-ია, და **არა** 422 — ესკალაცია ჯერ მოწმდება.
+     */
+    public function test_a_roles_admin_cannot_add_admin_sections_to_their_own_role(): void
+    {
+        $actor = $this->rolesAdmin();
+        $role = $actor->role;
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/roles/{$role->id}", [
+                'name_ka' => $role->name_ka,
+                'name_en' => $role->name_en,
+                'permissions' => ['admin:roles' => Role::ACTIONS, 'admin:users' => ['view', 'update']],
+            ])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertArrayNotHasKey('admin:users', $role->refresh()->permissions);
+        $this->assertFalse($actor->refresh()->hasAdminAccess('users', 'update'));
+    }
+
+    /**
+     * SEC-03 — საკუთარი როლის **უფლებებს** არ ცვლის (422
+     * `cannot_edit_own_role`), მოდულის უფლებაზეც; სახელის გადარქმევა და
+     * უცვლელი მატრიცის ხელახლა გამოგზავნა კი ჩვეულებრივ გადის.
+     */
+    public function test_a_roles_admin_cannot_edit_the_permissions_of_their_own_role(): void
+    {
+        $actor = $this->rolesAdmin();
+        $role = $actor->role;
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/roles/{$role->id}", [
+                'name_ka' => $role->name_ka,
+                'name_en' => $role->name_en,
+                'permissions' => ['admin:roles' => Role::ACTIONS, 'movie' => ['view', 'delete']],
+            ])
+            ->assertUnprocessable()
+            ->assertJson(['message' => 'cannot_edit_own_role']);
+
+        $this->assertArrayNotHasKey('movie', $role->refresh()->permissions);
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/roles/{$role->id}", [
+                'name_ka' => 'ახალი სახელი',
+                'name_en' => 'Renamed',
+                'permissions' => ['admin:roles' => ['delete', 'view', 'update', 'create']],
+            ])
+            ->assertOk();
+
+        $this->assertSame('Renamed', $role->refresh()->name_en);
+    }
+
+    /** SEC-03 — `admin:*` გასაღებიანი ახალი როლი: მხოლოდ `super_admin`-ს */
+    public function test_only_a_super_admin_creates_a_role_with_admin_sections(): void
+    {
+        $payload = [
+            'name_ka' => 'აუდიტორი',
+            'name_en' => 'Auditor',
+            'permissions' => ['admin:audit' => ['view'], 'movie' => ['view']],
+        ];
+
+        $actor = $this->rolesAdmin();
+
+        $this->actingAs($actor)
+            ->postJson('/api/admin/roles', $payload)
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertDatabaseMissing('roles', ['name_en' => 'Auditor']);
+
+        $this->actingAs($actor)
+            ->postJson('/api/admin/roles', [...$payload, 'permissions' => ['movie' => ['view']]])
+            ->assertCreated();
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/admin/roles', [...$payload, 'name_en' => 'Auditor 2'])
+            ->assertCreated();
+
+        $this->assertSame(['view'], Role::where('name_en', 'Auditor 2')->value('permissions')['admin:audit'] ?? null);
+    }
+
+    /**
+     * SEC-03 — ⚠️ ადმინ-ზონის შემადგენლობა `super_admin`-ისაა **ორივე
+     * მიმართულებით**: სხვის როლიდან `admin:*`-ის მოხსნაც 403-ია; ამ
+     * როლის **მოდულების** რედაქტირება კი (უცვლელი `admin:*` ნაწილით) გადის.
+     */
+    public function test_a_roles_admin_cannot_strip_admin_sections_from_another_role(): void
+    {
+        $actor = $this->rolesAdmin();
+        $auditor = Role::create([
+            'key' => 'auditor', 'name_ka' => 'აუდიტორი', 'name_en' => 'Auditor',
+            'permissions' => ['admin:audit' => ['view']],
+        ]);
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/roles/{$auditor->id}", [
+                'name_ka' => 'აუდიტორი', 'name_en' => 'Auditor', 'permissions' => [],
+            ])
+            ->assertForbidden()
+            ->assertJson(['message' => 'role_escalation']);
+
+        $this->assertSame(['view'], $auditor->refresh()->permissions['admin:audit'] ?? null);
+
+        $this->actingAs($actor)
+            ->putJson("/api/admin/roles/{$auditor->id}", [
+                'name_ka' => 'აუდიტორი', 'name_en' => 'Auditor',
+                'permissions' => ['admin:audit' => ['view'], 'movie' => ['view']],
+            ])
+            ->assertOk();
+
+        $this->assertSame(['view'], $auditor->refresh()->permissions['movie'] ?? null);
+    }
+
     /**
      * ⚠️ **ნიღბის მოხსნის შემდეგ უფლება მხოლოდ ცხადად ჩაწერილია**: ერთ
      * მოდულზე მიცემული უფლება მეორეზე არ ვრცელდება.

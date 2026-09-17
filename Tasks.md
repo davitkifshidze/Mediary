@@ -10,7 +10,7 @@
 |----|---------|----------|------|----------|----------|
 | SEC-01 | პროდ-ბაზის dump პაროლის ჰეშებით, `remember_token`-ებით, სესიით და პირადი ჩატით git-ში და GitHub-ზეა | Critical | security | M | 🟡 ნაწილობრივ |
 | SEC-02 | `admin:users` უფლების მქონე თავის თავს `super_admin`-ად აქცევს | Critical | security | S | ✅ შესრულებულია |
-| SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S | ⬜ |
+| SEC-03 | `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს (ესკალაციის ჯაჭვი SEC-02-ში) | High | security | S | ✅ შესრულებულია |
 | SEC-04 | ჩატის მიმაგრებული ფაილი კლიენტის `Content-Type`-ით `inline` ბრუნდება — cross-account stored XSS | High | security | M | ⬜ |
 | SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ⬜ |
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
@@ -43,6 +43,7 @@
 | PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ⬜ |
 | GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ⬜ |
 | GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
+| GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ⬜ |
 | DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ⬜ |
 | DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ⬜ |
@@ -128,15 +129,21 @@
 ## High
 
 ### [SEC-03] `admin:roles` უფლების მქონე საკუთარ როლს `admin:*` უფლებებს ამატებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `AdminRoleController::changesAdminZone()`: `super_admin`-ის გარდა არავის `store()`/`update()` ადმინ-სექციების (`admin:<resource>`) შემადგენლობას **არ ცვლის — არც დამატება, არც მოხსნა** → 403 `role_escalation`. ⚠️ მოხსნაც იკეტება, რადგან „მინიჭება მხოლოდ `super_admin`-ს" წესი ორივე მიმართულებით ადმინ-ზონის შემადგენლობას ეხება, და როლი მის **ყველა** მფლობელს ეხება. სხვის როლზე **მოდულების** რედაქტირება (უცვლელი `admin:*` ნაწილით) ჩვეულებრივ გადის — UI ყოველთვის მთელ მატრიცას აგზავნის
+  - ✅ საკუთარი როლის **უფლებების** ნებისმიერი ცვლილება (მოდულისაც) → 422 `cannot_edit_own_role`; ⚠️ ჯერ ადმინ-ზონა (403), მერე „საკუთარი" — SEC-02-ის რიგი. სახელის გადარქმევა და უცვლელი მატრიცის (სხვა რიგით) ხელახლა გამოგზავნა გადის
+  - ✅ `RoleApiTest`-ში 4 ახალი ტესტი (საკუთარ როლს `admin:users` · საკუთარი მოდულის უფლება vs გადარქმევა · `admin:*`-იანი ახალი როლი vs `super_admin` · სხვის როლიდან `admin:*`-ის მოხსნა vs მოდულის რედაქტირება). **მუტაციის შემოწმება:** `changesAdminZone()`-ის გამორთვაზე 3 ტესტი წითლდება, „საკუთარი როლის" შემოწმების გამორთვაზე — 1
+  - ✅ SPA: `cannot_edit_own_role` `CODES`-შია და ორივე ლოკალში (`role_escalation` SEC-02-იდან უკვე არის)
+  - ℹ️ UI-ში საკეტი ჯერ არ სჭირდება: `RolePage` დღეს **მხოლოდ `super_admin`-ს** ხატავს (`isAdmin`), თუმცა სია `canAdmin('roles')`-ით იხსნება — `admin:roles`-ის მქონე ცარიელ გვერდს ხედავს. ჩაიწერა GAP-10-ად (იქ UI-საკეტებიც)
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/Admin/AdminRoleController.php:43-55` (`cleanPermissions()`-ის allow-list `:106-111`)
 - **პრობლემა:** `update()` მხოლოდ `super_admin` როლს იცავს (`! $role->isSuperAdmin()`), მაგრამ `cleanPermissions()` `admin:users`/`admin:roles`/`admin:requests`/`admin:audit` გასაღებებს უშვებს. `admin:roles.update`-ის მქონე `PUT /admin/roles/{own role}`-ით საკუთარ როლს `{"admin:users":["update"]}` ამატებს — და SEC-02-ის გზით `super_admin` ხდება. `store()`-საც იგივე ხვრელი აქვს.
 - **რატომ:** ერთი სექციის უფლება (`admin:roles`) სრულ ადმინ-ზონამდე ესკალირდება — ზუსტად ის, რასაც `OwnershipTest::test_module_permissions_never_open_the_admin_zone` კრძალავს, მხოლოდ სხვა კარიდან.
 - **გადაწყვეტა:** `admin:*` გასაღების მინიჭება მხოლოდ `super_admin`-ს შეეძლოს; მოქმედს საკუთარი როლის `permissions`-ის რედაქტირება აეკრძალოს (422 `cannot_edit_own_role`); `store()`-ზეც იგივე წესი.
 - **Acceptance criteria:**
-  - [ ] `admin:roles` როლით საკუთარ როლზე `admin:users`-ის დამატება 403/422-ია
-  - [ ] `admin:roles` როლით ახალი როლის შექმნა `admin:*` გასაღებით 403-ია; `super_admin`-ს შეუძლია
-  - [ ] `RoleApiTest`-ში ორივე შემთხვევა დაფარულია
+  - [x] `admin:roles` როლით საკუთარ როლზე `admin:users`-ის დამატება 403/422-ია (403 `role_escalation`)
+  - [x] `admin:roles` როლით ახალი როლის შექმნა `admin:*` გასაღებით 403-ია; `super_admin`-ს შეუძლია
+  - [x] `RoleApiTest`-ში ორივე შემთხვევა დაფარულია
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-02
 
@@ -523,6 +530,18 @@
   - [ ] სამ `metadata` როუტს კომენტარი აქვს
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-07
+
+### [GAP-10] `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს
+- **ტიპი:** gap
+- **სად:** `frontend/src/pages/RolePage.tsx:72`, `:80`, `:130` (`isAdmin` → `lib/auth.tsx:99` = `is_super_admin`); vs `frontend/src/pages/RolesPage.tsx:62`, `:69`, `:82` და `frontend/src/App.tsx:299-300` (`canAdmin('roles')`); `frontend/src/pages/UserPage.tsx:75` (`fetchRoles` gate-ის გარეშე)
+- **პრობლემა:** SEC-03-ის შესრულებისას ნაპოვნი. `admin:roles`-ის მქონე (`super_admin` არა) სიას ხედავს, როლზე დაჭერისას კი `RolePage` `null`-ს აბრუნებს — ცარიელი გვერდი. CLAUDE.md-ის წესი („`canAdmin()` ხატავს ბმულებს, როუტებს და გვერდის შიდა დამცავებს — `is_super_admin`-ს ნუ ამოწმებ") აქ დარღვეულია. `UserPage` `/admin/roles`-ს `canAdmin('roles')`-ის გარეშე ითხოვს, ე.ი. `admin:users`-only ადმინს როლის select ცარიელია (403). SEC-02/SEC-03-ის შემდეგ გვერდის გახსნა უსაფრთხოა, მაგრამ UI-ს ორი საკეტი სჭირდება: ადმინ-სექციების ბარათები `super_admin`-ის გარდა read-only, და საკუთარი როლის მატრიცა read-only.
+- **რატომ:** role-grantable ადმინ-ზონა (Tasks 1.6) `roles` სექციაზე ფაქტობრივად API-only-ია; UI ცარიელ გვერდს აჩვენებს ახსნის გარეშე.
+- **გადაწყვეტა:** `RolePage` → `canAdmin('roles')` (`update` — შენახვის ღილაკისთვის); `ADMIN_RESOURCES`-ის `PermCard`-ები `me.is_super_admin`-ის გარეშე `disabled` + ახსნა (`role_escalation`-ის ლოგიკა); საკუთარ როლზე (`me.role_id === role.id`) მატრიცა `disabled` + `cannot_edit_own_role`-ის ახსნა; `UserPage`-ზე `admin:users`-only ადმინს როლების read-only სია სჭირდება — ⚠️ `enabled`-ის დამატება მარტო არ შველის, რადგან `GET /admin/roles` `admin_access:roles`-ის უკანაა (მაგ. სიის `admin:users.view`-ზეც გახსნა, ან ცალკე მსუბუქი endpoint).
+- **Acceptance criteria:**
+  - [ ] `admin:roles`-only ადმინი `/roles/:id`-ზე მატრიცას ხედავს და მოდულების უფლებებს ინახავს
+  - [ ] მისთვის ადმინ-სექციები და საკუთარი როლი read-only-ია (კომპონენტ-ტესტი `react-dom/client`-ით)
+- **Estimate:** S
+- **დამოკიდებულება:** SEC-03
 
 ### [DEBT-02] `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს
 - **ტიპი:** debt

@@ -979,7 +979,8 @@
     "row_key_incomplete": "The key is incomplete.",
     "safety_backup_failed": "The safety copy failed — nothing was restored.",
     "role_escalation": "You can't manage an account or assign a role with more admin power than your own — a super admin has to do it.",
-    "cannot_change_own_role": "You can't change your own role — another admin has to do it."
+    "cannot_change_own_role": "You can't change your own role — another admin has to do it.",
+    "cannot_edit_own_role": "You can't change the permissions of your own role — another admin has to do it."
   },
   "fields": {
     "title": "Fields",
