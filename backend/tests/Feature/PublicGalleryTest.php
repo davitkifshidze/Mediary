@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CastMember;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\Module;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -187,5 +189,50 @@ class PublicGalleryTest extends TestCase
         $this->alice->modules()->syncWithoutDetaching([$id => ['is_public' => false]]);
 
         $this->getJson('/api/public/profiles/alice/gallery-photos')->assertStatus(404);
+    }
+
+    /**
+     * **საჯარო გალერეა ჩანაწერების რიცხვზე არ არის დამოკიდებული** (Tasks PERF-02).
+     *
+     * ⚠️ `publicCastIds()` ყოველ საჯარო ჩანაწერზე ცალკე `$record->cast()->pluck()`-ს
+     * უშვებდა. გაზომილი გასწორებამდე: 5 ფილმზე 16 query, 25-ზე 36, 60-ზე 71 —
+     * ე.ი. 500 საჯარო ფილმზე ~500 query **ერთ ანონიმურ გახსნაზე**.
+     *
+     * ⚠️ **და ეს `auth:sanctum`-ის გარეთაა** — ერთადერთი დომენური endpoint,
+     * რომელსაც ავტორიზაციის გარეშე გამოიძახებ. ე.ი. წრფივი ზრდა აქ არა
+     * მხოლოდ ნელი გვერდია, არამედ იაფი DoS-ვექტორიც.
+     *
+     * ⚠️ **გაზომვამდე ერთი „გასათბობი" მოთხოვნა ხდება.** პირველი გამოძახება
+     * ერთჯერად query-ებსაც აკეთებს (მოდულების კეში), ე.ი. მის გარეშე ტესტი
+     * ორ სხვადასხვა რამეს ადარებდა და ცრუ განსხვავებას აჩვენებდა.
+     */
+    public function test_the_public_gallery_does_not_query_per_record(): void
+    {
+        $cast = CastMember::create(['name' => 'Somebody']);
+        $made = 0;
+
+        $count = function (int $target) use ($cast, &$made): int {
+            while ($made < $target) {
+                $made++;
+                $movie = $this->movie('public');
+                $movie->cast()->attach($cast->id, ['billing_order' => 1]);
+                $this->photo($movie, "gallery/images/perf{$made}.jpg");
+            }
+
+            $this->getJson('/api/public/profiles/alice/gallery-photos')->assertOk();  // გასათბობი
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->getJson('/api/public/profiles/alice/gallery-photos')->assertOk();
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        $few = $count(4);
+        $many = $count(30);
+
+        $this->assertSame($few, $many, 'query-ების რაოდენობა ჩანაწერების რიცხვს მიჰყვება');
     }
 }

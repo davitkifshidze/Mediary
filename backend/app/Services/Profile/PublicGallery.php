@@ -10,6 +10,7 @@ use App\Support\GalleryParent;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * **საჯარო გალერეა (Tasks §7.4) — გამოთვლადი და არა ცალკე ჩაწერილი.**
@@ -188,14 +189,28 @@ class PublicGallery
         ];
     }
 
-    /** ამ დომენის საჯარო ჩანაწერების id-ები */
+    /**
+     * ამ დომენის საჯარო ჩანაწერების id-ები.
+     *
+     * ⚠️ **შედეგი მოთხოვნის ფარგლებში იმახსოვრება** (Tasks PERF-02): ერთსა და
+     * იმავე დომენს `query()` ორჯერ ეკითხება — ჯერ ჩანაწერის ფოტოებისთვის,
+     * მერე `publicCastIds()`-იდან მსახიობებისთვის —, ე.ი. სამფენიანი საჯარო
+     * query ორჯერ გარბოდა. ინსტანცია ერთი მოთხოვნისაა (კონტროლერში
+     * ინჯექტირებული), ე.ი. მეხსიერება იმაზე დიდხანს არ ცოცხლობს.
+     *
+     * @return list<int>
+     */
     private function publicIds(User $user, string $domain): array
     {
-        return $this->profiles->query($user, $domain)
+        return $this->idMemo[$user->id][$domain] ??= $this->profiles->query($user, $domain)
             ->reorder()
             ->pluck(PublicDomain::model($domain)::query()->getModel()->getTable().'.id')
+            ->map(fn ($id) => (int) $id)
             ->all();
     }
+
+    /** @var array<int, array<string, list<int>>> */
+    private array $idMemo = [];
 
     /**
      * მსახიობები, რომლებიც ჩემს **საჯარო** მედია-ჩანაწერებში თამაშობენ.
@@ -204,6 +219,18 @@ class PublicGallery
      * ჩემი ჩანაწერებით განისაზღვრება — ზუსტად ის წესი, რასაც `GlobalSearch`
      * და `sourceQuery()` უკვე იყენებს.
      *
+     * ⚠️ **pivot პირდაპირ იკითხება და არა ჩანაწერ-ჩანაწერ** (Tasks PERF-02).
+     * `foreach ($records as $record) { $record->cast()->pluck(…) }` თითო
+     * საჯარო ჩანაწერზე თითო query იყო — გაზომილი: 5 ფილმზე 16 query,
+     * 25-ზე 36, 60-ზე 71. ⚠️ და ეს **`auth:sanctum`-ის გარეთაა**: ერთადერთი
+     * დომენური endpoint, რომელსაც ავტორიზაციის გარეშე გამოიძახებ, ე.ი.
+     * წრფივი ზრდა აქ არა მხოლოდ ნელი გვერდია, არამედ იაფი DoS-ვექტორიც.
+     *
+     * ⚠️ `castable_type`-ად **დომენის key გამოიყენება და არა `getMorphClass()`**:
+     * `query()`-შივე `imageable_type`-ს ზუსტად ასე ადარებს (`movie`/`series`/
+     * `anime` morph-რუკის სახელებია) — ორი კონვენცია ერთ ცხრილზე ზუსტად ის
+     * არის, რაც ერთ დღეს გაშორდება.
+     *
      * @param  list<string>  $domains
      */
     private function publicCastIds(User $user, array $domains): array
@@ -211,12 +238,18 @@ class PublicGallery
         $ids = [];
 
         foreach ($domains as $domain) {
-            $records = $this->profiles->query($user, $domain)->reorder()->get(['id']);
+            $recordIds = $this->publicIds($user, $domain);
 
-            foreach ($records as $record) {
-                foreach ($record->cast()->pluck('cast_members.id') as $castId) {
-                    $ids[(int) $castId] = true;
-                }
+            if (! $recordIds) {
+                continue;
+            }
+
+            foreach (DB::table('castables')
+                ->where('castable_type', $domain)
+                ->whereIn('castable_id', $recordIds)
+                ->distinct()
+                ->pluck('cast_member_id') as $castId) {
+                $ids[(int) $castId] = true;
             }
         }
 

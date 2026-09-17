@@ -20,7 +20,7 @@
 | GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ✅ შესრულებულია |
 | GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ✅ შესრულებულია |
 | PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ✅ შესრულებულია |
-| PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ⬜ |
+| PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ✅ შესრულებულია |
 | PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M | ⬜ |
 | DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ⬜ |
 | SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S | ⬜ |
@@ -329,14 +329,21 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-02] `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `publicCastIds()` pivot-ს პირდაპირ კითხულობს — თითო დომენზე **ერთი** `castables`-query, ჩანაწერ-ჩანაწერ `$record->cast()->pluck()`-ის ნაცვლად
+  - ✅ **გაზომილი** (`/public/profiles/alice` და `/gallery-photos`, ორივე ავტორიზაციის გარეშე): 5 ფილმი 16/15 → 10/9 query, 25 ფილმი 36/34 → **9/7**, 60 ფილმი 71/69 → **9/7** — ე.ი. წრფივობა გაქრა
+  - ⚠️ **`castable_type`-ად დომენის key გამოიყენება და არა `getMorphClass()`** — `query()`-შივე `imageable_type` ზუსტად ასე დარდება (`movie`/`series`/`anime` morph-რუკის სახელებია). ორი კონვენცია ერთ ცხრილზე ზუსტად ის არის, რაც ერთ დღეს გაშორდება
+  - ✅ **`publicIds()` მემოშია, და ეს ცალკე ხარვეზი იყო**: ერთსა და იმავე დომენს სამფენიანი საჯარო query **ორჯერ** ეკითხებოდა — ჯერ ჩანაწერის ფოტოებისთვის, მერე `publicCastIds()`-იდან მსახიობებისთვის. ინსტანცია ერთი მოთხოვნისაა (კონტროლერში ინჯექტირებული), ე.ი. მეხსიერება იმაზე დიდხანს არ ცოცხლობს
+  - ⚠️ **სემანტიკა უცვლელია და ეს შემოწმებულია, და არა ნავარაუდევი**: `castables.cast_member_id`-ს `cascadeOnDelete` აქვს, ე.ი. ობოლი pivot-რიგი ვერ იარსებებს და `cast_members`-თან join-ის მოხსნა შედეგს ვერ შეცვლის; `cast()`-ის `orderByPivot` კი id-ების სიმრავლეს არაფერს მატებდა
+  - ⚠️ **ტესტში ერთი „გასათბობი" მოთხოვნაა**: პირველი გამოძახება ერთჯერად query-ებსაც აკეთებს (მოდულების კეში) — მის გარეშე ტესტი ორ სხვადასხვა რამეს შეადარებდა და ცრუ განსხვავებას აჩვენებდა. ძველ კოდზე ცვივა სიტყვებით „39 is identical to 13"
 - **ტიპი:** performance
 - **სად:** `backend/app/Services/Profile/PublicGallery.php:212-220`
 - **პრობლემა:** ყოველ საჯარო ჩანაწერზე `$record->cast()->pluck('cast_members.id')` ცალკე query-ა; `show()` `count()`-ით და გალერეის ტაბი `page()`-ით ორივე `query()`-ს იძახებს — 500 საჯარო ფილმზე 1000+ query ერთ ანონიმურ გახსნაზე.
 - **რატომ:** ეს ერთადერთი დომენური endpoint-ია `auth:sanctum`-ის გარეთ, ე.ი. ავტორიზაციის გარეშე გამოძახებადი DoS-ვექტორი და ნელი საჯარო გვერდი.
 - **გადაწყვეტა:** დომენზე ერთი pivot-query: `DB::table('castables')->where('castable_type', $morph)->whereIn('castable_id', $ids)->pluck('cast_member_id')`; `query($user)`-ის შედეგი მოთხოვნის ფარგლებში memo-ში.
 - **Acceptance criteria:**
-  - [ ] `PublicGalleryTest`-ში 50 საჯარო ფილმზე query-რაოდენობა ჩანაწერების რიცხვზე არ არის დამოკიდებული
-  - [ ] პასუხის შიგთავსი უცვლელია
+  - [x] `PublicGalleryTest`-ში query-რაოდენობა ჩანაწერების რიცხვზე არ არის დამოკიდებული (4 vs 30 ფილმი)
+  - [x] პასუხის შიგთავსი უცვლელია (`PublicGalleryTest`/`PublicProfileTest`/`MatchTest` — 42 ტესტი)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
