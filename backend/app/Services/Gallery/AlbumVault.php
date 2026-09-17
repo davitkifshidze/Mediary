@@ -7,7 +7,10 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Support\StorageFolder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
+use Throwable;
 
 /**
  * **ჩაკეტილი ალბომის ფაილები პირად დისკზე გადადის (Tasks §7.9).**
@@ -24,6 +27,25 @@ use Illuminate\Support\Facades\Storage;
  *
  * ⚠️ **გადატანა `path` სვეტს ცვლის, ე.ი. ტრანზაქციაა.** ნახევრად გავლილი
  * გადატანა ნახევარ ალბომს გატეხილ სურათებად დატოვებდა.
+ *
+ * ⚠️ **მაგრამ ფაილი ტრანზაქციაში არ ცოცხლობს და სწორედ ეს იყო ბაგი
+ * (Tasks BUG-03).** `writeStream`/`delete` rollback-ს არ ემორჩილება, ე.ი.
+ * ძველი რიგი „ჩაწერე ახალი → წაშალე ძველი → შეინახე `path`" DB-ის
+ * ჩავარდნაზე **ალბომის ყველა ფოტოს 404-ად აქცევდა**: სვეტი ძველ
+ * მნიშვნელობას იბრუნებდა, ფაილი კი იქ აღარ იყო. ახლა რიგი სამნაბიჯიანია —
+ * **ჯერ ასლი, მერე commit, ბოლოს ძველის წაშლა**: ჩავარდნაზე ყველაზე ცუდი,
+ * რაც შეიძლება დარჩეს, არის ზედმეტი ასლი (და `catch` მასაც ალაგებს),
+ * ნამდვილი ფაილი კი ადგილზეა და რიგი მასზე მიუთითებს.
+ *
+ * ⚠️ **ასლი ტრანზაქციამდე კეთდება და არა შიგნით** — ათი მეგაბაიტის კოპირება
+ * გახსნილ ტრანზაქციაში მთელი ამ დროით ინახავს ჩაკეტილ რიგებს.
+ *
+ * ⚠️ **`DB::afterCommit()` აქ განზრახ არ გამოიყენება.** ის ზუსტად ამისთვისაა,
+ * მაგრამ ტესტებში `RefreshDatabase` მთელ ტესტს ერთ ტრანზაქციაში ატარებს,
+ * რომელიც არასდროს commit-დება — ე.ი. callback **ტესტში საერთოდ არ
+ * გაეშვებოდა** და კოდი პროდაქშენში სხვას იზამდა, ვიდრე ტესტში.
+ * ამის ფასი: ამ სერვისს **გარე ტრანზაქციიდან არ ეძახიან** (და არც უნდა
+ * დაეძახონ) — ჩადგმულ `DB::transaction()`-ს commit არ აქვს, savepoint აქვს.
  *
  * ⚠️ **პოსტერი ლოკს გვერდს უვლიდა და ესეც აქ იხურება (§7.14).** „მთავარად
  * დაყენება" ჩანაწერის `poster_path`-ს **ფოტოს ბილიკზე** მიუთითებს, global
@@ -61,35 +83,82 @@ final class AlbumVault
     public static function place(GalleryImage $image, ?GalleryAlbum $album): void
     {
         $locked = $album && $album->isLocked();
-        $target = $locked ? StorageFolder::GALLERY_LOCKED : StorageFolder::GALLERY_IMAGES;
 
-        DB::transaction(function () use ($image, $target, $locked) {
-            self::relocate($image, $target, $locked);
-        });
+        self::relocateAll(
+            [$image],
+            $locked ? StorageFolder::GALLERY_LOCKED : StorageFolder::GALLERY_IMAGES,
+            $locked,
+        );
     }
 
     /** @return int რამდენი ფაილი გადავიდა */
     private static function move(GalleryAlbum $album, string $target, bool $clearPosters): int
     {
-        $moved = 0;
-
-        DB::transaction(function () use ($album, $target, $clearPosters, &$moved) {
-            $images = GalleryImage::query()
+        return self::relocateAll(
+            GalleryImage::query()
                 ->withoutGlobalScope('album_lock')
                 ->withoutGlobalScope('owner')
                 ->where('album_id', $album->id)
-                ->get();
-
-            foreach ($images as $image) {
-                $moved += self::relocate($image, $target, $clearPosters) ? 1 : 0;
-            }
-        });
-
-        return $moved;
+                ->get(),
+            $target,
+            $clearPosters,
+        );
     }
 
     /**
-     * ერთი ფაილის გადატანა.
+     * **ასლი → commit → ძველის წაშლა** (Tasks BUG-03).
+     *
+     * ⚠️ დაბრუნებული რიცხვი **ნამდვილად გადატანილებია** და არა „რამდენ
+     * რიგზე გავიარე": ადრე დისკზე დაკარგული ფაილიც „წარმატებით გადატანილად"
+     * ითვლებოდა და `path`-ს არარსებულ მისამართზე გადააწერდა.
+     *
+     * @param  iterable<GalleryImage>  $images
+     */
+    private static function relocateAll(iterable $images, string $target, bool $clearPosters): int
+    {
+        /** @var list<array{image: GalleryImage, from: string, to: string, overwrote: bool}> $copied */
+        $copied = [];
+
+        try {
+            foreach ($images as $image) {
+                $step = self::copy($image, $target);
+                if ($step) {
+                    $copied[] = $step;
+                }
+            }
+
+            DB::transaction(function () use ($copied, $clearPosters) {
+                foreach ($copied as $step) {
+                    if ($clearPosters) {
+                        self::clearPoster($step['image'], $step['from']);
+                    }
+
+                    $step['image']->forceFill(['path' => $step['to']])->saveQuietly();
+                }
+            });
+        } catch (Throwable $e) {
+            /* ⚠️ commit-მდე ჩავარდნაზე ახალი ასლი ობოლია — ვასუფთავებთ.
+               ⚠️ **გარდა იმ შემთხვევისა, როცა იქ ფაილი უკვე იდო**: ის ჩვენ
+               არ შეგვიქმნია და მისი წაშლა სხვისი ფოტოს წაშლა იქნებოდა. */
+            foreach ($copied as $step) {
+                if (! $step['overwrote']) {
+                    Storage::disk(StorageFolder::diskFor($step['to']))->delete($step['to']);
+                }
+            }
+
+            throw $e;
+        }
+
+        // commit გავიდა — რიგი ახალ ასლზე მიუთითებს, ძველი აღარავის სჭირდება
+        foreach ($copied as $step) {
+            self::discard($step['from']);
+        }
+
+        return count($copied);
+    }
+
+    /**
+     * ერთი ფაილის **ასლი** სამიზნე საქაღალდეში; ძველს ხელს არ ახლებს.
      *
      * ⚠️ **ნაკადით და არა `get()`-ით** — გალერეის ორიგინალი მეგაბაიტებია და
      * მთელი ფაილის PHP-ის სტრიქონში ჩატვირთვა ზუსტად ის ხაფანგია, რასაც
@@ -97,39 +166,66 @@ final class AlbumVault
      *
      * ⚠️ **კვოტა არ იცვლება**: იგივე ფაილია, უბრალოდ სხვა საქაღალდეში —
      * `size` ხელუხლებელია, ე.ი. მრიცხველს ხელი არ ეხება.
+     *
+     * ⚠️ **დისკზე არარსებული ფაილი `null`-ია და არა „გადავიტანე"** (BUG-03):
+     * `path` უცვლელი რჩება. ადრე ის ახალ მისამართზე გადაიწერებოდა, ე.ი.
+     * დაკარგული ფაილის რიგი მეორე, უკვე გამოუსწორებელ ადგილს უთითებდა.
+     *
+     * ⚠️ **I/O შეცდომა კი პირიქით — გამონაკლისია და არა გამოტოვება.** ჩუმად
+     * გამოტოვებული ფოტო `seal()`-ზე იმას ნიშნავდა, რომ ალბომი „ჩაკეტილია",
+     * ერთი ფაილი კი საჯარო დისკზე დარჩა — ზუსტად ის, რასაც ეს სერვისი
+     * ხურავს. სჯობს მთელი ოპერაცია ჩავარდეს ხმამაღლა.
+     *
+     * @return array{image: GalleryImage, from: string, to: string, overwrote: bool}|null
      */
-    private static function relocate(GalleryImage $image, string $target, bool $clearPosters): bool
+    private static function copy(GalleryImage $image, string $target): ?array
     {
         $path = (string) $image->path;
         if ($path === '' || str_starts_with($path, $target.'/')) {
-            return false;
+            return null;
         }
 
         $from = Storage::disk(StorageFolder::diskFor($path));
+        if (! $from->exists($path)) {
+            return null;
+        }
+
         $to = Storage::disk(StorageFolder::diskFor($target));
         $next = $target.'/'.basename($path);
+        $overwrote = $to->exists($next);
 
-        if ($from->exists($path)) {
-            $stream = $from->readStream($path);
-            if ($stream === false || $stream === null) {
-                return false;
-            }
-
-            $to->writeStream($next, $stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-
-            $from->delete($path);
+        $stream = $from->readStream($path);
+        if ($stream === false || $stream === null) {
+            throw new RuntimeException('gallery: unreadable file '.$path);
         }
 
-        if ($clearPosters) {
-            self::clearPoster($image, $path);
+        $ok = $to->writeStream($next, $stream);
+        if (is_resource($stream)) {
+            fclose($stream);
         }
 
-        $image->forceFill(['path' => $next])->saveQuietly();
+        if ($ok === false) {
+            throw new RuntimeException('gallery: could not write '.$next);
+        }
 
-        return true;
+        return ['image' => $image, 'from' => $path, 'to' => $next, 'overwrote' => $overwrote];
+    }
+
+    /**
+     * ძველი ასლის მოშორება commit-ის შემდეგ.
+     *
+     * ⚠️ **ჩავარდნა ჩუმი არ არის.** `seal()`-ზე წაუშლელი ძველი ფაილი საჯარო
+     * დისკზე რჩება — ე.ი. დამახსოვრებული `/storage/...` ბმული კვლავ
+     * იხსნება. აპლიკაცია მას აღარსად გასცემს (`path` უკვე პირად ასლზეა),
+     * მაგრამ „რატომ ჩანს ისევ" პასუხგაუცემელი რომ არ დარჩეს, ლოგშია.
+     */
+    private static function discard(string $path): void
+    {
+        $disk = Storage::disk(StorageFolder::diskFor($path));
+
+        if ($disk->exists($path) && ! $disk->delete($path)) {
+            Log::warning('gallery: the old copy is still on disk', ['path' => $path]);
+        }
     }
 
     /**
