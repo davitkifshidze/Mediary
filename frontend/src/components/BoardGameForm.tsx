@@ -35,6 +35,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
+import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 
 /* ============================================================
    ბორდგეიმის ფორმა (Tasks §14).
@@ -83,7 +84,10 @@ export function BoardGameForm({
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
     status: game?.status ?? '',
   })
-  const [links, setLinks] = useState<BoardGameLink[]>(game?.links ?? [])
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+     ინდექსზე შუა სტრიქონის წაშლა ფოკუსს, კარეტსა და Radix `Select`-ის ღია
+     მდგომარეობას მეზობელ ბმულზე გადაიტანდა. `unkeyRows()` მას payload-ში ჭრის. */
+  const [links, setLinks] = useState<Keyed<BoardGameLink>[]>(() => keyRows(game?.links ?? []))
   const [bggImageUrl, setBggImageUrl] = useState<string | null>(null)
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(storageUrl(game?.image))
@@ -162,12 +166,12 @@ export function BoardGameForm({
         ? all
         : [
             ...all,
-            {
+            keyRow({
               label: offer.shop_name,
               url: offer.url,
               price: offer.price,
               currency: offer.currency ?? 'GEL',
-            },
+            }),
           ],
     )
 
@@ -283,7 +287,7 @@ export function BoardGameForm({
       // ცარიელი მნიშვნელობის გაგზავნა არსებულ ქულას ჩუმად წაშლიდა
       // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის
       status: form.status as (typeof BOARD_GAME_STATUSES)[number],
-      links: links.filter((l) => l.url.trim()),
+      links: unkeyRows(links.filter((l) => l.url.trim())),
       bgg_image_url: bggImageUrl,
       image,
       remove_image: removeImage,
@@ -682,7 +686,7 @@ export function BoardGameForm({
               </FieldLabel>
               <div className="mt-1.5 space-y-1.5">
                 {links.map((link, i) => (
-                  <div key={i} className="flex gap-1.5">
+                  <div key={link._key} className="flex gap-1.5">
                     <Input
                       className="w-24 shrink-0"
                       placeholder={t('books.linkLabel')}
@@ -745,7 +749,9 @@ export function BoardGameForm({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setLinks((all) => [...all, { label: '', url: '', price: null, currency: '' }])}
+                    onClick={() =>
+                      setLinks((all) => [...all, keyRow({ label: '', url: '', price: null, currency: '' })])
+                    }
                   >
                     <Plus className="size-3.5" />
                     {t('boardGames.addShop')}

@@ -42,6 +42,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
+import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -147,8 +148,12 @@ export function GameForm({
   const [platforms, setPlatforms] = useState<GamePlatform[]>(game?.platforms ?? [])
   const [modes, setModes] = useState<GameMode[]>(game?.modes ?? [])
   const [genreIds, setGenreIds] = useState<number[]>(game?.genre_ids ?? [])
-  const [links, setLinks] = useState<GameLink[]>(game?.links ?? [])
-  const [dlcs, setDlcs] = useState<GameDlc[]>(game?.dlcs ?? [])
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+     შუა სტრიქონის წაშლაზე React ძველი რიგის DOM-ს მომდევნოსთვის იყენებდა,
+     ე.ი. ფოკუსი, კარეტი და Radix `Select`-ის ღია მდგომარეობა სხვა ჩანაწერზე
+     გადადიოდა. გასაღები მონაცემი არ არის — payload-ში `unkeyRows()` ჭრის. */
+  const [links, setLinks] = useState<Keyed<GameLink>[]>(() => keyRows(game?.links ?? []))
+  const [dlcs, setDlcs] = useState<Keyed<GameDlc>[]>(() => keyRows(game?.dlcs ?? []))
   const [languages, setLanguages] = useState({
     interface: game?.languages?.interface ?? [],
     audio: game?.languages?.audio ?? [],
@@ -232,7 +237,7 @@ export function GameForm({
     }))
 
     if (!platforms.length && draft.platforms?.length) setPlatforms(draft.platforms)
-    if (!links.length && draft.links?.length) setLinks(draft.links)
+    if (!links.length && draft.links?.length) setLinks(keyRows(draft.links))
 
     // RAWG-ის ჟანრი **სახელია** — ჩვენს per-user ლექსიკონს სახელით ვუთავსებთ;
     // რაც ვერ დაემთხვა, ჩუმად ვარდება (ლექსიკონს user თვითონ მართავს)
@@ -330,8 +335,8 @@ export function GameForm({
       age_rating: form.age_rating || null,
       size_gb: num(form.size_gb),
       languages,
-      dlcs: dlcs.filter((d) => d.name.trim()),
-      links: links.filter((l) => l.url.trim()),
+      dlcs: unkeyRows(dlcs.filter((d) => d.name.trim())),
+      links: unkeyRows(links.filter((l) => l.url.trim())),
       rawg_id: num(form.rawgId),
       rawg_slug: form.rawgSlug || null,
       igdb_id: num(form.igdbId),
@@ -668,7 +673,7 @@ export function GameForm({
             </span>
             <div className={fields.shows('links') ? 'mt-1.5 space-y-1.5' : 'hidden'}>
               {links.map((link, i) => (
-                <div key={i} className="flex gap-1.5">
+                <div key={link._key} className="flex gap-1.5">
                   <Select
                     value={link.kind ?? 'other'}
                     onValueChange={(v) =>
@@ -711,7 +716,7 @@ export function GameForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setLinks((all) => [...all, { label: '', url: '', kind: 'other' }])}
+                onClick={() => setLinks((all) => [...all, keyRow({ label: '', url: '', kind: 'other' })])}
               >
                 <Plus className="size-3.5" />
                 {t('games.addLink')}
@@ -725,7 +730,7 @@ export function GameForm({
               </FieldLabel>
               <div className="mt-1.5 space-y-1.5">
                 {dlcs.map((dlc, i) => (
-                  <div key={i} className="flex gap-1.5">
+                  <div key={dlc._key} className="flex gap-1.5">
                     <Input
                       placeholder={t('games.dlcName')}
                       value={dlc.name}
@@ -757,7 +762,7 @@ export function GameForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setDlcs((all) => [...all, { name: '', note: '' }])}
+                  onClick={() => setDlcs((all) => [...all, keyRow({ name: '', note: '' })])}
                 >
                   <Plus className="size-3.5" />
                   {t('games.addDlc')}

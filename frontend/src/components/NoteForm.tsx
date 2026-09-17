@@ -29,6 +29,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
+import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 
 /* ============================================================
@@ -74,7 +75,10 @@ export function NoteForm({
     status: note?.status?.key ?? '',
     dueAt: toDateTimeLocal(note?.due_at),
   })
-  const [links, setLinks] = useState<NoteLink[]>(note?.links ?? [])
+  /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
+     ინდექსზე შუა სტრიქონის წაშლა ფოკუსსა და კარეტს მეზობელ ბმულზე გადაიტანდა.
+     `unkeyRows()` გასაღებს payload-ში ჭრის. */
+  const [links, setLinks] = useState<Keyed<NoteLink>[]>(() => keyRows(note?.links ?? []))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newCategory, setNewCategory] = useState(false)
   const [reminders, setReminders] = useState(false)
@@ -132,7 +136,7 @@ export function NoteForm({
       description: form.description || null,
       category_id: form.categoryId ? Number(form.categoryId) : null,
       tags: form.tags,
-      links: links.filter((l) => l.url.trim()),
+      links: unkeyRows(links.filter((l) => l.url.trim())),
       // ⚠️ ლოკალური input → UTC (`fromDateTimeLocal` ერთადერთი გზაა)
       due_at: fromDateTimeLocal(form.dueAt),
       status: form.status || undefined,
@@ -299,7 +303,7 @@ export function NoteForm({
           </FieldLabel>
           <div className="mt-1.5 space-y-1.5">
             {links.map((link, i) => (
-              <div key={i} className="flex gap-1.5">
+              <div key={link._key} className="flex gap-1.5">
                 <Input
                   className="w-32 shrink-0"
                   placeholder={t('books.linkLabel')}
@@ -331,7 +335,7 @@ export function NoteForm({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setLinks((all) => [...all, { label: '', url: '' }])}
+              onClick={() => setLinks((all) => [...all, keyRow({ label: '', url: '' })])}
             >
               <Plus className="size-3.5" />
               {t('notes.addLink')}
