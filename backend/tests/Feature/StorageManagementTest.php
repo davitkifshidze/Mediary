@@ -2,10 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Models\Anime;
+use App\Models\BoardGame;
+use App\Models\Book;
+use App\Models\Bookmark;
+use App\Models\DatabaseBackup;
+use App\Models\GalleryImage;
+use App\Models\Game;
+use App\Models\Message;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Series;
+use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
@@ -13,6 +23,7 @@ use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -642,5 +653,149 @@ class StorageManagementTest extends TestCase
 
         $this->assertTrue($meter->reserve($user, 600));
         $this->assertFalse($meter->reserve($user->refresh(), 1));
+    }
+
+    /* ================= PERF-03 ================= */
+
+    /**
+     * ერთი ფაილი ყოველ ბლოკზე, რომელსაც `files()` კითხულობს — ქვედა ორი
+     * ტესტის საერთო საფუძველი.
+     *
+     * ⚠️ ზომები **განზრახ განსხვავებულია**: ერთი და იგივე რიცხვი ბლოკების
+     * აღრევას დაფარავდა.
+     */
+    private function inventory(): User
+    {
+        $u = $this->user;
+        $u->forceFill(['avatar_path' => 'account/avatars/a.jpg'])->save();
+
+        $movie = Movie::create(['user_id' => $u->id, 'poster_path' => 'movies/posters/m.jpg', 'poster_source' => 'upload']);
+        Series::create(['user_id' => $u->id, 'poster_path' => 'series/posters/s.jpg', 'poster_source' => 'upload']);
+        Anime::create(['user_id' => $u->id, 'poster_path' => 'animes/posters/a.jpg', 'poster_source' => 'upload']);
+
+        $video = Video::create([
+            'user_id' => $u->id, 'title' => 'v', 'url' => 'https://youtu.be/dQw4w9WgXcQ',
+            'thumbnail_path' => 'videos/thumbnails/v.jpg',
+            'download_path' => 'videos/downloads/v.mp4', 'download_size' => 4096,
+        ]);
+        $this->attach($video, $u, 'videos/files/docs/v.pdf', 512);
+
+        $song = Song::create(['user_id' => $u->id, 'title' => 's', 'url' => 'https://youtu.be/dQw4w9WgXcQ', 'thumbnail_path' => 'songs/thumbnails/s.jpg']);
+        $song->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'songs/files/docs/s.pdf', 'size' => 64]);
+
+        Bookmark::create([
+            'user_id' => $u->id, 'title' => 'b', 'url' => 'https://example.com',
+            'thumbnail_path' => 'bookmarks/thumbnails/b.jpg',
+        ]);
+
+        $book = Book::create(['user_id' => $u->id, 'title_en' => 'b', 'cover_path' => 'books/covers/b.jpg', 'cover_source' => 'upload']);
+        $book->files()->create(['user_id' => $u->id, 'kind' => 'book', 'path' => 'books/files/ebooks/b.epub', 'size' => 128]);
+
+        $board = BoardGame::create(['user_id' => $u->id, 'title' => 'bg', 'image_path' => 'boardgames/images/bg.jpg', 'image_source' => 'upload']);
+        $board->files()->create(['user_id' => $u->id, 'kind' => 'rules', 'path' => 'boardgames/files/rules/bg.pdf', 'size' => 256]);
+
+        $game = Game::create(['user_id' => $u->id, 'title_en' => 'g', 'cover_path' => 'games/covers/g.jpg', 'cover_source' => 'upload']);
+        $game->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'games/files/docs/g.pdf', 'size' => 32]);
+
+        $note = NoteEntry::create(['user_id' => $u->id, 'title' => 'n']);
+        NoteEntryFile::create([
+            'user_id' => $u->id, 'note_entry_id' => $note->id, 'kind' => 'doc',
+            'path' => 'notes/files/docs/n.pdf', 'size' => 16,
+        ]);
+
+        GalleryImage::create([
+            'user_id' => $u->id, 'imageable_type' => 'movie', 'imageable_id' => $movie->id,
+            'path' => 'gallery/images/g.jpg', 'size' => 8, 'source' => 'tmdb', 'category' => 'backdrop',
+        ]);
+
+        $conversation = DB::table('conversations')->insertGetId(['created_at' => now(), 'updated_at' => now()]);
+        Message::create([
+            'conversation_id' => $conversation, 'user_id' => $u->id, 'type' => 'doc',
+            'attachment_path' => 'chat/files/docs/c.pdf', 'attachment_size' => 2048,
+        ]);
+
+        DatabaseBackup::create([
+            'user_id' => $u->id, 'path' => 'backups/db.sql.gz', 'name' => 'db.sql.gz',
+            'size' => 1024, 'status' => 'ready',
+        ]);
+
+        DB::table('video_field_values')->insert([
+            'user_id' => $u->id, 'record_id' => $video->id, 'field_key' => 'f', 'sort_order' => 0,
+            'value_path' => 'videos/fields/f.pdf', 'value_size' => 4,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return $u->refresh();
+    }
+
+    /**
+     * **მოდულის მინიშნება პასუხს არ ცვლის** (Tasks PERF-03).
+     *
+     * ⚠️ ეს ტესტი ის ფასია, რომელსაც `files($user, $module)` იხდის. `usedByModule()`
+     * განზრახ `files()`-ზე გადის, რომ „რა ითვლება" ერთადერთი განმარტება დარჩეს;
+     * მინიშნება ამ წესს მხოლოდ მაშინ არ არღვევს, თუ **ზუსტად** იმავე პასუხს
+     * იძლევა. არასწორად გამოტოვებული ბლოკი სხვაგვარად ჩუმი იქნებოდა — ლიმიტი
+     * უბრალოდ ცოტა უფრო გვიან ჩაირთვებოდა.
+     */
+    public function test_the_module_hint_never_changes_the_answer(): void
+    {
+        $user = $this->inventory();
+        $meter = app(StorageMeter::class);
+
+        $full = $meter->files($user);
+        $modules = $full->pluck('module')->unique()->values();
+
+        // ⚠️ ცარიელ ინვენტარზე ტესტი უაზროდ გაივლიდა
+        $this->assertGreaterThanOrEqual(12, $modules->count());
+
+        foreach ($modules as $module) {
+            $this->assertSame(
+                $full->where('module', $module)->pluck('path')->sort()->values()->all(),
+                $meter->files($user, $module)->where('module', $module)->pluck('path')->sort()->values()->all(),
+                "მოდული {$module}: მინიშნებით და მის გარეშე სხვადასხვა პასუხი",
+            );
+        }
+
+        // მოდული, რომელსაც ფაილი არ აქვს, ორივე გზით ნულია
+        $this->assertSame(0, (int) $meter->files($user, 'playlist')->where('module', 'playlist')->sum('size'));
+    }
+
+    /**
+     * **ატვირთვა სხვა მოდულების ცხრილებს აღარ კითხულობს** (Tasks PERF-03).
+     *
+     * ⚠️ `guardModule()` → `usedByModule()` → `files()` ყოველ **ფაილზე** გარბოდა,
+     * `files()` კი ~20 ცხრილის სრული ინვენტარია. გაზომილი 10-ფაილიან ატვირთვაზე
+     * (`POST /notes/{id}/files`): 346 query → 76.
+     *
+     * ⚠️ **მეხსიერებაში შენახვა აქ არასწორი იქნებოდა და არა უბრალოდ ზედმეტი**:
+     * ატვირთვა პაკეტურია და რიგები ციკლის შიგნით ჩნდება, ე.ი. ერთხელ აღებული
+     * სურათი მე-2…N-ე ფაილს ძველ ჯამზე შეამოწმებდა — მოდულის ლიმიტი ჩუმად
+     * გადაცდებოდა.
+     */
+    public function test_an_upload_does_not_scan_other_modules(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->inventory();
+        $user->forceFill(['storage_quota_bytes' => 10_000_000])->save();
+        $this->actingAs($user->refresh())
+            ->putJson('/api/storage/allocations', ['allocations' => ['video' => 1_000_000]])
+            ->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        app(StorageMeter::class)->guardModule($user->refresh(), 10, 'videos/files/docs');
+        $log = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        foreach (['gallery_images', 'messages', 'database_backups', 'book_files', 'game_files', 'note_entry_files'] as $foreign) {
+            $this->assertFalse(
+                $log->contains(fn (string $q) => str_contains($q, $foreign)),
+                "ვიდეოს ლიმიტის შემოწმებამ {$foreign} წაიკითხა",
+            );
+        }
+
+        // ⚠️ საკუთარი ბლოკები კი უნდა წაიკითხოს, თორემ ჯამი მოტყუებული იქნებოდა
+        $this->assertTrue($log->contains(fn (string $q) => str_contains($q, 'video_files')));
     }
 }

@@ -132,9 +132,18 @@ class StorageMeter
      *
      * @return Collection<int, array{kind: string, module: string, owner_type: string, owner_id: int|null, path: string, private: bool, name: string|null, size: int, mime: string|null, created_at: string|null}>
      */
-    public function files(User $user): Collection
+    public function files(User $user, ?string $only = null): Collection
     {
         $files = collect();
+
+        /* ⚠️ **ეს მხოლოდ სისწრაფის მინიშნებაა და არა სიმართლე** (Tasks PERF-03):
+           რომელი რიგი რომელ მოდულს ეკუთვნის, კვლავ ქვემოთ ჩაწერილი `module`
+           წყვეტს, `usedByModule()` კი მასზევე ფილტრავს. ე.ი. გამოტოვებული
+           ბლოკი მხოლოდ ნელია და არასდროს არასწორი — ხოლო იმას, რომ გამოტოვება
+           პასუხს **საერთოდ** არ ცვლის, `StorageManagementTest` ამოწმებს
+           ყოველ მოდულზე. სწორედ ეს ინარჩუნებს „რა ითვლება"-ს ერთ განმარტებას:
+           ეს იგივე კოდია, უბრალოდ ზედმეტ ცხრილს აღარ ეკითხება. */
+        $skip = fn (string $module): bool => $only !== null && $only !== $module;
 
         /** @param array{kind: string, module: string, owner_type: string, owner_id?: int|null, path: ?string, name?: ?string, size?: ?int, mime?: ?string, created_at?: mixed} $file */
         $add = function (array $file) use ($files) {
@@ -174,6 +183,10 @@ class StorageMeter
 
         // ხელით ატვირთული პოსტერები; TMDB-ის ჩამოტვირთული აქ არ ხვდება (19.4/B)
         foreach (['movies' => 'movie', 'series' => 'series', 'animes' => 'anime'] as $relation => $module) {
+            if ($skip($module)) {
+                continue;
+            }
+
             $records = $user->{$relation}()
                 ->withoutGlobalScope('owner')
                 ->where('poster_source', 'upload')
@@ -193,7 +206,7 @@ class StorageMeter
         }
 
         // `thumbnail_url` პლატფორმის ბმულია (ჩვენთან არ ინახება) — მხოლოდ `thumbnail_path`
-        $videos = $user->videos()
+        $videos = $skip('video') ? collect() : $user->videos()
             ->withoutGlobalScope('owner')
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
@@ -216,7 +229,7 @@ class StorageMeter
            უპასუხო რჩებოდა. ზომა **ჩაწერილია** და არა დისკიდან წაკითხული
            (`StoredFile`-ის წესი), `private` კი `videos/downloads`-ის გამო
            true-ა და გვერდი ჩამკეტს ხატავს ნაცვლად გატეხილი ბმულისა. */
-        $downloads = $user->videos()
+        $downloads = $skip('video') ? collect() : $user->videos()
             ->withoutGlobalScope('owner')
             ->whereNotNull('download_path')
             ->get(['id', 'title', 'download_path', 'download_name', 'download_size', 'downloaded_at']);
@@ -235,7 +248,7 @@ class StorageMeter
         }
 
         // სიმღერის ატვირთული ფოტო — იმავე წესით, რაც ვიდეოს თამბნეილი
-        $songs = $user->songs()
+        $songs = $skip('song') ? collect() : $user->songs()
             ->withoutGlobalScope('owner')
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
@@ -254,7 +267,7 @@ class StorageMeter
 
         // ბუკმარკის ატვირთული ფოტო — იმავე წესით, რაც სიმღერის თამბნეილი.
         // ⚠️ og:image აქ **არ ხვდება**: ის დაშორებული URL-ია და დისკს არ იკავებს.
-        $bookmarks = $user->bookmarks()
+        $bookmarks = $skip('bookmark') ? collect() : $user->bookmarks()
             ->withoutGlobalScope('owner')
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
@@ -272,7 +285,7 @@ class StorageMeter
         }
 
         // წიგნის **ხელით ატვირთული** ყდა; Open Library-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
-        $books = $user->books()
+        $books = $skip('book') ? collect() : $user->books()
             ->withoutGlobalScope('owner')
             ->where('cover_source', 'upload')
             ->whereNotNull('cover_path')
@@ -291,7 +304,7 @@ class StorageMeter
         }
 
         // წიგნის ფაილები (pdf/epub) — ერთეულზე ყველაზე მძიმეები
-        $bookFiles = BookFile::withoutGlobalScope('owner')
+        $bookFiles = $skip('book') ? collect() : BookFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -310,7 +323,7 @@ class StorageMeter
         }
 
         // ბორდგეიმის **ხელით ატვირთული** ფოტო; BGG-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
-        $boardGames = $user->boardGames()
+        $boardGames = $skip('board_game') ? collect() : $user->boardGames()
             ->withoutGlobalScope('owner')
             ->where('image_source', 'upload')
             ->whereNotNull('image_path')
@@ -329,7 +342,7 @@ class StorageMeter
         }
 
         // ბორდგეიმის ფაილები — წესების PDF და გალერეის ფოტოები
-        $boardGameFiles = BoardGameFile::withoutGlobalScope('owner')
+        $boardGameFiles = $skip('board_game') ? collect() : BoardGameFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -348,7 +361,7 @@ class StorageMeter
         }
 
         // თამაშის **ხელით ატვირთული** ყდა; RAWG-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
-        $games = $user->games()
+        $games = $skip('game') ? collect() : $user->games()
             ->withoutGlobalScope('owner')
             ->where('cover_source', 'upload')
             ->whereNotNull('cover_path')
@@ -367,7 +380,7 @@ class StorageMeter
         }
 
         // თამაშის ფაილები — ატვირთული სქრინშოტები და დოკუმენტები
-        $gameFiles = GameFile::withoutGlobalScope('owner')
+        $gameFiles = $skip('game') ? collect() : GameFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -386,7 +399,7 @@ class StorageMeter
         }
 
         // ჩანაწერების ატვირთვები (§13.1) — სქრინშოტი/ვიდეო/დოკუმენტი
-        $noteFiles = NoteEntryFile::withoutGlobalScope('owner')
+        $noteFiles = $skip('note') ? collect() : NoteEntryFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -405,7 +418,7 @@ class StorageMeter
         }
 
         // ვიდეოზე მიმაგრებული ფაილები — ზომა ცხრილშივე ინახება, ე.ი. დისკს არ ვეკითხებით
-        $videoFiles = VideoFile::withoutGlobalScope('owner')
+        $videoFiles = $skip('video') ? collect() : VideoFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -424,7 +437,7 @@ class StorageMeter
         }
 
         // §7.4 — სიმღერაზე მიმაგრებული ფაილები; ზომა ცხრილშივეა (დისკს არ ვეკითხებით)
-        $songFiles = SongFile::withoutGlobalScope('owner')
+        $songFiles = $skip('song') ? collect() : SongFile::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -444,7 +457,7 @@ class StorageMeter
 
         // Tasks 10 — გალერეის ფოტო **გალერეის** მოდულს ეკუთვნის და არა მშობელს:
         // მსახიობის ფოტოზე `imageable_type` = `cast_member`, რაც მოდული არ არის
-        $galleryImages = GalleryImage::withoutGlobalScope('owner')
+        $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScope('owner')
             ->where('user_id', $user->id)
             ->get(['id', 'path', 'original_name', 'mime', 'size', 'created_at']);
 
@@ -466,7 +479,7 @@ class StorageMeter
            ⚠️ `module` აქ `chat`-ია და არა რომელიმე მოდულის key: ჩატი
            `modules` ცხრილში არ არის (იგივე მდგომარეობა, რაც `account`-ს აქვს),
            ე.ი. ცალკე ლიმიტს ვერ იღებს და საერთო აუზში რჩება. */
-        $attachments = Message::where('user_id', $user->id)
+        $attachments = $skip('chat') ? collect() : Message::where('user_id', $user->id)
             ->whereNotNull('attachment_path')
             ->get(['id', 'type', 'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size', 'created_at']);
 
@@ -491,7 +504,7 @@ class StorageMeter
            ⚠️ **ყველაზე დიდი ერთეული ფაილია მთელ კვოტაში**, ე.ი. საცავის
            გვერდზე მისი დანახვა ზუსტად ის შემთხვევაა, რისთვისაც ის სია
            არსებობს. */
-        $backups = DatabaseBackup::where('user_id', $user->id)
+        $backups = $skip('backup') ? collect() : DatabaseBackup::where('user_id', $user->id)
             ->whereNotNull('path')
             ->get(['id', 'path', 'name', 'size', 'created_at']);
 
@@ -513,6 +526,10 @@ class StorageMeter
            სწორედ ის ემთხვევა საქაღალდის ფესვსაც (`movies/fields`), ე.ი. §17.2-ის
            ლიმიტი და აქაური ჯამი ერთსა და იმავე მოდულს აწერს. */
         foreach (CustomFields::TABLE_BY_MODULE as $module => $table) {
+            if ($skip($module)) {
+                continue;
+            }
+
             $rows = DB::table($table)
                 ->where('user_id', $user->getKey())
                 ->whereNotNull('value_path')
@@ -879,10 +896,20 @@ class StorageMeter
      * ⚠️ განზრახ `files()`-ზე გადის და არა ცალკე დათვლილ query-ზე: „რა
      * ითვლება" ერთადერთი განმარტება უნდა დარჩეს, თორემ ლიმიტი და ჯამი
      * დროთა განმავლობაში სხვადასხვას აჩვენებდა.
+     *
+     * ⚠️ **ეს წესი PERF-03-ის შემდეგაც უცვლელია** — `$only` ცალკე დათვლა კი
+     * არა, იმავე `files()`-ის მინიშნებაა: სხვა მოდულის ცხრილს აღარ ეკითხება.
+     * `where('module', …)` შემორჩა განზრახ, რომ პასუხი მინიშნების სისწორეზე
+     * არ იყოს დამოკიდებული.
+     *
+     * ⚠️ **მეხსიერებაში შენახვა აქ არასწორი იქნებოდა და არა უბრალოდ ზედმეტი.**
+     * ატვირთვა პაკეტურია (`files[]`, `UploadLimits::MAX_FILES`) და რიგები
+     * ციკლის შიგნით ჩნდება, ე.ი. ერთხელ აღებული სურათი მე-2…N-ე ფაილს ძველ
+     * ჯამზე შეამოწმებდა — მოდულის ლიმიტი ჩუმად გადაცდებოდა.
      */
     public function usedByModule(User $user, string $module): int
     {
-        return (int) $this->files($user)->where('module', $module)->sum('size');
+        return (int) $this->files($user, $module)->where('module', $module)->sum('size');
     }
 
     /**
