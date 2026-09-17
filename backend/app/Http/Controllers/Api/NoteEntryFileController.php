@@ -7,6 +7,7 @@ use App\Http\Resources\NoteEntryFileResource;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Services\Storage\StorageMeter;
+use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
@@ -67,7 +68,8 @@ class NoteEntryFileController extends Controller
                 'kind' => $data['kind'],
                 'path' => $this->meter->storeUpload($request->user(), $file, $folder),
                 'original_name' => $file->getClientOriginalName(),
-                'mime' => $file->getClientMimeType(),
+                // SEC-08 — ⚠️ **სერვერი ადგენს შიგთავსიდან**, და არა `getClientMimeType()`
+                'mime' => SafeMime::ofUpload($file),
                 'size' => $file->getSize(),
                 'sort_order' => ++$next,
             ]);
@@ -86,8 +88,17 @@ class NoteEntryFileController extends Controller
      * `owner` scope `Auth::id()`-ზეა დამოკიდებული და მისი ჩუმად გამორთვა
      * (მაგ. მომავალი ადმინის კონტექსტი) ამ შემოწმებას არ უნდა შლიდეს.
      *
-     * ⚠️ **`inline` და არა `attachment`**: სურათი/ვიდეო ჩანაწერშივე უნდა
-     * გამოჩნდეს. ჩამოტვირთვას ფრონტი თვითონ აწყობს blob-იდან.
+     * ⚠️ **`inline` მხოლოდ იმ ტიპებზე, რომლებიც სკრიპტს არ ასრულებენ**
+     * (Tasks SEC-08): სურათი/ვიდეო ჩანაწერშივე უნდა გამოჩნდეს, `.html`-ად
+     * ატვირთული ფაილი კი — არა. ამას `SafeMime` წყვეტს.
+     *
+     * ⚠️ **მფლობელობის შემოწმება აქ არ კმარა და სწორედ ეს არის არსი.**
+     * ჩვეულებრივ ეს self-XSS-ია, მაგრამ იგივე რიგი ადმინის `/users/{id}`
+     * ფაილ-ბიბლიოთეკაში ჩანს (`StorageMeter::files()`), ე.ი. დაბალი უფლების
+     * მომხმარებელი დებს, ადმინი ხსნის — SEC-04-ის იგივე შაბლონი.
+     *
+     * ⚠️ **შენახული `mime` სვეტიც არ გამოდგება**: ძველი რიგი კლიენტის
+     * ნათქვამს ატარებს. `SafeMime` ყოველთვის **ფაილს** ეკითხება.
      */
     public function show(Request $request, NoteEntryFile $noteEntryFile)
     {
@@ -97,12 +108,7 @@ class NoteEntryFileController extends Controller
 
         abort_unless($disk->fileExists($noteEntryFile->path), 404);
 
-        return $disk->response(
-            $noteEntryFile->path,
-            $noteEntryFile->original_name,
-            array_filter(['Content-Type' => $noteEntryFile->mime]),
-            'inline',
-        );
+        return SafeMime::response($disk, $noteEntryFile->path, $noteEntryFile->original_name);
     }
 
     public function destroy(NoteEntryFile $noteEntryFile)

@@ -251,4 +251,34 @@ class BatchQueueTest extends TestCase
 
         $this->assertTrue(true, 'გამონაკლისი არ ამოვარდა');
     }
+
+    /**
+     * **სხვისი პარტია 404-ია — არც პროგრესი და არც გაუქმება** (Tasks SEC-09).
+     *
+     * ⚠️ `Illuminate\Bus\Batch` **Eloquent-მოდელი არ არის**, ე.ი. არც
+     * `EnsureRecordOwnership` ხედავს მას და არც `BelongsToUser`-ის `owner`
+     * scope ეხება — ორივე მეთოდი მხოლოდ `Bus::findBatch()`-ს აკეთებდა.
+     * UUID-ის გაგება საკმარისი იყო სხვისი მიმდინარე სინქრონიზაციის
+     * გასაუქმებლად.
+     *
+     * ⚠️ პასუხი **404-ია და არა 403**: „ეს პარტია არსებობს" თვითონაც
+     * ინფორმაციაა — და 403 ზუსტად იმას ადასტურებდა, რაც უნდა დაიმალოს.
+     */
+    public function test_a_batch_belongs_to_the_account_that_started_it(): void
+    {
+        $movie = $this->makeMovie($this->alice, 'A');
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [['type' => 'movie', 'id' => $movie->id]],
+        ])->assertStatus(202)->json('id');
+
+        $this->actingAs($this->bob)->getJson("/api/batches/{$id}")->assertStatus(404);
+        $this->actingAs($this->bob)->deleteJson("/api/batches/{$id}")->assertStatus(404);
+
+        // ⚠️ და გაუქმება **მართლა არ მომხდარა** — 404 ჩუმი წარმატება არ ყოფილა
+        $this->actingAs($this->alice)->getJson("/api/batches/{$id}")
+            ->assertOk()
+            ->assertJsonPath('cancelled', false);
+    }
 }

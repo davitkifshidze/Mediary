@@ -861,4 +861,91 @@ class NoteModuleTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /**
+     * **ჩანაწერის ფაილიც სერვერის მიერ დადგენილი ტიპით გაიცემა** (Tasks SEC-08).
+     *
+     * ⚠️ `show()` `Content-Type`-ად შენახულ `mime` სვეტს აბრუნებდა, `inline`-ით —
+     * ის სვეტი კი `getClientMimeType()`-იდან იწერებოდა, ე.ი. ატვირთვისას
+     * ნათქვამიდან. SEC-05-ის შემდეგ **ახალი** `.html` ვეღარ აიტვირთება
+     * (`mimes:` შიგთავსს ამოწმებს), მაგრამ ძველი რიგები დისკზე დარჩნენ —
+     * ამიტომ მდგომარეობა აქ პირდაპირ იწერება და არა endpoint-ით.
+     *
+     * ⚠️ **მფლობელობის შემოწმება ამას არ ხსნიდა**: იგივე რიგი ადმინის
+     * ფაილ-ბიბლიოთეკაშიც ჩანს, ე.ი. self-XSS-ს გარდა ესკალაციის გზაც იყო.
+     */
+    public function test_a_stored_file_is_never_served_with_the_clients_type(): void
+    {
+        Storage::fake('private');
+        $noteId = $this->makeNote();
+
+        $fileId = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/files", [
+                'kind' => 'image',
+                'files' => [UploadedFile::fake()->image('scan.png', 20, 20)],
+            ])
+            ->assertStatus(201)
+            ->json('data.0.id');
+
+        // ძველი (SEC-05-მდე) მდგომარეობა: დისკზე HTML, სვეტში კლიენტის ნათქვამი
+        $file = NoteEntryFile::withoutGlobalScope('owner')->findOrFail($fileId);
+        Storage::disk('private')->put($file->path, '<html><body><script>alert(1)</script></body></html>');
+        $file->forceFill(['mime' => 'text/html'])->save();
+
+        $response = $this->actingAs($this->user)->get("/api/note-files/{$fileId}")->assertOk();
+
+        $this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('attachment', (string) $response->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+    }
+
+    /** ⚠️ ჩვეულებრივი სურათი კი კვლავ `inline`-ია — ჩანაწერშივე უნდა გამოჩნდეს */
+    public function test_an_image_note_file_is_still_served_inline(): void
+    {
+        Storage::fake('private');
+        $noteId = $this->makeNote();
+
+        $fileId = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/files", [
+                'kind' => 'image',
+                'files' => [UploadedFile::fake()->image('scan.png', 20, 20)],
+            ])
+            ->assertStatus(201)
+            ->json('data.0.id');
+
+        $response = $this->actingAs($this->user)->get("/api/note-files/{$fileId}")->assertOk();
+
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    /**
+     * ⚠️ შენახული `mime`-იც სერვერის დადგენილია და არა კლიენტის ნათქვამი.
+     *
+     * ⚠️ **`UploadedFile::fake()` აქ არ გამოდგება და ეს ცალკე ხაფანგია**:
+     * `Illuminate\Http\Testing\File::getMimeType()` **გაფართოებიდან** აბრუნებს
+     * ტიპს და არა შიგთავსიდან, ე.ი. კლიენტისა და სერვერის პასუხი ყოველთვის
+     * დაემთხვეოდა და ტესტი ვაკუუმში გაივლიდა. ამიტომ ნამდვილი `UploadedFile`
+     * იწერება ცხადად გაყალბებული client-ტიპით.
+     */
+    public function test_the_stored_mime_comes_from_the_file_and_not_the_client(): void
+    {
+        Storage::fake('private');
+        $noteId = $this->makeNote();
+
+        $path = tempnam(sys_get_temp_dir(), 'sec08');
+        file_put_contents($path, 'hello');
+        // კლიენტი `application/pdf`-ს აცხადებს, შიგთავსი კი ტექსტია
+        $upload = new UploadedFile($path, 'note.txt', 'application/pdf', null, true);
+
+        $fileId = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/files", ['kind' => 'doc', 'files' => [$upload]])
+            ->assertStatus(201)
+            ->json('data.0.id');
+
+        $this->assertSame(
+            'text/plain',
+            NoteEntryFile::withoutGlobalScope('owner')->findOrFail($fileId)->mime,
+        );
+    }
 }

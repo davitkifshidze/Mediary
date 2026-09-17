@@ -23,8 +23,8 @@
 | PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ✅ შესრულებულია |
 | PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M | ✅ შესრულებულია |
 | DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ✅ შესრულებულია |
-| SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S | ⬜ |
-| SEC-09 | `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს | Medium | security | S | ⬜ |
+| SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S | ✅ შესრულებულია |
+| SEC-09 | `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს | Medium | security | S | ✅ შესრულებულია |
 | BUG-02 | საჯარო ალბომის unlock სესიის გარეშე უხმაუროდ არაფერს აკეთებს და პაროლის ორაკული ხდება | Medium | bug | S | ⬜ |
 | BUG-03 | `AlbumVault::relocate()` — ფაილის გადატანა DB-ტრანზაქციაშია, რომელიც მას ვერ აბრუნებს; არარსებულ ფაილზეც `path` იწერება | Medium | bug | M | ⬜ |
 | BUG-04 | ალბომის წაშლა: vault → images update → delete სამი დაუცველი ნაბიჯია | Medium | bug | S | ⬜ |
@@ -389,26 +389,40 @@
 ## Medium
 
 ### [SEC-08] ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `NoteEntryFileController::show()` და `CustomFieldController::showFile()` `SafeMime::response()`-ზე გადავიდნენ (SEC-04-ის იგივე helper); შენახული `mime`/`value_mime` სვეტებიც `SafeMime::ofUpload()`-ით იწერება და არა `getClientMimeType()`-ით
+  - ⚠️ **SEC-05-ის შემდეგ ახალი `.html`/`.svg` უკვე ვეღარ აიტვირთება** (`mimes:` შიგთავსს ამოწმებს, `image` წესი Laravel-ში SVG-ს `allow_svg`-ის გარეშე არ უშვებს — გადამოწმდა framework-ის კოდში). **ხვრელი ძველ რიგებზე იყო**: `CustomFields::FILE_MIMES` 2026-09-17-მდე `svg`-ს იღებდა, ის ფაილები დისკზე დარჩნენ და კლიენტის ნათქვამ ტიპს ატარებენ — ამიტომ ტესტი მდგომარეობას **პირდაპირ წერს** და არა endpoint-ით (ატვირთვით მისი აღდგენა შეუძლებელია)
+  - ⚠️ **ეს defense-in-depth-ია და არა დუბლირება**: `mimes:` სია იზრდება, და გაცემის მხარე არ უნდა იყოს ერთადერთი, რაც ამ სიის სისწორეზეა დამოკიდებული
+  - ✅ ტესტები ძველ კოდზე ცვივა ზუსტად იმით, რაც ხვრელი იყო: `image/svg+xml`, `text/html; charset=utf-8` და შენახული `application/pdf` ნაცვლად `text/plain`-ისა
+  - ⚠️ **ერთი ტესტი ვაკუუმში გადიოდა და გასწორდა**: `UploadedFile::fake()`-ის `getMimeType()` **გაფართოებიდან** აბრუნებს ტიპს და არა შიგთავსიდან (`Illuminate\Http\Testing\File`), ე.ი. კლიენტისა და სერვერის პასუხი ყოველთვის ემთხვეოდა. საჭიროა ნამდვილი `UploadedFile` ცხადად გაყალბებული client-ტიპით
+  - ⚠️ **ჩვეულებრივი ფაილი კვლავ `inline`-ია** — PNG და PDF ცალკე ტესტებით დაფიქსირდა, თორემ გასწორება ნორმალურ სურათს ჩამოსატვირთ ფაილად აქცევდა (`SafeMime`-ის საკუთარი გაფრთხილება)
+  - ℹ️ **დარჩენილი სამი გამცემი შემოწმდა და განზრახ არ შეცვლილა** (`grep "disk->response"`): `GalleryController::imageFile()` და `PublicProfileController::photoFile()` — ფოტოს შიგთავსი მომხმარებელს არ მოაქვს (`GalleryFetcher` მხოლოდ TMDB-ს ელაპარაკება, `WebImageImporter::extension()` SVG-ს **უარყოფს**), და იგივე ფაილი ისედაც `/storage/*`-ზე გადის, ე.ი. კონტროლერის გასწორება ვერაფერს დაკეტავდა, სამაგიეროდ TMDB-ის `.svg` ლოგოს ჩამოსატვირთ ფაილად აქცევდა; `VideoDownloadController::show()` — შიგთავსი yt-dlp-ისაა და მკაცრი მფლობელობის შემოწმების გამო მხოლოდ **თვითონ** მომხმარებელს გაეცემა (self-XSS), ადმინის ბიბლიოთეკიდან კი პრივატული დისკის გამო არ იხსნება
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/NoteEntryFileController.php:70`, `:100-105`; `backend/app/Http/Controllers/Api/CustomFieldController.php:195-201`
 - **პრობლემა:** ორივე `getClientMimeType()`-ს ინახავს და `$disk->response(..., ['Content-Type' => $row->mime], 'inline')`-ით აბრუნებს — SEC-04-ის იგივე შაბლონი. მფლობელობა აქ მოწმდება (ჩვეულებრივ self-XSS-ია), მაგრამ იგივე რიგები ადმინის `/users/{id}` ფაილ-ბიბლიოთეკაში ჩანს (`StorageMeter::files()` → `mime`), ე.ი. დაბალი უფლების მომხმარებელი payload-ს დებს, ადმინი ხსნის.
 - **რატომ:** SEC-05-თან ერთად სრული ესკალაციის გზაა; გასწორება SEC-04-ის იმავე helper-ით.
 - **გადაწყვეტა:** ერთი `App\Support\SafeMime` (სერვერული განსაზღვრა + allow-list + `attachment` fallback) და მისი გამოყენება სამივე `file()`-ში.
 - **Acceptance criteria:**
-  - [ ] `text/html`-ად ატვირთული ჩანაწერის ფაილი `attachment`/`octet-stream`-ით ბრუნდება
-  - [ ] `NoteModuleTest`/`CustomFieldsTest`-ში ტესტი
+  - [x] `text/html`/SVG შიგთავსის ფაილი `attachment`/`octet-stream`-ით ბრუნდება
+  - [x] `NoteModuleTest`-ში 3 და `CustomFieldTest`-ში 3 ტესტი (ორივე მხარეს „ჩვეულებრივი ფაილი კვლავ `inline`-ია" ცალკე)
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-04
 
 ### [SEC-09] `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ მფლობელი თვითონ პარტიაშივე იწერება — `Bus::batch(…)->withOption('user_id', …)`, რაც `job_batches.options`-ში ჯდება; `show()`/`destroy()` ერთ `mine()`-ზე გადიან
+  - ⚠️ **ცალკე ცხრილი (`batch_owners`) არ დასჭირვებია** — `withOption()` სერიალიზაციისას და წაკითხვისას თვითონ გადის `DatabaseBatchRepository`-ზე (გადამოწმდა framework-ის კოდში), ე.ი. მეორე წყარო იმავე ფაქტზე არ ჩნდება
+  - ⚠️ **პასუხი 404-ია და არა 403**: „ეს პარტია არსებობს" თვითონაც ინფორმაციაა — 403 ზუსტად იმას ადასტურებდა, რაც უნდა დაიმალოს (პროექტის არსებული წესი)
+  - ⚠️ **მფლობელის გარეშე დარჩენილი პარტიაც 404-ია** — ასეთი მხოლოდ ამ გასწორებამდე შექმნილი შეიძლება იყოს, და უსაფრთხოების შემოწმებამ უცნობზე უარი უნდა თქვას; პარტია წუთებში სრულდება, ე.ი. ასეთი რიგი დიდხანს არ ცოცხლობს
+  - ✅ ტესტი ამოწმებს არა მარტო 404-ს, არამედ იმასაც, რომ **გაუქმება მართლა არ მომხდარა** — თორემ „404 + ჩუმად გაუქმებული" ტესტისთვის იგივე იქნებოდა. ძველ კოდზე ცვივა: „Expected 404 but received 200"
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/BatchController.php:102-118`
 - **პრობლემა:** `show()`/`destroy()` მხოლოდ `Bus::findBatch($batch)`-ს აკეთებენ; `Illuminate\Bus\Batch` Eloquent-მოდელი არ არის, ე.ი. `EnsureRecordOwnership` მას არ ხედავს. ვინც სხვის batch UUID-ს გაიგებს, პროგრესს კითხულობს და მიმდინარე პარტიას აუქმებს.
 - **რატომ:** სხვისი მუშაობის შეჩერება ერთი მოთხოვნით; UUIDv4-ის გამო Medium.
 - **გადაწყვეტა:** batch-ის `user_id` ინახოს (`batch_owners` ცხრილი ან `options`) და ორივე მეთოდში `abort_unless($ownerId === $request->user()->id, 404)`.
 - **Acceptance criteria:**
-  - [ ] სხვა მომხმარებლის batch-ზე `GET`/`DELETE` 404-ია
-  - [ ] `BatchQueueTest`-ში ტესტი
+  - [x] სხვა მომხმარებლის batch-ზე `GET`/`DELETE` 404-ია
+  - [x] `BatchQueueTest`-ში ტესტი
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

@@ -85,6 +85,13 @@ class BatchController extends Controller
             ->name($data['kind'])
             // ⚠️ ერთი ჩანაწერის ჩავარდნა დანარჩენებს არ აჩერებს — SPA-ს რიგის ქცევა
             ->allowFailures()
+            /* **მფლობელი პარტიაშივე ჩაიწერება** (Tasks SEC-09).
+               ⚠️ `Illuminate\Bus\Batch` **Eloquent-მოდელი არ არის**, ე.ი.
+               `EnsureRecordOwnership` მას ვერ ხედავს და `BelongsToUser`-იც
+               არ ეხება — სხვისი UUID-ით პროგრესის კითხვა და მიმდინარე
+               პარტიის გაუქმება შესაძლებელი იყო. `withOption()` `job_batches.options`-ში
+               ჯდება, ე.ი. ცალკე ცხრილი არ სჭირდება. */
+            ->withOption('user_id', (int) $user->getKey())
             ->dispatch();
 
         if (! $this->startWorker($background)) {
@@ -99,25 +106,42 @@ class BatchController extends Controller
     }
 
     /** პარტიის მდგომარეობა — SPA ამას ეკითხება, სანამ მიმდინარეობს */
-    public function show(string $batch)
+    public function show(Request $request, string $batch)
     {
-        $found = Bus::findBatch($batch);
-
-        abort_unless($found, 404);
-
-        return response()->json($this->payload($found));
+        return response()->json($this->payload($this->mine($request, $batch)));
     }
 
     /** გაუქმება — დარჩენილი ერთეულები აღარ გაეშვება */
-    public function destroy(string $batch)
+    public function destroy(Request $request, string $batch)
+    {
+        $this->mine($request, $batch)->cancel();
+
+        return response()->json($this->payload(Bus::findBatch($batch)));
+    }
+
+    /**
+     * **ჩემი პარტია, თორემ 404** (Tasks SEC-09).
+     *
+     * ⚠️ პასუხი **404-ია და არა 403** — „ეს პარტია არსებობს" თვითონაც
+     * ინფორმაციაა (პროექტის არსებული წესი).
+     *
+     * ⚠️ **მფლობელის გარეშე დარჩენილი პარტიაც 404-ია.** ასეთი მხოლოდ ამ
+     * გასწორებამდე შექმნილი შეიძლება იყოს, და უსაფრთხოების შემოწმებამ
+     * უცნობზე უარი უნდა თქვას და არა დაუშვას; პარტია წუთებში სრულდება,
+     * ე.ი. ასეთი რიგი დიდხანს არ ცოცხლობს.
+     */
+    private function mine(Request $request, string $batch): Batch
     {
         $found = Bus::findBatch($batch);
 
         abort_unless($found, 404);
+        abort_unless(
+            isset($found->options['user_id'])
+                && (int) $found->options['user_id'] === (int) $request->user()->getKey(),
+            404,
+        );
 
-        $found->cancel();
-
-        return response()->json($this->payload(Bus::findBatch($batch)));
+        return $found;
     }
 
     /**

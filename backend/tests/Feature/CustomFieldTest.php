@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -714,5 +715,84 @@ class CustomFieldTest extends TestCase
             ->putJson("/api/custom-fields/video/{$video->id}", ['values' => ['ticket' => 'A-12']])
             ->assertOk()
             ->assertJsonPath('values.ticket', 'A-12');
+    }
+
+    /**
+     * **ძველი SVG/HTML ფაილი `attachment`-ით ბრუნდება** (Tasks SEC-08).
+     *
+     * ⚠️ **რიგი ხელით იწერება და არა endpoint-ით, და ეს განზრახია**: SEC-05-მა
+     * `svg` `FILE_MIMES`-იდან ამოიღო, ე.ი. **ახალი** ატვირთვა უკვე 422-ია.
+     * ხვრელი ძველ რიგებზეა — ისინი დისკზე დარჩნენ და `value_mime`-ად კლიენტის
+     * ნათქვამს ატარებენ, `showFile()` კი სწორედ იმ სვეტს აბრუნებდა
+     * `Content-Type`-ად, `inline`-ით. ატვირთვის გზით მათი აღდგენა შეუძლებელია,
+     * ამიტომ მდგომარეობა პირდაპირ იწერება.
+     *
+     * ⚠️ **მფლობელობის შემოწმება ამას არ ხსნიდა**: იგივე რიგი ადმინის
+     * ფაილ-ბიბლიოთეკაშიც ჩანს (`StorageMeter::files()`), ე.ი. დაბალი უფლების
+     * მომხმარებელი დებდა, ადმინი ხსნიდა — SEC-04-ის იგივე შაბლონი.
+     */
+    #[DataProvider('activeContentProvider')]
+    public function test_a_stored_file_is_never_served_with_the_clients_type(string $name, string $body, string $claimed): void
+    {
+        Storage::fake('public');
+        $this->defineFileField();
+        $video = $this->makeVideo();
+
+        $path = 'videos/fields/'.$name;
+        Storage::disk('public')->put($path, $body);
+
+        DB::table('video_field_values')->insert([
+            'user_id' => $this->user->id,
+            'record_id' => $video->id,
+            'field_key' => 'ticket',
+            'sort_order' => 0,
+            'value_path' => $path,
+            'value_name' => $name,
+            // ⚠️ ზუსტად ის, რასაც კლიენტი ამბობდა — და რასაც აღარ ვენდობით
+            'value_mime' => $claimed,
+            'value_size' => strlen($body),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->get("/api/custom-fields/video/{$video->id}/file/ticket")
+            ->assertOk();
+
+        $this->assertSame('application/octet-stream', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('attachment', (string) $response->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function activeContentProvider(): array
+    {
+        return [
+            'svg' => ['x.svg', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'image/svg+xml'],
+            'html' => ['x.html', '<html><body><script>alert(1)</script></body></html>', 'text/html'],
+        ];
+    }
+
+    /** ჩვეულებრივი PDF კი კვლავ `inline`-ია — ბარათში უნდა გაიხსნას */
+    public function test_a_pdf_is_still_served_inline(): void
+    {
+        Storage::fake('public');
+        $this->defineFileField();
+        $video = $this->makeVideo();
+
+        $this->actingAs($this->user)->post("/api/custom-fields/video/{$video->id}/file", [
+            'key' => 'ticket',
+            'file' => UploadedFile::fake()->create('ticket.pdf', 4, 'application/pdf'),
+        ])->assertCreated();
+
+        $row = DB::table('video_field_values')->where('field_key', 'ticket')->first();
+        Storage::disk('public')->put($row->value_path, "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n");
+
+        $response = $this->actingAs($this->user)
+            ->get("/api/custom-fields/video/{$video->id}/file/ticket")
+            ->assertOk();
+
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
     }
 }

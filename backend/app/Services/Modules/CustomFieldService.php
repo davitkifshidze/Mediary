@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
+use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
@@ -319,7 +320,8 @@ class CustomFieldService
             'value_bool' => null,
             'value_path' => $path,
             'value_name' => mb_substr($file->getClientOriginalName(), 0, 255),
-            'value_mime' => $file->getClientMimeType(),
+            // SEC-08 — ⚠️ **სერვერი ადგენს შიგთავსიდან**, და არა `getClientMimeType()`
+            'value_mime' => SafeMime::ofUpload($file),
             // ⚠️ **ჩაწერილი ზომა** — წაშლისას სწორედ ის დაუბრუნდება კვოტას
             'value_size' => (int) $file->getSize(),
             'sort_order' => $next,

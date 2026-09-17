@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Services\Modules\CustomFieldService;
 use App\Support\CustomFields;
+use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -192,13 +193,13 @@ class CustomFieldController extends Controller
 
         abort_unless($disk->fileExists($row->value_path), 404);
 
-        return $disk->response(
-            $row->value_path,
-            $row->value_name,
-            array_filter(['Content-Type' => $row->value_mime]),
-            // სურათი/PDF ბარათშივე უნდა გაიხსნას; ჩამოტვირთვას ფრონტი blob-იდან აწყობს
-            'inline',
-        );
+        /* სურათი/PDF ბარათშივე უნდა გაიხსნას; ჩამოტვირთვას ფრონტი blob-იდან აწყობს.
+           ⚠️ **`inline` მხოლოდ სკრიპტის არშემსრულებელ ტიპებზე** (Tasks SEC-08) და
+           MIME **ფაილიდან**, და არა `value_mime`-იდან: ის სვეტი კლიენტის ნათქვამს
+           ატარებდა, ე.ი. `.html`-ად ატვირთული ფაილი აპის origin-ზე იხატებოდა.
+           ⚠️ მფლობელობის შემოწმება ამას არ ხსნიდა — იგივე რიგი ადმინის
+           ფაილ-ბიბლიოთეკაშიც ჩანს (SEC-04-ის შაბლონი). */
+        return SafeMime::response($disk, $row->value_path, $row->value_name);
     }
 
     /**
