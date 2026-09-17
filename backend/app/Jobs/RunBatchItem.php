@@ -75,6 +75,11 @@ class RunBatchItem implements ShouldQueue
         $user = User::find($this->userId);
 
         if (! $user) {
+            /* ⚠️ ჩავარდნა არ არის (ანგარიში წაიშალა), მაგრამ **უხმო** არც
+               უნდა იყოს: სხვაგვარად პარტია „შესრულებულად" ითვლება და
+               „რატომ არაფერი მოხდა" პასუხგაუცემელია (Tasks BUG-08). */
+            SourceLog::failed('batch:'.$this->kind, 'user_missing', ['user' => $this->userId]);
+
             return;
         }
 
@@ -91,13 +96,27 @@ class RunBatchItem implements ShouldQueue
         try {
             $this->run($user, $syncer, $translator, $gallery);
         } catch (Throwable $e) {
-            /* ⚠️ **გამონაკლისი გარეთ არ გადის.** ერთი ჩანაწერის ჩავარდნა
-               მთელ პარტიას არ უნდა აჩერებდეს (`Bus::batch()`-ის
-               `allowFailures()`-ის იგივე აზრი) — მიზეზი ლოგშია. */
             SourceLog::threw('batch:'.$this->kind, $e, [
                 'type' => $this->type,
                 'id' => $this->recordId,
             ]);
+
+            /* ⚠️ **გადასროლა აუცილებელია** (Tasks BUG-08). აქამდე
+               გამონაკლისი აქ კვდებოდა, ე.ი. `$batch->failedJobs` **ყოველთვის
+               0-ია**, `processedJobs == totalJobs` და `failed_jobs` ცარიელი:
+               SPA „300/300 დასრულდა"-ს აჩვენებდა იმ გაშვებაზეც, სადაც ყველა
+               TMDB call 401-ს დაბრუნდა — ზუსტად ის უხმო გამოტოვება,
+               რომელსაც ეს პროექტი ყველაზე მძიმე ბაგად თვლის.
+
+               ⚠️ **პარტიას ეს არ აჩერებს**: `BatchController` `allowFailures()`-ს
+               უკვე აყენებს, ე.ი. დანარჩენი ერთეულები მაინც სრულდება — ის
+               ერთადერთი მიზეზი, რის გამოც გადასროლა თავიდან „საშიშად" ჩანდა,
+               უკვე გათვალისწინებული იყო.
+
+               ⚠️ **`tries = 1` რჩება**: გამეორება აქ მავნეა (TMDB-ის
+               მოთხოვნა, Gemini-ს კვოტა) — ჩავარდნა ერთხელ ჩაიწერება და
+               ხელახლა გაშვება მომხმარებლის გადაწყვეტილებაა. */
+            throw $e;
         }
     }
 
@@ -110,6 +129,15 @@ class RunBatchItem implements ShouldQueue
         $record = $this->record();
 
         if (! $record) {
+            /* ⚠️ ესეც კანონიერი გამოტოვებაა (ჩანაწერი გეგმასა და გაშვებას
+               შორის წაიშალა, ან სხვისია და `owner` scope-მა დამალა) — და
+               ესეც ლოგშია, იმავე მიზეზით. `skipped`/`failed`-ის ცალკე
+               დათვლა ცალკე ტასქია (FEAT-03). */
+            SourceLog::failed('batch:'.$this->kind, 'record_not_found', [
+                'type' => $this->type,
+                'id' => $this->recordId,
+            ]);
+
             return;
         }
 

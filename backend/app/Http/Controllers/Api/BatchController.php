@@ -155,16 +155,30 @@ class BatchController extends Controller
             return ['id' => null, 'finished' => true];
         }
 
+        /* ⚠️ **ჩავარდნილი ერთეული Laravel-ისთვის „მომლოდინეა"** და ეს მისი
+           ქცევაა, არა ჩვენი: `incrementFailedJobs()` `pending_jobs`-ს **არ**
+           ამცირებს (job თეორიულად ხელახლა გასაშვებია), ხოლო `markAsFinished()`
+           მხოლოდ `pendingJobs === 0`-ზე ეშვება. ე.ი. ერთი ჩავარდნილი
+           ერთეულის მქონე პარტია **სამუდამოდ „მიმდინარედ"** დარჩებოდა — ზუსტად
+           ის უხმო ჩაკიდება, რაც `download_status = running`-მა ორჯერ ასწავლა.
+
+           პასუხი Laravel-ისავე ლექსიკონიდანაა: `allJobsHaveRanExactlyOnce()`
+           = `pending − failed === 0`. `tries = 1`, ე.ი. „გაშვებული" აქ
+           „დამთავრებულის" ტოლია. */
+        $ran = max(0, $batch->totalJobs - $batch->pendingJobs) + $batch->failedJobs;
+
         return [
             'id' => $batch->id,
             'kind' => $batch->name,
             'total' => $batch->totalJobs,
-            'pending' => $batch->pendingJobs,
+            // ⚠️ ჩავარდნილი აქედან გამოკლებულია — თორემ „დარჩა 1" ეწერებოდა
+            // მაშინაც, როცა დარჩენილი არაფერია
+            'pending' => max(0, $batch->pendingJobs - $batch->failedJobs),
             'processed' => $batch->processedJobs(),
             'failed' => $batch->failedJobs,
-            'progress' => $batch->progress(),
+            'progress' => $batch->totalJobs > 0 ? (int) round($ran / $batch->totalJobs * 100) : 0,
             'cancelled' => $batch->cancelled(),
-            'finished' => $batch->finished(),
+            'finished' => $batch->finished() || $batch->pendingJobs - $batch->failedJobs <= 0,
         ];
     }
 

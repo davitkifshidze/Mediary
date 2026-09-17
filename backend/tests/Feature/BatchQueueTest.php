@@ -13,7 +13,10 @@ use App\Services\Translation\ItemTranslator;
 use App\Support\BackgroundProcess;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -198,6 +201,69 @@ class BatchQueueTest extends TestCase
     public function test_an_unknown_batch_is_a_404(): void
     {
         $this->actingAs($this->alice)->getJson('/api/batches/no-such-batch')->assertStatus(404);
+    }
+
+    /**
+     * **ჩავარდნილი ერთეული ჩავარდნილად ითვლება** (Tasks BUG-08).
+     *
+     * ⚠️ აქამდე `handle()` ყველა გამონაკლისს ყლაპავდა, ე.ი. `failedJobs`
+     * **ყოველთვის 0** იყო და `processedJobs == totalJobs`: SPA „300/300
+     * დასრულდა"-ს აჩვენებდა იმ გაშვებაზეც, სადაც ყველა TMDB call 401-ს
+     * აბრუნებდა — უხმო გამოტოვება, რომელსაც ეს პროექტი ყველაზე მძიმე
+     * ბაგად თვლის.
+     *
+     * ⚠️ ტესტი **ნამდვილ worker-ს** უშვებს (`queue:work --stop-when-empty`)
+     * და არა `handle()`-ს პირდაპირ: `failed_jobs`-ის ჩანაწერსა და პარტიის
+     * მრიცხველს მხოლოდ რიგის მანქანერია წერს, ე.ი. პირდაპირი გამოძახება
+     * სწორედ იმას ვერ ამოწმებდა, რაზეც ტასქია.
+     */
+    public function test_a_failed_item_is_counted_and_the_rest_still_run(): void
+    {
+        $bad = $this->makeMovie($this->alice, 'Bad');
+        $good = $this->makeMovie($this->alice, 'Good');
+        $ran = 0;
+
+        $this->mock(ItemSyncer::class, function ($mock) use ($bad, &$ran) {
+            $mock->shouldReceive('sync')->andReturnUsing(function ($record) use ($bad, &$ran) {
+                $ran++;
+
+                if ((int) $record->id === (int) $bad->id) {
+                    throw new RuntimeException('boom');
+                }
+
+                return ['ok' => true];
+            });
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [
+                ['type' => 'movie', 'id' => $bad->id],
+                ['type' => 'movie', 'id' => $good->id],
+            ],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $this->assertSame(1, DB::table('failed_jobs')->count(), 'ჩავარდნა `failed_jobs`-ში უნდა ჩაიწეროს');
+
+        // ⚠️ დანარჩენი მაინც გაეშვა — `allowFailures()` სწორედ ამისთვისაა
+        $this->assertSame(2, $ran, 'ჩავარდნილმა ერთეულმა პარტია არ უნდა გააჩეროს');
+
+        /* ⚠️ **ჩავარდნილი ერთეულის მქონე პარტია Laravel-ისთვის არასდროს
+           მთავრდება**: `incrementFailedJobs()` `pending_jobs`-ს არ ამცირებს,
+           `markAsFinished()` კი მხოლოდ `pendingJobs === 0`-ზე ეშვება. ე.ი.
+           გასწორების გარეშე ეს პასუხი „მიმდინარეობს, 50%"-ს აჩვენებდა
+           სამუდამოდ — იგივე უხმო ჩაკიდება, რაც `download_status = running`-ს
+           ჰქონდა. `payload()` სწორედ ამიტომ ითვლის `pending − failed`-ს. */
+        $this->actingAs($this->alice)->getJson("/api/batches/{$id}")
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('failed', 1)
+            ->assertJsonPath('pending', 0)
+            ->assertJsonPath('progress', 100)
+            ->assertJsonPath('finished', true);
     }
 
     /* ================= job-ის მფლობელობა ================= */
