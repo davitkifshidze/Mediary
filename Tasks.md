@@ -22,7 +22,7 @@
 | PERF-01 | `User::hasModule()` ყოველ გამოძახებაზე DB-ს ეკითხება და ციკლებშია | High | performance | S | ✅ შესრულებულია |
 | PERF-02 | `PublicGallery::publicCastIds()` — N+1 ავტორიზაციის გარეშე endpoint-ზე | High | performance | S | ✅ შესრულებულია |
 | PERF-03 | `usedByModule()` ყოველ ატვირთვაზე მომხმარებლის მთელ ფაილ-ინვენტარს აგებს | High | performance | M | ✅ შესრულებულია |
-| DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ⬜ |
+| DEBT-01 | TypeScript `strict` მთელ აპში გამორთულია | High | debt | M | ✅ შესრულებულია |
 | SEC-08 | ჩანაწერის/custom-field ფაილიც კლიენტის MIME-ს `inline` აბრუნებს | Medium | security | S | ⬜ |
 | SEC-09 | `GET/DELETE /batches/{batch}` მფლობელობას არ ამოწმებს | Medium | security | S | ⬜ |
 | BUG-02 | საჯარო ალბომის unlock სესიის გარეშე უხმაუროდ არაფერს აკეთებს და პაროლის ორაკული ხდება | Medium | bug | S | ⬜ |
@@ -368,14 +368,21 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-01] TypeScript `strict` მთელ აპში გამორთულია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17)
+  - ✅ `"strict": true` `tsconfig.app.json`-ში **და** `tsconfig.node.json`-ში; `npm run build` მწვანეა, `npm test` 129 ტესტი მწვანე, oxlint სუფთა
+  - ⚠️ **ჩართვამ არცერთი შეცდომა არ გამოიღო — და სწორედ ეს არის მთავარი დასკვნა.** კოდი უკვე ასე იყო დაწერილი (`any`/`@ts-ignore` პროექტში ნულია), ე.ი. ეს დღევანდელი გასწორება კი არაა, არამედ **ბოქლომი**: ხვალ დაწერილი `function f(x)` აღარ გაივლის. `@ts-expect-error` ერთიც არ დასჭირვებია (კრიტერიუმი ≤ 10-ს უშვებდა)
+  - ✅ **გადამოწმდა ცხადად, რომ შემოწმება ვაკუუმში არ დგას**: დროებითი `function probe(x)` + `const s: string = null` სწორედ TS7006-სა და TS2322-ს აბრუნებს, ე.ი. `noImplicitAny`-ც და `strictNullChecks`-იც ნამდვილად მუშაობს
+  - ⚠️ **`noUncheckedIndexedAccess` განზრახ არ ჩაირთო** (ტასკი მას „სასურველად" ასახელებდა და acceptance criteria-ში არ იყო). გაზომილი: **37 შეცდომა 19 ფაილში**, და დიდი ნაწილი `if (xs.length) xs[0]`-ის ფორმისაა — უსაფრთხო, უბრალოდ კომპილატორისთვის უხილავი (`PublicProfilePage:71`, `VisibilityManager:80`, `queue.tsx`, ხუთი ტესტ-ფაილი). მისი ჩვეული პასუხი `!`-ია, რაც შემოწმებას თვითონვე აუქმებს: ხმაური დაემატებოდა, უსაფრთხოება — არა
+  - ℹ️ **ერთი ნამდვილი ხვრელი მან მაინც აჩვენა და ის ჯერ ღიაა**: `lib/errors.ts`-ის `fieldErrors()` `v[0]`-ს `Record<string, string>`-ად აცხადებს — ცარიელ მასივზე იქ `undefined` აღმოჩნდებოდა. Laravel ველზე ცარიელ სიას არ აგზავნის, ე.ი. პრაქტიკულად მიუწვდომელია; **განზრახ არ შევეხე** — ფორმის შეცდომების ხატვის გზაზე ტესტის გარეშე ქცევის შეცვლა ამ ტასკის ფარგლებს სცდება
+  - ✅ **გზადაგზა ნაპოვნი და დახურული: `vitest.config.ts`-ს არაფერი ამოწმებდა.** `tsconfig.app.json` მხოლოდ `src`-ს იღებს, `tsconfig.node.json` კი მხოლოდ `vite.config.ts`-ს — ე.ი. ტესტების კონფიგში ტიპის შეცდომა მხოლოდ გაშვებისას გამოჩნდებოდა. ახლა ისიც `include`-შია
 - **ტიპი:** debt
 - **სად:** `frontend/tsconfig.app.json:25-31`
 - **პრობლემა:** `grep -n strict frontend/tsconfig*.json` არაფერს აბრუნებს — `strict`, `strictNullChecks`, `noImplicitAny`, `noUncheckedIndexedAccess` არც ერთი არ არის ჩართული; `noUnusedLocals`/`noUnusedParameters` მხოლოდ.
 - **რატომ:** CI-ს `tsc -b` implicit `any`-ს და `null`/`undefined`-ის non-nullable პოზიციაში გადინებას იღებს ~60k სტრიქონზე; ყველა `?? null`/`?.` დისციპლინა კონვენციაა და არა შემოწმება. (`any`/`@ts-ignore` კოდში 0-ია, ე.ი. მიგრაცია მცირე იქნება.)
 - **გადაწყვეტა:** `"strict": true` (და სასურველია `noUncheckedIndexedAccess`), ერთ pass-ში შედეგების გასწორება.
 - **Acceptance criteria:**
-  - [ ] `tsconfig.app.json`-ში `"strict": true`
-  - [ ] `npm run build` მწვანეა, `@ts-expect-error` ახალი გამოყენება ≤ 10 და თითოეულს კომენტარი აქვს
+  - [x] `tsconfig.app.json`-ში (და `tsconfig.node.json`-ში) `"strict": true`
+  - [x] `npm run build` მწვანეა, `@ts-expect-error` — **ერთიც არ დასჭირვებია**
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

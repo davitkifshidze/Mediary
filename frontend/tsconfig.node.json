@@ -14,10 +14,15 @@
     "noEmit": true,
 
     /* Linting */
+    // Tasks DEBT-01 — კონფიგიც იმავე წესზე დგას, რაზეც `src`
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  /* ⚠️ `vitest.config.ts`-ს **არაფერი ამოწმებდა** (DEBT-01): `tsconfig.app.json`
+     მხოლოდ `src`-ს იღებს, აქ კი ის ჩამონათვალში არ იყო. ე.ი. ტესტების
+     კონფიგში შეცდომა მხოლოდ გაშვებისას გამოჩნდებოდა. */
+  "include": ["vite.config.ts", "vitest.config.ts"]
 }
