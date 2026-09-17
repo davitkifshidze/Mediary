@@ -105,4 +105,42 @@ class AdminModuleGrantTest extends TestCase
         $this->assertNull($this->settings('note'));
         $this->assertSame(['video'], $this->member->fresh()->modules()->pluck('key')->all());
     }
+
+    /**
+     * **ადმინის მოდულების გვერდი ანგარიშების რიცხვზე არ არის დამოკიდებული**
+     * (Tasks PERF-04).
+     *
+     * ⚠️ ორი ნახევარი იყო და **მხოლოდ ერთი მოიხსნა PERF-01-ით.** `with('modules')`
+     * აქ თავიდანვე ეწერა, მაგრამ `hasModule()`/`isGrantedModule()` query-builder-ს
+     * იყენებდნენ და მას აგდებდნენ — ეს PERF-01-მა გაასწორა. მეორე ნახევარი
+     * `role`-ია: `users_list` ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს
+     * ეკითხება, ე.ი. eager load-ის გარეშე თითო ანგარიშზე თითო `roles`-query.
+     * გაზომილი PERF-01-ის შემდეგ, გასწორებამდე: 3 → 9, 12 → 18, 30 → 36.
+     *
+     * ⚠️ **ტესტი ორ განსხვავებულ რაოდენობას ადარებს და არა ერთ მუდმივას.**
+     * კონკრეტული რიცხვი (დღეს 6) ყოველი ახალი ველით შეიცვლება და ტესტი
+     * უცხო ცვლილებებზე დაიწყებდა ცვენას; „N-ზე არ არის დამოკიდებული" კი
+     * ზუსტად ის ფაქტია, რომელზეც ტასკია.
+     */
+    public function test_the_module_page_does_not_query_per_user(): void
+    {
+        $count = function (int $users): int {
+            User::factory()->count($users)->create()->each(
+                fn (User $u) => $u->modules()->sync(Module::pluck('id')->all()),
+            );
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs(User::find($this->admin->id))->getJson('/api/admin/modules')->assertOk();
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        $few = $count(3);
+        $many = $count(20);
+
+        $this->assertSame($few, $many, 'query-ების რაოდენობა ანგარიშების რიცხვს მიჰყვება');
+    }
 }

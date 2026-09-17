@@ -25,8 +25,17 @@ class AdminModuleController extends Controller
      */
     public function index()
     {
-        // pivot-ები წინასწარ — `enabled_at`/`is_hidden` მეხსიერებიდან იკითხება
-        $users = User::with('modules')->orderBy('id')->get();
+        /*
+         * pivot-ები წინასწარ — `enabled_at`/`is_hidden` მეხსიერებიდან იკითხება.
+         *
+         * ⚠️ **`role`-იც, და ეს არ არის „სულ ერთია, დავამატოთ"** (Tasks PERF-04):
+         * `users_list` ყოველ მომხმარებელზე `roleKey()`-სა და `isSuperAdmin()`-ს
+         * ეკითხება, ე.ი. მის გარეშე პასუხი **წრფივად** იზრდებოდა ანგარიშების
+         * რიცხვზე — გაზომილი: 3 მომხმარებელი → 9 query, 12 → 18, 30 → 36, სადაც
+         * 18-დან 14 სწორედ `roles`-ზე მოდიოდა. `modules`-ის ანალოგიური ნახევარი
+         * PERF-01-მა უკვე მოხსნა.
+         */
+        $users = User::with('modules', 'role')->orderBy('id')->get();
 
         $modules = Module::orderBy('sort_order')->orderBy('id')->get()->each(function (Module $m) use ($users) {
             $holders = $users->filter(fn (User $u) => $u->isGrantedModule($m->key));

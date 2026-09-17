@@ -35,7 +35,7 @@
 | BUG-09 | `notes:remind`-ის `withoutOverlapping()` ვადის გარეშე 24 სთ-ით აჩერებს შეხსენებებს | Medium | bug | S | ⬜ |
 | BUG-10 | toast-ის ავტო-დახურვის ტაიმერი პროვაიდერის ყოველ რენდერზე თავიდან იწყება | Medium | bug | S | ⬜ |
 | BUG-11 | `key={i}` წაშლადი/გადაადგილებადი სტრიქონებზე სამ ფორმაში | Medium | bug | S | ⬜ |
-| PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ⬜ |
+| PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ✅ შესრულებულია |
 | PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ⬜ |
 | PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ⬜ |
 | PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ⬜ |
@@ -316,7 +316,7 @@
   - ⚠️ **სტალურობის გზა დღეს არ არსებობს და ეს შემოწმებულია, და არა ნავარაუდევი**: `setEnabled()`/`syncModules()`/`approveModule()` ჯერ ამოწმებენ და მერე წერენ, `register()` ბოლოს `load('modules')`-ს (და არა `loadMissing`-ს) იძახებს, ხოლო `enabledModules()`/`moduleKeys()` ისედაც ყოველ ჯერზე ბაზას კითხულობენ. წესი docblock-შია ჩაწერილი
   - ✅ **გაზომილი, ყოველ მოთხოვნაზე ახალი `User` ინსტანციით** (თორემ წინა მოთხოვნის ქეში შედეგს ალამაზებს): `/api/dashboard` 25 → **15** query (`module_user` 11 → **1**), `/api/gallery` 43 → **30** (14 → **1**), `/api/gallery/groups?by=record` 14 → **8** (7 → **1**), `/api/modules` 28 → **8** (13 → **3**), `/api/admin/modules` **164 → 11** (133 → **1**)
   - ✅ `DashboardTest::test_the_dashboard_asks_the_module_pivot_once` — ძველ მოდელზე ცვივა სიტყვებით „11 is identical to 1", ე.ი. ზუსტად ის რიცხვი, რომელზეც ტასკი წერია. ⚠️ **მთლიანი query-რაოდენობა განზრახ არ მოწმდება** — ის ყოველი ახალი მრიცხველით შეიცვლება და ტესტი მყიფე გახდებოდა
-  - ⚠️ **PERF-04-ის დიაგნოზი გასასწორებელია და ტასკი ღიაა.** ის ამტკიცებს, რომ „PERF-01-ის შემდეგ ავტომატურად წყდება" — არ წყდება: `/api/admin/modules` კვლავ **წრფივია** მომხმარებელთა რიცხვზე (3 → 9, 12 → 18, 30 → 36 query). მიზეზი pivot არაა (ის უკვე 1-ია), არამედ **`role`-ის eager load-ის არყოფნა**: `User::with('modules')` `role`-ს არ იღებს, `users_list` კი ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება — 12 მომხმარებელზე 18 query-დან **14 `roles`-ზეა**
+  - ⚠️ **PERF-04-ის დიაგნოზი არასწორი აღმოჩნდა და იმავე დღეს გასწორდა (იხ. PERF-04).** ის ამტკიცებს, რომ „PERF-01-ის შემდეგ ავტომატურად წყდება" — არ წყდება: `/api/admin/modules` კვლავ **წრფივია** მომხმარებელთა რიცხვზე (3 → 9, 12 → 18, 30 → 36 query). მიზეზი pivot არაა (ის უკვე 1-ია), არამედ **`role`-ის eager load-ის არყოფნა**: `User::with('modules')` `role`-ს არ იღებს, `users_list` კი ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება — 12 მომხმარებელზე 18 query-დან **14 `roles`-ზეა**
 - **ტიპი:** performance
 - **სად:** `backend/app/Models/User.php:197-206`; გამომძახებლები მაგ. `backend/app/Http/Controllers/Api/DashboardController.php:71-75`
 - **პრობლემა:** `$this->modules()->where(...)->first()` query-builder-ია — eager-loaded `modules` რელაციას იგნორირებს. `foreach ($modules as $module) { if (! $user->hasModule($module->key)) …}` შაბლონი Dashboard-ში, `GalleryController`-ში, `ModuleImages`-ში, `GlobalSearch`-ში, `MediaDomain`-ში და `AdminModuleController`-შია — თითო გვერდზე 10–14 ზედმეტი query.
@@ -505,14 +505,18 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-04] `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query
-- **სტატუსი:** ⬜ ღია — მაგრამ **დიაგნოზი არასწორია** (გაზომილი PERF-01-ის შესრულებისას, 2026-09-17). PERF-01-ის შემდეგ `module_user` აქ **1 query-ია** და მაინც: 3 მომხმარებელი → 9 query, 12 → 18, 30 → 36, ე.ი. წრფივობა დარჩა. ნამდვილი მიზეზი `role`-ის eager load-ის არყოფნაა — `User::with('modules')` `role`-ს არ იღებს, `users_list` კი ყოველ მომხმარებელზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება: 12 მომხმარებელზე 18 query-დან **14 `roles`-ზეა**. გადაწყვეტა ერთი სიტყვაა — `User::with('modules', 'role')` — და acceptance criteria უცვლელი რჩება.
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17) — **ორ ნაბიჯად, რადგან ორი მიზეზი იყო**
+  - ✅ pivot-ის ნახევარი PERF-01-მა მოხსნა: `with('modules')` აქ თავიდანვე ეწერა (კომენტარიც ამას ამბობდა), მაგრამ `hasModule()`/`isGrantedModule()` query-builder-ს იყენებდნენ და ამ eager load-ს **აგდებდნენ** — 164 query → 11
+  - ⚠️ **მაგრამ ტასკის დაშვება „PERF-01-ის შემდეგ ავტომატურად წყდება" არასწორი აღმოჩნდა** (გაზომილი): წრფივობა დარჩა — 3 მომხმარებელი → 9 query, 12 → 18, 30 → 36. მიზეზი `role`-ია და არა pivot: `users_list` ყოველ ანგარიშზე `roleKey()`/`isSuperAdmin()`-ს ეკითხება, ე.ი. 12 მომხმარებელზე 18 query-დან **14 `roles`-ზე მოდიოდა**
+  - ✅ `User::with('modules', 'role')` — ახლა **6 query, ანგარიშების რიცხვის მიუხედავად** (3 · 12 · 30 — სამივეზე ერთი და იგივე)
+  - ⚠️ **ტესტი ორ განსხვავებულ რაოდენობას ადარებს და არა ერთ მუდმივას**: კონკრეტული რიცხვი (დღეს 6) ყოველი ახალი ველით შეიცვლება და ტესტი უცხო ცვლილებებზე დაიწყებდა ცვენას; „N-ზე არ არის დამოკიდებული" კი ზუსტად ის ფაქტია, რომელზეც ტასკია. ძველ კოდზე ცვივა სიტყვებით „31 is identical to 11"
 - **ტიპი:** performance
 - **სად:** `backend/app/Http/Controllers/Api/Admin/AdminModuleController.php:29-34`
 - **პრობლემა:** `User::with('modules')` `:29`-ზე იტვირთება, მაგრამ `isGrantedModule()`/`hasModule()` `$this->modules()` query-builder-ს იყენებენ (PERF-01) — 12 მოდული × 20 მომხმარებელი ≈ 500 query ერთ ადმინ-გვერდზე.
 - **რატომ:** `/modules` ადმინის ერთი გვერდი ასობით სერიულ query-ს აკეთებს; მომხმარებელთა ზრდასთან წრფივად უარესდება.
 - **გადაწყვეტა:** PERF-01-ის შემდეგ ავტომატურად წყდება; ან ერთი `module_user` map წინასწარ.
 - **Acceptance criteria:**
-  - [ ] `GET /api/admin/modules` query-რაოდენობა მომხმარებელთა რიცხვზე არ არის დამოკიდებული
+  - [x] `GET /api/admin/modules` query-რაოდენობა მომხმარებელთა რიცხვზე არ არის დამოკიდებული
 - **Estimate:** S
 - **დამოკიდებულება:** PERF-01
 
