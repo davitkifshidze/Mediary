@@ -12,6 +12,7 @@ use App\Services\Notes\NoteChannelSettings;
 use App\Services\Translation\Translator;
 use App\Support\CredentialProviders;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -527,6 +528,38 @@ class CredentialTest extends TestCase
         $this->assertStringNotContainsString(
             '111:ONLY-IN-PIVOT',
             (string) DB::table('user_credentials')->where('user_id', $this->user->id)->value('credentials'),
+        );
+    }
+
+    /**
+     * SEC-12 — ⚠️ **სხვა `APP_KEY`-ით დაშიფრული რიგი** (ცოცხალ ბაზაზე ზუსტად ასე
+     * ჩავარდა პირველი გაშვება): `fields()` მას ცარიელად თვლის, ე.ი. აპი
+     * pivot-ის ღია ასლზე მუშაობდა. მიგრაცია არ ცვივა — რიგს pivot-ის
+     * მნიშვნელობით ხელახლა შიფრავს და მერე pivot-ს ასუფთავებს.
+     */
+    public function test_the_migration_repairs_a_row_encrypted_with_another_app_key(): void
+    {
+        $this->seed(ModulesSeeder::class);
+
+        $foreign = new Encrypter(random_bytes(32), 'aes-256-cbc');
+        DB::table('user_credentials')->insert([
+            'user_id' => $this->user->id,
+            'provider' => CredentialProviders::TELEGRAM,
+            'credentials' => $foreign->encryptString(json_encode(['bot_token' => '333:OTHER-MACHINE'])),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $noteId = $this->notePivot($this->user, ['telegram_bot_token' => '333:PIVOT-COPY', 'telegram_chat_id' => '33']);
+
+        (require database_path('migrations/2026_09_17_000001_strip_plaintext_telegram_from_module_settings.php'))->up();
+        CredentialStore::forget();
+
+        $this->assertStringNotContainsString('telegram_', $this->pivotSettings($this->user, $noteId));
+        $this->assertSame(1, DB::table('user_credentials')->where('user_id', $this->user->id)->count());
+        $this->assertSame(
+            ['telegram_bot_token' => '333:PIVOT-COPY', 'telegram_chat_id' => '33'],
+            app(NoteChannelSettings::class)->for($this->user),
         );
     }
 

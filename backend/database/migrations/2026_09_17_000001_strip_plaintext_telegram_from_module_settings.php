@@ -77,7 +77,22 @@ return new class extends Migration
             'provider' => CredentialProviders::TELEGRAM,
         ]);
 
-        $fields = $credential->exists ? (array) $credential->credentials : [];
+        /* ⚠️ **სხვა `APP_KEY`-ით დაშიფრული რიგი** — ცოცხალ ბაზაზე (2026-09-17)
+           პირველი გაშვება `DecryptException`-ით ჩავარდა: რიგი ძველ
+           კომპიუტერზე დაშიფრდა. აპი (`UserCredential::fields()` →
+           `CredentialStore`) ასეთ რიგს ცარიელად თვლის, და შეხსენება ამიტომაც
+           pivot-ის ღია ასლზე მუშაობდა. ე.ი. ის pivot-ის მნიშვნელობით ახალი
+           გასაღებით **ხელახლა** იწერება; ძველი შიგთავსი ამ მანქანაზე ისედაც
+           არავის გამოდგებოდა.
+           ⚠️ **`fields()` მარტო არ შველის**: `save()`-ის dirty-შემოწმება
+           encrypted cast-ზე **ძველ** მნიშვნელობასაც შიფრავს
+           (`originalIsEquivalent()`) და იმავე `MAC is invalid`-ით ცვივა —
+           ამიტომ შეუშიფრავი original ჯერ `null`-ზე ჯდება. */
+        if ($credential->exists && ! $this->readable($credential)) {
+            $credential->setRawAttributes([...$credential->getAttributes(), 'credentials' => null], true);
+        }
+
+        $fields = $credential->fields();
         $changed = [];
 
         foreach ($pivot as $field => $value) {
@@ -103,5 +118,16 @@ return new class extends Migration
         }
 
         $credential->save();
+    }
+
+    private function readable(UserCredential $credential): bool
+    {
+        try {
+            $credential->credentials;
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 };

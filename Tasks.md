@@ -15,7 +15,7 @@
 | SEC-05 | SVG დაშვებულია custom-field ფაილად და საჯარო დისკზე ხვდება — stored XSS API-ს origin-ზე | High | security | S | ✅ შესრულებულია |
 | SEC-06 | ცოცხალი TMDB API გასაღები `.env.example`-შია (origin/main-ზეც) | High | security | S | 🟡 ნაწილობრივ |
 | SEC-07 | `POST /gallery/images/move` უფლებას `create`-ად კითხულობს, კომენტარი კი „ცხადს" ამტკიცებს | High | security | S | ✅ შესრულებულია |
-| SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | 🟡 ნაწილობრივ |
+| SEC-12 | Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს (SEC-01-ის შესრულებისას ნაპოვნი) | High | security | S | ✅ შესრულებულია |
 | BUG-01 | დადასტურების დიალოგის ღილაკები ქართულად არის hardcoded — ინგლისურ UI-შიც | High | bug | S | ⬜ |
 | GAP-01 | backend-ის 26 მანქანური კოდი ფრონტში არ ითარგმნება — toast-ში snake_case ჩანს | High | gap | M | ⬜ |
 | GAP-02 | 419 (CSRF/სესიის ვადა) და ქსელის ჩავარდნა axios-ში არ მუშავდება | High | gap | S | ⬜ |
@@ -44,6 +44,7 @@
 | GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ⬜ |
 | GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
 | GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
+| GAP-11 | `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება — აპი shared-ზე ან „არაფერზე" ვარდება ახსნის გარეშე (SEC-12-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ⬜ |
 | DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ⬜ |
 | DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ⬜ |
@@ -222,12 +223,15 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-12] Telegram-ის ბოტის ტოკენი `module_user.settings`-ში ღია ტექსტადაა და `GET /api/modules` მას ბრაუზერს უბრუნებს
-- **სტატუსი:** 🟡 ნაწილობრივ შესრულებულია (2026-09-17) — კოდი, მიგრაცია და ტესტები მზადაა; რჩება **ცოცხალ ბაზაზე `php artisan migrate`** (ნებართვით — ამ მიგრაციის გარეშე ღია ტოკენი ბაზაში, dump-ებსა და `/backups`-ში რჩება, თუმცა API-დან ვეღარ გადის)
+- **სტატუსი:** ✅ შესრულებულია (2026-09-17) — კოდი, მიგრაცია, ტესტები **და ცოცხალ ბაზაზე migrate** (შენი ნებართვით, უსაფრთხოების dump-ის შემდეგ; dump-ი scratchpad-შია, git-ის გარეთ)
+  - ⚠️ **ცოცხალ ბაზაზე პირველი გაშვება ჩავარდა, და ეს სწორი ქცევა იყო**: `user_credentials`-ის ერთადერთ რიგს (telegram, 2026-09-15) ამ მანქანის `APP_KEY` **ვეღარ შიფრავს** — ის ძველ კომპიუტერზე, სხვა გასაღებით დაშიფრდა. აპი (`UserCredential::fields()`) ასეთ რიგს ცარიელად თვლის, ე.ი. შეხსენებები **მხოლოდ pivot-ის ღია ასლის წყალობით** მუშაობდა. მიგრაცია `DecryptException`-ით ცვიოდა **ჩაწერამდე** (ბაზა უცვლელი დარჩა). გასწორდა: შეუშიფრავი რიგი pivot-ის მნიშვნელობით ახალი გასაღებით ხელახლა იწერება (⚠️ `save()`-ის dirty-შემოწმება ძველ მნიშვნელობასაც შიფრავს, ამიტომ original ჯერ `null`-ზე ჯდება) + ტესტი სხვა `APP_KEY`-ით დაშიფრულ რიგზე (მუტაციით დადასტურებული)
+  - ✅ მეორე გაშვების შემდეგ: pivot-ში ღია გასაღები — 0; telegram credential ახლა **შიფრდება**; `NoteChannelSettings::for(user 1)` ტოკენს (46) და `chat_id`-ს (10) ისევ აბრუნებს — შეხსენებები მუშაობს, ოღონდ დაშიფრულიდან; note-pivot-ში ძველი `email` ნარჩენი უცვლელი (ე.ი. მიგრაცია ზუსტად ორ გასაღებს შლის)
+  - ⚠️ ამ ფაქტიდან ახალი ტასკი: GAP-11 (`APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები **ჩუმად** „ცარიელი" ხდება)
   - ✅ `ModuleSettings::RETIRED_KEYS` (`telegram_bot_token`, `telegram_chat_id`) — ერთი სია; `withoutRetired()` მათ `GET /api/modules`-იდანაც და `PUT /modules/{key}/settings`-ის პასუხიდანაც ამოჭრის; `merge()` მათ მოთხოვნიდან **არ ჩაწერს** (ძველი კლიენტი ღია ასლს ხელახლა არ შქმნის)
   - ✅ მიგრაცია `2026_09_17_000001_strip_plaintext_telegram_from_module_settings`: ⚠️ **ჯერ ავსება, ველ-ველ, მერე წაშლა** — `user_credentials`-ში ნაკლულ ველს pivot-იდან ავსებს (ტოკენიანი, მაგრამ `chat_id`-ის გარეშე ჩანაწერი `chat_id`-ს pivot-იდან იღებდა, ე.ი. ბრმა წაშლა შეხსენებას აჩუმებდა), უკვე მდგომ მნიშვნელობას **არ ცვლის**, მერე მხოლოდ ორ გასაღებს შლის; `down()` განზრახ არაფერს აბრუნებს. აუდიტის „მხოლოდ იქ, სადაც ჩანაწერი არსებობს" ვარიანტზე ეს უსაფრთხოა: ჩანაწერის არყოფნაზე ის **იქმნება** (Eloquent-ით, `encrypted:array`)
   - ✅ `NoteChannelSettings`-ის fallback დარჩა (ძველი dump-ის აღდგენისთვის)
   - ✅ `CredentialTest`-ში 3 ახალი ტესტი (`/modules` ტოკენის გარეშე, დანარჩენი ფენები ადგილზე · `PUT` ტოკენს ხელახლა არ წერს · მიგრაცია: ცარიელ credential-ზე ორივე ველი გადადის, ტოკენიანზე — თავისი ტოკენი რჩება და `chat_id` ივსება, pivot-იდან ქრება, ბაზაში ღიად არსად). **მუტაციის შემოწმება:** 3 მუტაცია (index-ის ფილტრი / merge-ის ფილტრი / backfill) — თითოეული ზუსტად თავის ტესტს აწითლებს
-  - ✅ backend 711/711, Pint მწვანეა; CLAUDE.md-ის §21.9-ის „ძველი გასაღებები განზრახ რჩება" ფრაზა გასწორდა
+  - ✅ backend 712/712, Pint მწვანეა; CLAUDE.md-ის §21.9-ის „ძველი გასაღებები განზრახ რჩება" ფრაზა გასწორდა
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/ModuleController.php:46` (`user_settings` = pivot-ის მთელი JSON, ფილტრის გარეშე); `backend/app/Http/Resources/ModuleResource.php:37`; `backend/database/migrations/2026_09_15_000003_move_telegram_into_credentials.php` (ძველი გასაღებები „განზრახ" რჩება); fallback `backend/app/Services/Notes/NoteChannelSettings.php:49-50`
 - **პრობლემა:** §21.9-ის მიგრაციამ ტოკენი `user_credentials`-ში დაშიფრულად **დააკოპირა**, `telegram_bot_token`/`telegram_chat_id` კი pivot-ში დატოვა. `ModuleController::index()` pivot-ის settings-ს ყოველ მოდულზე `user_settings`-ად აბრუნებს, ე.ი. `note` მოდულის ყოველ სიაში ტოკენი ღიად ბრაუზერს ეგზავნება — ზუსტად ის, რის გამოც §21.9 გაკეთდა. იგივე ღია ტოკენი ყოველ dump-ში (`mediary_backup.sql`, 4 კომიტებული ვერსია) და `/backups`-ის ყოველ ფაილში ხვდება. SEC-01-ის შესრულებისას დადასტურდა: მნიშვნელობის სიგრძე 46 (მნიშვნელობა არ დაიბეჭდა).
@@ -235,7 +239,7 @@
 - **გადაწყვეტა:** მიგრაცია, რომელიც ორ გასაღებს `module_user.settings`-იდან **მხოლოდ** იმ რიგებზე ამოჭრის, სადაც `user_credentials`-ში telegram-ის ჩანაწერი უკვე არსებობს (დანარჩენი JSON — ველები, გალერეა, `status_sections` — უცვლელი); `ModuleController::index()`-ში ეს ორი გასაღები თავდაცვითადაც ამოიჭრას; `NoteChannelSettings`-ის fallback-ი ძველი dump-ის აღდგენისთვის დარჩეს ან ავტომატურ გადატანით ჩანაცვლდეს.
 - **Acceptance criteria:**
   - [x] `GET /api/modules`-ის პასუხში `telegram_bot_token` არ ჩანს (ტესტი)
-  - [x] მიგრაციის შემდეგ `module_user.settings`-ში ტოკენი არ არის, დანარჩენი გასაღებები უცვლელია (ტესტი) — ⏳ ცოცხალ ბაზაზე migrate ჯერ არ გაეშვა
+  - [x] მიგრაციის შემდეგ `module_user.settings`-ში ტოკენი არ არის, დანარჩენი გასაღებები უცვლელია (ტესტი + ცოცხალი ბაზა)
   - [x] Telegram-ის შეხსენება `user_credentials`-იდან კვლავ მიდის (`NoteChannelSettings::for()` მიგრაციის შემდეგ — ტესტი)
 - **Estimate:** S
 - **დამოკიდებულება:** none (ძველი ტოკენის როტაცია SEC-01-შია)
@@ -567,6 +571,18 @@
   - [ ] მისთვის ადმინ-სექციები და საკუთარი როლი read-only-ია (კომპონენტ-ტესტი `react-dom/client`-ით)
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-03
+
+### [GAP-11] `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება
+- **ტიპი:** gap
+- **სად:** `backend/app/Models/UserCredential.php:53-62` (`fields()` — `catch (\Throwable) { return []; }`); `backend/app/Services/Credentials/CredentialStore.php:143-156` (`value()` → shared-ზე ვარდნა)
+- **პრობლემა:** SEC-12-ის ცოცხალ ბაზაზე შესრულებისას ნაპოვნი: `user_credentials`-ის რიგი (telegram, 2026-09-15) ძველ კომპიუტერზე სხვა `APP_KEY`-ით დაშიფრდა, ამ მანქანის `.env`-ის გასაღები კი სხვაა. `fields()` `DecryptException`-ს ყლაპავს, ე.ი. აპი ასეთ რიგს „მომხმარებლის გასაღების არყოფნად" კითხულობს: `CredentialStore` **shared** `.env` გასაღებზე ვარდება (და `quotaOwner()` `null` ხდება — პირადი ლიმიტი ჩუმად საერთო ხდება) ან „none"-ზე; `/credentials` ახსნის გარეშე „არ არის"-ს აჩვენებს; Telegram-ის შეხსენება SEC-12-ამდე მხოლოდ pivot-ის ღია ასლზე მუშაობდა. ლოგში არაფერი იწერება.
+- **რატომ:** მანქანის შეცვლა (ზუსტად ეს მოხდა 2026-09-17-ს) ან `key:generate`-ის შემთხვევითი გაშვება ყველა ანგარიშის პირად გასაღებს **უხმოდ** აქრობს — პროექტის ყველაზე მძიმე ბაგის კლასი („silent skip").
+- **გადაწყვეტა:** `UserCredential::isReadable()`; `GET /api/credentials` თითო წყაროზე `state: 'undecryptable'` (და UI-ში ახსნა: „სხვა `APP_KEY`-ით დაშიფრულია — ხელახლა ჩაწერე ან ძველი `APP_KEY` დააბრუნე"); ერთჯერადი `Log::warning`; FEAT-05-ის `mediary:doctor`-ში შემოწმება; CLAUDE.md-ში „მანქანის შეცვლისას `APP_KEY` გადაიტანე".
+- **Acceptance criteria:**
+  - [ ] სხვა `APP_KEY`-ით დაშიფრულ რიგზე `/api/credentials` `undecryptable`-ს აბრუნებს (ტესტი `Encrypter`-ით)
+  - [ ] `/credentials`-ზე ეს მდგომარეობა ორივე ენაზე ახსნილია
+- **Estimate:** S
+- **დამოკიდებულება:** none
 
 ### [DEBT-02] `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს
 - **ტიპი:** debt
