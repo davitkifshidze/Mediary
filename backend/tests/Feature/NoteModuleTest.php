@@ -11,6 +11,7 @@ use App\Models\NoteReminder;
 use App\Models\User;
 use App\Services\Notes\ReminderDispatcher;
 use App\Services\Storage\StorageMeter;
+use App\Support\AppTime;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -686,6 +687,77 @@ class NoteModuleTest extends TestCase
             0,
             $this->actingAs($this->user)->getJson('/api/note-reminders/due')->json('data'),
         );
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * **ერთსა და იმავე რიგს ორი გამომძახებელი ვერ იჭერს** (Tasks DEBT-05).
+     *
+     * ⚠️ ზემოთა ტესტი ამას **ვერ ამოწმებს**: იქ რეჟიმი `once`-ია, ე.ი. პირველი
+     * გასროლის შემდეგ `is_active` false ხდება და მეორე გაშვებას `next_at`-ის
+     * პირობა კი არა, `is_active`-ის პირობა აჩერებს. სწორედ ამიტომ აქ
+     * **განმეორებადი** შეხსენებაა: მის შემდეგაც აქტიური რჩება, ე.ი. ერთადერთი,
+     * რაც მეორე ცდას აჩერებს, `where('next_at', …)`-ია — ის compare-and-swap,
+     * რომელიც კლასის docblock-ის ერთადერთი დაპირებაა.
+     *
+     * ⚠️ **ორივე გამომძახებელი ერთსა და იმავე snapshot-ს კითხულობს** და
+     * სწორედ ეს ხდება რეალურად: cron და ღია ტაბი ერთდროულად ასრულებენ
+     * `SELECT`-ს, ორივე ხედავს იმავე `next_at`-ს და მხოლოდ შემდეგ წერენ.
+     * `run()`-ის ორჯერ გამოძახება ამას ვერ აღადგენს — ის ყოველ ჯერზე
+     * ხელახლა კითხულობს, ე.ი. მეორე უკვე გადაწეულ რიგს დაინახავდა და
+     * ტესტი სხვა ფაქტს (გადაწევას) ამოწმებდა.
+     *
+     * ⚠️ `fire()` private-ია და ეს განზრახია: სწორედ ის ატარებს გარანტიას,
+     * ამიტომ რეფლექსია აქ „შემოვლა" კი არა, ერთადერთი გზაა იმ ერთი ხაზის
+     * პირისპირ დაყენებისა. `Asia/Tbilisi`-ზე გადასვლის შემდეგ Carbon↔string
+     * შედარების ზონა რომ დაირღვეს, claim 0 რიგს დაემთხვევა და **ყველა**
+     * შეხსენება უხმოდ გაჩერდება — ამ ტესტის მთავარი საგანი ესაა.
+     */
+    public function test_a_due_reminder_is_claimed_by_only_one_runner(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-04 08:00:00', 'UTC'));
+        $noteId = $this->makeNote();
+
+        $reminderId = $this->actingAs($this->user)
+            ->postJson("/api/notes/{$noteId}/reminders", [
+                'mode' => 'daily',
+                'times_of_day' => ['09:00'],
+                'timezone' => 'UTC',
+                'channels' => ['browser'],
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-04 09:00:00', 'UTC'));
+
+        $read = fn () => NoteReminder::withoutGlobalScope('owner')
+            ->with(['noteEntry', 'user'])
+            ->findOrFail($reminderId);
+
+        // ორივე „გამომძახებელმა" წაიკითხა, სანამ რომელიმე ჩაწერდა
+        $cron = $read();
+        $browser = $read();
+
+        $dispatcher = app(ReminderDispatcher::class);
+        $fire = new \ReflectionMethod($dispatcher, 'fire');
+        $now = AppTime::at(now());
+
+        $this->assertTrue($fire->invoke($dispatcher, $cron, $now), 'პირველმა ვერ დაიჭირა');
+        $this->assertFalse($fire->invoke($dispatcher, $browser, $now), 'მეორემ იგივე რიგი დაიჭირა');
+
+        $this->assertSame(
+            1,
+            NoteNotification::withoutGlobalScope('owner')->where('note_reminder_id', $reminderId)->count(),
+            'ერთი ვადამოსული შეხსენება ორ შეტყობინებად გავიდა',
+        );
+
+        /* ⚠️ ესაა ტესტის მეორე ნახევარი: შეხსენება **ისევ აქტიურია**, ე.ი.
+           მეორე ცდა ნამდვილად `next_at`-მა შეაჩერა და არა `is_active`-მა —
+           უამისოდ იგივე პასუხს `once` რეჟიმიც მოგვცემდა. */
+        $after = NoteReminder::withoutGlobalScope('owner')->findOrFail($reminderId);
+        $this->assertTrue((bool) $after->is_active);
+        $this->assertSame('2026-09-05T09:00:00+00:00', Carbon::parse($after->next_at)->utc()->toIso8601String());
 
         Carbon::setTestNow();
     }
