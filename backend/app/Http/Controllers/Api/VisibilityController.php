@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Support\Like;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -263,7 +264,7 @@ class VisibilityController extends Controller
     private function orLike(mixed $query, array $columns, string $term): void
     {
         foreach ($columns as $column) {
-            $query->orWhere($column, 'like', "%{$term}%");
+            $query->orWhere($column, 'like', Like::contains($term));
         }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services\Profile;
 use App\Http\Resources\StatusResource;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
+use App\Support\Like;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Collection;
@@ -231,7 +232,7 @@ class MatchService
             ->whereKeyNot($me->id);
 
         if ($term !== null && trim($term) !== '') {
-            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($term)).'%';
+            $like = Like::contains(trim($term));
             $query->where(fn ($w) => $w->where('username', 'like', $like)->orWhere('name', 'like', $like));
         }
 

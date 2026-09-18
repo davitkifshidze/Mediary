@@ -32,7 +32,7 @@
 | PERF-15 | `MatchService::thinColumns()` ყოველ კანდიდატ-პროფილზე და დომენზე `Schema::hasColumn()`-ს იძახებს | Medium | performance | S | ✅ |
 | PERF-16 | `GET /chat` თითო საუბარზე პროფილის ჰედერსა და ბლოკის სტატუსს ცალკე query-ებით კითხულობს (N+1) | Medium | performance | S | ✅ |
 | PERF-17 | ჰედერის „სათარგმნი" ბეჯი მთელ მედია-ბიბლიოთეკას თარგმანებით ტვირთავს, რომ დათვალოს | Medium | performance | S | ✅ |
-| DEBT-13 | `LIKE`-ის wildcard-ები 37 ადგილას/13 კონტროლერში არ იესკეიპება — `App\Support\Like` არსებობს და მხოლოდ 4 ადგილას გამოიყენება | Medium | debt | M | ⬜ |
+| DEBT-13 | `LIKE`-ის wildcard-ები 37 ადგილას/13 კონტროლერში არ იესკეიპება — `App\Support\Like` არსებობს და მხოლოდ 4 ადგილას გამოიყენება | Medium | debt | M | ✅ |
 | GAP-16 | ასლის ვიუერის დროებითი ბაზა (`<db>_inspect_<id>`) ვადას არ იწურავს და ასლის წაშლაზე არ იშლება | Medium | gap | S | ⬜ |
 | DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ⬜ |
 | GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
@@ -376,14 +376,19 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-13] `LIKE`-ის wildcard-ები 37 ადგილას არ იესკეიპება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). **41 ადგილი** გადავიდა `Like::contains()`/`Like::escape()`-ზე 15 ფაილში (13 კონტროლერი + `MatchService` + `VideoSearch`), `CastSync`-ის პრეფიქსის ძებნის ჩათვლით. `grep -rn "like', '%\|like\", \"%\|like \"%" backend/app/Http/Controllers` → **0**.
+  ⚠️ **ორი ცალკე ასლი წაიშალა და ესაა ტასქის ნახევარი**: `MatchService`-ში `str_replace(['\', '%', '_'], …)` ხელით ეწერა, `VideoSearch`-ს კი საკუთარი `private escapeLike()` ჰქონდა — ზუსტად ის დუბლირება, რომლის გამოც `Like` შეიქმნა.
+  ⚠️ **`Controller::like()` helper-ი განზრახ არ დაწერილა** (ტასქი მას ვარაუდობდა): `Like::contains()` უკვე ერთადერთი წყაროა და მეორე სახელი ერთ ცნებაზე სწორედ ის იქნებოდა, რასაც ეს ტასქი აშორებს.
+  ⚠️ **ტესტი ბათ `%`-ს ეძებს და არა „50%"-ს**: ლიტერალი პრეფიქსი („50") ისედაც ჭრის შედეგს, ე.ი. ტასქში შემოთავაზებული `?q=50%` **ძველ კოდზეც მწვანე იყო** — ხარვეზი მხოლოდ მაშინ ჩანს, როცა მთელი ტერმინი შაბლონია. ⚠️ `%` URL-ში დაშიფრული უნდა იყოს, თორემ სერვერამდე საერთოდ ვერ აღწევს.
+  ⚠️ **დადებითი ნახევარი მხოლოდ MySQL-ზე მოწმდება**: `Like::escape()` `\`-ით იქცევა, sqlite-ს კი ნაგულისხმევი `ESCAPE` **არ აქვს** (`jsonLike()`-ის იგივე ხაფანგი) — ე.ი. იქ ასეთი ძებნა ცარიელს აბრუნებს „ყველაფრის" ნაცვლად. ორივე დრაივერზე ჭეშმარიტი ნაწილი ისაა, რომ სხვა ჩანაწერები აღარ ბრუნდება. ეს არსებული ქცევაა (`GlobalSearch`-საც ასე აქვს) და ამ ტასქით არ შეცვლილა.
 - **ტიპი:** debt
 - **სად:** `backend/app/Support/Like.php:19,30` (მზა `contains()`/`escape()`), გამოუყენებელი 13 კონტროლერში — მაგ. `backend/app/Http/Controllers/Api/MovieController.php:49` (`like "%{$q}%"`), `AnimeController`, `SeriesController`, `SongController`, `BookController`, `GameController`, `BoardGameController`, `NoteEntryController`, `BookmarkController`, `RecordCastController`, `GalleryController` (`applyTitleSearch`, `castPoolQuery`), `ChatController`, `Admin/AdminAuditController` (`filtered()` `q`)
 - **პრობლემა:** `GlobalSearch`-ისთვის §D6-ში დაწერილი წესი („`%`/`_` ლიტერალია") სექციების საკუთარ ძებნებზე არ გავრცელდა: `50%` ან `a_b` ძებნა მთელ ცხრილს აბრუნებს; `RecordCastController`-ის `like $prefix%` ბექსლეშზეც ტყდება.
 - **რატომ:** არასწორი შედეგი ჩვეულებრივ შეყვანაზე; მეორე ასლი „ერთი წყარო"-ს წესის დარღვევაა.
 - **გადაწყვეტა:** ყველა `'like', '%'.$q.'%'` → `Like::contains($q)`; `Controller::slugList()`-ის მსგავსი `Controller::like()` helper-ი; ტესტი ერთ სექციაზე `%`-იანი ძებნით.
 - **Acceptance criteria:**
-  - [ ] `grep -rn "like', '%\|like\", \"%\|like \"%" backend/app/Http/Controllers | wc -l` → 0
-  - [ ] ტესტი: `GET /movies?q=50%` მხოლოდ `50%`-იან სათაურს აბრუნებს
+  - [x] `grep -rn "like', '%\|like\", \"%\|like \"%" backend/app/Http/Controllers | wc -l` → 0
+  - [x] ტესტი: `GET /movies?q=%` სხვა ჩანაწერებს აღარ აბრუნებს (`test_a_percent_in_the_query_is_not_a_wildcard`; ძველ კოდზე წითელია — „does not contain 'Inception'"), MySQL-ზე დამატებით — მხოლოდ `%`-იანი სათაური
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

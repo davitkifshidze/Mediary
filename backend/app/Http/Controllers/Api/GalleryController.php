@@ -17,6 +17,7 @@ use App\Services\Gallery\ModuleImages;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\GalleryParent;
+use App\Support\Like;
 use App\Support\MediaDomain;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
@@ -488,7 +489,7 @@ class GalleryController extends Controller
     private function applyTitleSearch($query, string $type, string $model, string $q): void
     {
         if (MediaDomain::has($type)) {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', "%{$q}%"));
+            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
 
             return;
         }
@@ -502,7 +503,7 @@ class GalleryController extends Controller
 
         $query->where(function ($w) use ($columns, $q) {
             foreach ($columns as $column) {
-                $w->orWhere($column, 'like', "%{$q}%");
+                $w->orWhere($column, 'like', Like::contains($q));
             }
         });
     }
@@ -1551,8 +1552,8 @@ class GalleryController extends Controller
             // ⚠️ `name_ka` სვეტი არ არის (accessor-ია) — ქართული სახელი
             // `cast_member_translations`-შია, ე.ი. ძებნა ორივეზე უნდა გავიდეს
             $pool->where(function ($w) use ($q) {
-                $w->where('name', 'like', "%{$q}%")
-                    ->orWhereHas('translations', fn ($t) => $t->where('name', 'like', "%{$q}%"));
+                $w->where('name', 'like', Like::contains($q))
+                    ->orWhereHas('translations', fn ($t) => $t->where('name', 'like', Like::contains($q)));
             });
         }
 

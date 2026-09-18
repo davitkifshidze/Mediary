@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Services\Games\IgdbClient;
 use App\Services\Games\RawgClient;
 use App\Services\Storage\StorageMeter;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -66,11 +67,11 @@ class GameController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
-                ->where('title_ka', 'like', "%{$q}%")
-                ->orWhere('title_en', 'like', "%{$q}%")
-                ->orWhere('developer', 'like', "%{$q}%")
-                ->orWhere('publisher', 'like', "%{$q}%")
-                ->orWhere('franchise', 'like', "%{$q}%"));
+                ->where('title_ka', 'like', Like::contains($q))
+                ->orWhere('title_en', 'like', Like::contains($q))
+                ->orWhere('developer', 'like', Like::contains($q))
+                ->orWhere('publisher', 'like', Like::contains($q))
+                ->orWhere('franchise', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {

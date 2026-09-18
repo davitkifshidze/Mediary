@@ -11,6 +11,7 @@ use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\Enrichment\AnimeEnricher;
 use App\Services\Storage\StorageMeter;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -52,7 +53,7 @@ class AnimeController extends Controller
         }
 
         if ($q = $request->string('q')->toString()) {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', "%{$q}%"));
+            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
         }
 
         // დიაპაზონის ფილტრები (კომბინირებადი)

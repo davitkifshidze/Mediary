@@ -10,6 +10,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
+use App\Support\Like;
 use App\Support\MediaDomain;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -296,8 +297,8 @@ class RecordCastController extends Controller
      */
     private function localMatches(string $query): Collection
     {
-        return CastMember::where('name', 'like', '%'.$query.'%')
-            ->orWhereHas('translations', fn ($q) => $q->where('name', 'like', '%'.$query.'%'))
+        return CastMember::where('name', 'like', Like::contains($query))
+            ->orWhereHas('translations', fn ($q) => $q->where('name', 'like', Like::contains($query)))
             ->orderBy('name')
             ->limit(self::SEARCH_LIMIT)
             ->get();

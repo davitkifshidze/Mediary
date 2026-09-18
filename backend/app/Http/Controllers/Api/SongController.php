@@ -7,6 +7,7 @@ use App\Http\Resources\SongResource;
 use App\Models\Song;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -56,10 +57,10 @@ class SongController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
-                ->where('title', 'like', "%{$q}%")
-                ->orWhere('artist', 'like', "%{$q}%")
-                ->orWhere('album', 'like', "%{$q}%")
-                ->orWhere('tags', 'like', "%{$q}%"));
+                ->where('title', 'like', Like::contains($q))
+                ->orWhere('artist', 'like', Like::contains($q))
+                ->orWhere('album', 'like', Like::contains($q))
+                ->orWhere('tags', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {

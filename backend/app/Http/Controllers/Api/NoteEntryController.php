@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\NoteEntryResource;
 use App\Models\NoteEntry;
 use App\Models\Status;
+use App\Support\Like;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -49,10 +50,10 @@ class NoteEntryController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
-                ->where('title', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%")
-                ->orWhere('tags', 'like', "%{$q}%")
-                ->orWhere('links', 'like', "%{$q}%"));
+                ->where('title', 'like', Like::contains($q))
+                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere('tags', 'like', Like::contains($q))
+                ->orWhere('links', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {

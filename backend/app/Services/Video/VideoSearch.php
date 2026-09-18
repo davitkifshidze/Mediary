@@ -3,6 +3,7 @@
 namespace App\Services\Video;
 
 use App\Models\Video;
+use App\Support\Like;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -105,7 +106,7 @@ class VideoSearch
         $needles = array_values(array_unique(array_merge([$term], $tokens)));
 
         foreach ($needles as $needle) {
-            $like = '%'.$this->escapeLike($needle).'%';
+            $like = Like::contains($needle);
 
             $where->orWhere(function (Builder $w) use ($like) {
                 // `tags` json-ია, LIKE ტექსტად კითხულობს — MySQL-ზეც და sqlite-ზეც მუშაობს
@@ -115,12 +116,6 @@ class VideoSearch
                 $w->orWhereHas('notes', fn ($n) => $n->where('body', 'like', $like));
             });
         }
-    }
-
-    /** `%` და `_` ძებნის ტექსტში ლიტერალია, არა wildcard */
-    private function escapeLike(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
     }
 
     /* ---------- ბიჯი 2: fuzzy ---------- */

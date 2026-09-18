@@ -9,6 +9,7 @@ use App\Models\Status;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -362,5 +363,41 @@ class MovieModuleTest extends TestCase
         $this->actingAs($this->alice)
             ->postJson('/api/movies/from-tmdb', ['tmdb_id' => 603])
             ->assertStatus(503);
+    }
+
+    /**
+     * **`%` ძებნის ტექსტში ლიტერალია და არა შაბლონი (Tasks DEBT-13).**
+     *
+     * ⚠️ `'like', "%{$q}%"` ნიშნავდა, რომ შაბლონის სიმბოლო ძებნაში პირდაპირ
+     * SQL-ში გადადიოდა: `%`-ის ძებნა `%%%`-ად მიდიოდა და **მთელ ცხრილს**
+     * აბრუნებდა. წესი `GlobalSearch`-ისთვის დაიწერა (§D6) და სექციების
+     * საკუთარ ძებნებზე 13 კონტროლერში არ გავრცელებულა.
+     *
+     * ⚠️ **საძებნი ტერმინი მარტო `%`-ია და არა „50%"**: ლიტერალი პრეფიქსი
+     * („50") ისედაც ჭრიდა შედეგს, ე.ი. ტესტი ძველ კოდზეც მწვანე იქნებოდა —
+     * ხარვეზი მხოლოდ მაშინ ჩანს, როცა **მთელი** ტერმინი შაბლონია.
+     *
+     * ⚠️ **დადებითი ნახევარი მხოლოდ MySQL-ზე მოწმდება და ეს ცნობილი
+     * განსხვავებაა**: `Like::escape()` `\`-ით იქცევა, sqlite-ს კი
+     * ნაგულისხმევი `ESCAPE` **არ აქვს** (იგივე ხაფანგი, რაც `jsonLike()`-ს
+     * აქვს CLAUDE.md-ში). ორივე დრაივერზე ჭეშმარიტი და ხარვეზის ამსახველი
+     * ნაწილი ისაა, რომ **სხვა ჩანაწერები აღარ ბრუნდება**.
+     */
+    public function test_a_percent_in_the_query_is_not_a_wildcard(): void
+    {
+        $this->makeMovie($this->alice, '50% of the time');
+        $this->makeMovie($this->alice, 'Inception');
+        $this->makeMovie($this->alice, 'The Matrix');
+
+        // ⚠️ `%` URL-ში დაშიფრულია — ბათი `%` სერვერამდე საერთოდ ვერ აღწევს
+        $res = $this->actingAs($this->alice)->getJson('/api/movies?q='.urlencode('%'))->assertOk();
+
+        $titles = collect($res->json('data'))->pluck('title_en')->all();
+        $this->assertNotContains('Inception', $titles);
+        $this->assertNotContains('The Matrix', $titles);
+
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $this->assertSame(['50% of the time'], $titles);
+        }
     }
 }

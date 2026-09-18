@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Services\Books\OpenLibraryClient;
 use App\Services\Storage\StorageMeter;
 use App\Support\Lang;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -58,12 +59,12 @@ class BookController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
-                ->where('title_ka', 'like', "%{$q}%")
-                ->orWhere('title_en', 'like', "%{$q}%")
-                ->orWhere('author', 'like', "%{$q}%")
-                ->orWhere('series_name', 'like', "%{$q}%")
-                ->orWhere('isbn', 'like', "%{$q}%")
-                ->orWhere('tags', 'like', "%{$q}%"));
+                ->where('title_ka', 'like', Like::contains($q))
+                ->orWhere('title_en', 'like', Like::contains($q))
+                ->orWhere('author', 'like', Like::contains($q))
+                ->orWhere('series_name', 'like', Like::contains($q))
+                ->orWhere('isbn', 'like', Like::contains($q))
+                ->orWhere('tags', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {

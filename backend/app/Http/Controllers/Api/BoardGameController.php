@@ -8,6 +8,7 @@ use App\Models\BoardGame;
 use App\Services\BoardGames\BggClient;
 use App\Services\BoardGames\GeorgianShops;
 use App\Services\Storage\StorageMeter;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -74,9 +75,9 @@ class BoardGameController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
-                ->where('title', 'like', "%{$q}%")
-                ->orWhere('designer', 'like', "%{$q}%")
-                ->orWhere('publisher', 'like', "%{$q}%"));
+                ->where('title', 'like', Like::contains($q))
+                ->orWhere('designer', 'like', Like::contains($q))
+                ->orWhere('publisher', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {

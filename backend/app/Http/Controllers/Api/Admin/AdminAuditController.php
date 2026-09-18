@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\User;
 use App\Support\AuditRegistry;
+use App\Support\Like;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -243,7 +244,7 @@ class AdminAuditController extends Controller
         }
 
         if ($q = trim((string) $request->query('q'))) {
-            $like = '%'.$q.'%';
+            $like = Like::contains($q);
             $query->where(fn (Builder $sub) => $sub
                 ->where('subject_label', 'like', $like)
                 ->orWhere('route', 'like', $like)

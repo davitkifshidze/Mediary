@@ -91,8 +91,10 @@ final class CastSync
                სხვადასხვა პასუხს დააბრუნებინებდა. სიის ზომა ლექსიკონია,
                ე.ი. ძებნა ვიწროა — პირველ სიმბოლოებზე `like`-ით. */
             $prefix = mb_substr($name, 0, 3);
-            $candidates = CastMember::where('name', 'like', $prefix.'%')
-                ->orWhereHas('translations', fn ($q) => $q->where('name', 'like', $prefix.'%'))
+            // ⚠️ პრეფიქსიც იესკეიპება (DEBT-13)
+            $escaped = Like::escape($prefix).'%';
+            $candidates = CastMember::where('name', 'like', $escaped)
+                ->orWhereHas('translations', fn ($q) => $q->where('name', 'like', $escaped))
                 ->limit(50)
                 ->get();
 

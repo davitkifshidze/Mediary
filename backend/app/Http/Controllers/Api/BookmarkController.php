@@ -8,6 +8,7 @@ use App\Models\Bookmark;
 use App\Models\Status;
 use App\Services\Bookmarks\LinkMetadata;
 use App\Services\Storage\StorageMeter;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -55,11 +56,11 @@ class BookmarkController extends Controller
 
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
-                ->where('title', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%")
-                ->orWhere('url', 'like', "%{$q}%")
-                ->orWhere('domain', 'like', "%{$q}%")
-                ->orWhere('tags', 'like', "%{$q}%"));
+                ->where('title', 'like', Like::contains($q))
+                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere('url', 'like', Like::contains($q))
+                ->orWhere('domain', 'like', Like::contains($q))
+                ->orWhere('tags', 'like', Like::contains($q)));
         }
 
         match ($request->string('sort')->toString()) {
