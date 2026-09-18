@@ -11,6 +11,7 @@ use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -794,5 +795,51 @@ class CustomFieldTest extends TestCase
 
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
         $this->assertStringStartsWith('inline', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    /**
+     * **მეორე ჩაწერა `created_at`-ს არ ცვლის** (Tasks BUG-12).
+     *
+     * ⚠️ `updateOrInsert()`-ის მეორე მასივი **UPDATE-ის payload-იც არის**, ე.ი.
+     * ფიქსირებული `'created_at' => now()` არსებული მნიშვნელობის ყოველ
+     * რედაქტირებაზე შექმნის თარიღს ახლანდელზე აყენებდა.
+     *
+     * ⚠️ **და ეს არა მხოლოდ სისუფთავეა**: `StorageMeter::files()` ამ ცხრილებიდან
+     * `created_at`-ს „ატვირთვის თარიღად" კითხულობს, ე.ი. საცავის ბიბლიოთეკაში
+     * custom-field ფაილის თარიღი ჩანაწერის ყოველ **უკავშირო** შენახვაზე წინ
+     * მიცოცავდა და სორტირებაც მას მიჰყვებოდა.
+     *
+     * ⚠️ დრო `setTestNow`-ით იყინება და ორ სხვადასხვა მომენტზე დგება — ერთ
+     * მომენტში ორივე ჩაწერა ერთსა და იმავე `created_at`-ს დაწერდა და ტესტი
+     * გატეხილ კოდზეც გაივლიდა.
+     */
+    public function test_editing_a_value_keeps_its_creation_date(): void
+    {
+        $this->defineFields([['type' => 'text', 'label_en' => 'Mood']]);
+        $video = $this->makeVideo();
+
+        $row = fn () => DB::table(CustomFields::TABLE_BY_MODULE['video'])
+            ->where('record_id', $video->id)
+            ->where('field_key', 'mood')
+            ->first();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-01 10:00:00', 'UTC'));
+        $this->actingAs($this->user)
+            ->putJson("/api/custom-fields/video/{$video->id}", ['values' => ['mood' => 'პირველი']])
+            ->assertOk();
+
+        $created = $row()->created_at;
+
+        Carbon::setTestNow(Carbon::parse('2026-09-10 10:00:00', 'UTC'));
+        $this->actingAs($this->user)
+            ->putJson("/api/custom-fields/video/{$video->id}", ['values' => ['mood' => 'მეორე']])
+            ->assertOk();
+
+        $after = $row();
+
+        $this->assertSame($created, $after->created_at, 'რედაქტირებამ შექმნის თარიღი გადაწერა');
+        $this->assertNotSame($created, $after->updated_at, '`updated_at` კი უნდა დაიძრას');
+
+        Carbon::setTestNow();
     }
 }

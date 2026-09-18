@@ -250,13 +250,21 @@ class CustomFieldService
                sort_order`), ე.ი. ამის გარეშე ერთსა და იმავე ტექსტურ ველს
                ორი პასუხი შეეძლო ჰქონოდა და ბაზა აღარ დაიცავდა იმას, რასაც
                აქამდე იცავდა. */
+            /* ⚠️ **`created_at` მხოლოდ insert-ზე** (Tasks BUG-12). მეორე მასივი
+               UPDATE-ის payload-იც არის, ე.ი. ფიქსირებული `'created_at' => now()`
+               არსებული მნიშვნელობის ყოველ რედაქტირებაზე შექმნის თარიღს
+               ახლანდელზე აყენებდა — `StorageMeter::files()` კი სწორედ ამ სვეტს
+               კითხულობს „ატვირთვის თარიღად", ე.ი. custom-field ფაილის თარიღი
+               ჩანაწერის ყოველ უკავშირო შენახვაზე წინ მიცოცავდა.
+               ⚠️ closure-ს `$exists` `updateOrInsert()`-ის **უკვე გაკეთებული**
+               `exists()`-იდან მოსდის, ე.ი. დამატებით query არ ჩნდება. */
             DB::table($table)->updateOrInsert(
                 ['record_id' => $recordId, 'field_key' => $key, 'sort_order' => 0],
-                [
+                fn (bool $exists) => [
                     'user_id' => $user->getKey(),
                     ...$columns,
                     'updated_at' => now(),
-                    'created_at' => now(),
+                    ...($exists ? [] : ['created_at' => now()]),
                 ],
             );
         }
