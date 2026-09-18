@@ -18,7 +18,7 @@ import {
 import {
   approveRequest,
   deleteUser,
-  fetchRoles,
+  fetchAssignableRoles,
   fetchUserDetail,
   rejectRequest,
   syncUserModules,
@@ -72,7 +72,13 @@ export function UserPage() {
   const fmt = useDateFormat()
 
   const userId = Number(id)
-  const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: fetchRoles })
+  /* ⚠️ **ვიწრო სია და არა `fetchRoles()` (Tasks GAP-10)**: ის
+     `admin_access:roles`-ის უკანაა, ე.ი. `admin:users`-ის მქონე ადმინი
+     403-ს იღებდა და როლის სელექტი **ჩუმად ცარიელი** რჩებოდა. */
+  const { data: roles = [] } = useQuery({
+    queryKey: ['assignable-roles'],
+    queryFn: fetchAssignableRoles,
+  })
   const { data, isLoading } = useQuery<UserDetail>({
     queryKey: ['admin-user', userId],
     queryFn: () => fetchUserDetail(userId),

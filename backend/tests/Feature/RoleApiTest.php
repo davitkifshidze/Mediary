@@ -431,4 +431,39 @@ class RoleApiTest extends TestCase
         $this->assertTrue($user->hasPermission('movie', 'delete'));
         $this->assertFalse($user->hasPermission('series', 'view'));
     }
+
+    /* ---------- მისანიჭებელი როლების სია (Tasks GAP-10) ---------- */
+
+    /**
+     * **`admin:users`-ის მქონე ადმინი როლების სახელებს ხედავს.**
+     *
+     * ⚠️ `GET /admin/roles` `admin_access:roles`-ის უკანაა, ე.ი. მან 403-ს
+     * იღებდა და `/users/{id}`-ზე როლის სელექტი **ჩუმად ცარიელი** რჩებოდა —
+     * ე.ი. სექცია, რომელსაც მართვის უფლება აქვს, გამოუსადეგარი იყო.
+     */
+    public function test_a_users_admin_can_list_assignable_roles(): void
+    {
+        $actor = $this->usersAdmin();
+
+        // ძველი გზა მისთვის დახურულია და ასეც უნდა დარჩეს
+        $this->actingAs($actor)->getJson('/api/admin/roles')->assertForbidden();
+
+        $rows = $this->actingAs($actor)->getJson('/api/admin/assignable-roles')->assertOk()->json('data');
+
+        $this->assertNotEmpty($rows);
+        // ⚠️ ვიწრო ფორმა: სელექტს მხოლოდ სახელი სჭირდება, უფლებების მატრიცა — არა
+        $this->assertSame(['id', 'key', 'name_ka', 'name_en'], array_keys($rows[0]));
+        $this->assertStringNotContainsString('permissions', json_encode($rows));
+    }
+
+    /** ⚠️ სექციის უფლების გარეშე — 403, ისევე როგორც სექციის სხვა endpoint-ები */
+    public function test_the_assignable_roles_list_needs_the_users_section(): void
+    {
+        $actor = $this->rolesAdmin();
+
+        $this->actingAs($actor)
+            ->getJson('/api/admin/assignable-roles')
+            ->assertForbidden()
+            ->assertJson(['message' => 'forbidden_permission', 'permission' => 'admin:users.view']);
+    }
 }

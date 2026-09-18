@@ -886,6 +886,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin')->group(function () {
         Route::middleware('admin_access:users')->group(function () {
             Route::get('/users', [AdminUserController::class, 'index']);
+            /* **მისანიჭებელი როლების ვიწრო სია (Tasks GAP-10).**
+               ⚠️ `GET /admin/roles` `admin_access:roles`-ის უკანაა, ე.ი.
+               `admin:users`-ის მქონე ადმინს როლის სელექტი ჩუმად ცარიელი
+               რჩებოდა (403). სია აქ მხოლოდ id-სა და სახელს აბრუნებს —
+               მატრიცა ამ სექციის უფლებას სცილდება.
+               ⚠️ `/users/{user}`-ზე **ზემოთ** არ სჭირდება: მისამართი
+               `/admin/assignable-roles`-ია და მას ვერ დაემთხვევა. */
+            Route::get('/assignable-roles', [AdminUserController::class, 'roles']);
             // მომხმარებლის შიდა გვერდი — უფლებები, შიგთავსი, დაკავებული ადგილი (K14)
             Route::get('/users/{user}', [AdminUserController::class, 'show']);
             Route::patch('/users/{user}', [AdminUserController::class, 'update']);

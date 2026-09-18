@@ -716,6 +716,27 @@ export async function fetchRoles(): Promise<Role[]> {
   return data.data
 }
 
+/** მისანიჭებელი როლი — მხოლოდ id და სახელი (Tasks GAP-10) */
+export interface AssignableRole {
+  id: number
+  key: string
+  name_ka: string
+  name_en: string
+}
+
+/**
+ * **`/users/{id}`-ის როლის სელექტისთვის (Tasks GAP-10).**
+ *
+ * ⚠️ `fetchRoles()` `admin_access:roles`-ის უკანაა, ე.ი. `admin:users`-ის
+ * მქონე ადმინი (როლების უფლების გარეშე) 403-ს იღებდა და სელექტი **ჩუმად
+ * ცარიელი** რჩებოდა. ეს endpoint მომხმარებლების სექციაშია და მხოლოდ
+ * სახელებს აბრუნებს — უფლებების მატრიცა მას არ სჭირდება.
+ */
+export async function fetchAssignableRoles(): Promise<AssignableRole[]> {
+  const { data } = await api.get('/admin/assignable-roles')
+  return data.data
+}
+
 export async function createRole(input: RoleInput): Promise<Role> {
   const { data } = await api.post('/admin/roles', input)
   return data.data

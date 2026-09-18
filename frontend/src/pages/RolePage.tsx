@@ -69,7 +69,13 @@ export function RolePage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  const { isAdmin } = useAuth()
+  /* ⚠️ **`canAdmin('roles')` და არა `isAdmin` (Tasks GAP-10).** `/roles`-ის
+     სია და მარშრუტი უკვე `canAdmin('roles')`-ზეა, ე.ი. `admin:roles`-ის
+     მქონე (თუმცა არა სუპერ-ადმინი) სიას ხედავდა, როლზე დაჭერით კი
+     **ცარიელ გვერდს** — `isAdmin` ხომ `is_super_admin`-ია. CLAUDE.md-ის
+     წესიც ეს არის: სექციის ბმულს, მარშრუტსა და გვერდის შიდა დამცავს
+     `canAdmin()` წყვეტს და არა `is_super_admin`. */
+  const { user: me, isAdmin, canAdmin } = useAuth()
   const { all: modules } = useModules()
 
   const roleId = Number(id)
@@ -77,7 +83,7 @@ export function RolePage() {
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['roles'],
     queryFn: fetchRoles,
-    enabled: isAdmin,
+    enabled: canAdmin('roles'),
   })
   const role = roles.find((r) => r.id === roleId)
 
@@ -127,7 +133,7 @@ export function RolePage() {
     [role, matrix],
   )
 
-  if (!isAdmin) return null
+  if (!canAdmin('roles')) return null
   if (isLoading) {
     return (
       <PageContainer>
@@ -144,6 +150,20 @@ export function RolePage() {
   }
 
   const locked = role.is_super_admin
+
+  /* ---------- სამი საკეტი, სამივე SEC-02/SEC-03-ის სარკეა (Tasks GAP-10) ----------
+     ⚠️ **ეს მოხერხებულობაა და არა დაცვა** — სერვერი ორივეს თვითონ ამოწმებს
+     (`role_escalation` 403 და `cannot_edit_own_role` 422); UI მხოლოდ იმას
+     აკეთებს, რომ ღილაკი, რომელიც აუცილებლად ჩავარდება, საერთოდ არ იყოს
+     აქტიური და მიზეზი ეწეროს. */
+
+  /** ადმინის სექციებს **მხოლოდ სუპერ-ადმინი** ცვლის (SEC-03) */
+  const adminLocked = !isAdmin
+  /** საკუთარი როლის **უფლებებს** სხვა ადმინი ცვლის; სახელი კი — შეიძლება */
+  const mineLocked = !isAdmin && me?.role_id === role.id
+  /** შენახვა `admin:roles.update`-ს ითხოვს (სიის ნახვა `view`-ითაც შეიძლება) */
+  const canSave = canAdmin('roles', 'update')
+
   const Icon = roleIcon(scope)
   const has = (key: string, action: string) => (matrix[key] ?? []).includes(action)
 
@@ -230,6 +250,7 @@ export function RolePage() {
             <Input
               id="rn-ka"
               value={names.name_ka}
+              disabled={!canSave}
               onChange={(e) => setNames((n) => ({ ...n, name_ka: e.target.value }))}
             />
           </div>
@@ -238,6 +259,7 @@ export function RolePage() {
             <Input
               id="rn-en"
               value={names.name_en}
+              disabled={!canSave}
               onChange={(e) => setNames((n) => ({ ...n, name_en: e.target.value }))}
             />
           </div>
@@ -269,6 +291,16 @@ export function RolePage() {
           </p>
         ) : (
           <div className="mt-5 space-y-5">
+            {/* ⚠️ **საკუთარი როლი read-only (SEC-03 / Tasks GAP-10)** — სერვერი
+                მას 422 `cannot_edit_own_role`-ით უარყოფს, ე.ი. აქტიური
+                გადამრთველი მხოლოდ ჩავარდნამდე მიგვიყვანდა. სახელი კი
+                იცვლება, ამიტომ ველები ზემოთ ღიაა. */}
+            {mineLocked && (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                {t('roles.ownRoleLocked')}
+              </p>
+            )}
+
             {/* ---------- მოდულები ---------- */}
             <div>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -321,6 +353,7 @@ export function RolePage() {
                           key={a}
                           action={a}
                           on={columnFull(a)}
+                          readOnly={!canSave || mineLocked}
                           onChange={(on) => toggleColumn(a, on)}
                         />
                       ))}
@@ -338,6 +371,7 @@ export function RolePage() {
                     title={moduleName(m, i18n.language)}
                     strike={!m.is_active}
                     actions={actions}
+                    readOnly={!canSave || mineLocked}
                     isOn={(a) => has(m.key, a)}
                     onToggle={(a, on) => toggle(m.key, a, on)}
                     rowOn={rowFull(m.key)}
@@ -364,6 +398,17 @@ export function RolePage() {
                 />
               </p>
 
+              {/* ⚠️ **SEC-03-ის სარკე (Tasks GAP-10)**: ადმინ-სექციების
+                  დამატებაც **და მოხსნაც** მხოლოდ სუპერ-ადმინს შეუძლია
+                  (403 `role_escalation`) — როლი ყველა თავის მფლობელს
+                  სწვდება, ამიტომ SEC-02-ის „საკუთარ ჭერამდე" აქ განზრახ
+                  არ მოქმედებს. */}
+              {adminLocked && (
+                <p className="mb-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                  {t('roles.adminSectionsLocked')}
+                </p>
+              )}
+
               <div className="grid gap-2 lg:grid-cols-2">
                 {ADMIN_RESOURCES.map((resource) => {
                   const key = `${ADMIN_PREFIX}${resource}`
@@ -375,6 +420,7 @@ export function RolePage() {
                       icon={<section.icon className="size-5 text-[var(--mod)]" />}
                       title={t(`roles.adminResource.${resource}`)}
                       actions={actions}
+                      readOnly={!canSave || adminLocked || mineLocked}
                       isOn={(a) => has(key, a)}
                       onToggle={(a, on) => toggle(key, a, on)}
                       rowOn={rowFull(key)}
@@ -397,12 +443,14 @@ export function RolePage() {
           )}
         >
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
-            {dirty ? t('settings.unsaved') : t('settings.noChanges')}
+            {/* ⚠️ ნახვის უფლებით შენახვა არ არსებობს — ზოლი „შეუნახავს"
+                ნაცვლად მიზეზს ამბობს (Tasks GAP-10) */}
+            {!canSave ? t('roles.readOnly') : dirty ? t('settings.unsaved') : t('settings.noChanges')}
           </span>
           <Button
             variant="outline"
             size="sm"
-            disabled={!dirty}
+            disabled={!dirty || !canSave}
             onClick={() => {
               setNames({ name_ka: role.name_ka, name_en: role.name_en })
               setMatrix(role.permissions ?? {})
@@ -411,7 +459,7 @@ export function RolePage() {
             <Undo2 className="size-4" />
             {t('settings.revert')}
           </Button>
-          <Button size="sm" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>
+          <Button size="sm" disabled={!dirty || !canSave || save.isPending} onClick={() => save.mutate()}>
             <Save className="size-4" />
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
@@ -435,6 +483,7 @@ function PermCard({
   hint,
   strike,
   actions,
+  readOnly,
   isOn,
   onToggle,
   rowOn,
@@ -448,6 +497,14 @@ function PermCard({
   /** გამორთული მოდული — სახელი გადახაზულია, უფლება კი მაინც ინიშნება */
   strike?: boolean
   actions: string[]
+  /**
+   * მდგომარეობა ჩანს, ცვლილება კი — არა (Tasks GAP-10).
+   *
+   * ⚠️ **ბარათი არ იმალება**: „რა უფლება აქვს ამ როლს" ნახვის უფლების
+   * მქონესაც ეკუთვნის — იმალება მხოლოდ *ცვლილება*, და მიზეზი ბლოკის
+   * თავში პროზად წერია.
+   */
+  readOnly?: boolean
   isOn: (action: string) => boolean
   onToggle: (action: string, on: boolean) => void
   rowOn?: boolean
@@ -486,12 +543,14 @@ function PermCard({
           <button
             type="button"
             aria-pressed={!!rowOn}
+            disabled={readOnly}
             onClick={() => onRow(!rowOn)}
             className={cn(
-              'shrink-0 cursor-pointer rounded-md border px-2 py-1 text-[11px] transition-colors',
+              'shrink-0 rounded-md border px-2 py-1 text-[11px] transition-colors',
+              readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
               rowOn
                 ? 'border-[var(--mod)] bg-[var(--mod-soft)] font-medium text-foreground'
-                : 'border-border text-muted-foreground hover:border-[var(--mod)] hover:text-foreground',
+                : cn('border-border text-muted-foreground', !readOnly && 'hover:border-[var(--mod)] hover:text-foreground'),
             )}
           >
             {t('roles.grantAll')}
@@ -501,7 +560,13 @@ function PermCard({
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {actions.map((a) => (
-          <PermToggle key={a} action={a} on={isOn(a)} onChange={(on) => onToggle(a, on)} />
+          <PermToggle
+            key={a}
+            action={a}
+            on={isOn(a)}
+            readOnly={readOnly}
+            onChange={(on) => onToggle(a, on)}
+          />
         ))}
       </div>
     </div>
@@ -518,10 +583,13 @@ function PermCard({
 function PermToggle({
   action,
   on,
+  readOnly,
   onChange,
 }: {
   action: string
   on: boolean
+  /** მონიშნულობა ჩანს, დაჭერა კი აღარ მუშაობს (Tasks GAP-10) */
+  readOnly?: boolean
   onChange: (on: boolean) => void
 }) {
   const { t } = useTranslation()
@@ -531,13 +599,15 @@ function PermToggle({
     <button
       type="button"
       aria-pressed={on}
+      disabled={readOnly}
       onClick={() => onChange(!on)}
       style={modAccent(tone.color)}
       className={cn(
-        'inline-flex min-w-24 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors',
+        'inline-flex min-w-24 flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors',
+        readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
         on
           ? 'border-[var(--mod)] bg-[var(--mod-soft)] font-medium text-foreground'
-          : 'border-border text-muted-foreground hover:border-[var(--mod)] hover:text-foreground',
+          : cn('border-border text-muted-foreground', !readOnly && 'hover:border-[var(--mod)] hover:text-foreground'),
       )}
     >
       <tone.icon className="size-3.5 text-[var(--mod)]" />

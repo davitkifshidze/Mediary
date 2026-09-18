@@ -74,7 +74,10 @@
     "searchModules": "Find a module",
     "modulesTitle": "Modules",
     "noModulesFound": "No such module",
-    "adminSectionsWarn": "Bulk delete and the global module switches stay super-admin only."
+    "adminSectionsWarn": "Bulk delete and the global module switches stay super-admin only.",
+    "adminSectionsLocked": "Only a super admin changes the admin sections — a role cannot be granted more admin power than you hold.",
+    "ownRoleLocked": "This is your own role: its permissions are changed by another admin. You can still rename it.",
+    "readOnly": "You have view-only access to this section — saving is disabled."
   },
   "profile": {
     "title": "Profile",
