@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\DatabaseBackup;
 use App\Models\User;
+use App\Services\Backup\BackupInspector;
 use App\Support\RestoreScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -152,5 +154,96 @@ class BackupViewerTest extends TestCase
         }
 
         $this->assertFalse(RestoreScope::isBlocked('movies'));
+    }
+
+    /* ============================================================
+       დროებითი ბაზის სიცოცხლე (Tasks GAP-16)
+       ============================================================ */
+
+    /**
+     * **ასლის წაშლა ვიუერის ბაზასაც ხურავს.**
+     *
+     * ⚠️ `StoredFile` მხოლოდ **ფაილს** შლიდა, ე.ი. `<db>_inspect_<id>` MySQL-ში
+     * სამუდამოდ რჩებოდა — და დახურვის ღილაკიც ქრებოდა მასთან ერთად, რადგან
+     * ჩანაწერი აღარ არსებობდა. ეს მონაცემის სრული მეორე ასლია, კვოტის
+     * გარეთ და პაროლის ჰეშებით.
+     *
+     * ⚠️ **ტესტი ინსპექტორს იცვლის და არა ბაზას**: ნამდვილი დროებითი ბაზა
+     * MySQL-ის ფუნქციაა, ტესტები კი sqlite-ზეა (იხ. კლასის docblock) —
+     * ე.ი. ამ დონეზე შესამოწმებელი ისაა, რომ **ჰუკი საერთოდ არსებობს**.
+     */
+    public function test_deleting_a_backup_closes_its_viewer(): void
+    {
+        $closed = new \ArrayObject;
+
+        $this->app->bind(BackupInspector::class, fn () => new class($closed) extends BackupInspector
+        {
+            public function __construct(private \ArrayObject $seen) {}
+
+            public function close(DatabaseBackup $backup): void
+            {
+                $this->seen->append((int) $backup->id);
+            }
+        });
+
+        $id = (int) $this->backup->id;
+        $this->backup->delete();
+
+        $this->assertSame([$id], $closed->getArrayCopy());
+    }
+
+    /**
+     * იგივე, endpoint-ის გავლით — ღილაკი „წაშლა" ნამდვილად ამ გზაზეა.
+     */
+    public function test_the_delete_endpoint_closes_the_viewer_too(): void
+    {
+        $closed = new \ArrayObject;
+
+        $this->app->bind(BackupInspector::class, fn () => new class($closed) extends BackupInspector
+        {
+            public function __construct(private \ArrayObject $seen) {}
+
+            public function close(DatabaseBackup $backup): void
+            {
+                $this->seen->append((int) $backup->id);
+            }
+        });
+
+        $id = (int) $this->backup->id;
+
+        $this->actingAs($this->admin)
+            ->deleteJson("/api/admin/backups/{$id}")
+            ->assertOk();
+
+        $this->assertSame([$id], $closed->getArrayCopy());
+    }
+
+    /**
+     * **ნამდვილი MySQL**: ნარჩენი `_inspect_` ბაზა იხურება.
+     *
+     * ⚠️ დამპის ნამდვილი იმპორტი აქ საჭირო არაა — შესამოწმებელია `close()`/
+     * `pruneStale()`-ის SQL-ი, ე.ი. სქემას ხელით ვქმნით. sqlite-ზე ტესტი
+     * გამოტოვებულია, რადგან `information_schema.schemata` იქ არ არსებობს.
+     */
+    public function test_an_orphaned_viewer_database_is_pruned_on_mysql(): void
+    {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('დროებითი ბაზა MySQL-ის ფუნქციაა.');
+        }
+
+        $inspector = app(BackupInspector::class);
+        // ⚠️ id, რომელსაც ჩანაწერი **არ** შეესაბამება — ზუსტად ის ნარჩენი,
+        // რომელიც ძველ კოდში სამუდამოდ რჩებოდა
+        $name = $inspector->databaseName(new DatabaseBackup(['id' => 999999]));
+
+        DB::statement("create database if not exists `{$name}`");
+        $this->assertNotSame([], $inspector->openDatabases());
+
+        $inspector->pruneStale();
+
+        $this->assertSame(
+            [],
+            array_filter($inspector->openDatabases(), fn (array $r) => $r['database'] === $name),
+        );
     }
 }

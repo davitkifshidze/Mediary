@@ -39,3 +39,15 @@ Artisan::command('inspire', function () {
 | გასაშვებად: `php artisan schedule:work` (ან Windows Task Scheduler → `schedule:run`).
 */
 Schedule::command('notes:remind')->everyMinute()->withoutOverlapping(5);
+
+/*
+| Tasks GAP-16 — ასლის ვიუერის მიტოვებული დროებითი ბაზები.
+|
+| ⚠️ **ეს მეორე კარიბჭეა**: იმავე გასუფთავებას `BackupInspector::open()`
+| თვითონაც აკეთებს, რადგან ამ პროექტში scheduler ხშირად საერთოდ არ ეშვება.
+| სერვერზე, სადაც ის მუშაობს, ვიუერი ტაბის ხელახლა გახსნის გარეშეც იხურება.
+|
+| ⚠️ საათში ერთხელ საკმარისია: ვადა ორი საათია (`BackupInspector::STALE_HOURS`),
+| ე.ი. უფრო ხშირი გაშვება არაფერს შეცვლიდა.
+*/
+Schedule::command('backups:prune-inspect')->hourly()->withoutOverlapping(5);

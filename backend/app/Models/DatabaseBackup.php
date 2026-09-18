@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\StoredFile;
+use App\Services\Backup\BackupInspector;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -69,7 +70,26 @@ class DatabaseBackup extends Model
             'table_map' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            // GAP-16 — ვიუერის ბოლო გახსნა; მიტოვებული ბაზის ვადა ამაზე ითვლება
+            'inspected_at' => 'datetime',
         ];
+    }
+
+    /**
+     * **ვიუერის დროებითი ბაზაც ქრება ჩანაწერთან ერთად (Tasks GAP-16).**
+     *
+     * ⚠️ `StoredFile` მხოლოდ **ფაილს** შლის, ე.ი. `<db>_inspect_<id>` MySQL-ში
+     * რჩებოდა — და სამუდამოდ: ჩანაწერი აღარაა, ე.ი. ვიუერის დახურვის ღილაკიც
+     * აღარსად არის. ეს მონაცემის სრული მეორე ასლია, კვოტის გარეთ და პაროლის
+     * ჰეშებით.
+     *
+     * ⚠️ **`deleting` და არა `deleted`**: `close()`-ს `id` სჭირდება ბაზის
+     * სახელისთვის, ხოლო `saveQuietly()` წაშლილ რიგზე ახალს შექმნიდა.
+     * sqlite-ზე `close()` თვითონვე ბრუნდება (`available()` false-ია).
+     */
+    protected static function booted(): void
+    {
+        static::deleting(fn (self $backup) => app(BackupInspector::class)->close($backup));
     }
 
     /**

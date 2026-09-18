@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DatabaseBackup;
 use App\Models\User;
+use App\Services\Backup\BackupInspector;
 use App\Services\Backup\DatabaseDumper;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\YtDlp;
@@ -43,12 +45,13 @@ class DoctorCommand extends Command
 
     private bool $failed = false;
 
-    public function handle(YtDlp $ytdlp, DatabaseDumper $dumper, StorageMeter $meter): int
+    public function handle(YtDlp $ytdlp, DatabaseDumper $dumper, StorageMeter $meter, BackupInspector $inspector): int
     {
         $this->line('');
         $this->binaries($ytdlp, $dumper);
         $this->scheduler();
         $this->storage($meter);
+        $this->viewers($inspector);
         $this->settings();
         $this->line('');
 
@@ -143,6 +146,44 @@ class DoctorCommand extends Command
                     : "დრიფტი {$drift} ბაიტი ({$cached} ≠ {$real}) — `php artisan mediary:storage-recalc`",
                 warnOnly: true,
             );
+        }
+    }
+
+    /**
+     * **ღია ვიუერები** (Tasks GAP-16) — დამპის დროებითი ბაზები.
+     *
+     * ⚠️ **WARN და არა FAIL**: ღია ვიუერი ნორმალური მდგომარეობაა — ვიღაც
+     * სწორედ ახლა უყურებს ასლს. სამუდამოდ დარჩენილი კი დისკზე მონაცემის
+     * მეორე ასლია, **კვოტის გარეთ** და პაროლის ჰეშებით — და აქამდე მას
+     * არსად ეწერა, ე.ი. `doctor`-ის მთელი აზრი ზუსტად ესაა.
+     */
+    private function viewers(BackupInspector $inspector): void
+    {
+        if (! $inspector->available()) {
+            return;
+        }
+
+        $this->section('ასლის ვიუერი');
+
+        $open = $inspector->openDatabases();
+
+        if ($open === []) {
+            $this->check('დროებითი ბაზები', true, 'არცერთი ღია არაა');
+
+            return;
+        }
+
+        foreach ($open as $row) {
+            $backup = DatabaseBackup::find($row['backup_id']);
+            $at = $backup?->inspected_at;
+
+            $detail = $backup === null
+                ? 'ასლი წაშლილია — ნარჩენი ბაზა; `php artisan backups:prune-inspect`'
+                : ($at === null
+                    ? 'გახსნის დრო უცნობია — `php artisan backups:prune-inspect`'
+                    : "გახსნილია {$at->diffForHumans()} — დახურვა ვიუერიდან ან `php artisan backups:prune-inspect`");
+
+            $this->check($row['database'], false, $detail, warnOnly: true);
         }
     }
 

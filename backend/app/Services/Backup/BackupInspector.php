@@ -3,6 +3,7 @@
 namespace App\Services\Backup;
 
 use App\Models\DatabaseBackup;
+use App\Support\AppTime;
 use App\Support\Like;
 use App\Support\RestoreScope;
 use App\Support\StorageFolder;
@@ -41,14 +42,31 @@ use RuntimeException;
  */
 class BackupInspector
 {
+    /**
+     * მიტოვებული ვიუერის ვადა (Tasks GAP-16).
+     *
+     * ⚠️ ორი საათი იმიტომ, რომ ეს **სამუშაო სესიის** ხანგრძლივობაა: ღია
+     * ტაბს არ ვწყვეტთ, მიტოვებულს კი დიდხანს არ ვტოვებთ.
+     */
+    public const STALE_HOURS = 2;
+
     /** ერთ გვერდზე მაქსიმუმ რამდენი რიგი */
     public const MAX_PER_PAGE = 200;
 
     public function __construct(private DatabaseDumper $dumper) {}
 
+    /**
+     * ⚠️ **ორივე პირობა საჭიროა და მეორე გამორჩენილი იყო (Tasks GAP-16).**
+     * კლასის docblock ამბობს „sqlite-ზე `available()` false-ია", სინამდვილეში
+     * კი მხოლოდ `mysql` **ბინარს** ეკითხებოდა — ე.ი. დეველოპერულ მანქანაზე,
+     * სადაც XAMPP-ის კლიენტი დაყენებულია, sqlite-ზეც `true` ბრუნდებოდა და
+     * `drop database` sqlite-ს პირდაპირ მიდიოდა (`near "database": syntax
+     * error`). ეს ქცევა GAP-16-ის `deleting` ჰუკამდე უბრალოდ არავის ეხებოდა,
+     * რადგან ვიუერს ტესტი არ ხსნიდა.
+     */
     public function available(): bool
     {
-        return $this->dumper->restoreAvailable();
+        return DB::connection()->getDriverName() === 'mysql' && $this->dumper->restoreAvailable();
     }
 
     /**
@@ -88,6 +106,13 @@ class BackupInspector
         $path = $this->absolutePath($backup);
         $name = $this->databaseName($backup);
 
+        /* ⚠️ **მიტოვებულები აქვე იხურება** (Tasks GAP-16): scheduler-ი ამ
+           მანქანაზე ხშირად საერთოდ არ ეშვება, ე.ი. მარტო დაგეგმილ ბრძანებას
+           დაყრდნობა ნიშნავდა, რომ პრაქტიკაში არაფერი გასუფთავდებოდა. ორი
+           ასლის ერთდროულად გახსნა კვლავ შეიძლება — ახლად გახსნილი ვიუერი
+           „მიტოვებული" არ არის. */
+        $this->pruneStale();
+
         DB::statement("drop database if exists `{$name}`");
         DB::statement("create database `{$name}` character set utf8mb4 collate utf8mb4_unicode_ci");
 
@@ -98,6 +123,10 @@ class BackupInspector
 
             throw $e;
         }
+
+        // ⚠️ `saveQuietly()` — ვიუერის გახსნა ჩანაწერის რედაქტირება არაა და
+        // `AuditObserver`-ს ლოგი „ასლი შეიცვალა"-თი არ უნდა აევსოს
+        $backup->forceFill(['inspected_at' => AppTime::now()])->saveQuietly();
     }
 
     /** ვიუერის დახურვა — დროებითი ბაზა ქრება */
@@ -109,6 +138,80 @@ class BackupInspector
 
         $name = $this->databaseName($backup);
         DB::statement("drop database if exists `{$name}`");
+        $backup->forceFill(['inspected_at' => null])->saveQuietly();
+    }
+
+    /**
+     * **ღია ვიუერების სია** (Tasks GAP-16) — `<db>_inspect_<id>` სქემები.
+     *
+     * ⚠️ MySQL-ის სქემებიდან იკითხება და არა `database_backups`-იდან: სწორედ
+     * ისაა საინტერესო, რაც ბაზაშია და ჩანაწერს **აღარ** შეესაბამება (წაშლილი
+     * ასლის ნარჩენი). `id` სახელიდან გამოითვლება.
+     *
+     * @return list<array{database: string, backup_id: int}>
+     */
+    public function openDatabases(): array
+    {
+        if (! $this->available()) {
+            return [];
+        }
+
+        $prefix = $this->mainDatabase().'_inspect_';
+
+        $rows = DB::select(
+            'select schema_name as name from information_schema.schemata where schema_name like ? order by schema_name',
+            [Like::escape($prefix).'%'],
+        );
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $id = substr((string) $row->name, strlen($prefix));
+
+            // ⚠️ მხოლოდ ზუსტად რიცხვიანი ბოლო — თორემ ხელით შექმნილი
+            // მსგავსი სახელის ბაზას ეს კოდი „ვიუერად" ჩათვლიდა და წაშლიდა
+            if ($id !== '' && ctype_digit($id)) {
+                $out[] = ['database' => (string) $row->name, 'backup_id' => (int) $id];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * **მიტოვებული ვიუერების დახურვა** (Tasks GAP-16).
+     *
+     * ორი შემთხვევა ითვლება მიტოვებულად და ორივე რეალურია: ასლის ჩანაწერი
+     * **აღარ არსებობს** (ძველი ნარჩენი, `deleting` ჰუკამდელი), ან ვიუერი
+     * `STALE_HOURS`-ზე დიდი ხნის წინ გაიხსნა — ე.ი. ტაბი დახურეს ღილაკის
+     * დაჭერის გარეშე.
+     *
+     * ⚠️ **`inspected_at`-ის არქონა მიტოვებულად ითვლება**: ეს ან მიგრაციამდე
+     * გახსნილი ვიუერია, ან ხელით შექმნილი რიგი — ორივეს სამუდამო სიცოცხლე
+     * ზუსტად ის ხარვეზია, რომელსაც ეს კოდი ხურავს (იგივე წესი, რაც
+     * `Video::downloadStale()`-ს აქვს ცარიელ საწყის დროზე).
+     *
+     * @return list<string> დახურული ბაზების სახელები
+     */
+    public function pruneStale(?int $hours = null): array
+    {
+        $cutoff = AppTime::now()->subHours($hours ?? self::STALE_HOURS);
+        $closed = [];
+
+        foreach ($this->openDatabases() as $row) {
+            $backup = DatabaseBackup::find($row['backup_id']);
+            $at = $backup?->inspected_at;
+
+            if ($backup !== null && $at !== null && $at->greaterThan($cutoff)) {
+                continue;
+            }
+
+            DB::statement("drop database if exists `{$row['database']}`");
+            $backup?->forceFill(['inspected_at' => null])->saveQuietly();
+            $closed[] = $row['database'];
+        }
+
+        return $closed;
     }
 
     /**
