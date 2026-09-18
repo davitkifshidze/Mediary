@@ -2,6 +2,7 @@
 
 namespace App\Services\Notes;
 
+use App\Support\Redact;
 use App\Support\SourceLog;
 
 /**
@@ -48,7 +49,8 @@ class TelegramNotifier
         } catch (\Throwable $e) {
             SourceLog::threw('telegram', $e);
 
-            return $e->getMessage();
+            // SEC-14 — ტოკენი მისამართის გზაშია, ე.ი. გამონაკლისის ტექსტში ეხვედება
+            return Redact::secrets($e->getMessage());
         }
     }
 }

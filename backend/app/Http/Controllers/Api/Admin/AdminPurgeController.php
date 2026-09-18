@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -116,10 +117,10 @@ class AdminPurgeController extends Controller
                 'user_id' => $user->getKey(),
                 'target' => $data['target'],
                 'id' => $data['id'],
-                'error' => $e->getMessage(),
+                'error' => Redact::secrets($e->getMessage()),
             ]);
 
-            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'error' => Redact::secrets($e->getMessage())]);
         }
 
         return response()->json([

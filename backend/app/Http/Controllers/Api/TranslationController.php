@@ -11,6 +11,7 @@ use App\Services\Translation\TranslationScanner;
 use App\Services\Translation\Translator;
 use App\Support\AuditRegistry;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -184,9 +185,9 @@ class TranslationController extends Controller
         try {
             $result = $translator->translateGenres($pending, $sources);
         } catch (\Throwable $e) {
-            Log::warning('translate genres failed', ['error' => $e->getMessage()]);
+            Log::warning('translate genres failed', ['error' => Redact::secrets($e->getMessage())]);
 
-            return response()->json(['ok' => false, 'skipped' => false, 'translated' => 0, 'error' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'skipped' => false, 'translated' => 0, 'error' => Redact::secrets($e->getMessage())]);
         }
 
         return response()->json([

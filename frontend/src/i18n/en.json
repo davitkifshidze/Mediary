@@ -1017,6 +1017,7 @@
     "primary_not_supported_for_cast": "An actor's photo can't be made the main photo — actors are shared by every account.",
     "too_many_videos": "This record has reached its video limit.",
     "invalid_url": "The address must start with http:// or https://.",
+    "tmdb_error": "TMDB is not answering right now — try again later. The reason is in the sources log.",
     "no_tmdb_id": "There is no TMDB id — it can't be refreshed from the source.",
     "no_translation_source": "Pick at least one source — TMDB or Gemini.",
     "worker_unavailable": "The server's background worker could not be started — the queue keeps running in the browser.",

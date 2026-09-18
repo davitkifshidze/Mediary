@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Support\MediaDomain;
+use App\Support\SourceLog;
 use Illuminate\Http\Request;
 use Throwable;
 
@@ -44,7 +45,11 @@ class LookupController extends Controller
         try {
             $list = $enricher->candidates($data);
         } catch (Throwable $e) {
-            return response()->json(['message' => 'TMDB შეცდომა: '.$e->getMessage()], 502);
+            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
+            SourceLog::threw('tmdb', $e);
+
+            return response()->json(['message' => 'tmdb_error'], 502);
         }
 
         return response()->json(['data' => $list]);
@@ -77,7 +82,11 @@ class LookupController extends Controller
                 ? $enricher->draftFromId((int) $data['tmdb_id'])
                 : $enricher->lookupDraft($data);
         } catch (Throwable $e) {
-            return response()->json(['message' => 'TMDB შეცდომა: '.$e->getMessage()], 502);
+            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
+            SourceLog::threw('tmdb', $e);
+
+            return response()->json(['message' => 'tmdb_error'], 502);
         }
 
         if (! $draft) {

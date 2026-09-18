@@ -5,6 +5,7 @@ namespace App\Services\Video;
 use App\Models\Video;
 use App\Services\Storage\StorageMeter;
 use App\Support\BackgroundProcess;
+use App\Support\Redact;
 use App\Support\StorageFolder;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\File;
@@ -146,7 +147,7 @@ class VideoDownloader
 
             return false;
         } catch (\Throwable $e) {
-            $this->fail($video, $e->getMessage());
+            $this->fail($video, Redact::secrets($e->getMessage()));
 
             return false;
         } finally {

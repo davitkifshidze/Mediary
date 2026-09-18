@@ -11,6 +11,7 @@ use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
 use App\Services\Translation\ItemTranslator;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use App\Support\SourceLog;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -117,7 +118,7 @@ class RunBatchItem implements ShouldQueue
                 'status' => BatchItem::FAILED,
                 // ⚠️ მხოლოდ შეტყობინება: stack trace `sources.log`-შია და
                 // მისი UI-ში გამოტანა შიდა ბილიკებს გაამხელდა
-                'error' => mb_substr($e->getMessage(), 0, 500),
+                'error' => mb_substr(Redact::secrets($e->getMessage()), 0, 500),
             ]);
             SourceLog::threw('batch:'.$this->kind, $e, [
                 'type' => $this->type,

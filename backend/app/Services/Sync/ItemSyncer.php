@@ -10,6 +10,7 @@ use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use App\Support\StorageFolder;
 use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
@@ -120,7 +121,7 @@ class ItemSyncer
             $item->sync_status = 'synced';
             $item->save();
         } catch (Throwable $e) {
-            return $this->result(false, false, $changed, $e->getMessage());
+            return $this->result(false, false, $changed, Redact::secrets($e->getMessage()));
         }
 
         return $this->result(true, false, array_values(array_unique($changed)), null);

@@ -4,6 +4,7 @@ namespace App\Services\Backup;
 
 use App\Models\DatabaseBackup;
 use App\Services\Storage\StorageMeter;
+use App\Support\Redact;
 use App\Support\StorageFolder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -72,7 +73,7 @@ class BackupRunner
         } catch (Throwable $e) {
             $backup->forceFill([
                 'status' => DatabaseBackup::STATUS_FAILED,
-                'error' => mb_substr($e->getMessage(), 0, 480),
+                'error' => mb_substr(Redact::secrets($e->getMessage()), 0, 480),
                 'finished_at' => now(),
             ])->save();
         } finally {
@@ -164,7 +165,7 @@ class BackupRunner
             $error = null;
         } catch (Throwable $e) {
             $status = DatabaseBackup::STATUS_FAILED;
-            $error = mb_substr($e->getMessage(), 0, 480);
+            $error = mb_substr(Redact::secrets($e->getMessage()), 0, 480);
         }
 
         /* აღდგენის შემდეგ ცხრილი უკვე **დამპისაა** — ორივე რიგს ხელახლა

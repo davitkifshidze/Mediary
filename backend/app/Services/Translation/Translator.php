@@ -5,6 +5,7 @@ namespace App\Services\Translation;
 use App\Models\TranslationUsage;
 use App\Services\Credentials\CredentialStore;
 use App\Support\CredentialProviders;
+use App\Support\Redact;
 use App\Support\SourceLog;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -230,7 +231,7 @@ class Translator
             /* ⚠️ **ჩავარდნილი მოთხოვნაც იწერება.** Gemini-ის კვოტას უარყოფილი
                მოთხოვნაც ხარჯავს (429 სწორედ იმიტომ მოდის, რომ ლიმიტს მიაღწიე),
                ე.ი. „ვცადე და ვერ გავიდა" აღრიცხვის ნაწილია და არა ხმაური. */
-            $this->record($to, $context, $chars, false, $e->getMessage());
+            $this->record($to, $context, $chars, false, Redact::secrets($e->getMessage()));
             $this->lastError = 'translator_failed';
 
             return null;

@@ -11,6 +11,7 @@ use App\Services\Media\MediaDownloader;
 use App\Services\Storage\StorageMeter;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -333,7 +334,7 @@ class GalleryFetcher
             try {
                 $candidates = $this->recordCandidates($record, $opts);
             } catch (Throwable $e) {
-                return [...$result, 'ok' => false, 'error' => $e->getMessage()];
+                return [...$result, 'ok' => false, 'error' => Redact::secrets($e->getMessage())];
             }
 
             $result = $this->download($user, $record, $candidates, $result);
@@ -396,7 +397,7 @@ class GalleryFetcher
         try {
             $candidates = $this->actorCandidates($member, $opts);
         } catch (Throwable $e) {
-            return [...$result, 'ok' => false, 'error' => $e->getMessage()];
+            return [...$result, 'ok' => false, 'error' => Redact::secrets($e->getMessage())];
         }
 
         return $this->download($user, $member, $candidates, $result);

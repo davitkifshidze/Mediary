@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AnimeResource;
 use App\Models\Anime;
 use App\Services\Enrichment\AnimeEnricher;
+use App\Support\SourceLog;
 use Throwable;
 
 class AnimeSyncController extends Controller
@@ -20,7 +21,11 @@ class AnimeSyncController extends Controller
         try {
             $ok = $enricher->enrichAnime($anime);
         } catch (Throwable $e) {
-            return response()->json(['message' => 'TMDB შეცდომა: '.$e->getMessage()], 502);
+            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
+            SourceLog::threw('tmdb', $e);
+
+            return response()->json(['message' => 'tmdb_error'], 502);
         }
 
         if (! $ok) {

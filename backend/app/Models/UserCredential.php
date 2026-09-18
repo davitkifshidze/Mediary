@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Redact;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
@@ -150,7 +151,7 @@ class UserCredential extends Model
         Log::warning('user credential cannot be decrypted — APP_KEY has changed?', [
             'user_id' => $this->user_id,
             'provider' => $this->provider,
-            'reason' => $e->getMessage(),
+            'reason' => Redact::secrets($e->getMessage()),
         ]);
     }
 

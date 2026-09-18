@@ -152,6 +152,10 @@ export const CODES = [
   'csrf_token_mismatch',
   'unauthenticated',
   // წყაროები, თარგმანი, ფონური პარტია
+  /* SEC-14 — TMDB-ის ცდომილება აღარ ბრუნდება გამონაკლისის ტექსტით:
+     Guzzle მას **სრულ URL-ს** უწერს (`?api_key=…`), ე.ი. თითო timeout
+     საერთო გასაღებს ნებისმიერ შესულ მომხმარებელს აჩვენებდა. */
+  'tmdb_error',
   'no_tmdb_id',
   'no_translation_source',
   'worker_unavailable',

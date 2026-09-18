@@ -62,15 +62,25 @@ class SourceLog
      */
     public static function failed(string $source, string $reason, array $context = []): null
     {
-        Log::channel(self::CHANNEL)->warning("{$source}: {$reason}", $context);
+        Log::channel(self::CHANNEL)->warning("{$source}: {$reason}", self::clean($context));
 
         return null;
     }
 
-    /** გამონაკლისიდან — ტიპი და ტექსტი ერთად, რომ timeout 403-ისგან გაირჩეს */
+    /**
+     * გამონაკლისიდან — ტიპი და ტექსტი ერთად, რომ timeout 403-ისგან გაირჩეს.
+     *
+     * ⚠️ **ტექსტი ჯერ `Redact::secrets()`-ში გადის** (Tasks SEC-14): Guzzle
+     * კავშირის ჩავარდნას **სრულ URL-ს** უწერს, ე.ი. `?api_key=…` პირდაპირ
+     * `sources.log`-ში ხვდებოდა — ლოგი კი ასლთან ერთად სხვა მანქანაზე მიდის.
+     * ნიღბვა **აქ** არის და არა გამომძახებელში: ცხრავე კლიენტი ერთსა და იმავე
+     * გამონაკლისს აგდებს და ერთი დავიწყებული ასლი ჩუმად ჟონავს.
+     */
     public static function threw(string $source, Throwable $e, array $context = []): null
     {
-        return self::failed($source, class_basename($e).': '.mb_substr($e->getMessage(), 0, 300), $context);
+        $message = Redact::secrets($e->getMessage());
+
+        return self::failed($source, class_basename($e).': '.mb_substr($message, 0, 300), $context);
     }
 
     /**
@@ -83,7 +93,22 @@ class SourceLog
     {
         return self::failed($source, "HTTP {$status}", [
             ...$context,
-            'body' => mb_substr(trim($body), 0, 200) ?: null,
+            'body' => mb_substr(trim(Redact::secrets($body)), 0, 200) ?: null,
         ]);
+    }
+
+    /**
+     * კონტექსტის სტრიქონებიც იწმინდება — გამომძახებლები იქ `url`/`path`-ს
+     * წერენ და ზოგი მათგანი უკვე აწყობილი მისამართია.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private static function clean(array $context): array
+    {
+        return array_map(
+            fn ($v) => is_string($v) ? Redact::secrets($v) : $v,
+            $context,
+        );
     }
 }

@@ -15,7 +15,7 @@
 | SEC-01 | პროდ-ბაზის dump git-ის ისტორიაში იყო — რჩება პაროლების შეცვლა და Telegram ტოკენის როტაცია | Critical | security | M | 🟡 ნაწილობრივ |
 | BUG-16 | `/purge`: ბუკმარკზე `mode=tag` **ყველა** ბუკმარკს შლის — ტეგის ფილტრი დომენების სიაში `bookmark`-ს არ იცნობს | Critical | bug | S | ✅ |
 | SEC-06 | ცოცხალი TMDB გასაღები `.env.example`-ში იყო — რჩება გასაღების როტაცია themoviedb.org-ზე | High | security | S | 🟡 ნაწილობრივ |
-| SEC-14 | API-გასაღებები URL-ის query-შია და cURL-ის შეცდომის ტექსტით პასუხის body-სა და `sources.log`-ში ხვდება | High | security | M | ⬜ |
+| SEC-14 | API-გასაღებები URL-ის query-შია და cURL-ის შეცდომის ტექსტით პასუხის body-სა და `sources.log`-ში ხვდება | High | security | M | ✅ |
 | BUG-17 | `MovieEnricher`/`TvEnricher` თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს TMDB-ის ქართულის ნაცვლად და `source='translated'`-ს წერს — ბარათი „წყარო უცნობია"-ს აჩვენებს | High | bug | M | ⬜ |
 | GAP-12 | 25 API-პასუხი ქართული წინადადებაა და არა მანქანური კოდი; Laravel-ის ვალიდაციის ტექსტი ინგლისურია (`lang/ka` არ არსებობს) | High | gap | M | ⬜ |
 | BUG-18 | `ka.json`-ში ორთოგრაფიული და გრამატიკული შეცდომებია („ჟანრიის" ×8, „კატეგორიაის" ×2, „ნიშავს", „სასაათე", „გალერიის", „დამრჩეს", „ნაცვლად არ არის", ბრუნვები `moveTo`-ში) | High | bug | S | ⬜ |
@@ -121,15 +121,17 @@
 - **დამოკიდებულება:** SEC-01
 
 ### [SEC-14] API-გასაღებები URL-ის query-ში მიდის და cURL-ის შეცდომის ტექსტით პასუხსა და ლოგში ხვდება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). ნიღბვა ერთ კლასშია — **`App\Support\Redact`** — და არა თითო კლიენტში: `SourceLog::threw()`/`failed()`/`status()` მას იძახებენ, ე.ი. ცხრავე კლიენტის დავიწყება შეუძლებელია. `?api_key=`, `?key=`, `?token=`, `?client_secret=`… → `***`, `user:pass@` → `***@`, და **ტელეგრამის ბოტის ტოკენი გზაში** (`/bot<id>:<secret>/`) — ეს ცალკე გაჟონვა აღმოჩნდა სამუშაოდ: `TelegramNotifier` ტოკენიან URL-ს `note_notifications.error`-ში წერდა, რომელსაც მომხმარებელი ხედავს. ხუთივე კონტროლერში `'TMDB შეცდომა: '.$e->getMessage()` → `SourceLog::threw('tmdb', $e)` + **`tmdb_error`** (`CODES` + ორივე ლოკალი); YouTube Data API-ს გასაღები `X-goog-api-key` ჰედერით ეზიდება. დაცვა სიღრმეში: იგივე ნიღაბი დაედო `ItemSyncer`/`ItemTranslator`/`Translator`/`GalleryFetcher`/`VideoDownloader`/`BackupRunner`/`RunBatchItem`/`AdminPurgeController`/`TranslationController`/`UserCredential`-საც, სადაც გამონაკლისის ტექსტი `error` ველით კლიენტს ან ბაზაში მიდიოდა.
 - **ტიპი:** security
 - **სად:** `backend/app/Services/Tmdb/TmdbClient.php:55` (`api_key` query-ში), `backend/app/Services/Games/RawgClient.php:172`, `backend/app/Services/Serp/SerpApiClient.php:266,459`, `backend/app/Services/Video/VideoMetadata.php:92`, `backend/app/Services/Credentials/CredentialTester.php:52,63,78,92`; გაჟონვის გზები — `backend/app/Http/Controllers/Api/LookupController.php:47,80`, `backend/app/Http/Controllers/Api/DiscoverController.php:113` (`'TMDB შეცდომა: '.$e->getMessage()` პასუხის body-ში), `backend/app/Support/SourceLog.php:73` (`getMessage()` ლოგში); Guzzle — `backend/vendor/guzzlehttp/guzzle/src/Handler/CurlFactory.php:1131-1135`
 - **პრობლემა:** კავშირის შეცდომაზე (timeout, DNS, TLS) Guzzle 7.15 გამონაკლისის ტექსტს **სრულ URL-ს** ამატებს (`… for https://api.themoviedb.org/3/search/movie?api_key=<გასაღები>&query=…`) — `redactUserInfo()` მხოლოდ `user:pass@`-ს ფარავს, query-ს არა. `LookupController`/`DiscoverController` ამ ტექსტს პირდაპირ 502-ის `message`-ად აბრუნებს, `SourceLog::threw()` კი `sources.log`-ში წერს. ე.ი. ერთი TMDB-ის timeout-ი საერთო (`.env`) გასაღებს ნებისმიერ შესულ მომხმარებელს აჩვენებს, RAWG/SerpApi/YouTube-ის კი ლოგში ტოვებს.
 - **რატომ:** საერთო გასაღები ინსტალაციისაა (§21) — მისი გამჟღავნება ჩვეულებრივი მომხმარებლისთვის სწორედ ის რისკია, რომელსაც `reveal`-ის super_admin-ზე შეზღუდვა ხურავს; ლოგი კი dump-თან ერთად სხვა მანქანაზე მიდის.
 - **გადაწყვეტა:** (1) `$e->getMessage()` კლიენტს არასდროს — `tmdb_unavailable`/`tmdb_error` კოდი (GAP-12-თან ერთად); (2) `SourceLog::threw()`-ში query-ს ნიღბვა (`api_key|key|client_secret=…` → `***`) ან URL-ის მოჭრა `?`-მდე; (3) სადაც წყარო უშვებს, ავტორიზაცია ჰედერში — TMDB v4 `Authorization: Bearer` / v3 `api_key` ჰედერით არ მიიღება, ამიტომ (2) სავალდებულოა; YouTube Data API `X-goog-api-key`-ს იღებს (Gemini-ს იგივე წესი).
 - **Acceptance criteria:**
-  - [ ] `Http::fake()`-ით გამოწვეულ `ConnectionException`-ზე `POST /lookup/candidates` პასუხის body-ში გასაღები არ ჩანს (ტესტი grep-ს აკეთებს body-ზე)
-  - [ ] `SourceLog::threw()`-ის ჩანაწერში URL-ის query ნიღბიანია (ტესტი `Log::shouldReceive`-ით)
-  - [ ] `VideoMetadata` YouTube-ის გასაღებს ჰედერით აგზავნის
+  - [x] `SecretRedactionTest::test_a_connection_failure_never_returns_the_api_key` — `POST /lookup/candidates` პასუხის body-ში გასაღები არ ჩანს (grep სხეულზე, და არა `message`-ის ტოლობა); `…_from_discover` — იგივე `/discover`-ზე
+  - [x] `…::test_the_source_log_masks_the_query` — `Log::shouldReceive`-ით: `api_key=***`, მაგრამ `query=matrix` რჩება (URL `?`-ზე არ იჭრება — დიაგნოსტიკა სწორედ იქაა)
+  - [x] `…::test_a_telegram_token_is_masked_in_a_path` — ბოტის ტოკენი გზაშიც ინიღბება
+  - [x] `VideoMetadata` YouTube-ის გასაღებს `X-goog-api-key` ჰედერით აგზავნის
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

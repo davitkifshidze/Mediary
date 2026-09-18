@@ -4,6 +4,7 @@ namespace App\Services\Video;
 
 use App\Services\Credentials\CredentialStore;
 use App\Support\CredentialProviders;
+use App\Support\Redact;
 use App\Support\SourceLog;
 use App\Support\VideoUrl;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +61,7 @@ class VideoMetadata
             };
         } catch (\Throwable $e) {
             // მეტამონაცემი არასავალდებულოა — ბმული მაინც ინახება
-            Log::warning('video metadata failed', ['url' => $url, 'error' => $e->getMessage()]);
+            Log::warning('video metadata failed', ['url' => $url, 'error' => Redact::secrets($e->getMessage())]);
         }
 
         return $meta;
@@ -86,11 +87,18 @@ class VideoMetadata
             return $meta;
         }
 
-        $res = $this->http()->get('https://www.googleapis.com/youtube/v3/videos', [
-            'id' => $id,
-            'part' => 'snippet,contentDetails',
-            'key' => CredentialStore::value(CredentialProviders::YOUTUBE),
-        ]);
+        /*
+         * ⚠️ **გასაღები ჰედერშია და არა query-ში** (Tasks SEC-14). YouTube Data API
+         * `X-goog-api-key`-ს იღებს (Gemini-ს იგივე წესი), query-ში ჩაწერილი
+         * გასაღები კი URL-ის ნაწილია, ე.ი. cURL-ის შეცდომის ტექსტში, ექსეპტის
+         * კვალში და პროქსის ლოგში ხვდებოდა.
+         */
+        $res = $this->http()
+            ->withHeaders(['X-goog-api-key' => CredentialStore::value(CredentialProviders::YOUTUBE)])
+            ->get('https://www.googleapis.com/youtube/v3/videos', [
+                'id' => $id,
+                'part' => 'snippet,contentDetails',
+            ]);
 
         if (! $res->successful()) {
             Log::warning('youtube api failed', ['status' => $res->status(), 'id' => $id]);

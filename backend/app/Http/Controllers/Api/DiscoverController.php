@@ -9,6 +9,7 @@ use App\Models\Series;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\SourceLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -110,7 +111,11 @@ class DiscoverController extends Controller
                 fn () => $this->fetch($tmdb, $data, $query, $page, $isSeries, $chunk, $maxPages),
             );
         } catch (Throwable $e) {
-            return response()->json(['message' => 'TMDB შეცდომა: '.$e->getMessage()], 502);
+            // SEC-14 — გამონაკლისის ტექსტი კლიენტს არასდრობ პასუხში: Guzzle მას სრულ URL-ს
+            // (`?api_key=…`) უწერს. მიზეზი `sources.log`-ში რ჉ება, პასუხში — მანქანური კოდი.
+            SourceLog::threw('tmdb', $e);
+
+            return response()->json(['message' => 'tmdb_error'], 502);
         }
 
         // owned სტატუსი — ქეშის გარეთ, ყოველ ჯერზე ახალი

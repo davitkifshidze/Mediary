@@ -6,6 +6,7 @@ use App\Models\Genre;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\Redact;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
@@ -95,7 +96,7 @@ class ItemTranslator
 
             $this->persist($item, $filled, $providers);
         } catch (Throwable $e) {
-            return $this->result(false, false, array_keys($filled), $e->getMessage(), $providers);
+            return $this->result(false, false, array_keys($filled), Redact::secrets($e->getMessage()), $providers);
         }
 
         $changed = array_keys($filled);
