@@ -151,7 +151,25 @@ class PublicProfileController extends Controller
         $disk = Storage::disk(StorageFolder::diskFor((string) $galleryImage->path));
         abort_unless($disk->exists($galleryImage->path), 404);
 
-        return $disk->response($galleryImage->path);
+        /* ⚠️ **ჩაკეტილი ალბომის ფოტო არსად არ უნდა დაიკეშოს** (Tasks GAP-08).
+           ის აქ მხოლოდ იმიტომ გამოდის, რომ პაროლი **ამ სესიაში** შეიყვანეს —
+           ე.ი. შუამავალი (CDN/proxy) მას სხვას მიაწოდებდა, ბრაუზერის კეში კი
+           პაროლის მოხსნის შემდეგაც გახსნიდა. ზუსტად ის კლასის ხვრელია, რასაც
+           CLAUDE.md ძველ `/storage/...` მისამართზე „ვერ ვაკეთებთ"-ად აღწერს —
+           ახალ როუტზე მისი ხელახლა შემოშვება არ ღირს.
+
+           ⚠️ **მხოლოდ ჩაკეტილზე და არა ყველა პასუხზე**: დანარჩენი ფოტოები
+           განსაზღვრებით საჯაროა და მათი კეშირება სასურველია.
+
+           ⚠️ `private` **და** `no-store` ერთად: პირველი შუამავალს კრძალავს,
+           მეორე — ბრაუზერის დისკსაც. */
+        $locked = $galleryImage->album_id !== null && $galleryImage->album?->isLocked();
+
+        return $disk->response(
+            $galleryImage->path,
+            null,
+            $locked ? ['Cache-Control' => 'private, no-store, max-age=0'] : [],
+        );
     }
 
     /**

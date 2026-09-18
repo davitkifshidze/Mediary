@@ -308,6 +308,32 @@ class PublicGalleryTest extends TestCase
         $response = $spa->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertOk();
 
         $this->assertSame('locked-bytes', $response->streamedContent());
+
+        /* ⚠️ **და არსად არ იკეშება** (Tasks GAP-08): ფაილი აქ მხოლოდ იმიტომ
+           გამოვიდა, რომ პაროლი ამ სესიაში შეიყვანეს — შუამავალი მას სხვას
+           მიაწვდიდა, ბრაუზერის კეში კი პაროლის მოხსნის შემდეგაც გახსნიდა. */
+        $cache = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cache);
+        $this->assertStringContainsString('private', $cache);
+    }
+
+    /**
+     * ⚠️ **ჩვეულებრივი საჯარო ფოტო კი იკეშება** — თორემ „უსაფრთხოება" მთელ
+     * გალერეას ნელს ხდიდა. სწორედ ეს წყვილი ამბობს, რომ `no-store` **ჩაკეტვის**
+     * შედეგია და არა ამ მარშრუტის მუდმივი თვისება.
+     */
+    public function test_an_ordinary_public_photo_is_still_cacheable(): void
+    {
+        Storage::fake('public');
+
+        $image = $this->photo($this->movie('public'), 'gallery/images/open.jpg');
+        Storage::disk('public')->put('gallery/images/open.jpg', 'jpeg-bytes');
+
+        $cache = (string) $this->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")
+            ->assertOk()
+            ->headers->get('Cache-Control');
+
+        $this->assertStringNotContainsString('no-store', $cache);
     }
 
     /**
