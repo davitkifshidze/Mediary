@@ -1,9 +1,15 @@
 # Mediary 🎬
 
-პირადი ორენოვანი (ქართული/ინგლისური) ფილმებისა და სერიალების კატალოგი, TMDB-ინტეგრაციით.
+პირადი ორენოვანი (ქართული/ინგლისური) **მედია-კატალოგი**: ფილმი · სერიალი · ანიმე ·
+ვიდეო · სიმღერა (პლეილისტებით) · წიგნი · სამაგიდო თამაში · თამაში · ჩანაწერი ·
+ბუკმარკი · გალერეა — **11 მოდული**, per-user ბიბლიოთეკებით, საჯარო პროფილებით და
+ჩატით. გარე წყაროები: TMDB, Open Library, RAWG/IGDB, BGG, Wikimedia, SerpApi/Serper, Gemini.
 
-- **backend/** — Laravel 11 JSON API (PHP 8.3, MySQL)
-- **frontend/** — React 18 + TypeScript SPA (Vite, Tailwind v4, shadcn/Radix UI, TanStack Query, react-i18next)
+- **backend/** — Laravel 13 JSON API (PHP 8.3, MySQL/MariaDB), 85 ცხრილი
+- **frontend/** — React 19 + TypeScript SPA (Vite, Tailwind v4, shadcn/Radix UI, TanStack Query, react-i18next)
+
+> **სამუშაო დოკუმენტი [`CLAUDE.md`](CLAUDE.md)-ია** — არქიტექტურა, გადაწყვეტილებები და
+> ის ხაფანგები, რომლებიც ჩუმად ტყდება. ეს README მხოლოდ აწყობისა და გაშვებისაა.
 
 ---
 
@@ -89,15 +95,19 @@ cd frontend && npm run dev
 პოსტერები და მსახიობთა ფოტოები ინახება `backend/storage/app/public/{movies,series}/posters`-სა
 და `cast/photos`-ში (საქაღალდე მოდულისაა — იხ. `app/Support/StorageFolder.php`)
 და **git-ში არ იტვირთება** (მძიმეა). ახალ კომპიუტერზე კლონის შემდეგ სურათები ცარიელი იქნება —
-დააჭირე **„მედიის ხელახლა ჩამოტვირთვა" ღილაკს** ბიბლიოთეკის გვერდზე (ან გამოიძახე
-`POST /api/media/redownload`) და ყველა პოსტერი/ფოტო თავიდან ჩამოიტვირთება TMDB-დან
-შენახული `tmdb_id`-ების მიხედვით. საჭიროა `TMDB_API_KEY` `backend/.env`-ში.
+გახსენი **`/sync`** და გაუშვი მედიის ჩამოტვირთვა, ან CLI-დან:
+
+```bash
+php artisan media:redownload --missing
+```
+
+ორივე შენახულ `tmdb_id`-ებს მიჰყვება. საჭიროა `TMDB_API_KEY` (`.env`-ში ან `/credentials`-ზე).
 
 ---
 
 ## ბაზა
 
-- ბაზა: `mediary` · მომხმარებელი `root` · პაროლი ცარიელი · `127.0.0.1:3306`
+- ბაზა: `mediary` · მომხმარებელი `root` · პაროლი ცარიელი · `127.0.0.1:3306` (**85 ცხრილი**)
 - ⚠️ **SQL dump-ი git-ში არასდროს ჩაიდება** — `.gitignore` ყველა `*.sql`/`*.sql.gz` ფაილს
   ბლოკავს. ბექაპი ორ გზით კეთდება, ორივე **ლოკალურია**:
   - აპიდან: **`/backups`** (super-admin) — ფაილი პირად დისკზე ინახება და ჩამოტვირთვადია;
@@ -110,14 +120,21 @@ cd frontend && npm run dev
 
 ## კონფიგურაცია
 
-- `backend/.env` — `TMDB_API_KEY` უკვე ჩართულია (რეალური პოსტერები/მსახიობები/აღწერები).
-  უფასო გასაღები: https://www.themoviedb.org/settings/api
+- `backend/.env` — `TMDB_API_KEY` **ცარიელია და შენ უნდა ჩასვა** (Tasks SEC-06: ცოცხალი
+  გასაღები `.env.example`-ში იდგა და ისტორიიდანაც ამოღებულია). უფასო გასაღები:
+  https://www.themoviedb.org/settings/api
+  ⚠️ გასაღებები **per-user-იცაა**: `/credentials` გვერდზე ყოველი ანგარიში თავისას
+  ჩაწერს (TMDB · Gemini · RAWG · IGDB · SerpApi · Serper · YouTube · Telegram), `.env` კი
+  მთელი ინსტალაციის ნაგულისხმევი რჩება.
+- ⚠️ `.env.example` **უსაფრთხო default-ებზეა** (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`
+  — Tasks SEC-11); `setup.sh`/`setup.ps1` ლოკალურ ინსტალაციაზე ორივეს ცხადად აბრუნებს,
+  რადგან ლოკალურად `http://`-ზე secure-ქუქი საერთოდ არ იგზავნება.
 - `frontend/.env` — `VITE_API_URL` (backend-ის მისამართი).
 
 ## ხშირი ბრძანებები
 
 **Backend:** `php artisan migrate:fresh --seed` · `php artisan test` · `./vendor/bin/pint`
-**Frontend:** `npm run dev` · `npm run build` · `npm run lint`
+**Frontend:** `npm run dev` · `npm run build` · `npm run lint` · `npm test`
 
 ---
 

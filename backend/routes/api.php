@@ -115,10 +115,28 @@ Route::middleware('throttle:login')->group(function () {
 });
 
 /* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
-   ⚠️ **ერთადერთი დომენური endpoint-ები `auth:sanctum`-ის გარეთ.** ორივე
-   read-only-ია და სამივე ფენას ერთდროულად ითხოვს (პროფილი → მოდული →
-   ჩანაწერი), ყველა default-ით `private`. მთელი მექანიზმი ერთი ცვლადით
-   ითიშება: `PUBLIC_PROFILES=false`. დეტალები `PublicProfileController`-ში. */
+   ⚠️ **ეს ხუთი endpoint-ია `auth:sanctum`-ის გარეთ არსებული მთელი ზედაპირი**
+   (`/health`-სა და `register`/`login`-ის გარდა), ე.ი. ყველაზე სენსიტიური სია
+   პროექტში — შემდეგმა reviewer-მა ზუსტად უნდა იცოდეს, რამდენია:
+
+     1. `GET  /public/profiles/{username}`                           — პროფილის თავი
+     2. `GET  /public/profiles/{username}/gallery-photos`            — ფოტოების გვერდი
+     3. `GET  /public/profiles/{username}/gallery-photos/{image}/file` — ერთი ფაილი
+     4. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
+     5. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
+
+   ⚠️ **ოთხი read-only-ია, მეხუთე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
+   read-only-ია"-ს ამბობდა, რაც ორმაგად მცდარი იყო). `unlockAlbum` პაროლს
+   ამოწმებს და **სერვერის სესიას ცვლის**; მისი ორი დამცავია
+   `throttle:album-unlock` (ანონიმზე გასაღები IP + ალბომი) და ცხადი შემოწმება,
+   რომ ალბომი **ამ პროფილისაა და საჯაროა** — უამისოდ ეს endpoint სხვისი
+   პირადი ალბომის პაროლის გამოცნობის კარი იქნებოდა. სესიის გარეშე პაროლი
+   საერთოდ არ იცდება (BUG-02, 409 `session_required`).
+
+   ხუთივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
+   default-ით `private`, და ხუთივე `PublicProfileService::resolve()`-ზე გადის —
+   ე.ი. მთელი მექანიზმი ერთი ცვლადით ითიშება: `PUBLIC_PROFILES=false`.
+   დეტალები `PublicProfileController`-ში. */
 Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show']);
 
 /* ⚠️ **ორივე `{domain}`-ზე ზემოთ დგას** (Tasks §7.4/§7.12), თორემ

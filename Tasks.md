@@ -61,12 +61,12 @@
 | PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ✅ შესრულებულია |
 | PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ✅ შესრულებულია |
 | PERF-13 | `PhotoTile` ყოველ გახსნილ URL-ზე მთელ grid-ს ხელახლა ხატავს | Low | performance | S | ✅ შესრულებულია |
-| GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S | ⬜ |
-| GAP-06 | საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only") | Low | gap | S | ⬜ |
+| GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S | ✅ შესრულებულია |
+| GAP-06 | საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only") | Low | gap | S | ✅ შესრულებულია |
 | GAP-07 | `PUBLIC_PROFILES=false` `/matches`-ს არ თიშავს | Low | gap | S | ⬜ |
 | GAP-08 | გახსნილი ჩაკეტილი ალბომის ფოტო `Cache-Control`-ის გარეშე ბრუნდება | Low | gap | S | ⬜ |
 | GAP-09 | ლექსიკონის წაშლისას `move_to: null`, გამოტოვება და self ერთსა და იმავეს ნიშნავს — გადაწყვეტილება სჭირდება | Low | gap | S | ⬜ |
-| DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ⬜ |
+| DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ✅ შესრულებულია |
 | DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ⬜ |
 | DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ⬜ |
 | DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ⬜ |
@@ -1118,24 +1118,35 @@
 - **დამოკიდებულება:** PERF-09
 
 ### [GAP-05] Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — ვერსიები ცოცხალ ფაქტებს შეედარა და დაემთხვა.
+  - ✅ „ფილმებისა და სერიალების კატალოგი" → **11 მოდულის** ჩამონათვალი; Laravel 11 → **13** (`composer.json` `^13.17`), React 18 → **19** (`package.json` `^19.2.8`), 19 ცხრილი → **85** (`information_schema`-დან დათვლილი)
+  - ✅ CLAUDE.md:9-იც React 19-ია
+  - ✅ ზედა ხაზი დაემატა: **„სამუშაო დოკუმენტი CLAUDE.md-ია"**, README კი მხოლოდ აწყობისა და გაშვებისაა
+  - ✅ **გზადაგზა ნაპოვნი და გასწორებული სამი მოძველებული ფაქტი:** (ა) „`TMDB_API_KEY` უკვე ჩართულია" — SEC-06-ის შემდეგ ის **ცარიელია**, და README ახლა `/credentials`-ის per-user გასაღებებსაც ასახელებს; (ბ) `POST /api/media/redownload` — **ასეთი როუტი აღარ არსებობს** (`route:list`-ით დადასტურდა), სწორია `/sync` ან `php artisan media:redownload --missing`; (გ) SEC-11-ის ახალი `.env.example` default-ები ცხადადაა აღწერილი
+  - ℹ️ `npm test` დაემატა „ხშირ ბრძანებებში" — ის არსად ეწერა
 - **ტიპი:** gap
 - **სად:** `README.md:3`, `:5-6`, `:94`; ფაქტები `backend/composer.json:10` (`^13.17`), `frontend/package.json:32` (`react ^19.2.8`), dump-ში 85 `CREATE TABLE`
 - **პრობლემა:** „ფილმებისა და სერიალების კატალოგი", „Laravel 11", „React 18", „19 ცხრილი" — repo-ს 11 მოდული, Laravel 13, React 19 და 85 ცხრილი აქვს. `CLAUDE.md:9`-იც „React 18"-ს ამბობს.
 - **რატომ:** README საჯარო სახე და setup-გზამკვლევია (`setup.sh` მის გვერდითაა); მკითხველი არასწორ ვერსიის დოკუმენტაციასთან მიდის.
 - **გადაწყვეტა:** სამი ხაზის განახლება + „სამუშაო დოკუმენტი CLAUDE.md-ია" ზედა ხაზი; `CLAUDE.md:9` React 19.
 - **Acceptance criteria:**
-  - [ ] README-სა და CLAUDE.md-ში ვერსიები `composer.json`/`package.json`-ს ემთხვევა
+  - [x] README-სა და CLAUDE.md-ში ვერსიები `composer.json`/`package.json`-ს ემთხვევა
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
 ### [GAP-06] საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only")
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — ორივე ტექსტი **ხუთივეს ასახელებს**, სიით.
+  - ✅ `routes/api.php`-ის ბლოკი ახლა ნუმერირებულ სიას შეიცავს და ცხადად ამბობს: **ოთხი read-only, მეხუთე — არა**. `unlockAlbum`-ის ორივე დამცავი დასახელებულია (`throttle:album-unlock` IP+ალბომზე; ალბომი **ამ პროფილისაა და საჯაროა**), + BUG-02-ის `session_required`
+  - ✅ CLAUDE.md:546-ის „These two are the only domain endpoints" იმავეს ამბობს
+  - ✅ **სია წყაროთი გადამოწმდა და არა ვარაუდით:** `auth:sanctum`-ის ჯგუფი `routes/api.php:157`-ზე იხსნება, მის ზემოთ კი მხოლოდ `/health` (99), `register`/`login` (112) და ხუთი საჯარო როუტია (140 · 145 · 148 · 150 · 155). `php artisan route:list --path=public` ზუსტად ამ ხუთს ბეჭდავს
+  - ⚠️ **`route:list --json`-ის middleware-ს სია ამ შემოწმებისთვის გამოუსადეგარია** — ჯგუფის middleware მასში არ ჩანს, ე.ი. „ვინ არის `auth:sanctum`-ის გარეთ" ფილტრი 367 როუტს აბრუნებს. სწორი წყარო თვითონ ფაილის სტრუქტურაა
 - **ტიპი:** gap
 - **სად:** `backend/routes/api.php:117-121` vs `:122-137`; `CLAUDE.md:529`
 - **პრობლემა:** კომენტარი „ერთადერთი დომენური endpoint-ები… ორივე read-only-ია" — რეალურად ხუთი როუტია, ერთი მათგანი (`:132` `unlockAlbum`) POST-ია და სესიას ცვლის. `PUBLIC_PROFILES`-ის ნახევარი დაპირება მართალია (ხუთივე `resolve()`-ს იძახებს).
 - **რატომ:** ავტორიზაციის გარეშე ზედაპირის ინვენტარი ყველაზე სენსიტიური სიაა — შემდეგი reviewer-ი „ორი read-only"-ს ვარაუდით შედის.
 - **გადაწყვეტა:** კომენტარი და CLAUDE.md ხუთივეს ჩამოთვლის, `unlockAlbum`-ს ერთადერთ write-ად ნიშნავს და მის ორ დამცავს (`throttle:album-unlock`, `user_id`+`public` შემოწმება) ასახელებს.
 - **Acceptance criteria:**
-  - [ ] ორივე ტექსტი ხუთ როუტს ასახელებს
+  - [x] ორივე ტექსტი ხუთ როუტს ასახელებს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
@@ -1173,13 +1184,16 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-06] CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `grep -n "no UI exposes it yet\|have no UI toggle yet" CLAUDE.md` ცარიელია.
+  - ✅ ორივე ფრაზა **შეიცვალა და არა უბრალოდ წაიშალა**: ახლა წერია, სად ირთვება ის გადამრთველი (`/profile`-ის `VisibilityManager`, §6.1) და რატომ ჩანს ჩანაწერზე მხოლოდ `VisibilityBadge` — ერთი ფაქტი ერთ ადგილას იმართება
+  - ⚠️ მიმართულება მნიშვნელოვანია: დოკუმენტი კონფიდენციალურობაზე **ნაკლებს** ამბობდა, ვიდრე რეალურად საჯაროა — ე.ი. მკითხველი „ეს ჯერ არ მუშაობს"-ის ვარაუდით შედიოდა
 - **ტიპი:** debt
 - **სად:** `CLAUDE.md:247` („no UI exposes it yet"), `:271` („have no UI toggle yet"); ფაქტი `frontend/src/api/publicProfile.ts:19-29`, `frontend/src/components/VisibilityManager.tsx:103`
 - **პრობლემა:** `PUBLIC_DOMAINS`-ში `video`, `song`, `playlist` არის და `VisibilityManager` მათ ტაბებს აწყობს — გადამრთველი აშენდა, დოკუმენტი არ განახლდა.
 - **რატომ:** კონფიდენციალურობის კონტროლზე დოკუმენტი *ნაკლებს* ამბობს, ვიდრე რეალურად საჯაროა — საშიში მიმართულებაა.
 - **გადაწყვეტა:** ორივე ფრაზის ამოღება.
 - **Acceptance criteria:**
-  - [ ] `grep -n "no UI exposes it yet\|have no UI toggle yet" CLAUDE.md` ცარიელია
+  - [x] `grep -n "no UI exposes it yet\|have no UI toggle yet" CLAUDE.md` ცარიელია
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
