@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Lightbox, { type Slide } from 'yet-another-react-lightbox'
 import Counter from 'yet-another-react-lightbox/plugins/counter'
@@ -253,8 +253,21 @@ export function PhotoGrid({
   const [open, setOpen] = useState<number | null>(null)
   const [picking, setPicking] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
-  /** id → ნამდვილი მისამართი (პრივატულზე blob) */
-  const [resolved, setResolved] = useState<Record<number, string>>({})
+  /**
+   * id → ნამდვილი მისამართი (პრივატულზე blob).
+   *
+   * ⚠️ **ref და არა state** (Tasks PERF-13). ყოველი უჯრის blob სხვა დროს
+   * ჩნდება, ე.ი. state-ის შემთხვევაში 50-უჯრიანი ბადე `PhotoGrid`-ს
+   * **50-ჯერ** ხატავდა თავიდან — ყოველ ჯერზე ყველა უჯრასთან და `slides`
+   * memo-ს გადათვლასთან ერთად (PERF-09-თან ერთად ეს კვადრატულად იზრდებოდა).
+   *
+   * ⚠️ **რენდერისთვის ის საერთოდ არ არის საჭირო**: უჯრა თავის მისამართს
+   * თვითონ იღებს (`usePrivateFileUrl`), რუკას კი მხოლოდ ორი მკითხველი
+   * ჰყავს — `slides` (გახსნილი ხედი) და `download()` (ივენთ-ჰენდლერი).
+   */
+  const resolved = useRef<Record<number, string>>({})
+  /** გადახატვის ბიძგი მხოლოდ მაშინ, როცა გახსნილ ხედს ახალი მისამართი სჭირდება */
+  const [slideVersion, setSlideVersion] = useState(0)
   /** არამართული რეჟიმის საკუთარი მდგომარეობა */
   const [ownSize, setOwnSize] = useState(pageSize ?? PHOTO_PAGE_DEFAULT)
   const [page, setPage] = useState(1)
@@ -276,7 +289,31 @@ export function PhotoGrid({
   }, [items])
 
   const urlOf = (item: PhotoItem) =>
-    privateDisk ? resolved[item.id] : (storageUrl(item.src) ?? item.src)
+    privateDisk ? resolved.current[item.id] : (storageUrl(item.src) ?? item.src)
+
+  /**
+   * უჯრამ მისამართი მიიღო.
+   *
+   * ⚠️ **გადახატვა მხოლოდ გახსნილ ლაითბოქსზე.** დახურულზე რუკას
+   * არავინ კითხულობს, ე.ი. `setState` წმინდა ხარჯია; გახსნილზე კი
+   * მეზობლების blob-ები სწორედ მაშინ ჩნდება (PERF-09-ის წინასწარი
+   * წამოღება) და მათ გარეშე სლაიდი ცარიელი დარჩებოდა.
+   *
+   * ⚠️ დამოკიდებულება `lightboxOpen`-ია და არა ref: ასე callback-ის
+   * იგივეობა სესიაზე ორჯერ იცვლება (გახსნა/დახურვა) და არა ყოველ
+   * მისამართზე, ხოლო რენდერში ref-ის ჩაწერა (რასაც React არ ურჩევს)
+   * საერთოდ არ გვჭირდება.
+   */
+  const lightboxOpen = open != null
+  const noteResolved = useCallback(
+    (id: number, url: string) => {
+      if (resolved.current[id] === url) return
+      resolved.current[id] = url
+
+      if (lightboxOpen) setSlideVersion((v) => v + 1)
+    },
+    [lightboxOpen],
+  )
 
   /** ამ გვერდზე დახატული უჯრები — მართულ რეჟიმში სერვერმა უკვე დაჭრა */
   const shown = useMemo(() => {
@@ -320,8 +357,11 @@ export function PhotoGrid({
         width: item.width ?? undefined,
         height: item.height ?? undefined,
       })),
+    /* ⚠️ `resolved` ref-ია, ე.ი. deps-ში ვერ იქნება. ხელახლა გათვლა ორ
+       მომენტზეა საჭირო და ორივე აქ წერია: ლაითბოქსის გახსნა/გადასვლა
+       (`open`) და გახსნილზე ახალი მისამართის მოსვლა (`slideVersion`). */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewable, resolved, privateDisk],
+    [viewable, privateDisk, open, slideVersion],
   )
 
   const allSelected = items.length > 0 && selected.length === items.length
@@ -499,7 +539,7 @@ export function PhotoGrid({
               }
               onMove={onMove}
               onDelete={onDelete}
-              onResolved={(url) => setResolved((cur) => (cur[item.id] === url ? cur : { ...cur, [item.id]: url }))}
+              onResolved={noteResolved}
             />
           ))}
         </ul>
@@ -600,7 +640,8 @@ function PhotoCell({
   onPrimary?: () => void
   onMove?: (ids: number[]) => void
   onDelete?: (ids: number[]) => void
-  onResolved: (url: string) => void
+  /** ⚠️ id-საც გადმოსცემს, რომ მშობლის callback სტაბილური იყოს (PERF-13) */
+  onResolved: (id: number, url: string) => void
 }) {
   const { t } = useTranslation()
   const [info, setInfo] = useState(false)
@@ -615,7 +656,7 @@ function PhotoCell({
   const url = privateDisk ? blob.url : (storageUrl(item.src) ?? item.src)
 
   useEffect(() => {
-    if (url) onResolved(url)
+    if (url) onResolved(item.id, url)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url])
 
