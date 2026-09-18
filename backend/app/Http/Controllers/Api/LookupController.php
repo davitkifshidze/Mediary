@@ -34,12 +34,12 @@ class LookupController extends Controller
         unset($data['type']);
 
         if (! array_filter($data)) {
-            return response()->json(['message' => 'მიუთითე ლინკი, IMDb ID ან სახელი.'], 422);
+            return response()->json(['message' => 'lookup_query_required'], 422);
         }
 
         $enricher = $this->enricher($request);
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         try {
@@ -69,12 +69,12 @@ class LookupController extends Controller
         unset($data['type']);
 
         if (! array_filter($data)) {
-            return response()->json(['message' => 'მიუთითე ლინკი, IMDb ID ან სახელი.'], 422);
+            return response()->json(['message' => 'lookup_query_required'], 422);
         }
 
         $enricher = $this->enricher($request);
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         try {
@@ -90,7 +90,7 @@ class LookupController extends Controller
         }
 
         if (! $draft) {
-            return response()->json(['message' => 'ვერ მოიძებნა TMDB-ზე.'], 404);
+            return response()->json(['message' => 'tmdb_not_found'], 404);
         }
 
         return response()->json(['data' => $draft]);

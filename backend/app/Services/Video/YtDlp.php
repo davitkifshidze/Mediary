@@ -181,7 +181,7 @@ class YtDlp
         try {
             $process->run();
         } catch (ProcessTimedOutException) {
-            throw new \RuntimeException('ჩამოწერა დროში ვერ ჩაეტია');
+            throw new \RuntimeException('download_timed_out');
         }
 
         if (! $process->isSuccessful()) {
@@ -193,7 +193,7 @@ class YtDlp
             ->values();
 
         if ($files->isEmpty()) {
-            throw new \RuntimeException('yt-dlp დასრულდა, ფაილი კი არ შექმნილა');
+            throw new \RuntimeException('download_no_file');
         }
 
         $file = $files->first();

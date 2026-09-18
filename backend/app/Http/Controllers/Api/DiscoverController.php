@@ -46,7 +46,7 @@ class DiscoverController extends Controller
     public function index(Request $request, TmdbClient $tmdb)
     {
         if (! $tmdb->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         // query-string-ში boolean სტრიქონად მოდის ("true"/"1"/"yes") — ვანორმალებთ

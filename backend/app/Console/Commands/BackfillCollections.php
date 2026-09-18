@@ -16,7 +16,7 @@ class BackfillCollections extends Command
     public function handle(TmdbClient $tmdb): int
     {
         if (! $tmdb->configured()) {
-            $this->error('TMDB_API_KEY არ არის კონფიგურირებული.');
+            $this->error('TMDB-ის გასაღები არ არის — ჩაწერე `backend/.env`-ში ან `/credentials`-ზე.');
 
             return self::FAILURE;
         }

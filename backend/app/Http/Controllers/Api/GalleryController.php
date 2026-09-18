@@ -1260,7 +1260,7 @@ class GalleryController extends Controller
     public function castFetch(Request $request, CastMember $castMember)
     {
         if (! $this->fetcher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         $data = $request->validate([
@@ -1622,7 +1622,7 @@ class GalleryController extends Controller
         }
 
         if (! $this->fetcher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         $data = $request->validate($this->optionRules());

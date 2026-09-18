@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureRecordOwnership;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\SetAppLocale;
 use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -57,6 +58,15 @@ return Application::configure(basePath: dirname(__DIR__))
          * ციკლით ებმევა.
          */
         $middleware->api(append: [EnsureRecordOwnership::class]);
+
+        /*
+         * GAP-12 — Laravel-ის საკუთარი ვალიდაცია ინტერფეისის ენაზე.
+         *
+         * ⚠️ **`prepend`**: ენა ვალიდაციისა და ავტორიზაციის შეცდომებსაც
+         * სჭირდება, ე.ი. მანამდე დაყენებული უნდა იყოს — თორემ 422
+         * `throttle`-ისა და `auth`-ის შემდეგ ინგლისურად დარჩებოდა.
+         */
+        $middleware->prepend(SetAppLocale::class);
 
         // SEC-04 — `nosniff` ყოველ პასუხზე; ⚠️ გლობალურად (იხ. კლასის docblock)
         $middleware->append(SetSecurityHeaders::class);

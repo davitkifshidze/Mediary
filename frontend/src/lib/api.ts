@@ -1,4 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
+import i18n from '@/i18n'
 
 /** Backend API-ს ბაზისო URL (.env: VITE_API_URL) */
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -54,6 +55,24 @@ type RetriedConfig = InternalAxiosRequestConfig & { _csrfRetried?: boolean }
 function isAuthForm(url: string): boolean {
   return url.startsWith('/auth/login') || url.startsWith('/auth/register')
 }
+
+/*
+ * **ინტერფეისის ენა backend-საც უნდა ეცოდებოდეს** (Tasks GAP-12).
+ *
+ * ⚠️ **ბრაუზერის საკუთარი `Accept-Language` აქ გამოსადეგი არ არის** —
+ * ის ოპერაციულ სისტემას ასახავს და არა აპში არჩეულ ენას, ე.ი.
+ * ქართულ ინტერფეისზე მჯდომი მომხმარებელი Laravel-ის ვალიდაციის წესებს
+ * ინგლისურად იღებდა. ამიტომ ენა ცხადად `i18n.language`-დან მიდის.
+ *
+ * ⚠️ აპლიკაციის საკუთარი შეცდომები ამაზე **არ** დგას: ისინი მანქანური
+ * კოდებია და მათ `lib/errors.ts` თარგმნის — თარგმანი ბრაუზერშია,
+ * რადგან ენა ბრაუზერში იცვლება და ახალი მოთხოვნა არ იგზავნება.
+ */
+api.interceptors.request.use((config) => {
+  config.headers.set('Accept-Language', i18n.language || 'ka')
+
+  return config
+})
 
 api.interceptors.response.use(
   (r) => {

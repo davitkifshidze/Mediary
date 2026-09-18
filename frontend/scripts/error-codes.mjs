@@ -97,6 +97,44 @@ if (known.size < 50) {
   process.exit(1)
 }
 
+/* ============================================================
+   **მეორე შემოწმება: `message` წინადადება არ არის** (Tasks GAP-12).
+
+   ⚠️ ზემოთა შემოწმება მხოლოდ `snake_case`-ს ამოწმებს, ე.ი.
+   ქართული წინადადება მას **გვერდს უვლიდა**: 25 ასეთი პასუხი წელი
+   იდგა სკანერის თვალში და ინგლისურ UI-ში ქართულად იხატებოდა.
+
+   ⚠️ კონსოლის ბრძანებები (`$this->error(…)`, `$this->line(…)`) აქ განზრახ არ
+   მოწმდება: მათ ადამიანი კითხულობს ტერმინალში და მანქანური კოდი იქ უადგილოა.
+   ============================================================ */
+const GEORGIAN = /[Ⴀ-ჿ]/
+
+const prose = []
+
+for (const root of ROOTS) {
+  for (const file of walk(path.join(BACKEND, root))) {
+    const src = fs.readFileSync(file, 'utf8')
+
+    for (const pattern of PATTERNS) {
+      for (const match of src.matchAll(pattern)) {
+        if (!GEORGIAN.test(match[1])) continue
+
+        prose.push(`${path.relative(BACKEND, file).split(path.sep).join('/')}: ${match[1]}`)
+      }
+    }
+  }
+}
+
+if (prose.length) {
+  console.error(`პასუხის ტექსტი ქართული წინადადებაა, არა მანქანური კოდი (${prose.length}):`)
+  for (const line of prose) console.error(`  ${line}`)
+  console.error(
+    '\nშედეგი: ინგლისურ ინტერფეისში ეს ტექსტი ქართულად გამოჩნდება. '
+      + 'გადააკეთე `snake_case` კოდად და დაამატე `src/lib/errors.ts`-ს.',
+  )
+  process.exit(1)
+}
+
 const missing = [...found.keys()].filter((code) => !known.has(code)).sort()
 
 if (missing.length) {

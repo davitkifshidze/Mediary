@@ -159,7 +159,7 @@ class CastController extends Controller
     public function resync(CastMember $castMember, CastEnricher $enricher): JsonResponse
     {
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         if (! $castMember->tmdb_person_id) {

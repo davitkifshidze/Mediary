@@ -55,14 +55,14 @@ class StoreMovieRequest extends FormRequest
 
     public function messages(): array
     {
-        return ['imdb_id.unique' => 'ეს ფილმი უკვე დამატებულია (IMDb ID არსებობს).'];
+        return ['imdb_id.unique' => 'imdb_already_added'];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
             if (! $this->filled('title_ka') && ! $this->filled('title_en')) {
-                $v->errors()->add('title_en', 'სახელი (ქართული ან ინგლისური) აუცილებელია.');
+                $v->errors()->add('title_en', 'title_required_either');
             }
         });
     }

@@ -28,7 +28,7 @@ class RedownloadMediaCommand extends Command
     public function handle(ItemSyncer $syncer): int
     {
         if (! $syncer->configured()) {
-            $this->error('TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.');
+            $this->error('TMDB-ის გასაღები არ არის — ჩაწერე `backend/.env`-ში ან `/credentials`-ზე.');
 
             return self::FAILURE;
         }

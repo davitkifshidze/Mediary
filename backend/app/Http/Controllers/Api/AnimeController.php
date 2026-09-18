@@ -109,7 +109,7 @@ class AnimeController extends Controller
         $data = $request->validate(['tmdb_id' => ['required', 'integer']]);
 
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.'], 503);
+            return response()->json(['message' => 'tmdb_not_configured'], 503);
         }
 
         $existing = Anime::where('tmdb_id', $data['tmdb_id'])->first();

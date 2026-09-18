@@ -98,9 +98,11 @@ class ModuleController extends Controller
         abort_unless($user->hasModule($key), 403, 'module_disabled');
 
         if (! PublicDomain::forModule($key)) {
+            // GAP-12 — ველის ჩანთაშიც მანქანური კოდია (`fieldErrors()` მას თარგმნის):
+            // ქართული წინადადება ინგლისურ UI-ზე ქართულადვე იხატებოდა
             return response()->json([
                 'message' => 'module_not_shareable',
-                'errors' => ['module' => ['ეს მოდული საჯარო პროფილზე არ გამოდის.']],
+                'errors' => ['module' => ['module_not_shareable']],
             ], 422);
         }
 

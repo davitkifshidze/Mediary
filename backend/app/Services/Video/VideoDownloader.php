@@ -96,7 +96,7 @@ class VideoDownloader
             // ⚠️ `running`-ად დატოვება იმას ნიშნავდა, რომ UI სამუდამოდ დაელოდებოდა
             $video->forceFill([
                 'download_status' => Video::DOWNLOAD_FAILED,
-                'download_error' => 'ფონური პროცესი ვერ გაეშვა (popen/exec გამორთულია)',
+                'download_error' => 'background_unavailable',
                 'download_started_at' => null,
             ])->save();
 

@@ -50,7 +50,7 @@ import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
-import { errorMessage, fieldErrors } from '@/lib/errors'
+import { errorMessage, fieldErrors, translateCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
@@ -249,7 +249,9 @@ export function VideosPage() {
     if (v.download_status === 'running') {
       return v.download_stale ? t('videos.local.stalled') : t('videos.local.running')
     }
-    if (v.download_status === 'failed') return v.download_error || t('videos.local.failed')
+    /* GAP-12 — `download_error` ან ჩვენი მანქანური კოდია, ან yt-dlp-ის
+       საკუთარი stderr; `translateCode()` პირველს თარგმნის და მეორეს ტოვებს. */
+    if (v.download_status === 'failed') return translateCode(v.download_error) || t('videos.local.failed')
     // ffmpeg-ის არქონა ხარისხს ჭრის და ეს დაწკაპუნებამდე უნდა ეწეროს
     return ytdlpQ.data && !ytdlpQ.data.ffmpeg
       ? `${t('videos.local.start')} · ${t('videos.local.noFfmpeg')}`

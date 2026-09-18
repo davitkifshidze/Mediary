@@ -47,7 +47,7 @@ class TmdbClient
     private function get(string $path, array $query = [], int $attempt = 1): array
     {
         if (! $this->configured()) {
-            throw new RuntimeException('TMDB_API_KEY არ არის კონფიგურირებული backend/.env-ში.');
+            throw new RuntimeException('tmdb_not_configured');
         }
 
         $res = SourceLog::request(15)

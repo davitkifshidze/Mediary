@@ -93,7 +93,7 @@ class AuthController extends Controller
 
         if (! Auth::user()->is_active) {
             Auth::logout();
-            throw ValidationException::withMessages(['login' => 'ანგარიში გათიშულია — მიმართე ადმინისტრატორს.']);
+            throw ValidationException::withMessages(['login' => 'account_disabled']);
         }
 
         $this->regenerateSession($request);
@@ -214,7 +214,7 @@ class AuthController extends Controller
         ]);
 
         if (! Hash::check($data['current_password'], $request->user()->password)) {
-            throw ValidationException::withMessages(['current_password' => 'მიმდინარე პაროლი არასწორია.']);
+            throw ValidationException::withMessages(['current_password' => 'current_password_wrong']);
         }
 
         $request->user()->forceFill(['password' => Hash::make($data['password'])])->save();

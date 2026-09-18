@@ -156,6 +156,23 @@ export const CODES = [
      Guzzle მას **სრულ URL-ს** უწერს (`?api_key=…`), ე.ი. თითო timeout
      საერთო გასაღებს ნებისმიერ შესულ მომხმარებელს აჩვენებდა. */
   'tmdb_error',
+  /* GAP-12 — TMDB-ის დანარჩენი მდგომარეობები. ⚠️ სამივე სხვადასხვაა:
+     გასაღები არ არის (503) · საძებნი არაფერი მითხარი (422) · ვერ მოიძებნა (404). */
+  'tmdb_not_configured',
+  'lookup_query_required',
+  'tmdb_not_found',
+  /* ორივე `withMessages`-ით მოდის, ე.ი. `fieldErrors()`-საც სჭირდება —
+     ველის ქვეით დახატული `account_disabled` ისევე გაუგებარი იქნებოდა. */
+  'account_disabled',
+  'current_password_wrong',
+  'genre_name_required',
+  'imdb_already_added',
+  'title_required_either',
+  /* ვიდეოს ლოკალური ჩამოწერა — `videos.download_error` სვეტში ინახება.
+     ⚠️ yt-dlp-ის საკუთარი stderr კოდი არ არის, ამიტომ მას `translateCode()`
+     ხელს არ აცდის — დიაგნოსტიკა სწორედ იმ ტექსტშია. */
+  'download_timed_out',
+  'download_no_file',
   'no_tmdb_id',
   'no_translation_source',
   'worker_unavailable',
@@ -176,12 +193,43 @@ export function isApiCode(e: unknown, code: string): boolean {
   return axios.isAxiosError(e) && (e.response?.data as { message?: string } | undefined)?.message === code
 }
 
-/** Laravel-ის ვალიდაციის შეცდომები → { field: firstMessage } */
+/**
+ * შენახული ტექსტი, რომელიც მანქანური კოდიც შეიძლება იყოს (Tasks GAP-12).
+ *
+ * ⚠️ **შერეული სვეტი განზრახვაა**: `videos.download_error`-ში ან ჩვენი
+ * კოდი ზის (`download_timed_out`), ან yt-dlp-ის საკუთარი stderr — ის
+ * კოდი არ არის და უნდა დარჩეს: დიაგნოსტიკა სწორედ იმ ტექსტშია.
+ */
+export function translateCode(value?: string | null): string | null {
+  if (!value) return null
+
+  return (CODES as readonly string[]).includes(value) ? i18n.t(`errors.${value}`) : value
+}
+
+/**
+ * Laravel-ის ვალიდაციის შეცდომები → { field: firstMessage }.
+ *
+ * ⚠️ **მანქანური კოდი ველის ჩანთშიც ითარგმნება** (Tasks GAP-12).
+ * `ValidationException::withMessages(['login' => 'account_disabled'])` კოდს
+ * **ორ ადგილას** წერს: `message`-ში (სადაც `errorMessage()` ხვდება)
+ * და `errors`-ის ჩანთაში, სადაც ფორმა მას ველის გვერდით ხატავს —
+ * თარგმნის გარეშე toast ქართულად ეწერებოდა, ველის ქვეით კი `account_disabled`.
+ *
+ * ⚠️ Laravel-ის საკუთარი ტექსტი (`required`, `max`…) აქ არ იცვლება —
+ * ის უკვე ენაზეა გადათარგმნილი (`lang/ka` და `Accept-Language`).
+ */
 export function fieldErrors(e: unknown): Record<string, string> {
   if (!axios.isAxiosError(e)) return {}
   const errors = e.response?.data?.errors as Record<string, string[]> | undefined
   if (!errors) return {}
-  return Object.fromEntries(Object.entries(errors).map(([k, v]) => [k, v[0]]))
+
+  return Object.fromEntries(
+    Object.entries(errors).map(([field, messages]) => {
+      const first = messages[0]
+
+      return [field, (CODES as readonly string[]).includes(first) ? i18n.t(`errors.${first}`) : first]
+    }),
+  )
 }
 
 /**

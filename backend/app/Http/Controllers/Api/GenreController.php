@@ -156,7 +156,7 @@ class GenreController extends Controller
 
         if (empty($data['name_en']) && empty($data['name_ka'])) {
             throw ValidationException::withMessages([
-                'name_ka' => 'ჟანრის სახელი აუცილებელია.',
+                'name_ka' => 'genre_name_required',
             ]);
         }
 
