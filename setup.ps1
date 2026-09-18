@@ -76,6 +76,8 @@ Make sure MySQL is running (XAMPP: C:\xampp\mysql\bin\mysqld.exe) before startin
 
 Create the first super-admin (the seeded database has no users):
   cd backend ; php artisan mediary:bootstrap-admin --name= --email= --username= --password=
+Want something to look at? Synthetic demo data, no personal data at all:
+  cd backend ; php artisan mediary:seed-demo      # demo@example.com / demo-password
 Moving an existing library: /backups on the old machine (download),
 then /backups on this one (upload + restore).
 Tip: /sync (or php artisan media:redownload) fetches posters & cast photos
