@@ -9,6 +9,7 @@ use App\Models\GalleryVideo;
 use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\Role;
 use App\Models\Song;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
@@ -1526,5 +1527,40 @@ class GalleryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('count', 0)
             ->assertJsonPath('skipped_with_photos', 1);
+    }
+
+    /**
+     * **გეგმა `view` უფლებაა და არა `create` (Tasks GAP-04).**
+     *
+     * ⚠️ `POST /gallery/plan` არაფერს ინახავს — ის ითვლის, „რამდენ ფოტოს
+     * ჩამოტვირთავს ეს მასშტაბი". POST-ის გამო კი `EnsureModulePermission`
+     * მას **`create`**-ად კითხულობდა: view-only როლი გეგმას საერთოდ ვერ
+     * ხედავდა, ხოლო როლი „ვცვლი, მაგრამ არ ვქმნი" ვერ ითვლიდა იმას, რისი
+     * ჩამოტვირთვის უფლებაც ჰქონდა. იგივე წესი `GET /videos/bulk-preview`-ს
+     * docblock-ში უკვე ეწერა.
+     */
+    public function test_a_view_only_role_can_ask_for_the_plan(): void
+    {
+        $this->makeMovie('Fight Club');
+
+        $role = Role::create([
+            'key' => 'viewer',
+            'name_ka' => 'დამკვირვებელი',
+            'name_en' => 'Viewer',
+            'permissions' => ['movie' => ['view'], 'gallery' => ['view']],
+        ]);
+        $this->user->forceFill(['role_id' => $role->id])->save();
+        $viewer = $this->user->refresh();
+
+        $this->actingAs($viewer)
+            ->postJson('/api/gallery/plan', ['scope' => 'all'])
+            ->assertOk()
+            ->assertJsonPath('count', 1);
+
+        // ⚠️ ჩამოტვირთვა კი ისევ დახურულია — გეგმის გახსნა მას არ აღებს
+        $this->actingAs($viewer)
+            ->postJson('/api/gallery/movie/'.Movie::first()->id, [])
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'forbidden_permission');
     }
 }

@@ -42,7 +42,7 @@
 | PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ✅ შესრულებულია |
 | PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ✅ შესრულებულია |
 | GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ✅ შესრულებულია |
-| GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
+| GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ✅ შესრულებულია |
 | GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | GAP-11 | `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება — აპი shared-ზე ან „არაფერზე" ვარდება ახსნის გარეშე (SEC-12-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ✅ შესრულებულია |
@@ -759,14 +759,23 @@
 - **დამოკიდებულება:** none
 
 ### [GAP-04] read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `EnsureModulePermission::VIEW_ENDPOINTS = ['metadata', 'plan']` — `UPDATE_ENDPOINTS`-ის ტყუპი: POST, რომლის ბოლო სეგმენტი ამბობს, რომ ის **მხოლოდ კითხულობს**. ოთხივე მარშრუტი (`/videos/metadata` · `/songs/metadata` · `/bookmarks/metadata` · `/gallery/plan`) ახლა `view`-ია და ოთხივეს კომენტარი აწერია
+  - ⚠️ **ტასკის ღია კითხვას („მეტამონაცემზე `create` განზრახ არის?") კოდმა უპასუხა: არა.** `VideosPage`-ის `loadMeta()` **რედაქტირებიდანაც** ეშვება — `lastFetched` არსებული URL-ით იწყება, ე.ი. ბმულის **შეცვლაზე** probe ისევ მიდის. ამიტომ როლი „ვცვლი, მაგრამ არ ვქმნი" არსებული ჩანაწერის ბმულს ვერ შეასწორებდა (ცრუ 403) — ე.ი. `create` ცოცხალი ხარვეზი იყო და არა კონვენცია. ამიტომ კომენტარის ნაცვლად უფლებაც შეიცვალა
+  - ⚠️ **სია და არა როუტის დროშა**: ჯგუფში ცხადი `permission:<module>,view` ჯგუფის საკუთარ `permission:<module>`-ს **არ ცვლის** — შუამავლები გროვდება და ორივე ეშვება (იგივე ხაფანგი, რაც `move`-ს ეწერა). ალტერნატივა ცალკე ჯგუფი იყო (`/media/sync/plan`-ის სტილი), მაგრამ „read-only POST" ერთი ცნებაა და სამ მოდულზეა გაფანტული — ერთი სია ერთ ადგილას
+  - ⚠️ **ჩაწერილია, რა რისკს ატარებს სია** (audit §A4-ის წესი): POST, რომელიც `metadata`/`plan`-ზე ბოლოვდება და **მაინც წერს**, ჩუმად გაიხსნება — ახალ ასეთ endpoint-ს სხვა სახელი ან ცხადი უფლება სჭირდება
+  - ✅ `GalleryTest::test_a_view_only_role_can_ask_for_the_plan` — view-only როლი გეგმას იღებს (200), **ჩამოტვირთვა კი ისევ 403-ია** (გეგმის გახსნა მას არ აღებს). **მუტაციის შემოწმება:** `VIEW_ENDPOINTS = []`-ზე ტესტი წითლდება (403)
+  - ✅ `VideoModuleTest::test_an_update_only_role_can_probe_a_link` — update-only როლი probe-ს აკეთებს, `POST /videos` კი ისევ 403-ია
+  - ✅ backend 754/754, Pint მწვანე
+  - ℹ️ **`lookup`/`candidates` განზრახ არ შეიცვალა**: `/lookup`-ის მედია-ვერსია უკვე `permission:@type,view`-ია, book/game/board-game-ის კი — `create`. იმავე კითხვა ეხებათ (ფორმა რედაქტირებისასაც იძახებს?), მაგრამ ეს ტასკი მათზე მხოლოდ კომენტარს ითხოვდა და მტკიცებულება ჯერ არ მოგროვდა — ცალკე შესამოწმებელია
 - **ტიპი:** gap
 - **სად:** `backend/routes/api.php:637` (`/gallery/plan`), `:343` (`/videos/metadata`), `:565` (`/songs/metadata`), `:610` (`/bookmarks/metadata`); წესი `backend/app/Http/Controllers/Api/VideoBulkController.php:60-63`
 - **პრობლემა:** კოდში ჩაწერილი წესი („`GET` და არა `POST`, თორემ view+update როლი უსაფუძვლო 403-ს იღებს") `/videos/bulk-preview`-სა და `/board-games/shops`-ზეა გამოყენებული, ამ ოთხზე კი — არა. `/gallery/plan` არაფერს წერს.
 - **რატომ:** view-only როლი გალერეის გეგმას ვერ ხედავს; `metadata`/`lookup` create-ის წინა probe-ებია, ე.ი. `create` შეიძლება განზრახ იყოს — მაგრამ ეს არსად არ წერია და მკითხველი ვერ გებულობს, რომელი კონვენციაა ნამდვილი.
 - **გადაწყვეტა:** `/gallery/plan` → GET ან `permission:gallery,view`; `metadata`/`lookup`-ზე ერთსტრიქონიანი კომენტარი, რომ `create` განზრახაა.
 - **Acceptance criteria:**
-  - [ ] view-only როლით `/gallery/plan` 200-ია (`GalleryTest`)
-  - [ ] სამ `metadata` როუტს კომენტარი აქვს
+  - [x] view-only როლით `/gallery/plan` 200-ია (`GalleryTest`)
+  - [x] სამ `metadata` როუტს კომენტარი აქვს
 - **Estimate:** S
 - **დამოკიდებულება:** SEC-07
 

@@ -339,7 +339,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/video-types/{videoType}', [VideoTypeController::class, 'destroy']);
 
         Route::get('/videos', [VideoController::class, 'index']);
-        // ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის
+        /* ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის.
+           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) და არა
+           POST-იდან გამოყვანილი `create`: probe რედაქტირებიდანაც იძახება
+           (URL-ის შეცვლაზე), ე.ი. update-only როლი ცრუ 403-ს იღებდა. */
         Route::post('/videos/metadata', [VideoController::class, 'metadata']);
         /* §7.1 — „ჩამოწერა შესაძლებელია?" (yt-dlp არის თუ არა ამ მანქანაზე).
            ⚠️ `{video}`-ზე **ზემოთ** უნდა იდგეს, თორემ „download-status" id-ად
@@ -561,7 +564,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/song-genres/{songGenre}', [SongGenreController::class, 'destroy']);
 
         Route::get('/songs', [SongController::class, 'index']);
-        // ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის
+        // ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
+        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) — იხ. `/videos/metadata`.
         Route::post('/songs/metadata', [SongController::class, 'metadata']);
         Route::post('/songs', [SongController::class, 'store']);
         Route::get('/songs/{song}', [SongController::class, 'show']);
@@ -606,7 +610,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/bookmark-categories/{bookmarkCategory}', [BookmarkCategoryController::class, 'destroy']);
 
         Route::get('/bookmarks', [BookmarkController::class, 'index']);
-        // ⚠️ `{bookmark}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება
+        // ⚠️ `{bookmark}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება.
+        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`, Tasks GAP-04) — იხ. `/videos/metadata`.
         Route::post('/bookmarks/metadata', [BookmarkController::class, 'metadata']);
         Route::post('/bookmarks', [BookmarkController::class, 'store']);
         Route::get('/bookmarks/{bookmark}', [BookmarkController::class, 'show']);
@@ -634,6 +639,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/gallery/photos', [GalleryController::class, 'photos']);
         // §8.3 — სხვა მოდულების საკუთარი ფოტოები (ყდები, თამბნეილები, ატვირთულები)
         Route::get('/gallery/module-photos', [GalleryController::class, 'modulePhotos']);
+        /* §8.2 — **გეგმა მხოლოდ ითვლის** („რამდენ ფოტოს ჩამოტვირთავს ეს
+           მასშტაბი") და არაფერს ინახავს, ზუსტად როგორც `GET /videos/bulk-preview`.
+           ⚠️ უფლება **`view`**-ია (`VIEW_ENDPOINTS`, Tasks GAP-04): POST-იდან
+           გამოყვანილი `create` view-only როლს გეგმას საერთოდ ართმევდა, ხოლო
+           update-only როლს — იმის თვლას, რისი ჩამოტვირთვის უფლებაც ჰქონდა. */
         Route::post('/gallery/plan', [GalleryController::class, 'plan']);
 
         /* §8.1 — ვიდეო-ბმულები იმავე მშობლებზე. ⚠️ `{type}/{id}`-ზე **ზემოთ**

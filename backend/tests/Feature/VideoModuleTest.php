@@ -15,6 +15,7 @@ use App\Support\VideoUrl;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -776,5 +777,39 @@ class VideoModuleTest extends TestCase
         $video = collect($settings['data'] ?? $settings)->firstWhere('key', 'video');
 
         $this->assertSame(7, data_get($video, 'user_settings.gallery.limit'));
+    }
+
+    /**
+     * **probe `view` უფლებაა და არა `create` (Tasks GAP-04).**
+     *
+     * ⚠️ `POST /videos/metadata` მხოლოდ **კითხულობს** (oEmbed) და ჩანაწერს
+     * არ ქმნის, მაგრამ POST-ის გამო `EnsureModulePermission` მას
+     * `create`-ად კითხულობდა. ⚠️ **ეს ცოცხალი ხარვეზი იყო და არა თეორია**:
+     * `VideosPage`-ის `loadMeta()` **რედაქტირებიდანაც** ეშვება (არსებული
+     * ჩანაწერის URL-ის შეცვლაზე), ე.ი. როლი „ვცვლი, მაგრამ არ ვქმნი"
+     * ბმულს ვერ შეასწორებდა — ცრუ 403.
+     */
+    public function test_an_update_only_role_can_probe_a_link(): void
+    {
+        Http::fake();
+
+        $role = Role::create([
+            'key' => 'video-editor',
+            'name_ka' => 'რედაქტორი',
+            'name_en' => 'Editor',
+            'permissions' => ['video' => ['view', 'update']],
+        ]);
+        $this->user->forceFill(['role_id' => $role->id])->save();
+        $editor = $this->user->refresh();
+
+        $this->actingAs($editor)
+            ->postJson('/api/videos/metadata', ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'])
+            ->assertOk();
+
+        // ⚠️ შექმნა კი ისევ დახურულია — probe-ის გახსნა მას არ აღებს
+        $this->actingAs($editor)
+            ->postJson('/api/videos', ['title' => 'x', 'url' => 'https://youtu.be/dQw4w9WgXcQ'])
+            ->assertStatus(403)
+            ->assertJson(['message' => 'forbidden_permission', 'permission' => 'video.create']);
     }
 }

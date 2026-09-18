@@ -32,6 +32,32 @@ class EnsureModulePermission
        ეშვება, ე.ი. update-only როლი ისევ 403-ს მიიღებდა. */
     private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock', 'move'];
 
+    /**
+     * POST, რომელიც **არაფერს ცვლის** — probe ან „რამდენს შეეხება" (Tasks GAP-04).
+     *
+     * ⚠️ `POST` მხოლოდ იმიტომაა, რომ არგუმენტი body-შია (URL, მასშტაბის
+     * ფილტრი) — შედეგი კითხვაა და არა ჩანაწერი. `GET /videos/bulk-preview`-ის
+     * docblock ამ წესს უკვე აღწერდა, ეს ოთხი კი მის გარეთ იყო დარჩენილი:
+     *  · `metadata` (video · song · bookmark) — გარე გვერდის/oEmbed-ის probe
+     *  · `plan` (gallery) — „რამდენ ფოტოს ჩამოტვირთავს ეს მასშტაბი"
+     *
+     * ⚠️ **`create`-ად კითხვა ცრუ 403-ს იძლეოდა და არა განზრახული იყო**:
+     * `metadata` **რედაქტირებიდანაც** იძახება (ფორმაში URL-ის შეცვლაზე
+     * `loadMeta()` ისევ ეშვება), ე.ი. როლი „ვცვლი, მაგრამ არ ვქმნი"
+     * არსებული ჩანაწერის ბმულს ვერ შეასწორებდა; `plan`-ს კი view-only
+     * როლი საერთოდ ვერ ხედავდა.
+     *
+     * ⚠️ **ჯგუფში ცხადი `permission:<module>,view` აქ არ შველის** — ჯგუფის
+     * საკუთარი `permission:<module>` რჩება და **ორივე** ეშვება (იგივე
+     * ხაფანგი, რაც `move`-ს ეწერა ზემოთ). ამიტომ სია და არა როუტის დროშა.
+     *
+     * ⚠️ **ბოლო სეგმენტი უნდა თქვას, რა ხდება** (audit §A4-ის წესი): POST,
+     * რომელიც `metadata`-ზე ან `plan`-ზე ბოლოვდება და **მაინც წერს**,
+     * ამ სიაში მოხვედრით ჩუმად გაიხსნება — ახალი ასეთი endpoint-ი ან
+     * სხვა სახელს უნდა ატარებდეს, ან ცხად უფლებას.
+     */
+    private const VIEW_ENDPOINTS = ['metadata', 'plan'];
+
     public function handle(Request $request, Closure $next, string $module, ?string $action = null): mixed
     {
         // `@type` — გაზიარებული endpoint-ები დომენს `type` პარამეტრიდან იღებენ.
@@ -57,9 +83,17 @@ class EnsureModulePermission
             'GET', 'HEAD' => 'view',
             'DELETE' => 'delete',
             'PUT', 'PATCH' => 'update',
-            default => in_array($request->segment(count($request->segments())), self::UPDATE_ENDPOINTS, true)
-                ? 'update'
-                : 'create',
+            default => $this->actionForPost($request->segment(count($request->segments())) ?? ''),
         };
+    }
+
+    /** POST-ის მოქმედება მისამართის ბოლო სეგმენტით */
+    private function actionForPost(string $last): string
+    {
+        if (in_array($last, self::VIEW_ENDPOINTS, true)) {
+            return 'view';
+        }
+
+        return in_array($last, self::UPDATE_ENDPOINTS, true) ? 'update' : 'create';
     }
 }
