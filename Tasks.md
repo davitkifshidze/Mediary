@@ -41,7 +41,7 @@
 | PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ✅ შესრულებულია |
 | PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ✅ შესრულებულია |
 | PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ✅ შესრულებულია |
-| GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ⬜ |
+| GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ✅ შესრულებულია |
 | GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
 | GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | GAP-11 | `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება — აპი shared-ზე ან „არაფერზე" ვარდება ახსნის გარეშე (SEC-12-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
@@ -741,13 +741,20 @@
 - **დამოკიდებულება:** none
 
 ### [GAP-03] პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `save()`-ის `.catch(() => {})` → `.catch((e) => toast({ title: errorMessage(e), variant: 'error' }))`. `persisted` არ ახლდება, ე.ი. **`dirty` რჩება** — ცვლილება ჯერ არ შენახულა და ზოლმაც ეს უნდა თქვას
+  - ⚠️ **მთავარი აღმოჩენა: `useToast()`-ის უბრალო დამატება არ იმუშავებდა.** `SettingsProvider` `main.tsx`-ში `FeedbackProvider`-ზე **გარეთ** იდგა, `ToastContext`-ს კი უმოქმედო ნაგულისხმევი აქვს (`toast: () => 0`) — ე.ი. გამოძახება არ ცდება, **ჩუმად არაფერს აკეთებს**, ზუსტად იგივე კლასის ხარვეზი, რასაც ტასკი ასწორებს. პროვაიდერები გაცვალა ადგილი: `AuthProvider > FeedbackProvider > SettingsProvider > QueueProvider > TooltipProvider`
+  - ⚠️ **რიგის შეცვლა უსაფრთხოა და შემოწმდა**: `FeedbackProvider` მხოლოდ `useTranslation`-ს და Radix-ს ეყრდნობა (არც პარამეტრები, არც auth), `queue.tsx` კი ორივეს იყენებს და ორივეს შიგნითაა. `main.tsx`-ში მიზეზი კომენტარად ეწერა — ტესტი `main.tsx`-ს ვერ ხედავს
+  - ✅ `lib/settings.test.ts` (ახალი, 5-ე კომპონენტ-ტესტი): 500-ზე toast `Server Error`-ს აჩვენებს და `dirty` `true` რჩება · წარმატებაზე toast არ ჩნდება და `dirty` ცხრება. **მუტაციის შემოწმება:** `.catch(() => {})`-ზე დაბრუნებისას ტესტი წითლდება („expected [] to deeply equal [ 'Server Error' ]")
+  - ✅ **ცოცხლად:** `/settings` სუფთა ტაბში 0 კონსოლ-შეცდომით იხსნება (პროვაიდერის რიგი runtime-ის ფაქტია, `tsc` მას ვერ ხედავს)
+  - 🟡 **განზრახ დარჩა:** ერთჯერადი მიგრაციის `void saveSettings(local).catch(() => {})` (ძველი localStorage → backend, `user`-ის პირველი ჩატვირთვაზე) ისევ ჩუმია — ის მომხმარებლის ქმედება არაა და აპის ჩატვირთვაზე toast დამაბნეველი იქნებოდა. ⚠️ სამაგიეროდ `persisted` მაშინვე იწერება, ე.ი. მიგრაციის ჩავარდნაზე ზოლი „ცვლილება არ არის"-ს ამბობს — ეს ხარვეზი აქამდეც იყო და ცალკე გადასაწყვეტია
 - **ტიპი:** gap
 - **სად:** `frontend/src/lib/settings.tsx:263-271`
 - **პრობლემა:** `saveSettings(settings).then(...).catch(() => {}).finally(...)` — `/settings` და `/sync`-ის ერთადერთი შენახვის გზაა; 500/419/ქსელზე toast არ არის, `SettingsSaveBar` „შეუნახავი ცვლილებებს" აჩვენებს ახსნის გარეშე.
 - **რატომ:** მომხმარებელი Save-ს უსასრულოდ აჭერს; აპის ყველა სხვა მუტაცია `onError` toast-ს აძლევს.
 - **გადაწყვეტა:** პროვაიდერში `useToast()` და `catch`-ში `toast({ title: errorMessage(e), variant: 'error' })`.
 - **Acceptance criteria:**
-  - [ ] შენახვის 500-ზე toast ჩანს და `dirty` რჩება
+  - [x] შენახვის 500-ზე toast ჩანს და `dirty` რჩება
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

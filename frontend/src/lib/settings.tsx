@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { saveSettings } from '@/api/account'
+import { useToast } from '@/components/ui/feedback'
 import { useAuth } from '@/lib/auth'
+import { errorMessage } from '@/lib/errors'
 
 /* ============================================================
    აპლიკაციის პარამეტრები (Tasks E1).
@@ -213,6 +215,8 @@ export function useContentLang(uiLang: string): 'ka' | 'en' {
  */
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  // ⚠️ ამიტომ დგას `FeedbackProvider` ამაზე გარეთ — იხ. `main.tsx` (GAP-03)
+  const { toast } = useToast()
   const initial = React.useMemo(() => loadLocal() ?? DEFAULT_SETTINGS, [])
   const [settings, setSettings] = React.useState<Settings>(initial)
   const [persisted, setPersisted] = React.useState<Settings>(initial)
@@ -267,9 +271,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setPersisted(settings)
         setSavedAt(Date.now())
       })
-      .catch(() => {})
+      /* ⚠️ **ჩავარდნა ცხადად ჩანს (Tasks GAP-03).** ეს `/settings`-ისა და
+         `/sync`-ის ერთადერთი შენახვის გზაა და `catch`-ი ცარიელი იყო: 500/419
+         ან ქსელის გაწყვეტა უხმაუროდ იკარგებოდა, ზოლი კი „შეუნახავი
+         ცვლილებებს" აჩვენებდა ახსნის გარეშე — მომხმარებელი Save-ს
+         უსასრულოდ აჭერდა. აპის ყველა სხვა მუტაცია `onError` toast-ს აჩენს.
+
+         ⚠️ `persisted` **განზრახ არ ახლდება**, ე.ი. `dirty` რჩება: ცვლილება
+         ჯერ არ შენახულა და ზოლმაც ეს უნდა თქვას. */
+      .catch((e: unknown) => toast({ title: errorMessage(e), variant: 'error' }))
       .finally(() => setSaving(false))
-  }, [settings, user])
+  }, [settings, toast, user])
 
   const dirty = React.useMemo(
     () => (Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]).some((k) => settings[k] !== persisted[k]),

@@ -14,20 +14,27 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 })
 
-// AuthProvider ყველაზე გარეთაა — პარამეტრები per-user იტვირთება (I7/E1)
+/* AuthProvider ყველაზე გარეთაა — პარამეტრები per-user იტვირთება (I7/E1).
+
+   ⚠️ **`FeedbackProvider` `SettingsProvider`-ზე გარეთ უნდა იყოს (Tasks GAP-03).**
+   `SettingsProvider` შენახვის ჩავარდნაზე toast-ს აჩენს, `ToastContext`-ს კი
+   **უმოქმედო ნაგულისხმევი** აქვს (`toast: () => 0`) — ე.ი. პროვაიდერის გარეთ
+   გამოძახება არ ცდება, უბრალოდ **ჩუმად არაფერს აკეთებს**, ზუსტად ის ხარვეზი,
+   რომელსაც GAP-03 ასწორებს. `FeedbackProvider` თავად მხოლოდ i18n-ს და Radix-ს
+   ეყრდნობა, ე.ი. პარამეტრებზე გარეთ დგომა უსაფრთხოა. */
 const app = (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SettingsProvider>
-          <FeedbackProvider>
+        <FeedbackProvider>
+          <SettingsProvider>
             <QueueProvider>
               <TooltipProvider delayDuration={0}>
                 <App />
               </TooltipProvider>
             </QueueProvider>
-          </FeedbackProvider>
-        </SettingsProvider>
+          </SettingsProvider>
+        </FeedbackProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
