@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
 use App\Models\Video;
+use App\Services\Profile\MatchService;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -396,6 +397,62 @@ class MatchTest extends TestCase
             $one,
             $five = $pivotReads(),
             "module_user-ის წაკითხვა კანდიდატებზე არ უნდა იზრდებოდეს (1 → {$one}, 5 → {$five})",
+        );
+    }
+
+    /**
+     * **სქემის query-ები კანდიდატთა რიცხვზე აღარ იზრდება (Tasks PERF-15).**
+     *
+     * ⚠️ `thinColumns()` სვეტის არსებობას `Schema::hasColumn()`-ით ამოწმებდა
+     * და ეს **ნამდვილი query-ა** (`information_schema`, sqlite-ზე `PRAGMA`),
+     * ხოლო იძახებოდა თითო კანდიდატზე × თითო დომენზე × თითო სვეტზე — ე.ი.
+     * `/people`-ის ერთი გახსნა ასეულობით სქემის მოთხოვნა იყო.
+     *
+     * ⚠️ **სქემა რექვესთის შუაში არ იცვლება**, ე.ი. ეს სუფთა დანაკარგია და
+     * არა ფასი. ჩანაწერების წაკითხვა კანდიდატებზე წრფივი **რჩება** (ასეა
+     * ჩაფიქრებული — იხ. `MAX_PROFILES`), ამიტომ მთელი რიცხვი აქაც არ მოწმდება.
+     */
+    public function test_the_ranking_reads_the_schema_a_constant_number_of_times(): void
+    {
+        $this->movie($this->alice, 100);
+
+        /* ⚠️ **სერვისი ყოველ გაზომვაზე ახლად იქმნება და HTTP არ იგზავნება.**
+           `Illuminate\Routing\Route::getController()` კონტროლერს **მარშრუტზე**
+           ინახავს, ტესტში კი მარშრუტების კოლექცია რექვესთებს შორის ცოცხლობს —
+           ე.ი. მეორე `getJson()` იმავე `MatchService`-ს (და მის მემოს) იღებდა
+           და გაზომვა 0-ს აჩვენებდა. პროდაქშენში თითო რექვესთი საკუთარ
+           ინსტანციას იღებს, ე.ი. `app()->make()` ზუსტად იმ სიცოცხლეს იმეორებს. */
+        $schemaReads = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            app()->make(MatchService::class)->ranking($this->alice);
+            $count = collect(DB::getQueryLog())
+                ->filter(fn (array $q) => stripos($q['query'], 'pragma') !== false
+                    || stripos($q['query'], 'information_schema') !== false)
+                ->count();
+            DB::disableQueryLog();
+
+            return $count;
+        };
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->makeUser("cand{$i}");
+        }
+        $five = $schemaReads();
+
+        // ⚠️ თუ ორივე 0-ია, გაზომვა არაფერს ზომავს — შედარება ვაკუუმში გაივლიდა
+        $this->assertGreaterThan(0, $five);
+
+        // `MAX_PROFILES`-ის ჭერამდე — ზუსტად ის მოცულობა, სადაც ხარჯი ჩანდა
+        for ($i = 3; $i < 48; $i++) {
+            $this->makeUser("cand{$i}");
+        }
+        $fifty = $schemaReads();
+
+        $this->assertSame(
+            $five,
+            $fifty,
+            "სქემის წაკითხვა კანდიდატებზე არ უნდა იზრდებოდეს (5 → {$five}, 50 → {$fifty})",
         );
     }
 }

@@ -54,6 +54,24 @@ class MatchService
     /** ერთი რექვესთის ფარგლებში წაკითხულის დამახსოვრება (ჯამიც და სიაც ერთსა და იმავეს კითხულობს) */
     private array $memo = [];
 
+    /**
+     * `table:domain` → სვეტების სია (Tasks PERF-15).
+     *
+     * ⚠️ **სქემა რექვესთის შუაში არ იცვლება** — ეს სტატიკური ფაქტია, ხოლო
+     * `Schema::hasColumn()` თითო გამოძახებაზე ნამდვილი query-ა
+     * (`information_schema`, sqlite-ზე `PRAGMA`). `ranking()` კი
+     * `thinColumns()`-ს **თითო კანდიდატზე × თითო დომენზე** იძახებდა, ე.ი.
+     * `/people`-ის ერთი გახსნა ასეულობით სქემის query იყო.
+     *
+     * ⚠️ ქეში **ინსტანციაზეა და არა `static`**: `MatchService` კონტროლერში
+     * ინჟექტირდება, ე.ი. ერთი ინსტანცია = ერთი რექვესთი — ზუსტად ის
+     * საზღვარი, რომელშიც პრობლემა იყო. `static` მიგრაციის შემდეგ
+     * მოძველებულ სიას შეინახავდა (`AuditLogger::$tableExists`-ის გაკვეთილი).
+     *
+     * @var array<string, list<string>>
+     */
+    private array $columnMemo = [];
+
     public function __construct(
         private PublicProfileService $profiles,
         private FieldSettings $fields,
@@ -315,12 +333,18 @@ class MatchService
      */
     private function thinColumns(string $table, string $domain): array
     {
+        $memo = "{$table}:{$domain}";
+
+        if (isset($this->columnMemo[$memo])) {
+            return $this->columnMemo[$memo];
+        }
+
         $columns = ['id', 'user_id', ...PublicDomain::matchColumns($domain)];
 
         // §6.4 — ექვს დომენს ლექსიკონი აქვს (`status_id`), სამს — `enum`
         $columns[] = StatusDomain::usesDictionary($domain) ? 'status_id' : 'status';
 
-        return array_map(
+        return $this->columnMemo[$memo] = array_map(
             fn (string $c) => "{$table}.{$c}",
             array_values(array_unique(array_filter(
                 $columns,
