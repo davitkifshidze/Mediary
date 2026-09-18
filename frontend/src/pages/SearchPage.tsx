@@ -72,7 +72,7 @@ export function SearchPage() {
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce მხოლოდ აკრეფაზე უნდა გაეშვას — params/setParams მას ყოველ ნავიგაციაზე გადაუშვებდა
   }, [term])
 
   // მისამართის გარედან შეცვლა (ჰედერიდან მოსვლა) ველშიც უნდა აისახოს

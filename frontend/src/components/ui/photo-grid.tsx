@@ -360,7 +360,7 @@ export function PhotoGrid({
     /* ⚠️ `resolved` ref-ია, ე.ი. deps-ში ვერ იქნება. ხელახლა გათვლა ორ
        მომენტზეა საჭირო და ორივე აქ წერია: ლაითბოქსის გახსნა/გადასვლა
        (`open`) და გახსნილზე ახალი მისამართის მოსვლა (`slideVersion`). */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- urlOf ref-ს კითხულობს; გადათვლის ორივე ნამდვილი ტრიგერი (open, slideVersion) ჩამოთვლილია
     [viewable, privateDisk, open, slideVersion],
   )
 
@@ -657,7 +657,7 @@ function PhotoCell({
 
   useEffect(() => {
     if (url) onResolved(item.id, url)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- მისამართის მოსვლაზე ვატყობინებთ ერთხელ; onResolved სტაბილურია (PERF-13)
   }, [url])
 
   const actions = photoActions({

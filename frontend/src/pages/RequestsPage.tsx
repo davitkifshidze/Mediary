@@ -219,7 +219,7 @@ export function RequestsPage() {
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- სვეტები ენაზე და ფორმატზეა დამოკიდებული; fmt/label/typeLabel ყოველ რენდერზე ახალია
     [t, i18n.language, fmt.dateTime],
   )
 

@@ -61,7 +61,7 @@ export function PublicGalleryTab({ username }: { username: string }) {
     return query.data.meta.current_page === 1
       ? query.data.data
       : [...rows.filter((r) => !query.data!.data.some((n) => n.id === r.id)), ...query.data.data]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rows დაგროვილი შედეგია და deps-ში მისი ჩადება უსასრულო ციკლია
   }, [query.data])
 
   const unlock = useMutation({

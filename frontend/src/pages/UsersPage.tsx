@@ -193,7 +193,7 @@ export function UsersPage() {
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- სვეტები ენაზე და ფორმატზეა დამოკიდებული; confirm/remove ყოველ რენდერზე ახალია
     [t, i18n.language, fmt.date, fmt.dateTime, me?.id],
   )
 

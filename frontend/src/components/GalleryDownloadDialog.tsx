@@ -185,7 +185,7 @@ export function GalleryDownloadDialog({
       setCastMode('selected')
       setCastIds([pin.actor.id])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- მხოლოდ გახსნაზე ვაწყობთ ფორმას — pin.actor-ის იგივეობა ღია დიალოგს არ უნდა გადააწყოს
   }, [open, pin?.actor?.id, pin?.record?.id, initialFlow])
 
   const castFlow = flow === 'cast'

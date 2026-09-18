@@ -68,7 +68,7 @@
 | GAP-09 | ლექსიკონის წაშლისას `move_to: null`, გამოტოვება და self ერთსა და იმავეს ნიშნავს — გადაწყვეტილება სჭირდება | Low | gap | S | ✅ შესრულებულია |
 | DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ✅ შესრულებულია |
 | DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ✅ შესრულებულია |
-| DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ⬜ |
+| DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ✅ შესრულებულია |
 | DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ⬜ |
 | DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ⬜ |
 | DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S | ⬜ |
@@ -1241,13 +1241,20 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-08] 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — წესი `error`-ია, `npm run lint` მას ამოწმებს, ათივე suppress-ს მიზეზი აქვს.
+  - ⚠️ **ტასკის წანამძღვარი მცდარი აღმოჩნდა და ეს მთავარი აღმოჩენაა.** წესი **უკვე მუშაობდა**: oxlint მას `react-hooks(exhaustive-deps)`-ად უშვებს (და არა `react/…`-ად, რაც სქემაში ძებნისას აბნევს), ნაგულისხმევად, `warn`-ად. ცდაც ჩატარდა: `player.tsx`-ის suppress-ის მოხსნა **მაშინვე** აჩენს „missing dependencies: 'qc', 'current.id', …". ე.ი. კომენტარები არაფერს კი არ თიშავდნენ, **ნამდვილ ნაპოვარებს ფარავდნენ**.
+  - ⚠️ ნამდვილი ხარვეზი სხვა იყო: წესი **`warn`-ია და `npm run lint` warning-ზე 0-ს აბრუნებს**, ე.ი. ახალ დარღვევას არაფერი აჩერებდა; და კონფიგში წესი ნახსენებიც არ იყო, ე.ი. მკითხველი ვერ გებულობდა, რომ ის ჩართულია.
+  - ✅ `.oxlintrc.json`-ში ცხადად `"react-hooks/exhaustive-deps": "error"`. **დადასტურდა, რომ ახლა ჭრის**: ერთი suppress-ის მოხსნაზე `npm run lint` **exit 1**-ს აბრუნებს.
+  - ✅ **ერთადერთი დაუფარავი ნაპოვარი გასწორდა** — `PlaylistPage:66`, და ის ზუსტად PERF-11-ის ხარვეზია: `playlist?.songs ?? []` ყოველ რენდერზე ახალი მასივია, ე.ი. `songIds`-ის memo არასდროს ინახებოდა. მოდულის დონის `NO_SONGS`. სწორედ ის უშლიდა ხელს წესის `error`-ად ჩართვას
+  - ✅ **ათივე suppress load-bearing-ია** — ყველა ერთდროულად მოიხსნა საცდელად და oxlint-მა **18 ნაპოვარი** დააბრუნა, ე.ი. ერთიც ზედმეტი არაა; თითოეულს ახლა `-- მიზეზი` მიეწერა
+  - ℹ️ `--report-unused-disable-directives` ხელით გაეშვა: ის სამ `jsx-a11y/media-has-caption` კომენტარს ასახელებს — ის პლაგინი ჩართული არაა, ე.ი. ისინი ამჟამად არაფერს თიშავენ. **განზრახ დარჩა** (განზრახვა ჩაწერილია და `jsx-a11y`-ის ჩართვაზე ისევ დასჭირდება), ამიტომ დროშა `lint`-ში არ დამატებულა — ის მცველს პირველსავე დღეს გააწითლებდა
 - **ტიპი:** debt
 - **სად:** `frontend/.oxlintrc.json:1-9`; მაგ. `frontend/src/lib/player.tsx:200`, `frontend/src/components/ui/photo-grid.tsx:290`, `:559`
 - **პრობლემა:** `lint` სკრიპტი `oxlint`-ია და `.oxlintrc.json`-ში `exhaustive-deps` არ არის ჩართული — 11 suppress-კომენტარი წესს თიშავს, რომელიც არასდროს არ ეშვება; `player.tsx:200` (`[seq]` deps, სხეული `current`-ს კითხულობს) რეალური stale-closure რისკია, რომელსაც ვერაფერი დაიჟერს.
 - **რატომ:** კომენტარები გარანტიას გულისხმობენ, რომელიც არ არსებობს.
 - **გადაწყვეტა:** `react/exhaustive-deps` `.oxlintrc.json`-ში ჩართვა და თითო suppress-ის გადახედვა; ან კომენტარების წაშლა.
 - **Acceptance criteria:**
-  - [ ] `npm run lint` `exhaustive-deps`-ს ამოწმებს; დარჩენილ ყოველ disable-ს მიზეზის კომენტარი აქვს
+  - [x] `npm run lint` `exhaustive-deps`-ს ამოწმებს (`error`, exit 1); დარჩენილ ყოველ disable-ს მიზეზის კომენტარი აქვს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

@@ -265,13 +265,13 @@ export function GroupsCut({
 
   const groups = useMemo(
     () => sortGalleryGroups(groupsQ.data?.groups ?? [], filters.sort, titleOf, lang),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- titleOf ყოველ რენდერზე ახალია და მხოლოდ lang-ზეა დამოკიდებული
     [groupsQ.data, filters.sort, lang],
   )
 
   const sections = useMemo(
     () => sectionGalleryGroups(groups, by === 'record' ? filters.section : 'none', lang, t('gallery.unknownSection')),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t ენის ცვლილებაზე იცვლება, რასაც lang უკვე ფარავს
     [groups, filters.section, by, lang],
   )
 

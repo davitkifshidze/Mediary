@@ -36,6 +36,9 @@ import { useToast } from '@/components/ui/feedback'
    და იგივე ოპერაციაა, ე.ი. `sort_order` ვერასდროს გატყდება.
    ============================================================ */
 
+/** სტაბილური ცარიელი სია — ჩატვირთვისას `useMemo` რომ არ ცვიოდეს */
+const NO_SONGS: NonNullable<Playlist['songs']> = []
+
 export function PlaylistPage() {
   const { id } = useParams<{ id: string }>()
   const playlistId = Number(id)
@@ -62,7 +65,13 @@ export function PlaylistPage() {
     enabled: adding,
   })
 
-  const songs = playlist?.songs ?? []
+  /* ⚠️ **მოდულის დონის ცარიელი სია და არა ინლაინ `[]`** (Tasks DEBT-08, იგივე
+     ხარვეზი, რაც PERF-11-ში): `playlist?.songs ?? []` ყოველ რენდერზე ახალი
+     მასივია, ე.ი. ქვედა `useMemo`-ს deps ყოველთვის იცვლებოდა და memo
+     არასდროს ინახებოდა. ესაა ერთადერთი `exhaustive-deps`-ის ნაპოვარი,
+     რომელსაც suppress არ ჰქონდა — და სწორედ ის უშლიდა ხელს წესის
+     `error`-ად ჩართვას. */
+  const songs = playlist?.songs ?? NO_SONGS
   const songIds = useMemo(() => songs.map((s) => s.id), [songs])
 
   const save = useMutation({
