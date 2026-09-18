@@ -14,6 +14,7 @@ use App\Services\Translation\TranslationScanner;
 use App\Services\Translation\Translator;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Mockery;
@@ -800,5 +801,64 @@ class TranslationTest extends TestCase
         $this->app->instance(Translator::class, $mock);
         // ItemTranslator-ს კონსტრუქტორში უკვე შეყვანილი ასლი აქვს — თავიდან ავაწყოთ
         $this->app->forgetInstance(ItemTranslator::class);
+    }
+
+    /**
+     * **badge ბიბლიოთეკას აღარ ტვირთავს (Tasks PERF-17).**
+     *
+     * ⚠️ `summary()` ყველა ჩანაწერს თარგმანებითურთ კითხულობდა და PHP-ში
+     * ითვლიდა. ეს აპის **ყველაზე ხშირად შესრულებული** მძიმე მოთხოვნაა:
+     * ჰედერი ყველა გვერდზეა და რიცხვი 5 წუთში ერთხელ ახლდება.
+     *
+     * ⚠️ **query-ების დათვლა აქ არაფერს ამტკიცებს და ესაა ამ ტესტის მთავარი
+     * გაკვეთილი**: `->get()` ერთი query-ა 3 ფილმზეც და 3000-ზეც, ე.ი. ძველი
+     * კოდიც „მუდმივი" იყო. მნიშვნელობა აქვს **რამდენი მოდელი დაჰიდრატდა** —
+     * `eloquent.retrieved` ზუსტად ამას ითვლის.
+     */
+    public function test_the_summary_does_not_load_the_library(): void
+    {
+        for ($i = 0; $i < 30; $i++) {
+            $this->movie([], ['title' => "A{$i}"]);
+        }
+
+        $hydrated = 0;
+        Event::listen('eloquent.retrieved: '.Movie::class, function () use (&$hydrated) {
+            $hydrated++;
+        });
+
+        $this->actingAs($this->user)->getJson('/api/translations/summary')
+            ->assertOk()
+            ->assertJsonPath('movie', 30);
+
+        $this->assertSame(0, $hydrated, "badge-მა {$hydrated} ფილმი ჩატვირთა — დათვლა SQL-შია");
+    }
+
+    /**
+     * ⚠️ **badge და გეგმის სია ერთსა და იმავეს უნდა ითვლიდნენ.** PERF-17-ის
+     * შემდეგ `summary()` SQL-ში ითვლის, `plan()` კი `missing()`-ით რიგ-რიგობით —
+     * ორი განსაზღვრება ერთ კითხვაზე, ე.ი. მათი დაშორება ჩუმი იქნებოდა.
+     */
+    public function test_the_badge_matches_the_plan(): void
+    {
+        $this->movie([], ['title' => 'A']);                                        // ka სათაური აკლია
+        $this->movie(['title' => 'ბ'], ['title' => 'B']);                          // სრული
+        $this->movie(['title' => 'გ', 'description' => 'აღწერა'], ['title' => 'C']); // en აღწერა აკლია
+        $this->movie([], []);                                                      // ორივე ცარიელი — სინქრონის საქმეა
+        Series::create(['user_id' => $this->user->id])->setTranslation('en', ['title' => 'S']);
+
+        $summary = $this->actingAs($this->user)->getJson('/api/translations/summary')->assertOk();
+
+        $plan = $this->actingAs($this->user)
+            ->postJson('/api/translations/plan', ['types' => ['movie', 'series', 'anime']])
+            ->assertOk()
+            ->json('items');
+
+        foreach (['movie', 'series', 'anime'] as $type) {
+            $this->assertSame(
+                collect($plan)->where('type', $type)->count(),
+                $summary->json($type),
+                "„{$type}\"-ზე badge და გეგმა არ ემთხვევა",
+            );
+        }
     }
 }

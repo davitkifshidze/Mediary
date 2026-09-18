@@ -98,16 +98,11 @@ class TranslationScanner
         $out = array_fill_keys([...self::TYPES, 'genres', 'total', 'reviewable'], 0);
 
         foreach (array_intersect($types, self::TYPES) as $type) {
-            $rows = $this->query($type)->get();
-
-            $out[$type] = $rows->filter(fn ($row) => self::missing($row) !== [])->count();
-            // იმავე გატარებაზე — ცალკე მოთხოვნა ჰედერის badge-ს გაორმაგებდა
-            $out['reviewable'] += $rows->filter(fn ($row) => self::reviewable($row))->count();
+            $out[$type] = $this->missingQuery($type)->count();
+            $out['reviewable'] += $this->reviewableQuery($type)->count();
         }
 
-        $out['genres'] = Genre::with('translations')->get()
-            ->filter(fn (Genre $g) => self::genreMissing($g) !== [])
-            ->count();
+        $out['genres'] = $this->missingNameQuery(Genre::query(), 'name')->count();
 
         // ⚠️ ჯამი **`TYPES`-ზე** ითვლება და არა ხელით ჩამოთვლილ ორ დომენზე:
         // მესამე დომენის (`anime`, §7.1) დამატებისას სხვაობა ჩუმი იქნებოდა —
@@ -190,14 +185,69 @@ class TranslationScanner
             ->values();
     }
 
-    private function query(string $type): Builder
+    /**
+     * **`missing()`-ის SQL-ტყუპი** (Tasks PERF-17).
+     *
+     * ⚠️ ჰედერის badge ყველა გვერდზეა და 5 წუთში ერთხელ ახლდება, ე.ი. ეს
+     * აპის ყველაზე ხშირად შესრულებული query-ა. ადრე `summary()` **მთელ
+     * ბიბლიოთეკას** ტვირთავდა თარგმანებითურთ და PHP-ში ითვლიდა — 353 ფილმზე
+     * ~700 რიგი, ბიბლიოთეკასთან ერთად წრფივად მზარდი.
+     *
+     * ⚠️ **ორი განსაზღვრება ერთ კითხვაზე საშიშია და სწორედ ამიტომ არსებობს
+     * `TranslationTest`-ის შემოწმება „badge = გეგმის სია"**: `missing()` რიგზე
+     * მუშაობს (ბარათი ამბობს, *რა* აკლია), აქ კი დათვლაა. ერთადერთი ცნობილი
+     * განსხვავება: PHP-ის `trim()` `\n`/`\t`/`\0`-საც ჭრის, SQL-ის `trim()` —
+     * მხოლოდ ჰარეს; ე.ი. მხოლოდ ტაბით შევსებული თარგმანი აქ „შევსებულად"
+     * ჩაითვლებოდა. ცარიელი და `NULL` ორივეგან ერთნაირად იკითხება.
+     *
+     * ⚠️ `$field` **შიდა სიიდანაა** (`title`/`description`/`name`) და არასდროს
+     * მომხმარებლისგან — `whereRaw`-ში მისი ჩასმა სწორედ ამიტომ უსაფრთხოა.
+     */
+    private static function filled(string $locale, string $field): \Closure
     {
-        $q = match ($type) {
+        return fn (Builder $q) => $q->where('locale', $locale)
+            ->whereRaw("trim(coalesce({$field}, '')) <> ''");
+    }
+
+    /** ერთ ველზე: ერთ ენაზე არის, მეორეზე — არა */
+    private function missingNameQuery(Builder $query, string ...$fields): Builder
+    {
+        return $query->where(function (Builder $w) use ($fields) {
+            foreach ($fields as $field) {
+                foreach ([['ka', 'en'], ['en', 'ka']] as [$empty, $present]) {
+                    $w->orWhere(fn (Builder $x) => $x
+                        ->whereHas('translations', self::filled($present, $field))
+                        ->whereDoesntHave('translations', self::filled($empty, $field)));
+                }
+            }
+        });
+    }
+
+    /** სათარგმნი ჩანაწერები ერთ დომენში — `missing()`-ის ტოლფასი */
+    private function missingQuery(string $type): Builder
+    {
+        return $this->missingNameQuery($this->newQuery($type), 'title', 'description');
+    }
+
+    /** `reviewable()`-ის SQL-ტყუპი: ორივე ენაზე აღწერა არის და `ka` TMDB-ისაა */
+    private function reviewableQuery(string $type): Builder
+    {
+        return $this->newQuery($type)
+            ->whereHas('translations', fn (Builder $q) => self::filled('ka', 'description')($q)->where('source', 'tmdb'))
+            ->whereHas('translations', self::filled('en', 'description'));
+    }
+
+    private function newQuery(string $type): Builder
+    {
+        return match ($type) {
             'series' => Series::query(),
             'anime' => Anime::query(),
             default => Movie::query(),
         };
+    }
 
-        return $q->with('translations')->orderBy('id');
+    private function query(string $type): Builder
+    {
+        return $this->newQuery($type)->with('translations')->orderBy('id');
     }
 }

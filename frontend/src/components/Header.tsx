@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { fetchTranslationSummary } from '@/api/translations'
 import { useAuth } from '@/lib/auth'
+import { useModules } from '@/lib/modules'
 import { storageUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { LAYER_POPUP } from '@/lib/layers'
@@ -33,17 +34,21 @@ import { ThemeToggle } from './ThemeToggle'
 export function Header({ onMenu }: { onMenu: () => void }) {
   const { t } = useTranslation()
   const { user, logout } = useAuth()
+  const { mediaModules } = useModules()
 
   const level = user?.storage ? storageLevel(user.storage) : 'ok'
   const storageWarning = level === 'ok' ? null : level === 'warn' ? 'warn' : 'critical'
 
   // Tasks 7 — „გაქვს N სათარგმნი". მრიცხველი მსუბუქია, მაგრამ ყოველ ნავიგაციაზე
   // მისი გადათვლა ზედმეტია — ამიტომ 5 წუთი ითვლება ახლად.
+  // ⚠️ **მედია-მოდულის გარეშე საერთოდ არ ეშვება** (Tasks PERF-17): ორენოვანი
+  // სქემა მხოლოდ მედია-დომენებს აქვთ, ე.ი. `/translations`-ის ბმულიც და
+  // მარშრუტიც იმავე პირობაზეა — ბეჯი მკვდარ რიცხვს ხატავდა და query-ს ხარჯავდა.
   const pendingQ = useQuery({
     queryKey: ['translations', 'summary'],
     queryFn: fetchTranslationSummary,
     staleTime: 5 * 60 * 1000,
-    enabled: !!user,
+    enabled: !!user && mediaModules.length > 0,
   })
   const pending = pendingQ.data?.total ?? 0
 
