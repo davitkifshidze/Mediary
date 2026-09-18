@@ -23,6 +23,7 @@ use App\Models\VideoType;
 use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -742,5 +743,44 @@ class PurgeTest extends TestCase
             ->assertJsonPath('result.records', 1);
 
         $this->assertSame(0, Video::withoutGlobalScope('owner')->count());
+    }
+
+    /**
+     * **სკოუპი ერთხელ ითვლება** (Tasks PERF-10).
+     *
+     * ⚠️ `run()` ჯერ `plan()`-ს იძახებდა (რომელიც `recordIds()`-ს აკეთებს),
+     * მერე `recordIds()`-ს **თავიდან**. ორმაგი ხარჯი ერთი ნახევარია; მეორე
+     * უფრო მნიშვნელოვანია — ორ გამოძახებას შორის ჩაწერილი ჩანაწერი ორ
+     * **სხვადასხვა სეტს** დაბადებდა, ე.ი. „დათვლილი" და „წაშლილი" დაშორდებოდა.
+     * სწორედ ამას კრძალავს კლასის მთავარი წესი.
+     *
+     * ⚠️ query-ები `movies`-ზე ითვლება და არა სულ: საერთო რიცხვს ყოველი ახალი
+     * მრიცხველი ან eager load გადასწევდა და ტესტი უკავშირო ცვლილებების
+     * მავთულსაკაბელი გახდებოდა.
+     */
+    public function test_the_scope_is_counted_once_per_run(): void
+    {
+        foreach (['Alien', 'Aliens', 'Alien 3'] as $title) {
+            $this->makeMovie($this->admin, $title);
+        }
+
+        $this->actingAs($this->admin->refresh());
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->postJson('/api/admin/purge', ['target' => 'movie', 'mode' => 'all', 'confirm' => 'DELETE'])
+            ->assertOk()
+            ->assertJsonPath('result.records', 3);
+        $log = collect(DB::getQueryLog())->pluck('query');
+        DB::disableQueryLog();
+
+        /* ⚠️ სწორედ ეს არის `recordIds()`-ის ხელწერა: `select "id" from "movies"`.
+           ჩანაწერების **წასაშლელად** წამოღება (`select * from "movies"`) სხვა
+           query-ია და აქ არ ითვლება. */
+        $scopeQueries = $log->filter(
+            fn (string $q) => str_contains($q, 'from "movies"') && str_contains($q, 'select "id"'),
+        );
+
+        $this->assertCount(1, $scopeQueries, "სკოუპი ერთზე მეტჯერ დაითვალა:\n".$scopeQueries->implode("\n"));
     }
 }

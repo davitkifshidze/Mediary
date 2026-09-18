@@ -204,12 +204,21 @@ class PurgeService
     /**
      * რა წაიშლება — ცხადი შეჯამება დადასტურებამდე (20.2).
      *
+     * ⚠️ **`$ids` არჩევითია და `run()` მას ცხადად გადასცემს** (Tasks PERF-10).
+     * ადრე `run()` ჯერ `plan()`-ს იძახებდა (რომელიც `recordIds()`-ს აკეთებს),
+     * მერე `recordIds()`-ს **თავიდან** — ე.ი. კლასის ყველაზე ძვირი query
+     * ორჯერ გადიოდა, და, რაც უფრო მნიშვნელოვანია, ორ გამოძახებას შორის
+     * ჩაწერილი ჩანაწერი ორ **სხვადასხვა სეტს** დაბადებდა. სწორედ ამას
+     * კრძალავს კლასის მთავარი წესი: „დათვლილი" და „წაშლილი" ერთი query-დან
+     * უნდა მოდიოდეს.
+     *
+     * @param  list<int>|null  $ids  უკვე დათვლილი სკოუპი; `null` = თვითონ დათვალოს
      * @return array{records: int, photos: int, attachments: int, notes: int, bytes: int, target: string, mode: string, items: array<int, array{type: string, id: int, title: string, year: int|null}>}
      */
-    public function plan(User $user, array $input): array
+    public function plan(User $user, array $input, ?array $ids = null): array
     {
         $target = $input['target'];
-        $ids = $this->recordIds($user, $input);
+        $ids ??= $this->recordIds($user, $input);
         $items = $this->planItems($user, $input, $ids);
 
         if ($target === 'gallery') {
@@ -352,8 +361,9 @@ class PurgeService
     public function run(User $user, array $input): array
     {
         $target = $input['target'];
-        $plan = $this->plan($user, $input);
+        // ⚠️ ერთი `recordIds()` ორივესთვის (Tasks PERF-10) — იხ. `plan()`-ის docblock
         $ids = $this->recordIds($user, $input);
+        $plan = $this->plan($user, $input, $ids);
 
         Log::warning('purge started', [
             'user_id' => $user->getKey(),
