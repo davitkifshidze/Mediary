@@ -46,6 +46,14 @@ export interface CredentialUsage {
 export interface Credential {
   provider: string
   source: CredentialSource
+  /**
+   * ჩემი გასაღები **სხვა `APP_KEY`-ით** არის დაშიფრული (Tasks GAP-11).
+   *
+   * ⚠️ `source`-ისგან ცალკეა განზრახ: `source` ამბობს, რომელი გასაღები
+   * **მოქმედებს ახლა** (გაუშიფრავზე ეს `shared`/`none`-ია და აპი მართლა
+   * ასე იქცევა), ეს კი — რომ ჩემი რიგი არსებობს და ვერ იკითხება.
+   */
+  undecryptable: boolean
   configured: boolean
   is_active: boolean
   verified_at: string | null

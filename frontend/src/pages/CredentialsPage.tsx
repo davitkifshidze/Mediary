@@ -256,6 +256,19 @@ function ProviderCard({
 
       <p className="mb-4 text-sm text-muted-foreground">{t(`credentials.desc.${credential.provider}`)}</p>
 
+      {/* ⚠️ **გაუშიფრავი გასაღები ცხადად უნდა ითქვას (Tasks GAP-11).** მანქანის
+          შეცვლა ან `key:generate` რიგს წასაკითხად უვარგისს ხდის და აპი საერთო
+          `.env`-ის გასაღებზე ვარდება — აქამდე ეს უბრალოდ „არ არის"-ად
+          იხატებოდა, ე.ი. მიზეზი არსად ჩანდა. ⚠️ ტექსტი პროზაა და არა ხატულა:
+          ის **მდგომარეობითია** (გამოჩნდა ამჟამინდელი მდგომარეობის გამო) —
+          სწორედ ის შემთხვევა, რომელსაც `InfoHint`-ის წესი პროზად ტოვებს. */}
+      {credential.undecryptable && (
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          <span>{t('credentials.undecryptable')}</span>
+        </p>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         {credential.fields.map((f) => (
           <label key={f.name} className="block">

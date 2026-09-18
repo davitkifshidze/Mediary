@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\UserCredential;
 use App\Services\Credentials\CredentialStore;
 use App\Support\AlbumLock;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -23,5 +24,9 @@ abstract class TestCase extends BaseTestCase
         // ალბომების სია), ე.ი. წინა ტესტის `id = 1` მომხმარებლის პასუხი
         // შემდეგზე გადავიდოდა და ლოკი შემთხვევით „უკვე გახსნილი" იქნებოდა
         AlbumLock::flush();
+        // ⚠️ მესამე სტატიკური: „ამ რიგზე გაშიფვრის შეცდომა უკვე ჩავწერეთ"
+        // (Tasks GAP-11) — წინა ტესტის `user 1 : telegram` მომდევნოს
+        // გაფრთხილებას ჩუმად ჩაყლაპავდა
+        UserCredential::flushWarnings();
     }
 }

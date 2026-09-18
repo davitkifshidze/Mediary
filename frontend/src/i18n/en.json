@@ -2960,7 +2960,8 @@
       "telegram": "Completely free. The token is full access to the bot — do not share it."
     },
     "installation": "Installation settings",
-    "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env."
+    "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env.",
+    "undecryptable": "This key was encrypted with a different APP_KEY (most likely on another machine), so it cannot be read — the app is falling back to the shared key. Enter it again, or restore the old APP_KEY."
   },
   "backups": {
     "title": "Database backup",

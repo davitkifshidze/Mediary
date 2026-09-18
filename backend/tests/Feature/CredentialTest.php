@@ -16,6 +16,7 @@ use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
@@ -657,5 +658,77 @@ class CredentialTest extends TestCase
         $raw = \DB::table('user_credentials')->where('user_id', $this->user->id)->value('credentials');
 
         $this->assertStringNotContainsString('plain-text-key', (string) $raw);
+    }
+
+    /* ---------- სხვა `APP_KEY` (Tasks GAP-11) ---------- */
+
+    /** სხვა მანქანის გასაღებით დაშიფრული რიგი */
+    private function foreignRow(string $provider, array $fields): void
+    {
+        $foreign = new Encrypter(random_bytes(32), 'aes-256-cbc');
+
+        DB::table('user_credentials')->insert([
+            'user_id' => $this->user->id,
+            'provider' => $provider,
+            'credentials' => $foreign->encryptString(json_encode($fields)),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        CredentialStore::forget();
+    }
+
+    /**
+     * **გაუშიფრავი რიგი პასუხში ცხადად წერია და ჩუმად „არაფერი" აღარაა.**
+     *
+     * ⚠️ ეს ცოცხალ ბაზაზე მოხდა (SEC-12, 2026-09-17): ერთადერთი
+     * `user_credentials` რიგი ძველ მანქანაზე სხვა `APP_KEY`-ით დაიშიფრა.
+     * `fields()` შეცდომას ყლაპავდა, ე.ი. აპი რიგს „გასაღები არ არის"-ად
+     * კითხულობდა: `CredentialStore` საერთო `.env`-ზე ვარდებოდა (და პირადი
+     * ლიმიტი ჩუმად საერთო ხდებოდა), `/credentials` კი „არ არის"-ს აჩვენებდა.
+     * ლოგში არაფერი იწერებოდა.
+     */
+    public function test_a_row_from_another_app_key_is_reported_as_undecryptable(): void
+    {
+        Log::spy();
+        $this->foreignRow(CredentialProviders::TELEGRAM, ['bot_token' => '333:OTHER-MACHINE']);
+
+        $row = collect($this->actingAs($this->user)->getJson('/api/credentials')->assertOk()->json('data'))
+            ->firstWhere('provider', CredentialProviders::TELEGRAM);
+
+        $this->assertTrue($row['undecryptable'], 'გაუშიფრავი რიგი ცხადად უნდა ჩანდეს');
+        /* ⚠️ `source` სიმართლეს ამბობს: ჩემი გასაღები ვერ იკითხება, ე.ი.
+           **მოქმედი** გასაღები ჩემი არაა — ეს ორი სხვადასხვა ფაქტია. */
+        $this->assertNotSame('user', $row['source']);
+        $this->assertFalse(CredentialStore::usesOwnKey(CredentialProviders::TELEGRAM, $this->user->id));
+
+        // ⚠️ ლოგში ერთხელ, თუმცა `fields()` ერთ მოთხოვნაში რამდენჯერმე იძახება
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => str_contains($message, 'cannot be decrypted'))
+            ->once();
+    }
+
+    /**
+     * **ახალი გასაღების ჩაწერა გაუშიფრავ რიგზე მუშაობს.**
+     *
+     * ⚠️ ესაა ერთადერთი გამოსავალი, რაც მომხმარებელს რჩება — და სწორედ ის
+     * ცდებოდა: Eloquent-ის dirty-შემოწმება დაშიფრული cast-ის **ორიგინალს**
+     * შიფრავს, ე.ი. `save()` იმავე `DecryptException`-ზე ვარდებოდა (500).
+     */
+    public function test_a_new_key_can_be_written_over_an_undecryptable_row(): void
+    {
+        $this->foreignRow(CredentialProviders::TELEGRAM, ['bot_token' => '333:OTHER-MACHINE']);
+
+        $this->actingAs($this->user)
+            ->putJson('/api/credentials/'.CredentialProviders::TELEGRAM, [
+                'fields' => ['bot_token' => '999:FRESH', 'chat_id' => '42'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.undecryptable', false)
+            ->assertJsonPath('data.source', 'user');
+
+        CredentialStore::forget();
+        $this->assertSame('999:FRESH', CredentialStore::value(CredentialProviders::TELEGRAM, 'bot_token', $this->user->id));
     }
 }

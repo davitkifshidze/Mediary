@@ -73,6 +73,13 @@ class CredentialController extends Controller
         $row = UserCredential::firstOrNew(['user_id' => $user->id, 'provider' => $provider]);
 
         $stored = $row->fields();
+
+        /* ⚠️ **გაუშიფრავ რიგზე შენახვა თვითონ ცდებოდა (Tasks GAP-11)** —
+           ე.ი. სხვა `APP_KEY`-ით დაშიფრული გასაღების **გადაწერა**, ერთადერთი
+           გამოსავალი, 500-ს იძლეოდა. `forgetUnreadable()` ორიგინალს
+           მეხსიერებაში აბათილებს და `save()` მთელ სვეტს ახლით გადაწერს. */
+        $row->forgetUnreadable();
+
         $changed = [];
 
         foreach ($data['fields'] ?? [] as $name => $value) {
@@ -361,6 +368,12 @@ class CredentialController extends Controller
         return [
             'provider' => $provider,
             'source' => CredentialStore::source($provider, $userId),
+            /* ⚠️ **ცალკე ველი და არა `source`-ის მეოთხე მნიშვნელობა (Tasks GAP-11).**
+               `source` პასუხობს კითხვას „რომელი გასაღები მოქმედებს ახლა", და
+               გაუშიფრავ რიგზე პასუხი მართლაც `shared`/`none`-ია — აპი ზუსტად
+               ასე იქცევა. „ჩემი გასაღები აქ წერია, მაგრამ ვერ იკითხება"
+               მეორე ფაქტია, და ერთ ველში შერევა ერთს მათგანს ატყუებდა. */
+            'undecryptable' => $row !== null && ! $row->isReadable(),
             'configured' => CredentialStore::configured($provider, $userId),
             'is_active' => $row?->is_active ?? true,
             'verified_at' => $row?->verified_at?->toIso8601String(),
