@@ -13,7 +13,7 @@
 | ID | ტიტული | severity | ტიპი | estimate | სტატუსი |
 |----|---------|----------|------|----------|----------|
 | SEC-01 | პროდ-ბაზის dump git-ის ისტორიაში იყო — რჩება პაროლების შეცვლა და Telegram ტოკენის როტაცია | Critical | security | M | 🟡 ნაწილობრივ |
-| BUG-16 | `/purge`: ბუკმარკზე `mode=tag` **ყველა** ბუკმარკს შლის — ტეგის ფილტრი დომენების სიაში `bookmark`-ს არ იცნობს | Critical | bug | S | ⬜ |
+| BUG-16 | `/purge`: ბუკმარკზე `mode=tag` **ყველა** ბუკმარკს შლის — ტეგის ფილტრი დომენების სიაში `bookmark`-ს არ იცნობს | Critical | bug | S | ✅ |
 | SEC-06 | ცოცხალი TMDB გასაღები `.env.example`-ში იყო — რჩება გასაღების როტაცია themoviedb.org-ზე | High | security | S | 🟡 ნაწილობრივ |
 | SEC-14 | API-გასაღებები URL-ის query-შია და cURL-ის შეცდომის ტექსტით პასუხის body-სა და `sources.log`-ში ხვდება | High | security | M | ⬜ |
 | BUG-17 | `MovieEnricher`/`TvEnricher` თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს TMDB-ის ქართულის ნაცვლად და `source='translated'`-ს წერს — ბარათი „წყარო უცნობია"-ს აჩვენებს | High | bug | M | ⬜ |
@@ -72,12 +72,8 @@
 | FEAT-19 | შეტყობინებების ცენტრი: მოთხოვნა დამტკიცდა, კვოტა ივსება, ასლი ჩავარდა, პარტია დასრულდა | — | feature | M | ⬜ |
 | FEAT-20 | „რა ვნახო დღეს" — შემთხვევითი არჩევანი `todo` სტატუსიდან ფილტრით | — | feature | S | ⬜ |
 | FEAT-21 | წლიური მიზნები (წიგნი/ფილმი წელიწადში) — FEAT-08-ზე დგას | — | feature | M | ⬜ |
-| FEAT-22 | ტეგებით მასობრივი ცვლილება სიმღერაზე/წიგნზე/ჩანაწერზე/ბუკმარკზე (2026-09-16-ს გადაიდო) | — | feature | M | ⬜ |
-| FEAT-23 | ახალი მოდული: **მანგა/კომიქსი** (Jikan v4 — უფასო, გასაღების გარეშე) | — | feature | L | ⬜ |
-| FEAT-24 | ახალი მოდული: **პოდკასტები** (iTunes Search API + RSS — უფასო, გასაღების გარეშე) | — | feature | L | ⬜ |
 | FEAT-25 | ახალი მოდული: **კურსები** (ხელით, გაკვეთილების პროგრესით) | — | feature | L | ⬜ |
 | FEAT-26 | ახალი მოდული: **ადგილები** (ნანახი/სანახავი; OSM Nominatim — უფასო) | — | feature | L | ⬜ |
-| FEAT-27 | ახალი მოდული: **ღონისძიებები/კონცერტები** (თარიღი, ადგილი, ბილეთი, ფოტოები) | — | feature | L | ⬜ |
 
 ## Critical
 
@@ -97,15 +93,16 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-16] `/purge`: ბუკმარკზე `mode=tag` **ყველა** ბუკმარკს შლის
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). დომენების სია `TARGET_MODES`-იდან გამოითვლება — `PurgeService::supportsTag()`; ხელით ჩაწერილი `['video', 'song', 'book', 'note']` აღარ არსებობს, ე.ი. ორი სიის დაშორება შეუძლებელია. სამიზნე, რომელსაც `tag` არ აქვს, `recordIds()`-ში **422 `mode_not_supported_for_target`**-ია და არა ჩუმი „ყველა".
 - **ტიპი:** bug
 - **სად:** `backend/app/Services/Purge/PurgeService.php:96` (`TARGET_MODES['bookmark']` `tag`-ს უშვებს), `:640` (ტეგის ფილტრი მხოლოდ `['video', 'song', 'book', 'note']`-ზე მუშაობს), `backend/app/Http/Controllers/Api/Admin/AdminPurgeController.php:171,180`
 - **პრობლემა:** `recordIds()`-ის `match`-ში `'tag' => null` ყველა ჩანაწერს აბრუნებს და ტეგით ჭრა მერე ხდება — მაგრამ მხოლოდ ჩამოთვლილ ოთხ დომენზე. ბუკმარკს `tags` სვეტი აქვს და `TARGET_MODES`-შიც `tag` წერია, ე.ი. ვალიდაცია გადის, ფილტრი კი არ მოქმედებს: `plan()` და `run()` **ანგარიშის ყველა ბუკმარკს** ითვლის და შლის. `plan` და `run` ერთ query-ს იზიარებენ, ამიტომ გეგმაც „სწორ" (მთლიან) რიცხვს აჩვენებს და მომხმარებელი მას ტეგის ჩანაწერებად კითხულობს.
 - **რატომ:** მონაცემების დაკარგვა ერთ დაჭერაზე, ტიპიზებული `DELETE`-ის მიუხედავად — სამიზნე სხვისი ბიბლიოთეკაც შეიძლება იყოს.
 - **გადაწყვეტა:** დომენების სია ერთ ადგილას — `TARGET_MODES`-იდან გამოთვლადი (`tag` აქვს → ტეგით ჭრა სავალდებულოა) ან `TAG_TARGETS` კონსტანტა, რომელსაც `RegistryConsistencyTest` `TARGET_MODES`-ს ადარებს; `recordIds()`-ში `mode === 'tag'` და ჩამოთვლილში არყოფნა — გამონაკლისი (422 `mode_not_supported_for_target`) და არა ჩუმი „ყველა".
 - **Acceptance criteria:**
-  - [ ] `PurgeTest`: ბუკმარკის `mode=tag` მხოლოდ ტეგიან ბუკმარკებს გეგმავს და შლის; უტეგო რჩება
-  - [ ] ტესტი, რომელიც `TARGET_MODES`-ის ყოველ `tag`-იან სამიზნეზე ამოწმებს, რომ ფილტრი ნამდვილად ჭრის (დღეს ხუთივეზე)
-  - [ ] `RegistryConsistencyTest` მომავალ დომენზე `tag`-ის ერთ სიაში დამატებას და მეორეში გამორჩენას იჭერს
+  - [x] `PurgeTest::test_bookmarks_by_tag` — გეგმაც და წაშლაც მხოლოდ ტეგიანს ეხება, უტეგო და სხვატეგიანი რჩება (ძველ კოდზე „3 is identical to 1"-ით ვარდება)
+  - [x] `PurgeTest::test_the_tag_scope_really_cuts_on_every_target_that_allows_it` — სია `TARGET_MODES`-იდან იკითხება, ე.ი. მეექვსე დომენი ავტომატურად შედის შემოწმებაში
+  - [x] `RegistryConsistencyTest::test_every_tag_purge_target_actually_has_a_tags_column` — დარჩენილი ერთადერთი დაშვება (სქემა) მოწმდება: `tag` სკოუპი `tags` სვეტის გარეშე უპირობო წაშლა იქნებოდა
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
@@ -783,42 +780,9 @@
 - **Estimate:** M
 - **დამოკიდებულება:** FEAT-08
 
-### [FEAT-22] ტეგებით მასობრივი ცვლილება სხვა მოდულებზეც
-- **ტიპი:** feature
-- **სად:** `backend/app/Http/Controllers/Api/VideoBulkController.php` (მხოლოდ ვიდეო); სიმღერა/წიგნი/ჩანაწერი/ბუკმარკს `tags` აქვს, bulk — არა
-- **პრობლემა:** CLAUDE.md (*Bulk video changes*): „ტეგის სკოუპების გავრცელება song/book/note/bookmark-ზე მოთხოვნილი და გადადებულია" — ღია, დაუხურავი გადაწყვეტილება.
-- **რატომ:** ოთხივე მოდულს იგივე `tags` JSON და `normalizeTags()` აქვს — ლოგიკა ერთია.
-- **გადაწყვეტა:** `VideoBulkController` → `RecordBulkController` `{domain}` პარამეტრით (`/visibility/{domain}`-ის ფორმა), `scope_tag`/`tags` იგივე ვალიდაციით, `/status` გვერდზე დომენის არჩევანი.
-- **Acceptance criteria:**
-  - [ ] წიგნზე `POST /bulk/book` ტეგს ამატებს/ხსნის და `bulk-preview` რიცხვს იძლევა; ვიდეოს ქცევა უცვლელია
-- **Estimate:** M
-- **დამოკიდებულება:** FEAT-18
-
-### [FEAT-23] ახალი მოდული: მანგა/კომიქსი
-- **ტიპი:** feature
-- **სად:** n/a (რეესტრები — `ModulesSeeder`, `StatusDomain`, `PublicDomain`, `PurgeService` 4 რუკა, `AuditRegistry`, `DashboardController::COUNTERS`, `StorageFolder`, `StorageMeter::files()/referencedPaths()`, `CustomFields`, `FieldCatalog`, `ModuleImages`, frontend `PAGE_MODULE_KEYS`/`MODULE_PAGES`/`dictionaries`/`PURGE_TARGET_MODES`, `ModuleIcon`, `cutStyle`, i18n — `RegistryConsistencyTest`-ის 17 შემოწმება გამორჩენას იჭერს)
-- **პრობლემა:** ანიმეს მოდული არსებობს, მისი წყვილი — მანგა/კომიქსი — არა; წყარო უფასოა და გასაღების გარეშე: **Jikan v4** (MyAnimeList-ის არაოფიციალური REST, `/manga?q=`, თავების/ტომების რაოდენობა, ჟანრი, ყდა) ან AniList GraphQL. კითხვის პროგრესი წიგნის `progress_page`-ის მოდელით (თავები).
-- **რატომ:** არსებული მომხმარებლის ლოგიკური მოთხოვნა (ანიმე → მანგა) და მზა რეცეპტი (წიგნის მოდულის კლონი + გარე წყარო).
-- **გადაწყვეტა:** `mangas` (`BelongsToUser`, `HasGallery`, `HasCustomFields`, `visibility`, `status_id` `StatusDomain`-ით ან enum `to_read/reading/read/dropped`), `manga_genres` (per-user), `manga_files`/`manga_notes`, `Services/Manga/JikanClient` (`SourceLog`, `blocked()`), `MATCH` `mal_id`-ით; §7.1-ის ჩექლისტი.
-- **Acceptance criteria:**
-  - [ ] `RegistryConsistencyTest` მწვანეა; ძებნა/დამატება Jikan-ით და ხელით მუშაობს; საჯარო პროფილზე ბარათი ჩანს
-- **Estimate:** L
-- **დამოკიდებულება:** none
-
-### [FEAT-24] ახალი მოდული: პოდკასტები
-- **ტიპი:** feature
-- **სად:** n/a (რეესტრები — FEAT-23-ის სია)
-- **პრობლემა:** სიმღერა/ვიდეო ბმულებზეა, პოდკასტი კი სერიაა (შოუ → ეპიზოდები) მოსმენის პროგრესით — არსებულ მოდულებში არ ჯდება. წყარო უფასოა: **iTunes Search API** (`?media=podcast&term=`, გასაღების გარეშე) → RSS feed-ი (ეპიზოდები, ხანგრძლივობა, აუდიო URL).
-- **რატომ:** მედია-კატალოგის ბუნებრივი შემავსებელი; RSS-ის კითხვა `SafeHttp`-ით (მომხმარებლის URL — SSRF-ის წესი) და `LinkMetadata`-ს პარსერის მოდელით.
-- **გადაწყვეტა:** `podcasts` + `podcast_episodes` (RSS-იდან, `guid` unique per podcast) + `episode_plays` (per-user პროგრესი წამებში), `PlayerStage`-ში `audio` ტიპი (`<audio>` — ვიდეოს `file` პლატფორმის ანალოგი), feed-ის განახლება `Schedule`-ით; აუდიო **არ ჩამოიწერება** (ბმულის წესი).
-- **Acceptance criteria:**
-  - [ ] შოუს დამატება iTunes-ით ან RSS URL-ით; ეპიზოდები სიაში, დაკვრა პლეერში, პროგრესი ინახება; `SafeHttp` პრივატულ URL-ს უარყოფს
-- **Estimate:** L
-- **დამოკიდებულება:** none
-
 ### [FEAT-25] ახალი მოდული: კურსები
 - **ტიპი:** feature
-- **სად:** n/a (რეესტრები — FEAT-23-ის სია)
+- **სად:** n/a (რეესტრები — `ModulesSeeder`, `StatusDomain`, `PublicDomain`, `PurgeService` 4 რუკა, `AuditRegistry`, `DashboardController::COUNTERS`, `StorageFolder`, `StorageMeter::files()/referencedPaths()`, `CustomFields`, `FieldCatalog`, `ModuleImages`, frontend `PAGE_MODULE_KEYS`/`MODULE_PAGES`/`dictionaries`/`PURGE_TARGET_MODES`, `ModuleIcon`, `cutStyle`, i18n — `RegistryConsistencyTest`-ის 17 შემოწმება გამორჩენას იჭერს)
 - **პრობლემა:** ონლაინ-კურსი (Udemy/Coursera/YouTube-პლეილისტი) დღეს ან „ვიდეოა", ან „ბუკმარკი" — არც პროგრესი აქვს გაკვეთილებით, არც სერტიფიკატის ფაილი. გარე უფასო API არ არსებობს (Udemy/Coursera-ს კატალოგი დახურულია) — მოდული **ხელითაა**, ბუკმარკის `LinkMetadata` პრობით სათაურისა და სურათისთვის.
 - **რატომ:** `note`/`bookmark`-ის მსგავსი „წყაროს გარეშე" მოდულის მზა რეცეპტი; პროგრესი წიგნის მოდელით.
 - **გადაწყვეტა:** `courses` (`url`, `platform` დომენიდან, `lessons_total`/`lessons_done`, `hours`, `status` enum `to_take/taking/done/dropped`, `certificate` ფაილი `course_files`-ში), per-user კატეგორიები, `MATCH` `url`-ით (ბუკმარკის წესი).
@@ -829,7 +793,7 @@
 
 ### [FEAT-26] ახალი მოდული: ადგილები
 - **ტიპი:** feature
-- **სად:** n/a (რეესტრები — FEAT-23-ის სია)
+- **სად:** n/a (რეესტრები — FEAT-25-ის სია)
 - **პრობლემა:** „სანახავი/ნანახი ადგილები" (რესტორანი, მუზეუმი, ქალაქი) კატალოგის იგივე ლოგიკაა (სტატუსი `todo/done`, რეიტინგი, ფოტოები, ჩანიშვნები), მაგრამ მოდულებში არ ჯდება. წყარო უფასოა: **OSM Nominatim** (გასაღების გარეშე, `User-Agent` სავალდებულოა — Wikimedia-ს იგივე წესი, 1 req/s ლიმიტი → ქეში).
 - **რატომ:** გალერეის მოდულს (ფოტოები მშობელზე) და `GalleryParent`-ის რუკას ბუნებრივი მშობელი ემატება; შენი ფოტოები `place_files`-ში, ვებძებნა (`WebSearchController::TARGETS`) ადგილზეც.
 - **გადაწყვეტა:** `places` (`name`, `lat`/`lng`, `address`, `country`, `osm_id`, `visited_at`, `status`, `rating`), Nominatim-ის კანდიდატები (§12-ის `candidates → lookup` ფორმა), რუკა — მოგვიანებით (Leaflet ~40 kB — bundle-ის წესით ცალკე ჩანქი, გადასაწყვეტია); `MATCH` `osm_id`-ით.
@@ -837,14 +801,3 @@
   - [ ] ადგილის ძებნა Nominatim-ით და ხელით; ფოტოები გალერეაში ჩანს; მატჩინგი `osm_id`-ით ითვლის
 - **Estimate:** L
 - **დამოკიდებულება:** none
-
-### [FEAT-27] ახალი მოდული: ღონისძიებები/კონცერტები
-- **ტიპი:** feature
-- **სად:** n/a (რეესტრები — FEAT-23-ის სია)
-- **პრობლემა:** კონცერტი/სპექტაკლი/ფესტივალი — თარიღი, ადგილი, შემსრულებელი, ბილეთის ფაილი, ფოტოები — დღეს ჩანაწერის მოდულში იკარგება. გარე წყარო: ხელით (ქართული ბაზარი — biletebi.ge/tkt.ge — API-ს გარეშე; სქრეიპინგი `GeorgianShops`-ის მოდელით მხოლოდ ცხადი მოთხოვნით), Bandsintown/Ticketmaster — გასაღებით, `/credentials`-ის სქემით.
-- **რატომ:** სიმღერის მოდულს (შემსრულებელი) და FEAT-10-ის კალენდარს („მალე") აკავშირებს; ფოტოები გალერეაში.
-- **გადაწყვეტა:** `events` (`title`, `starts_at`, `venue`, `city`, `performers` JSON, `url`, `status` `going/went/missed`, `rating`), `event_files` (ბილეთი, ფოტო), კალენდარში ჩართვა, `MATCH` — არ აქვს (პლეილისტის წესი: გლობალური იდენტობა არ არსებობს).
-- **Acceptance criteria:**
-  - [ ] ღონისძიება ბილეთის ფაილით ინახება, „მალე" ბლოკში ჩანს, გასულზე სტატუსი `went`-ზე იცვლება
-- **Estimate:** L
-- **დამოკიდებულება:** FEAT-10

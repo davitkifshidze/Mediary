@@ -15,11 +15,13 @@ use App\Models\GameGenre;
 use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\NoteEntry;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoType;
+use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -782,5 +784,125 @@ class PurgeTest extends TestCase
         );
 
         $this->assertCount(1, $scopeQueries, "სკოუპი ერთზე მეტჯერ დაითვალა:\n".$scopeQueries->implode("\n"));
+    }
+
+    /**
+     * BUG-16 — ბუკმარკზე `mode=tag` **მხოლოდ ტეგიანს** გეგმავს და შლის.
+     *
+     * ⚠️ ცოცხალი ხარვეზი იყო და არა თეორიული: `TARGET_MODES['bookmark']`-ს
+     * `tag` ეწერა (ე.ი. ვალიდაცია გადიოდა), `recordIds()`-ის ფილტრი კი
+     * ხელით ჩაწერილ `['video', 'song', 'book', 'note']`-ს უყურებდა — ე.ი.
+     * სკოუპი ჩუმად **ანგარიშის ყველა ბუკმარკად** იქცეოდა. `plan()` და
+     * `run()` ერთ query-ს იზიარებენ, ამიტომ გეგმაც იმავე (მთლიან) რიცხვს
+     * აჩვენებდა და ტიპიზებული `DELETE` ვერაფერს იცავდა.
+     */
+    public function test_bookmarks_by_tag(): void
+    {
+        $gone = Bookmark::create([
+            'user_id' => $this->admin->id,
+            'title' => 'ტეგიანი',
+            'url' => 'https://a.example/tagged',
+            'tags' => ['Docs'],
+        ]);
+        $keep = Bookmark::create([
+            'user_id' => $this->admin->id,
+            'title' => 'უტეგო',
+            'url' => 'https://a.example/plain',
+        ]);
+        $other = Bookmark::create([
+            'user_id' => $this->admin->id,
+            'title' => 'სხვა ტეგი',
+            'url' => 'https://a.example/other',
+            'tags' => ['Music'],
+        ]);
+
+        // ტეგი რეგისტრს არ ითვალისწინებს (`Bookmark::normalizeTags()` → `Video::tagKey()`)
+        $this->actingAs($this->admin->refresh())
+            ->postJson('/api/admin/purge/plan', [
+                'target' => 'bookmark',
+                'mode' => 'tag',
+                'tags' => ['DOCS'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('plan.records', 1)
+            ->assertJsonPath('plan.items.0.title', 'ტეგიანი');
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/admin/purge', [
+                'target' => 'bookmark',
+                'mode' => 'tag',
+                'tags' => ['DOCS'],
+                'confirm' => 'DELETE',
+            ])
+            ->assertOk()
+            ->assertJsonPath('result.records', 1);
+
+        $left = Bookmark::withoutGlobalScope('owner')->orderBy('id')->pluck('id')->all();
+        $this->assertSame([$keep->id, $other->id], $left);
+    }
+
+    /**
+     * ⚠️ **ერთი ტესტი ხუთივე სამიზნეზე და არა ხუთი ცალკე** (BUG-16): გატეხილი
+     * სწორედ სიის ორად ჩაწერა იყო, ე.ი. შემოწმებაც `TARGET_MODES`-იდან უნდა
+     * წაიკითხოს, ვის ეხება — თორემ მეექვსე დომენის დამატებისას ტესტიც ისევე
+     * დარჩებოდა უკან, როგორც ფილტრი დარჩა.
+     */
+    public function test_the_tag_scope_really_cuts_on_every_target_that_allows_it(): void
+    {
+        $targets = array_keys(array_filter(
+            PurgeService::TARGET_MODES,
+            fn (array $modes) => in_array('tag', $modes, true),
+        ));
+
+        $this->assertSame(['video', 'song', 'book', 'note', 'bookmark'], $targets);
+
+        $this->actingAs($this->admin->refresh());
+
+        foreach ($targets as $target) {
+            [$tagged, $plain] = $this->makeTaggedPair($target);
+
+            $plan = $this->postJson('/api/admin/purge/plan', [
+                'target' => $target,
+                'mode' => 'tag',
+                'tags' => ['ტეგი'],
+            ])->assertOk()->json('plan');
+
+            $this->assertSame(1, $plan['records'], "`{$target}`: ტეგის სკოუპი არ ჭრის");
+            $this->assertSame(
+                [$tagged->id],
+                array_column($plan['items'], 'id'),
+                "`{$target}`: სკოუპში უტეგო ჩანაწერიც მოხვდა",
+            );
+            $this->assertNotNull($plain->fresh(), "`{$target}`: უტეგო ჩანაწერი დაიკარგა");
+        }
+    }
+
+    /** ერთი ტეგიანი და ერთი უტეგო ჩანაწერი დომენზე — `tags` ხუთივეს JSON სვეტია */
+    private function makeTaggedPair(string $target): array
+    {
+        $user = $this->admin->id;
+
+        return match ($target) {
+            'video' => [
+                Video::create(['user_id' => $user, 'title' => 'ტეგიანი ვიდეო', 'url' => 'https://youtu.be/ccccccccccc', 'tags' => ['ტეგი']]),
+                Video::create(['user_id' => $user, 'title' => 'უტეგო ვიდეო', 'url' => 'https://youtu.be/ddddddddddd']),
+            ],
+            'song' => [
+                Song::create(['user_id' => $user, 'title' => 'ტეგიანი სიმღერა', 'url' => 'https://youtu.be/eeeeeeeeeee', 'tags' => ['ტეგი']]),
+                Song::create(['user_id' => $user, 'title' => 'უტეგო სიმღერა', 'url' => 'https://youtu.be/fffffffffff']),
+            ],
+            'book' => [
+                Book::create(['user_id' => $user, 'title_en' => 'Tagged', 'tags' => ['ტეგი']]),
+                Book::create(['user_id' => $user, 'title_en' => 'Plain']),
+            ],
+            'note' => [
+                NoteEntry::create(['user_id' => $user, 'title' => 'ტეგიანი ჩანაწერი', 'tags' => ['ტეგი']]),
+                NoteEntry::create(['user_id' => $user, 'title' => 'უტეგო ჩანაწერი']),
+            ],
+            default => [
+                Bookmark::create(['user_id' => $user, 'title' => 'ტეგიანი ბმული', 'url' => 'https://b.example/1', 'tags' => ['ტეგი']]),
+                Bookmark::create(['user_id' => $user, 'title' => 'უტეგო ბმული', 'url' => 'https://b.example/2']),
+            ],
+        };
     }
 }

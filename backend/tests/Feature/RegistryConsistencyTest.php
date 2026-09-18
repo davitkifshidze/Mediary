@@ -162,6 +162,42 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
+     * ⚠️ **`tag` სკოუპიან სამიზნეს `tags` სვეტი უნდა ჰქონდეს** (BUG-16).
+     *
+     * `recordIds()`-ის `match`-ში `'tag' => null` წერია, ე.ი. ტეგის სკოუპი
+     * ჯერ **მთელი ბიბლიოთეკაა** და ჭრა მერე, PHP-ში ხდება. ამიტომ აქ შეცდომა
+     * ცალმხრივია და საშიში: `TARGET_MODES`-ში `tag`-ის დამატება იმ დომენზე,
+     * რომელსაც `tags` არ აქვს, ჩუმად უპირობო წაშლას ნიშნავს. თვითონ სიების
+     * დაშორება უკვე შეუძლებელია (`PurgeService::supportsTag()` ერთადერთი
+     * წყაროა), დარჩენილი დაშვება კი სქემაა — და სწორედ ის მოწმდება.
+     */
+    public function test_every_tag_purge_target_actually_has_a_tags_column(): void
+    {
+        $targets = array_keys(array_filter(
+            PurgeService::TARGET_MODES,
+            fn (array $modes) => in_array('tag', $modes, true),
+        ));
+
+        $this->assertNotEmpty($targets);
+
+        foreach ($targets as $target) {
+            $this->assertTrue(
+                PurgeService::supportsTag($target),
+                "`{$target}`-ს `TARGET_MODES` `tag`-ს უშვებს, `supportsTag()` კი არა",
+            );
+
+            $model = CustomFields::model($target);
+            $this->assertNotNull($model, "`{$target}`-ის მოდელი `CustomFields::model()`-ში არ წერია");
+
+            $table = (new $model)->getTable();
+            $this->assertTrue(
+                Schema::hasColumn($table, 'tags'),
+                "`{$target}`-ს `/purge`-ში `tag` სკოუპი აქვს, `{$table}.tags` სვეტი კი არა",
+            );
+        }
+    }
+
+    /**
      * ⚠️ **ორი ნაგულისხმევი სია არ უნდა დაშორდეს** (§6.4).
      *
      * `StatusDomain::DOMAINS` ქმნის ლექსიკონს, `PurgeService::TARGET_STATUSES`

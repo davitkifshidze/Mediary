@@ -140,6 +140,21 @@ class PurgeService
     }
 
     /**
+     * ჭრის თუ არა ეს სამიზნე ტეგებით — **ერთადერთი წყარო `TARGET_MODES`-ია**.
+     *
+     * ⚠️ აქამდე პასუხი ორ ადგილას ეწერა (BUG-16): `TARGET_MODES`-ში ხუთ
+     * დომენს `tag` ჰქონდა, `recordIds()`-ის ფილტრში კი ხელით ჩაწერილი
+     * ოთხი იჯდა — ე.ი. ბუკმარკზე ვალიდაცია გადიოდა, ფილტრი კი არ
+     * მოქმედებდა და `plan()`/`run()` **ანგარიშის ყველა ბუკმარკს** ითვლიდა
+     * და შლიდა. `plan`-იც და `run`-იც ერთ query-ს იზიარებენ, ამიტომ
+     * გეგმაც „სწორ" (მთლიან) რიცხვს აჩვენებდა.
+     */
+    public static function supportsTag(string $target): bool
+    {
+        return in_array('tag', self::TARGET_MODES[$target] ?? [], true);
+    }
+
+    /**
      * სექციის ცხრილები — `[ფაილის მოდელი, ჩანიშვნის მოდელი, უცხო გასაღები]`.
      * უნივერსალური `attachments`/`notes` აღარ არსებობს (2026-09-03-ის წესი),
      * ე.ი. თითო მოდულს თავისი წყვილი აქვს; ვისაც არ უწერია — არც აქვს.
@@ -637,7 +652,13 @@ class PurgeService
         $ids = $query->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         // ტეგები JSON სვეტია — ფილტრი PHP-ში, `Video::tagKey()`-ით
-        if ($input['mode'] === 'tag' && in_array($type, ['video', 'song', 'book', 'note'], true)) {
+        if ($input['mode'] === 'tag') {
+            /* ⚠️ სამიზნე, რომელსაც ტეგი არ აქვს, აქ **გამონაკლისია და არა
+               ჩუმი „ყველა"** (BUG-16): ზემოთ `match`-ში `'tag' => null` წერია,
+               ე.ი. სკოუპი ჯერ მთელი ბიბლიოთეკაა და ჭრა სწორედ აქ ხდება —
+               გამოტოვება უპირობო წაშლას ნიშნავს. */
+            abort_unless(self::supportsTag($type), 422, 'mode_not_supported_for_target');
+
             $wanted = collect($input['tags'] ?? [])->map(fn ($t) => Video::tagKey($t))->filter()->all();
             $ids = $this->modelQuery($user, $type)
                 ->whereIn('id', $ids)
