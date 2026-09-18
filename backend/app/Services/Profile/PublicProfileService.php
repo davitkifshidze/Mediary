@@ -49,9 +49,24 @@ class PublicProfileService
      * არასაჯარო პროფილი `null`-ია, ე.ი. კონტროლერისთვის 404: „არსებობს, უბრალოდ
      * დამალულია" თვითონაც ინფორმაციაა.
      */
+    /**
+     * **ჩართულია თუ არა საჯარო პროფილების მექანიზმი** — `PUBLIC_PROFILES`.
+     *
+     * ⚠️ **გადამრთველს ერთი მკითხველი უნდა ჰყავდეს** (Tasks GAP-07). სანამ
+     * ის მხოლოდ `resolve()`-ში იყო, `MatchService::ranking()` მას გვერდს
+     * უვლიდა (ის username-ით არავის ეძებს), ე.ი. გამორთულ გადამრთველზეც
+     * `/people` ყველა საჯარო პროფილს და მისი ბიბლიოთეკის დომენურ ჭრილს
+     * აჩვენებდა — მაშინ, როცა docblock-ი „ერთი გადამრთველი მთელ მექანიზმს
+     * თიშავს"-ს ჰპირდებოდა.
+     */
+    public function enabled(): bool
+    {
+        return (bool) config('mediary.public_profiles');
+    }
+
     public function resolve(string $username): ?User
     {
-        if (! config('mediary.public_profiles')) {
+        if (! $this->enabled()) {
             return null;
         }
 

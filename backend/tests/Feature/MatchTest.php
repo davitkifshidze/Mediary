@@ -312,6 +312,41 @@ class MatchTest extends TestCase
         $this->assertSame(['bob'], collect($all->json('items'))->pluck('profile.username')->all());
     }
 
+    /**
+     * **`PUBLIC_PROFILES=false` მატჩინგსაც თიშავს** (Tasks GAP-07).
+     *
+     * ⚠️ `ranking()` username-ით არავის ეძებს, ე.ი. `resolve()`-ს არ იძახებს —
+     * სწორედ ამიტომ იყო ის ერთადერთი გზა, რომლითაც გადამრთველს გვერდი
+     * აევლო. `show()`/`items()` ისედაც `resolve()`-ზე გადიან, და ეს ტესტი
+     * მათაც იჭერს, რომ წესი მთელ მექანიზმზე ერთი იყოს.
+     *
+     * ⚠️ კატალოგი **ცარიელია და არა 404**: `/people` მოდულური გვერდი არაა,
+     * ე.ი. მისი გატეხვა არ გვინდა — გამორთულზე ის უბრალოდ ცარიელია.
+     */
+    public function test_the_public_profiles_switch_also_turns_matching_off(): void
+    {
+        $this->movie($this->alice, 100);
+        $this->movie($this->bob, 100);
+
+        // ჯერ ჩართულზე — დამთხვევა ნამდვილად არსებობს
+        $this->actingAs($this->alice)
+            ->getJson('/api/matches')
+            ->assertOk()
+            ->assertJsonPath('items.0.profile.username', 'bob');
+
+        config(['mediary.public_profiles' => false]);
+
+        $off = $this->actingAs($this->alice)->getJson('/api/matches')->assertOk();
+
+        $this->assertSame([], $off->json('items'));
+        $this->assertSame(0, $off->json('total'));
+        $this->assertFalse($off->json('truncated'));
+
+        // და წყვილური შედარებაც — 404, `resolve()`-ის გავლით
+        $this->actingAs($this->alice)->getJson('/api/matches/bob')->assertStatus(404);
+        $this->actingAs($this->alice)->getJson('/api/matches/bob/movie')->assertStatus(404);
+    }
+
     /** ⚠️ იგივე წესი, რაც წყვილურ შედარებას: ჩემი პროფილიც საჯარო უნდა იყოს */
     public function test_ranking_needs_my_profile_to_be_public(): void
     {
