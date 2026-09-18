@@ -70,8 +70,8 @@
 | DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ✅ შესრულებულია |
 | DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ✅ შესრულებულია |
 | DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ✅ შესრულებულია |
-| DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ⬜ |
-| DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S | ⬜ |
+| DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ✅ შესრულებულია |
+| DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S | ✅ შესრულებულია |
 | FEAT-01 | ტესტი: backend-ის ყველა მანქანური კოდი ⊆ `CODES` ⊆ ორივე ლოკალი | Backlog | feature | S | ⬜ |
 | FEAT-02 | `mediary:seed-demo` — ანონიმური საჩვენებელი მონაცემები კომიტებული dump-ის ნაცვლად | Backlog | feature | M | ⬜ |
 | FEAT-03 | პარტიის თითო ერთეულის შედეგი (`ok`/`skipped`/`failed` + მიზეზი) და მისი ჩვენება SPA-ში | Backlog | feature | M | ⬜ |
@@ -1276,24 +1276,35 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-10] `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — ორივე Mediary-ს აღწერს.
+  - ✅ Laravel-ის ლოგო-README და „React + TypeScript + Vite / This template provides a minimal setup…" გაქრა
+  - ✅ თითოეული ~30–40 სტრიქონია: რა არის, სად წაიკითხოს მეტი (`../README.md` აწყობაზე, `../CLAUDE.md` არქიტექტურაზე), ხშირი ბრძანებები და **რა სად ცხოვრობს** ცხრილი
+  - ⚠️ თითოეულს ერთი კონკრეტული გაფრთხილება აქვს იმაზე, რაც **ჩუმად ტყდება**: backend-ზე — ახალი მოდული რამდენიმე რეესტრში ერთდროულად უნდა ჩაიწეროს; frontend-ზე — `@/pages/...`-იდან იმპორტი საწყის bundle-ს ასუქებს და ახალი i18n-გასაღები ორივე ლოკალში უნდა იყოს
+  - ⚠️ **დუბლირება განზრახ არ დაიწერა**: README-ები არაფერს იმეორებენ `CLAUDE.md`-დან, მხოლოდ მიუთითებენ — ორი წყარო ერთ დღეს გაშორდებოდა
 - **ტიპი:** debt
 - **სად:** `backend/README.md:1`; `frontend/README.md:1-3`
 - **პრობლემა:** Laravel-ის ლოგო-README და „React + TypeScript + Vite / This template provides a minimal setup…" — Mediary-ს არსად არ ახსენებენ.
 - **რატომ:** ახალი კონტრიბუტორის პირველი ფაილია და შაბლონს აღწერს.
 - **გადაწყვეტა:** 10–15 სტრიქონი: „იხ. ../CLAUDE.md" + dev/test ბრძანებები; ან წაშლა.
 - **Acceptance criteria:**
-  - [ ] ორივე README Mediary-ს აღწერს ან წაშლილია
+  - [x] ორივე README Mediary-ს აღწერს
 - **Estimate:** S
 - **დამოკიდებულება:** GAP-05
 
 ### [DEBT-11] `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — backend 775/775.
+  - ✅ ახალი `AuditRegistry::NOT_LOGGED` — **ცხრა** მოდელი, თითოეული მიზეზით (და არა მხოლოდ ის ორი, რაც ტასკში ეწერა: სკანირებამ `ConversationNickname`, `MessageHide`, `MessageReaction`, `SerpSearch`, `TranslationUsage`, `NoteNotification` და `AuditLog`-იც აჩვენა)
+  - ⚠️ სამი სხვადასხვა მიზეზია და სიაშიც ასეა დაჯგუფებული: **უსასრულო ციკლი** (`AuditLog`) · **მანქანის წერილი ან ერთი დაწკაპუნება** (მიწოდების რიგი, მრიცხველები, რეაქცია/დამალვა/მეტსახელი — ლოგს დამარხავდნენ) · **ცხადად ლოგირდება კონტროლერიდან** (`UserCredential`, `DatabaseBackup`)
+  - ⚠️ ბოლო ორისთვის მიზეზი არსებითია: ავტომატური `new_values` `UserCredential`-ზე **დაშიფრულ გასაღებს** ჩაწერდა იმ ლოგში, რომელსაც ადმინი კითხულობს; `DatabaseBackup`-ზე კი აღდგენა რიგებს `DB::table()`-ით სვამს **სწორედ იმიტომ**, რომ observer-მა ცრუ „შეიქმნა" არ გამოიგონოს
+  - ✅ **ტესტი და არა მხოლოდ კომენტარი** (acceptance-ის „სასურველია"): `test_every_model_is_either_logged_or_excluded_on_purpose` კლასებს **დისკიდან** კითხულობს, ე.ი. ხვალინდელი მოდელი ავტომატურად მოხვდება შემოწმებაში. ამოწმებს აგრეთვე, რომ მოდელი ორივე სიაში ვერ იქნება და რომ ყოველ გამონაკლისს **მიზეზი უწერია** — სიაში ჩაწერა ახსნის გარეშე იგივე დავიწყებაა
+  - ✅ **მუტაცია:** `UserCredential` `NOT_LOGGED`-იდან მოეხსნა → ტესტი წითლდება და კლასს სახელდებით ასახელებს
 - **ტიპი:** debt
 - **სად:** `backend/app/Support/AuditRegistry.php:161-168`
 - **პრობლემა:** ორივე მოდელი ცხადად ლოგირდება (`CredentialController`, `DatabaseBackupController` → `AuditLogger`), მაგრამ map-ში არ არის და არც კომენტარი ამბობს რატომ (`castables`-ს განსხვავებით). `RegistryConsistencyTest` მოდულებს ამოწმებს, მოდელებს — არა.
 - **რატომ:** შემდეგი write-path ამ კონტროლერებში უხმოდ დაულოგავი დარჩება.
 - **გადაწყვეტა:** `Status::class`-ის სტილის კომენტარ-ბლოკი: ორივე კლასი, „ცხადად ლოგირდება", მიზეზი (საიდუმლო მასალა / restore-ის რიგი).
 - **Acceptance criteria:**
-  - [ ] კომენტარი წერია; სასურველია ტესტი, რომ ყოველი `Models/*` კლასი ან map-შია, ან ცხად გამონაკლისების სიაში
+  - [x] კომენტარი წერია **და** ტესტიც: ყოველი `Models/*` კლასი ან map-შია, ან ცხად გამონაკლისების სიაში
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

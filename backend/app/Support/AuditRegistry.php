@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Anime;
 use App\Models\AnimeTranslation;
 use App\Models\ApprovalRequest;
+use App\Models\AuditLog;
 use App\Models\BoardGame;
 use App\Models\BoardGameFile;
 use App\Models\BoardGameGenre;
@@ -19,6 +20,8 @@ use App\Models\CastMember;
 use App\Models\CastMemberTag;
 use App\Models\CastMemberTranslation;
 use App\Models\Conversation;
+use App\Models\ConversationNickname;
+use App\Models\DatabaseBackup;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -30,24 +33,30 @@ use App\Models\GameVideo;
 use App\Models\Genre;
 use App\Models\GenreTranslation;
 use App\Models\Message;
+use App\Models\MessageHide;
+use App\Models\MessageReaction;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\MovieTranslation;
 use App\Models\NoteCategory;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\NoteNotification;
 use App\Models\NoteReminder;
 use App\Models\Playlist;
 use App\Models\Role;
 use App\Models\Series;
 use App\Models\SeriesTranslation;
+use App\Models\SerpSearch;
 use App\Models\Song;
 use App\Models\SongFile;
 use App\Models\SongGenre;
 use App\Models\SongNote;
 use App\Models\Status;
+use App\Models\TranslationUsage;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Models\UserCredential;
 use App\Models\Video;
 use App\Models\VideoFile;
 use App\Models\VideoNote;
@@ -78,9 +87,9 @@ class AuditRegistry
      * ⚠️ **სექციური ცხრილებიც შედის** (`<module>_files`, `<module>_notes`):
      * ფაილის მიმაგრება ჩანაწერის ცვლილებაა და ლოგშიც ასე უნდა ჩანდეს.
      *
-     * ⚠️ **განზრახ გამოტოვებული:** `NoteNotification` (მიწოდების რიგი —
-     * მანქანა წერს, არა ადამიანი, და წუთში ერთხელ იცვლება) და თვითონ
-     * `AuditLog` (ლოგის ლოგირება უსასრულო ციკლია).
+     * ⚠️ **განზრახ გამოტოვებული მოდელები `NOT_LOGGED`-შია, თითოეული
+     * მიზეზით** (Tasks DEBT-11) — და ეს სია **ტესტითაა** მიბმული: ყოველი
+     * `app/Models/*.php` ან აქ უნდა იყოს, ან იქ.
      *
      * @var array<class-string<Model>, string>
      */
@@ -166,6 +175,45 @@ class AuditRegistry
         Conversation::class => 'chat',
         Message::class => 'chat',
         UserBlock::class => 'chat',
+    ];
+
+    /**
+     * **მოდელები, რომლებსაც `AuditObserver` განზრახ არ ებმება** (Tasks DEBT-11).
+     *
+     * ⚠️ **ეს სია დოკუმენტაცია არაა — ის ტესტითაა მიბმული.** ყოველი
+     * `app/Models/*.php` ან `MODELS`-ში უნდა იყოს, ან აქ; ე.ი. ხვალინდელი
+     * მოდელი აღარ დარჩება უხმოდ დაულოგავი და მისი გამოტოვება **გადაწყვეტილება**
+     * გახდება და არა დავიწყება. სამი მიზეზი და სამივე სხვადასხვაა:
+     *
+     *  · **უსასრულო ციკლი** — ლოგის ლოგირება;
+     *  · **მანქანის წერილი** — რიგები, რომლებსაც ადამიანი არ ქმნის (მიწოდების
+     *    რიგი, გარე გამოძახებების მრიცხველები) ან ერთი დაწკაპუნებაა (რეაქცია,
+     *    დამალვა, მეტსახელი): ისინი ლოგს დამარხავდნენ;
+     *  · **ცხადად ლოგირდება კონტროლერიდან** — `UserCredential`-სა და
+     *    `DatabaseBackup`-ს `AuditLogger` თვითონ იძახებს, რადგან ავტომატური
+     *    `new_values` **საიდუმლო მასალას** ჩაწერდა (დაშიფრული გასაღები) ან
+     *    ცრუ რიგებს დაბადებდა: აღდგენა `database_backups`-ს `DB::table()`-ით
+     *    ხელახლა სვამს სწორედ იმიტომ, რომ observer-მა ორი „შეიქმნა" არ
+     *    გამოიგონოს.
+     *
+     * @var array<class-string<Model>, string>
+     */
+    public const NOT_LOGGED = [
+        AuditLog::class => 'ლოგის ლოგირება უსასრულო ციკლია',
+
+        // მანქანის წერილი — ადამიანის ქმედება არაა
+        NoteNotification::class => 'მიწოდების რიგი; მანქანა წერს და წუთში ერთხელ იცვლება',
+        SerpSearch::class => 'გარე ძებნის მრიცხველი — თითო რიგი თითო გამოძახებაა',
+        TranslationUsage::class => 'Gemini-ს ხარჯის მრიცხველი — იგივე მიზეზი',
+
+        // ერთი დაწკაპუნება — ლოგს დამარხავდნენ
+        MessageReaction::class => 'ერთი დაწკაპუნება ბუშტზე',
+        MessageHide::class => 'ჩემთვის დამალვა; წაშლა კი ცხადად იწერება (§4.6)',
+        ConversationNickname::class => 'საუბრის მეტსახელი — ჩემი ხედის პარამეტრი',
+
+        // ცხადად ლოგირდება კონტროლერიდან
+        UserCredential::class => 'CredentialController წერს მხოლოდ ველთა სახელებს — ავტომატური `new_values` გასაღებს ჩაწერდა',
+        DatabaseBackup::class => 'DatabaseBackupController წერს; აღდგენა რიგებს `DB::table()`-ით სვამს, რომ ცრუ „შეიქმნა" არ გაჩნდეს',
     ];
 
     /** მოდულის რიგის გარეშე არსებული ჭრილები — ფილტრში მოდულების გვერდით ჩანს */

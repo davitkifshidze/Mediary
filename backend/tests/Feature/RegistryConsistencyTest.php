@@ -7,6 +7,7 @@ use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Module;
+use App\Models\Movie;
 use App\Models\NoteCategory;
 use App\Models\VideoType;
 use App\Services\Gallery\ModuleImages;
@@ -19,6 +20,7 @@ use App\Support\PublicDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use Database\Seeders\ModulesSeeder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -653,6 +655,53 @@ class RegistryConsistencyTest extends TestCase
         }
 
         return array_values(array_unique($names));
+    }
+
+    /**
+     * **ყოველი მოდელი ან ლოგირდება, ან ცხადად არ ლოგირდება** (Tasks DEBT-11).
+     *
+     * ⚠️ აქამდე `UserCredential` და `DatabaseBackup` რუკაში უბრალოდ **არ
+     * იყვნენ** და არსად ეწერა რატომ — მაშინ, როცა ორივე ცხადად ლოგირდება
+     * თავისი კონტროლერიდან. ე.ი. მკითხველისთვის „გამორჩა" და „გადაწყვეტილებაა"
+     * ერთნაირად გამოიყურებოდა, და ამ კონტროლერებში დამატებული მომდევნო
+     * ჩამწერი გზა **უხმოდ** დარჩებოდა დაულოგავი.
+     *
+     * ⚠️ ტესტი კლასებს **დისკიდან** კითხულობს და არა სიიდან: ხვალინდელი
+     * მოდელი ავტომატურად მოხვდება შემოწმებაში და მისი გამოტოვება ცხად
+     * არჩევანად იქცევა.
+     */
+    public function test_every_model_is_either_logged_or_excluded_on_purpose(): void
+    {
+        $models = [];
+
+        foreach (glob(app_path('Models/*.php')) as $file) {
+            $class = 'App\\Models\\'.basename($file, '.php');
+
+            if (class_exists($class) && is_subclass_of($class, Model::class)) {
+                $models[] = $class;
+            }
+        }
+
+        // ⚠️ ჯერ თვითონ სკანერი — ცარიელ სიაზე ტესტი ცრუდ გაივლიდა
+        $this->assertContains(Movie::class, $models, 'მოდელების სკანერი გაფუჭდა');
+
+        $known = array_merge(array_keys(AuditRegistry::MODELS), array_keys(AuditRegistry::NOT_LOGGED));
+        $missing = array_values(array_diff($models, $known));
+
+        $this->assertSame([], $missing, implode(PHP_EOL, [
+            'მოდელი არც `AuditRegistry::MODELS`-შია და არც `NOT_LOGGED`-ში.',
+            'შედეგი: მისი ცვლილებები ლოგში არ ჩანს და არსად ეწერება, რომ ეს განზრახია.',
+            'გამორჩენილი: '.implode(', ', $missing),
+        ]));
+
+        // ერთი მოდელი ორივე სიაში ვერ იქნება — ორი ურთიერთგამომრიცხავი განზრახვაა
+        $both = array_intersect(array_keys(AuditRegistry::MODELS), array_keys(AuditRegistry::NOT_LOGGED));
+        $this->assertSame([], array_values($both), 'მოდელი ერთდროულად ლოგირდება და არ ლოგირდება');
+
+        // ყოველ გამონაკლისს მიზეზი უნდა ჰქონდეს — სიაში ჩაწერა ახსნის გარეშე იგივე დავიწყებაა
+        foreach (AuditRegistry::NOT_LOGGED as $class => $reason) {
+            $this->assertNotSame('', trim($reason), "{$class}: გამონაკლისს მიზეზი არ უწერია");
+        }
     }
 
     /** @return list<string> */
