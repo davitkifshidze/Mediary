@@ -55,9 +55,18 @@ class AdminUserController extends Controller
             ->groupBy('user_id')
             ->pluck(DB::raw('max(last_activity)'), 'user_id');
 
+        /* ⚠️ **სია სრულ ინვენტარს არ ითვლის** (Tasks PERF-14). `storageUsage()`
+           `StorageMeter::files()`-ს იძახებს — ~30 query პლუს დისკის `size()`
+           ზომის გარეშე დარჩენილ რიგებზე —, და ის აქ **თითო მომხმარებელზე**
+           ეშვებოდა: 3 ანგარიშზე ~100 query, 30-ზე ~1000. PERF-01/PERF-04-მა
+           იმავე endpoint-ს N+1 მოხსნა, ეს კი დარჩა.
+           ⚠️ რიცხვები არ იკარგება: `UserResource` `usage()`-ზე ჩამოდის,
+           რომელიც `users.storage_used_bytes`/`storage_quota_bytes`-ს
+           კითხულობს (**query-ს არ აკეთებს**) — სწორედ ის `used`/`quota`, რასაც
+           სია ხატავს. სრული ინვენტარი (`files`/`bytes`/`modules`) `show()`-ზე
+           რჩება, სადაც ის ისედაც იკითხება და ერთ ანგარიშზეა. */
         foreach ($users as $user) {
             $user->favorites_count = $user->favorite_movies_count + $user->favorite_series_count;
-            $user->storage_usage = $this->storageUsage($user);
             $user->last_activity = ($ts = $activity->get($user->id))
                 ? Carbon::createFromTimestamp($ts)->toIso8601String()
                 : null;

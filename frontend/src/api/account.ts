@@ -49,10 +49,14 @@ export interface User {
   favorites_count?: number
   last_activity?: string | null
   /**
-   * 17.3 — დაქეშილი მრიცხველი; ადმინის ხედში დისკიდან გადათვლილიც
-   * (`files`/`bytes`), რომლის სხვაობა „გადათვლა სჭირდება"-ს ნიშნავს.
+   * 17.3 — დაქეშილი მრიცხველი (`used`/`quota`).
+   *
+   * ⚠️ **`files`/`bytes` მხოლოდ ერთი ანგარიშის გვერდზეა** (Tasks PERF-14):
+   * ისინი დისკიდან გადათვლილი ინვენტარია და თითო მომხმარებელზე ~30 query
+   * ღირდა — სია კი მათ არც ხატავდა. `GET /admin/users/{id}`-ის პასუხის
+   * ზედა დონის `storage` ისევ ატარებს მათ (`AdminUserDetail`).
    */
-  storage?: StorageUsage & { files?: number; bytes?: number }
+  storage?: StorageUsage
 }
 
 /* ---------- საცავი (Tasks 17.1/17.3) ---------- */

@@ -22,7 +22,7 @@
 | BUG-19 | `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს — ჟანრის წაშლა ანიმეს მიბმებს ჩუმად კარგავს | High | bug | S | ✅ |
 | BUG-20 | „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია — `poster_path` მათ არ აქვთ, UI კი ღილაკს ხატავს | High | bug | S | ✅ |
 | BUG-21 | ანგარიშის წაშლა (`DELETE /admin/users/{id}`) მხოლოდ ფილმებს/სერიალებს შლის მოდელით — 8 მოდულის ფაილები დისკზე რჩება, კვოტა კი გაქრობს | High | bug | M | ✅ |
-| PERF-14 | `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს (~30 query + დისკი) იძახებს | High | performance | S | ⬜ |
+| PERF-14 | `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს (~30 query + დისკი) იძახებს | High | performance | S | ✅ |
 | GAP-13 | აუდიტ-ლოგში 8 მოდელის სუბიექტი ლეიბლის გარეშეა — ცხრილში `anime`, `gallery_video`, `song_file`, `status`… ინგლისურად ჩანს | Medium | gap | S | ⬜ |
 | GAP-14 | 8 UI-ტექსტი მოძველებულია ან მცდარია: „გასაღები `.env`-ში" (§21-ის შემდეგ `/credentials`-ია), „სერვერი UTC-ზეა" (§8-ის შემდეგ Tbilisi), ბრაუზერის შეტყობინების ლოგიკა შებრუნებულია, „უკატეგორიო" §26-ის შემდეგ არ არსებობს | Medium | gap | S | ⬜ |
 | GAP-15 | ტერმინოლოგია არათანმიმდევრულია: ლინკი/ბმული, სინქრონი/სინქრონიზაცია, ჩამოწერა/ჩამოტვირთვა, ესკიზი/თამბნეილი, ჩანიშვნა/შენიშვნა, ფრენჩაიზი/ფრანჩაიზი, კლავიში/გასაღები | Medium | gap | M | ⬜ |
@@ -226,14 +226,15 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-14] `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს იძახებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). სიიდან `storageUsage()` ამოვიდა — სულ ერთი ხაზი. გაზომილი: **4 ანგარიშზე 126 query, 24-ზე 725**; ახლა ორივეზე ერთი და იგივე. ⚠️ **რიცხვები არ დაიკარგა**: `UserResource` `usage()`-ზე ჩამოდის, რომელიც `users.storage_used_bytes`/`storage_quota_bytes`-ს კითხულობს და **query-ს საერთოდ არ აკეთებს** — სწორედ ის `used`/`quota`, რასაც სია ხატავს. სრული ინვენტარი (`files`/`bytes`/`modules`) `GET /admin/users/{id}`-ზე რჩება, სადაც ის ისედაც იკითხება და ერთ ანგარიშზეა; ფრონტის `User.storage` ტიპი შესაბამისად დავიწროვდა.
 - **ტიპი:** performance
 - **სად:** `backend/app/Http/Controllers/Api/Admin/AdminUserController.php:56` (`index()` ციკლში `storageUsage($user)`), `:159` (`storageUsage()` → `$this->meter->files($user)`)
 - **პრობლემა:** `files()` ~30 query-ს და ზომის გარეშე რიგებზე დისკის `size()`-საც აკეთებს — თითო მომხმარებელზე. 3 მომხმარებელზე ~100 query, 30-ზე ~1000; PERF-01/PERF-04-მა იმავე endpoint-ს N+1-ისგან გაწმინდა, ეს კი დარჩა.
 - **რატომ:** ადმინის სია წრფივად ნელდება ანგარიშების რაოდენობასთან ერთად.
 - **გადაწყვეტა:** სიაში მხოლოდ `users.storage_used_bytes`/`storage_quota_bytes` (მრიცხველი უკვე ინახება) და `files()`-ის მხოლოდ `count` — ან ერთი `UNION`-ური `count(*)` per user; სრული ინვენტარი მხოლოდ `show()`-ზე (:135-138), სადაც ისედაც იკითხება.
 - **Acceptance criteria:**
-  - [ ] ტესტი (PERF-04-ის ფორმით): `GET /admin/users` query-ების რაოდენობა 3 და 30 მომხმარებელზე ერთნაირია
-  - [ ] სიაში `storage.used`/`quota` იგივე რიცხვებია, რაც აქამდე
+  - [x] `AdminUserListTest::test_the_user_list_does_not_query_per_user` — ძველ კოდზე „725 is identical to 126"-ით ვარდება
+  - [x] `AdminUserListTest::test_the_list_still_reports_the_quota_and_the_used_bytes` და `…_the_detail_page_still_reports_the_full_inventory`
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

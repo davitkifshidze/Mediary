@@ -328,11 +328,13 @@ class OwnershipTest extends TestCase
         $this->assertSame(['movie', 'series'], $row['modules']);
         $this->assertSame([], $row['hidden_modules']);
         $this->assertArrayHasKey('last_activity', $row);
-        // 17.1 — ადმინის ხედში ფაილების ჯამი + ლიმიტი და დაქეშილი მრიცხველი
-        $this->assertSame(0, $row['storage']['files']);
-        $this->assertSame(0, $row['storage']['bytes']);
+        /* 17.1 — ადმინის ხედში ლიმიტი და დაქეშილი მრიცხველი.
+           ⚠️ **`files`/`bytes` სიაში აღარ არის** (Tasks PERF-14): სრული
+           ინვენტარი თითო მომხმარებელზე ~30 query-ს აკეთებდა, სია კი მას
+           არც ხატავდა. ის `GET /admin/users/{id}`-ზე რჩება. */
         $this->assertSame(0, $row['storage']['used']);
         $this->assertSame(1073741824, $row['storage']['quota']);
+        $this->assertArrayNotHasKey('files', $row['storage']);
     }
 
     /** L3 — „ვის აქვს ჩართული": თვითონ გამორთულიც სიაშია, ოღონდ მონიშნული */
