@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -126,6 +126,35 @@ async function flush() {
 function button(scope: ParentNode, text: string) {
   return [...scope.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(text))
 }
+
+/* ============================================================
+   **მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ** (Tasks DEBT-12).
+
+   ⚠️ გაზომილი: ფაილის ცალკე გაშვებაზე **პირველი** ტესტი 3578 ms-ია,
+   დანარჩენი ექვსი 4–72 ms. ე.ი. ეს ხარჯი ტესტის კი არა, ერთჯერადი
+   იმპორტისა და პირველი რენდერისაა — `NoteReminders` `TimePicker`-ს
+   (react-aria + `@internationalized/date`) და `DatePicker`-ს
+   (react-day-picker) იწევს. სრულ `npm test`-ში 19 jsdom გარემო
+   პარალელურად იქმნება (Vitest-ის საკუთარი ანგარიშით დროის 66%), ეს
+   3.6 წამი 5-ს სცდება და **პირველი ტესტი ტაიმაუტზე ცვივა**.
+
+   ⚠️ **და დანარჩენი ექვსიც მას მიჰყვება, რაც ცალკე ბაგად გამოიყურება:**
+   ტაიმაუტი `act()`-ის შიგნით ხვდება, React-ის act-რიგი ჩარჩენილი რჩება
+   და მომდევნო `render()`-ები ცარიელ კონტეინერს აბრუნებენ —
+   „expected '' to contain …". ე.ი. CI-ში ერთი ნელი მანქანა შვიდ წითელ
+   ტესტს ხატავს ლოგიკის ერთი ცვლილების გარეშე, და ნამდვილი რეგრესია ამ
+   ხმაურში იკარგება.
+
+   ⚠️ **ტესტების სემანტიკა უცვლელია** — აქ არც ერთი მტკიცება არ იცვლება;
+   ერთჯერადი ფასი მხოლოდ ჰუკში გადადის, სადაც მას საკუთარი, ცხადი ვადა
+   აქვს. `testTimeout` ქვემოთ სარეზერვოა ნელი CI-მანქანისთვის: გათბობის
+   შემდეგაც პირველი **რენდერი** კონტენციაზე შეიძლება გაიწელოს.
+   ============================================================ */
+beforeAll(async () => {
+  await Promise.all([import('@/components/NoteReminders'), import('@/components/NoteRemindersDialog')])
+}, 60_000)
+
+vi.setConfig({ testTimeout: 20_000 })
 
 describe('NoteReminders', () => {
   it('რიგზე დაჭერა რედაქტირებას ხსნის და შენახვა **არსებულს** ანახლებს', async () => {
