@@ -801,6 +801,72 @@ class StorageManagementTest extends TestCase
         $this->assertTrue($log->contains(fn (string $q) => str_contains($q, 'video_files')));
     }
 
+    /* ================= BUG-13 ================= */
+
+    /**
+     * **მორგებული ველის ფაილის წაშლა ან მთლიანად ხდება, ან საერთოდ არა**
+     * (Tasks BUG-13).
+     *
+     * ⚠️ ძველად სამი ცალკე გვერდითი ეფექტი იყო და **ფაილი პირველი იშლებოდა**:
+     * `deleteUpload()` → `addFor(-size)` → `DELETE`. შუაში ჩავარდნაზე ფაილი
+     * გამქრალია, კვოტა ჩამოკლებული, რიგი კი კვლავ `value_path`/`value_size`-ს
+     * აცხადებს — ე.ი. მომდევნო `recalculate()` არარსებული ფაილის ბაიტებს
+     * **ხელახლა ამატებს** და მრიცხველი სამუდამოდ იბერება.
+     *
+     * ⚠️ **ჩავარდნა `addFor()`-ით ინჟექტირდება და ეს არ არის ხელოვნური**: ის
+     * ტრანზაქციის შიგნით და `DELETE`-ის **შემდეგ** დგას, ე.ი. ზუსტად იმ
+     * მდგომარეობას ქმნის, რომელსაც ტრანზაქცია უნდა დააბრუნოს. სამივე
+     * მტკიცება ერთად ამბობს, რომ არაფერი დარჩა ნახევრად გაკეთებული.
+     *
+     * ⚠️ `fail()` გამონაკლისის გარეშე **სავალდებულოა**: `deleteOwnFile()`
+     * უცნობ ბილიკზე უბრალოდ `false`-ს აბრუნებს, ე.ი. ბილიკის შეცდომაზე
+     * სამივე მტკიცება უაზროდ გაივლიდა.
+     */
+    public function test_a_failed_custom_field_delete_leaves_the_file_and_the_counter(): void
+    {
+        Storage::fake('public');
+
+        $video = Video::create([
+            'user_id' => $this->user->id, 'title' => 'v', 'url' => 'https://youtu.be/dQw4w9WgXcQ',
+        ]);
+        $this->putFile('videos/fields/ticket.pdf', 64);
+        DB::table('video_field_values')->insert([
+            'user_id' => $this->user->id, 'record_id' => $video->id, 'field_key' => 'ticket',
+            'sort_order' => 0, 'value_path' => 'videos/fields/ticket.pdf', 'value_size' => 64,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        app(StorageMeter::class)->recalculate($this->user);
+        $before = (int) $this->user->refresh()->storage_used_bytes;
+        $this->assertSame(64, $before);
+
+        $meter = $this->getMockBuilder(StorageMeter::class)->onlyMethods(['addFor'])->getMock();
+        $meter->method('addFor')->willThrowException(new \RuntimeException('boom'));
+
+        try {
+            $meter->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf');
+            $this->fail('ჩავარდნა ვერ მოხდა — ე.ი. წაშლის ბრანჩი საერთოდ არ გაშვებულა');
+        } catch (\RuntimeException) {
+            // მოსალოდნელია
+        }
+
+        $this->assertTrue(
+            Storage::disk('public')->exists('videos/fields/ticket.pdf'),
+            'ფაილი commit-ამდე წაიშალა',
+        );
+        $this->assertNotNull(
+            DB::table('video_field_values')->where('field_key', 'ticket')->first(),
+            'რიგის წაშლა არ დაბრუნებულა',
+        );
+        $this->assertSame($before, (int) $this->user->refresh()->storage_used_bytes);
+
+        // და წარმატებულ გზაზე სამივე მართლა ქრება — თორემ ზემოთა სამი უაზროა
+        $this->assertTrue(app(StorageMeter::class)->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf'));
+        $this->assertFalse(Storage::disk('public')->exists('videos/fields/ticket.pdf'));
+        $this->assertNull(DB::table('video_field_values')->where('field_key', 'ticket')->first());
+        $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
+    }
+
     /* ================= DEBT-04: `mediary:storage-recalc` ================= */
 
     /**

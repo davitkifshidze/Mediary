@@ -718,9 +718,25 @@ class StorageMeter
                 return false;
             }
 
+            /* ⚠️ **რიგი და მრიცხველი ერთ ტრანზაქციაში, ფაილი — commit-ის
+               შემდეგ** (Tasks BUG-13; ზუსტად ის რიგი, რაც `AlbumVault`-ს
+               აქვს BUG-03/BUG-04-ის შემდეგ).
+
+               ძველად სამივე ცალკე გვერდითი ეფექტი იყო და **ფაილი პირველი
+               იშლებოდა**: `DELETE`-ის ჩავარდნაზე ფაილი გამქრალია, კვოტა
+               ჩამოკლებული, რიგი კი კვლავ `value_path`/`value_size`-ს
+               აცხადებს — ე.ი. მომდევნო `recalculate()` არარსებული ფაილის
+               ბაიტებს **ხელახლა ამატებს** და მრიცხველი სამუდამოდ იბერება.
+
+               ⚠️ საპირისპირო მიმდევრობა უვნებელია: commit-ის შემდეგ
+               დისკის წაშლის ჩავარდნა მხოლოდ ობოლ ფაილს ტოვებს, რომელსაც
+               ადმინის ობოლების სკანერი იბრუნებს — ბაზა კი სწორია. */
+            DB::transaction(function () use ($table, $ownerId, $user, $row) {
+                DB::table($table)->where('id', $ownerId)->delete();
+                $this->addFor((int) $user->getKey(), -(int) $row->value_size);
+            });
+
             $this->deleteUpload(null, $row->value_path);
-            $this->addFor((int) $user->getKey(), -(int) $row->value_size);
-            DB::table($table)->where('id', $ownerId)->delete();
 
             return true;
         }
