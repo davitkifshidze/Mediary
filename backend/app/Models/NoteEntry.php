@@ -53,7 +53,13 @@ class NoteEntry extends Model
     protected static function booted(): void
     {
         static::deleting(function (NoteEntry $entry) {
-            $entry->files()->get()->each->delete();
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+               `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
+               მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
+               და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
+               სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
+               თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
+            $entry->files()->withoutGlobalScope('owner')->get()->each->delete();
         });
     }
 

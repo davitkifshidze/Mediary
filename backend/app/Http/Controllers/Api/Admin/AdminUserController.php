@@ -10,6 +10,7 @@ use App\Models\Module;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
+use App\Services\Users\AccountEraser;
 use App\Support\PublicDomain;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -24,7 +25,10 @@ use Illuminate\Validation\Rule;
  */
 class AdminUserController extends Controller
 {
-    public function __construct(private StorageMeter $meter) {}
+    public function __construct(
+        private StorageMeter $meter,
+        private AccountEraser $eraser,
+    ) {}
 
     /**
      * L4: სია იმავე ინფოს იძლევა, რასაც შიდა გვერდი — შიგთავსის სტატისტიკა,
@@ -284,22 +288,12 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'last_super_admin'], 422);
         }
 
-        $this->meter->deleteUpload($user->id, $user->avatar_path);
-
-        // movies/series — cascadeOnDelete (მათი genreables/castables პივოტები
-        // Movie::booted()-ს არ გაივლის, ამიტომ ხელით ვასუფთავებთ)
-        foreach ($user->movies()->withoutGlobalScope('owner')->cursor() as $movie) {
-            $movie->delete();
-        }
-        foreach ($user->series()->withoutGlobalScope('owner')->cursor() as $series) {
-            $series->delete();
-        }
-        // ვიდეოს thumbnail-ები დისკზე რჩებოდა (რიგს cascade შლის)
-        foreach ($user->videos()->withoutGlobalScope('owner')->cursor() as $video) {
-            $video->deleteThumbnail();
-        }
-
-        $user->delete();
+        /* ⚠️ **ყველა მოდული და არა სამი** (Tasks BUG-21). აქ ადრე მხოლოდ
+           ფილმი/სერიალი იშლებოდა მოდელით (პლუს ვიდეოს ესკიზი), დანარჩენი
+           რვა მოდულის ფაილები კი დისკზე ობლად რჩებოდა — SQL-კასკადი
+           მოდელის ივენთს არ ისვრის. ლოგიკა `AccountEraser`-შია, რომ
+           „წაშალე ყველაფერი" ორ ადგილას არ დაიწეროს. */
+        $this->eraser->erase($user);
 
         return response()->noContent();
     }

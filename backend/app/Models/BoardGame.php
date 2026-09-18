@@ -56,7 +56,13 @@ class BoardGame extends Model
     {
         static::deleting(function (BoardGame $game) {
             $game->deleteImage();
-            $game->files()->get()->each->delete();
+            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
+               `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
+               მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
+               და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
+               სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
+               თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
+            $game->files()->withoutGlobalScope('owner')->get()->each->delete();
         });
     }
 

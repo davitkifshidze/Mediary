@@ -20,6 +20,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
+use App\Services\Chat\ChatService;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use Database\Seeders\ModulesSeeder;
@@ -1002,5 +1003,113 @@ class StorageManagementTest extends TestCase
                 );
             }
         }
+    }
+
+    /**
+     * **ანგარიშის წაშლა დისკზე არაფერს ტოვებს** (Tasks BUG-21).
+     *
+     * ⚠️ აქამდე `destroy()` მხოლოდ ფილმებსა და სერიალებს შლიდა მოდელით —
+     * დანარჩენი რვა მოდულის, ჩატის, ბაზის ასლისა და custom-field-ის ფაილები
+     * დისკზე ობლად რჩებოდა, კვოტის მრიცხველი კი ანგარიშთან ერთად ქრებოდა,
+     * ე.ი. ადგილი სამუდამოდ იკარგებოდა.
+     *
+     * ⚠️ ტესტი **ინვენტარს** იყენებს და არა ხელით ჩაწერილ სიას: ხვალინდელი
+     * მოდული `inventory()`-ში დაემატება და ავტომატურად შემოწმდება.
+     */
+    public function test_deleting_an_account_leaves_no_file_behind(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $user = $this->inventory();
+        $this->fillDisk($user);
+
+        $paths = app(StorageMeter::class)->files($user)->pluck('path')->all();
+        $this->assertGreaterThanOrEqual(15, count($paths));
+
+        $admin = $this->makeUser('root', []);
+        $admin->assignRole('super_admin')->save();
+
+        $this->actingAs($admin->refresh())
+            ->deleteJson("/api/admin/users/{$user->id}")
+            ->assertNoContent();
+
+        foreach ($paths as $path) {
+            Storage::disk(StorageFolder::diskFor($path))->assertMissing($path);
+        }
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+    }
+
+    /**
+     * ⚠️ **სხვისი ფაილი ხელუხლებელია.** წაშლა `StorageMeter::files($user)`-ზე
+     * დგას, ე.ი. სკოუპის ერთი შეცდომა მეზობელი ანგარიშის ბიბლიოთეკას
+     * წაშლიდა — ზუსტად ის, რასაც ჩუმად ვერავინ შეამჩნევდა.
+     */
+    public function test_deleting_an_account_keeps_another_users_files(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $user = $this->inventory();
+        $this->fillDisk($user);
+
+        $mine = Movie::create([
+            'user_id' => $this->other->id,
+            'poster_path' => 'movies/posters/other.jpg',
+            'poster_source' => 'upload',
+        ]);
+        Storage::disk('public')->put($mine->poster_path, 'keep');
+
+        $admin = $this->makeUser('root', []);
+        $admin->assignRole('super_admin')->save();
+
+        $this->actingAs($admin->refresh())
+            ->deleteJson("/api/admin/users/{$user->id}")
+            ->assertNoContent();
+
+        Storage::disk('public')->assertExists('movies/posters/other.jpg');
+        $this->assertDatabaseHas('movies', ['id' => $mine->id]);
+    }
+
+    /**
+     * **მეორე მონაწილეს მოჩვენება საუბარი არ რჩება** (Tasks BUG-21).
+     *
+     * ⚠️ საუბარი და წერილები **განზრახ არ იშლება** — ისინი მეორე მხარის
+     * ისტორიაა; მხოლოდ სია აღარ ხატავს მას, რადგან თანამოსაუბრე აღარ
+     * არსებობს და სათაურიც არ იქნებოდა.
+     */
+    public function test_a_deleted_account_leaves_no_ghost_conversation(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        // ⚠️ ჩატი ორ **საჯარო** პროფილს შორისაა (§16.3-ის კარიბჭე)
+        $this->user->forceFill(['profile_visibility' => 'public'])->save();
+        $this->other->forceFill(['profile_visibility' => 'public'])->save();
+
+        $conversation = app(ChatService::class)
+            ->between($this->user->refresh(), $this->other->refresh());
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'user_id' => $this->other->id,
+            'type' => 'text',
+            'body' => 'hi',
+        ]);
+
+        $admin = $this->makeUser('root', []);
+        $admin->assignRole('super_admin')->save();
+
+        $this->actingAs($admin->refresh())
+            ->deleteJson("/api/admin/users/{$this->user->id}")
+            ->assertNoContent();
+
+        $this->actingAs($this->other->refresh())
+            ->getJson('/api/chat')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        // ⚠️ რიგი კი რჩება — მეორე მხარის წერილი მისი ისტორიაა
+        $this->assertDatabaseHas('conversations', ['id' => $conversation->id]);
     }
 }

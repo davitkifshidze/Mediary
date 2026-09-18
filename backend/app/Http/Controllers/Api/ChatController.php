@@ -62,6 +62,13 @@ class ChatController extends Controller
         $me = $request->user();
 
         $conversations = Conversation::whereHas('participants', fn ($q) => $q->whereKey($me->id))
+            /* ⚠️ **მოჩვენება საუბარი არ იხატება** (Tasks BUG-21): თანამოსაუბრის
+               ანგარიშის წაშლისას `conversation_user` კასკადით ქრება, საუბარი კი
+               რჩება — და `otherThan()` `null`-ს აბრუნებდა, ე.ი. სიაში
+               უსახელო, ვერგახსნადი რიგი ჩნდებოდა. ⚠️ **თვითონ საუბარი და
+               მეორე მხარის წერილები განზრახ რჩება**: ისინი მისი ისტორიაა და
+               სხვისი ანგარიშის წაშლის გამო არ უნდა გაქრეს. */
+            ->whereHas('participants', fn ($q) => $q->whereKeyNot($me->id))
             // ⚠️ ბოლო წერილიც **ჩემი ხედიდან** უნდა იყოს (§4.6) — თორემ
             // სიაში ისევ ის იწერებოდა, რაც ახლახან წავშალე
             ->with(['participants', 'messages' => fn ($q) => $q->visibleTo($me->id)->latest('id')->limit(1)])
