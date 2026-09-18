@@ -197,11 +197,26 @@ export function errorMessage(e: unknown, fallback: string = i18n.t('toast.error'
   const data = e.response?.data as
     | { message?: string; errors?: Record<string, string[]>; [k: string]: unknown }
     | undefined
+  /* ⚠️ **ჯერ მანქანური კოდი, მერე ვალიდაციის ტექსტი** (Tasks BUG-14).
+     ადრე `first`-ს ჰქონდა უპირატესობა, ე.ი. როცა პასუხს **ორივე** აქვს —
+     `errors` ჩანთაც და მანქანური `message`-იც (`ValidationException`-ის
+     ქვეკლასები, მაგ. კვოტის 413 ველის შეცდომასთან ერთად) — თარგმნადი კოდი
+     იკარგებოდა და მომხმარებელი ლოკალიზებული ტექსტის ნაცვლად ვალიდატორის
+     **ინგლისურ წინადადებას** იღებდა.
+
+     ⚠️ ჩვეულებრივ ვალიდაციას ეს არ ეხება: Laravel-ის `ValidationException`
+     `message`-ში **პირველივე შეცდომის ტექსტს** წერს, ე.ი. ის `CODES`-ში
+     არ არის და ქვემოთა ჯაჭვი ისევ `first`-ს აბრუნებს. */
+  const code =
+    typeof data?.message === 'string' && (CODES as readonly string[]).includes(data.message)
+      ? data.message
+      : undefined
+
   const first = data?.errors ? Object.values(data.errors)[0]?.[0] : undefined
-  const message = first ?? data?.message ?? e.message ?? fallback
+  const message = code ?? first ?? data?.message ?? e.message ?? fallback
 
   // მანქანური კოდი → თარგმანი (17.3-ის კვოტის შეტყობინება ცხადი უნდა იყოს)
-  if (!(CODES as readonly string[]).includes(message)) return message
+  if (!code) return message
 
   // ბაიტების ველები წაკითხად ფორმაში — თორემ „დარჩა 8388608" წერია
   const bytes = ['needed', 'remaining', 'quota'] as const

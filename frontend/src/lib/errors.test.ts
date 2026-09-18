@@ -114,3 +114,58 @@ describe('errorMessage — GAP-02', () => {
     expect(errorMessage(apiError(419, { message: 'csrf_token_mismatch' }))).toBe(en.errors.csrf_token_mismatch)
   })
 })
+
+/* ============================================================
+   კოდი და ვალიდაციის ჩანთა ერთ პასუხში (Tasks BUG-14).
+   ============================================================ */
+
+describe('errorMessage — BUG-14', () => {
+  /* ⚠️ `ValidationException`-ის ქვეკლასები **ორივეს** აგზავნიან: მანქანურ
+     `message`-ს და `errors` ჩანთას. `first`-ს რომ უპირატესობა ჰქონდეს,
+     მომხმარებელი ლოკალიზებული ტექსტის ნაცვლად ვალიდატორის ინგლისურ
+     წინადადებას მიიღებდა. */
+  it('prefers the machine code over the validation text', async () => {
+    await i18n.changeLanguage('ka')
+
+    const text = errorMessage(
+      apiError(422, { message: 'storage_quota_exceeded', errors: { file: ['The file field is required.'] } }),
+    )
+
+    expect(text).toBe(ka.errors.storage_quota_exceeded)
+    expect(text).not.toContain('The file field')
+  })
+
+  /* ⚠️ კოდის პარამეტრებიც უნდა გატარდეს — თორემ ტექსტი „{{quota}}"-ით დაიხატება */
+  it('still fills the code parameters when an errors bag is present', async () => {
+    await i18n.changeLanguage('en')
+
+    const text = errorMessage(
+      apiError(413, {
+        message: 'module_quota_exceeded',
+        needed: 2048,
+        remaining: 512,
+        quota: 1024,
+        errors: { file: ['The file is too large.'] },
+      }),
+    )
+
+    expect(text).not.toContain('{{')
+    expect(text).not.toContain('The file is too large')
+  })
+
+  /* ⚠️ ჩვეულებრივი ვალიდაცია **არ შეცვლილა**: Laravel `message`-ში პირველივე
+     შეცდომის ტექსტს წერს, ე.ი. ის `CODES`-ში არაა და პასუხი ისევ ველის
+     შეცდომაა — უამისოდ ეს გასწორება ყველა ფორმას გაუფუჭებდა შეტყობინებას. */
+  it('leaves an ordinary validation error alone', async () => {
+    await i18n.changeLanguage('en')
+
+    const text = errorMessage(
+      apiError(422, {
+        message: 'The url field is required.',
+        errors: { url: ['The url field is required.'], title: ['The title field is required.'] },
+      }),
+    )
+
+    expect(text).toBe('The url field is required.')
+  })
+})
