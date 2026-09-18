@@ -172,15 +172,19 @@ class GalleryAlbumController extends Controller
     {
         abort_unless(AlbumLock::hasSession(), 409, 'session_required');
 
+        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე** (Tasks FEAT-04, BUG-02-ის იგივე
+           რიგი): შემოწმების შემდეგ დაბრუნებული 423 ორაკულს ადგილზე
+           დატოვებდა — უბრალოდ სხვა კოდით. */
+        abort_if($galleryAlbum->unlockBlocked(), 423, 'album_temporarily_locked');
+
         $data = $request->validate([
             'password' => ['required', 'string', 'max:100'],
         ]);
 
-        abort_unless(
-            $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash),
-            422,
-            'album_password_wrong',
-        );
+        $ok = $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash);
+        $galleryAlbum->registerUnlockAttempt($ok);
+
+        abort_unless($ok, 422, 'album_password_wrong');
 
         AlbumLock::unlock($galleryAlbum);
 
@@ -314,6 +318,11 @@ class GalleryAlbumController extends Controller
             // „ამ სესიაში ღიაა". სწორედ ეს ორი წყვეტს, რას ხატავს ბარათი.
             'locked' => $album->isLocked(),
             'unlocked' => AlbumLock::isUnlocked($album),
+            /* FEAT-04 — ⚠️ **ეს ორი ველი მხოლოდ მფლობელის სიაშია.** საჯარო
+               პასუხში მათი ჩაწერა თავდამსხმელს ეტყოდა, რამდენი ცდა დარჩა
+               და როდის გაიხსნება — ე.ი. თვითონ მცველი გახდებოდა მინიშნება. */
+            'failed_unlocks' => (int) $album->failed_unlocks,
+            'unlock_blocked_until' => $album->unlock_blocked_until?->toIso8601String(),
         ];
     }
 }

@@ -25,8 +25,22 @@ class GalleryAlbum extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * **რამდენ ცდაზე იბლოკება ალბომი და რამდენი ხნით** (Tasks FEAT-04).
+     *
+     * ⚠️ `throttle:album-unlock` (10/წთ) ამას **ვერ ცვლის**: ის ანონიმზე
+     * IP + ალბომზე ითვლის, ე.ი. IP-ის როტაცია მას გვერდს უვლის. ეს
+     * მრიცხველი **ალბომზეა** — საიდანაც არ უნდა მოვიდეს ცდა, ერთსა და
+     * იმავე რიგს ემატება.
+     */
+    public const MAX_UNLOCK_ATTEMPTS = 10;
+
+    public const UNLOCK_BLOCK_MINUTES = 15;
+
     protected $casts = [
         'sort_order' => 'integer',
+        'failed_unlocks' => 'integer',
+        'unlock_blocked_until' => 'datetime',
     ];
 
     /**
@@ -39,6 +53,38 @@ class GalleryAlbum extends Model
     public function isLocked(): bool
     {
         return $this->password_hash !== null;
+    }
+
+    /** ცდა დროებით აკრძალულია? */
+    public function unlockBlocked(): bool
+    {
+        return $this->unlock_blocked_until !== null && $this->unlock_blocked_until->isFuture();
+    }
+
+    /**
+     * **ერთი ცდის აღრიცხვა — ორივე endpoint-ის ერთადერთი წერტილი.**
+     *
+     * ⚠️ `saveQuietly()`: ეს ტექნიკური მრიცხველია და არა მომხმარებლის
+     * რედაქტირება — `AuditObserver` მას ყოველ არასწორ პაროლზე ლოგში
+     * ჩაწერდა და ჟურნალს დამარხავდა.
+     *
+     * ⚠️ **ბლოკის დადგმისას მრიცხველი ნულდება**: მომდევნო ბლოკს ისევ სრული
+     * `MAX_UNLOCK_ATTEMPTS` ცდა სჭირდება, თორემ ერთხელ დაბლოკილი ალბომი
+     * მე-11 ცდიდან სამუდამოდ დაბლოკილი დარჩებოდა.
+     */
+    public function registerUnlockAttempt(bool $ok): void
+    {
+        if ($ok) {
+            $this->forceFill(['failed_unlocks' => 0, 'unlock_blocked_until' => null])->saveQuietly();
+
+            return;
+        }
+
+        $failed = (int) $this->failed_unlocks + 1;
+
+        $this->forceFill($failed >= self::MAX_UNLOCK_ATTEMPTS
+            ? ['failed_unlocks' => 0, 'unlock_blocked_until' => now()->addMinutes(self::UNLOCK_BLOCK_MINUTES)]
+            : ['failed_unlocks' => $failed])->saveQuietly();
     }
 
     public function images(): HasMany

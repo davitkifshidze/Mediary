@@ -222,15 +222,20 @@ class PublicProfileController extends Controller
            მაინც პასუხობდა „სწორია თუ არა". */
         abort_unless(AlbumLock::hasSession(), 409, 'session_required');
 
+        /* ⚠️ **ბლოკი `Hash::check`-ზე ადრე** (Tasks FEAT-04) — იხ.
+           `GalleryAlbumController::unlock()`. მრიცხველი **ალბომზეა**, ე.ი.
+           საჯარო და შიდა კარი ერთსა და იმავე რიგს ემატება: უამისოდ
+           თავდამსხმელი უბრალოდ მეორე endpoint-ზე გადავიდოდა. */
+        abort_if($galleryAlbum->unlockBlocked(), 423, 'album_temporarily_locked');
+
         $data = $request->validate([
             'password' => ['required', 'string', 'max:100'],
         ]);
 
-        abort_unless(
-            $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash),
-            422,
-            'album_password_wrong',
-        );
+        $ok = $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash);
+        $galleryAlbum->registerUnlockAttempt($ok);
+
+        abort_unless($ok, 422, 'album_password_wrong');
 
         AlbumLock::unlock($galleryAlbum);
 

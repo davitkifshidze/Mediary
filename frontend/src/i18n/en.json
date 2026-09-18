@@ -1028,7 +1028,8 @@
     "csrf_token_mismatch": "Your session expired — please sign in again.",
     "unauthenticated": "Your session has ended — please sign in again.",
     "move_target_required": "Choose what happens to these records: move them to another entry, leave them without one, or delete them.",
-    "move_target_is_self": "The move target is the entry being deleted — pick another one."
+    "move_target_is_self": "The move target is the entry being deleted — pick another one.",
+    "album_temporarily_locked": "Too many wrong attempts — this album is blocked for a while. Try again later."
   },
   "fields": {
     "title": "Fields",

@@ -39,6 +39,9 @@ export const CODES = [
      `album_locked` მდგომარეობაა (ინტერფეისმა პაროლი უნდა ჰკითხოს),
      `album_password_wrong` კი მცდელობის შედეგი. */
   'album_locked',
+  /* FEAT-04 — ⚠️ `album_locked`-ისგან **განსხვავებული მდგომარეობაა**: იქ
+     პაროლი ჭირდება, აქ კი სწორი პაროლიც არ გადის — ცდა დროებით აკრძალულია. */
+  'album_temporarily_locked',
   // §7.8 — ალბომის ლოკს ახლა **ანგარიშის** პაროლი ცვლის
   'account_password_wrong',
   'album_password_wrong',

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -691,5 +692,111 @@ class GalleryAlbumTest extends TestCase
             GalleryImage::withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->find($image->id),
         );
         Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
+    }
+
+    /* ================= FEAT-04: ცდების მრიცხველი ================= */
+
+    /**
+     * **N არასწორი ცდა ალბომს დროებით ბლოკავს** (Tasks FEAT-04).
+     *
+     * ⚠️ `throttle:album-unlock` ამას ვერ ცვლის: ის ანონიმზე **IP + ალბომზე**
+     * ითვლის, ე.ი. IP-ის როტაცია მას გვერდს უვლის. მრიცხველი ალბომზეა.
+     *
+     * ⚠️ **სწორი პაროლიც 423-ია ბლოკის დროს** — და სწორედ ესაა მთელი აზრი:
+     * უამისოდ თავდამსხმელი გამოცნობას მაინც შეძლებდა, უბრალოდ უფრო ნელა.
+     */
+    public function test_too_many_wrong_passwords_block_the_album(): void
+    {
+        /* ⚠️ **throttle გამორთულია განზრახ.** `throttle:album-unlock` 10/წთ-ია,
+           ე.ი. ერთი IP-დან DB-მრიცხველამდე მისვლა შეუძლებელია — და სწორედ
+           ესაა მისი აზრი: მრიცხველი **IP-ის როტაციისთვის** არსებობს. ტესტს
+           კი თვითონ მრიცხველი უნდა შეამოწმოს და არა throttle. */
+        $this->withoutMiddleware(ThrottleRequests::class);
+
+        $album = $this->lockedAlbum();
+
+        for ($i = 0; $i < GalleryAlbum::MAX_UNLOCK_ATTEMPTS; $i++) {
+            $this->spa()->actingAs($this->user)
+                ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'wrong'])
+                ->assertStatus(422)
+                ->assertJsonPath('message', 'album_password_wrong');
+        }
+
+        $this->assertTrue($album->refresh()->unlockBlocked());
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertStatus(423)
+            ->assertJsonPath('message', 'album_temporarily_locked');
+
+        // ვადის გასვლის შემდეგ სწორი პაროლი ისევ გადის
+        $album->forceFill(['unlock_blocked_until' => now()->subMinute()])->saveQuietly();
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertOk()
+            ->assertJsonPath('unlocked', true);
+    }
+
+    /**
+     * ⚠️ **ბლოკი პაროლის შემოწმებაზე ადრეა** (BUG-02-ის იგივე რიგი):
+     * `Hash::check`-ის შემდეგ დაბრუნებული 423 ორაკულს ადგილზე დატოვებდა.
+     */
+    public function test_a_blocked_album_never_checks_the_password(): void
+    {
+        $album = $this->lockedAlbum();
+        $album->forceFill(['unlock_blocked_until' => now()->addMinutes(5)])->saveQuietly();
+
+        Hash::spy();
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertStatus(423);
+
+        Hash::shouldNotHaveReceived('check');
+    }
+
+    /**
+     * ⚠️ **სწორი პაროლი მრიცხველს ანულებს** — თორემ დროთა განმავლობაში
+     * ლეგიტიმური მფლობელიც დაიბლოკებოდა დაგროვილი შეცდომებით.
+     */
+    public function test_a_correct_password_clears_the_counter(): void
+    {
+        $album = $this->lockedAlbum();
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'wrong'])
+            ->assertStatus(422);
+
+        $this->assertSame(1, $album->refresh()->failed_unlocks);
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertOk();
+
+        $this->assertSame(0, $album->refresh()->failed_unlocks);
+        $this->assertNull($album->unlock_blocked_until);
+    }
+
+    /**
+     * ⚠️ **მფლობელი ხედავს მრიცხველს, უცხო — არა.** სია მფლობელისაა და მას
+     * უნდა ეუბნებოდეს, რომ ალბომს პაროლს ურჩევენ; საჯარო პასუხში ეს
+     * თავდამსხმელს ეტყოდა, რამდენი ცდა დარჩა და როდის გაიხსნება.
+     */
+    public function test_only_the_owner_sees_the_attempt_counter(): void
+    {
+        $album = $this->lockedAlbum();
+
+        $this->spa()->actingAs($this->user)
+            ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'wrong'])
+            ->assertStatus(422);
+
+        $row = collect($this->spa()->actingAs($this->user)->getJson('/api/gallery/albums')->assertOk()->json())
+            ->firstWhere('id', $album->id);
+
+        $this->assertNotNull($row, 'ალბომი სიაში ვერ მოიძებნა');
+
+        $this->assertSame(1, $row['failed_unlocks']);
+        $this->assertArrayHasKey('unlock_blocked_until', $row);
     }
 }
