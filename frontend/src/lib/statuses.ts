@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+
 import { STATUS_DOMAINS, fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
 import type { Status, StatusRole } from '@/api/types'
 
@@ -112,18 +112,4 @@ export function statusTone(status: Status | null | undefined): string {
   return KEY_TONE[status.key] ?? ROLE_TONE[status.role] ?? 'undecided'
 }
 
-/** „ჩემი სექციის" ლეიბლი — `?view=` სამ რამეს ნიშნავს: ყველა · რჩეული · სტატუსი */
-export function useViewLabel(statuses: Status[] | undefined, lang: string) {
-  const { t } = useTranslation()
 
-  return (view: string, allLabel?: string) => {
-    if (view === 'all') return allLabel ?? t('filter.all')
-    if (view === 'favorite') return t('filter.favorite')
-
-    const status = statusByKey(statuses, view)
-
-    // ლექსიკონი ჯერ არ ჩამოსულა (ან სტატუსი წაიშალა) — გასაღები ცარიელ
-    // ადგილზე უკეთესია: სექციის სახელი მაინც იკითხება
-    return status ? statusName(status, lang) : view
-  }
-}

@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
    ============================================================ */
 
 /** ბიჯი — იგივე რიცხვი ბექენდის `Controller::LIST_PER_PAGE`-შია */
-export const PAGE_SIZE = 60
+const PAGE_SIZE = 60
 
 /** სიის query-პარამეტრები — ყველა მოდულის `Filters` ამას აფართოებს */
 export interface ListParams {
@@ -55,10 +55,6 @@ export function readPage<T>(payload: ListPayload<T>): Page<T> {
   return { items, total: payload?.meta?.total ?? items.length }
 }
 
-/** ცარიელი გვერდი — `query.data ?? emptyPage()` ყველა გვერდზე */
-export function emptyPage<T>(): Page<T> {
-  return { items: [], total: 0 }
-}
 
 /**
  * „მეტის ჩვენების" მდგომარეობა.

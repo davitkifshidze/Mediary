@@ -90,7 +90,7 @@ export type PosterQuality = 'w342' | 'w500' | 'w780'
 /** `iso` = `YYYY-MM-DD`, დანარჩენი — ბრაუზერის ლოკალი */
 export type DateFormat = 'ka-GE' | 'en-GB' | 'iso'
 
-export const DEFAULT_SETTINGS: Settings = {
+const DEFAULT_SETTINGS: Settings = {
   actorMoviesPerPage: 10,
   actorSeriesPerPage: 10,
   libraryPageSize: 0,
@@ -110,9 +110,7 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 export const SORT_FIELD_OPTIONS: SortField[] = ['added', 'year', 'rating']
-export const SORT_DIR_OPTIONS: SortDir[] = ['desc', 'asc']
-/** ჩარჩო — სტატუსები მათ შორის ჯდება (იხ. `SettingsPage`) */
-export const LIBRARY_VIEW_FRAME = ['all', 'favorite'] as const
+
 export const CONTENT_LANG_OPTIONS: ContentLang[] = ['auto', 'ka', 'en']
 export const GROUP_BY_OPTIONS: GroupBy[] = ['off', 'genre', 'year', 'status']
 export const CARD_SIZE_OPTIONS: CardSize[] = ['compact', 'medium', 'large']

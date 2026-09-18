@@ -97,7 +97,7 @@ export function emptyMediaIds<T = number>(): Record<MediaType, T[]> {
  * ⚠️ ეს ჰელპერი იმისთვისაა, რომ `type === 'series' ? a : b` სახის ტერნარები
  * აღარსად დარჩეს: მესამე დომენზე ისინი **ჩუმად** ფილმის ტექსტს აჩვენებდნენ.
  */
-export const MEDIA_SUFFIX: Record<MediaType, string> = {
+const MEDIA_SUFFIX: Record<MediaType, string> = {
   movie: '',
   series: 'Series',
   anime: 'Anime',

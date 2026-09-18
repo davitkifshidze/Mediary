@@ -12,7 +12,7 @@ import type { VideoPlatform } from '@/api/videos'
    ============================================================ */
 
 /** დაშვებული embed-ჰოსტები — `VideoUrl::EMBED_HOSTS`-ის სარკე */
-export const ALLOWED_EMBED_HOSTS = [
+const ALLOWED_EMBED_HOSTS = [
   'www.youtube-nocookie.com',
   'player.vimeo.com',
   'geo.dailymotion.com',

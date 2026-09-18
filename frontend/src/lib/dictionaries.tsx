@@ -308,6 +308,3 @@ for (const domain of STATUS_DOMAINS) {
   })
 }
 
-export function dictionaryOf(key?: string): DictionaryDef | undefined {
-  return DICTIONARIES.find((d) => d.key === key)
-}

@@ -67,7 +67,7 @@
 | GAP-08 | გახსნილი ჩაკეტილი ალბომის ფოტო `Cache-Control`-ის გარეშე ბრუნდება | Low | gap | S | ✅ შესრულებულია |
 | GAP-09 | ლექსიკონის წაშლისას `move_to: null`, გამოტოვება და self ერთსა და იმავეს ნიშნავს — გადაწყვეტილება სჭირდება | Low | gap | S | ✅ შესრულებულია |
 | DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ✅ შესრულებულია |
-| DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ⬜ |
+| DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ✅ შესრულებულია |
 | DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ⬜ |
 | DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ⬜ |
 | DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ⬜ |
@@ -1222,13 +1222,21 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-07] ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — ექვსივე წაიშალა, `lint`-ს მუდმივი შემოწმება დაემატა, `npm test` 171/171.
+  - ✅ წაშლილია: `ALL_EMOJI` · `useViewLabel` (მკვდარი hook, მასთან ერთად `statuses.ts`-ის `useTranslation` იმპორტიც) · `dictionaryOf` · `SORT_DIR_OPTIONS` · `LIBRARY_VIEW_FRAME` · `emptyPage`
+  - ✅ ახალი `frontend/scripts/unused-exports.mjs`, `npm run lint`-ში; `npm run lint:exports` მთელ `src`-ს სკანირებს
+  - ⚠️ **დამოკიდებულება განზრახ არ დაემატა**: oxlint-ს ასეთი წესი **არ აქვს** (მისი სქემა შემოწმდა — `import/no-unused-modules` იქ არ არსებობს), `knip` კი ერთი შემოწმებისთვის მთელი ხელსაწყოა. პროექტს ხელით დაწერილი i18n-აუდიტის პრეცედენტი აქვს
+  - ⚠️ **მხოლოდ runtime-ექსპორტები მოწმდება, `type`/`interface` — არა.** პირველი ვერსია 185 ნაპოვარს აბრუნებდა, რომელთა უმეტესობა ტიპია: მკვდარი ტიპი კომპილაციისას ქრება, ე.ი. არც კოდს ზრდის და არც ქცევას ჰპირდება; მკვდარი **მნიშვნელობა** კი bundle-ში ჯდება და მკითხველს ატყუებს
+  - ⚠️ **ნაგულისხმევი მოქმედების არე `src/lib`-ია და ესეც განზრახია.** `--all` **დღეს 56 ნაპოვარს აბრუნებს `src/api`-დან** (მთელი `api/movies.ts` მათ შორის — ის „უკუთავსებადობის shim-ია" და მას აღარავინ კითხულობს). მათი `lint`-ში ჩაგდება მცველს პირველსავე დღეს გამორთვამდე მიიყვანდა; გასუფთავება ცალკე სამუშაოა, რადგან ზოგი განზრახ ავსებს API-ს ზედაპირს
+  - ✅ მცველმა **დამატებით ექვსი** იპოვა `src/lib`-ში (`ALLOWED_EMBED_HOSTS` · `DELETE_CHUNK` · `DELETE_MAX_ROUNDS` · `MEDIA_SUFFIX` · `PAGE_SIZE` · `DEFAULT_SETTINGS`) — ყველა საკუთარ ფაილში გამოყენებული კონსტანტაა, ე.ი. `export` უბრალოდ მოეხსნათ
+  - ⚠️ შემოწმება **კონსერვატიულია**: სახელი „გამოყენებულია", თუ სხვა ფაილში სადმე ჩნდება (ტესტებშიც — ზოგი ექსპორტი სწორედ ტესტისთვისაა, მაგ. `errors.ts`-ის `CODES`). ე.ი. ცრუ **დადებითი** პრაქტიკულად გამორიცხულია, ცრუ უარყოფითი კი შესაძლებელი — მცველი, რომელიც ხმაურობს, გამოირთვება
 - **ტიპი:** debt
 - **სად:** `frontend/src/lib/emoji.ts:74`, `frontend/src/lib/statuses.ts:116`, `frontend/src/lib/dictionaries.tsx:311`, `frontend/src/lib/settings.tsx:111`, `:113`, `frontend/src/lib/paged.ts:59`
 - **პრობლემა:** `ALL_EMOJI`, `useViewLabel`, `dictionaryOf`, `SORT_DIR_OPTIONS`, `LIBRARY_VIEW_FRAME`, `emptyPage` — თითოეულს რეპოში ერთი მოხსენიება აქვს (საკუთარი დეფინიცია). `noUnusedLocals` ექსპორტს ვერ ხედავს; `ALL_EMOJI` მოდულის ჩატვირთვაზე მთელ ემოჯი-ცხრილს ბრტყელებს უმიზნოდ.
 - **რატომ:** მკვდარი ქცევა (`useViewLabel` მკვდარი hook-ია) მომავალ მკითხველს ატყუებს.
 - **გადაწყვეტა:** ექვსივეს წაშლა; `knip` ან oxlint-ის unused-export წესი `lint`-ში.
 - **Acceptance criteria:**
-  - [ ] ექვსივე წაშლილია, `npm run build` მწვანეა, `lint`-ს unused-export შემოწმება აქვს
+  - [x] ექვსივე წაშლილია, `npm run build` მწვანეა, `lint`-ს unused-export შემოწმება აქვს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

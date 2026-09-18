@@ -70,8 +70,6 @@ export const EMOJI_GROUPS: EmojiGroup[] = [
   },
 ]
 
-/** ბრტყელი სია — რეაქციის სწრაფი რიგი და ძებნა ამას კითხულობს */
-export const ALL_EMOJI = EMOJI_GROUPS.flatMap((g) => g.items)
 
 /**
  * **სწრაფი რეაქციები** — ბუშტზე მიტანისას ჩნდება.
