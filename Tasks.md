@@ -69,7 +69,7 @@
 | DEBT-06 | CLAUDE.md-ის „visibility-ს UI არ აქვს" ფრაზები მოძველებულია | Low | debt | S | ✅ შესრულებულია |
 | DEBT-07 | ექვსი ექსპორტი `src/lib`-ში არსად არ გამოიყენება | Low | debt | S | ✅ შესრულებულია |
 | DEBT-08 | 11 `eslint-disable react-hooks/exhaustive-deps` კომენტარი პროექტში, სადაც ESLint არ არის | Low | debt | S | ✅ შესრულებულია |
-| DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ⬜ |
+| DEBT-09 | `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ) | Low | debt | S | ✅ შესრულებულია |
 | DEBT-10 | `backend/README.md` და `frontend/README.md` ფრეიმვორკის boilerplate-ია | Low | debt | S | ⬜ |
 | DEBT-11 | `AuditRegistry::MODELS`-ში `UserCredential`/`DatabaseBackup`-ის არყოფნა დაუსაბუთებელია | Low | debt | S | ⬜ |
 | FEAT-01 | ტესტი: backend-ის ყველა მანქანური კოდი ⊆ `CODES` ⊆ ორივე ლოკალი | Backlog | feature | S | ⬜ |
@@ -1259,13 +1259,19 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-09] `settle()` state-updater-ში side effect-ს აკეთებს (StrictMode-ში ორჯერ)
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `npm test` 172/172.
+  - ✅ `resolve()` updater-იდან გამოვიდა: გახსნილი კითხვა `pending` ref-შია, `settle()` ჯერ state-ს ანულებს და მერე პასუხობს
+  - ⚠️ **ref და არა `confirmState`-ის წაკითხვა**: `settle` ღილაკის ჰენდლერშია, ე.ი. state-ის ასლს ხურავს
+  - ✅ **გაზომილია, რომ ორმაგი გაშვება რეალურია**: ცალკე სინჯში `StrictMode`-ში state-updater **ზუსტად ორჯერ** გადის
+  - ⚠️ **ტესტი ძველ კოდზეც მწვანეა და ეს ცხადად ჩაწერილია — არა დამალული.** ორმაგი `resolve()` **დღეს დაუკვირვებადია** ზუსტად იმ მიზეზით, რაც ტასკის წანამძღვარია: promise ერთხელ სრულდება და მეორე გამოძახება უჩუმრად იგნორირდება; ვერც რიგი და ვერც მრიცხველი ვერ გაარჩევს. ე.ი. გარანტია **სტრუქტურულია** (updater სუფთაა — ზუსტად ის, რასაც acceptance ითხოვს), ტესტი კი იმ ქცევას იცავს, რაც გატყდებოდა, თუ `settle()` ნამდვილ ეფექტს შეიძენდა ან ფანჯრის დახურვას დაკარგავდა
+  - ℹ️ ცრუ „მუტაციის შემოწმების" გამოგონება განზრახ არ მოხდა — ტესტი, რომელიც არაფერს იჭერს, მაგრამ იჭერს, უარესია, ვიდრე ცხადად აღწერილი შეზღუდვა
 - **ტიპი:** debt
 - **სად:** `frontend/src/components/ui/feedback.tsx:72-77`
 - **პრობლემა:** `setConfirmState((cur) => { cur?.resolve(value); return null })` — `main.tsx` `<StrictMode>`-შია, updater dev-ში ორჯერ ეშვება; დღეს უვნებელია მხოლოდ იმიტომ, რომ promise-ის resolve იდემპოტენტურია.
 - **რატომ:** მუტაცია ან `toast()` აქ რომ მოხვდეს — ორჯერ შესრულდება.
 - **გადაწყვეტა:** state ref-ში, `setConfirmState(null)` და resolve updater-ის გარეთ.
 - **Acceptance criteria:**
-  - [ ] updater-ში side effect არ არის
+  - [x] updater-ში side effect არ არის
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

@@ -63,19 +63,37 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [confirmState, setConfirmState] = React.useState<ConfirmState | null>(null)
   const [toasts, setToasts] = React.useState<ToastItem[]>([])
 
+  /** გახსნილი კითხვა — `settle()` მას აქედან იღებს და არა state-ის ასლიდან */
+  const pending = React.useRef<ConfirmState | null>(null)
+
   const confirm = React.useCallback(
     (opts: ConfirmOptions) =>
       new Promise<boolean>((resolve) => {
-        setConfirmState({ ...opts, resolve })
+        const state: ConfirmState = { ...opts, resolve }
+        pending.current = state
+        setConfirmState(state)
       }),
     [],
   )
 
+  /**
+   * ⚠️ **გვერდითი ეფექტი state-updater-ის გარეთაა** (Tasks DEBT-09).
+   *
+   * ადრე `resolve()` `setConfirmState((cur) => …)`-ის შიგნით იძახებოდა,
+   * `main.tsx` კი `<StrictMode>`-შია — ე.ი. dev-ში updater **ორჯერ** გადის.
+   * დღეს ეს უვნებელი იყო მხოლოდ იმიტომ, რომ promise-ის `resolve` მეორედ
+   * არაფერს აკეთებს; ხვალ იქ მოხვედრილი `toast()` ან მუტაცია ორჯერ
+   * შესრულდებოდა — და ზუსტად ის ბაგია, რომელსაც ვერავინ გაიმეორებს.
+   *
+   * ⚠️ **ref და არა `confirmState`-ის წაკითხვა**: `settle` ღილაკის
+   * ჰენდლერშია, ე.ი. state-ის ასლს ხურავს; ref ყოველთვის უკანასკნელს
+   * ინახავს და დამოკიდებულებებს არ ამძიმებს.
+   */
   const settle = (value: boolean) => {
-    setConfirmState((cur) => {
-      cur?.resolve(value)
-      return null
-    })
+    const current = pending.current
+    pending.current = null
+    setConfirmState(null)
+    current?.resolve(value)
   }
 
   const dismiss = React.useCallback((id: number) => {

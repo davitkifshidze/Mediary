@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement as h, useEffect } from 'react'
+import { act, createElement as h, StrictMode, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { FeedbackProvider, useToast } from '@/components/ui/feedback'
+import { FeedbackProvider, useConfirm, useToast } from '@/components/ui/feedback'
 import '@/i18n'
 
 /* ============================================================
@@ -112,5 +112,74 @@ describe('FeedbackProvider', () => {
     // ⚠️ დარჩენილს ტაიმერი არ გადასწეულა — 1000 მწ მისი დაბადებიდან ისევ ძალაშია
     advance(DURATION)
     expect(titles()).toEqual([])
+  })
+
+  /**
+   * **დადასტურების პასუხი ერთხელ სრულდება, `StrictMode`-შიც** (Tasks DEBT-09).
+   *
+   * ⚠️ `resolve()` `setConfirmState((cur) => …)`-ის **შიგნით** იძახებოდა, აპი
+   * კი `<StrictMode>`-შია — ე.ი. dev-ში updater ორჯერ გადის. დღეს ეს
+   * უვნებელი იყო მხოლოდ იმიტომ, რომ promise-ის მეორე `resolve` უჩუმრად
+   * იგნორირდება; ხვალ იქ მოხვედრილი `toast()` ან მუტაცია **ორჯერ**
+   * შესრულდებოდა, და ასეთი ბაგი მხოლოდ dev-ში ჩნდება.
+   *
+   * ⚠️ **ტესტი `StrictMode`-ში იდგმება განზრახ** — სწორედ ის აორმაგებს
+   * updater-ს. გაზომილია: `StrictMode`-ში state-updater **ზუსტად ორჯერ**
+   * გადის, ე.ი. ორმაგი გაშვება რეალურია და არა თეორიული.
+   *
+   * ⚠️ **და მაინც: ეს ტესტი ძველ კოდზეც მწვანეა — ეს ცნობილია და ჩაწერილია.**
+   * ორმაგი `resolve()` **დღეს დაუკვირვებადია** ზუსტად იმიტომ, რაც ტასკის
+   * წანამძღვარია: promise ერთხელ სრულდება და მეორე გამოძახება უჩუმრად
+   * იგნორირდება. ე.ი. აქ გარანტია **სტრუქტურულია** (updater სუფთაა), ტესტი კი
+   * იმ ქცევას იცავს, რომელიც გატყდებოდა, თუ `settle()` ერთ დღეს ნამდვილ
+   * ეფექტს შეიძენდა ან ფანჯრის დახურვას დაკარგავდა.
+   */
+  it('settles a confirm exactly once under StrictMode', async () => {
+    vi.useRealTimers()
+
+    let ask: () => Promise<boolean> = async () => false
+    let settled = 0
+
+    function Harness() {
+      const confirm = useConfirm()
+
+      useEffect(() => {
+        ask = () =>
+          confirm({ title: 'წავშალო?' }).then((ok) => {
+            settled++
+
+            return ok
+          })
+      }, [confirm])
+
+      return null
+    }
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    await act(async () => {
+      root!.render(h(StrictMode, null, h(FeedbackProvider, null, h(Harness))))
+    })
+
+    let answer: Promise<boolean> | null = null
+    await act(async () => {
+      answer = ask()
+    })
+
+    // ⚠️ „დიახ" ბოლო ღილაკია დიალოგში (გაუქმება მის წინ დგას)
+    const ok = [...document.body.querySelectorAll<HTMLButtonElement>('.fb-content button')].at(-1)
+    expect(ok, 'დადასტურების ღილაკი ვერ მოიძებნა').toBeTruthy()
+
+    await act(async () => {
+      ok!.click()
+    })
+
+    await expect(answer!).resolves.toBe(true)
+    expect(settled, 'პასუხი ერთზე მეტჯერ დასრულდა').toBe(1)
+
+    // და ფანჯარა დაიხურა — თორემ „ერთხელ" გაუხსნელ დიალოგსაც ეხება
+    expect(document.body.querySelector('.fb-content')).toBeNull()
   })
 })
