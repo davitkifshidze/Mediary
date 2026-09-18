@@ -203,6 +203,83 @@ class VideoDownloadTest extends TestCase
     }
 
     /* ============================================================
+       ხელახალი ჩამოტვირთვა (BUG-22)
+       ============================================================ */
+
+    /**
+     * **მთავარი რეგრესია:** კვოტაზე ჩავარდნილი ხელახალი ჩამოტვირთვა ძველ
+     * ასლს **არ ანადგურებს**.
+     *
+     * ⚠️ რეპროდუქცია ჩვეულებრივი იყო: გაქვს ლოკალური ასლი, აჭერ „ხელახლა
+     * ჩამოტვირთვას", ადგილი აღარ არის — 413. ძველი კოდი ფაილს **შემოწმებამდე**
+     * შლიდა, ე.ი. პასუხი „ადგილი აღარ არის" იყო და ასლიც აღარ გქონდა. უარესი:
+     * სვეტები `save()`-მდე ვერ აღწევდა, ამიტომ ჩანაწერი კიდევ `ready`-ს
+     * ამბობდა და ღილაკი წაშლილ ფაილს ხსნიდა.
+     */
+    public function test_a_failed_quota_check_keeps_the_existing_copy(): void
+    {
+        $this->fakeYtDlp(4096);
+        $video = $this->makeVideo($this->user);
+        $this->assertTrue(app(VideoDownloader::class)->run($video));
+
+        $path = $video->fresh()->download_path;
+        $this->user->forceFill(['storage_quota_bytes' => 5000])->save();
+
+        // ახალი ასლი ძველის გათავისუფლების შემდეგაც არ ეტევა: 9000 - 4096 > 904
+        $this->fakeYtDlp(9000);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/videos/{$video->id}/download")
+            ->assertStatus(413)
+            ->assertJson(['message' => 'storage_quota_exceeded']);
+
+        $video->refresh();
+        $this->assertSame(Video::DOWNLOAD_READY, $video->download_status);
+        $this->assertSame($path, $video->download_path);
+        $this->assertSame(4096, $video->download_size);
+        Storage::disk('private')->assertExists($path);
+        $this->assertSame(4096, (int) $this->user->fresh()->storage_used_bytes);
+    }
+
+    /**
+     * ⚠️ **და უკუმხარეც:** ძველი ასლის ბაიტები სწორედ ამ ჩამოტვირთვას
+     * დაეთმობა, ე.ი. კვოტიდან წინასწარ გამოიკლება. მის გარეშე ჩანაწერი
+     * საკუთარ ადგილს დაიკავებდა და თითქმის სავსე კვოტაზე განახლება
+     * შეუძლებელი გახდებოდა — შემოწმება „ჯერ კვოტა" ერთ ხარვეზს მეორეთი
+     * შეცვლიდა.
+     */
+    public function test_replacing_a_copy_counts_only_the_difference(): void
+    {
+        $this->fakeYtDlp(4096);
+        $video = $this->makeVideo($this->user);
+        $this->assertTrue(app(VideoDownloader::class)->run($video));
+
+        $path = $video->fresh()->download_path;
+        $this->user->forceFill(['storage_quota_bytes' => 5000])->save();
+
+        // 4500 მთლიანად არ ეტევა, სხვაობა (404) კი — დიახ
+        $this->fakeYtDlp(4500);
+        $this->app->bind(BackgroundProcess::class, fn () => new class extends BackgroundProcess
+        {
+            public function dispatch(array $command): bool
+            {
+                return true;
+            }
+        });
+
+        $this->actingAs($this->user)
+            ->postJson("/api/videos/{$video->id}/download")
+            ->assertStatus(202);
+
+        $video->refresh();
+        $this->assertSame(Video::DOWNLOAD_RUNNING, $video->download_status);
+        // ძველი ასლი გათავისუფლდა — ერთ ვიდეოზე ორი ფაილი არ არსებობს
+        $this->assertNull($video->download_path);
+        Storage::disk('private')->assertMissing($path);
+        $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
+    }
+
+    /* ============================================================
        მიწოდება და წაშლა
        ============================================================ */
 

@@ -68,14 +68,30 @@ class VideoDownloader
             ]);
         }
 
-        // წინა ასლი (თუ იყო) ჯერ თავისუფლდება — ორი ფაილი ერთ ვიდეოზე არ არსებობს
-        $video->deleteDownload();
+        /* ⚠️ **ჯერ კვოტა, მერე წაშლა** (BUG-22). ადრე პირიქით იყო: ძველი ასლი
+           იშლებოდა და `guard()` მხოლოდ ამის შემდეგ ამოწმებდა — ე.ი. სავსე
+           კვოტაზე „ხელახლა ჩამოტვირთვა" 413-ს აბრუნებდა და **ფაილს უკვე
+           აღარ ჰქონდა**. სვეტები `save()`-მდე ვერ აღწევდა, ამიტომ ჩანაწერი
+           კიდევ `ready`-ს ამბობდა და გახსნა 404-ს იძლეოდა.
 
+           ⚠️ **ძველი ასლის ბაიტები კვოტიდან წინასწარ გამოიკლება**: ის სწორედ
+           ამ ჩამოტვირთვას დაეთმობა. მის გარეშე ჩანაწერი საკუთარ ადგილს
+           დაიკავებდა და ზუსტად სავსე კვოტაზე განახლება შეუძლებელი იქნებოდა.
+           `needed` ამიტომ **სხვაობაა** — „კიდევ რამდენი მჭირდება" — და
+           `remaining`-თან შედარება სწორად რჩება. */
         $approx = $this->ytdlp->probe($video->url)['filesize'];
+
         if ($approx) {
             // იგივე `guard()`, რაც ატვირთვას აქვს: ანგარიშიც და მოდულის ლიმიტიც
-            $this->meter->guard($video->user, $approx, StorageFolder::VIDEO_DOWNLOADS);
+            $this->meter->guard(
+                $video->user,
+                max(0, $approx - $this->freedBytes($video)),
+                StorageFolder::VIDEO_DOWNLOADS,
+            );
         }
+
+        // წინა ასლი (თუ იყო) თავისუფლდება — ორი ფაილი ერთ ვიდეოზე არ არსებობს
+        $video->deleteDownload();
 
         $video->forceFill([
             'download_status' => Video::DOWNLOAD_RUNNING,
@@ -155,6 +171,18 @@ class VideoDownloader
             // კვოტაში არ ითვლება, ე.ი. იქ დარჩენილი გიგაბაიტები უხილავი იქნებოდა
             File::deleteDirectory($temp);
         }
+    }
+
+    /**
+     * **რამდენი ბაიტი გათავისუფლდება ძველი ასლის წაშლით** (BUG-22).
+     *
+     * ⚠️ `download_path`-ს ეკითხება და არა `download_size`-ს: ჩავარდნილი
+     * გაშვების შემდეგ ზომა შეიძლება დარჩეს, ფაილი კი — არა, და მაშინ
+     * ეს „კრედიტი" კვოტას მოჩვენებით გაზრდიდა.
+     */
+    private function freedBytes(Video $video): int
+    {
+        return $video->download_path ? (int) $video->download_size : 0;
     }
 
     private function fail(Video $video, string $reason): void
