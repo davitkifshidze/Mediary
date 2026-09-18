@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Anime;
+use App\Models\BatchItem;
 use App\Models\Movie;
 use App\Models\Series;
 use App\Models\User;
@@ -75,6 +76,7 @@ class RunBatchItem implements ShouldQueue
         $user = User::find($this->userId);
 
         if (! $user) {
+            // ⚠️ რიგი აქ ვერ დაიწერება — `user_id` უცხო გასაღებია და ანგარიში აღარაა
             /* ⚠️ ჩავარდნა არ არის (ანგარიში წაიშალა), მაგრამ **უხმო** არც
                უნდა იყოს: სხვაგვარად პარტია „შესრულებულად" ითვლება და
                „რატომ არაფერი მოხდა" პასუხგაუცემელია (Tasks BUG-08). */
@@ -93,9 +95,30 @@ class RunBatchItem implements ShouldQueue
            აისახება `Auth::id()`-ზე, რომელსაც global scope კითხულობს. */
         Auth::setUser($user);
 
+        /* ⚠️ **რიგი job-ის დასაწყისში იწერება** (Tasks FEAT-03) და არა ბოლოს:
+           ჩავარდნისას გამონაკლისი გადაისვრება, ე.ი. ბოლოში ჩაწერა
+           **ჩავარდნილ ერთეულს საერთოდ არ დააფიქსირებდა** — ზუსტად ის, რის
+           ჩვენებაც ამ ცხრილს სურს. */
+        $item = $this->track();
+
         try {
-            $this->run($user, $syncer, $translator, $gallery);
+            /* ⚠️ **`OK` მხოლოდ მაშინ, როცა სამუშაო მართლა შესრულდა.** `run()`
+               გამოტოვებაზე ნორმალურად ბრუნდება, ე.ი. უპირობო `OK` ახლახან
+               დაწერილ `skipped`-ს **გადააწერდა** — და სია იტყოდა, რომ
+               წაშლილი ჩანაწერი დამუშავდა. */
+            if ($this->run($user, $syncer, $translator, $gallery, $item)) {
+                $item?->update(['status' => BatchItem::OK]);
+            }
         } catch (Throwable $e) {
+            /* ⚠️ **`saveQuietly`-ს აქ აზრი არ აქვს, `update` სჭირდება**: ეს
+               რიგი `AuditRegistry`-ში არაა (ის მიწოდების ჟურნალია და არა
+               მომხმარებლის ქმედება — `NOT_LOGGED`-ის იგივე წესი). */
+            $item?->update([
+                'status' => BatchItem::FAILED,
+                // ⚠️ მხოლოდ შეტყობინება: stack trace `sources.log`-შია და
+                // მისი UI-ში გამოტანა შიდა ბილიკებს გაამხელდა
+                'error' => mb_substr($e->getMessage(), 0, 500),
+            ]);
             SourceLog::threw('batch:'.$this->kind, $e, [
                 'type' => $this->type,
                 'id' => $this->recordId,
@@ -120,15 +143,42 @@ class RunBatchItem implements ShouldQueue
         }
     }
 
+    /**
+     * **ამ ერთეულის რიგი** (Tasks FEAT-03).
+     *
+     * ⚠️ `batch()` `null`-ია, როცა job პარტიის გარეშე გაეშვა (ტესტი,
+     * ხელით dispatch) — მაშინ ჩასაწერი ადგილი არ არსებობს და ეს
+     * ჩავარდნა არაა.
+     */
+    private function track(): ?BatchItem
+    {
+        $batchId = $this->batch()?->id;
+
+        return $batchId === null ? null : BatchItem::create([
+            'batch_id' => $batchId,
+            'user_id' => $this->userId,
+            'kind' => $this->kind,
+            'type' => $this->type,
+            'record_id' => $this->recordId,
+            'status' => BatchItem::RUNNING,
+        ]);
+    }
+
     private function run(
         User $user,
         ItemSyncer $syncer,
         ItemTranslator $translator,
         GalleryFetcher $gallery,
-    ): void {
+        ?BatchItem $item = null,
+    ): bool {
         $record = $this->record();
 
         if (! $record) {
+            /* ⚠️ **`skipped` და არა `failed`** (Tasks FEAT-03): წაშლილი ან
+               სხვისი ჩანაწერი კანონიერი გამოტოვებაა — „ჩავარდნად" ჩათვლა
+               მომხმარებელს ხელახლა გაშვებას ურჩევდა იქ, სადაც გასაშვები
+               აღარაფერია. */
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'record_not_found']);
             /* ⚠️ ესეც კანონიერი გამოტოვებაა (ჩანაწერი გეგმასა და გაშვებას
                შორის წაიშალა, ან სხვისია და `owner` scope-მა დამალა) — და
                ესეც ლოგშია, იმავე მიზეზით. `skipped`/`failed`-ის ცალკე
@@ -138,8 +188,12 @@ class RunBatchItem implements ShouldQueue
                 'id' => $this->recordId,
             ]);
 
-            return;
+            return false;
         }
+
+        // ⚠️ სათაური **გაშვების მომენტში** იწერება: ჩანაწერი მოგვიანებით
+        // შეიძლება წაიშალოს, სიაში კი „რა იყო ეს" უნდა დარჩეს
+        $item?->update(['title' => $this->titleOf($record)]);
 
         match ($this->kind) {
             'sync' => $syncer->sync($record, [
@@ -158,6 +212,8 @@ class RunBatchItem implements ShouldQueue
             'gallery' => $gallery->fetch($user, $record, $gallery->options($this->options)),
             default => null,
         };
+
+        return true;
     }
 
     /**
@@ -165,6 +221,18 @@ class RunBatchItem implements ShouldQueue
      * scope უკვე მოქმედებს და სხვისი id **ვერაფერს იპოვის** (null → გამოტოვება).
      * ეს მეორე ღობეა იმავე შეცდომაზე, რასაც `onceUsingId()` ხურავს.
      */
+    /** სიაში საჩვენებელი სახელი — ორივე ენა ან რაც არის */
+    private function titleOf(object $record): ?string
+    {
+        foreach (['title_ka', 'title_en', 'title'] as $field) {
+            if (! empty($record->{$field})) {
+                return mb_substr((string) $record->{$field}, 0, 200);
+            }
+        }
+
+        return null;
+    }
+
     private function record(): ?object
     {
         if (! MediaDomain::has($this->type)) {

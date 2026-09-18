@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\RunBatchItem;
+use App\Models\BatchItem;
 use App\Support\BackgroundProcess;
 use App\Support\MediaDomain;
 use Illuminate\Bus\Batch;
@@ -179,7 +180,40 @@ class BatchController extends Controller
             'progress' => $batch->totalJobs > 0 ? (int) round($ran / $batch->totalJobs * 100) : 0,
             'cancelled' => $batch->cancelled(),
             'finished' => $batch->finished() || $batch->pendingJobs - $batch->failedJobs <= 0,
+            'items' => $this->items($batch->id),
         ];
+    }
+
+    /**
+     * **თითო ერთეულის შედეგი** (Tasks FEAT-03).
+     *
+     * ⚠️ აქამდე პასუხი მხოლოდ `processed/total` იყო, ე.ი. „**რომელი**
+     * ჩანაწერი და **რატომ** ჩავარდა" მხოლოდ `sources.log`-ში ჩანდა — მაშინ,
+     * როცა კლიენტური რიგი იმავე ოპერაციაზე თითოზე შედეგს აჩვენებს. ორ
+     * რეჟიმს ერთი ოპერაციის ორი სხვადასხვა პასუხი ჰქონდა.
+     *
+     * ⚠️ **`BelongsToUser`-ის scope უკვე ფილტრავს** — `mine()` პარტიის
+     * მფლობელობას ცალკე ამოწმებს, ე.ი. აქ მეორე `where` ზედმეტია და
+     * ორი წყარო ერთ წესზე გაშორდებოდა.
+     *
+     * ⚠️ **`running` რიგებიც ბრუნდება**: სწორედ ისინი აჩვენებენ, რა
+     * მუშავდება ახლა — უამისოდ სია მხოლოდ დასრულების შემდეგ გაჩნდებოდა.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function items(string $batchId): array
+    {
+        return BatchItem::where('batch_id', $batchId)
+            ->orderBy('id')
+            ->get(['type', 'record_id', 'status', 'title', 'error'])
+            ->map(fn (BatchItem $item) => [
+                'type' => $item->type,
+                'id' => (int) $item->record_id,
+                'title' => $item->title,
+                'status' => $item->status,
+                'error' => $item->error,
+            ])
+            ->all();
     }
 
     /**

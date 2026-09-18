@@ -347,4 +347,90 @@ class BatchQueueTest extends TestCase
             ->assertOk()
             ->assertJsonPath('cancelled', false);
     }
+
+    /* ================= FEAT-03: თითო ერთეულის შედეგი ================= */
+
+    /**
+     * **„300/300"-ის შემდეგ ჩანს, რომელი ჩავარდა და რატომ** (Tasks FEAT-03).
+     *
+     * ⚠️ BUG-08-ის შემდეგაც პასუხი მხოლოდ `processed/total` იყო: მიზეზი
+     * მხოლოდ `sources.log`-ში ჩანდა, მაშინ როცა **კლიენტური** რიგი იმავე
+     * ოპერაციაზე თითოზე შედეგს აჩვენებს — ერთ ოპერაციას ორ რეჟიმში ორი
+     * სხვადასხვა პასუხი ჰქონდა.
+     *
+     * ⚠️ **სამი მდგომარეობა და არა ორი**: `ok` · `skipped` (წაშლილი ან
+     * სხვისი ჩანაწერი — ხელახლა გაშვება არაფერს შეცვლის) · `failed` (ესაა
+     * ის, რაც გადასაშვებია). ერთ დროშად შეკუმშვა სწორედ იმ კითხვას
+     * ტოვებდა პასუხგაუცემელი, რომლის გამოც ეს ცხრილი არსებობს.
+     */
+    public function test_each_item_reports_its_own_outcome(): void
+    {
+        $bad = $this->makeMovie($this->alice, 'Bad');
+        $good = $this->makeMovie($this->alice, 'Good');
+        $gone = $this->makeMovie($this->alice, 'Gone');
+        $goneId = $gone->id;
+
+        $this->mock(ItemSyncer::class, function ($mock) use ($bad) {
+            $mock->shouldReceive('sync')->andReturnUsing(function ($record) use ($bad) {
+                if ((int) $record->id === (int) $bad->id) {
+                    throw new RuntimeException('TMDB said 401');
+                }
+
+                return ['ok' => true];
+            });
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [
+                ['type' => 'movie', 'id' => $bad->id],
+                ['type' => 'movie', 'id' => $good->id],
+                ['type' => 'movie', 'id' => $goneId],
+            ],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        // ⚠️ გეგმასა და გაშვებას შორის წაშლილი ჩანაწერი — კანონიერი გამოტოვება
+        $gone->delete();
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $items = collect(
+            $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items')
+        )->keyBy('id');
+
+        $this->assertCount(3, $items);
+        $this->assertSame('failed', $items[$bad->id]['status']);
+        $this->assertStringContainsString('401', (string) $items[$bad->id]['error']);
+        $this->assertSame('ok', $items[$good->id]['status']);
+        $this->assertSame('skipped', $items[$goneId]['status']);
+
+        // ⚠️ სათაური **გაშვების მომენტში** იწერება — წაშლილი ჩანაწერიც უნდა იყოს ცნობადი
+        $this->assertSame('Good', $items[$good->id]['title']);
+    }
+
+    /** ⚠️ სხვისი პარტიის ერთეულები არ გამოჩნდება — `mine()` ისედაც 404-ია */
+    public function test_items_belong_to_the_batch_owner(): void
+    {
+        $movie = $this->makeMovie($this->alice, 'Mine');
+
+        $this->mock(ItemSyncer::class, function ($mock) {
+            $mock->shouldReceive('sync')->andReturn(['ok' => true]);
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [['type' => 'movie', 'id' => $movie->id]],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $this->actingAs($this->bob)->getJson("/api/batches/{$id}")->assertStatus(404);
+
+        $this->assertCount(
+            1,
+            $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items'),
+        );
+    }
 }

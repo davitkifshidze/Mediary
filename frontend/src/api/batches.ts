@@ -19,6 +19,20 @@ export interface BatchItem {
   id: number
 }
 
+/**
+ * **ერთი ერთეულის შედეგი** (Tasks FEAT-03).
+ *
+ * ⚠️ სამი მდგომარეობა და არა ორი: `skipped` (ჩანაწერი წაიშალა — ხელახლა
+ * გაშვება არაფერს შეცვლის) სხვა ქმედებას ითხოვს, ვიდრე `failed`.
+ */
+export interface BatchItemResult {
+  type: string
+  id: number
+  title: string | null
+  status: 'running' | 'ok' | 'skipped' | 'failed'
+  error: string | null
+}
+
 export interface BatchStatus {
   id: string | null
   kind?: string
@@ -29,6 +43,8 @@ export interface BatchStatus {
   progress?: number
   cancelled?: boolean
   finished: boolean
+  /** ⚠️ სერვერული რიგის „რომელი და რატომ" — კლიენტურ რიგს ეს ყოველთვის ჰქონდა */
+  items?: BatchItemResult[]
 }
 
 export async function startBatch(

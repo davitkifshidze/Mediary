@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
 import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
-import { startBatch, type BatchKind } from '@/api/batches'
+import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
 import { errorMessage } from '@/lib/errors'
 import { useToast } from '@/components/ui/feedback'
 import {
@@ -48,6 +48,9 @@ export interface PurgeQueueOptions {
   /** §25.5 — ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
   keep_gallery?: boolean
 }
+
+/** სერვერული პარტიის შემოწმების ინტერვალი — ის წუთებს გრძელდება */
+const BATCH_POLL_MS = 3000
 
 interface QItem {
   id: number
@@ -497,8 +500,55 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items])
 
+  /**
+   * **სერვერზე გადაცემული პარტია** (Tasks FEAT-03).
+   *
+   * ⚠️ აქამდე გადაცემა „გაუშვი და დაივიწყე" იყო: toast ამბობდა „N გადაეცა"
+   * და მერე **არაფერი** — ე.ი. „300/300"-ის შემდეგ მომხმარებელი ვერ
+   * იგებდა, რომელი ჩავარდა და რა გადაეშვა თავიდან. კლიენტურ რიგს ეს
+   * ინფორმაცია ყოველთვის ჰქონდა, სერვერულს — არა.
+   */
+  const [batchId, setBatchId] = React.useState<string | null>(null)
+  const [serverItems, setServerItems] = React.useState<BatchItemResult[]>([])
+  const [serverBusy, setServerBusy] = React.useState(false)
+
+  /* ⚠️ **poll მხოლოდ სანამ მიმდინარეობს**: დასრულებული პარტიის მდგომარეობა
+     თავისით ვერ შეიცვლება, ე.ი. მისი კითხვა უსასრულო ტრაფიკია (იგივე წესი,
+     რაც ვიდეოს ჩამოწერის 4-წამიან poll-ს აქვს). */
+  React.useEffect(() => {
+    if (!batchId) return
+
+    let alive = true
+
+    const tick = async () => {
+      try {
+        const status = await fetchBatch(batchId)
+        if (!alive) return
+
+        setServerItems(status.items ?? [])
+        setServerBusy(!status.finished)
+
+        if (!status.finished) timer = setTimeout(tick, BATCH_POLL_MS)
+      } catch {
+        // პარტია გაქრა ან ქსელი გაწყდა — ჩაკიდებას ვერჩივნობთ გაჩერებას
+        if (alive) setServerBusy(false)
+      }
+    }
+
+    let timer = setTimeout(tick, 0)
+
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [batchId])
+
   const active = items.filter((i) => i.status === 'pending' || i.status === 'running').length
-  const isBusy = active > 0
+  /* ⚠️ `isBusy` **სერვერულ პარტიასაც** ითვლის: უამისოდ პანელი დასრულებულად
+     გამოიყურებოდა და დახურვის ჯვარი გაჩნდებოდა მაშინ, როცა worker ჯერ
+     კიდევ მუშაობს. ⚠️ `active` კი მხოლოდ კლიენტურია — მასზე დგას გაჩერება
+     და დარჩენილი დროის შეფასება, რომლებიც სერვერულზე არ მოქმედებს. */
+  const isBusy = active > 0 || serverBusy
 
   /* §D1 — რიგის სერვერზე გადაცემა.
 
@@ -509,6 +559,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
      მეორე კი დესტრუქციულია და ცხად დადასტურებაზე დგას. */
   const { toast } = useToast()
   const [handingOff, setHandingOff] = React.useState(false)
+
 
   const pendingItems = items.filter((i) => i.status === 'pending')
   const handoffKinds = new Set(pendingItems.map((i) => i.kind))
@@ -527,7 +578,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const first = pendingItems[0]
-      await startBatch(
+      const batch = await startBatch(
         handoffKind,
         pendingItems.map((i) => ({ type: i.mediaType, id: i.itemId! })),
         /* ⚠️ პარამეტრები **პირველი ერთეულიდან** მოდის: რიგი ერთი დიალოგიდან
@@ -541,6 +592,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
       // გადაცემულები კლიენტის რიგიდან ქრება — ორჯერ დამუშავება არ გვინდა
       setItems((cur) => cur.filter((i) => i.status !== 'pending'))
+      // ⚠️ თვალყური აქედან იწყება — თორემ პანელი ცარიელი დარჩებოდა (FEAT-03)
+      setServerBusy(true)
+      setBatchId(batch.id)
       toast({ title: t('queue.handedOff', { count: pendingItems.length }) })
     } catch (e) {
       toast({ title: errorMessage(e), variant: 'error' })
@@ -599,9 +653,35 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     ],
   )
 
-  const total = items.length
-  const done = items.filter((i) => i.status === 'done').length
-  const errors = items.filter((i) => i.status === 'error').length
+  /**
+   * **ერთი სია ორივე რიგისთვის** (Tasks FEAT-03).
+   *
+   * ⚠️ სერვერული ერთეულები `items`-ში **არ ერევა**: იქ ისინი `isBusy`-ს,
+   * გაჩერებასა და ხელახლა ცდას ჩაებმებოდნენ — ვერც ერთი მათგანი ვერ
+   * მოქმედებს უკვე გადაცემულ სამუშაოზე. ისინი მხოლოდ **სახატავად** ერთვის,
+   * რომ ორ რეჟიმს ერთი ვიზუალური ენა ჰქონდეს.
+   *
+   * ⚠️ `skipped` `done`-ად ითარგმნება და არა `error`-ად: წაშლილი ჩანაწერი
+   * ხელახლა გასაშვები არაა — ზუსტად ის განსხვავება, რის გამოც სერვერზე
+   * ცალკე მდგომარეობაა.
+   */
+  const serverRows = React.useMemo(
+    () =>
+      serverItems.map((s) => ({
+        id: `srv:${s.type}:${s.id}`,
+        title: s.title ?? `${s.type} #${s.id}`,
+        status: s.status === 'failed' ? 'error' : s.status === 'running' ? 'running' : 'done',
+        skipped: s.status === 'skipped',
+        error: s.error,
+      })),
+    [serverItems],
+  )
+
+
+  const total = items.length + serverRows.length
+  const done = items.filter((i) => i.status === 'done').length + serverRows.filter((r) => r.status === 'done').length
+  const errors =
+    items.filter((i) => i.status === 'error').length + serverRows.filter((r) => r.status === 'error').length
   const running = items.find((i) => i.status === 'running')
   /** სათაურის სახეობა — შერეულ რიგში ყველაზე „ხმამაღალი" იმარჯვებს */
   const headlineKind: QKind =
@@ -668,7 +748,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             </button>
             {!isBusy && (
               <button
-                onClick={() => setItems([])}
+                onClick={() => {
+                  setItems([])
+                  // ⚠️ სერვერულიც უნდა გაიწმინდოს, თორემ პანელი დახურვას არ დაემორჩილება
+                  setBatchId(null)
+                  setServerItems([])
+                }}
                 aria-label="dismiss"
                 className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               >
@@ -727,6 +812,49 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                       <X className="size-3.5" />
                     </button>
                   )}
+                </div>
+              ))}
+
+              {/* FEAT-03 — **სერვერზე გადაცემული ერთეულების შედეგი.**
+                  ⚠️ იგივე მარკირება, რაც კლიენტურ რიგს: ორ რეჟიმს ერთი
+                  ვიზუალური ენა უნდა ჰქონდეს, თორემ „სერვერზე გადავეცი"
+                  ინფორმაციის დაკარგვას ნიშნავდა. გაჩერების ჯვარი აქ არაა —
+                  გადაცემულ სამუშაოზე ის ვერაფერს იზამს. */}
+              {serverRows.map((row) => (
+                <div key={row.id} className="flex items-center gap-2.5 px-3.5 py-2">
+                  <span className="grid size-4 shrink-0 place-items-center">
+                    {row.status === 'running' ? (
+                      <Loader2 className="size-3.5 animate-spin text-status-watching" />
+                    ) : row.status === 'error' ? (
+                      <AlertCircle className="size-3.5 text-destructive" />
+                    ) : row.skipped ? (
+                      <SkipForward className="size-3.5 text-muted-foreground" />
+                    ) : (
+                      <Check className="size-3.5 text-status-watched" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'block truncate text-sm',
+                        row.status === 'done' && 'text-muted-foreground line-through',
+                      )}
+                    >
+                      {row.title}
+                    </span>
+                    {row.status === 'error' && (
+                      <span className="block truncate text-xs text-destructive">
+                        {row.error || t('toast.error')}
+                      </span>
+                    )}
+                    {/* ⚠️ გამოტოვება **ჩავარდნა არაა** — ხელახლა გაშვება არაფერს შეცვლის */}
+                    {row.skipped && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {t('queue.itemSkipped')}
+                      </span>
+                    )}
+                  </span>
+                  <Server className="size-3.5 shrink-0 text-muted-foreground" />
                 </div>
               ))}
 

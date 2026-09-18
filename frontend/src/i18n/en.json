@@ -543,7 +543,8 @@
     "min": "min",
     "quotaStopped": "Out of space — the rest was stopped",
     "handOff": "Run on the server",
-    "handedOff": "{{count}} items handed to the server — you can close the tab now"
+    "handedOff": "{{count}} items handed to the server — you can close the tab now",
+    "itemSkipped": "The record was gone — skipped"
   },
   "missing": {
     "label": "Missing:",

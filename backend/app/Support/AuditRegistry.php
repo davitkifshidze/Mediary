@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\AnimeTranslation;
 use App\Models\ApprovalRequest;
 use App\Models\AuditLog;
+use App\Models\BatchItem;
 use App\Models\BoardGame;
 use App\Models\BoardGameFile;
 use App\Models\BoardGameGenre;
@@ -204,6 +205,7 @@ class AuditRegistry
         // მანქანის წერილი — ადამიანის ქმედება არაა
         NoteNotification::class => 'მიწოდების რიგი; მანქანა წერს და წუთში ერთხელ იცვლება',
         SerpSearch::class => 'გარე ძებნის მრიცხველი — თითო რიგი თითო გამოძახებაა',
+        BatchItem::class => 'პარტიის მიწოდების ჟურნალი — worker წერს, და 300-ერთეულიანი გაშვება ლოგს დამარხავდა',
         TranslationUsage::class => 'Gemini-ს ხარჯის მრიცხველი — იგივე მიზეზი',
 
         // ერთი დაწკაპუნება — ლოგს დამარხავდნენ
