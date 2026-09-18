@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Video;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -320,5 +321,46 @@ class MatchTest extends TestCase
             ->getJson('/api/matches')
             ->assertStatus(409)
             ->assertJsonPath('message', 'profile_not_public');
+    }
+
+    /**
+     * **`module_user` კანდიდატთა რიცხვზე აღარ იზრდება (Tasks PERF-06).**
+     *
+     * ⚠️ `ranking()` თითო კანდიდატზე `summary()`-ს იძახებს, ის კი
+     * `domains($me, $other)`-ს — ე.ი. **ჩემი** საჯარო მოდულები ყოველ
+     * იტერაციაზე თავიდან იკითხებოდა, კანდიდატისა კი თითოზე ერთხელ.
+     * `records()`-ს მემო ჰქონდა, `domains()`-ს — არა.
+     *
+     * ⚠️ **მთელი რიცხვი აქ განზრახ არ მოწმდება**: შედარება ზუსტია და არა
+     * მიახლოებითი, ე.ი. ჩანაწერების წაკითხვა კანდიდატებზე წრფივი **რჩება**
+     * (ასეა ჩაფიქრებული, იხ. `MAX_PROFILES`). ტასკიც ზუსტად `module_user`-ზეა.
+     */
+    public function test_the_ranking_reads_the_module_pivot_a_constant_number_of_times(): void
+    {
+        $this->movie($this->alice, 100);
+
+        $pivotReads = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($this->alice)->getJson('/api/matches')->assertOk();
+            $count = collect(DB::getQueryLog())
+                ->filter(fn (array $q) => str_contains($q['query'], 'module_user'))
+                ->count();
+            DB::disableQueryLog();
+
+            return $count;
+        };
+
+        $one = $pivotReads();
+
+        foreach (['carol', 'dave', 'erin', 'frank'] as $name) {
+            $this->makeUser($name);
+        }
+
+        $this->assertSame(
+            $one,
+            $five = $pivotReads(),
+            "module_user-ის წაკითხვა კანდიდატებზე არ უნდა იზრდებოდეს (1 → {$one}, 5 → {$five})",
+        );
     }
 }

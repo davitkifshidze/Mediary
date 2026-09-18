@@ -206,6 +206,15 @@ class MatchService
         // `percent` SQL-ში არ არსებობს და ვერც იქნება — ის გადაკვეთაა
         $candidates = $query->orderBy('username')->limit(self::MAX_PROFILES)->get();
 
+        /* ⚠️ **ყველა კანდიდატის საჯარო მოდულები ერთ query-ში** (Tasks PERF-06).
+           თითო იტერაცია `summary()`-ს იძახებს, ის კი `domains($me, $other)`-ს:
+           ე.ი. `module_user` 50 კანდიდატზე **101-ჯერ** იკითხებოდა — 50-ჯერ
+           ერთი და იგივე `domains($me)` და თითოზე ერთხელ მისი. ერთი `whereIn`
+           ორივეს ფარავს და ციკლი ბაზას აღარ ეკითხება. */
+        // ⚠️ `push()` კი არა `concat()`: `$candidates` ქვემოთ ციკლშია და `$me`
+        // მასში ჩამატება საკუთარ თავთან დამთხვევას დაბადებდა
+        $this->profiles->warmDomains($candidates->concat([$me]));
+
         $items = [];
 
         foreach ($candidates as $other) {

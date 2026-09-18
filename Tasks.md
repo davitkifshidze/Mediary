@@ -37,7 +37,7 @@
 | BUG-11 | `key={i}` წაშლადი/გადაადგილებადი სტრიქონებზე სამ ფორმაში | Medium | bug | S | ✅ შესრულებულია |
 | PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ✅ შესრულებულია |
 | PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ✅ შესრულებულია |
-| PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ⬜ |
+| PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ✅ შესრულებულია |
 | PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ⬜ |
 | PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ⬜ |
 | PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ⬜ |
@@ -658,13 +658,22 @@
 - **დამოკიდებულება:** PERF-01
 
 ### [PERF-06] `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `PublicProfileService::$domainsMemo` — `user_id` => დომენების სია, **ინსტანციისა და არა სტატიკური** (სერვისი რექვესთზე იქმნება, ე.ი. მემო თავისით ცხრება; სტატიკური ტესტებში/Octane-ზე შემდეგ მოთხოვნაზე გადაყვებოდა — `AlbumLock`-ის გაკვეთილი)
+  - ⚠️ **მარტო მემო ტასკის პირობას არ აკმაყოფილებდა.** ის `domains($me)`-ს 50-ჯერ → 1-ჯერ აქცევდა, მაგრამ კანდიდატისა თითოზე ერთი მაინც რჩებოდა, ე.ი. `module_user` კვლავ **წრფივი** იყო. ამიტომ დაემატა `warmDomains(iterable $users)` — ერთი `whereIn` join ყველა კანდიდატზე ერთად, `ranking()`-ის ციკლამდე
+  - ⚠️ **რიგის გარეშე დარჩენილ user-ს ცარიელი სია ეწერება** და არა „არაფერი": თორემ `domains()` მასზე ისევ ცალკე query-ს გააკეთებდა და ჭერი დაბრუნდებოდა
+  - ⚠️ `$candidates->concat([$me])` და **არა `push()`** — `push` კოლექციას ცვლის, ე.ი. `$me` ქვემოთ ციკლში ჩავარდებოდა და საკუთარ თავთან დამთხვევას დაბადებდა (`truncated`-ის თვლაც გაფუჭდებოდა)
+  - ⚠️ ფილტრი `domainsOf()`-შია ერთხელ და არა ორივე გზაზე ასლად
+  - ✅ `MatchTest::test_the_ranking_reads_the_module_pivot_a_constant_number_of_times` — 1 კანდიდატზე და 5-ზე `module_user`-ის წაკითხვა ერთი და იგივეა. **მუტაციის შემოწმება:** ფიქსის გამორთვაზე ტესტი წითლდება („1 → 2, 5 → 10")
+  - ℹ️ **ჩანაწერების** წაკითხვა კანდიდატებზე წრფივი **რჩება** — ასეა ჩაფიქრებული (ზუსტი შედარება + `MAX_PROFILES`), და ტასკიც ცხადად მხოლოდ `module_user`-ზეა
+  - ✅ backend 752/752, Pint მწვანე
 - **ტიპი:** performance
 - **სად:** `backend/app/Services/Profile/MatchService.php:211-212`
 - **პრობლემა:** `summary($me, $other)` → `domains($a, $b)` → `PublicProfileService::domains()` ორივე მომხმარებელზე `module_user` join-ს აკეთებს ყოველ იტერაციაზე; `MAX_PROFILES = 50`-ზე `domains($me)` 50-ჯერ ერთი და იგივე query-ა. `records()` memo-ს აქვს (`:55`), `domains()` — არა.
 - **რატომ:** `/people` გვერდი 100+ ზედმეტ query-ს აკეთებს.
 - **გადაწყვეტა:** იგივე per-request memo `domains()`-ზე `user_id`-ით.
 - **Acceptance criteria:**
-  - [ ] `MatchTest`-ში `GET /api/matches` query-რაოდენობა კანდიდატთა რიცხვზე წრფივად არ იზრდება `module_user`-ისთვის
+  - [x] `MatchTest`-ში `GET /api/matches` query-რაოდენობა კანდიდატთა რიცხვზე წრფივად არ იზრდება `module_user`-ისთვის
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

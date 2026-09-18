@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * **Tasks §16.1 — საჯარო პროფილის ერთადერთი წყარო.**
@@ -30,6 +31,18 @@ class PublicProfileService
 {
     /** რამდენი ჩანაწერი მოდის ერთ გვერდზე */
     public const PER_PAGE = 24;
+
+    /**
+     * `user_id` => მისი საჯარო დომენები (ერთი რექვესთის სიცოცხლე, Tasks PERF-06).
+     *
+     * ⚠️ **ინსტანციისაა და არა სტატიკური** — სერვისი რექვესთზე ერთხელ იქმნება,
+     * ე.ი. მემო თავისით ცხრება; სტატიკური კი ტესტებში (და Octane-ზე) შემდეგ
+     * მოთხოვნაზე გადაყვებოდა, ზუსტად ის ხაფანგი, რაც `AlbumLock`-ს ერთხელ
+     * დაემართა.
+     *
+     * @var array<int, list<string>>
+     */
+    private array $domainsMemo = [];
 
     /**
      * პროფილი username-ით — **მხოლოდ საჯარო და აქტიური**.
@@ -59,10 +72,29 @@ class PublicProfileService
      * მას იმპლიციტურად აქვს). აქ ეს **სასურველი** ქცევაა: რიგის გარეშე
      * `is_public` არ არსებობს, ე.ი. არაფერი ჩანს, სანამ თვითონ არ ჩართავს.
      *
+     * ⚠️ **პასუხი ერთი რექვესთის ფარგლებში ემახსოვრდება (Tasks PERF-06).** ეს
+     * ოპტიმიზაცია არაა, არამედ იმ ფორმის გამოსწორება, რომელშიც ის იძახება:
+     * `MatchService::ranking()` თითო კანდიდატზე `domains($me, $other)`-ს
+     * ეკითხება, ე.ი. `MAX_PROFILES = 50`-ზე **ერთი და იგივე** `module_user`
+     * join 50-ჯერ სრულდებოდა. `records()`-ს მემო ჰქონდა, ამას — არა.
+     *
+     * ⚠️ **გასაღები `user_id`-ია და არა ობიექტი**: ერთი და იმავე ანგარიშის ორი
+     * `User` ინსტანცია ბაზაში ერთსა და იმავეს ხედავს. ⚠️ სამაგიეროდ ეს ნიშნავს,
+     * რომ **ერთ რექვესთში** მოდულის საჯაროობის შეცვლის შემდეგ პასუხი ძველია —
+     * დღეს ეს უსაფრთხოა, რადგან ყველა გამომძახებელი მხოლოდ *კითხულობს*
+     * (`PublicProfileController`, `MatchService`, `PublicGallery`); ჩამწერი
+     * გამომძახებელი რომ გამოჩნდეს, მას მემოს გასუფთავება მოუწევს.
+     *
      * @return list<string> დომენების key-ები `PublicDomain::DOMAINS`-ის რიგით
      */
     public function domains(User $user): array
     {
+        $id = (int) $user->id;
+
+        if (isset($this->domainsMemo[$id])) {
+            return $this->domainsMemo[$id];
+        }
+
         $publicModules = $user->modules()
             ->where('modules.is_active', true)
             ->wherePivot('is_public', true)
@@ -70,6 +102,66 @@ class PublicProfileService
             ->pluck('modules.key')
             ->all();
 
+        return $this->domainsMemo[$id] = $this->domainsOf($publicModules);
+    }
+
+    /**
+     * **ბევრი პროფილის დომენები ერთ query-ში (Tasks PERF-06).**
+     *
+     * ⚠️ მარტო მემო არ კმაროდა: `ranking()` 50 კანდიდატზე მაინც 50-ჯერ
+     * ეკითხებოდა `module_user`-ს — თითო კანდიდატზე ერთხელ. აქ სიას ერთი
+     * `whereIn` კითხულობს, ე.ი. query-ების რიცხვი კანდიდატთა რაოდენობაზე
+     * აღარ არის დამოკიდებული.
+     *
+     * ⚠️ **რიგის გარეშე დარჩენილ user-ს ცარიელი სია ეწერება** და არა „არაფერი":
+     * თორემ `domains()` მასზე ისევ ცალკე query-ს გააკეთებდა და ჭერი
+     * დაბრუნდებოდა — უარყოფითი პასუხიც პასუხია.
+     *
+     * @param  iterable<int, User>  $users
+     */
+    public function warmDomains(iterable $users): void
+    {
+        $ids = [];
+        foreach ($users as $user) {
+            $id = (int) $user->id;
+            if (! isset($this->domainsMemo[$id])) {
+                $ids[$id] = $id;
+            }
+        }
+
+        if ($ids === []) {
+            return;
+        }
+
+        $byUser = [];
+
+        DB::table('module_user')
+            ->join('modules', 'modules.id', '=', 'module_user.module_id')
+            ->where('modules.is_active', true)
+            ->where('module_user.is_public', true)
+            ->where('module_user.is_hidden', false)
+            ->whereIn('module_user.user_id', array_values($ids))
+            ->get(['module_user.user_id', 'modules.key'])
+            ->each(function ($row) use (&$byUser) {
+                $byUser[(int) $row->user_id][] = $row->key;
+            });
+
+        foreach ($ids as $id) {
+            $this->domainsMemo[$id] = $this->domainsOf($byUser[$id] ?? []);
+        }
+    }
+
+    /**
+     * საჯარო მოდულების სია → დომენების სია.
+     *
+     * ⚠️ ერთი ფუნქცია ორივე გზისთვის (`domains()` და `warmDomains()`): ორი ასლი
+     * იმ დღეს დაშორდებოდა, როცა ერთი მოდული მეორე დომენს გააჩენს.
+     *
+     * @param  list<string>  $publicModules
+     * @return list<string>
+     */
+    private function domainsOf(array $publicModules): array
+    {
         return array_values(array_filter(
             PublicDomain::keys(),
             fn (string $d) => in_array(PublicDomain::module($d), $publicModules, true),
