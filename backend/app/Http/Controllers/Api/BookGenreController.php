@@ -56,10 +56,14 @@ class BookGenreController extends Controller
     /** წაშლა; `move_to` — რომელ ჟანრზე გადავიდეს ეს წიგნები */
     public function destroy(Request $request, BookGenre $bookGenre)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
+                $bookGenre->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
@@ -69,7 +73,7 @@ class BookGenreController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $bookGenre->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $moved = DictionaryRecords::move(
             Book::where('genre_id', $bookGenre->id),

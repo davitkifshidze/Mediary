@@ -10,8 +10,10 @@
    ============================================================ */
 
 export interface DictionaryRemoval {
-  /** სხვა ერთეულზე გადატანა; `null`/არაფერი — ჩანაწერები ცარიელად რჩება */
+  /** სხვა ერთეულზე გადატანა */
   moveTo?: number | null
+  /** ⚠️ ჩანაწერები რჩება, უბრალოდ ლექსიკონის გარეშე — **ცხადი არჩევანი** */
+  clearRecords?: boolean
   /** ⚠️ ჩანაწერებიც სამუდამოდ იშლება (ფაილებით, მოდელის გავლით) */
   deleteRecords?: boolean
 }
@@ -21,10 +23,17 @@ export interface DictionaryRemoved {
   deleted: number
 }
 
+/**
+ * ⚠️ **სამივე განზრახვა ცხადად იგზავნება** (Tasks GAP-09). აქამდე
+ * „ცარიელად დატოვება" `move_to: null`-ით მიდიოდა, ე.ი. სერვერზე ის
+ * **დავიწყებული ველისგან არ განსხვავდებოდა** — ახლა `clear_records`-ია და
+ * განზრახვის გარეშე მოთხოვნა 422 `move_target_required`-ია.
+ */
 export function removalBody(removal: DictionaryRemoval = {}) {
-  return removal.deleteRecords
-    ? { move_to: null, delete_records: true }
-    : { move_to: removal.moveTo ?? null }
+  if (removal.deleteRecords) return { delete_records: true }
+  if (removal.clearRecords || removal.moveTo == null) return { clear_records: true }
+
+  return { move_to: removal.moveTo }
 }
 
 export function readRemoved(data: { moved?: number; deleted?: number }): DictionaryRemoved {

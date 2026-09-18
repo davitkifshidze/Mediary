@@ -61,10 +61,14 @@ class VideoTypeController extends Controller
      */
     public function destroy(Request $request, VideoType $videoType)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+                $videoType->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
@@ -74,7 +78,7 @@ class VideoTypeController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $videoType->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $moved = DictionaryRecords::move(
             Video::where('type_id', $videoType->id),

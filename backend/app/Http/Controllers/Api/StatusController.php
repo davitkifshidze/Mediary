@@ -124,12 +124,16 @@ class StatusController extends Controller
 
         $status = $this->find($domain, $id);
 
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('statuses', 'id')
-                ->where('user_id', $request->user()->id)
-                ->where('module', $domain),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('statuses', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('module', $domain),
+                $status->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         $model = StatusDomain::model($domain);
         $records = $model::query()->where('status_id', $status->id);
@@ -145,7 +149,7 @@ class StatusController extends Controller
                სტატუსის წაშლა `todo`-ზე გადატანით ყველა ჩანაწერს შევსებული
                „როდის ვნახე"-თი ტოვებდა. მასობრივი `update()` `AuditObserver`-საც
                გვერდს უვლიდა — ე.ი. ასი ფილმის სტატუსის შეცვლა ლოგში არსად ჩანდა. */
-            $target = ($targetId = DictionaryRecords::moveTarget($data, $status->id))
+            $target = ($targetId = DictionaryRecords::moveTarget($data))
                 ? Status::find($targetId)
                 : null;
 

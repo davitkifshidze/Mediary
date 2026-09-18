@@ -559,7 +559,10 @@ function DeleteDictionaryEntry({
         item.id,
         mode === 'delete'
           ? { deleteRecords: true }
-          : { moveTo: mode === 'reassign' && moveTo ? Number(moveTo) : null },
+          : mode === 'reassign' && moveTo
+            ? { moveTo: Number(moveTo) }
+            // ⚠️ ცხადი ფლაგი და არა `moveTo: null` (Tasks GAP-09)
+            : { clearRecords: true },
       ),
     onSuccess: ({ moved, deleted }) => {
       qc.invalidateQueries({ queryKey: def.queryKey })

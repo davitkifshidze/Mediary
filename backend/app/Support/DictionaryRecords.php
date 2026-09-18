@@ -14,8 +14,19 @@ use Illuminate\Validation\Rules\Exists;
  * სამი ცხადი არჩევანი, რვავე ლექსიკონზე ერთნაირად (ვიდეოს ტიპი · ხუთი
  * ჟანრი · ორი კატეგორია · სტატუსი):
  *  · `move_to`        — სხვა ერთეულზე გადატანა;
- *  · არაფერი          — ჩანაწერი რჩება, უბრალოდ ლექსიკონის გარეშე;
+ *  · `clear_records`  — ჩანაწერი რჩება, უბრალოდ ლექსიკონის გარეშე;
  *  · `delete_records` — **ჩანაწერებიც იშლება** (მომხმარებლის პასუხი 2026-09-13).
+ *
+ * ⚠️ **სამივე ცხადია და „არაფერი" აღარ არსებობს (Tasks GAP-09).** აქამდე
+ * `isset($data['move_to'])`-ს ეყრდნობოდა, ე.ი. `null`-ზე false-ს აბრუნებდა —
+ * და **გასაღების არყოფნა**, ცხადი `move_to: null` და `move_to: <self>` სამივე
+ * ერთსა და იმავეს ნიშნავდა: „ჩანაწერები ცარიელი დარჩეს". ე.ი. ნახევრად
+ * აწყობილი ფორმა და ბაგიანი კლიენტი უხმოდ იღებდა იმ შედეგს, რომელიც
+ * სავალდებულო სტატუსის წესის ერთადერთი დარჩენილი გამონაკლისია. ახლა
+ * განზრახვა **ცხადად იგზავნება**, უამისოდ კი **422 `move_target_required`**.
+ *
+ * ⚠️ `move_to: <self>` ცალკე აღარ იკითხება — თავის თავზე „გადატანა" წაშლადი
+ * ერთეულისკენ უაზროა და 422-ია (`Rule::notIn`).
  *
  * ⚠️ **წაშლა მოდელის გავლითაა, არასდროს `delete()` query-ზე.** ჩანაწერის
  * `deleting`/`deleted` ივენთები ფაილს დისკიდან შლის, კვოტას ათავისუფლებს,
@@ -31,27 +42,58 @@ final class DictionaryRecords
     /**
      * `destroy()`-ის ვალიდაცია.
      *
+     * ⚠️ **`move_to` სავალდებულოა, თუ ცხადი ფლაგი არ მოვიდა** (Tasks GAP-09) —
+     * ე.ი. ფორმა, რომელმაც განზრახვა არ თქვა, 422-ს იღებს და არა ჩუმად
+     * „დატოვე ცარიელი"-ს.
+     *
      * @param  Exists  $target  სამიზნე ერთეული — **ჩემი** ლექსიკონიდან (და, სტატუსზე, იმავე დომენიდან)
+     * @param  int  $selfId  წაშლადი ერთეული — თავის თავზე გადატანა უაზროა
      */
-    public static function rules(Request $request, Exists $target): array
+    public static function rules(Request $request, Exists $target, int $selfId): array
     {
+        // „ჩანაწერებს რაღაც სხვა მოუვა" — ორივე შემთხვევაში `move_to` ზედმეტია
+        $explicit = fn (): bool => $request->boolean('delete_records') || $request->boolean('clear_records');
+
         return [
             'move_to' => [
-                Rule::prohibitedIf(fn () => $request->boolean('delete_records')),
-                'nullable',
+                Rule::prohibitedIf($explicit),
+                Rule::requiredIf(fn (): bool => ! $explicit()),
                 'integer',
+                Rule::notIn([$selfId]),
                 $target,
             ],
             'delete_records' => ['nullable', 'boolean'],
+            // ⚠️ ორი ურთიერთგამომრიცხავი განზრახვა ერთად — 422, არასდროს ჩუმი არჩევანი
+            'clear_records' => [
+                Rule::prohibitedIf(fn (): bool => $request->boolean('delete_records')),
+                'nullable',
+                'boolean',
+            ],
         ];
     }
 
-    /** გადატანის სამიზნე — თავის თავზე „გადატანა" ცარიელად დატოვებას ნიშნავს */
-    public static function moveTarget(array $data, int $selfId): ?int
+    /**
+     * ვალიდაციის შეტყობინებები — **მანქანური კოდები** და არა ინგლისური
+     * წინადადებები.
+     *
+     * ⚠️ Laravel `message`-ში პირველივე შეცდომის ტექსტს წერს, ე.ი. კოდი
+     * პირდაპირ `errorMessage()`-ს ხვდება და ითარგმნება (BUG-14-ის შემდეგ
+     * ის `CODES`-ს ჯერ ამოწმებს).
+     *
+     * @return array<string, string>
+     */
+    public static function messages(): array
     {
-        return isset($data['move_to']) && (int) $data['move_to'] !== $selfId
-            ? (int) $data['move_to']
-            : null;
+        return [
+            'move_to.required' => 'move_target_required',
+            'move_to.not_in' => 'move_target_is_self',
+        ];
+    }
+
+    /** გადატანის სამიზნე — `null` მხოლოდ ცხადი `clear_records`-ის შემთხვევაშია */
+    public static function moveTarget(array $data): ?int
+    {
+        return isset($data['move_to']) ? (int) $data['move_to'] : null;
     }
 
     /**

@@ -151,19 +151,62 @@ class StatusDictionaryTest extends TestCase
         $this->assertSame('watched', $movie->refresh()->status_key);
     }
 
-    /** `move_to`-ს გარეშე ჩანაწერი **რჩება**, უბრალოდ სტატუსის გარეშე */
-    public function test_delete_without_move_leaves_the_record_alive(): void
+    /**
+     * `clear_records`-ით ჩანაწერი **რჩება**, უბრალოდ სტატუსის გარეშე.
+     *
+     * ⚠️ **ფლაგი ცხადია და სავალდებულო** (Tasks GAP-09): უამისოდ იგივე
+     * პასუხს იძლეოდა დავიწყებული ველიც, ე.ი. ნახევრად აწყობილი ფორმა
+     * უხმოდ იღებდა „სტატუსის გარეშე დარჩი"-ს.
+     */
+    public function test_delete_with_clear_records_leaves_the_record_alive(): void
     {
         $this->actingAs($this->user);
 
         $movie = Movie::create(['year' => 2002]);
         $status = $this->dictionaryRow($this->user, 'movie', 'undecided');
 
-        $this->deleteJson("/api/statuses/movie/{$status->id}")->assertOk();
+        $this->deleteJson("/api/statuses/movie/{$status->id}", ['clear_records' => true])->assertOk();
 
         $this->assertNotNull($movie->refresh());
         $this->assertNull($movie->status_id);
         $this->assertNull($movie->status_key);
+    }
+
+    /**
+     * **განზრახვის გარეშე წაშლა — 422 და არა ჩუმი „ცარიელი"** (Tasks GAP-09).
+     *
+     * ⚠️ სამივე მცდარი ფორმა ერთსა და იმავე კოდს იღებს, რომ კლიენტმა
+     * განსხვავება არ გამოიცნოს: გასაღების არყოფნა · ცხადი `null` · თავის
+     * თავზე „გადატანა" (ეს უკანასკნელი — თავისი კოდით, რადგან სხვა შეცდომაა).
+     */
+    public function test_deleting_without_an_explicit_intent_is_rejected(): void
+    {
+        $this->actingAs($this->user);
+
+        $movie = Movie::create(['year' => 2002]);
+        $status = $this->dictionaryRow($this->user, 'movie', 'undecided');
+
+        $this->deleteJson("/api/statuses/movie/{$status->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'move_target_required');
+
+        $this->deleteJson("/api/statuses/movie/{$status->id}", ['move_to' => null])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'move_target_required');
+
+        $this->deleteJson("/api/statuses/movie/{$status->id}", ['move_to' => $status->id])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'move_target_is_self');
+
+        // ⚠️ ორი ურთიერთგამომრიცხავი განზრახვა ერთად — არასდროს ჩუმი არჩევანი
+        $this->deleteJson("/api/statuses/movie/{$status->id}", [
+            'clear_records' => true,
+            'delete_records' => true,
+        ])->assertStatus(422)->assertJsonValidationErrors('clear_records');
+
+        // არც ერთმა უარყოფამ არაფერი არ უნდა შეცვალოს
+        $this->assertNotNull(Status::find($status->id));
+        $this->assertSame($status->id, $movie->refresh()->status_id);
     }
 
     /** ნაგულისხმევის წაშლაზე მისი ადგილი პირველივე დარჩენილს გადადის */
@@ -173,7 +216,7 @@ class StatusDictionaryTest extends TestCase
 
         $default = $this->dictionaryRow($this->user, 'movie', 'undecided');
 
-        $this->deleteJson("/api/statuses/movie/{$default->id}")->assertOk();
+        $this->deleteJson("/api/statuses/movie/{$default->id}", ['clear_records' => true])->assertOk();
 
         $this->assertSame('to_watch', Status::defaultFor($this->user->id, 'movie')?->key);
     }
@@ -540,7 +583,7 @@ class StatusDictionaryTest extends TestCase
             'placement' => [['id' => 'favorite', 'at' => 'watching']],
         ])->assertOk();
 
-        $this->deleteJson("/api/statuses/movie/{$watching->id}")->assertOk();
+        $this->deleteJson("/api/statuses/movie/{$watching->id}", ['clear_records' => true])->assertOk();
 
         $movie = collect($this->getJson('/api/modules')->json('data'))->firstWhere('key', 'movie');
         $layout = $movie['user_settings']['status_sections'];

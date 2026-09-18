@@ -64,10 +64,14 @@ class GameGenreController extends Controller
      */
     public function destroy(Request $request, GameGenre $gameGenre)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('game_genres', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('game_genres', 'id')->where('user_id', $request->user()->id),
+                $gameGenre->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი).
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
@@ -78,7 +82,7 @@ class GameGenreController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $gameGenre->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $gameIds = $gameGenre->games()->pluck('games.id')->all();
         $moved = 0;

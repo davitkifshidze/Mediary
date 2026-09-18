@@ -66,10 +66,14 @@ class SongGenreController extends Controller
      */
     public function destroy(Request $request, SongGenre $songGenre)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
+                $songGenre->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი).
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
@@ -80,7 +84,7 @@ class SongGenreController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $songGenre->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $songIds = $songGenre->songs()->pluck('songs.id')->all();
         $moved = 0;

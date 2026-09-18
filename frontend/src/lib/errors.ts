@@ -125,6 +125,11 @@ export const CODES = [
   'genre_in_use',
   'invalid_reassign_target',
   'invalid_target_genre',
+  /* GAP-09 — ლექსიკონის ერთეულის წაშლაზე განზრახვა ცხადი უნდა იყოს.
+     ⚠️ ორი კოდია და ორივე საჭიროა: „არ თქვი, რა მოუვათ ჩანაწერებს" და
+     „თავის თავზე გადატანა" სხვადასხვა შეცდომაა და სხვადასხვა ქმედება სჭირდება. */
+  'move_target_required',
+  'move_target_is_self',
   // მოთხოვნის ფორმა
   'not_found',
   'invalid_type',

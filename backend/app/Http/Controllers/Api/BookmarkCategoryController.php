@@ -60,10 +60,14 @@ class BookmarkCategoryController extends Controller
     /** წაშლა; `move_to` — რომელ კატეგორიაზე გადავიდნენ ეს ბუკმარკები */
     public function destroy(Request $request, BookmarkCategory $bookmarkCategory)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
+                $bookmarkCategory->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
@@ -73,7 +77,7 @@ class BookmarkCategoryController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $bookmarkCategory->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $moved = DictionaryRecords::move(
             Bookmark::where('category_id', $bookmarkCategory->id),

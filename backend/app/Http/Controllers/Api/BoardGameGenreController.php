@@ -56,10 +56,14 @@ class BoardGameGenreController extends Controller
     /** წაშლა; `move_to` — რომელ ჟანრზე გადავიდეს ეს თამაშები */
     public function destroy(Request $request, BoardGameGenre $boardGameGenre)
     {
-        $data = $request->validate(DictionaryRecords::rules(
-            $request,
-            Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
-        ));
+        $data = $request->validate(
+            DictionaryRecords::rules(
+                $request,
+                Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
+                $boardGameGenre->id,
+            ),
+            DictionaryRecords::messages(),
+        );
 
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
@@ -69,7 +73,7 @@ class BoardGameGenreController extends Controller
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
-        $moveTo = DictionaryRecords::moveTarget($data, $boardGameGenre->id);
+        $moveTo = DictionaryRecords::moveTarget($data);
 
         $moved = DictionaryRecords::move(
             BoardGame::where('genre_id', $boardGameGenre->id),
