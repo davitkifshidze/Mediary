@@ -38,7 +38,7 @@
 | PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ✅ შესრულებულია |
 | PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ✅ შესრულებულია |
 | PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ✅ შესრულებულია |
-| PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ⬜ |
+| PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ✅ შესრულებულია |
 | PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ⬜ |
 | PERF-09 | პირადი დისკის grid „ყველა" რეჟიმში 1000 blob-XHR-მდე უშვებს | Medium | performance | M | ⬜ |
 | GAP-03 | პარამეტრების შენახვის ჩავარდნა უხმაუროდ იყლაპება | Medium | gap | S | ⬜ |
@@ -678,13 +678,20 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-07] `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ მფლობელების ცხრილი **ცალკე კომპონენტად გამოვიდა** — `ModuleHolders` (იმავე ფაილში, `ModuleFields`-ის წესით): `columns` `useMemo<DataColumn<User>[]>`-ია, `searchOf` · `holderOf` · `toggleFor` — `useCallback`
+  - ⚠️ **`useMemo` ადგილზე არ იდგამდა**: `ModulePage`-ს `if (!module) return` ადრეული გამოსვლა აქვს, ხოლო `holderOf`/`toggleFor`/`enabledCount` მის **შემდეგაა** — ე.ი. hook-ის დამატება იმ ადგილას React-ის წესს არღვევს. ცალკე კომპონენტში hook-ები უპირობოა და ცხრილიც მხოლოდ მოდალის გახსნაზე იდგმება
+  - ⚠️ **მუტაცია (`syncUserModules`) კომპონენტში გადავიდა** და მშობელი `onDone`/`onError`-ს გადმოსცემს: `onToggle`-ის პროპად გადმოცემა ყოველ რენდერზე ახალ ფუნქციას ნიშნავდა, ე.ი. `columns`-ის მემო ისევ თავს იბათილებდა. `mutate` react-query v5-ში `useCallback`-ია (სტაბილური), `onDone`/`onError` კი მუტაციის ოფციებშია — ყოველ რენდერზე თავიდან იკითხება, მოძველებული closure არ ჩნდება
+  - ⚠️ **`fmt` ობიექტი დესტრუქტურიზებულია (`const { date: fmtDate }`)** — `useDateFormat()` ყოველ რენდერზე ახალ ობიექტს აბრუნებს, თუმცა `date` შიგნით `useCallback`-ია; მთელი `fmt` deps-ში იგივე შეცდომა იყო
+  - ✅ `tsc -b` (strict), `npm run build`, oxlint მწვანეა; `ModulePage`-ზე გამაფრთხილებელი აღარაა
+  - 🟡 **ნაპოვნი, მაგრამ შეგნებულად შეუხებელი:** `UsersPage:222` და `RequestsPage:266` `searchOf`-ს **ინლაინ** აწვდიან, ე.ი. მათი `columns`-ის `useMemo` ისევ ყოველ რენდერზე იბათილება — `filtered`-ის deps-ში `searchOf`-იც წერია. `UsersPage`-ის ერთხაზიანია, `RequestsPage`-ის კი `typeLabel`/`label` closure-ებზეა დამოკიდებული და ჯერ ისინი უნდა გასტაბილურდეს. ტასკის `სად` მხოლოდ `ModulePage`-ს ასახელებდა, ამიტომ ეს ცალკე გადასაწყვეტია
 - **ტიპი:** performance
 - **სად:** `frontend/src/pages/ModulePage.tsx:340-347`; `frontend/src/components/ui/data-table.tsx:99`
 - **პრობლემა:** `columns={[ … ]}` ინლაინ მასივია; `DataTable`-ის memo `[rows, q, sort, columns, searchOf]`-ზეა, ე.ი. ყოველ რენდერზე მთელი სია თავიდან იფილტრება/ისორტება. CLAUDE.md ამას სავალდებულოს უწოდებს და `RequestsPage`/`UsersPage` `useMemo`-ს იყენებენ.
 - **რატომ:** ძებნის ყოველ კლავიშზე სრული re-sort; მომხმარებელთა ზრდაზე შესამჩნევი.
 - **გადაწყვეტა:** `const columns = useMemo<DataColumn<User>[]>(() => [...], [t, key, module.is_active, setUserModules.isPending])`; `searchOf` `useCallback`-ით.
 - **Acceptance criteria:**
-  - [ ] `ModulePage.tsx`-ში `columns` `useMemo`-შია
+  - [x] `ModulePage.tsx`-ში `columns` `useMemo`-შია
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

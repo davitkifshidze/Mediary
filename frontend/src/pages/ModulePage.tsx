@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -27,7 +27,7 @@ import { MODULE_ACCENT_FALLBACK, modAccent, moduleDescription, moduleName, useMo
 import { roleName } from '@/lib/display'
 import { CustomFieldsEditor } from '@/components/CustomFieldsEditor'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { DataTable } from '@/components/ui/data-table'
+import { DataTable, type DataColumn } from '@/components/ui/data-table'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -56,7 +56,6 @@ export function ModulePage() {
   const { toast } = useToast()
   const { isAdmin } = useAuth()
   const { all } = useModules()
-  const fmt = useDateFormat()
 
   const [asking, setAsking] = useState(false)
   const [message, setMessage] = useState('')
@@ -105,12 +104,6 @@ export function ModulePage() {
     onError: fail,
   })
 
-  const setUserModules = useMutation({
-    mutationFn: ({ id, keys }: { id: number; keys: string[] }) => syncUserModules(id, keys),
-    onSuccess: done,
-    onError: fail,
-  })
-
   const ask = useMutation({
     mutationFn: () => requestModule(key, message || undefined),
     onSuccess: () => {
@@ -136,18 +129,9 @@ export function ModulePage() {
     (r) => r.type === 'module_access' && r.module?.id === module.id && r.status === 'pending',
   )
   const holders = module.users ?? []
-  const holderOf = (id: number) => holders.find((h) => h.id === id)
   const enabledCount = users.filter(
     (u) => u.is_super_admin || (u.modules ?? []).includes(key),
   ).length
-
-  const toggleFor = (u: User, on: boolean) => {
-    const current = u.modules ?? []
-    setUserModules.mutate({
-      id: u.id,
-      keys: on ? [...new Set([...current, key])] : current.filter((k) => k !== key),
-    })
-  }
 
   return (
     <PageContainer>
@@ -333,88 +317,172 @@ export function ModulePage() {
           </section>
 
           {holdersOpen && (
-            <ModalShell title={t('admin.moduleAssign')} onClose={() => setHoldersOpen(false)} wide>
-              <p className="mt-2 text-xs text-muted-foreground">{t('admin.userModulesHint')}</p>
-
-              <div className="mt-4">
-                <DataTable
-                  rows={users}
-                  rowKey={(u) => u.id}
-                  defaultSort={{ key: 'name', dir: 'asc' }}
-                  searchPlaceholder={t('admin.searchUsers')}
-                  searchOf={(u) => [u.display_name, u.first_name, u.last_name, u.email, u.username]}
-                  columns={[
-                    {
-                      key: 'on',
-                      label: t('modules.enabled'),
-                      className: 'w-10',
-                      // super_admin-ს ყველა მოდული ავტომატურად აქვს
-                      render: (u) => (
-                        <Checkbox
-                          checked={u.is_super_admin || (u.modules ?? []).includes(key)}
-                          disabled={u.is_super_admin || !module.is_active || setUserModules.isPending}
-                          onCheckedChange={(v) => toggleFor(u, v === true)}
-                        />
-                      ),
-                    },
-                    {
-                      key: 'name',
-                      label: t('admin.colName'),
-                      value: (u) => (u.display_name ?? '').toLowerCase(),
-                      render: (u) => (
-                        <span className="flex min-w-0 items-center gap-2">
-                          <UserAvatar user={u} size="size-7" />
-                          <Link
-                            to={`/users/${u.id}`}
-                            className="min-w-0 truncate hover:text-primary"
-                          >
-                            {u.display_name}
-                          </Link>
-                        </span>
-                      ),
-                    },
-                    {
-                      key: 'role',
-                      label: t('admin.colRole'),
-                      value: (u) => roleName(u, i18n.language).toLowerCase(),
-                      render: (u) => (
-                        <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] leading-relaxed">
-                          {roleName(u, i18n.language)}
-                        </span>
-                      ),
-                    },
-                    {
-                      key: 'state',
-                      label: t('admin.moduleState'),
-                      value: (u) => holderOf(u.id)?.enabled_at ?? '',
-                      render: (u) => {
-                        const h = holderOf(u.id)
-                        return (
-                          <span
-                            className={cn(
-                              'text-[11px]',
-                              h?.hidden_by_user ? 'text-destructive' : 'text-muted-foreground',
-                            )}
-                          >
-                            {h?.hidden_by_user
-                              ? t('admin.moduleHiddenByUser')
-                              : h?.implicit
-                                ? t('admin.moduleAuto')
-                                : h?.enabled_at
-                                  ? `${t('admin.enabledAt')}: ${fmt.date(h.enabled_at)}`
-                                  : '—'}
-                          </span>
-                        )
-                      },
-                    },
-                  ]}
-                />
-              </div>
-            </ModalShell>
+            <ModuleHolders
+              moduleKey={key}
+              isActive={module.is_active}
+              users={users}
+              holders={holders}
+              onClose={() => setHoldersOpen(false)}
+              onDone={done}
+              onError={fail}
+            />
           )}
         </>
       )}
     </PageContainer>
+  )
+}
+
+/**
+ * **„ვის აქვს ჩართული" (§6.4) — ცალკე კომპონენტი (Tasks PERF-07).**
+ *
+ * ⚠️ `DataTable`-ის ფილტრი/დალაგება `[rows, q, sort, columns, searchOf]`-ზე
+ * იმახსოვრებს, ე.ი. **ინლაინ** `columns={[…]}` და `searchOf={(u) => …}` მემოს
+ * ყოველ რენდერზე აბათილებს: ძებნის თითო კლავიშზე მთელი სია თავიდან
+ * იფილტრება და ისორტება. CLAUDE.md ამას სავალდებულოს უწოდებს.
+ *
+ * ⚠️ **ბლოკი ცალკე კომპონენტად გამოვიდა და არა `useMemo`-დ ადგილზე**:
+ * გვერდს `if (!module) return` ადრეული გამოსვლა აქვს და მის შემდეგ hook-ის
+ * დამატება React-ის წესს არღვევს. აქ hook-ები უპირობოა, ცხრილი კი მხოლოდ
+ * მოდალის გახსნაზე იდგმება.
+ *
+ * ⚠️ **მუტაცია აქვეა** და არა მშობელში: `onToggle`-ს პროპად გადმოცემა ყოველ
+ * რენდერზე ახალ ფუნქციას ნიშნავდა, ე.ი. `columns`-ის მემო ისევ იბათილებდა
+ * თავს. `mutate` react-query-ში სტაბილურია, `onDone`/`onError` კი მუტაციის
+ * ოფციებშია — ისინი ყოველ რენდერზე თავიდან იკითხება, ე.ი. მოძველებული
+ * closure არ ჩნდება.
+ */
+function ModuleHolders({
+  moduleKey,
+  isActive,
+  users,
+  holders,
+  onClose,
+  onDone,
+  onError,
+}: {
+  moduleKey: string
+  isActive: boolean
+  users: User[]
+  holders: NonNullable<ModuleInfo['users']>
+  onClose: () => void
+  onDone: () => void
+  onError: (e: unknown) => void
+}) {
+  const { t, i18n } = useTranslation()
+  // ⚠️ `fmt` ობიექტი ყოველ რენდერზე ახალია, `fmt.date` კი `useCallback`-ია —
+  // ამიტომ დესტრუქტურიზაცია, თორემ deps ისევ ყოველ რენდერზე იცვლებოდა
+  const { date: fmtDate } = useDateFormat()
+
+  const setUserModules = useMutation({
+    mutationFn: ({ id, keys }: { id: number; keys: string[] }) => syncUserModules(id, keys),
+    onSuccess: onDone,
+    onError,
+  })
+  const { mutate: syncModules, isPending } = setUserModules
+
+  const holderOf = useCallback(
+    (id: number) => holders.find((h) => h.id === id),
+    [holders],
+  )
+
+  const toggleFor = useCallback(
+    (u: User, on: boolean) => {
+      const current = u.modules ?? []
+      syncModules({
+        id: u.id,
+        keys: on ? [...new Set([...current, moduleKey])] : current.filter((k) => k !== moduleKey),
+      })
+    },
+    [moduleKey, syncModules],
+  )
+
+  const searchOf = useCallback(
+    (u: User) => [u.display_name, u.first_name, u.last_name, u.email, u.username],
+    [],
+  )
+
+  const columns = useMemo<DataColumn<User>[]>(
+    () => [
+      {
+        key: 'on',
+        label: t('modules.enabled'),
+        className: 'w-10',
+        // super_admin-ს ყველა მოდული ავტომატურად აქვს
+        render: (u) => (
+          <Checkbox
+            checked={u.is_super_admin || (u.modules ?? []).includes(moduleKey)}
+            disabled={u.is_super_admin || !isActive || isPending}
+            onCheckedChange={(v) => toggleFor(u, v === true)}
+          />
+        ),
+      },
+      {
+        key: 'name',
+        label: t('admin.colName'),
+        value: (u) => (u.display_name ?? '').toLowerCase(),
+        render: (u) => (
+          <span className="flex min-w-0 items-center gap-2">
+            <UserAvatar user={u} size="size-7" />
+            <Link to={`/users/${u.id}`} className="min-w-0 truncate hover:text-primary">
+              {u.display_name}
+            </Link>
+          </span>
+        ),
+      },
+      {
+        key: 'role',
+        label: t('admin.colRole'),
+        value: (u) => roleName(u, i18n.language).toLowerCase(),
+        render: (u) => (
+          <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] leading-relaxed">
+            {roleName(u, i18n.language)}
+          </span>
+        ),
+      },
+      {
+        key: 'state',
+        label: t('admin.moduleState'),
+        value: (u) => holderOf(u.id)?.enabled_at ?? '',
+        render: (u) => {
+          const h = holderOf(u.id)
+          return (
+            <span
+              className={cn(
+                'text-[11px]',
+                h?.hidden_by_user ? 'text-destructive' : 'text-muted-foreground',
+              )}
+            >
+              {h?.hidden_by_user
+                ? t('admin.moduleHiddenByUser')
+                : h?.implicit
+                  ? t('admin.moduleAuto')
+                  : h?.enabled_at
+                    ? `${t('admin.enabledAt')}: ${fmtDate(h.enabled_at)}`
+                    : '—'}
+            </span>
+          )
+        },
+      },
+    ],
+    [t, i18n.language, moduleKey, isActive, isPending, toggleFor, holderOf, fmtDate],
+  )
+
+  return (
+    <ModalShell title={t('admin.moduleAssign')} onClose={onClose} wide>
+      <p className="mt-2 text-xs text-muted-foreground">{t('admin.userModulesHint')}</p>
+
+      <div className="mt-4">
+        <DataTable
+          rows={users}
+          rowKey={(u) => u.id}
+          defaultSort={{ key: 'name', dir: 'asc' }}
+          searchPlaceholder={t('admin.searchUsers')}
+          searchOf={searchOf}
+          columns={columns}
+        />
+      </div>
+    </ModalShell>
   )
 }
 
