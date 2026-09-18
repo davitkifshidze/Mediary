@@ -1,4 +1,5 @@
 import { api, ensureCsrfCookie } from '@/lib/api'
+import { formatDate } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
 
 /* ============================================================
@@ -146,7 +147,11 @@ export async function downloadStorageFiles(scope: StorageScope): Promise<void> {
   const url = URL.createObjectURL(res.data as Blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `mediary-files-${new Date().toISOString().slice(0, 10)}.zip`
+  /* ⚠️ `formatDate(…, 'iso')` და არა `toISOString()` (Tasks BUG-15): ეს
+     უკანასკნელი **UTC-ზე გადადის**, ე.ი. თბილისში 00:00–04:00 ექსპორტი
+     გუშინდელი თარიღით დაინომრებოდა. სწორედ ამისთვის არსებობს `lib/dates.ts`-ის
+     `sv-SE` წესი და `dates.test.ts`. */
+  a.download = `mediary-files-${formatDate(new Date(), 'iso')}.zip`
   document.body.appendChild(a)
   a.click()
   a.remove()

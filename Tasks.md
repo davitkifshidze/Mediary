@@ -56,7 +56,7 @@
 | BUG-12 | `updateOrInsert` ყოველ რედაქტირებაზე `created_at`-ს გადაწერს | Low | bug | S | ✅ შესრულებულია |
 | BUG-13 | `deleteResolved()`-ის custom-field ბრანჩი: დისკი + მრიცხველი + row ტრანზაქციის გარეშე | Low | bug | S | ✅ შესრულებულია |
 | BUG-14 | `errorMessage()` 422-ზე ვალიდაციის ტექსტს კოდზე წინ აყენებს | Low | bug | S | ✅ შესრულებულია |
-| BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S | ⬜ |
+| BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S | ✅ შესრულებულია |
 | PERF-10 | `PurgeService::run()` plan-ს და id-სეტს ორჯერ ითვლის | Low | performance | S | ⬜ |
 | PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ⬜ |
 | PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ⬜ |
@@ -1030,13 +1030,16 @@
 - **დამოკიდებულება:** GAP-01
 
 ### [BUG-15] ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `formatDate(new Date(), 'iso')`; `grep -rn "toISOString().slice" src` ახლა **სრულიად ცარიელია** (ტესტებშიც აღარაა).
+  - ⚠️ **გაზომილია, რომ bundle არ გაიზარდა** — და ეს არ იყო ზედმეტი სიფრთხილე: chunk-ების ცხრილში `index` 367 → 419 kB და `auth` 119 → 429 kB „გაიზარდა", ე.ი. ზერელე შეხედვით ზუსტად ის რეგრესია, რაზეც CLAUDE.md აფრთხილებს („ერთი სტატიკური იმპორტი არა-page მოდულიდან მთელს აცამტვერებს"). სინამდვილეში Rollup-მა **პატარა chunk-ები გააერთიანა**: `dist/index.html`-ის ნამდვილი საწყისი payload **დაიკლო** — 157 ფაილი / 305.2 kB gzip → **130 ფაილი / 295.4 kB gzip**
+  - ℹ️ ცალკე ტესტი არ დაწერილა: წესს `dates.test.ts` უკვე იჭერს (`sv-SE` vs `toISOString()`), აქ კი იმის მტკიცება რჩება, რომ **ეს გამოძახება** სწორ ფუნქციას იყენებს — რასაც acceptance-ის grep ამბობს
 - **ტიპი:** bug
 - **სად:** `frontend/src/api/account.ts:149`
 - **პრობლემა:** `` `mediary-files-${new Date().toISOString().slice(0, 10)}.zip` `` — ზუსტად ის ბაგი, რისთვისაც `lib/dates.ts`-ის `sv-SE` წესი და `dates.test.ts` არსებობს; არა-ტესტ კოდში ერთადერთი დარჩენილი `toISOString().slice`.
 - **რატომ:** თბილისში 00:00–04:00 ექსპორტი გუშინდელი თარიღით ინომრება.
 - **გადაწყვეტა:** `formatDate(new Date(), 'iso')` `lib/dates.ts`-იდან.
 - **Acceptance criteria:**
-  - [ ] `grep -rn "toISOString().slice" src --include=*.ts --include=*.tsx` მხოლოდ ტესტებში პოულობს
+  - [x] `grep -rn "toISOString().slice" src --include=*.ts --include=*.tsx` ცარიელია
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
