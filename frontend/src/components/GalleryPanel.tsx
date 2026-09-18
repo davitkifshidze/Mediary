@@ -128,10 +128,12 @@ export function GalleryPanel({
               ? t(`gallery.category.${image.category}`)
               : t('gallery.category.other')),
           portrait: image.category === 'actor' || image.category === 'poster',
-          /* ⚠️ **მსახიობის ფოტოზე „მთავარად" აკრძალულია** (`cast_members.photo_path`
-             გლობალური სვეტია, backend 422-ს აბრუნებს). აქამდე ღილაკი იხატებოდა
-             და დაჭერა ჩუმად არაფერს აკეთებდა — ახლა პუნქტი საერთოდ არ ჩნდება. */
-          canPrimary: image.category !== 'actor',
+          /* ⚠️ **პასუხს backend იძლევა** (Tasks BUG-20): მშობელს მთავარი
+             სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
+             გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
+             შემთხვევას ხურავდა და სიმღერაზე/წიგნზე/თამაშზე ღილაკს ხატავდა,
+             სადაც დაჭერა 500-ს აბრუნებდა. `?? true` — ძველი პასუხისთვის. */
+          canPrimary: image.supports_primary ?? image.category !== 'actor',
           size: image.size,
           width: image.width,
           height: image.height,

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Anime;
+use App\Models\Book;
 use App\Models\CastMember;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -13,6 +14,7 @@ use App\Models\Role;
 use App\Models\Song;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
+use App\Support\GalleryParent;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1562,5 +1564,85 @@ class GalleryTest extends TestCase
             ->postJson('/api/gallery/movie/'.Movie::first()->id, [])
             ->assertStatus(403)
             ->assertJsonPath('message', 'forbidden_permission');
+    }
+
+    /**
+     * **„მთავარად დაყენება" სიმღერაზე 200-ია და არა 500** (Tasks BUG-20).
+     *
+     * ⚠️ `setPrimary()` ყველა მშობელს `poster_path`/`poster_source`-ს წერდა,
+     * რომელიც `songs`-ს, `books`-სა და `games`-ს **არ აქვს** — `save()`
+     * `Column not found`-ით ვარდებოდა, ინტერფეისი კი ღილაკს ხატავდა, რადგან
+     * მხოლოდ `category === 'actor'`-ს გამორიცხავდა.
+     */
+    public function test_setting_a_song_photo_as_primary_writes_the_thumbnail(): void
+    {
+        $this->user->modules()->syncWithoutDetaching(
+            Module::where('key', 'song')->pluck('id')->all()
+        );
+
+        $song = Song::create(['user_id' => $this->user->id, 'title' => 'Bohemian Rhapsody', 'url' => 'https://youtu.be/fJ9rUzIMcZQ']);
+        $image = $this->image($song, 'backdrop');
+
+        $this->actingAs($this->user->refresh())
+            ->postJson("/api/gallery/images/{$image->id}/primary")
+            ->assertOk()
+            ->assertJsonPath('poster_path', $image->path);
+
+        $this->assertSame($image->path, $song->refresh()->thumbnail_path);
+    }
+
+    /** წიგნის ყდა — სხვა სვეტი და **პატიოსანი** წყარო (`gallery`, არა `openlibrary`) */
+    public function test_setting_a_book_photo_as_primary_writes_the_cover(): void
+    {
+        $this->user->modules()->syncWithoutDetaching(
+            Module::where('key', 'book')->pluck('id')->all()
+        );
+
+        $book = Book::create(['user_id' => $this->user->id, 'title_en' => 'Dune']);
+        $image = $this->image($book, 'backdrop');
+
+        $this->actingAs($this->user->refresh())
+            ->postJson("/api/gallery/images/{$image->id}/primary")
+            ->assertOk();
+
+        $book->refresh();
+        $this->assertSame($image->path, $book->cover_path);
+        $this->assertSame(GalleryParent::FROM_GALLERY, $book->cover_source);
+        // ⚠️ `upload` არასდროს — ფაილი კვოტაში გალერეის ფოტოდ უკვე ითვლება
+        $this->assertNotSame('upload', $book->cover_source);
+    }
+
+    /** ⚠️ მსახიობზე კვლავ 422 — `cast_members.photo_path` გლობალურია */
+    public function test_setting_an_actor_photo_as_primary_is_still_refused(): void
+    {
+        $actor = CastMember::create(['tmdb_person_id' => 99, 'name' => 'Kate']);
+        $image = $this->image($actor, 'actor');
+
+        $this->actingAs($this->user)
+            ->postJson("/api/gallery/images/{$image->id}/primary")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'primary_not_supported_for_cast');
+    }
+
+    /** ინტერფეისი ღილაკს backend-ის პასუხით ხატავს და არა კატეგორიით */
+    public function test_the_payload_says_whether_primary_is_supported(): void
+    {
+        $movie = $this->makeMovie('Fight Club');
+        $this->image($movie, 'backdrop');
+        $actor = CastMember::create(['tmdb_person_id' => 98, 'name' => 'Ed']);
+        $this->image($actor, 'actor');
+
+        $rows = $this->actingAs($this->user)
+            ->getJson('/api/gallery/photos')
+            ->assertOk()
+            ->json('data');
+
+        $byParent = [];
+        foreach ($rows as $row) {
+            $byParent[$row['category']] = $row['supports_primary'];
+        }
+
+        $this->assertTrue($byParent['backdrop']);
+        $this->assertFalse($byParent['actor']);
     }
 }

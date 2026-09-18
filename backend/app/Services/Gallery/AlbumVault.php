@@ -2,9 +2,9 @@
 
 namespace App\Services\Gallery;
 
-use App\Models\CastMember;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
+use App\Support\GalleryParent;
 use App\Support\StorageFolder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -253,10 +253,12 @@ final class AlbumVault
      */
     private static function clearPoster(GalleryImage $image, string $path): void
     {
-        $parent = $image->imageable;
-
-        if ($parent && ! $parent instanceof CastMember && ($parent->poster_path ?? null) === $path) {
-            $parent->forceFill(['poster_path' => null, 'poster_source' => null])->saveQuietly();
-        }
+        // ⚠️ სვეტი მშობლისაა — იხ. `GalleryParent::clearPrimaryIfAt()` (BUG-20)
+        GalleryParent::clearPrimaryIfAt(
+            $image->imageable,
+            (string) $image->imageable_type,
+            $path,
+            quietly: true,
+        );
     }
 }

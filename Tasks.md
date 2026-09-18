@@ -20,7 +20,7 @@
 | GAP-12 | 25 API-პასუხი ქართული წინადადებაა და არა მანქანური კოდი; Laravel-ის ვალიდაციის ტექსტი ინგლისურია (`lang/ka` არ არსებობს) | High | gap | M | ✅ |
 | BUG-18 | `ka.json`-ში ორთოგრაფიული და გრამატიკული შეცდომებია („ჟანრიის" ×8, „კატეგორიაის" ×2, „ნიშავს", „სასაათე", „გალერიის", „დამრჩეს", „ნაცვლად არ არის", ბრუნვები `moveTo`-ში) | High | bug | S | ✅ |
 | BUG-19 | `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს — ჟანრის წაშლა ანიმეს მიბმებს ჩუმად კარგავს | High | bug | S | ✅ |
-| BUG-20 | „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია — `poster_path` მათ არ აქვთ, UI კი ღილაკს ხატავს | High | bug | S | ⬜ |
+| BUG-20 | „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია — `poster_path` მათ არ აქვთ, UI კი ღილაკს ხატავს | High | bug | S | ✅ |
 | BUG-21 | ანგარიშის წაშლა (`DELETE /admin/users/{id}`) მხოლოდ ფილმებს/სერიალებს შლის მოდელით — 8 მოდულის ფაილები დისკზე რჩება, კვოტა კი გაქრობს | High | bug | M | ⬜ |
 | PERF-14 | `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს (~30 query + დისკი) იძახებს | High | performance | S | ⬜ |
 | GAP-13 | აუდიტ-ლოგში 8 მოდელის სუბიექტი ლეიბლის გარეშეა — ცხრილში `anime`, `gallery_video`, `song_file`, `status`… ინგლისურად ჩანს | Medium | gap | S | ⬜ |
@@ -195,14 +195,17 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-20] „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). აღებულია **პირველი ვარიანტი — ღილაკი მუშაობს** და არა 422: მშობლის მთავარი სურათის სვეტები `GalleryParent::PARENTS[*]['primary']`-შია (`path` · `source` · `value`), `setPrimary()` მას კითხულობს. ⚠️ სამი რამ: (1) **წყაროს მნიშვნელობა მხოლოდ ერთ კითხვას პასუხობს — „ჩემი ატვირთვაა თუ არა"** (კვოტა + ჩანაწერთან წაშლა), ამიტომ წიგნს/თამაშს ახალი, პატიოსანი `gallery` ეწერება და არა `openlibrary`/`rawg`; მედია-დომენებზე ისტორიული `tmdb` უცვლელია. (2) **სიმღერას წყაროს სვეტი არ აქვს** — `source: null`, და სვეტები ცალ-ცალკე ეწერება: `forceFill([null => …])`-ში PHP-ის `null` გასაღები `''`-ად გარდაიქმნება და თვითონ 500-ს იძლეოდა. (3) **ბმულის მოხსნაც იმავე რუკაზე გადავიდა** — `GalleryParent::clearPrimaryIfAt()`, რომელსაც ფოტოს წაშლაც იძახებს და `AlbumVault`-იც (§7.14, ლოკის ერთადერთი შემოვლა): ხელით ჩაწერილი `poster_path` იქ ახალ მშობლებზე ჩუმად გატეხილ სურათს დატოვებდა. ღილაკი ახლა `supports_primary`-ზე იხატება (backend-ის პასუხი) და არა `category !== 'actor'`-ზე.
 - **ტიპი:** bug
 - **სად:** `backend/app/Http/Controllers/Api/GalleryController.php:1702-1722` (`setPrimary()` — `CastMember`-ის გარდა ყველა მშობელს `poster_path`/`poster_source`-ს `forceFill`-ით წერს, `:1719-1722`), `frontend/src/components/GalleryPanel.tsx:134` (`canPrimary: image.category !== 'actor'`)
 - **პრობლემა:** `GalleryParent` §8.3-დან შვიდ მშობელს იცნობს (`song`, `book`, `game` ჩათვლით), მათ კი `poster_path` სვეტი არ აქვთ (`thumbnail_path`/`cover_path`) — `save()` `Column not found` → 500. UI ღილაკს ხატავს, რადგან მხოლოდ `actor`-ს გამორიცხავს.
 - **რატომ:** მომხმარებლისთვის ხილული ავარია ჩვეულებრივ მოქმედებაზე; წიგნის `cover_source`/თამაშის `cover_source` სემანტიკაც სხვაა (`upload|openlibrary|rawg`).
 - **გადაწყვეტა:** ან ყველა მშობელს `primaryImageColumns()` (მოდელის მეთოდი: `[poster_path, poster_source]` / `[cover_path, cover_source]` / `[thumbnail_path, null]`) და `setPrimary()` მას იკითხავს, ან 422 `primary_not_supported` + `canPrimary` მშობლის ტიპიდან (`GalleryParent` პასუხში `supports_primary`). `photoActions()`-ის წესი: „მოქმედება, რომელიც ვერ იმუშავებს, არ იხატება".
 - **Acceptance criteria:**
-  - [ ] ტესტი `GalleryTest`: სიმღერის ფოტოზე `POST /gallery/images/{id}/primary` 200-ია და `songs.thumbnail_path` იწერება (ან 422 კოდით — არჩევანის მიხედვით), 500 არასდროს
-  - [ ] ღილაკი მხოლოდ იმ მშობლებზე ჩანს, სადაც მოქმედება მუშაობს
+  - [x] `GalleryTest::test_setting_a_song_photo_as_primary_writes_the_thumbnail` — 200 და `songs.thumbnail_path`; ძველ კოდზე `no such column: poster_path` → 500
+  - [x] `GalleryTest::test_setting_a_book_photo_as_primary_writes_the_cover` — `cover_path` + `cover_source = gallery` (და არასდროს `upload`)
+  - [x] `GalleryTest::test_setting_an_actor_photo_as_primary_is_still_refused` — მსახიობზე კვლავ 422 `primary_not_supported_for_cast`
+  - [x] `GalleryTest::test_the_payload_says_whether_primary_is_supported` — ღილაკს backend წყვეტს (`supports_primary`)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

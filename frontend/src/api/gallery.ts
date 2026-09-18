@@ -225,6 +225,13 @@ export interface GalleryImage {
   is_thumbnail: boolean
   /** ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება */
   category: 'backdrop' | 'poster' | 'logo' | 'actor' | null
+  /**
+   * ⚠️ **„მთავარად დაყენებას" backend წყვეტს** (Tasks BUG-20): მშობელს
+   * მთავარი სურათის სვეტი შეიძლება საერთოდ არ ჰქონდეს (მსახიობი) ან სხვა
+   * ერქვას (`thumbnail_path`, `cover_path`). `category !== 'actor'`-ზე
+   * დაყრდნობა სიმღერაზე/წიგნზე/თამაშზე **500-ს** იძლეოდა.
+   */
+  supports_primary?: boolean
   /** §26 — user-ის თავისი დახარისხება; მშობლისგან დამოუკიდებელი */
   album_id: number | null
   width: number | null

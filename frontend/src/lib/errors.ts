@@ -142,6 +142,9 @@ export const CODES = [
   'nothing_to_move',
   'cannot_move_into_itself',
   'primary_not_supported_for_cast',
+  /* BUG-20 — მშობელს მთავარი სურათის სვეტი საერთოდ არ აქვს. ⚠️ მსახიობის
+     კოდისგან ცალკეა: იქ მიზეზი გლობალური ლექსიკონია და ტექსტიც სხვაა. */
+  'primary_not_supported',
   'too_many_videos',
   'invalid_url',
   /* GAP-02 — სესიის დასასრული. ⚠️ ორივე `bootstrap/app.php`-შია და არა

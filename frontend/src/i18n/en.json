@@ -1015,6 +1015,7 @@
     "file_not_found": "The file was not found — it may already be deleted.",
     "nothing_to_move": "Choose where to move them — to a record, an actor or an album.",
     "cannot_move_into_itself": "The photos can't be moved into the album you are deleting — pick another album.",
+    "primary_not_supported": "This record has no main image.",
     "primary_not_supported_for_cast": "An actor's photo can't be made the main photo — actors are shared by every account.",
     "too_many_videos": "This record has reached its video limit.",
     "invalid_url": "The address must start with http:// or https://.",

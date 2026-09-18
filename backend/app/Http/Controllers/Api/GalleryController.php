@@ -1678,11 +1678,15 @@ class GalleryController extends Controller
 
     public function destroyImage(GalleryImage $galleryImage)
     {
-        // თუ ეს ფოტო ჩანაწერის პოსტერია, ბმული არ უნდა დაეკიდოს
-        $parent = $galleryImage->imageable;
-        if ($parent && ! $parent instanceof CastMember && $parent->poster_path === $galleryImage->path) {
-            $parent->forceFill(['poster_path' => null, 'poster_source' => null])->save();
-        }
+        /* თუ ეს ფოტო ჩანაწერის მთავარი სურათია, ბმული არ უნდა დაეკიდოს.
+           ⚠️ სვეტი მშობლისაა (`poster_path`/`cover_path`/`thumbnail_path`) —
+           ერთი ხელით ჩაწერილი სახელი სიმღერაზე/წიგნზე/თამაშზე ჩუმად
+           გატეხილ სურათს დატოვებდა (Tasks BUG-20). */
+        GalleryParent::clearPrimaryIfAt(
+            $galleryImage->imageable,
+            (string) $galleryImage->imageable_type,
+            $galleryImage->path,
+        );
 
         $galleryImage->delete();
 
@@ -1711,17 +1715,36 @@ class GalleryController extends Controller
             return response()->json(['message' => 'primary_not_supported_for_cast'], 422);
         }
 
-        // ძველი **ხელით ატვირთული** პოსტერი კვოტიდან თავისუფლდება
-        if ($parent->poster_source === 'upload' && $parent->poster_path !== $galleryImage->path) {
-            $this->meter->deleteUpload($parent->user_id, $parent->poster_path);
+        /* ⚠️ **სვეტები მშობლისაა და არა `poster_*`** (Tasks BUG-20): სიმღერას
+           `thumbnail_path` აქვს, წიგნსა და თამაშს — `cover_path`/`cover_source`.
+           ხელით ჩაწერილი `poster_path` მათზე `Column not found`-ს, ე.ი. **500-ს**
+           იძლეოდა, ინტერფეისი კი ღილაკს მაინც ხატავდა. */
+        $columns = GalleryParent::primary($galleryImage->imageable_type);
+
+        if (! $columns) {
+            return response()->json(['message' => 'primary_not_supported'], 422);
         }
 
-        $parent->forceFill([
-            'poster_path' => $galleryImage->path,
-            'poster_source' => 'tmdb',
-        ])->save();
+        // ძველი **ხელით ატვირთული** სურათი კვოტიდან თავისუფლდება
+        $source = $columns['source'];
+        if ($source
+            && $parent->{$source} === 'upload'
+            && $parent->{$columns['path']} !== $galleryImage->path) {
+            $this->meter->deleteUpload($parent->user_id, $parent->{$columns['path']});
+        }
 
-        return response()->json(['poster_path' => $parent->poster_path]);
+        /* ⚠️ სვეტები ცალ-ცალკე ეწერება და არა ერთი ლიტერალით: `null` გასაღები
+           PHP-ში `''`-ად გარდაიქმნება, ე.ი. სიმღერა (რომელსაც წყაროს სვეტი
+           არ აქვს) `forceFill(['' => null])`-ს მიიღებდა და 500-ით ვარდებოდა. */
+        $parent->{$columns['path']} = $galleryImage->path;
+        if ($source) {
+            $parent->{$source} = $columns['value'];
+        }
+        $parent->save();
+
+        /* ⚠️ პასუხის გასაღები `poster_path`-ად რჩება: SPA ერთ ველს კითხულობს
+           და მშობლის სვეტის სახელი მისთვის უცნობია. */
+        return response()->json(['poster_path' => $parent->{$columns['path']}]);
     }
 
     /**

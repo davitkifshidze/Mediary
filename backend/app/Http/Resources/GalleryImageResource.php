@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\GalleryParent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,13 @@ class GalleryImageResource extends JsonResource
             'is_thumbnail' => (bool) $this->is_thumbnail,
             // ⚠️ TMDB-ის **ტექნიკური** ტიპი — წყაროდან მოდის და ხელით არ იცვლება
             'category' => $this->category,
+            /* ⚠️ **„მთავარად დაყენებას" backend წყვეტს და არა ფრონტი** (Tasks
+               BUG-20). SPA `category !== 'actor'`-ს უყურებდა, ე.ი. ღილაკს
+               სიმღერაზე/წიგნზე/თამაშზეც ხატავდა, სადაც `poster_path` სვეტი
+               საერთოდ არ არსებობს და დაჭერა **500-ს** აბრუნებდა. მშობლების
+               რუკა `GalleryParent`-შია — მისი ასლი ფრონტზე ისევე დაშორდებოდა,
+               როგორც `PRIVATE_ROOTS`-ის ასლი დაშორდებოდა დისკებს. */
+            'supports_primary' => GalleryParent::supportsPrimary((string) $this->imageable_type),
             /* §26 — ალბომი (user-ის თავისი დახარისხება). `null` = ალბომის
                გარეშე; მშობლისგან დამოუკიდებელია, ე.ი. ორივე შეიძლება იყოს. */
             'album_id' => $this->album_id,
