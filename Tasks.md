@@ -36,7 +36,7 @@
 | BUG-10 | toast-ის ავტო-დახურვის ტაიმერი პროვაიდერის ყოველ რენდერზე თავიდან იწყება | Medium | bug | S | ✅ შესრულებულია |
 | BUG-11 | `key={i}` წაშლადი/გადაადგილებადი სტრიქონებზე სამ ფორმაში | Medium | bug | S | ✅ შესრულებულია |
 | PERF-04 | `AdminModuleController::index()` — eager load იკარგება, N_users × N_modules × 2 query | Medium | performance | S | ✅ შესრულებულია |
-| PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ⬜ |
+| PERF-05 | Dashboard ~27 სერიული query ყოველ გახსნაზე | Medium | performance | M | ✅ შესრულებულია |
 | PERF-06 | `MatchService::ranking()` ყოველ კანდიდატზე `modules`-ს თავიდან კითხულობს | Medium | performance | S | ⬜ |
 | PERF-07 | `ModulePage` `DataTable`-ს არა-memo `columns`-ს აწვდის | Medium | performance | S | ⬜ |
 | PERF-08 | ორივე ლოკალის JSON (360 kB) საწყის bundle-შია | Medium | performance | M | ⬜ |
@@ -639,13 +639,21 @@
 - **დამოკიდებულება:** PERF-01
 
 ### [PERF-05] Dashboard ~27 სერიული query ყოველ გახსნაზე
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ `DashboardController::countsFor()` — **ყველა მთვლელი ერთ `select`-ში**, სკალარული ქვე-query-ებით (`select (select count(*) from movies where …) as c0, (…) as c1 …`). გაზომილი: `/api/dashboard` **4 query** (მოდულები · `module_user` · `gallery_albums` ლოკისთვის · თვლა), ადრე — 16 (PERF-01-ის შემდეგ; მის გარეშე ~27)
+  - ⚠️ **ქვე-query მოდელიდან მოდის** (`$model::query()->toBase()->selectRaw('count(*)')`) და არა ხელით დაწერილი `DB::table()`-იდან — სწორედ ეს ინარჩუნებს global scope-ებს: `owner` (თითოეული თავისას ითვლის) და `album_lock` (ჩაკეტილი ალბომის ფოტო არც რიცხვში ჩანს). ხელით დაწერილი `where` ორივეს ასლი იქნებოდა
+  - ⚠️ **ფსევდონიმი `c0`/`c1`… და არა მოდულის key**: `gallery` ორ ცხრილს ითვლის (§8.1), ე.ი. key უნიკალური არაა; რომელი რიცხვი ვისია — `$owner` რუკაშია
+  - ⚠️ UNION ALL განზრახ **არაა**: მწკრივების რიგი SQL-ში გარანტირებული არაა, ე.ი. key-ს SELECT-ში ჩაწერა (bindings-ით, MySQL-ზე და sqlite-ზე სხვადასხვა ქცევით) დასჭირდებოდა. `FROM`-ის გარეშე `select`-ს ორივე ძრავა იგებს
+  - ✅ `DashboardTest::test_the_dashboard_counts_every_module_in_one_query` — ყველა მოდული ჩართული, `count(*)`-ის შემცველი query **ზუსტად 1**, სულ **≤ 4**; ყველა ბარათს რიცხვი აქვს
+  - ✅ **ცოცხალ MariaDB-ზე დადასტურდა** (`tinker`, 375 ფილმი / 30 სერიალი / 2 გალერეა): 4 query, რიცხვები ძველ იმპლემენტაციას ზუსტად ემთხვევა
+  - ✅ backend 752/752, Pint მწვანე
 - **ტიპი:** performance
 - **სად:** `backend/app/Http/Controllers/Api/DashboardController.php:71-75`, `:99-101`
 - **პრობლემა:** `foreach ($modules …) { if (! $user->hasModule(...)) }` + `countOf()` → `$model::count()` თითო მოდულზე (gallery-ზე ორი): 1 + 12 + 13 ≈ 27 query სერიულად.
 - **რატომ:** აპის საწყისი გვერდია — ყოველ შესვლაზე იხდის.
 - **გადაწყვეტა:** PERF-01 + ერთი `UNION ALL` `SELECT 'movie', COUNT(*) …` ან მოკლე TTL-ქეში `user + max(updated_at)`-ზე.
 - **Acceptance criteria:**
-  - [ ] `DashboardTest`-ში query-რაოდენობა ≤ 4
+  - [x] `DashboardTest`-ში query-რაოდენობა ≤ 4
 - **Estimate:** M
 - **დამოკიდებულება:** PERF-01
 

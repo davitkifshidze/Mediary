@@ -17,6 +17,7 @@ use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები.
@@ -66,37 +67,75 @@ class DashboardController extends Controller
             ->orderBy('id')
             ->get();
 
-        $cards = [];
+        // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
+        $mine = $modules->filter(fn (Module $module) => $user->hasModule($module->key));
 
-        foreach ($modules as $module) {
-            // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
-            if (! $user->hasModule($module->key)) {
-                continue;
-            }
+        $counts = $this->countsFor($mine->pluck('key')->all());
 
-            $models = self::COUNTERS[$module->key] ?? null;
-
-            $cards[] = [
-                'key' => $module->key,
-                'name_ka' => $module->name_ka,
-                'name_en' => $module->name_en,
-                'icon' => $module->icon,
-                'route_base' => $module->route_base,
-                // მოდული მთვლელის გარეშე (ჯერ არ აქვს მოდელი) — `null`, არა 0
-                'count' => $models === null ? null : $this->countOf($models),
-            ];
-        }
+        $cards = $mine->map(fn (Module $module) => [
+            'key' => $module->key,
+            'name_ka' => $module->name_ka,
+            'name_en' => $module->name_en,
+            'icon' => $module->icon,
+            'route_base' => $module->route_base,
+            // მოდული მთვლელის გარეშე (ჯერ არ აქვს მოდელი) — `null`, არა 0
+            'count' => $counts[$module->key] ?? null,
+        ])->values();
 
         return response()->json(['data' => $cards]);
     }
 
     /**
-     * ერთი ან რამდენიმე ცხრილის ჯამი.
+     * **ყველა მთვლელი ერთ query-ში (Tasks PERF-05).**
      *
-     * @param  class-string|array<int, class-string>  $models
+     * ⚠️ **ადრე თითო მოდული თითო `SELECT COUNT(*)`-ს იხდიდა** (გალერეა ორს),
+     * ე.ი. აპის **საწყისი** გვერდი 13 სერიულ query-ს აკეთებდა თვლაზე. ახლა
+     * ისინი ერთი `select`-ის სკალარული ქვე-query-ებია:
+     * `select (select count(*) from movies where …) as c0, (…) as c1`.
+     *
+     * ⚠️ **ქვე-query თვითონ მოდელიდან მოდის** (`$model::query()->toBase()`) და
+     * არა ხელით დაწერილი `DB::table()`-იდან. სწორედ ეს ინარჩუნებს global
+     * scope-ებს: `owner` (თითოეული მხოლოდ თავისას ითვლის) და `album_lock`
+     * (ჩაკეტილი ალბომის ფოტო არც რიცხვში ჩანს). ხელით დაწერილი `where`
+     * ორივეს ასლი იქნებოდა და პირველივე ცვლილებაზე დაშორდებოდა.
+     *
+     * ⚠️ **ფსევდონიმი `c0`, `c1`… და არა მოდულის key** — ერთ მოდულს ორი
+     * ცხრილიც შეიძლება ჰქონდეს (`gallery`), ე.ი. key უნიკალური არაა;
+     * რომელი რიცხვი რომელი მოდულისაა, `$owner` რუკაში წერია.
+     *
+     * @param  list<string>  $keys
+     * @return array<string, int>
      */
-    private function countOf(string|array $models): int
+    private function countsFor(array $keys): array
     {
-        return collect((array) $models)->sum(fn (string $model) => $model::count());
+        /** @var array<string, string> $owner ფსევდონიმი => მოდულის key */
+        $owner = [];
+        $query = DB::query();
+
+        foreach ($keys as $key) {
+            $models = self::COUNTERS[$key] ?? null;
+            if ($models === null) {
+                continue;
+            }
+
+            foreach ((array) $models as $model) {
+                $alias = 'c'.count($owner);
+                $owner[$alias] = $key;
+                $query->selectSub($model::query()->toBase()->selectRaw('count(*)'), $alias);
+            }
+        }
+
+        if ($owner === []) {
+            return [];
+        }
+
+        $row = (array) $query->first();
+        $counts = [];
+
+        foreach ($owner as $alias => $key) {
+            $counts[$key] = ($counts[$key] ?? 0) + (int) ($row[$alias] ?? 0);
+        }
+
+        return $counts;
     }
 }

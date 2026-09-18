@@ -147,4 +147,46 @@ class DashboardTest extends TestCase
 
         $this->assertSame(1, $pivot, 'module_user უნდა წაიკითხოს ერთხელ');
     }
+
+    /**
+     * **ყველა მოდულის რიცხვი ერთ query-ში (Tasks PERF-05).**
+     *
+     * ⚠️ აქ მომხმარებელს **ყველა** მოდული ერთვება — სწორედ ეს არის ის
+     * შემთხვევა, რომელზეც ტასკია: 11 ბარათი (გალერეა ორ ცხრილს ითვლის) ადრე
+     * 12 ცალკე `SELECT COUNT(*)`-ს ნიშნავდა, სერიულად, აპის საწყის გვერდზე.
+     *
+     * ⚠️ **მთელი რიცხვი აქ განზრახ მოწმდება** (PERF-01-ის ტესტისგან
+     * განსხვავებით, სადაც მხოლოდ `module_user`): ტასკის მიღების პირობა
+     * ზუსტად „≤ 4 query"-ა, და ახალი მოდული მას **არ** უნდა ზრდიდეს — სწორედ
+     * ესაა ის თვისება, რომლის დაკარგვაც ჩუმი იქნებოდა.
+     */
+    public function test_the_dashboard_counts_every_module_in_one_query(): void
+    {
+        $this->user->modules()->sync(Module::pluck('id')->all());
+        $this->user = $this->user->refresh();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $cards = collect($this->actingAs($this->user)->getJson('/api/dashboard')->assertOk()->json('data'));
+
+        $log = collect(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertGreaterThan(1, $cards->count(), 'ბარათები უნდა დაიხატოს');
+        $this->assertSame(
+            [],
+            $cards->filter(fn (array $card) => $card['count'] === null)->pluck('key')->all(),
+            'ყველა ბარათს რიცხვი უნდა ჰქონდეს',
+        );
+
+        $counting = $log->filter(fn (array $q) => str_contains(strtolower($q['query']), 'count(*)'))->count();
+
+        $this->assertSame(1, $counting, 'თვლა ერთ query-ში უნდა მოთავდეს');
+        $this->assertLessThanOrEqual(
+            4,
+            $log->count(),
+            "დეშბორდი ≤ 4 query უნდა იყოს, არის {$log->count()}: ".$log->pluck('query')->implode(' | '),
+        );
+    }
 }
