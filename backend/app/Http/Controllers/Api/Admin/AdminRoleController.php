@@ -55,7 +55,9 @@ class AdminRoleController extends Controller
         $role->name_ka = $data['name_ka'];
         $role->name_en = $data['name_en'];
 
-        // სუპერ-ადმინს უფლებები არ ეჭრება — `null` ნიშნავს „ყველაფერი"
+        /* სუპერ-ადმინს უფლებები არ ეჭრება — მას `isSuperAdmin()` ხსნის და
+           არა სვეტის შიგთავსი (Tasks SEC-10), ე.ი. მისი მატრიცა უბრალოდ
+           არავის აინტერესებს და არც იწერება. */
         if (! $role->isSuperAdmin() && array_key_exists('permissions', $data)) {
             $permissions = $this->cleanPermissions($data['permissions'] ?? []);
 
@@ -120,7 +122,7 @@ class AdminRoleController extends Controller
      * საქმეა და ამით **არ** იკეტება — UI ყოველთვის მთელ მატრიცას აგზავნის,
      * ე.ი. უცვლელი `admin:*` ნაწილი ცვლილებად არ ითვლება.
      *
-     * @param  array<string, mixed>|null  $current  `null` = შეზღუდვის გარეშე
+     * @param  array<string, mixed>|null  $current
      * @param  array<string, list<string>>  $next
      */
     private function changesAdminZone(User $actor, ?array $current, array $next): bool
@@ -134,16 +136,20 @@ class AdminRoleController extends Controller
 
     /**
      * მხოლოდ `admin:<resource>` გასაღებები, ნორმალიზებული (ფიქსირებული რიგი).
-     * `null` (შეზღუდვის გარეშე) ნებისმიერ კონკრეტულ მასივს განსხვავდება.
+     *
+     * ⚠️ **`null` აქ ცარიელია და აღარ „შეზღუდვის გარეშე" (Tasks SEC-10).**
+     * ძველად ის ნებისმიერ მასივს განსხვავდებოდა, ე.ი. ლეგაცი `null`-იან
+     * როლზე ყოველი შენახვა „ადმინ-ზონის ცვლილებად" ჩაითვლებოდა და
+     * არა-`super_admin`-ს 403-ს აძლევდა — მაშინაც, როცა ის მხოლოდ მოდულს
+     * ცვლიდა. ასეთი რიგი მიგრაციის შემდეგ აღარ არსებობს, მაგრამ მნიშვნელობა
+     * ორივე ადგილას ერთი უნდა იყოს.
      *
      * @param  array<string, mixed>|null  $permissions
-     * @return array<string, list<string>>|null
+     * @return array<string, list<string>>
      */
-    private function adminPart(?array $permissions): ?array
+    private function adminPart(?array $permissions): array
     {
-        if ($permissions === null) {
-            return null;
-        }
+        $permissions ??= [];
 
         $out = [];
 

@@ -466,4 +466,76 @@ class RoleApiTest extends TestCase
             ->assertForbidden()
             ->assertJson(['message' => 'forbidden_permission', 'permission' => 'admin:users.view']);
     }
+
+    /* ================= SEC-10: `permissions = null` ================= */
+
+    /**
+     * **ცარიელი `permissions` „უფლების არქონას" ნიშნავს და არა „ყველაფერს"**
+     * (Tasks SEC-10).
+     *
+     * ⚠️ ასეთი რიგი API-დან არ იბადება (`cleanPermissions()` ყოველთვის
+     * მასივს აბრუნებს), მაგრამ სვეტი `nullable` იყო და
+     * `PartialRestore::table()` მას **ნებისმიერი ატვირთული dump-იდან**
+     * შემოიტანდა — ე.ი. ჩვეულებრივი ანგარიში ყველა მოდულსა და ოთხივე
+     * ადმინის სექციას იღებდა. ამიტომ ტესტი მდგომარეობას **ცხადად** აწყობს
+     * (`forceFill` მოდელზე), და არა endpoint-ით: სწორედ ის გზაა
+     * მოსაწესრიგებელი, რომელიც კონტროლერს გვერდს უვლის.
+     */
+    public function test_null_permissions_grant_nothing(): void
+    {
+        $role = $this->role();
+        $role->forceFill(['permissions' => null])->save();
+
+        $user = User::factory()->create(['role_id' => $role->id]);
+        $fresh = $user->fresh()->load('role');
+
+        $this->assertFalse($fresh->hasPermission('movie', 'view'));
+        $this->assertFalse($fresh->hasPermission('movie', 'delete'));
+
+        foreach (Role::ADMIN_RESOURCES as $resource) {
+            $this->assertFalse(
+                $fresh->role->allowsAdmin($resource, 'view'),
+                "ცარიელმა `permissions`-მა admin:{$resource} გახსნა",
+            );
+        }
+    }
+
+    /**
+     * **სუპერ-ადმინის შეუზღუდაობა გასაღებზე დგას და არა ცარიელ სვეტზე.**
+     *
+     * ⚠️ სწორედ ამიტომ შეიძლებოდა მიგრაციას `super_admin`-ის `permissions`
+     * `{}`-ად გადაექცია: „ყველაფერი" `isSuperAdmin()`-იდან მოდის.
+     * ⚠️ API-ს ფორმა კი უცვლელია — `RoleResource` მასზე კვლავ `null`-ს
+     * აგზავნის, რადგან ფრონტის `roleScope()` მას კითხულობს როგორც
+     * „მატრიცა ჩაკეტილია"; სვეტის მნიშვნელობა და API-ს მნიშვნელობა
+     * განზრახ გაიყარა.
+     */
+    public function test_a_super_admin_keeps_everything_with_an_empty_matrix(): void
+    {
+        $super = Role::where('key', 'super_admin')->firstOrFail();
+        $super->forceFill(['permissions' => []])->save();
+
+        $this->assertTrue($super->allows('movie', 'delete'));
+        $this->assertTrue($super->allowsAdmin('users', 'view'));
+        $this->assertTrue($this->admin->fresh()->load('role')->hasPermission('movie', 'delete'));
+
+        $permissions = $this->actingAs($this->admin)
+            ->getJson('/api/admin/roles')
+            ->assertOk()
+            ->json('data');
+
+        $row = collect($permissions)->firstWhere('key', 'super_admin');
+        $this->assertNull($row['permissions'], 'API-ს ფორმა უნდა დარჩეს `null` = შეზღუდვის გარეშე');
+    }
+
+    /**
+     * მიგრაციამ ერთი ცარიელი მნიშვნელობაც არ უნდა დატოვოს.
+     *
+     * ⚠️ `RefreshDatabase` ყოველ ტესტში მიგრაციებს ატარებს, ე.ი. ეს
+     * ზუსტად იმ მდგომარეობას ამოწმებს, რომელსაც სუფთა ინსტალაცია იღებს.
+     */
+    public function test_no_role_is_born_with_an_empty_permission_column(): void
+    {
+        $this->assertSame(0, Role::query()->whereNull('permissions')->count());
+    }
 }

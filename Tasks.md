@@ -51,7 +51,7 @@
 | DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ✅ შესრულებულია |
 | DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S | ✅ შესრულებულია |
 | DEBT-12 | `NoteReminders.test.ts` სრულ `npm test`-ში 5-წამიან ტაიმაუტზე ცვივა (ცალკე გადის) — CI-ს flaky-ს ხდის (SEC-02-ის შესრულებისას ნაპოვნი) | Medium | debt | S | ✅ შესრულებულია |
-| SEC-10 | `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია | Low | security | S | ⬜ |
+| SEC-10 | `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია | Low | security | S | ✅ შესრულებულია |
 | SEC-11 | `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე | Low | security | S | ⬜ |
 | BUG-12 | `updateOrInsert` ყოველ რედაქტირებაზე `created_at`-ს გადაწერს | Low | bug | S | ⬜ |
 | BUG-13 | `deleteResolved()`-ის custom-field ბრანჩი: დისკი + მრიცხველი + row ტრანზაქციის გარეშე | Low | bug | S | ⬜ |
@@ -936,14 +936,25 @@
 ## Low
 
 ### [SEC-10] `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — 768/768 backend, pint მწვანე; მიგრაცია ცოცხალ ბაზაზეც გაშვებულია.
+  - ✅ `Role::allows()`/`allowsAdmin()`-დან `|| $this->permissions === null` მოიხსნა → შეუზღუდავი წვდომის **ერთადერთი წყარო `isSuperAdmin()`-ია**, ე.ი. გასაღები და არა მონაცემის არყოფნა
+  - ✅ მიგრაცია `2026_09_18_000002_roles_permissions_never_null`: backfill `{}` (ორივე ძრავზე) + სვეტი `NOT NULL` (**MySQL-ზე მხოლოდ** — sqlite-ს `ALTER … MODIFY` არ აქვს, პროექტის არსებული წესი)
+  - ⚠️ **`super_admin`-იც `{}`-ზე გადავიდა და ეს განზრახია**: ამის შემდეგ სვეტს **ორი მნიშვნელობა აღარ აქვს**. ⚠️ სამაგიეროდ **API-ს ფორმა უცვლელია** — `RoleResource` სუპერ-ადმინზე კვლავ `null`-ს აგზავნის, რადგან ფრონტის `roleScope()` სწორედ მას კითხულობს როგორც „მატრიცა ჩაკეტილია"; ე.ი. სვეტის მნიშვნელობა და API-ს მნიშვნელობა ცხადად გაიყარა და **ფრონტში ერთი ხაზიც არ შეცვლილა**
+  - ⚠️ **DB-დონის `DEFAULT` განზრახ არ დაიწერა**: MySQL 8-ში `json`-ს ლიტერალური default არ აქვს, MariaDB-ში კი `json` `longtext`-ის მეტსახელია — ერთი მიგრაცია ორ ძრავზე სხვადასხვანაირად მოიქცეოდა. ყველა ჩამწერი გზა (კონტროლერი, `ModulesSeeder`, თვითონ მიგრაცია) მნიშვნელობას ისედაც ცხადად წერს
+  - ⚠️ `down()` `{}`-ს უკან `null`-ად **არ** აქცევს: მიგრაციამდე ეს ორი სხვადასხვა ფაქტი იყო („უფლება არ აქვს" / „ყველაფერი აქვს") და მათი გარჩევა აღარ შეიძლება — ბრმა დაბრუნება ყველა ცარიელ როლს სრულ წვდომას მისცემდა
+  - ✅ თანმხლები: `AdminRoleController::adminPart()`-ში `null` ახლა **ცარიელია** და არა „შეზღუდვის გარეშე" — ძველად ლეგაცი `null`-იან როლზე მოდულის უბრალო შენახვაც კი „ადმინ-ზონის ცვლილებად" ითვლებოდა და არა-`super_admin`-ს ცრუ 403-ს აძლევდა; `ModulesSeeder::fillDefaultRole()`-ის კომენტარი ახალ წესს ასახავს
+  - ✅ სამი ტესტი `RoleApiTest`-ში: ცარიელი `permissions` ვერც ერთ მოდულს და ვერც ერთ ადმინ-სექციას ხსნის · სუპერ-ადმინი ცარიელი მატრიცითაც ყველაფერს ინარჩუნებს **და API კვლავ `null`-ს აგზავნის** · მიგრაციის შემდეგ `whereNull('permissions')` ნულია. მდგომარეობა განზრახ `forceFill`-ით იწყობა და არა endpoint-ით — სწორედ კონტროლერის **გვერდის ავლა** არის საფრთხე (`PartialRestore`)
+  - ✅ **მუტაცია:** `|| $this->permissions === null` დაბრუნდა → `test_null_permissions_grant_nothing` წითლდება
+  - ✅ **ცოცხალი ბაზა:** სვეტი `NO` (NOT NULL), `null`-ების რაოდენობა 0, `super_admin` `{}`; ორივე ანგარიშის რეალური წვდომა გადამოწმებულია და უცვლელია (`davit`: movie.delete + ოთხივე სექცია; `nato_medic`: `co_admin`-ის ფარგლებში)
+  - ℹ️ აუდიტის „დასადასტურებელი" შემოწმდა: ცოცხალ ბაზაზე `permissions IS NULL AND key <> 'super_admin'` **ცარიელი იყო**, ე.ი. ხვრელი ექსპლუატირებული არ ყოფილა — გასწორება მომავალ dump-ის აღდგენას ხურავს
 - **ტიპი:** security
 - **სად:** `backend/app/Models/Role.php:58-65` (`allowsAdmin`-შიც იგივე); `backend/database/migrations/2026_09_02_000003_create_roles_table.php:30`
 - **პრობლემა:** `if ($this->isSuperAdmin() || $this->permissions === null) return true;`. API ასეთ რიგს ვეღარ ქმნის (`cleanPermissions()` მასივს აბრუნებს), მაგრამ სვეტი `nullable()`-ია და partial-restore (`PartialRestore::table()`) ნებისმიერი ატვირთული dump-იდან შეიძლება შემოიტანოს. **დასადასტურებელი:** პროდზე `SELECT id,key FROM roles WHERE permissions IS NULL AND key <> 'super_admin'`.
 - **რატომ:** არასაიმედო default — `NULL` „არაფრის" ნაცვლად „ყველაფერს" ნიშნავს ყველა მოდულსა და ადმინ-სექციაზე.
 - **გადაწყვეტა:** `null` → „უფლება არ აქვს", სრული წვდომა მხოლოდ `isSuperAdmin()`-ზე; backfill `'{}'`, სვეტი `NOT NULL DEFAULT '{}'`.
 - **Acceptance criteria:**
-  - [ ] `permissions = null` როლით `hasPermission('movie','view')` false-ია (გარდა `super_admin`-ის)
-  - [ ] მიგრაცია + ტესტი
+  - [x] `permissions = null` როლით `hasPermission('movie','view')` false-ია (გარდა `super_admin`-ის)
+  - [x] მიგრაცია + ტესტი
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

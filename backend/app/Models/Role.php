@@ -54,10 +54,21 @@ class Role extends Model
         return $this->key === 'super_admin';
     }
 
-    /** აქვს თუ არა ამ როლს კონკრეტული მოქმედების უფლება მოდულზე */
+    /**
+     * აქვს თუ არა ამ როლს კონკრეტული მოქმედების უფლება მოდულზე.
+     *
+     * ⚠️ **`permissions === null` აღარ ნიშნავს „ყველაფერს" (Tasks SEC-10).**
+     * ცარიელი მნიშვნელობა სრულ წვდომად იკითხებოდა ყველა მოდულსა და ადმინის
+     * სექციაზე, ე.ი. ყველაზე არასაიმედო default, რაც შეიძლება არსებობდეს.
+     * API ასეთ რიგს ვეღარ ქმნიდა (`cleanPermissions()` მასივს აბრუნებს),
+     * მაგრამ სვეტი `nullable` იყო და `PartialRestore::table()` მას
+     * **ნებისმიერი ატვირთული dump-იდან** შემოიტანდა. ახლა შეუზღუდავი
+     * წვდომის ერთადერთი წყარო `isSuperAdmin()`-ია — ის, რაც გასაღებზეა და
+     * არა მონაცემის არყოფნაზე.
+     */
     public function allows(string $module, string $action): bool
     {
-        if ($this->isSuperAdmin() || $this->permissions === null) {
+        if ($this->isSuperAdmin()) {
             return true;
         }
 
@@ -72,10 +83,12 @@ class Role extends Model
      * ⚠️ **წვდომა მხოლოდ ცხადად ჩაწერილი `admin:<resource>`-ით მიიღება.**
      * არც ერთი მოდულის უფლება — რამდენიც უნდა იყოს — აქ არ ვრცელდება:
      * ეს უფლების გაფართოებაა და არა მოხერხებულობა.
+     *
+     * ⚠️ **არც `permissions === null` (Tasks SEC-10)** — იხ. `allows()`.
      */
     public function allowsAdmin(string $resource, string $action): bool
     {
-        if ($this->isSuperAdmin() || $this->permissions === null) {
+        if ($this->isSuperAdmin()) {
             return true;
         }
 
