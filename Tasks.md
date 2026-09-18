@@ -28,7 +28,7 @@
 | GAP-15 | ტერმინოლოგია არათანმიმდევრულია: ლინკი/ბმული, სინქრონი/სინქრონიზაცია, ჩამოწერა/ჩამოტვირთვა, ესკიზი/თამბნეილი, ჩანიშვნა/შენიშვნა, ფრენჩაიზი/ფრანჩაიზი, კლავიში/გასაღები | Medium | gap | M | ✅ |
 | BUG-22 | ვიდეოს ხელახლა ჩამოტვირთვა არსებულ ლოკალურ ასლს **კვოტის შემოწმებამდე** შლის — 413-ზე ფაილი დაკარგულია | Medium | bug | S | ✅ |
 | BUG-23 | სინქრონზე შექმნილ ახალ ჟანრს ინგლისური სახელი `name_ka`-დაც ეწერება — მთარგმნელი მას „ნათარგმნად" თვლის და აღმოჩენა ინგლისურს ქართულად აჩვენებს | Medium | bug | S | 🟡 ნაწილობრივ |
-| BUG-24 | `localStorage` მოდულის ჩატვირთვისას დაუცველად იკითხება — დაბლოკილ საცავზე (Safari private, „ყველა ქუქის ბლოკირება") აპი თეთრ ეკრანზე ვარდება | Medium | bug | S | ⬜ |
+| BUG-24 | `localStorage` მოდულის ჩატვირთვისას დაუცველად იკითხება — დაბლოკილ საცავზე (Safari private, „ყველა ქუქის ბლოკირება") აპი თეთრ ეკრანზე ვარდება | Medium | bug | S | ✅ |
 | PERF-15 | `MatchService::thinColumns()` ყოველ კანდიდატ-პროფილზე და დომენზე `Schema::hasColumn()`-ს იძახებს | Medium | performance | S | ⬜ |
 | PERF-16 | `GET /chat` თითო საუბარზე პროფილის ჰედერსა და ბლოკის სტატუსს ცალკე query-ებით კითხულობს (N+1) | Medium | performance | S | ⬜ |
 | PERF-17 | ჰედერის „სათარგმნი" ბეჯი მთელ მედია-ბიბლიოთეკას თარგმანებით ტვირთავს, რომ დათვალოს | Medium | performance | S | ⬜ |
@@ -317,13 +317,17 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-24] `localStorage` მოდულის ჩატვირთვისას დაუცველად იკითხება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). `frontend/src/lib/storage.ts` (`safeGet`/`safeSet`) დაემატა და ოთხივე დაუცველი ადგილი მასზე გადავიდა: `i18n/index.ts`, `hooks/useTheme.ts` (კითხვაც და ჩაწერაც), `components/LanguageDropdown.tsx`; `lib/settings.tsx`-ის `loadLocal/saveLocal`-იც იმავეზეა, ე.ი. `grep localStorage src` კომენტარების გარდა აღარაფერს პოულობს.
+  ⚠️ **`try`-ის შიგნით თვისებაზე მიმართვაცაა და არა მხოლოდ `getItem()`**: „ყველა ქუქის ბლოკირებაზე" ისვრის **თვითონ `window.localStorage`**, ე.ი. მხოლოდ გამოძახების შემოტანა try-ში ხარვეზს ვერ დახურავდა.
+  ⚠️ **ჩავარდნა ჩუმია განზრახ**: საცავი აქ მხოლოდ მოხერხებულობაა (ენა, თემა, ქეშირებული პარამეტრები — `lib/settings.tsx` სერვერზეც ინახავს), ე.ი. გაფრთხილება იმას შესთავაზებდა, რასაც მომხმარებელი ვერაფერს უშველის.
+  ⚠️ ტესტი `blockStorage()`-ით საცავს **ჩამგდებ getter-ად** ცვლის და აღდგენას **დესკრიპტორით** აკეთებს (`delete` jsdom-ში საცავს სამუდამოდ წაიღებდა). ორი შემოწმება ძველ კოდზე წითელია.
 - **ტიპი:** bug
 - **სად:** `frontend/src/i18n/index.ts:57` (`export const savedLanguage = localStorage.getItem('lang')…` — მოდულის დონეზე), `frontend/src/hooks/useTheme.ts:7,12`, `frontend/src/components/LanguageDropdown.tsx:11`
 - **პრობლემა:** `lib/settings.tsx:140-150` და CLAUDE.md-ის წესი („ყოველი read/write try/catch-ში") სამ ადგილას არ სრულდება. Safari private-ში `setItem` `QuotaExceededError`-ს ისვრის, „ყველა ქუქის/საიტის მონაცემის ბლოკირება" რეჟიმში კი თვითონ `localStorage`-ზე მიმართვა `SecurityError`-ია — `i18n/index.ts` იმპორტისას ვარდება და აპი `ErrorBoundary`-მდეც არ აღწევს (თეთრი ეკრანი).
 - **რატომ:** მთელი აპის ჩავარდნა ბრაუზერის კონფიდენციალურობის პარამეტრზე.
 - **გადაწყვეტა:** `lib/storage.ts` — `safeGet/safeSet` try/catch-ით, სამივე ადგილი მასზე; `settings.tsx`-ის `loadLocal/saveLocal`-იც იმავეზე.
 - **Acceptance criteria:**
-  - [ ] Vitest: `localStorage` getter, რომელიც `SecurityError`-ს ისვრის → `savedLanguage === 'ka'`, `useTheme()` `'light'`-ს აბრუნებს, არაფერი არ ვარდება
+  - [x] Vitest: `localStorage` getter, რომელიც `SecurityError`-ს ისვრის → `savedLanguage === 'ka'`, `useTheme()` `'light'`-ს აბრუნებს, არაფერი არ ვარდება (`lib/storage.test.ts`, 4 შემოწმება; ძველ კოდზე ორი წითელია)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

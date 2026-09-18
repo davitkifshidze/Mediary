@@ -3,6 +3,7 @@ import { saveSettings } from '@/api/account'
 import { useToast } from '@/components/ui/feedback'
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
+import { safeGet, safeSet } from '@/lib/storage'
 
 /* ============================================================
    აპლიკაციის პარამეტრები (Tasks E1).
@@ -137,7 +138,7 @@ function merge(partial?: Partial<Settings> | null): Settings {
 
 function loadLocal(): Settings | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = safeGet(KEY)
     return raw ? merge(JSON.parse(raw) as Partial<Settings>) : null
   } catch {
     return null
@@ -145,11 +146,8 @@ function loadLocal(): Settings | null {
 }
 
 function saveLocal(settings: Settings) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(settings))
-  } catch {
-    // private mode / სავსე quota — პარამეტრები სესიაში მაინც მუშაობს
-  }
+  // private mode / სავსე quota — პარამეტრები სესიაში მაინც მუშაობს (`lib/storage.ts`)
+  safeSet(KEY, JSON.stringify(settings))
 }
 
 interface SettingsApi {

@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import ka from './ka.json'
+import { safeGet } from '@/lib/storage'
 
 /* ============================================================
    **ერთ ჩატვირთვაზე ერთი ლოკალი (Tasks PERF-08).**
@@ -54,7 +55,7 @@ const BUNDLES: Record<string, () => Promise<{ default: Record<string, unknown> }
  * (ან მომავალი ვერსიის მნიშვნელობა) `fallbackLng`-ის გარეშე ცარიელ
  * ინტერფეისს ნიშნავდა. `LanguageDropdown` ზუსტად იმავე წესით ხატავს არჩევანს.
  */
-export const savedLanguage = localStorage.getItem('lang') === 'en' ? 'en' : 'ka'
+export const savedLanguage = safeGet('lang') === 'en' ? 'en' : 'ka'
 
 /** ლოკალის ფაილის მკითხველი — i18next-ის `backend` მოდულის მინიმალური ფორმა */
 const backend = {

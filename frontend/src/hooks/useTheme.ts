@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
+import { safeGet, safeSet } from '@/lib/storage'
 
 export type Theme = 'light' | 'dark'
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem('theme') as Theme | null) ?? 'light',
+    () => (safeGet('theme') as Theme | null) ?? 'light',
   )
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
-    localStorage.setItem('theme', theme)
+    safeSet('theme', theme)
   }, [theme])
 
   return {

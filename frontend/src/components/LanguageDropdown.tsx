@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Languages } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { safeSet } from '@/lib/storage'
 
 export function LanguageDropdown() {
   const { i18n } = useTranslation()
@@ -8,7 +9,7 @@ export function LanguageDropdown() {
 
   const change = (v: string) => {
     void i18n.changeLanguage(v)
-    localStorage.setItem('lang', v)
+    safeSet('lang', v)
   }
 
   return (
