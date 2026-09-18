@@ -92,18 +92,40 @@ export function useNoteReminderWatcher(enabled: boolean) {
     if (!enabled || !data?.length) return
     if (notificationPermission() !== 'granted') return
 
+    let delivered = false
+    const runs: Promise<unknown>[] = []
+
     for (const item of data) {
       // ერთ სესიაში ორჯერ ჩვენება (ორი მაუნთი/refetch) გამორიცხულია
       if (shown.current.has(item.id)) continue
       shown.current.add(item.id)
 
-      markNotificationRead(item.id)
-        .then(() => show(item))
-        .catch(() => shown.current.delete(item.id))
+      runs.push(
+        markNotificationRead(item.id)
+          .then(() => {
+            delivered = true
+
+            return show(item)
+          })
+          .catch(() => shown.current.delete(item.id)),
+      )
     }
 
-    // ჩანაწერის მრიცხველები შეხსენების შემდეგ შეიძლება შეიცვალოს
-    qc.invalidateQueries({ queryKey: ['notes'] })
+    /* ⚠️ **ინვალიდაცია მხოლოდ რეალურ ჩვენებაზე** (Tasks PERF-12). ადრე ის
+       ციკლის გარეთ, უპირობოდ იდგა, ე.ი. არაცარიელ `due`-ზე ყოველ poll-ზე
+       ყველა `['notes']*` query თავიდან იტვირთებოდა — მაშინაც, როცა ყველა
+       ერთეული უკვე `shown.current`-შია და **არაფერი შეცვლილა**.
+
+       ⚠️ `delivered` `runs.length`-ზე მეტს ამბობს: მონიშვნის ჩავარდნაზე
+       მრიცხველებიც უცვლელია, ე.ი. გადატვირთვა უაზროა.
+
+       ⚠️ ერთი `allSettled` და არა თითო `.then()`-ში: ერთდროულად
+       გასროლილი ხუთი შეხსენება ხუთ ინვალიდაციას დაბადებდა. */
+    if (runs.length) {
+      void Promise.allSettled(runs).then(() => {
+        if (delivered) qc.invalidateQueries({ queryKey: ['notes'] })
+      })
+    }
   }, [data, enabled, qc])
 
   return data ?? []

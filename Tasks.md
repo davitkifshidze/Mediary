@@ -59,7 +59,7 @@
 | BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S | ✅ შესრულებულია |
 | PERF-10 | `PurgeService::run()` plan-ს და id-სეტს ორჯერ ითვლის | Low | performance | S | ✅ შესრულებულია |
 | PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ✅ შესრულებულია |
-| PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ⬜ |
+| PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ✅ შესრულებულია |
 | PERF-13 | `PhotoTile` ყოველ გახსნილ URL-ზე მთელ grid-ს ხელახლა ხატავს | Low | performance | S | ⬜ |
 | GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S | ⬜ |
 | GAP-06 | საჯარო როუტების ინვენტარი კომენტარსა და CLAUDE.md-ში მოძველებულია („ორი, read-only") | Low | gap | S | ⬜ |
@@ -1078,13 +1078,21 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-12] `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `noteReminders.test.ts` 3/3, სრული `npm test` 169/169.
+  - ✅ ინვალიდაცია **მხოლოდ რეალურ ჩვენებაზე**: `markNotificationRead().then()`-ში აღებული `delivered` დროშა, ერთი `Promise.allSettled()`-ის შემდეგ
+  - ⚠️ **ერთი `allSettled` და არა თითო `.then()`-ში**: ერთდროულად გასროლილი ხუთი შეხსენება ხუთ ინვალიდაციას დაბადებდა
+  - ⚠️ `delivered` `runs.length`-ზე მეტს ამბობს: მონიშვნის **ჩავარდნაზე** მრიცხველებიც უცვლელია, ე.ი. გადატვირთვა უაზროა (და `shown`-იდანაც იშლება, რომ შემდეგმა poll-მა თავიდან სცადოს) — ამას ცალკე ტესტი იჭერს
+  - ⚠️ **ტესტში მეორე poll იმავე id-ს სხვა სხეულით აბრუნებს და ეს აუცილებელია**: react-query-ის structural sharing ღრმად ტოლ მონაცემზე **ძველ რეფერენციას ინახავს**, ე.ი. ზუსტად იგივე მასივი `useEffect`-ს საერთოდ არ გაუშვებდა და ტესტი ვაკუუმში გაივლიდა
+  - ⚠️ jsdom-ს `Notification` არ აქვს — უამისოდ hook `'unsupported'`-ზე ჩერდება და ტესტი არაფერს ამოწმებდა; ცხადი ჩანაცვლებაა. ⚠️ კლასი **პარამეტრ-თვისებების გარეშეა**: `erasableSyntaxOnly` მათ კრძალავს — vitest-ის esbuild გაატარებდა, `tsc -b` კი არა (დაიჭირა სწორედ ამან)
+  - ✅ **მუტაცია:** უპირობო `invalidateQueries` დაბრუნდა → სამიდან **ორი** ტესტი წითლდება
+  - ℹ️ ტასკის ფრჩხილებში წერია „permission ≠ granted-ზე ეს მუდმივია" — ეს ზუსტი არ არის: `if (notificationPermission() !== 'granted') return` ეფექტს ადრევე აჩერებს, ე.ი. იმ შემთხვევაში ინვალიდაცია არც ხდებოდა. ძირითადი პრეტენზია კი მართალია და სწორედ ისაა გასწორებული
 - **ტიპი:** performance
 - **სად:** `frontend/src/lib/noteReminders.ts:90-106`
 - **პრობლემა:** `qc.invalidateQueries({ queryKey: ['notes'] })` ციკლის გარეთაა და „ნაჩვენები იყო თუ არა" შემოწმების გარეშე — ყოველ 60 წმ-ზე არაცარიელ `due`-ზე ყველა `['notes']*` query refetch-დება, მაშინაც, თუ ყველა ერთეული უკვე `shown.current`-შია (permission ≠ granted-ზე ეს მუდმივია).
 - **რატომ:** ზედმეტი ქსელური ტრაფიკი ყოველ წუთს, ჩანაწერების გვერდის ხელახალი დახატვით.
 - **გადაწყვეტა:** invalidate მხოლოდ მაშინ, როცა `show()` რეალურად გაეშვა (`markNotificationRead`-ის `.then()`-ში).
 - **Acceptance criteria:**
-  - [ ] Vitest: უკვე ნაჩვენებ `due`-ზე `invalidateQueries` არ ეშვება
+  - [x] Vitest: უკვე ნაჩვენებ `due`-ზე `invalidateQueries` არ ეშვება
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
