@@ -447,6 +447,23 @@ class ChatService
         return UserBlock::where('user_id', $me->id)->where('blocked_user_id', $other->id)->exists();
     }
 
+    /**
+     * **ვინ დავბლოკე მე** — id-ების ნაკრები (Tasks PERF-16).
+     *
+     * ⚠️ `iBlocked()` ერთ წყვილზეა და `show()`-ზე სწორია; **სიაში** კი ის
+     * თითო რიგზე ერთ `exists()`-ს ნიშნავდა. `/chat` ფონურად, 15 წამში
+     * ერთხელ იტვირთება, ე.ი. 30 საუბარზე ეს 30 ზედმეტი query იყო ყოველ
+     * პოლინგზე — მუდმივი ხარჯი და არა ერთჯერადი.
+     *
+     * @return list<int>
+     */
+    public function blockedUserIds(User $me): array
+    {
+        return UserBlock::where('user_id', $me->id)
+            ->pluck('blocked_user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
     /* ---------- კარიბჭე ---------- */
 
     /**

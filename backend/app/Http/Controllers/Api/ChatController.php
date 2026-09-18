@@ -80,16 +80,18 @@ class ChatController extends Controller
         // §10.5 — რიგის რიცხვი პატიოსანი რჩება, **ჯამი** კი დადუმებულებს ჭრის
         $muted = $this->chat->mutedConversationIds($me);
         $nicknames = $this->nicknamesFor($conversations, $me->id);
+        // PERF-16 — ერთი კითხვა სიაზე და არა თითო რიგზე
+        $blocked = $this->chat->blockedUserIds($me);
 
         return response()->json([
-            'data' => $conversations->map(function (Conversation $c) use ($me, $unread, $muted, $nicknames) {
+            'data' => $conversations->map(function (Conversation $c) use ($me, $unread, $muted, $nicknames, $blocked) {
                 $other = $c->otherThan($me->id);
                 $last = $c->messages->first();
 
                 return [
                     'id' => $c->id,
                     'profile' => $other ? $this->profiles->header($other) : null,
-                    'blocked_by_me' => $other ? $this->chat->iBlocked($me, $other) : false,
+                    'blocked_by_me' => $other !== null && in_array((int) $other->id, $blocked, true),
                     'last_message' => $last ? [
                         'body' => $last->body,
                         'type' => $last->type,

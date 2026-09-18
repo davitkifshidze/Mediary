@@ -532,4 +532,39 @@ class ChatTest extends TestCase
 
         $this->actingAs($this->bob)->getJson('/api/chat/unread')->assertJsonPath('unread', 0);
     }
+
+    /**
+     * **სია საუბრების რიცხვზე აღარ იზრდება (Tasks PERF-16).**
+     *
+     * ⚠️ ეს ფონური პოლინგია — ღია ტაბი `/chat`-ს **15 წამში ერთხელ** ითხოვს,
+     * ე.ი. თითო რიგზე დამატებული query მუდმივი ხარჯია და არა ერთჯერადი.
+     */
+    public function test_the_conversation_list_does_not_grow_a_query_per_row(): void
+    {
+        $queries = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($this->alice)->getJson('/api/chat')->assertOk();
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->open($this->alice, $this->makeUser("peer{$i}")->username);
+        }
+        $three = $queries();
+
+        for ($i = 3; $i < 30; $i++) {
+            $this->open($this->alice, $this->makeUser("peer{$i}")->username);
+        }
+        $thirty = $queries();
+
+        $this->assertSame(
+            $three,
+            $thirty,
+            "სიის query-ები საუბრებზე არ უნდა იზრდებოდეს (3 → {$three}, 30 → {$thirty})",
+        );
+    }
 }
