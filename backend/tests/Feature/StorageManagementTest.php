@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Concerns\StoredFile;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\Game;
@@ -20,6 +21,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
 use App\Services\Storage\StorageMeter;
+use App\Support\StorageFolder;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -797,5 +799,142 @@ class StorageManagementTest extends TestCase
 
         // ⚠️ საკუთარი ბლოკები კი უნდა წაიკითხოს, თორემ ჯამი მოტყუებული იქნებოდა
         $this->assertTrue($log->contains(fn (string $q) => str_contains($q, 'video_files')));
+    }
+
+    /* ================= DEBT-04: `mediary:storage-recalc` ================= */
+
+    /**
+     * ინვენტარის ყოველ ბილიკს რეალურ ბაიტებს ვუწერთ დისკზე.
+     *
+     * ⚠️ უსვეტო ბლოკები (ავატარი, პოსტერები, თამბნეილები, ყდები) ზომას
+     * **მხოლოდ დისკიდან** კითხულობენ (`fileSize()`), ე.ი. ფაილის გარეშე
+     * ისინი ნულია და გადათვლის ტესტი მათ ჩუმად ვერ შეამოწმებდა.
+     */
+    private function fillDisk(User $user): void
+    {
+        foreach (app(StorageMeter::class)->files($user)->pluck('path') as $path) {
+            Storage::disk(StorageFolder::diskFor($path))->put($path, str_repeat('x', 10));
+        }
+    }
+
+    /**
+     * ყველა მოდელი, რომელიც `StoredFile`-ს იყენებს — ანუ ატვირთული ფაილის
+     * ყოველი ცხრილი. სია **კოდიდან იკითხება და არა ხელით იწერება**, თორემ
+     * ხვალინდელი `<module>_files` სწორედ ისე გამოგვრჩებოდა, რაც ამ ტესტს
+     * უნდა დაეჭირა.
+     *
+     * @return list<class-string>
+     */
+    private function storedFileModels(): array
+    {
+        $classes = [];
+
+        foreach (glob(app_path('Models/*.php')) as $file) {
+            $class = 'App\\Models\\'.basename($file, '.php');
+
+            if (class_exists($class) && in_array(StoredFile::class, class_uses_recursive($class), true)) {
+                $classes[] = $class;
+            }
+        }
+
+        sort($classes);
+
+        return $classes;
+    }
+
+    /**
+     * **ბრძანება დრიფტირებულ მრიცხველს აღადგენს** (Tasks DEBT-04).
+     *
+     * ⚠️ ეს ბრძანება ერთადერთი გზაა, რომლითაც `storage_used_bytes` შეიკეთება
+     * (მიგრაციის, ბექაპიდან აღდგენის ან ხელით წაშლილი ფაილის შემდეგ) და
+     * ტესტი საერთოდ არ ჰქონდა — `grep -rn "storage-recalc" tests` ცარიელი იყო.
+     *
+     * ⚠️ **„რა ითვლება"-ს ეს ტესტი განზრახ არ ამოწმებს** და შემდეგი ამოწმებს.
+     * `recalculate()` ზუსტად `files()->sum('size')`-ია, ე.ი. აქ მასთან შედარება
+     * ტავტოლოგია იქნებოდა; ამ ტესტის საგანი **ბრძანებაა** — დრიფტს ასწორებს,
+     * `--user=` მართლა ზღუდავს და უცნობი მომხმარებელი ჩავარდნაა. სიის
+     * სისრულეს `test_every_stored_file_model_is_counted_by_the_recalculation`
+     * იცავს, და სწორედ ის იჭერს „ახალი ცხრილი გამორჩა" შემთხვევას.
+     */
+    public function test_storage_recalc_rebuilds_a_drifted_counter(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $user = $this->inventory();
+        $this->fillDisk($user);
+
+        $expected = (int) app(StorageMeter::class)->files($user)->sum('size');
+        $this->assertGreaterThan(0, $expected);
+
+        // ⚠️ დრიფტი **ორივე მიმართულებით** — გაბერილიც და დაკლებულიც
+        $user->forceFill(['storage_used_bytes' => 999_999])->save();
+        $this->other->forceFill(['storage_used_bytes' => 4_242])->save();
+
+        $this->artisan('mediary:storage-recalc', ['--user' => $user->id])->assertSuccessful();
+
+        $this->assertSame($expected, (int) $user->refresh()->storage_used_bytes);
+
+        // `--user=` მართლა ზღუდავს — სხვისი (ასევე არასწორი) მრიცხველი ხელუხლებელია
+        $this->assertSame(4_242, (int) $this->other->refresh()->storage_used_bytes);
+
+        $user->forceFill(['storage_used_bytes' => 0])->save();
+        $this->artisan('mediary:storage-recalc')->assertSuccessful();
+
+        $this->assertSame($expected, (int) $user->refresh()->storage_used_bytes);
+        // ⚠️ ყველა მომხმარებელზე გაშვება სხვისსაც ასწორებს — ფაილების გარეშე ნულია
+        $this->assertSame(0, (int) $this->other->refresh()->storage_used_bytes);
+
+        $this->artisan('mediary:storage-recalc', ['--user' => 'nobody@example.com'])->assertFailed();
+    }
+
+    /**
+     * **ყოველი `StoredFile` ცხრილი გადათვლაში ხვდება** (Tasks DEBT-04).
+     *
+     * ⚠️ ესაა ამ წყვილის ნამდვილი მცველი. თუ ხვალინდელი `<module>_files`
+     * `files()`-ში არ ჩაიწერა, გადათვლა **უხმოდ ამცირებს** ჯამს და
+     * მომხმარებელს უფასო კვოტას აძლევს — ზუსტად ის, რაც `games.cover_path`-სა
+     * და `database_backups`-ს დაემართა. აქედან სია **კოდიდან** იკითხება,
+     * ე.ი. ახალი ტრეიტის მომხმარებელი ავტომატურად ხვდება შემოწმებაში.
+     *
+     * ⚠️ „რიგი საერთოდ არსებობს"-იც მოწმდება: `inventory()`-ში დავიწყებული
+     * მოდელი სხვაგვარად ტესტს **უაზროდ გაატარებდა** (ცარიელ სიაზე ციკლი
+     * არაფერს ამტკიცებს) — ე.ი. ახალი ცხრილი ორივე ადგილს აახლებინებს.
+     */
+    public function test_every_stored_file_model_is_counted_by_the_recalculation(): void
+    {
+        Storage::fake('public');
+        Storage::fake('private');
+
+        $user = $this->inventory();
+        $this->fillDisk($user);
+
+        $paths = app(StorageMeter::class)->files($user)->pluck('path')->all();
+        $models = $this->storedFileModels();
+
+        /* ⚠️ **ჯერ ღუზები** (`RegistryConsistencyTest`-ის წესი): სკანერი კოდს
+           კითხულობს, ე.ი. მისი გაფუჭება ქვედა ციკლს **უხმოდ დააცარიელებდა** და
+           ტესტი უაზროდ გაივლიდა. სია განზრახ არ იყინება — მხოლოდ სამი ცნობილი
+           მოდელი მოწმდება, ხვალინდელი `<module>_files` კი თავისით მოხვდება. */
+        foreach ([GalleryImage::class, VideoFile::class, DatabaseBackup::class] as $anchor) {
+            $this->assertContains($anchor, $models, "StoredFile-ის სკანერმა {$anchor} ვერ იპოვა");
+        }
+
+        foreach ($models as $class) {
+            $rows = $class::query()->withoutGlobalScope('owner')->where('user_id', $user->id)->get(['path']);
+
+            $this->assertNotEmpty(
+                $rows,
+                "{$class} `inventory()`-ში არ იქმნება — დაამატე, თორემ ეს ტესტი მასზე ვერაფერს ამტკიცებს",
+            );
+
+            foreach ($rows as $row) {
+                $this->assertContains(
+                    $row->path,
+                    $paths,
+                    "{$class} ({$row->path}) `StorageMeter::files()`-ში არ ჩანს — გადათვლა მას გამოტოვებს",
+                );
+            }
+        }
     }
 }
