@@ -13,6 +13,7 @@ use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -255,6 +256,108 @@ class PublicGalleryTest extends TestCase
 
         $this->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])
             ->assertStatus(404);
+    }
+
+    /**
+     * **საჯარო ფოტოს ფაილი გამოდის** (Tasks DEBT-03) —
+     * `GET /public/profiles/{u}/gallery-photos/{image}/file`.
+     *
+     * ⚠️ ეს **ერთადერთი ავტორიზაციის გარეშე მარშრუტია, რომელიც ფაილს
+     * აბრუნებს**, ე.ი. მისი სამივე მცველი (პროფილი → მოდული → ჩანაწერი)
+     * უტესტოდ იდგა. ოთხივე ქვემოთა ტესტი სწორედ იმ ხვრელებს ხურავს,
+     * რომლებიც ჩუმად იხსნება: ჩავარდნა აქ 404-ის ნაცვლად **200-ია**.
+     */
+    public function test_a_public_photo_is_served_from_the_file_route(): void
+    {
+        Storage::fake('public');
+
+        $image = $this->photo($this->movie('public'), 'gallery/images/open.jpg');
+        Storage::disk('public')->put('gallery/images/open.jpg', 'jpeg-bytes');
+
+        $response = $this->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertOk();
+
+        $this->assertSame('jpeg-bytes', $response->streamedContent());
+    }
+
+    /**
+     * **ჩაკეტილი ალბომის ფაილი პაროლამდე 404-ია, შემდეგ — 200.**
+     *
+     * ⚠️ ფაილი **პირად დისკზეა** (`gallery/locked`, §7.9) — სწორედ ამიტომ
+     * არსებობს ეს მარშრუტი: `/storage/*` იქ ვერ წვდება. ე.ი. ტესტი ერთსა
+     * და იმავე ბილიკს ორჯერ ითხოვს და მხოლოდ სესიის მდგომარეობა იცვლება.
+     *
+     * ⚠️ 404 და არა 423: აქ ბაიტები გამოდის ან არა — „ეს ფოტო არსებობს"
+     * თვითონაც ინფორმაციაა, და სიის endpoint უკვე ამბობს `locked: true`-ს.
+     */
+    public function test_a_locked_albums_file_is_404_until_the_password_is_given(): void
+    {
+        Storage::fake('private');
+
+        $album = $this->lockedPublicAlbum();
+        $image = $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
+        Storage::disk('private')->put('gallery/locked/secret.jpg', 'locked-bytes');
+
+        $spa = $this->spa();
+
+        $spa->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertStatus(404);
+
+        $spa->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertOk()
+            ->assertJsonPath('unlocked', true);
+
+        $response = $spa->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertOk();
+
+        $this->assertSame('locked-bytes', $response->streamedContent());
+    }
+
+    /**
+     * **სხვისი ფოტოს id ალისის მისამართზე — 404.**
+     *
+     * ⚠️ `{image}` მხოლოდ რიცხვია და მოდელი როუტში **განზრახ არ იბმება**
+     * (`EnsureRecordOwnership` ანონიმს მფლობელად ვერ ჩათვლის), ე.ი.
+     * „ეს ფოტო ამ პროფილისაა" ერთადერთი შემოწმებაა — და ის
+     * `PublicGallery::visible()`-შია. ბობის პროფილიც საჯაროა, ე.ი. ტესტი
+     * ნამდვილად კვეთს პროფილებს და არა უბრალოდ „დამალულ მონაცემს".
+     */
+    public function test_another_profiles_photo_is_404_on_alices_file_route(): void
+    {
+        Storage::fake('public');
+
+        $bob = User::create([
+            'name' => 'bob', 'username' => 'bob', 'email' => 'bob@example.com', 'password' => 'password',
+        ]);
+        $bob->forceFill(['profile_visibility' => 'public'])->save();
+
+        $movie = Movie::create(['user_id' => $bob->id, 'year' => 2021, 'visibility' => 'public']);
+        $image = GalleryImage::create([
+            'user_id' => $bob->id,
+            'imageable_type' => 'movie',
+            'imageable_id' => $movie->id,
+            'path' => 'gallery/images/bob.jpg',
+            'size' => 10,
+        ]);
+        Storage::disk('public')->put('gallery/images/bob.jpg', 'bob-bytes');
+
+        $this->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertStatus(404);
+    }
+
+    /**
+     * ერთი გადამრთველი მთელ მექანიზმს თიშავს — ფაილის მარშრუტსაც.
+     *
+     * ⚠️ `PUBLIC_PROFILES=false` `resolve()`-ს `null`-ს აბრუნებინებს, ე.ი.
+     * ეს ტესტი იმას იჭერს, რომ ახალი endpoint **პროფილს ჭეშმარიტად
+     * `resolve()`-ით პოულობს** და არა პირდაპირი `User::where(...)`-ით.
+     */
+    public function test_the_file_route_is_404_when_public_profiles_are_off(): void
+    {
+        Storage::fake('public');
+
+        $image = $this->photo($this->movie('public'), 'gallery/images/open.jpg');
+        Storage::disk('public')->put('gallery/images/open.jpg', 'jpeg-bytes');
+
+        config(['mediary.public_profiles' => false]);
+
+        $this->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")->assertStatus(404);
     }
 
     /** გალერეის მოდული საჯარო არაა → ჩანართიც არ არსებობს */

@@ -47,7 +47,7 @@
 | GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ✅ შესრულებულია |
 | GAP-11 | `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება — აპი shared-ზე ან „არაფერზე" ვარდება ახსნის გარეშე (SEC-12-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ✅ შესრულებულია |
 | DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ✅ შესრულებულია |
-| DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ⬜ |
+| DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ✅ შესრულებულია |
 | DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ⬜ |
 | DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S | ⬜ |
 | DEBT-12 | `NoteReminders.test.ts` სრულ `npm test`-ში 5-წამიან ტაიმაუტზე ცვივა (ცალკე გადის) — CI-ს flaky-ს ხდის (SEC-02-ის შესრულებისას ნაპოვნი) | Medium | debt | S | ⬜ |
@@ -862,13 +862,20 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-03] ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — ოთხივე ტესტი `PublicGalleryTest`-შია, 13/13 მწვანეა.
+  - ✅ `test_a_public_photo_is_served_from_the_file_route` — საჯარო ჩანაწერის ფოტო 200 და **ნამდვილი ბაიტები** (`streamedContent()`); უამისოდ „200 დავაბრუნე" ცარიელ სხეულსაც ნიშნავდა
+  - ✅ `test_a_locked_albums_file_is_404_until_the_password_is_given` — ერთი და იგივე ბილიკი **ორჯერ**, მხოლოდ სესიის მდგომარეობა იცვლება; ფაილი **პირად დისკზეა** (`gallery/locked`), ე.ი. ტესტი სწორედ იმ მდგომარეობას აღწერს, რისთვისაც ეს მარშრუტი დაიწერა
+  - ✅ `test_another_profiles_photo_is_404_on_alices_file_route` — ბობის პროფილიც **საჯაროა**, ე.ი. ტესტი პროფილებს ჭეშმარიტად კვეთს და არა უბრალოდ „დამალულ მონაცემს" ითხოვს
+  - ✅ `test_the_file_route_is_404_when_public_profiles_are_off`
+  - ✅ **მუტაციის შემოწმება (სამივე მცველი ცალ-ცალკე გატეხილი, სამივე აწითლებს ზუსტად თავის ტესტს):** (ა) `PublicGallery::visible()`-ს ლოკის შემოწმება მოეხსნა → ჩაკეტილის ტესტი „200 ≠ 404"; (ბ) `query($user)` → ბრტყელი `withoutGlobalScope('owner')` → სხვისი id-ის ტესტი წითლდება; (გ) `profiles->resolve()` → პირდაპირი `User::where('username')` → `PUBLIC_PROFILES=false` ტესტი წითლდება
+  - ⚠️ **404 და არა 423 ჩაკეტილზე** — აქ ბაიტები ან გამოდის, ან არა; „ეს ფოტო არსებობს" თვითონაც ინფორმაციაა, და სიის endpoint უკვე ამბობს `locked: true`-ს
 - **ტიპი:** debt
 - **სად:** `backend/app/Http/Controllers/Api/PublicProfileController.php:142-155`
 - **პრობლემა:** ერთადერთი ავტორიზაციის გარეშე როუტი, რომელიც **პირადი** დისკიდან ფაილს აბრუნებს; `grep -rn "gallery-photos.*file" backend/tests` ცარიელია. სამი დამცავი (არასაჯარო პროფილი → 404, ჯერ ჩაკეტილი ალბომი → 404, სხვისი image id → 404) შეუმოწმებელია.
 - **რატომ:** ცვლილება ჯერ კომიტებულიც არ არის — ტესტის დაწერის იაფესი მომენტია.
 - **გადაწყვეტა:** `PublicGalleryTest`-ში: საჯარო ალბომის ფოტო 200; ჩაკეტილი unlock-ამდე 404 და შემდეგ 200; სხვისი id 404; `PUBLIC_PROFILES=false` 404.
 - **Acceptance criteria:**
-  - [ ] ოთხივე ტესტი წერია და მწვანეა
+  - [x] ოთხივე ტესტი წერია და მწვანეა
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
