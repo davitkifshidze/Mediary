@@ -8,7 +8,7 @@
 i18next უბრალოდ თვითონ გასაღებს დაბეჭდავს, ე.ი. არც build და არც lint არ
 გაფრთხილებს. ეს სკრიპტი ერთადერთი ავტომატური შემოწმებაა.
 
-⚠️ **ახალი გვერდის დაწერის შემდეგ გაუშვი.** ექვსი რამ მოწმდება:
+⚠️ **ახალი გვერდის დაწერის შემდეგ გაუშვი.** შვიდი რამ მოწმდება:
   1. `t('a.b')` — სტატიკური გასაღები, რომელიც ფაილში არ არის;
   2. `t(`a.b.${x}`)` — დინამიური პრეფიქსი (რამდენი გასაღებია მის ქვეშ; **0**
      ნიშნავს, რომ სექცია საერთოდ არ არსებობს);
@@ -23,7 +23,11 @@ i18next უბრალოდ თვითონ გასაღებს და
      „14 ობოლი ფაილი · {{bytes}}";
   6. **დინამიური პრეფიქსის ცალკეული წევრი** — მე-2 შემოწმება მხოლოდ იმას
      ამბობს, რომ პრეფიქსს *რაღაც* აქვს ქვეშ. `sync.field.trailer` სწორედ ასე
-     დაიკარგა: `SYNC_FIELDS`-ს ახალი წევრი დაემატა, ტექსტი კი — არა.
+     დაიკარგა: `SYNC_FIELDS`-ს ახალი წევრი დაემატა, ტექსტი კი — არა;
+  7. **აკრძალული ტერმინი** (GAP-15) — ერთ ცნებას ერთი სიტყვა უნდა ჰქონდეს.
+     „ლინკი"/„ბმული", „ჩამოწერა"/„ჩამოტვირთვა", „კლავიში"/„გასაღები" ერთ
+     ინტერფეისში ერთდროულად ცხოვრობდნენ და მომხმარებელი ვერ ხვდებოდა, ერთი
+     საქმეა თუ ორი. სრული ცხრილი — `GLOSSARY.md`.
 """
 import json
 import io
@@ -69,6 +73,20 @@ KNOWN_GAPS = {
     # დიალოგი მას ჩიპად არ ხატავს (იხ. `GalleryDownloadDialog.castModes`)
     ("gallery.cast.", ("none",)),
 }
+# მე-7 შემოწმება (GAP-15): აკრძალული სიტყვა → სწორი. ⚠️ **მხოლოდ `ka.json`** —
+# კოდის ქართული კომენტარები დეველოპერს ელაპარაკებიან და პროდუქტის ლექსიკას არ
+# ქმნიან. ახალი წყვილი აქაც და `GLOSSARY.md`-შიც ერთდროულად ემატება.
+# ⚠️ „სინქრონი" აქ განზრახ არაა: ის სწორი „სინქრონიზაციის" ქვესტრიქონია, ე.ი.
+# ყოველ სწორ ხმარებაზე იყვირებდა. მისი დაცვა ლექსიკონსა და კოდის მიმოხილვაზეა.
+BANNED = (
+    ("ლინკ", "ბმული"),
+    ("თამბნეილ", "ესკიზი"),
+    ("კლავიშ", "გასაღები"),
+    ("ნიკნეიმ", "მეტსახელი"),
+    ("ფრენჩაიზ", "ფრანჩაიზი"),
+    ("ჩამოწერ", "ჩამოტვირთვა"),
+    ("ჩამოიწერ", "ჩამოტვირთვა"),
+)
 
 
 def source_files():
@@ -158,6 +176,18 @@ def interpolation_problems(flat):
             unmet = sorted(needed - given)
             if unmet:
                 out.append((key, rel, unmet))
+    return out
+
+
+def banned_terms(flat):
+    """(გასაღები, აკრძალული სიტყვა, სწორი) — ლექსიკონის დარღვევები `ka.json`-ში."""
+    out = []
+    for key, value in sorted(flat.items()):
+        if not isinstance(value, str):
+            continue
+        for word, correct in BANNED:
+            if word in value:
+                out.append((key, word, correct))
     return out
 
 
@@ -279,6 +309,13 @@ def main() -> int:
     print(f"\ninterpolation mismatches: {len(mismatches)}")
     for key, rel, unmet in mismatches:
         print(f"    {key}  ({rel}) — no value for {', '.join('{{%s}}' % v for v in unmet)}")
+
+    # 7. აკრძალული ტერმინი (GAP-15) — სრული ცხრილი `GLOSSARY.md`-შია
+    banned = banned_terms(locales["ka.json"])
+    problems += len(banned)
+    print(f"\nbanned terms in ka.json: {len(banned)}")
+    for key, word, correct in banned:
+        print(f"    {key}  — {word}... -> {correct}")
 
     only_ka = sorted(set(locales["ka.json"]) - set(locales["en.json"]))
     only_en = sorted(set(locales["en.json"]) - set(locales["ka.json"]))
