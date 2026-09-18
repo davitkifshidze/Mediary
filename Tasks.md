@@ -45,7 +45,7 @@
 | GAP-04 | read-only probe endpoint-ები POST-ია და `create` უფლებას ითხოვენ | Medium | gap | S | ⬜ |
 | GAP-10 | `RolePage` მხოლოდ `super_admin`-ს ხატავს, თუმცა `/roles` `canAdmin('roles')`-ით იხსნება — role-granted ადმინი ცარიელ გვერდს ხედავს (SEC-03-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
 | GAP-11 | `APP_KEY`-ის შეცვლის შემდეგ ყველა per-user გასაღები ჩუმად „ცარიელი" ხდება — აპი shared-ზე ან „არაფერზე" ვარდება ახსნის გარეშე (SEC-12-ის შესრულებისას ნაპოვნი) | Medium | gap | S | ⬜ |
-| DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ⬜ |
+| DEBT-02 | `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს | Medium | debt | S | ✅ შესრულებულია |
 | DEBT-03 | ახალი `PublicProfileController::photoFile()` (uncommitted) ტესტის გარეშეა | Medium | debt | S | ⬜ |
 | DEBT-04 | `mediary:storage-recalc` ტესტის გარეშეა | Medium | debt | S | ⬜ |
 | DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S | ⬜ |
@@ -788,13 +788,20 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-02] `ActorWebPhotos.tsx`-ში ნამდვილი NUL ბაიტებია — ფაილს git/grep ბინარულად კითხულობს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18)
+  - ✅ ორივე ნამდვილი U+0000 ბაიტი ლიტერალურ `\x00` escape-ად გადაიქცა (5286 → 5292 ბაიტი). `file` ახლა `JavaScript source, Unicode text, UTF-8 text`-ს ამბობს (იყო უბრალოდ `data`), NUL ბაიტი — 0
+  - ⚠️ **runtime ქცევა ზუსტად იგივეა**: `'\x00'` წყაროში სწორედ იმ ერთსიმბოლოიან სტრიქონს იძლევა, რასაც ნედლი ბაიტი — `dirty`-ს შედარება უცვლელია
+  - ✅ `.gitattributes`-ში `*.ts text` + `*.tsx text` (ტასკი `*.tsx`-ს ითხოვდა; `.ts`-ც დაემატა, რადგან `lib/` `.ts`-ია და ხაფანგი იგივეა). ⚠️ **დროშა NUL ბაიტს ვერ აკრძალავს** — ის მხოლოდ იმას იძლევა, რომ ფაილი ინდექსში ყოველთვის ტექსტად ჩაიწეროს, მანქანის `core.autocrlf`-ის მიუხედავად; ნამდვილი ფიქსი თვითონ ბაიტების მოშორებაა
+  - ⚠️ `git ls-files --eol` ადრე `i/-text`-ს აჩვენებდა (ე.ი. git-ის ინდექსში ფაილი **არა-ტექსტი** იყო) — ზუსტად ამიტომ ვერ ხედავდა მას `grep -rn`; ინდექსში სხვაგან CRLF არ არის, ე.ი. ახალი დროშა არაფერს გადაანორმალიზებს
+  - ℹ️ **პირველი `git diff` ისევ „Binary files differ"-ია და ეს ნორმალურია** — შედარების **ძველ** მხარეს ისევ NUL ბაიტია; კომიტის შემდეგ დიფი ტექსტურია
+  - ✅ `tsc -b`, oxlint მწვანე
 - **ტიპი:** debt
 - **სად:** `frontend/src/components/ActorWebPhotos.tsx:52`
 - **პრობლემა:** `tags.join('\x00') !== initial.join('\x00')` — ორი `\x00` ფაილში **ნამდვილი U+0000 ბაიტია** (`cat -v` → `^@`), არა escape. `grep -rn` „Binary file matches"-ს აბეჭდავს, `git diff` „Binary files differ"-ს.
 - **რატომ:** კომპონენტი ყველა აუდიტისა და review-ინსტრუმენტისთვის უხილავია (ეს აუდიტიც მას grep-ით ვერ ხედავდა).
 - **გადაწყვეტა:** `'\x00'` ან `String.fromCharCode(0)` escape-ად (იგივე runtime ქცევა, ფაილში კი მხოლოდ ტექსტი); `.gitattributes`-ში `*.tsx text`. (ეს აუდიტიც ამავე ხაფანგში მოხვდა: `tasks.md`-ის პირველ ვერსიაში `\x00` ესქეიპი ნამდვილ NUL ბაიტად ჩაიწერა.)
 - **Acceptance criteria:**
-  - [ ] `grep -c -P '\x00' src/components/ActorWebPhotos.tsx` → 0; `file` ტექსტს აჩვენებს
+  - [x] `grep -c -P '\x00' src/components/ActorWebPhotos.tsx` → 0; `file` ტექსტს აჩვენებს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
