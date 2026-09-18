@@ -19,7 +19,7 @@
 | BUG-17 | `MovieEnricher`/`TvEnricher` თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს TMDB-ის ქართულის ნაცვლად და `source='translated'`-ს წერს — ბარათი „წყარო უცნობია"-ს აჩვენებს | High | bug | M | ✅ |
 | GAP-12 | 25 API-პასუხი ქართული წინადადებაა და არა მანქანური კოდი; Laravel-ის ვალიდაციის ტექსტი ინგლისურია (`lang/ka` არ არსებობს) | High | gap | M | ✅ |
 | BUG-18 | `ka.json`-ში ორთოგრაფიული და გრამატიკული შეცდომებია („ჟანრიის" ×8, „კატეგორიაის" ×2, „ნიშავს", „სასაათე", „გალერიის", „დამრჩეს", „ნაცვლად არ არის", ბრუნვები `moveTo`-ში) | High | bug | S | ✅ |
-| BUG-19 | `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს — ჟანრის წაშლა ანიმეს მიბმებს ჩუმად კარგავს | High | bug | S | ⬜ |
+| BUG-19 | `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს — ჟანრის წაშლა ანიმეს მიბმებს ჩუმად კარგავს | High | bug | S | ✅ |
 | BUG-20 | „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია — `poster_path` მათ არ აქვთ, UI კი ღილაკს ხატავს | High | bug | S | ⬜ |
 | BUG-21 | ანგარიშის წაშლა (`DELETE /admin/users/{id}`) მხოლოდ ფილმებს/სერიალებს შლის მოდელით — 8 მოდულის ფაილები დისკზე რჩება, კვოტა კი გაქრობს | High | bug | M | ⬜ |
 | PERF-14 | `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს (~30 query + დისკი) იძახებს | High | performance | S | ⬜ |
@@ -180,15 +180,17 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-19] `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). `GenreRemover` ახლა `MediaDomain::TYPES`-ზე დადის და გასაღებებსაც თვითონ აწყობს (`<relation>_count`), ე.ი. მეოთხე დომენი პასუხში თავისით გამოჩნდება. რელაციების რუკა `MediaDomain::RELATIONS`-ში გადავიდა და **ერთია მსახიობისთვისაც და ჟანრისთვისაც**: `castRelation()` `relation()`-ად გადაერქვა (სამივე გამომძახებელი განახლდა; pass-through alias განზრახ არ დარჩა — პროექტის წესი), `GenreItemController::RELATIONS` წაიშალა. პასუხის რიცხვები ორივე კონტროლერში `$result`-იდან იფილტრება (`*_count`) და არა ხელით ჩაწერილი ორი ხაზით; ფრონტზე `animes_count` დაემატა `Genre`-ის ტიპს, `GenresPage`-ის ჯამსა და `admin.genreDeleteWarning`-ს (ორივე ლოკალი). ⚠️ `GenreItemController::BUCKETS` **განზრახ დარჩა ცალკე**, თუმცა მნიშვნელობით ემთხვევა: ის API-ის პასუხის ფორმაა და არა მოდელის რელაცია.
 - **ტიპი:** bug
 - **სად:** `backend/app/Services/Genres/GenreRemover.php:22-23` (მხოლოდ `movies`/`series`), `:33-46` (გადატანა მხოლოდ ორ დომენზე), `backend/app/Http/Controllers/Api/GenreController.php:111-112` (პასუხში `animes_count` არ არის)
 - **პრობლემა:** `anime` §7.1-ით მესამე TMDB-დომენია და `Genre::animes()` არსებობს (`GenreController::index()` მას ითვლის), მაგრამ წაშლის სერვისი მას არ იცნობს: მხოლოდ ანიმეზე გამოყენებული ჟანრი „უხმარად" ითვლება და დადასტურების გარეშე იშლება, `reassign_to`-ზე კი ანიმეს მიბმები `genreables`-ის კასკადით ქრება და სამიზნეზე არ გადადის. `ApprovalRequest`-ის payload-შიც (`globalCounts`) ანიმე არ ჩანს, ე.ი. ადმინი „0 ჩანაწერს" ხედავს.
 - **რატომ:** მონაცემის ჩუმი დაკარგვა — სწორედ ის კლასი შეცდომისა, რისთვისაც `MediaDomain::TYPES` შეიქმნა („`['movie','series']` თოთხმეტ ადგილას ეწერა").
 - **გადაწყვეტა:** `GenreRemover` `MediaDomain::TYPES`-ზე ციკლით (`castRelation()`-ის ანალოგი ჟანრებზე — `GenreItemController::RELATIONS`-ის რუკა `MediaDomain`-ში გადავიდეს და ორივემ ის იკითხოს); პასუხსა და `admin.genreDeleteWarning`-ს `animes_count`.
 - **Acceptance criteria:**
-  - [ ] ტესტი: მხოლოდ ანიმეზე მიბმული ჟანრის წაშლა `genre_in_use`-ს აბრუნებს
-  - [ ] ტესტი: `reassign_to`-ზე ანიმეს მიბმა სამიზნეზე გადადის
-  - [ ] `grep -rn "'movie', 'series'\]" backend/app` ცარიელია
+  - [x] `GenreRemovalTest::test_a_genre_used_only_by_anime_is_in_use` — ძველ კოდზე „true is false"-ით ვარდება (ჟანრი უხმოდ იშლებოდა)
+  - [x] `GenreRemovalTest::test_reassigning_moves_the_anime_links` + `…_still_moves_movies` (ციკლმა ძველი ქცევა არ დაარღვია)
+  - [x] `GenreRemovalTest::test_the_endpoint_reports_the_anime_count` (409 + `animes_count`) და `…_the_approval_payload_carries_the_anime_count`
+  - [x] `grep -rn "'movie', 'series'\]" backend/app` ცოცხალ კოდში ცარიელია — ერთადერთი დარჩენილი ხსენება `MediaDomain`-ის docblock-ია, სადაც სწორედ ეს ისტორიული შეცდომაა აღწერილი
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

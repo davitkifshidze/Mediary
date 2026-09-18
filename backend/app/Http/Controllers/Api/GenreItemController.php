@@ -8,7 +8,6 @@ use App\Http\Resources\GenreResource;
 use App\Http\Resources\MovieListResource;
 use App\Http\Resources\SeriesListResource;
 use App\Models\Genre;
-use App\Models\Series;
 use App\Support\MediaDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,14 +23,13 @@ use Illuminate\Support\Facades\DB;
  */
 class GenreItemController extends Controller
 {
-    /** დომენი → `Genre`-ის რელაციის სახელი (`series` მხოლობითი რჩება) */
-    private const RELATIONS = [
-        'movie' => 'movies',
-        'series' => 'series',
-        'anime' => 'animes',
-    ];
-
-    /** დომენი → პასუხის გასაღები. ⚠️ ფრონტი სწორედ ამ სახელებს კითხულობს */
+    /**
+     * დომენი → პასუხის გასაღები. ⚠️ ფრონტი სწორედ ამ სახელებს კითხულობს.
+     *
+     * ⚠️ **რელაციის სახელს ემთხვევა და მაინც ცალკეა** (Tasks BUG-19): ის
+     * `MediaDomain::relation()`-ია, ეს კი API-ის პასუხის ფორმაა. დამთხვევა
+     * შემთხვევითია — რელაციის გადარქმევა პასუხს არ უნდა ცვლიდეს.
+     */
     private const BUCKETS = [
         'movie' => 'movies',
         'series' => 'series',
@@ -47,7 +45,7 @@ class GenreItemController extends Controller
 
     private function relation(Genre $genre, string $type)
     {
-        return $genre->{self::RELATIONS[$type] ?? 'movies'}();
+        return $genre->{MediaDomain::relation($type)}();
     }
 
     /** ჟანრზე მიბმული ჩანაწერები — ორივე დომენი ერთ პასუხში */

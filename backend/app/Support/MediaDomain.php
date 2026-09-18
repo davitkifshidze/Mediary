@@ -43,6 +43,18 @@ final class MediaDomain
         'anime' => Anime::class,
     ];
 
+    /**
+     * დომენი → რელაციის სახელი საერთო ლექსიკონის მოდელზე (`Genre`, `CastMember`).
+     * იხ. `relation()`-ის docblock.
+     *
+     * @var array<string, string>
+     */
+    private const RELATIONS = [
+        'movie' => 'movies',
+        'series' => 'series',
+        'anime' => 'animes',
+    ];
+
     /** @var array<string, class-string> */
     private const ENRICHERS = [
         'movie' => MovieEnricher::class,
@@ -79,20 +91,22 @@ final class MediaDomain
     }
 
     /**
-     * `CastMember`-ის რელაციის სახელი დომენზე.
+     * დომენის რელაციის სახელი **საერთო ლექსიკონზე** (`Genre`, `CastMember`).
      *
      * ⚠️ **მრავლობითობა დომენებს შორის არ ემთხვევა** (`movies`, `series`,
      * `animes`), ე.ი. `$type.'s'` არ მუშაობს. ეს რუკა ორ ადგილას ეწერა და
      * ერთ-ერთში ანიმე ჩუმად `movies`-ზე გადიოდა — ე.ი. მსახიობების სია
      * ანიმეზე ყოველთვის ცარიელი იყო.
+     *
+     * ⚠️ **ერთი რუკაა მსახიობსაც და ჟანრსაც** (Tasks BUG-19) და არა ორი
+     * ერთნაირი: `Genre::movies()/series()/animes()` და `CastMember`-ის
+     * იგივე სამეული ერთსა და იმავე კითხვას სვამენ — „რა ჰქვია ამ დომენის
+     * რელაციას". ორი სახელით ერთი და იგივე რუკა სწორედ ის დუბლირებაა,
+     * რომლის გამოც `GenreRemover` ანიმეს ვერ ხედავდა.
      */
-    public static function castRelation(string $type): string
+    public static function relation(string $type): string
     {
-        return match ($type) {
-            'series' => 'series',
-            'anime' => 'animes',
-            default => 'movies',
-        };
+        return self::RELATIONS[$type] ?? 'movies';
     }
 
     /** TMDB-ის `/tv/*`-ზე ზის თუ `/movie/*`-ზე */

@@ -69,10 +69,14 @@ class AdminRequestController extends Controller
         };
 
         if (! $result['ok']) {
+            /* ⚠️ `*_count` ყველა დომენზე და არა ორ ხელით ჩაწერილზე (Tasks BUG-19) */
             return response()->json([
                 'message' => $result['reason'],
-                'movies_count' => $result['movies_count'] ?? null,
-                'series_count' => $result['series_count'] ?? null,
+                ...array_filter(
+                    $result,
+                    fn (string $key) => str_ends_with($key, '_count'),
+                    ARRAY_FILTER_USE_KEY,
+                ),
             ], 422);
         }
 

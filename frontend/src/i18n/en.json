@@ -262,7 +262,7 @@
     "notePlaceholder": "Note (optional)",
     "wantsModule": "Requests the “{{name}}” module",
     "wantsGenreDelete": "Requests deletion of genre “{{name}}”",
-    "genreDeleteWarning": "Genres are global: this affects {{movies}} movies and {{series}} series across all users.",
+    "genreDeleteWarning": "Genres are global: this affects {{movies}} movies, {{series}} series and {{animes}} anime across all users.",
     "active": "Active",
     "disabled": "Disabled",
     "byDefault": "On by default",

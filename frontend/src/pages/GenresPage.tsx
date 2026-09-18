@@ -250,9 +250,11 @@ function GenreDeleteDialog({
   const lang = i18n.language
   const qc = useQueryClient()
   const { toast } = useToast()
-  // ჟანრი გაზიარებულია — სერიალებიც უნდა ჩაითვალოს, თორემ „უჟანროდ" დარჩენა
-  // შეუმჩნევლად წაშლიდა სერიალების მიბმას
-  const count = (genre.movies_count ?? 0) + (genre.series_count ?? 0)
+  /* ჟანრი გაზიარებულია — სამივე დომენი უნდა ჩაითვალოს, თორემ „უჟანროდ"
+     დარჩენა შეუმჩნევლად წაშლიდა მიბმას. ⚠️ ანიმე აქ **აკლდა** (Tasks BUG-19):
+     მხოლოდ ანიმეზე მიბმული ჟანრი „0"-ს აჩვენებდა და ფორმა პირდაპირ
+     `deleteGenre(id)`-ს უშვებდა, გადატანის შეთავაზების გარეშე. */
+  const count = (genre.movies_count ?? 0) + (genre.series_count ?? 0) + (genre.animes_count ?? 0)
   const others = allGenres.filter((g) => g.id !== genre.id)
   const [mode, setMode] = useState<DeleteMode>('reassign')
   const [reassignTo, setReassignTo] = useState<string>('')

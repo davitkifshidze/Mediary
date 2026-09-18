@@ -40,6 +40,7 @@ export interface Genre {
   slug: string
   movies_count?: number
   series_count?: number
+  animes_count?: number
 }
 
 export interface CastMember {

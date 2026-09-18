@@ -272,7 +272,7 @@ class GalleryController extends Controller
                ყველა ანგარიშის (იგივე წესი, რაც `sourceQuery()`-ს აქვს). */
             ->when(
                 $data['from'] ?? null,
-                fn ($query, $from) => $query->whereHas(MediaDomain::castRelation($from)),
+                fn ($query, $from) => $query->whereHas(MediaDomain::relation($from)),
             )
             ->get()
             ->keyBy('id');
@@ -839,7 +839,7 @@ class GalleryController extends Controller
      */
     private function sourceQuery(string $type)
     {
-        $relation = MediaDomain::castRelation($type);
+        $relation = MediaDomain::relation($type);
 
         // ⚠️ `whereHas` მედია-მოდელზე `owner` scope-ს იმემკვიდრეობს, ე.ი. ეს
         // ავტომატურად **ამ user-ის** ბიბლიოთეკის მსახიობებია
@@ -1528,7 +1528,7 @@ class GalleryController extends Controller
     {
         $pool = CastMember::query()->where(function ($w) use ($types, $recordIds, $scopeOff) {
             foreach ($types as $type) {
-                $relation = MediaDomain::castRelation($type);
+                $relation = MediaDomain::relation($type);
 
                 if ($scopeOff) {
                     $w->orWhereHas($relation);

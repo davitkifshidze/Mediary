@@ -106,14 +106,35 @@ class GenreController extends Controller
         $result = $remover->remove($genre, $reassignTo, $force);
 
         if (! $result['ok']) {
+            /* ⚠️ რიცხვები `$result`-იდან გადმოდის და აქ ხელით არ ჩამოითვლება
+               (Tasks BUG-19): ხელით ჩაწერილ ორ სვეტს ანიმე აკლდა და ადმინი
+               „0 ჩანაწერს" ხედავდა იქ, სადაც ასეული ეწერა. */
             return response()->json([
                 'message' => $result['reason'],
-                'movies_count' => $result['movies_count'] ?? 0,
-                'series_count' => $result['series_count'] ?? 0,
+                ...$this->counts($result),
             ], $result['reason'] === 'genre_in_use' ? 409 : 422);
         }
 
         return response()->noContent();
+    }
+
+    /**
+     * `GenreRemover`-ის პასუხიდან მხოლოდ `*_count` გასაღებები.
+     *
+     * ⚠️ დომენების სია `MediaDomain`-შია, ე.ი. მეოთხე დომენი პასუხში
+     * თავისით გამოჩნდება — ხელით ჩაწერილი ორი ხაზი სწორედ ისაა, რამაც
+     * ანიმე დაკარგა.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<string, int>
+     */
+    private function counts(array $result): array
+    {
+        return array_filter(
+            $result,
+            fn (string $key) => str_ends_with($key, '_count'),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     /** user-ის წაშლის თხოვნა → ApprovalRequest (pending) */

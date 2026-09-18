@@ -3,6 +3,7 @@
 namespace App\Services\Genres;
 
 use App\Models\Genre;
+use App\Support\MediaDomain;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -12,25 +13,46 @@ use Illuminate\Support\Facades\DB;
  *
  * ჩვეულებრივი user წაშლას პირდაპირ ვერ ასრულებს: მისი მოთხოვნა ადმინთან
  * მიდის (ApprovalRequest::TYPE_GENRE_DELETE) და დამტკიცებისას იგივე კოდი გადის.
+ *
+ * ⚠️ **დომენებზე ციკლია და არა სამი ხელით ჩაწერილი ხაზი** (Tasks BUG-19).
+ * აქამდე მხოლოდ `movies`/`series` ითვლებოდა, ანიმე კი §7.1-ის შემდეგ მესამე
+ * TMDB-დომენია — ე.ი. **მხოლოდ ანიმეზე** გამოყენებული ჟანრი „უხმარად"
+ * ითვლებოდა და დადასტურების გარეშე იშლებოდა, `reassign_to`-ზე კი ანიმეს
+ * მიბმები `genreables`-ის კასკადით უხმოდ ქრებოდა. სწორედ ის ტიპის შეცდომა,
+ * რისთვისაც `MediaDomain::TYPES` დაიწერა.
  */
 class GenreRemover
 {
-    /** მიბმული ჩანაწერების რაოდენობა ყველა მომხმარებელზე */
+    /**
+     * მიბმული ჩანაწერების რაოდენობა ყველა მომხმარებელზე.
+     *
+     * ⚠️ გასაღებები `<relation>_count`-ია (`movies_count`, `series_count`,
+     * `animes_count`) — ფრონტი და `ApprovalRequest`-ის payload სწორედ მათ
+     * კითხულობენ, ე.ი. მეოთხე დომენი აქ თავისით გამოჩნდება.
+     *
+     * @return array<string, int>
+     */
     public function globalCounts(Genre $genre): array
     {
-        return [
-            'movies_count' => $genre->movies()->withoutGlobalScope('owner')->count(),
-            'series_count' => $genre->series()->withoutGlobalScope('owner')->count(),
-        ];
+        $counts = [];
+
+        foreach (MediaDomain::TYPES as $type) {
+            $relation = MediaDomain::relation($type);
+            $counts[$relation.'_count'] = $genre->{$relation}()
+                ->withoutGlobalScope('owner')
+                ->count();
+        }
+
+        return $counts;
     }
 
     /**
-     * @return array{ok: bool, reason?: string, movies_count?: int, series_count?: int}
+     * @return array{ok: bool, reason?: string}&array<string, int>
      */
     public function remove(Genre $genre, ?int $reassignTo = null, bool $force = false): array
     {
         $counts = $this->globalCounts($genre);
-        $total = $counts['movies_count'] + $counts['series_count'];
+        $total = array_sum($counts);
 
         if ($total > 0) {
             if ($reassignTo) {
@@ -40,12 +62,14 @@ class GenreRemover
                 }
 
                 DB::transaction(function () use ($genre, $target) {
-                    $target->movies()->syncWithoutDetaching(
-                        $genre->movies()->withoutGlobalScope('owner')->pluck('movies.id')->all()
-                    );
-                    $target->series()->syncWithoutDetaching(
-                        $genre->series()->withoutGlobalScope('owner')->pluck('series.id')->all()
-                    );
+                    foreach (MediaDomain::TYPES as $type) {
+                        $relation = MediaDomain::relation($type);
+                        $table = MediaDomain::model($type)::query()->getModel()->getTable();
+
+                        $target->{$relation}()->syncWithoutDetaching(
+                            $genre->{$relation}()->withoutGlobalScope('owner')->pluck($table.'.id')->all()
+                        );
+                    }
                 });
             } elseif (! $force) {
                 return ['ok' => false, 'reason' => 'genre_in_use'] + $counts;

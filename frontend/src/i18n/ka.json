@@ -262,7 +262,7 @@
     "notePlaceholder": "კომენტარი (არასავალდებულო)",
     "wantsModule": "ითხოვს მოდულს „{{name}}“",
     "wantsGenreDelete": "ითხოვს ჟანრის წაშლას „{{name}}“",
-    "genreDeleteWarning": "ჟანრი გლობალურია: შეეხება {{movies}} ფილმს და {{series}} სერიალს ყველა მომხმარებელთან.",
+    "genreDeleteWarning": "ჟანრი გლობალურია: შეეხება {{movies}} ფილმს, {{series}} სერიალსა და {{animes}} ანიმეს ყველა მომხმარებელთან.",
     "active": "აქტიური",
     "disabled": "გათიშული",
     "byDefault": "default-ად ჩართული",

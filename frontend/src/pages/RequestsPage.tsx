@@ -427,9 +427,11 @@ function ReviewDialog({
             სხეულშია და არა გვერდით გადაწეულ უჯრაში. */}
         {r.type === 'genre_delete' && r.payload && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {/* ⚠️ სამივე TMDB-დომენი — ანიმე აქ არ ჩანდა (Tasks BUG-19) */}
             {t('admin.genreDeleteWarning', {
               movies: (r.payload.movies_count as number) ?? 0,
               series: (r.payload.series_count as number) ?? 0,
+              animes: (r.payload.animes_count as number) ?? 0,
             })}
           </p>
         )}
