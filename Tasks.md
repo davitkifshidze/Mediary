@@ -34,7 +34,7 @@
 | PERF-17 | ჰედერის „სათარგმნი" ბეჯი მთელ მედია-ბიბლიოთეკას თარგმანებით ტვირთავს, რომ დათვალოს | Medium | performance | S | ✅ |
 | DEBT-13 | `LIKE`-ის wildcard-ები 37 ადგილას/13 კონტროლერში არ იესკეიპება — `App\Support\Like` არსებობს და მხოლოდ 4 ადგილას გამოიყენება | Medium | debt | M | ✅ |
 | GAP-16 | ასლის ვიუერის დროებითი ბაზა (`<db>_inspect_<id>`) ვადას არ იწურავს და ასლის წაშლაზე არ იშლება | Medium | gap | S | ✅ |
-| DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ⬜ |
+| DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ✅ |
 | GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
 | SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ⬜ |
 | SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ⬜ |
@@ -411,14 +411,19 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-14] კრიტიკული endpoint-ები ტესტის გარეშეა
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). 27 ახალი ტესტი ორ ახალ ფაილში (`GenreItemsTest` 5, `TmdbEndpointsTest` 16) და ორ არსებულში (`VideoModuleTest` +5, `PurgeTest` +1).
+  ⚠️ **ზუსტად ის მოხდა, რასაც ტასკი წინასწარმეტყველებდა: დაუტესტავი ბრანჩი ცოცხალ 500-ს მალავდა.** `GenreItemController::update()` `self::RELATIONS`-ს კითხულობდა, რომელიც **BUG-19-ს უკვე წაშლილი ჰქონდა** (სია `MediaDomain`-ში გადავიდა) — ე.ი. `attach`/`detach`/`move`/`replace` **ყოველთვის** „Undefined constant"-ით ვარდებოდა, ცვლილების ბაზაში ჩაწერის **შემდეგ**: მომხმარებელი შეცდომას ხედავდა, ჟანრი კი უკვე შეცვლილი იყო. ერთი ტესტიც რომ ყოფილიყო, BUG-19 ამას იმავე წუთში დაიჭერდა.
+  ⚠️ **`AdminAuditController` სინამდვილეში დაფარული იყო** — ტასკის „0–1 ხსენება" კლასის *სახელს* ეხებოდა და არა endpoint-ს: `AuditLogTest`-ში `summary`-ს სამი ტესტი აქვს, `destroy`-ს — ორი. ე.ი. რვიდან ერთი უკვე დახურული იყო, და აუდიტის მეტრიკა (სახელის grep) აქ ტყუოდა.
+  ⚠️ **TMDB ყველგან `Http::fake()`-ია** — ცოცხალი გასაღები არც ერთ ტესტს არ სჭირდება — და ცალკეა „წყარო არ არის" (503) „ვერაფერი ვიპოვე"-სგან: სწორედ ეს განსხვავებაა, რასაც ეს endpoint-ები იცავენ.
+  ⚠️ **`PurgeTest`-ის მატრიცა სრულია: 11 სამიზნე × 6 რეჟიმი = 66 წყვილი** (48 დაშვებული → 200, 18 აკრძალული → 422 `mode_not_supported_for_target`). ერთი წყვილის შემოწმება BUG-16-ს ვერ დაიჭერდა, რადგან იქ ცდომილება **რეგისტრსა და ფილტრს შორის** იყო და არა თვითონ რეჟიმში; მატრიცა ორივე მხარეს ერთდროულად ამოწმებს. სკოუპი ყოველთვის შევსებულია, თორემ `scope_required` უფრო ადრე გაისროდა და ტესტი სულ სხვა უარს დაინახავდა.
 - **ტიპი:** debt
 - **სად:** `backend/routes/api.php:310` (`/movies/{movie}/collection` — 0 ტესტი), `:309,325,346` (სამივე `resync` — 0), `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `MediaSyncController::item`, `AdminAuditController::summary/destroy` — სახელით 0–1 ხსენება `backend/tests`-ში
 - **პრობლემა:** BUG-16 (purge-ის ტეგი) და BUG-19 (ჟანრის წაშლა ანიმეზე) სწორედ დაუტესტავ ბრანჩებში იყო; `/purge`-ს 5 ტესტი აქვს, მაგრამ ტეგის რეჟიმზე არცერთი. `resync` აპის მთავარი გზაა და მას არც ერთი ტესტი არ ეხება (`Http::fake()`-ით სავსებით ტესტირებადია).
 - **რატომ:** მომდევნო რეგრესია იმავე ადგილებში ჩუმად გაივლის.
 - **გადაწყვეტა:** თითო endpoint-ზე მინიმუმ „happy path" + „სხვისი ჩანაწერი 404" + `Http::fake()` წყაროზე; `PurgeTest`-ს ყოველ `TARGET_MODES` კომბინაციაზე data provider.
 - **Acceptance criteria:**
-  - [ ] ჩამოთვლილი 8 კონტროლერიდან თითოეულს მინიმუმ ორი ტესტი აქვს
-  - [ ] `PurgeTest` `TARGET_MODES`-ის ყველა წყვილს გადის
+  - [x] ჩამოთვლილი 8 კონტროლერიდან თითოეულს მინიმუმ ორი ტესტი აქვს (`collection` 3 · `resync` 4 · `GenreItemController` 5 · `LookupController` 4 · `DiscoverController` 2 · `VideoBulkController` 5 · `MediaSyncController::item` 3 · `AdminAuditController` 5)
+  - [x] `PurgeTest` `TARGET_MODES`-ის ყველა წყვილს გადის — 66-ივე (48 × 200, 18 × 422)
 - **Estimate:** M
 - **დამოკიდებულება:** BUG-16, BUG-19
 

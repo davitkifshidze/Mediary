@@ -118,7 +118,15 @@ class GenreItemController extends Controller
 
         return response()->json([
             'affected' => count($ids),
-            'genre' => new GenreResource($genre->loadCount(array_values(self::RELATIONS))),
+            /* ⚠️ **`self::RELATIONS` აქ არასდროს არსებობდა** (Tasks DEBT-14):
+               დომენების სია §7.1-ზე `MediaDomain`-ში გადავიდა (იხ. კლასის
+               docblock), ეს ერთი მიმართვა კი დარჩა — ე.ი. `attach`/`detach`/
+               `move`/`replace` **ყოველთვის 500-ს აბრუნებდა** („Undefined
+               constant"), ცვლილება უკვე ჩაწერილის შემდეგ. ტესტი არ იყო,
+               ამიტომ ჩუმად იდგა. */
+            'genre' => new GenreResource(
+                $genre->loadCount(array_map(MediaDomain::relation(...), MediaDomain::TYPES)),
+            ),
         ]);
     }
 

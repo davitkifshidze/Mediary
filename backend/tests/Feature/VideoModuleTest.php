@@ -812,4 +812,126 @@ class VideoModuleTest extends TestCase
             ->assertStatus(403)
             ->assertJson(['message' => 'forbidden_permission', 'permission' => 'video.create']);
     }
+
+    /* ============================================================
+       მასობრივი ცვლილება — `GET /videos/bulk-preview`, `POST /videos/bulk`
+       (Tasks DEBT-14)
+       ============================================================ */
+
+    /** ორი ვიდეო: ერთი ტეგიანი, მეორე — არა; ორივე ერთსა და იმავე ტიპზე */
+    private function twoVideos(): array
+    {
+        $defaults = $this->videoDefaults();
+
+        $tagged = $this->actingAs($this->user)->postJson('/api/videos', $defaults + [
+            'title' => 'ტეგიანი',
+            'url' => 'https://www.youtube.com/watch?v=aaaaaaaaaaa',
+            'tags' => ['ძველი'],
+        ])->assertStatus(201)->json('data');
+
+        $plain = $this->actingAs($this->user)->postJson('/api/videos', $defaults + [
+            'title' => 'უტეგო',
+            'url' => 'https://www.youtube.com/watch?v=bbbbbbbbbbb',
+        ])->assertStatus(201)->json('data');
+
+        return [$tagged, $plain, $defaults['type_id']];
+    }
+
+    /**
+     * ⚠️ **„რამდენს შეეხება" სერვერის პასუხია** და არა ბრაუზერში დათვლილი
+     * რიცხვი: ტეგი JSON სვეტშია **დაესკეიპებული**, ე.ი. კლიენტი ქართულ
+     * ტეგს სწორად ვერც დაითვლიდა.
+     */
+    public function test_bulk_preview_counts_the_scope_without_changing_anything(): void
+    {
+        [$tagged, $plain] = $this->twoVideos();
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/videos/bulk-preview?scope=tag&scope_tag='.urlencode('ძველი'))
+            ->assertOk();
+
+        $res->assertJsonPath('count', 1);
+        $res->assertJsonPath('sample.0.id', $tagged['id']);
+
+        // პრევიუ არაფერს წერს
+        $this->assertSame(['ძველი'], Video::find($tagged['id'])->tags);
+        $this->assertSame([], Video::find($plain['id'])->tags ?? []);
+    }
+
+    public function test_bulk_adds_a_tag_only_inside_the_scope(): void
+    {
+        [$tagged, $plain] = $this->twoVideos();
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', [
+                'scope' => 'tag',
+                'scope_tag' => 'ძველი',
+                'action' => 'tags_add',
+                'tags' => ['ახალი'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('updated', 1);
+
+        $this->assertContains('ახალი', Video::find($tagged['id'])->tags);
+        $this->assertNotContains('ახალი', Video::find($plain['id'])->tags ?? []);
+    }
+
+    /**
+     * ⚠️ **ტეგების გარეშე „ტეგის დამატება" მანქანური კოდია** და არა ჩუმი
+     * უქმი გავლა — თორემ „შევასრულე" პასუხზე არაფერი მოხდებოდა.
+     */
+    public function test_bulk_without_tags_is_a_422(): void
+    {
+        $this->twoVideos();
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', [
+                'scope' => 'all',
+                'action' => 'tags_add',
+                'tags' => [],
+            ])
+            ->assertStatus(422)
+            ->assertJson(['message' => 'no_tags_given']);
+    }
+
+    /**
+     * ⚠️ **ტიპის მოხსნა აღარ არსებობს** (2026-09-16): `action=type` ტიპს
+     * **ითხოვს**, თორემ ერთი მასობრივი ცვლილება მთელ ბიბლიოთეკას ტიპს
+     * ჩამოაცლიდა — ზუსტად იმ მდგომარეობას, რომელსაც ფორმა აღარ უშვებს.
+     */
+    public function test_bulk_type_change_requires_a_type(): void
+    {
+        $this->twoVideos();
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', ['scope' => 'all', 'action' => 'type'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('type_id');
+    }
+
+    /** ⚠️ სხვისი ვიდეო `all` სკოუპშიც კი არ ხვდება — `owner` სქოუპი */
+    public function test_bulk_never_touches_another_users_videos(): void
+    {
+        [$mine] = $this->twoVideos();
+
+        $other = $this->makeUser('bulkstranger', ['video']);
+        $theirs = $this->actingAs($other)->postJson('/api/videos', [
+            'title' => 'სხვისი',
+            'url' => 'https://www.youtube.com/watch?v=ccccccccccc',
+            'status' => 'to_watch',
+            'type_id' => $this->actingAs($other)->getJson('/api/video-types')->json('data.0.id'),
+        ])->assertStatus(201)->json('data');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos/bulk', [
+                'scope' => 'all',
+                'action' => 'tags_add',
+                'tags' => ['ჩემი'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('updated', 2);
+
+        $this->assertContains('ჩემი', Video::find($mine['id'])->tags);
+        $this->assertNotContains('ჩემი', Video::withoutGlobalScope('owner')->find($theirs['id'])->tags ?? []);
+    }
 }

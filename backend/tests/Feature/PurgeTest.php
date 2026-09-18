@@ -905,4 +905,70 @@ class PurgeTest extends TestCase
             ],
         };
     }
+
+    /**
+     * **ყველა სამიზნე × ყველა რეჟიმი — რეგისტრის ორივე მხარე** (Tasks DEBT-14).
+     *
+     * ⚠️ `TARGET_MODES` ერთადერთი წყაროა და მისი დაშორება **ჩუმია**: BUG-16-ში
+     * ბუკმარკს `tag` ეწერა, ფილტრს კი ის არ ჰქონდა — ე.ი. „ტეგით წაშლა"
+     * მთელ ბიბლიოთეკას შლიდა და გეგმაც იმავე რიცხვს აჩვენებდა. ერთი წყვილის
+     * შემოწმება ამას ვერ იჭერს, ამიტომ მატრიცა სრულია.
+     *
+     * ⚠️ სკოუპი ყოველთვის **შევსებულია**, თორემ `scope_required` უფრო ადრე
+     * გაისროდა და ტესტი სულ სხვა უარს დაინახავდა.
+     */
+    public function test_every_target_and_mode_pair_matches_the_registry(): void
+    {
+        $this->actingAs($this->admin->refresh());
+
+        foreach (PurgeService::TARGET_MODES as $target => $allowed) {
+            foreach (PurgeService::MODES as $mode) {
+                $res = $this->postJson('/api/admin/purge/plan', $this->scopeFor($target, $mode));
+
+                if (in_array($mode, $allowed, true)) {
+                    /* ⚠️ **200 და არა „უარი არ უთქვამს"**: სწორედ ესაა ამ
+                       ტესტის ღირებულება — ყოველი წყვილი მთელ გზას გადის
+                       (ვალიდაცია → `records()` → `plan()`), ე.ი. დომენის
+                       რუკიდან გამორჩენილი ჩანაწერი აქ 500-ად გამოჩნდება. */
+                    $res->assertOk("`{$target}` × `{$mode}`: დაშვებული წყვილი არ გაიარა");
+
+                    continue;
+                }
+
+                $res->assertStatus(422);
+                $this->assertSame(
+                    'mode_not_supported_for_target',
+                    $res->json('message'),
+                    "`{$target}` × `{$mode}`: აკრძალული წყვილი სხვა მიზეზით დაიწუნა",
+                );
+            }
+        }
+    }
+
+    /** შევსებული სკოუპი თითო რეჟიმზე — მნიშვნელობა არ უნდა იყოს ცარიელი */
+    private function scopeFor(string $target, string $mode): array
+    {
+        $body = ['target' => $target, 'mode' => $mode];
+
+        if ($target === 'gallery') {
+            $body['media_type'] = 'movie';
+        }
+
+        return $body + match ($mode) {
+            'ids' => ['ids' => [1]],
+            'genre' => ['genres' => ['action']],
+            'type' => ['type_ids' => [1]],
+            'tag' => ['tags' => ['ტეგი']],
+            'status' => ['status' => $this->anyStatusFor($target)],
+            default => [],
+        };
+    }
+
+    /** დომენის ნებისმიერი მოქმედი სტატუსი — თორემ `invalid_status` აგვირევდა */
+    private function anyStatusFor(string $target): string
+    {
+        $domain = $target === 'gallery' ? 'movie' : $target;
+
+        return PurgeService::statusesFor($domain, (int) $this->admin->id)[0] ?? 'x';
+    }
 }
