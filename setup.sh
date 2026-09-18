@@ -18,7 +18,21 @@ echo ""
 echo "[1/4] Backend: composer install"
 cd "$root/backend"
 composer install
-[ -f .env ] || { cp .env.example .env; echo "  .env created from .env.example"; }
+# Tasks SEC-11 — `.env.example` is safe by default (APP_DEBUG=false,
+# SESSION_SECURE_COOKIE=true), because a server install copies it too.
+# A local install is the opposite case and says so out loud here:
+#   · debug on, so a 500 is readable while developing;
+#   · the session cookie NOT secure — local runs over http://, where a secure
+#     cookie is never sent and login would simply stop working.
+if [ ! -f .env ]; then
+  cp .env.example .env
+  # ⚠️ no `$` anchor: with git's core.autocrlf the checked-out file may be CRLF,
+  # where `^...false$` never matches. `^` alone is enough to mean "the value
+  # line and not the comment above it", and it behaves the same in GNU and BSD sed.
+  sed -i.bak -e 's/^APP_DEBUG=false/APP_DEBUG=true/' \
+             -e 's/^SESSION_SECURE_COOKIE=true/SESSION_SECURE_COOKIE=false/' .env && rm -f .env.bak
+  echo "  .env created from .env.example (local: APP_DEBUG=true, SESSION_SECURE_COOKIE=false)"
+fi
 grep -q 'APP_KEY=base64:' .env || php artisan key:generate
 php artisan storage:link 2>/dev/null || true
 

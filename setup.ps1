@@ -20,7 +20,25 @@ if ($missing.Count) { Write-Host "Missing tools: $($missing -join ', '). Install
 Write-Host "`n[1/4] Backend: composer install" -ForegroundColor Yellow
 Push-Location "$root\backend"
 composer install
-if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "  .env created from .env.example" }
+# Tasks SEC-11 - .env.example is safe by default (APP_DEBUG=false,
+# SESSION_SECURE_COOKIE=true), because a server install copies it too.
+# A local install is the opposite case and says so here: debug on so a 500 is
+# readable, and the session cookie NOT secure - local runs over http://, where
+# a secure cookie is never sent and login would simply stop working.
+# WARNING .NET IO and not Get-Content/Set-Content: in PS 5.1 those default to
+# the ANSI codepage, which mangles the Georgian comments in .env.example, and
+# -Encoding utf8 writes a BOM that would swallow the first key (APP_NAME).
+# WARNING no $ anchor in the regex: .NET multiline $ matches before \n only, so
+# on a CRLF checkout ^...false$ would never match.
+if (-not (Test-Path .env)) {
+  Copy-Item .env.example .env
+  $envPath = (Resolve-Path .env).Path
+  $local = [System.IO.File]::ReadAllText($envPath)
+  $local = $local -replace '(?m)^APP_DEBUG=false', 'APP_DEBUG=true'
+  $local = $local -replace '(?m)^SESSION_SECURE_COOKIE=true', 'SESSION_SECURE_COOKIE=false'
+  [System.IO.File]::WriteAllText($envPath, $local)
+  Write-Host "  .env created from .env.example (local: APP_DEBUG=true, SESSION_SECURE_COOKIE=false)"
+}
 $envtxt = Get-Content .env -Raw
 if ($envtxt -notmatch 'APP_KEY=base64:') { php artisan key:generate }
 php artisan storage:link 2>$null

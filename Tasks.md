@@ -52,7 +52,7 @@
 | DEBT-05 | შეხსენების ორმაგი გაშვების claim ტესტით არ არის დაცული | Medium | debt | S | ✅ შესრულებულია |
 | DEBT-12 | `NoteReminders.test.ts` სრულ `npm test`-ში 5-წამიან ტაიმაუტზე ცვივა (ცალკე გადის) — CI-ს flaky-ს ხდის (SEC-02-ის შესრულებისას ნაპოვნი) | Medium | debt | S | ✅ შესრულებულია |
 | SEC-10 | `roles.permissions = NULL` „ყველაფერს" ნიშნავს და სვეტი nullable-ია | Low | security | S | ✅ შესრულებულია |
-| SEC-11 | `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე | Low | security | S | ⬜ |
+| SEC-11 | `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე | Low | security | S | ✅ შესრულებულია |
 | BUG-12 | `updateOrInsert` ყოველ რედაქტირებაზე `created_at`-ს გადაწერს | Low | bug | S | ⬜ |
 | BUG-13 | `deleteResolved()`-ის custom-field ბრანჩი: დისკი + მრიცხველი + row ტრანზაქციის გარეშე | Low | bug | S | ⬜ |
 | BUG-14 | `errorMessage()` 422-ზე ვალიდაციის ტექსტს კოდზე წინ აყენებს | Low | bug | S | ⬜ |
@@ -959,13 +959,21 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-11] `.env.example` `APP_DEBUG=true`-თი და `SESSION_SECURE_COOKIE`-ს გარეშე
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `.env.example` უსაფრთხო default-ებზეა, ლოკალურ მნიშვნელობებს `setup.sh`/`setup.ps1` წერს.
+  - ✅ `.env.example`: `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `SESSION_SAME_SITE=lax` — სამივე ახსნილი კომენტარით
+  - ⚠️ **ტასკის მიღების კრიტერიუმი გაფართოვდა და ეს აუცილებელი იყო, არა scope creep.** მასში მხოლოდ debug-ის ლოკალური ჩართვა ეწერა, მაგრამ `SESSION_SECURE_COOKIE=true` **ლოკალურ ინსტალაციას ტეხს**: აპი `http://mediary.local`-ზე იხსნება, secure-ქუქი კი უბრალო HTTP-ზე **საერთოდ არ იგზავნება** — ე.ი. `setup.sh` მუშა კლონის ნაცვლად ისეთს დააყენებდა, სადაც შესვლა ჩუმად არ გამოდის. ამიტომ ორივე სკრიპტი **ორივე** მნიშვნელობას აბრუნებს ლოკალურად და ცხადად ამბობს ამას ეკრანზე
+  - ⚠️ ორივე ჩანაცვლება **`^`-ით არის დამაგრებული და `$`-ის გარეშე**: git-ის `core.autocrlf`-ით ფაილი შეიძლება CRLF-ად ჩამოიწეროს, სადაც `^…false$` ვერასდროს დაემთხვევა (და .NET-ის multiline `$` ისედაც მხოლოდ `\n`-მდე ჯდება). `^` საკმარისია „ეს მნიშვნელობის ხაზია და არა ზემოთა კომენტარი"-სთვის და GNU/BSD sed-ზე ერთნაირად იქცევა
+  - ⚠️ `setup.ps1`-ში **`[System.IO.File]` და არა `Get-Content`/`Set-Content`**: PS 5.1-ში ისინი ANSI კოდგვერდს იყენებენ, რაც `.env.example`-ის ქართულ კომენტარებს დაამახინჯებდა, `-Encoding utf8` კი **BOM-ს წერს** — და BOM პირველ გასაღებს (`APP_NAME`) ჩაყლაპავდა
+  - ✅ `setup.ps1` კვლავ **ASCII-only** (CLAUDE.md-ის წესი: PS 5.1 BOM-ის გარეშე ფაილს Windows-1252-ად კითხულობს და em dash-ის ბაიტები სტრიქონს წყვეტენ) — ბაიტობრივად შემოწმდა, და `Parser::ParseFile` — `PARSE OK`
+  - ✅ **ორივე გზა ცოცხლად გაშვებულია დროებით ასლზე:** sed **LF-სა და CRLF ასლზეც** ორივე მნიშვნელობას ცვლის; PowerShell-ის გზა ცვლის **ზუსტად ორ ხაზს**, ქართული ტექსტი უვნებელია, BOM არაა (`65,80,80` = `APP`), ხაზების რაოდენობა უცვლელი
+  - ℹ️ `APP_ENV=local` განზრახ არ შეცვლილა: ტასკის საგანი ის სამი მნიშვნელობაა, რომლებიც **უშუალოდ** ტეხს უსაფრთხოებას; `APP_ENV`-ის შეცვლას ფრეიმვორკის ქცევაზე უფრო ფართო შედეგები აქვს და ცალკე გადაწყვეტილებაა
 - **ტიპი:** security
 - **სად:** `backend/.env.example:4`; `backend/config/session.php:172`
 - **პრობლემა:** `setup.sh` ამ ფაილს `.env`-ად კოპირებს; `APP_DEBUG=true` სერვერზე ყოველ 500-ზე stack trace-ს, კონფიგს და query-ფრაგმენტებს აჩვენებს; `SESSION_SECURE_COOKIE` არსად არ არის (`env('SESSION_SECURE_COOKIE')` → null).
 - **რატომ:** არასაიმედო default, რომელიც პირდაპირ პროდ-ინსტალაციაში გადადის.
 - **გადაწყვეტა:** `APP_DEBUG=false`, კომენტარით `# APP_DEBUG=true — მხოლოდ ლოკალურად`; `SESSION_SECURE_COOKIE=true`, `SESSION_SAME_SITE=lax`.
 - **Acceptance criteria:**
-  - [ ] `.env.example`-ში სამივე მნიშვნელობა სწორია; `setup.sh` ლოკალურ debug-ს ცალკე ხაზით რთავს
+  - [x] `.env.example`-ში სამივე მნიშვნელობა სწორია; `setup.sh` **და** `setup.ps1` ლოკალურ debug-ს ცალკე ხაზით რთავს — და მასთან ერთად secure-ქუქის გამორთვასაც, თორემ ლოკალურ ინსტალაციაში შესვლა ჩუმად აღარ მუშაობდა
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
