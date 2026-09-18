@@ -58,7 +58,7 @@
 | BUG-14 | `errorMessage()` 422-ზე ვალიდაციის ტექსტს კოდზე წინ აყენებს | Low | bug | S | ✅ შესრულებულია |
 | BUG-15 | ექსპორტის ფაილის სახელი `toISOString()`-ით — ღამით გუშინდელი თარიღი | Low | bug | S | ✅ შესრულებულია |
 | PERF-10 | `PurgeService::run()` plan-ს და id-სეტს ორჯერ ითვლის | Low | performance | S | ✅ შესრულებულია |
-| PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ⬜ |
+| PERF-11 | `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა | Low | performance | S | ✅ შესრულებულია |
 | PERF-12 | `noteReminders` ყოველ poll-ზე მთელ `['notes']` ქეშს ინვალიდირებს | Low | performance | S | ⬜ |
 | PERF-13 | `PhotoTile` ყოველ გახსნილ URL-ზე მთელ grid-ს ხელახლა ხატავს | Low | performance | S | ⬜ |
 | GAP-05 | Root `README.md` ორმოდულიან Laravel 11 / React 18 აპს აღწერს | Low | gap | S | ⬜ |
@@ -1060,13 +1060,20 @@
 - **დამოკიდებულება:** none
 
 ### [PERF-11] `AllPhotosCut`-ის `useMemo` ახალი `{}`-ით ყოველ რენდერზე ცვივა
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18) — `AllPhotosCut.test.ts` 2/2, სრული `npm test` მწვანე.
+  - ✅ მოდულის დონის `NO_COUNTS` ინლაინ `{}`-ის ნაცვლად; deps `summaryQ.data` → `summaryQ.data?.photos` (მხოლოდ ის, რასაც memo მართლა კითხულობს)
+  - ✅ `eslint-disable react-hooks/exhaustive-deps` კომენტარი მოიხსნა (11 → 10; დანარჩენი DEBT-08-ია)
+  - ⚠️ **ტესტი დაიწერა და არა მხოლოდ გასწორება**, რადგან რეფერენციულ სტაბილურობას ვერც `tsc` ხედავს და ვერც lint — და სწორედ `eslint-disable` კომენტარი ფარავდა მას. ერთადერთი დაკვირვების წერტილი `options`-ის **რეფერენციაა** ორ რენდერს შორის, ე.ი. `CutTabs` მოკია და მას ინახავს
+  - ⚠️ **გაზომვა query-ის დაწყნარების შემდეგ იწყება**: დაწყნარებამდე პირველი რენდერი `undefined`-ზეა, მეორე — უკვე მოსულ მონაცემზე, ე.ი. `options` ლეგიტიმურად იცვლება და ტესტი **გასწორებულ კოდზეც** წითლდებოდა
+  - ✅ **მუტაცია:** ინლაინ `?? {}` დაბრუნდა → „ჩატვირთვისას სტაბილურია" წითლდება. მეორე ტესტი („ჩატვირთვის შემდეგ") მუტაციაზე მწვანე რჩება და ესეც სწორია: იქ `data.categories` ისედაც სტაბილური რეფერენციაა — ის მომავალ რეგრესიას იცავს და არა ამ ბაგს
+  - ℹ️ იგივე ნიმუში სხვაგან შემოწმდა (`RecordsCut`, `AlbumsCut`, `ModulesCut`…) — იქ `?? {}`/`?? []` **პირდაპირ JSX-შია** და არა deps-ში, ე.ი. უვნებელია
 - **ტიპი:** performance
 - **სად:** `frontend/src/components/gallery/AllPhotosCut.tsx:42`, `:52-56`
 - **პრობლემა:** `const counts = summaryQ.data?.categories ?? {}` ყოველ რენდერზე ახალი ობიექტია და `useMemo`-ს deps-შია (`[counts, category, summaryQ.data, t]`) — memo არასდროს არ ინახება, შვილები ხელახლა იხატება; `eslint-disable` კომენტარი ამას ფარავს.
 - **რატომ:** უსარგებლო memo + `options`-ის მიმღები კომპონენტების re-render.
 - **გადაწყვეტა:** მოდულის დონეზე `const EMPTY = {}` ან `?? {}` memo-ს შიგნით და deps `summaryQ.data`.
 - **Acceptance criteria:**
-  - [ ] `counts` რეფერენციულად სტაბილურია loading-ის დროს
+  - [x] `counts` რეფერენციულად სტაბილურია loading-ის დროს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

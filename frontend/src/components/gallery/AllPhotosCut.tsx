@@ -33,13 +33,20 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 /** რიგი მნიშვნელობით და არა ანბანით — „კადრი · პოსტერი · ლოგო · მსახიობი" */
 const CATEGORY_ORDER = ['backdrop', 'poster', 'logo', 'actor'] as const
 
+/* ⚠️ **მოდულის დონეზე და არა `?? {}` ხაზში** (Tasks PERF-11): ჩატვირთვისას
+   ინლაინ `{}` ყოველ რენდერზე ახალი ობიექტია, ე.ი. `useMemo`-ს deps ყოველთვის
+   იცვლებოდა და memo არასდროს ინახებოდა — `CutTabs` და მისი ბარათები უმიზნოდ
+   იხატებოდა თავიდან. `eslint-disable` კომენტარი კი ამას ფარავდა (და, DEBT-08-ის
+   მიხედვით, წესს, რომელიც ამ პროექტში საერთოდ არ ეშვება). */
+const NO_COUNTS: Record<string, number> = {}
+
 export function AllPhotosCut() {
   const { t } = useTranslation()
   const [category, setCategory] = useState<string>('all')
 
   const summaryQ = useQuery({ queryKey: ['gallery-summary'], queryFn: fetchGallerySummary })
 
-  const counts = summaryQ.data?.categories ?? {}
+  const counts = summaryQ.data?.categories ?? NO_COUNTS
 
   /* ⚠️ არჩეული კატეგორია რიგში რჩება მაშინაც, თუ ბოლო ფოტო წაიშალა —
      თორემ ბარათი ფეხქვეშ გაქრებოდა და ბადე ცარიელი დარჩებოდა ახსნის გარეშე. */
@@ -52,8 +59,7 @@ export function AllPhotosCut() {
         count: counts[key] ?? 0,
       })),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [counts, category, summaryQ.data, t],
+    [counts, category, summaryQ.data?.photos, t],
   )
 
   return (
