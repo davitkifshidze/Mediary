@@ -249,7 +249,16 @@ class MovieEnricher
             }
             if ($isNew) {
                 $genre->setTranslation('en', $g['name']);
-                $genre->setTranslation('ka', $g['name']);
+                /* ⚠️ **`ka` განზრახ არ იწერება** (BUG-23). TMDB-ის ჟანრის
+                   ობიექტში მხოლოდ ინგლისური სახელია და მისი `name_ka`-ში
+                   ჩაწერა ჟანრს „ნათარგმნად" აქცევდა:
+                   `TranslationScanner::genreMissing()` ველს შევსებულად
+                   ხედავდა, ე.ი. `/translations` მას **არასდროს** თარგმნიდა
+                   და ქართულ ინტერფეისში ინგლისური იდგა „ქართულად".
+                   `TmdbClient::genreList('ka')` ნამდვილ ქართულ სახელს
+                   უფასოდ იძლევა — სწორედ იქიდან ივსება ახლა.
+                   ⚠️ ცარიელი `name_ka` ეკრანზე ინგლისურად ჩანს
+                   (`genreName()`-ის fallback), ე.ი. ხილული ქცევა იგივეა. */
             }
             $genreIds[] = $genre->id;
         }

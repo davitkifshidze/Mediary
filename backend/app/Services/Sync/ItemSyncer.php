@@ -269,7 +269,7 @@ class ItemSyncer
             $genre = Genre::firstOrCreate(['slug' => $slug], ['tmdb_id' => $g['id']]);
             if ($genre->wasRecentlyCreated) {
                 $genre->setTranslation('en', $g['name']);
-                $genre->setTranslation('ka', $g['name']);
+                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher` (BUG-23)
             } elseif (! $genre->tmdb_id) {
                 $genre->tmdb_id = $g['id'];
                 $genre->save();

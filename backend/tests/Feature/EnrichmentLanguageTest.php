@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
 use App\Services\Enrichment\MovieEnricher;
+use App\Services\Sync\ItemSyncer;
+use App\Services\Translation\TranslationScanner;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -49,20 +52,20 @@ class EnrichmentLanguageTest extends TestCase
     }
 
     /** TMDB — ინგლისური და ქართული პასუხი, `language=ka`-ს მიხედვით */
-    private function fakeTmdb(?string $kaTitle = 'მატრიცა', ?string $kaOverview = 'ქართული აღწერა.'): void
+    private function fakeTmdb(?string $kaTitle = 'მატრიცა', ?string $kaOverview = 'ქართული აღწერა.', array $genres = []): void
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response(['error' => 'must not be called'], 500),
             'api.themoviedb.org/3/movie/*/credits*' => Http::response(['cast' => []]),
             'api.themoviedb.org/3/movie/*/videos*' => Http::response(['results' => []]),
-            'api.themoviedb.org/3/movie/*' => function ($request) use ($kaTitle, $kaOverview) {
+            'api.themoviedb.org/3/movie/*' => function ($request) use ($kaTitle, $kaOverview, $genres) {
                 $ka = str_contains($request->url(), 'language=ka');
 
                 return Http::response([
                     'id' => 603,
                     'title' => $ka ? ($kaTitle ?? 'The Matrix') : 'The Matrix',
                     'overview' => $ka ? ($kaOverview ?? 'A hacker learns the truth.') : 'A hacker learns the truth.',
-                    'genres' => [],
+                    'genres' => $genres,
                 ]);
             },
         ]);
@@ -110,5 +113,45 @@ class EnrichmentLanguageTest extends TestCase
         $this->assertNull($movie->title_ka);
         $this->assertNull($movie->description_ka);
         $this->assertNull($movie->description_ka_source);
+    }
+
+    /* ============================================================
+       ჟანრის ქართული სახელი (BUG-23)
+       ============================================================ */
+
+    /**
+     * **ახალ ჟანრს ინგლისური სახელი `name_ka`-ში აღარ ეწერება.**
+     *
+     * ⚠️ ეს ჩუმი ხარვეზი იყო და სწორედ იმიტომ, რომ ველი **შევსებული**
+     * რჩებოდა: `TranslationScanner::genreMissing()` მას სათარგმნად ვეღარ
+     * ხედავდა, ე.ი. `/translations` „დრამას" **არასდროს** გადათარგმნიდა და
+     * ქართულ ინტერფეისში ინგლისური სახელი იდგა „ქართულად".
+     * `TmdbClient::genreList('ka')` ნამდვილ ქართულს უფასოდ იძლევა.
+     */
+    public function test_a_new_genre_is_left_untranslated_instead_of_taking_the_english_name(): void
+    {
+        $this->fakeTmdb(genres: [['id' => 28, 'name' => 'Action']]);
+
+        $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603]);
+        app(MovieEnricher::class)->enrichMovie($movie);
+
+        $genre = Genre::where('slug', 'action')->firstOrFail();
+        $this->assertSame('Action', $genre->name_en);
+        $this->assertNull($genre->name_ka);
+        // და სწორედ ამიტომ ხედავს სკანერი მას სათარგმნად
+        $this->assertSame(['name_ka'], TranslationScanner::genreMissing($genre));
+    }
+
+    /** ⚠️ იგივე ბილიკი ბულკ-სინქრონიზაციაზე — სამივე ადგილს ერთი წესი აქვს */
+    public function test_bulk_sync_also_leaves_a_new_genre_untranslated(): void
+    {
+        $this->fakeTmdb(genres: [['id' => 18, 'name' => 'Drama']]);
+
+        $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603]);
+        app(ItemSyncer::class)->sync($movie, ['fields' => ['genres'], 'overwrite' => true]);
+
+        $genre = Genre::where('slug', 'drama')->firstOrFail();
+        $this->assertSame('Drama', $genre->name_en);
+        $this->assertNull($genre->name_ka);
     }
 }

@@ -263,7 +263,7 @@ abstract class TvEnricher
             }
             if ($isNew) {
                 $genre->setTranslation('en', $g['name']);
-                $genre->setTranslation('ka', $g['name']);
+                // ⚠️ `ka` განზრახ არ იწერება — იხ. `MovieEnricher` (BUG-23)
             }
             $genreIds[] = $genre->id;
         }
