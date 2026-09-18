@@ -31,7 +31,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { usePrivateFileUrl } from '@/components/PrivateFile'
+import { fetchPrivateObjectUrl, usePrivateFileUrl } from '@/components/PrivateFile'
+import { useInViewOnce } from '@/lib/inView'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import 'yet-another-react-lightbox/styles.css'
@@ -122,6 +123,18 @@ export const PHOTO_PAGE_DEFAULT = 20
  * ჩერდება; ხელით ჩაწერილი 5000 იქ 422-ს დააბრუნებდა.
  */
 const PHOTO_PAGE_MAX = 1000
+
+/**
+ * გახსნილი სლაიდის რამდენ მეზობელს წამოვიღებთ წინასწარ (Tasks PERF-09).
+ *
+ * ⚠️ პრივატულ ბადეზე უჯრა blob-ს მხოლოდ ეკრანზე გამოჩენისას კითხულობს,
+ * lightbox-ში ისრით გადასვლა კი ეკრანს გარეთ დარჩენილ სლაიდზეც მიდის —
+ * ბუფერის გარეშე ის ცარიელი დარჩებოდა.
+ */
+const PRELOAD_AROUND = 2
+
+/** ჩამოტვირთვისთვის ხელით შექმნილი object URL-ის სიცოცხლე */
+const REVOKE_AFTER_MS = 10_000
 
 /**
  * „რამდენი გამოჩნდეს" — **სელექტი მზა რიცხვებით + „სხვა"** (შენი მითითება,
@@ -279,6 +292,26 @@ export function PhotoGrid({
    */
   const viewable = lightboxItems ?? items
 
+  /**
+   * გახსნილი სლაიდი და მისი მეზობლები — მათი blob უჯრის ხილვადობის
+   * მიუხედავად უნდა წამოვიდეს (Tasks PERF-09).
+   *
+   * ⚠️ მოქმედებს მხოლოდ **დახატულ** უჯრებზე: `viewable` ბადეზე მეტიც
+   * შეიძლება იყოს (§3.7), და სხვა გვერდის ფოტოს აქამდეც არ ჰქონდა
+   * მისამართი გახსნილ ხედში — ეს იმას არ ცვლის.
+   */
+  const preloadIds = useMemo(() => {
+    if (open == null) return null
+
+    const ids = new Set<number>()
+    for (let i = open - PRELOAD_AROUND; i <= open + PRELOAD_AROUND; i += 1) {
+      const item = viewable[i]
+      if (item) ids.add(item.id)
+    }
+
+    return ids
+  }, [open, viewable])
+
   const slides: Slide[] = useMemo(
     () =>
       viewable.map((item) => ({
@@ -307,19 +340,35 @@ export function PhotoGrid({
   /**
    * ჩამოტვირთვა — თითო ფაილი თავისი `<a download>`-ით, თანმიმდევრობით.
    * ⚠️ zip-ად შეკვრა ბიბლიოთეკას მოითხოვდა (jszip ~100 kB); §2.9 ამას არ ითხოვს.
+   *
+   * ⚠️ **პრივატულზე ფაილი საჭიროების შემთხვევაში აქვე წამოვიდება**
+   * (Tasks PERF-09): `resolved`-ში მხოლოდ **დახატული და ეკრანზე გამოჩენილი**
+   * უჯრების blob-ებია, „ყველას მონიშვნა" კი სხვა გვერდსაც და ეკრანს გარეთ
+   * დარჩენილსაც მოიცავს — ისინი ადრე **ჩუმად გამოტოვდებოდა** (ეს ხარვეზი
+   * გვერდებისთვის აქამდეც არსებობდა).
    */
   const download = (ids: number[]) => {
     ids.forEach((id, index) => {
       const item = items.find((i) => i.id === id)
-      const url = item && urlOf(item)
-      if (!url) return
-      setTimeout(() => {
+      if (!item) return
+
+      setTimeout(async () => {
+        const ready = urlOf(item)
+        const fetched = ready || !privateDisk ? null : await fetchPrivateObjectUrl(item.src)
+        const url = ready ?? fetched
+        if (!url) return
+
         const a = document.createElement('a')
         a.href = url
         a.download = item.title ?? String(id)
         document.body.appendChild(a)
         a.click()
         a.remove()
+
+        // ⚠️ მხოლოდ **ჩვენ** შექმნილს ვათავისუფლებთ და დაყოვნებით: უჯრის
+        // blob-ს თვითონ უჯრა უვლის, ხოლო `click()`-ის შემდეგ მაშინვე
+        // გათავისუფლება ჩამოტვირთვას აწყვეტინებს
+        if (fetched) setTimeout(() => URL.revokeObjectURL(fetched), REVOKE_AFTER_MS)
       }, index * 250)
     })
   }
@@ -430,6 +479,7 @@ export function PhotoGrid({
               item={item}
               index={index}
               privateDisk={privateDisk}
+              preload={!!preloadIds?.has(item.id)}
               picking={picking}
               checked={selected.includes(item.id)}
               isPrimary={primaryId != null && primaryId === item.id}
@@ -521,6 +571,7 @@ function PhotoCell({
   item,
   index,
   privateDisk,
+  preload,
   picking,
   checked,
   isPrimary,
@@ -536,6 +587,8 @@ function PhotoCell({
   item: PhotoItem
   index: number
   privateDisk?: boolean
+  /** გახსნილი სლაიდის მეზობელია — blob ხილვადობის მოლოდინის გარეშე მოდის */
+  preload: boolean
   picking: boolean
   checked: boolean
   isPrimary: boolean
@@ -551,7 +604,14 @@ function PhotoCell({
 }) {
   const { t } = useTranslation()
   const [info, setInfo] = useState(false)
-  const blob = usePrivateFileUrl(privateDisk ? item.src : null)
+
+  /* ⚠️ **პრივატული ფაილი მხოლოდ ეკრანზე გამოჩენისას იკითხება (Tasks PERF-09).**
+     `loading="lazy"` აქ არაფერს შველის — მისამართი blob-ია და fetch-ს JS
+     აკეთებს, ე.ი. „ყველა"-ს არჩევაზე ბადე ერთდროულად ასობით ავტორიზებულ
+     `GET`-ს უშვებდა: გვერდი 600/წთ გლობალურ ლიმიტზე **თავად ითროთლებოდა**
+     და მეხსიერებაც blob-ებით ივსებოდა. */
+  const [tileRef, inView] = useInViewOnce<HTMLLIElement>()
+  const blob = usePrivateFileUrl(privateDisk && (inView || preload) ? item.src : null)
   const url = privateDisk ? blob.url : (storageUrl(item.src) ?? item.src)
 
   useEffect(() => {
@@ -583,6 +643,7 @@ function PhotoCell({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <li
+          ref={tileRef}
           className={cn(
             'group relative overflow-hidden rounded-xl border bg-card transition-colors',
             checked ? 'border-primary' : 'border-border',

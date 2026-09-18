@@ -18,6 +18,26 @@ import { cn } from '@/lib/utils'
    object URL **უნდა გათავისუფლდეს** — თორემ ყოველი გახსნა მეხსიერებაში რჩება.
    ============================================================ */
 
+/**
+ * **ერთჯერადი წაკითხვა hook-ის გარეშე (Tasks PERF-09).**
+ *
+ * ⚠️ საჭიროა მხოლოდ **ჩამოტვირთვაზე**: ბადე მონიშნულ ფოტოს `<a download>`-ს
+ * მისი უჯრის უკვე წამოღებული blob-ით აძლევს, ხოლო „ყველას მონიშვნა" იმ
+ * უჯრებსაც მოიცავს, რომლებიც ჯერ არ დახატულა (სხვა გვერდი) ან ეკრანზე ჯერ
+ * არ გამოჩნდა. ასეთი ფაილი ადრე **ჩუმად გამოტოვდებოდა**.
+ *
+ * ⚠️ object URL გამომძახებლისაა — მან უნდა გაათავისუფლოს.
+ */
+export async function fetchPrivateObjectUrl(url: string): Promise<string | null> {
+  try {
+    const res = await api.get(url, { responseType: 'blob' })
+
+    return URL.createObjectURL(res.data as Blob)
+  } catch {
+    return null
+  }
+}
+
 /** `url` — რესურსიდან მოსული API-ს გზა, მაგ. `/note-files/12` */
 export function usePrivateFileUrl(url: string | null | undefined) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
