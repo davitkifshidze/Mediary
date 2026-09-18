@@ -498,6 +498,7 @@
     "trailer": "Trailer",
     "sourceUnknown": "Source of this text is unknown",
     "source": {
+      "ge_movie": "Description from ge.movie (an old import)",
       "tmdb": "Description from TMDB",
       "translation": "Description was translated automatically — check it and rewrite if needed",
       "manual": "You wrote this description",

@@ -16,7 +16,7 @@
 | BUG-16 | `/purge`: ბუკმარკზე `mode=tag` **ყველა** ბუკმარკს შლის — ტეგის ფილტრი დომენების სიაში `bookmark`-ს არ იცნობს | Critical | bug | S | ✅ |
 | SEC-06 | ცოცხალი TMDB გასაღები `.env.example`-ში იყო — რჩება გასაღების როტაცია themoviedb.org-ზე | High | security | S | 🟡 ნაწილობრივ |
 | SEC-14 | API-გასაღებები URL-ის query-შია და cURL-ის შეცდომის ტექსტით პასუხის body-სა და `sources.log`-ში ხვდება | High | security | M | ✅ |
-| BUG-17 | `MovieEnricher`/`TvEnricher` თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს TMDB-ის ქართულის ნაცვლად და `source='translated'`-ს წერს — ბარათი „წყარო უცნობია"-ს აჩვენებს | High | bug | M | ⬜ |
+| BUG-17 | `MovieEnricher`/`TvEnricher` თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს TMDB-ის ქართულის ნაცვლად და `source='translated'`-ს წერს — ბარათი „წყარო უცნობია"-ს აჩვენებს | High | bug | M | ✅ |
 | GAP-12 | 25 API-პასუხი ქართული წინადადებაა და არა მანქანური კოდი; Laravel-ის ვალიდაციის ტექსტი ინგლისურია (`lang/ka` არ არსებობს) | High | gap | M | ⬜ |
 | BUG-18 | `ka.json`-ში ორთოგრაფიული და გრამატიკული შეცდომებია („ჟანრიის" ×8, „კატეგორიაის" ×2, „ნიშავს", „სასაათე", „გალერიის", „დამრჩეს", „ნაცვლად არ არის", ბრუნვები `moveTo`-ში) | High | bug | S | ⬜ |
 | BUG-19 | `GenreRemover` ანიმეს არ ითვლის და არ გადაიტანს — ჟანრის წაშლა ანიმეს მიბმებს ჩუმად კარგავს | High | bug | S | ⬜ |
@@ -136,15 +136,17 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-17] enricher-ები Gemini-ს პირდაპირ იძახებენ და `source='translated'`-ს წერენ
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). ორივე გამამდიდრებელი `details($id, 'ka')`/`tvDetails($id, 'ka')`-ს კითხულობს და `Lang::georgian()`-ში ატარებს — `Translator`-ის დამოკიდებულება ორივე კლასიდან ამოღებულია, ე.ი. Gemini აქედან აღარ იძახება (თარგმნა `/translations`-ის საქმეა, ცხადი დაჭერით). `source` ახლა `'tmdb'`-ა (ტექსტი მართლაც TMDB-ისაა), არსებულ რიგებს კი `2026_09_18_000005_normalise_translation_source_values` `translated → translation`-ს უწერს (`'tmdb'` არ — ისინი მართლა მანქანური თარგმანია). დამატებით `detail.source.ge_movie` ორივე ლოკალში — ეს იყო მეორე, დაუნახავი მნიშვნელობა, რომელსაც ბარათი ვერ ხსნიდა. ⚠️ გვერდით გამოაჩნდა არაპირდაპირი მოგებაც: ძველ კოდზე ესევე სამი ტესტი **25 წამს** აქედებდა (Gemini-ის გამეორებები და პაუზები), ახლა — 1.1-ს.
 - **ტიპი:** bug
 - **სად:** `backend/app/Services/Enrichment/MovieEnricher.php:117,121` (`draftFromId` — ორი `toGeorgian()` თითო lookup-ზე), `:201-207` (`enrichMovie` — ორი გამოძახება + `$descKaSrc = 'translated'`), `backend/app/Services/Enrichment/TvEnricher.php:132,139,218-224`; შედეგი — `frontend/src/pages/MoviePage.tsx:294`
 - **პრობლემა:** `POST /{domain}/from-tmdb`, `resync` და ფორმის „სწრაფი შევსება" (`/lookup`) TMDB-ის `language=ka` პასუხს **არ ეკითხება** (რასაც `ItemSyncer`/`ItemTranslator` სწორად აკეთებენ) და თითო ჩანაწერზე ორ Gemini-გამოძახებას ხარჯავს — 15/წთ და 1500/დღე ბიუჯეტიდან, უფასო TMDB-ტექსტის ნაცვლად; discover-იდან 20 ჩანაწერის ერთ დაჭერით დამატება 40 გამოძახებაა. თან აღწერას `source = 'translated'`-ს წერს, დანარჩენი აპი კი მხოლოდ `tmdb|translation|manual`-ს იცნობს: `MoviePage` `t('detail.source.translated')`-ს ვერ პოულობს და **„ტექსტის წყარო უცნობია"**-ს ხატავს, `TranslationScanner::reviewable()` (`=== 'tmdb'`) მას არასდროს გადაამოწმებს. CLAUDE.md-ის „Translator არ იძახება discover/cast/sync-იდან" ამ ორ ფაილზე არ სრულდება.
 - **რატომ:** კვოტის უხმო ხარჯვა და ცრუ ბეჯი; `draftFromId()`-ის შემთხვევაში ჯერ არშენახულ ჩანაწერზეც ხარჯავს.
 - **გადაწყვეტა:** ორივე enricher-ში ჯერ `details($id, 'ka')` + `Lang::georgian()`, Gemini — მხოლოდ TMDB-ის ცარიელზე და მხოლოდ თუ მომხმარებელმა `autoTranslate`-ის მსგავსი პარამეტრი ჩართა (ან საერთოდ არა — თარგმანი `/translations`-ის საქმეა); `source` მნიშვნელობა `'translation'`; `draftFromId()`-დან Gemini ამოსაღებია (ფორმა TMDB-ის ka-ს აჩვენებს, ცარიელი ველი ცარიელი რჩება).
 - **Acceptance criteria:**
-  - [ ] `Http::fake()`-ით `from-tmdb`-ზე Gemini-ის endpoint-ი არ იძახება, ka ტექსტი TMDB-ის `ka` პასუხიდან მოდის
-  - [ ] `<domain>_translations.source` არასდროს არის `'translated'` (ტესტი + ერთჯერადი მიგრაცია არსებულ რიგებზე `translated → translation`)
-  - [ ] `MoviePage` ყველა არსებულ მნიშვნელობაზე ლეიბლს პოულობს (`detail.source.*` სია და `source` enum ერთი წყაროდან)
+  - [x] `EnrichmentLanguageTest::test_enrichment_takes_georgian_from_tmdb_and_never_calls_gemini` — `Http::assertNotSent()` Gemini-ზე, ka ტექსტი TMDB-ის `language=ka` პასუხიდან; იგივე `…_a_draft_…` (ფორმის „სწრაფი შევსება"). ორივე ძველ კოდზე წითელია.
+  - [x] `…::test_a_latin_answer_is_not_stored_as_georgian` — TMDB ქართულის უქონობაზე ორიგინალს აბრუნებს, ე.ი. `Lang::georgian()` სავალდებულოა
+  - [x] `<domain>_translations.source` არასდროს არის `'translated'` — ახალი ჩანაწერი `'tmdb'`-ია, ძველი — მიგრაციით `'translation'`
+  - [x] `MoviePage` ყველა არსებულ მნიშვნელობაზე ლეიბლს პოულობს (`ge_movie` დაემატა)
 - **Estimate:** M
 - **დამოკიდებულება:** none
 

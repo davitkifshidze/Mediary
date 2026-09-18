@@ -7,8 +7,8 @@ use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
-use App\Services\Translation\Translator;
 use App\Support\CastSync;
+use App\Support\Lang;
 use App\Support\SourceLog;
 use App\Support\Trailer;
 use Illuminate\Support\Str;
@@ -20,7 +20,6 @@ class MovieEnricher
     public function __construct(
         private TmdbClient $tmdb,
         private MediaDownloader $media,
-        private Translator $translator,
     ) {}
 
     public function configured(): bool
@@ -104,21 +103,38 @@ class MovieEnricher
         return $id ? $this->draftFromId($id) : null;
     }
 
-    /** კონკრეტული TMDB id-ის დრაფტი */
+    /**
+     * TMDB-ის ქართული პასუხი (Tasks BUG-17).
+     *
+     * ⚠️ **ქართული TMDB-დან მოდის და არა Gemini-დან.** აქამდე `draftFromId()`
+     * და `enrichMovie()` თითო ჩანაწერზე **ორ** Gemini-გამოძახებას ხარჯავდნენ
+     * (სათაური + აღწერა) 15/წთ და 1500/დღე ბიუჯეტიდან — discover-იდან 20
+     * ჩანაწერის ერთი დაჭერით დამატება 40 გამოძახებაა —, მაშინ როცა TMDB-ს
+     * ქართული ტექსტი **უფასოდ** აქვს და `ItemSyncer`/`ItemTranslator` სწორედ
+     * მას კითხულობენ. CLAUDE.md-ის წესი („`Translator` არ იძახება
+     * discover/cast/sync-იდან") ამ ორ ფაილზე უბრალოდ არ სრულდებოდა.
+     *
+     * ⚠️ **`Lang::georgian()` სავალდებულოა**: TMDB ქართულის უქონლობაზე ჩუმად
+     * ორიგინალ ენას აბრუნებს, ე.ი. ფილტრის გარეშე ინგლისური ტექსტი
+     * `title_ka`-ში ჩაჯდებოდა.
+     *
+     * თარგმნა `/translations`-ის საქმეა — ცხადი დაჭერით და კვოტის მრიცხველით.
+     */
     public function draftFromId(int $id): array
     {
         $d = $this->tmdb->details($id);
+        $dka = $this->tmdb->details($id, 'ka');
         $credits = $this->tmdb->credits($id);
 
         return [
             'tmdb_id' => $id,
             'imdb_id' => $d['imdb_id'] ?? null,
             'title_en' => $d['title'] ?? null,
-            'title_ka' => $this->translator->toGeorgian($d['title'] ?? null),
+            'title_ka' => Lang::georgian($dka['title'] ?? null),
             'year' => $this->year($d),
             'rating' => isset($d['vote_average']) ? round((float) $d['vote_average'], 1) : null,
             'description_en' => $d['overview'] ?? null,
-            'description_ka' => $this->translator->toGeorgian($d['overview'] ?? null),
+            'description_ka' => Lang::georgian($dka['overview'] ?? null),
             'genres' => array_map(fn ($g) => $g['name'], $d['genres'] ?? []),
             'poster' => ! empty($d['poster_path']) ? $this->img.'/w500'.$d['poster_path'] : null,
             'cast' => array_map(fn ($c) => [
@@ -160,6 +176,7 @@ class MovieEnricher
         }
 
         $d = $this->tmdb->details($id);
+        $dka = $this->tmdb->details($id, 'ka');
         $credits = $this->tmdb->credits($id);
 
         // არსებული თარგმანები (მხოლოდ ცარიელს ვავსებთ — user-ის მონაცემი არ იშლება)
@@ -197,15 +214,16 @@ class MovieEnricher
         }
         $movie->setTranslation('en', ['title' => $titleEn, 'description' => $descEn, 'source' => $descEnSrc]);
 
-        // --- KA translation (ავტომატური თარგმანი, თუ ცარიელია) ---
-        $titleKa = $curTitleKa ?: ($titleEn ? $this->translator->toGeorgian($titleEn) : null);
+        // --- KA translation (TMDB-ის ქართული პასუხიდან, თუ ცარიელია) ---
+        $titleKa = $curTitleKa ?: Lang::georgian($dka['title'] ?? null);
         $descKa = $curDescKa;
         $descKaSrc = $curDescKaSrc;
-        if (! $curDescKa && $descEn) {
-            $descKa = $this->translator->toGeorgian($descEn);
-            if ($descKa) {
-                $descKaSrc = 'translated';
-            }
+        if (! $curDescKa && ($ka = Lang::georgian($dka['overview'] ?? null))) {
+            $descKa = $ka;
+            // ⚠️ `'tmdb'` და არა `'translated'`: ტექსტი მართლაც TMDB-ისაა.
+            // ძველი მნიშვნელობა აპს არსად ეცნობა — ბარათი „წყარო უცნობია"-ს
+            // ხატავდა და `TranslationScanner::reviewable()` მას ვერ პოულობდა.
+            $descKaSrc = 'tmdb';
         }
         $movie->setTranslation('ka', ['title' => $titleKa, 'description' => $descKa, 'source' => $descKaSrc]);
 

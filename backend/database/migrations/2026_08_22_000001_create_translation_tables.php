@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('locale', 5);
             $table->string('title')->nullable();
             $table->text('description')->nullable();
-            $table->string('source')->nullable(); // ge_movie|tmdb|translated|manual
+            $table->string('source')->nullable(); // ge_movie|tmdb|translation|manual (BUG-17 — `translated` აღარ არის)
             $table->timestamps();
 
             $table->unique(['movie_id', 'locale']);
