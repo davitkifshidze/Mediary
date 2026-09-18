@@ -23,7 +23,7 @@
 | BUG-20 | „მთავარად დაყენება" სიმღერის/წიგნის/თამაშის ფოტოზე 500-ია — `poster_path` მათ არ აქვთ, UI კი ღილაკს ხატავს | High | bug | S | ✅ |
 | BUG-21 | ანგარიშის წაშლა (`DELETE /admin/users/{id}`) მხოლოდ ფილმებს/სერიალებს შლის მოდელით — 8 მოდულის ფაილები დისკზე რჩება, კვოტა კი გაქრობს | High | bug | M | ✅ |
 | PERF-14 | `/admin/users` თითო მომხმარებელზე `StorageMeter::files()`-ს (~30 query + დისკი) იძახებს | High | performance | S | ✅ |
-| GAP-13 | აუდიტ-ლოგში 8 მოდელის სუბიექტი ლეიბლის გარეშეა — ცხრილში `anime`, `gallery_video`, `song_file`, `status`… ინგლისურად ჩანს | Medium | gap | S | ⬜ |
+| GAP-13 | აუდიტ-ლოგში 8 მოდელის სუბიექტი ლეიბლის გარეშეა — ცხრილში `anime`, `gallery_video`, `song_file`, `status`… ინგლისურად ჩანს | Medium | gap | S | ✅ |
 | GAP-14 | 8 UI-ტექსტი მოძველებულია ან მცდარია: „გასაღები `.env`-ში" (§21-ის შემდეგ `/credentials`-ია), „სერვერი UTC-ზეა" (§8-ის შემდეგ Tbilisi), ბრაუზერის შეტყობინების ლოგიკა შებრუნებულია, „უკატეგორიო" §26-ის შემდეგ არ არსებობს | Medium | gap | S | ⬜ |
 | GAP-15 | ტერმინოლოგია არათანმიმდევრულია: ლინკი/ბმული, სინქრონი/სინქრონიზაცია, ჩამოწერა/ჩამოტვირთვა, ესკიზი/თამბნეილი, ჩანიშვნა/შენიშვნა, ფრენჩაიზი/ფრანჩაიზი, კლავიში/გასაღები | Medium | gap | M | ⬜ |
 | BUG-22 | ვიდეოს ხელახლა ჩამოტვირთვა არსებულ ლოკალურ ასლს **კვოტის შემოწმებამდე** შლის — 413-ზე ფაილი დაკარგულია | Medium | bug | S | ⬜ |
@@ -241,14 +241,15 @@
 ## Medium
 
 ### [GAP-13] აუდიტ-ლოგში 8 მოდელის სუბიექტი ლეიბლის გარეშეა
+- **სტატუსი:** ✅ შესრულებულია (2026-09-18). რვავე ლეიბლი ორივე ლოკალშია (`anime`, `anime_translation`, `song_file`, `song_note`, `gallery_album`, `gallery_video`, `cast_member_tag`, `status`), მკვდარი `gallery_theme` წაიშლა. ⚠️ **მცველი `RegistryConsistencyTest`-შია და ორმხრივია**: ყოველ `AuditRegistry::MODELS`-ის ტიპს ლეიბლი უნდა ჰქონდეს **და** ყოველ ლეიბლს — ლოგირებადი ტიპი; ძველ ლოკალებზე ზუსტად ამ რვას აბრუნებს. ეს კავშირი სხვაგან არსად მოწმდება: გასაღები დინამიურია (`audit.subjects.<type>`), ე.ი. i18n-ის აუდიტი მას ვერ ხედავს.
 - **ტიპი:** gap
 - **სად:** `frontend/src/pages/AuditPage.tsx:318` (`t(\`audit.subjects.${type}\`, type)` — fallback ნედლი ტიპია), `frontend/src/i18n/ka.json:2619` (`audit.subjects` ბლოკი), `backend/app/Support/AuditRegistry.php:103,116,153,169`
 - **პრობლემა:** `AuditRegistry::MODELS`-ის `Anime`, `AnimeTranslation`, `SongFile`, `SongNote`, `GalleryAlbum`, `GalleryVideo`, `CastMemberTag`, `Status` ლოგში `anime`, `anime_translation`, `song_file`, `song_note`, `gallery_album`, `gallery_video`, `cast_member_tag`, `status`-ად ჩანს — ინგლისურ snake_case-ად ქართულ UI-ში. სამაგიეროდ `audit.subjects.gallery_theme` (§4.5-ში წაშლილი ფუნქცია) კვლავ არსებობს.
 - **რატომ:** სწორედ ის ტიპი, რომელსაც i18n audit ვერ იჭერს (გასაღები დინამიურია); ლოგი „სრულ ლოგირებას" ჰპირდება.
 - **გადაწყვეტა:** 8 გასაღები ორივე ლოკალში; `RegistryConsistencyTest`-ს (ან `audit.py`-ს) შემოწმება: `AuditRegistry::MODELS`-ის ყოველი `typeFor()` ლეიბლს აქვს ორივე ლოკალში; `gallery_theme` წაიშალოს.
 - **Acceptance criteria:**
-  - [ ] ტესტი ლოგირებულ ყოველ მოდელზე `audit.subjects.<type>`-ს ორივე ლოკალში პოულობს
-  - [ ] `/audit`-ზე სტატუსის ცვლილება „სტატუსი"-ს წერს და არა `status`-ს
+  - [x] `RegistryConsistencyTest::test_every_logged_model_has_a_subject_label` — ორივე ლოკალზე, ორივე მიმართულებით; ძველ ლოკალებზე რვავე გამორჩენილს ასახელებს
+  - [x] `/audit`-ზე სტატუსის ცვლილება „სტატუსი"-ს წერს და არა `status`-ს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

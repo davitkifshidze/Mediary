@@ -753,4 +753,52 @@ class RegistryConsistencyTest extends TestCase
 
         return $out;
     }
+
+    /**
+     * **ყოველ ლოგირებულ მოდელს სუბიექტის ლეიბლი აქვს ორივე ენაზე**
+     * (Tasks GAP-13).
+     *
+     * ⚠️ `AuditPage`-ის გასაღები **დინამიურია** (`audit.subjects.<type>`),
+     * ე.ი. i18n-ის აუდიტი მას ვერ ხედავს, `tsc`-საც და lint-საც ის უბრალოდ
+     * სტრიქონია — გამორჩენილი ლეიბლი ჩუმად ნედლ `snake_case`-ად იხატებოდა
+     * ქართულ ინტერფეისში (რვა ასეთი დაგროვდა: `anime`, `gallery_video`,
+     * `status`…). ეს კავშირი მხოლოდ აქ, რეპოს ორ ნახევარს შორის, მოწმდება.
+     *
+     * ⚠️ **პირიქითაც**: ლეიბლი, რომელსაც მოდელი აღარ შეესაბამება, მკვდარია
+     * (`gallery_theme` §4.5-ში წაშლილი ფუნქციიდან იყო).
+     */
+    public function test_every_logged_model_has_a_subject_label(): void
+    {
+        $types = [];
+
+        foreach (array_keys(AuditRegistry::MODELS) as $class) {
+            $types[] = AuditRegistry::typeFor(new $class);
+        }
+
+        $types = array_values(array_unique($types));
+        $this->assertGreaterThan(40, count($types), 'AuditRegistry::MODELS ვერ წავიკითხე');
+
+        foreach (['ka', 'en'] as $locale) {
+            $path = base_path("../frontend/src/i18n/{$locale}.json");
+
+            if (! is_file($path)) {
+                $this->markTestSkipped('ფრონტი ამ გარემოში არ არის');
+            }
+
+            $labels = json_decode((string) file_get_contents($path), true)['audit']['subjects'] ?? [];
+            $this->assertNotEmpty($labels, "{$locale}: audit.subjects ვერ წავიკითხე");
+
+            $this->assertSame(
+                [],
+                array_values(array_diff($types, array_keys($labels))),
+                "{$locale}: ლოგირებულ მოდელს ლეიბლი აკლია — ლოგში `snake_case` გამოჩნდება",
+            );
+
+            $this->assertSame(
+                [],
+                array_values(array_diff(array_keys($labels), $types)),
+                "{$locale}: ლეიბლი ისეთ ტიპზეა, რომელიც აღარ ილოგება",
+            );
+        }
+    }
 }
