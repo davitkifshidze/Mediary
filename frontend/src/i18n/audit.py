@@ -30,7 +30,10 @@ i18next უბრალოდ თვითონ გასაღებს და
      საქმეა თუ ორი. სრული ცხრილი — `GLOSSARY.md`;
   8. **თქვენობითი ფორმა** (GAP-18) — აპი მთლიანად შენობითზეა („აირჩიე",
      „დააჭირე"), 2690 გასაღებიდან კი სამი თქვენობითში იყო. რეგისტრის
-     ერთიანობა ქართული ტექსტის გამართულობის ნაწილია.
+     ერთიანობა ქართული ტექსტის გამართულობის ნაწილია;
+  9. **ბრჭყალის სტილი** (GAP-19) — ქართული ტიპოგრაფიული წყვილი „…“ (U+201E
+     და U+201C). 21 ხაზზე გახსნა ტიპოგრაფიული იყო, დახურვა კი ASCII `"` —
+     `storage.allocationsWhere` ერთსა და იმავე წინადადებაში ორივეს იყენებდა.
 """
 import json
 import io
@@ -111,6 +114,17 @@ POLITE_FORMS = ("გირჩევთ", "გთხოვთ", "შეგიძ�
 # ადამიანს** მიმართავს (მე და შენ), ე.ი. ზრდილობის ფორმა არ არის — მრავლობითი
 # სწორედ იმიტომაა, რომ ორნი არიან.
 POLITE_OK_KEYS = {"matches.sharedTotal"}
+
+
+# მე-9 შემოწმება (GAP-19): ქართული ბრჭყალის წყვილი „…“ (U+201E/U+201C).
+#
+# ⚠️ **მხოლოდ `ka.json`** — ინგლისურში ASCII `"` სწორი ბრჭყალია, ე.ი. იმავე
+# წესის `en.json`-ზე გავრცელება ყოველ ინგლისურ ციტატაზე იყვირებდა.
+#
+# ⚠️ შემოწმება **ნებისმიერ** ASCII ბრჭყალზეა და არა მხოლოდ შერეულ წყვილზე:
+# გასწორების შემდეგ `ka.json`-ში ასეთი სიმბოლო საერთოდ არ დარჩა (გაზომილი),
+# ე.ი. მისი გამოჩენა ყოველთვის ან ახალი შერეული წყვილია, ან კოპირებული ტექსტი.
+ASCII_QUOTE = '"'
 
 
 def source_files():
@@ -228,6 +242,15 @@ def polite_forms(flat):
             if word in value:
                 out.append((key, word))
     return out
+
+
+def ascii_quotes(flat):
+    """(გასაღები) — ASCII ბრჭყალი `ka.json`-ში (GAP-19)."""
+    return [
+        key
+        for key, value in sorted(flat.items())
+        if isinstance(value, str) and ASCII_QUOTE in value
+    ]
 
 
 def flatten(node, prefix=""):
@@ -368,6 +391,13 @@ def main() -> int:
     print(f"\npolite forms in ka.json: {len(polite)}")
     for key, word in polite:
         print(f"    {key}  — {word}")
+
+    # 9. ბრჭყალის სტილი (GAP-19) — ქართულში წყვილი „…“-ია
+    quotes = ascii_quotes(locales["ka.json"])
+    problems += len(quotes)
+    print(f"\nascii quotes in ka.json: {len(quotes)}")
+    for key in quotes:
+        print(f"    {key}")
 
     only_ka = sorted(set(locales["ka.json"]) - set(locales["en.json"]))
     only_en = sorted(set(locales["en.json"]) - set(locales["ka.json"]))
