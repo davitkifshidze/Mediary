@@ -2986,5 +2986,9 @@
     "unmarkSeason": "Clear the season",
     "mark": "Mark as watched",
     "unmark": "Clear the mark"
+  },
+  "upcoming": {
+    "title": "Coming soon",
+    "hint": "The next 30 days: an episode airing, a game release, a note falling due. Books and board games only carry a release year, so they cannot sit on a particular day."
   }
 }

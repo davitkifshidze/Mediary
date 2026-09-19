@@ -9,6 +9,7 @@ import { CountUp } from '@/components/CountUp'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { UpcomingCard } from '@/components/UpcomingCard'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 
@@ -105,6 +106,12 @@ export function DashboardPage() {
           }
         />
       )}
+
+      {/* ===== „მალე" (FEAT-10) — ბარათებზე **მაღლა** =====
+          ⚠️ ბარათები „რა მაქვს"-ს პასუხობენ და მუდმივია; ეს ბლოკი კი
+          თარიღიანია და ამიტომ დროში მალე ფუჭდება — ქვემოთ მას ვერავინ
+          ნახავდა. ცარიელზე კომპონენტი თვითონ ქრება. */}
+      {!isLoading && <UpcomingCard />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (

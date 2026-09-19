@@ -217,6 +217,14 @@ abstract class TvEnricher
         $series->runtime = $series->runtime ?: $this->runtime($d);
         $series->seasons = $series->seasons ?: ($d['number_of_seasons'] ?? null);
         $series->episodes = $series->episodes ?: ($d['number_of_episodes'] ?? null);
+        /* FEAT-10 — შემდეგი ეპიზოდის ეთერი.
+           ⚠️ **`?:`-ით არ ივსება, არამედ ყოველთვის გადაიწერება.** დანარჩენი
+           ველები „მხოლოდ ცარიელზე" იწერება, რადგან მომხმარებლის ტექსტს ვერ
+           გადავაწერთ; ეს კი **მოძრავი ფაქტია** — ეპიზოდი გავა ეთერში და
+           შენარჩუნებული ძველი თარიღი კალენდარში სამუდამოდ წარსულში იდგებოდა.
+           ⚠️ `null`-ზე წაშლაც აუცილებელია: დასრულებულ სერიალს `next_episode_to_air`
+           აღარ აქვს, ე.ი. ჩანაწერიც უნდა გასუფთავდეს. */
+        $this->applyNextAir($series, $d);
         $series->sync_status = 'synced';
         $series->save();
 
@@ -343,5 +351,21 @@ abstract class TvEnricher
     private function runtime(array $details): ?int
     {
         return ! empty($details['episode_run_time'][0]) ? (int) $details['episode_run_time'][0] : null;
+    }
+
+    /**
+     * TMDB-ის `next_episode_to_air` → ჩანაწერის სამი სვეტი (FEAT-10).
+     *
+     * ⚠️ **ეს დამატებით გამოძახებას არ ითხოვს** — `tvDetails()`-ის პასუხშივე
+     * მოდის, ე.ი. „მალე" კალენდარი ჩვეულებრივი სინქრონის გვერდითი
+     * პროდუქტია და არა ახალი ხარჯი.
+     */
+    private function applyNextAir(Model $record, array $details): void
+    {
+        $next = $details['next_episode_to_air'] ?? null;
+
+        $record->next_air_at = ($next['air_date'] ?? '') ?: null;
+        $record->next_season = isset($next['season_number']) ? (int) $next['season_number'] : null;
+        $record->next_episode = isset($next['episode_number']) ? (int) $next['episode_number'] : null;
     }
 }

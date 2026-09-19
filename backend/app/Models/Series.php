@@ -42,6 +42,10 @@ class Series extends Model
         'episodes' => 'integer',
         'is_favorite' => 'boolean',
         'watched_at' => 'datetime',
+        // FEAT-10 — შემდეგი ეპიზოდის ეთერი (TMDB-ის `next_episode_to_air`)
+        'next_air_at' => 'date',
+        'next_season' => 'integer',
+        'next_episode' => 'integer',
         'sort_order' => 'integer',
     ];
 

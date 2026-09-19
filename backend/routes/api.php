@@ -73,6 +73,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TranslationController;
+use App\Http\Controllers\Api\UpcomingController;
 use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
 use App\Http\Controllers\Api\VideoDownloadController;
@@ -320,6 +321,12 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **დეშბორდს არ ცვლის**: ის „რა მაქვს"-ს პასუხობს, ეს — „რა გავაკეთე".
        ⚠️ ერთი რექვესთი ყველა ჩართულ მოდულზე; ჩაურთველი სიიდან თვითონ ცვივა. */
     Route::get('/stats', [StatsController::class, 'index']);
+
+    /* ---------- „მალე" (FEAT-10) ----------
+       მომდევნო 30 დღის მოვლენები ყველა ჩართულ მოდულზე: შემდეგი ეპიზოდი,
+       თამაშის გამოსვლა, ჩანიშვნის ვადა. ⚠️ წიგნსა და ბორდგეიმს მხოლოდ
+       `year` აქვთ, ე.ი. კონკრეტულ დღეს ვერ დადგებიან. */
+    Route::get('/upcoming', [UpcomingController::class, 'index']);
 
     Route::get('/import/sources', [ImportController::class, 'sources']);
     Route::post('/import/plan', [ImportController::class, 'plan']);
