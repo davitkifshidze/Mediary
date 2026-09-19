@@ -236,16 +236,104 @@ class DatabaseBackupTest extends TestCase
      * `DatabaseDumper`-ის ნაცვლად ფაილს ჩვენ ვწერთ — შემდეგ ყველაფერი
      * ჩვეულებრივ გზაზეა (კვოტა, დისკი, სტატუსი).
      */
-    private function runFakeDump(string $name): DatabaseBackup
+    /* ---------- დაგეგმილი ასლი (FEAT-12) ---------- */
+
+    /**
+     * ⚠️ **გამორთულზე რიგი არ უნდა დაიბადოს.** ჩაწერილი, მაგრამ არასდროს
+     * აღებული ასლი სიაში „მიმდინარეობს"-ად გამოჩნდებოდა და სამუდამოდ ასე
+     * დარჩებოდა — ზუსტად ის მდგომარეობა, რაც `download_status = running`-მა
+     * ერთხელ უკვე ასწავლა ამ პროექტს.
+     */
+    public function test_the_scheduled_backup_does_nothing_while_it_is_off(): void
+    {
+        config()->set('mediary.backup.auto', false);
+
+        $this->artisan('backups:auto')->assertSuccessful();
+
+        $this->assertSame(0, DatabaseBackup::count());
+    }
+
+    /** ჩართულზე ასლი მზადდება, სუპერ-ადმინის სახელზე და მისივე კვოტაზე */
+    public function test_the_scheduled_backup_creates_a_ready_row_owned_by_the_admin(): void
+    {
+        config()->set('mediary.backup.auto', true);
+        $this->fakeDumper();
+
+        $this->artisan('backups:auto')->assertSuccessful();
+
+        $backup = DatabaseBackup::sole();
+
+        $this->assertSame(DatabaseBackup::SOURCE_SCHEDULE, $backup->source);
+        $this->assertSame(DatabaseBackup::STATUS_READY, $backup->status);
+        $this->assertSame($this->admin->id, $backup->user_id);
+        $this->assertSame((int) $backup->size, (int) $this->admin->fresh()->storage_used_bytes);
+    }
+
+    /**
+     * ⚠️ **`keep` მხოლოდ დაგეგმილს ჭრის.** ხელით აღებული ასლი და ატვირთული
+     * ფაილი ადამიანის გადაწყვეტილებაა; მათი ავტომატური წაშლა ზუსტად ის
+     * იქნებოდა, რისგანაც კალათა (FEAT-11) იცავს.
+     */
+    public function test_keep_prunes_old_scheduled_copies_and_spares_the_manual_ones(): void
+    {
+        config()->set('mediary.backup.auto', true);
+        $this->fakeDumper();
+
+        $manual = $this->runFakeDump('by-hand.sql');
+
+        foreach (range(1, 3) as $_) {
+            $this->artisan('backups:auto', ['--keep' => 2])->assertSuccessful();
+        }
+
+        $scheduled = DatabaseBackup::where('source', DatabaseBackup::SOURCE_SCHEDULE)->count();
+
+        $this->assertSame(2, $scheduled, '`keep` ვერ ჭრის');
+        $this->assertDatabaseHas('database_backups', ['id' => $manual->id]);
+    }
+
+    /** გვერდი ხედავს, ჩართულია თუ არა და როდის გაკეთდა ბოლო ავტომატური */
+    public function test_the_list_reports_the_schedule_and_the_last_automatic_copy(): void
+    {
+        config()->set('mediary.backup.auto', true);
+        $this->fakeDumper();
+
+        $this->artisan('backups:auto')->assertSuccessful();
+
+        $meta = $this->actingAs($this->admin)->getJson('/api/admin/backups')->assertOk()->json('meta.auto');
+
+        $this->assertTrue($meta['enabled']);
+        $this->assertNotNull($meta['last_at']);
+    }
+
+    /**
+     * ⚠️ **`DatabaseDumper`-ის ერთი ყალბი ორივე გზაზე** — `backups:auto`
+     * და `runFakeDump()` ერთსა და იმავე `BackupRunner::dump()`-ს იძახიან,
+     * ე.ი. ორი სხვადასხვა ყალბი ორ სხვადასხვა ქცევას შექმნიდა.
+     */
+    private function fakeDumper(): void
     {
         $dumper = Mockery::mock(DatabaseDumper::class);
+        $dumper->shouldReceive('available')->andReturn(true);
+        // ⚠️ `index()` ორივეს კითხულობს — გამოტოვებული მოლოდინი 500-ია
+        $dumper->shouldReceive('restoreAvailable')->andReturn(true);
         $dumper->shouldReceive('driver')->andReturn('mysql');
         $dumper->shouldReceive('dump')->andReturnUsing(function (string $path) {
             file_put_contents($path, str_repeat("CREATE TABLE movies (id int);\n", 20));
 
             return ['tables' => 1];
         });
+
         $this->swap(DatabaseDumper::class, $dumper);
+    }
+
+    /**
+     * ⚠️ **ერთი ყალბი და არა ორი** (FEAT-12): აქაც `fakeDumper()`-ია.
+     * ორი სხვადასხვა mock ორ სხვადასხვა ქცევას ქმნის — და ვინც მეორედ
+     * დაესვა, პირველის მოლოდინებს შლის (`available` აღარ არსებობს).
+     */
+    private function runFakeDump(string $name): DatabaseBackup
+    {
+        $this->fakeDumper();
 
         $backup = DatabaseBackup::create([
             'user_id' => $this->admin->id,

@@ -32,6 +32,20 @@ export interface BackupMeta {
   driver: string
   database: string
   max_upload_kb: number
+  /**
+   * დაგეგმილი ასლი (FEAT-12).
+   *
+   * ⚠️ **მხოლოდ იკითხება.** ეს ინსტალაციის პარამეტრია (`.env`) და არა
+   * მომხმარებლის: ორი სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია"
+   * კითხვას პასუხი არ აქვს — იგივე წესი, რაც `UploadLimitsCard`-ს აქვს.
+   */
+  auto: {
+    enabled: boolean
+    at: string
+    keep: number
+    /** ბოლო **ნამდვილად გაკეთებული** ავტომატური ასლი, და არა „ტასკი არსებობს" */
+    last_at: string | null
+  }
 }
 
 export async function fetchBackups(): Promise<{ data: Backup[]; meta: BackupMeta }> {

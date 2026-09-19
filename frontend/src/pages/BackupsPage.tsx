@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  CalendarClock,
   Database,
   Download,
   Table2,
@@ -56,7 +57,7 @@ export function BackupsPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
-  const { dateTime } = useDateFormat()
+  const { date, dateTime } = useDateFormat()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [note, setNote] = useState('')
@@ -177,6 +178,34 @@ export function BackupsPage() {
             {meta.driver !== 'mysql' && <> {t('backups.driverHint', { driver: meta.driver })}</>}
           </span>
         </p>
+      )}
+
+      {/* ===== დაგეგმილი ასლი (FEAT-12) =====
+          ⚠️ **გადამრთველი არ არის და ეს განზრახია.** ეს ინსტალაციის
+          პარამეტრია (`BACKUP_AUTO` `.env`-ში) და არა მომხმარებლის: ორი
+          სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია" კითხვას პასუხი
+          არ აქვს, ცალკე გლობალური ცხრილის დაბადება კი ერთი ბულევისთვის
+          ზედმეტი მექანიზმია. იგივე წესი, რაც `UploadLimitsCard`-ს აქვს.
+          ⚠️ **ბოლო გაშვება ნამდვილი ასლიდან იკითხება**: „ტასკი არსებობს"
+          და „ასლი გაკეთდა" ორი სხვადასხვა ფაქტია — სწორედ ამ განსხვავებამ
+          დატოვა გარე PowerShell-ტასკი ექვსიდან ოთხ დღეს უხმოდ გაუშვებელი. */}
+      {meta && (
+        <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-border bg-card p-4 text-sm">
+          <span className="flex items-center gap-2 font-medium">
+            <CalendarClock className="size-4 text-muted-foreground" />
+            {t('backups.auto')}
+          </span>
+          <span className={meta.auto.enabled ? 'text-muted-foreground' : 'text-destructive'}>
+            {meta.auto.enabled
+              ? t('backups.autoOn', { at: meta.auto.at, keep: meta.auto.keep })
+              : t('backups.autoOff')}
+          </span>
+          <span className="text-muted-foreground">
+            {meta.auto.last_at
+              ? t('backups.autoLast', { when: date(meta.auto.last_at) })
+              : t('backups.autoNever')}
+          </span>
+        </div>
       )}
 
       <div className="mb-5 rounded-xl border border-border bg-card p-4">

@@ -43,6 +43,9 @@ class DoctorCommand extends Command
     /** რამდენ ხანს ჩაითვლება scheduler-ი „ცოცხლად" */
     private const HEARTBEAT_MINUTES = 10;
 
+    /** რამდენი დღის შემდეგ ითვლება ასლი მოშვლად (FEAT-12) */
+    private const BACKUP_STALE_DAYS = 2;
+
     private bool $failed = false;
 
     public function handle(YtDlp $ytdlp, DatabaseDumper $dumper, StorageMeter $meter, BackupInspector $inspector): int
@@ -51,6 +54,7 @@ class DoctorCommand extends Command
         $this->migrations();
         $this->binaries($ytdlp, $dumper);
         $this->scheduler();
+        $this->backups();
         $this->storage($meter);
         $this->viewers($inspector);
         $this->settings();
@@ -123,6 +127,48 @@ class DoctorCommand extends Command
 
         $this->check('mysqldump', $dumper->available(), $dumper->dumpBinary() ?? 'ვერ მოიძებნა — `/backups` 503-ია (`MYSQLDUMP_BINARY`)');
         $this->check('mysql (restore)', $dumper->restoreAvailable(), $dumper->clientBinary() ?? 'ვერ მოიძებნა — აღდგენა გამორთულია (`MYSQL_BINARY`)');
+    }
+
+    /**
+     * ბოლო ბაზის ასლი (FEAT-12).
+     *
+     * ⚠️ **ეს scheduler-ის შემოწმება არ არის და სწორედ ამიტომ არსებობს.**
+     * „ტასკი დარეგისტრირებულია" და „ასლი გაკეთდა" ორი სხვადასხვა ფაქტია —
+     * გარე PowerShell-ტასკი ექვსიდან ოთხ დღეს უხმოდ არ ეშვებოდა, მიუხედავად
+     * იმისა, რომ არსებობდა. ერთადერთი მტკიცებულება რიგია ბაზაში.
+     *
+     * ⚠️ **WARN და არა FAIL**: აპი ასლის გარეშე მუშაობს — ეს რისკია და არა
+     * გაფუჭება; FAIL-ს ის სხვა შემოწმებებს გაუთანაბრებდა, რომლებიც
+     * ნამდვილად რაღაცის მტვრევას ნიშნავს.
+     */
+    private function backups(): void
+    {
+        $this->section('ბაზის ასლი');
+
+        if (! config('mediary.backup.auto')) {
+            $this->check('ავტომატური ასლი', false, 'გამორთულია (`BACKUP_AUTO=false`)', warnOnly: true);
+
+            return;
+        }
+
+        $last = DatabaseBackup::where('status', DatabaseBackup::STATUS_READY)->max('finished_at');
+
+        if (! $last) {
+            $this->check('ბოლო ასლი', false, 'არასდროს გაკეთებულა — `php artisan backups:auto`', warnOnly: true);
+
+            return;
+        }
+
+        $days = (int) Carbon::parse($last)->diffInDays(now());
+
+        $this->check(
+            'ბოლო ასლი',
+            $days <= self::BACKUP_STALE_DAYS,
+            $days <= self::BACKUP_STALE_DAYS
+                ? "{$days} დღის წინ"
+                : "{$days} დღის წინ — scheduler, სავარაუდოდ, არ ეშვება",
+            warnOnly: true,
+        );
     }
 
     private function scheduler(): void

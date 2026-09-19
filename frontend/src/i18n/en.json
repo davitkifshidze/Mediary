@@ -2852,7 +2852,12 @@
     "restoreRow": "Restore the row",
     "rowRestored": "The record is restored",
     "cascadeWarn": "Emptying this table touches {{count}} related tables:",
-    "blockedHint": "Restoring this table on its own is blocked — far too many records depend on it."
+    "blockedHint": "Restoring this table on its own is blocked — far too many records depend on it.",
+    "auto": "Scheduled copy",
+    "autoOn": "Every day at {{at}} · the last {{keep}} are kept",
+    "autoOff": "Off — `BACKUP_AUTO` in the backend `.env`",
+    "autoLast": "Last automatic one — {{when}}",
+    "autoNever": "No automatic copy has been made yet"
   },
   "secret": {
     "show": "Show",

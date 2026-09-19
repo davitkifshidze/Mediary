@@ -53,6 +53,24 @@ class DatabaseBackupController extends Controller
                 'driver' => $dumper->driver(),
                 'database' => (string) config('database.connections.'.config('database.default').'.database'),
                 'max_upload_kb' => UploadLimits::effectiveKb('doc'),
+
+                /* ⚠️ **დაგეგმილი ასლი მხოლოდ *ჩანს* და არ ირთვება აქედან**
+                   (FEAT-12). ეს ინსტალაციის პარამეტრია და არა მომხმარებლის:
+                   ორი სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია" კითხვას
+                   პასუხი არ აქვს. იგივე წესი, რაც `UploadLimitsCard`-ს და
+                   `/credentials`-ის `meta.installation`-ს აქვს.
+                   ⚠️ **ბოლო გაშვება ნამდვილი რიგიდან იკითხება და არა
+                   scheduler-იდან**: სწორედ ეს არის ის ფაქტი, რომელსაც გარე
+                   ტასკის ისტორია ასწავლის — „ტასკი არსებობს" და „ასლი
+                   გაკეთდა" ორი სხვადასხვა რამაა. */
+                'auto' => [
+                    'enabled' => (bool) config('mediary.backup.auto'),
+                    'at' => (string) config('mediary.backup.at'),
+                    'keep' => (int) config('mediary.backup.keep'),
+                    'last_at' => DatabaseBackup::where('source', DatabaseBackup::SOURCE_SCHEDULE)
+                        ->where('status', DatabaseBackup::STATUS_READY)
+                        ->max('finished_at'),
+                ],
             ],
         ]);
     }
