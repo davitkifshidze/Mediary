@@ -385,7 +385,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         {/* --- თარგმანადი შიგთავსი (ka / en გვერდიგვერდ) --- */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="mb-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            {t('detail.content')} · {i18n.language === 'ka' ? 'ქართული' : 'English'}
+            {t('detail.content')} · {t(`lang.${i18n.language === 'en' ? 'en' : 'ka'}`)}
           </div>
           {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა.
               ⚠️ **`shows()` მაინც ისმის (Tasks §4.5)** — ჩაკეტვა ახლა

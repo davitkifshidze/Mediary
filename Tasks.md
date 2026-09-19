@@ -50,7 +50,7 @@
 | DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
 | DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ✅ |
 | DEBT-20 | მოძველებული კომენტარები: `PublicProfileController` „მხოლოდ ორი GET" (ხუთია, ერთი POST), `sw.js` ელფოსტის არხს ასახელებს, CLAUDE.md ამ მანქანაზე yt-dlp/ffmpeg/python-ის არსებობას ამტკიცებს | Low | debt | S | ⬜ |
-| DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ⬜ |
+| DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ✅ |
 | DEBT-22 | `GenreController::store()` slug-ს შეუზღუდავი `while exists` ციკლით ქმნის — `DictionaryKey::make()` სწორედ ამისთვის დაიწერა | Low | debt | S | ✅ |
 | DEBT-23 | `GeorgianShops::fetch()` მთელ პასუხს კითხულობს და მერე ჭრის — „ჭერი ტყუილია"-ს იგივე პატერნი, რაც `LinkMetadata`-ს §A3-მდე ჰქონდა | Low | debt | S | ✅ |
 | DEBT-24 | უსასრულოდ მზარდი ცხრილები (`serp_searches`, `translation_usages`, `note_notifications`, `batch_items`, `job_batches`) არასდროს იწმინდება | Low | debt | S | ✅ |
@@ -604,13 +604,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-21] ენების სახელები კომპონენტებში hardcoded-ია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). ოთხივე ადგილი (`SettingsPage`, `MovieFormPage`, `GenresPage`, `LanguageDropdown`) `lang.ka`/`lang.en`-ზე გადავიდა, `CastMemberDialog`-ის ორივე placeholder კი — `cast.namePlaceholderKa`/`…En`-ზე. ⚠️ **მნიშვნელობა ორივე ლოკალში ერთი და იგივეა და ეს გააზრებულია**: ენის სახელი **ენდონიმია** — ენა თავის ენაზე იწერება, თორემ ინგლისურ ინტერფეისში „ქართული" „Georgian"-ად იქცეოდა (და პირიქით), ე.ი. ამომრჩევი ვერ იცნობდა საკუთარ ენას. i18n-ში ის მაინც იმიტომ ზის, რომ ოთხივე ადგილმა **ერთი** წყარო კითხულობდეს და აუდიტმაც დაინახოს. იგივე ეხება მსახიობის ველების მაგალითებს: „ნინო ქასრაძე" ქართული სახელის ველის მაგალითია და ინგლისურ ინტერფეისშიც ქართული რჩება. ⚠️ **`lang.auto` განზრახ არ დაემატა** — `settings.contentLangAuto` უკვე არსებობს და ის ენის სახელი კი არაა, არამედ პარამეტრის არჩევანი („ავტომატურად"); ორი გასაღები ერთ ტექსტზე ზუსტად ის დუბლირებაა, რასაც ეს ტასკი ასწორებს. i18n-ის აუდიტი: `lang.* -> 2`, `key-like literals outside t(): 0`.
 - **ტიპი:** debt
 - **სად:** `frontend/src/pages/SettingsPage.tsx:173`, `frontend/src/pages/MovieFormPage.tsx:388`, `frontend/src/pages/GenresPage.tsx:182` (`… === 'ka' ? 'ქართული' : 'English'`), `frontend/src/components/LanguageDropdown.tsx:21` (`<SelectItem value="ka">ქართული</SelectItem>`)
 - **პრობლემა:** BUG-01-ის (hardcoded ქართული დიალოგში) იგივე კლასი, ოთხ ადგილას; ენის სახელი ენდონიმად ლეგიტიმურია, მაგრამ ერთი წყარო (`lang.ka`/`lang.en` გასაღები) ოთხ ასლს სჯობს — `CastMemberDialog.tsx:250`-ის `placeholder="ნინო ქასრაძე"` მაგალითიც ინგლისურ UI-ში ქართულად რჩება.
 - **რატომ:** არათანმიმდევრული პატერნი; i18n audit ამ ლიტერალებს ვერ ხედავს.
 - **გადაწყვეტა:** `lang.ka`/`lang.en`/`lang.auto` გასაღებები, ოთხივე ადგილი `t()`-ზე; `CastMemberDialog`-ის placeholder `cast.namePlaceholderKa` გასაღებად.
 - **Acceptance criteria:**
-  - [ ] `node scratchpad/ka_literals.mjs`-ის ანალოგი (ქართული ლიტერალი TSX-ში კომენტარების გარეთ) 0 ხაზს აბრუნებს
+  - [x] `node scratchpad/ka_literals.mjs`-ის ანალოგი (ქართული ლიტერალი TSX-ში კომენტარების გარეთ) 0 ხაზს აბრუნებს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

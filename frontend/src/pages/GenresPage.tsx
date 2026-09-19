@@ -179,7 +179,7 @@ function GenreFormDialog({
                 <Label className="mb-0">
                   {t('genres.nameField')}
                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                    {lang === 'ka' ? 'ქართული' : 'English'}
+                    {t(`lang.${lang}`)}
                   </span>
                 </Label>
                 <button

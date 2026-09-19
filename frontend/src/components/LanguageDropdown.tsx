@@ -3,8 +3,14 @@ import { Languages } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { safeSet } from '@/lib/storage'
 
+/**
+ * ⚠️ **ენის სახელი ენდონიმია** (Tasks DEBT-21): `lang.ka`/`lang.en` ორივე
+ * ლოკალში **ერთსა და იმავე** მნიშვნელობას ატარებს — ენა თავის ენაზე იწერება,
+ * თორემ ინგლისურ ინტერფეისში ქართულს „Georgian" ერქმეოდა და პირიქით.
+ * i18n-ში ის მაინც იმიტომ ზის, რომ ოთხივე ადგილმა ერთი წყარო კითხულობდეს.
+ */
 export function LanguageDropdown() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const current = i18n.language === 'en' ? 'en' : 'ka'
 
   const change = (v: string) => {
@@ -19,8 +25,8 @@ export function LanguageDropdown() {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="ka">ქართული</SelectItem>
-        <SelectItem value="en">English</SelectItem>
+        <SelectItem value="ka">{t('lang.ka')}</SelectItem>
+        <SelectItem value="en">{t('lang.en')}</SelectItem>
       </SelectContent>
     </Select>
   )

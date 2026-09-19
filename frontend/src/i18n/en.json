@@ -2873,7 +2873,9 @@
     "stepSearch": "Who are you looking for",
     "stepSearchHint": "The library is searched first, then TMDB. Searching only happens on the button.",
     "tmdbMissingKey": "No TMDB key is configured — the search covers the library only.",
-    "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works."
+    "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works.",
+    "namePlaceholderKa": "ნინო ქასრაძე",
+    "namePlaceholderEn": "Nino Kasradze"
   },
   "boundary": {
     "title": "This page failed to load",
@@ -3084,5 +3086,9 @@
     "editedAt": "Edited",
     "deleteTitle": "Delete the note",
     "deleteHint": "This note will be deleted for good."
+  },
+  "lang": {
+    "ka": "ქართული",
+    "en": "English"
   }
 }

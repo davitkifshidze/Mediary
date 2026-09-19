@@ -238,7 +238,7 @@ export function CastMemberDialog({
                       id="cast-name"
                       value={nameEn}
                       onChange={(e) => setNameEn(e.target.value)}
-                      placeholder="Nino Kasradze"
+                      placeholder={t('cast.namePlaceholderEn')}
                     />
                   </div>
                   <div>
@@ -247,7 +247,7 @@ export function CastMemberDialog({
                       id="cast-name-ka"
                       value={nameKa}
                       onChange={(e) => setNameKa(e.target.value)}
-                      placeholder="ნინო ქასრაძე"
+                      placeholder={t('cast.namePlaceholderKa')}
                     />
                   </div>
                   <div className="sm:col-span-2">

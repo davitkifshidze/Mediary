@@ -170,7 +170,7 @@ export function SettingsPage() {
             <SelectContent>
               {CONTENT_LANG_OPTIONS.map((l) => (
                 <SelectItem key={l} value={l}>
-                  {l === 'auto' ? t('settings.contentLangAuto') : l === 'ka' ? 'ქართული' : 'English'}
+                  {l === 'auto' ? t('settings.contentLangAuto') : t(`lang.${l}`)}
                 </SelectItem>
               ))}
             </SelectContent>
