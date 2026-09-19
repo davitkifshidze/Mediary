@@ -3,6 +3,7 @@ import {
   CircleSlash,
   Eye,
   Languages,
+  PackageOpen,
   LogIn,
   LogOut,
   MessageSquareX,
@@ -55,6 +56,10 @@ const ACTION_STYLE: Record<string, ActionStyle> = {
   cast_attach: { icon: UserPlus, color: 'var(--icon-ok)' },
   cast_detach: { icon: UserMinus, color: 'var(--destructive)' },
   translate: { icon: Languages, color: 'var(--favorite)' },
+  /* FEAT-06 — ექსპორტი. ⚠️ ფერი **ინფორმაციულია და არა წითელი**: ფაილის
+     წაღება არაფერს შლის, მაგრამ მონაცემი სერვერიდან გადის, ე.ი. ლოგში
+     თვალსაჩინო უნდა იყოს. */
+  export: { icon: PackageOpen, color: 'var(--gold)' },
 }
 
 /**

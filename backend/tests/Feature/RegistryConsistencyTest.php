@@ -9,12 +9,15 @@ use App\Models\Concerns\HasStatus;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteCategory;
+use App\Models\User;
 use App\Models\VideoType;
+use App\Services\Export\RecordExporter;
 use App\Services\Gallery\ModuleImages;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AuditRegistry;
 use App\Support\CustomFields;
+use App\Support\ExportDomain;
 use App\Support\GalleryParent;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
@@ -312,6 +315,87 @@ class RegistryConsistencyTest extends TestCase
             'შედეგი: დეშბორდის ბარათი რიცხვის გარეშე იხატება (`count: null`) — შეცდომა ჩუმია.',
             'გამორჩენილი: '.implode(', ', $missing),
         ]));
+    }
+
+    /**
+     * ⚠️ **ყოველი ჩანაწერიანი მოდული ან ექსპორტში უნდა იყოს, ან `NOT_EXPORTED`-ში**
+     * (FEAT-06).
+     *
+     * გამორჩენა ისეთივე **ჩუმია**, როგორც დეშბორდის მთვლელისა: ახალი მოდული
+     * ჩვეულებრივ მუშაობს, უბრალოდ „ჩემი მონაცემების" სიაში არასდროს ჩნდება —
+     * ე.ი. მომხმარებელი მაშინ გაიგებს, როცა თავისი ბიბლიოთეკის წაღებას
+     * მოინდომებს. მესამე მდგომარეობა („არც აქ, არც იქ") სწორედ ის არის,
+     * რასაც ეს ტესტი კრძალავს; შეგნებული გამორიცხვა მიზეზთან ერთად იწერება.
+     */
+    public function test_every_record_module_is_exportable_or_explicitly_excluded(): void
+    {
+        $covered = [...ExportDomain::keys(), ...array_keys(ExportDomain::NOT_EXPORTED)];
+
+        // ⚠️ ჯერ თვითონ წამკითხველი — რუკის გადარქმევაზე ტესტი ცრუდ გაივლიდა
+        $this->assertContains('movie', $covered, '`ExportDomain::MODULES` ცარიელია ან გადაერქვა');
+
+        $missing = array_values(array_diff(array_keys(PurgeService::TARGET_MODES), $covered));
+
+        $this->assertSame([], $missing, implode(PHP_EOL, [
+            'მოდულს ჩანაწერები აქვს, `ExportDomain`-ში კი არც `MODULES`-შია და არც `NOT_EXPORTED`-ში.',
+            'შედეგი: „ჩემი მონაცემები" ამ მოდულს უხმოდ ტოვებს — შეცდომა ჩუმია.',
+            'გამორჩენილი: '.implode(', ', $missing),
+        ]));
+    }
+
+    /**
+     * ⚠️ **ექსპორტის ყველა ველი მართლა უნდა იკითხებოდეს.**
+     *
+     * სია სახელების უბრალო ჩამონათვალია, ე.ი. ბეჭდვითი შეცდომა (`titel_ka`)
+     * ან წაშლილი სვეტი **გამონაკლისს არ ისვრის** — Eloquent `null`-ს
+     * აბრუნებს, ფაილში კი ჩუმად ცარიელი სვეტი ჩნდება. ყველა მოდულზე ერთი
+     * ცარიელი ჩანაწერის გატარება ზუსტად ამას იჭერს.
+     */
+    public function test_every_export_field_resolves_on_a_real_record(): void
+    {
+        $user = User::create([
+            'name' => 'expo', 'username' => 'expo',
+            'email' => 'expo@example.com', 'password' => 'password',
+        ]);
+
+        $exporter = app(RecordExporter::class);
+
+        /* მხოლოდ `NOT NULL` სვეტები — ტესტს ჩანაწერის აზრი არ სჭირდება,
+           სჭირდება ის, რომ ჩანაწერი **შეიქმნას** და ველები წაიკითხოს. */
+        $minimal = [
+            'video' => ['title' => 'v', 'url' => 'https://example.com/v'],
+            'song' => ['title' => 's', 'url' => 'https://example.com/s'],
+            'book' => ['title_en' => 'b'],
+            'board_game' => ['title' => 'bg'],
+            'game' => ['title_en' => 'g'],
+            'note' => ['title' => 'n'],
+            'bookmark' => ['title' => 'bm', 'url' => 'https://example.com/b', 'domain' => 'example.com'],
+        ];
+
+        foreach (ExportDomain::keys() as $module) {
+            $model = ExportDomain::model($module);
+            $model::withoutGlobalScope('owner')
+                ->create(['user_id' => $user->id] + ($minimal[$module] ?? []));
+
+            $rows = iterator_to_array($exporter->rows($user, $module));
+
+            $this->assertCount(1, $rows, "{$module}: ჩანაწერი არ წაიკითხა");
+
+            /* ⚠️ **სახელის შემოწმება ცალკე ნაბიჯია და აუცილებელი.**
+               რიგის გასაღები თვითონ ველის სახელია, ე.ი. ბეჭდვითი შეცდომა
+               (`titel_ka`) ზემოთა `assertCount`-ს გაუვიდოდა და ფაილში
+               ჩუმად ცარიელი სვეტი დარჩებოდა. ამიტომ თითოეული სახელი ან
+               სვეტი უნდა იყოს, ან აქსესორი, ან ცხადად ვირტუალური. */
+            $columns = Schema::getColumnListing((new $model)->getTable());
+
+            foreach (ExportDomain::fields($module) as $field) {
+                $real = in_array($field, $columns, true)
+                    || in_array($field, RecordExporter::VIRTUAL, true)
+                    || method_exists($model, 'get'.str_replace('_', '', ucwords($field, '_')).'Attribute');
+
+                $this->assertTrue($real, "{$module}.{$field}: არც სვეტია, არც აქსესორი, არც ვირტუალური");
+            }
+        }
     }
 
     /**

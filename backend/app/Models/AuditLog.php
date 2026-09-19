@@ -68,6 +68,17 @@ class AuditLog extends Model
      */
     public const ACTION_TRANSLATE = 'translate';
 
+    /**
+     * საკუთარი მონაცემების ექსპორტი (FEAT-06).
+     *
+     * ⚠️ **`view`/`visit` ვერ გამოდგებოდა.** ექსპორტი ერთი ჩანაწერის
+     * გახსნა არ არის — ის მთელ მოდულს **ფაილად** ატანს სერვერიდან, ე.ი.
+     * ზუსტად ის მოქმედებაა, რომლის შესახებაც კითხვა მოგვიანებით ისმება
+     * („სად გავიდა ეს სია"). იგივე მიზეზი, რის გამოც გასაღების გამოჩენას
+     * (§21.8) საკუთარი რიგი აქვს ლოგში.
+     */
+    public const ACTION_EXPORT = 'export';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
@@ -81,6 +92,7 @@ class AuditLog extends Model
         self::ACTION_CAST_ATTACH,
         self::ACTION_CAST_DETACH,
         self::ACTION_TRANSLATE,
+        self::ACTION_EXPORT,
     ];
 
     /**

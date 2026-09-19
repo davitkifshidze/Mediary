@@ -2419,7 +2419,8 @@
       "chat_delete": "Chat deletion",
       "cast_attach": "Cast member added",
       "cast_detach": "Cast member removed",
-      "translate": "Translation"
+      "translate": "Translation",
+      "export": "Export"
     },
     "modules": {
       "account": "Account",
@@ -2894,5 +2895,12 @@
     "recordTitle": "No such record",
     "recordHint": "The record has been deleted, or it belongs to someone else.",
     "backToList": "Back to the list"
+  },
+  "exportData": {
+    "title": "My data",
+    "hint": "Every module’s records in one file: title, status, genre, tags and links. Uploaded files are not packed here — the download above does that; the file’s poster_path column points at exactly that archive entry.",
+    "records": "{{count}} records",
+    "fields": "{{count}} columns",
+    "empty": "You have no module to export"
   }
 }

@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\GalleryAlbumController;
 use App\Http\Controllers\Api\GalleryController;
 use App\Http\Controllers\Api\GalleryVideoController;
@@ -293,6 +294,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // 17.4 — ლიმიტის გაზრდის მოთხოვნა (იმავე ცხრილში, ახალი ტიპით)
     Route::post('/requests/storage', [ApprovalRequestController::class, 'storeStorageRequest']);
     Route::delete('/requests/{approvalRequest}', [ApprovalRequestController::class, 'destroy']);
+
+    /* ---------- ჩემი მონაცემების ექსპორტი (FEAT-06) ----------
+       ⚠️ **ჯგუფის `module:`/`permission:` middleware განზრახ არ ადევს** —
+       პარამეტრი `module`-ია და არა `type`, ე.ი. `@type` მას ვერ წაიკითხავდა
+       და ჩუმად `movie`-ის უფლებას შეამოწმებდა ყველა მოდულზე. ორივე
+       შემოწმება კონტროლერშია, ცხადად (`VisibilityController`-ის წესი).
+       ⚠️ ორივე **`GET`-ია**: ექსპორტი კითხვაა და არა ჩანაწერი; POST-ს
+       `EnsureModulePermission` `create`-ად წაიკითხავდა და view-only როლი
+       საკუთარ მონაცემებს ვერ წაიღებდა. */
+    Route::get('/export', [ExportController::class, 'index']);
+    Route::get('/export/{module}', [ExportController::class, 'show']);
 
     /* ---------- ფილმები (module: movie) ---------- */
     Route::middleware(['module:movie', 'permission:movie'])->group(function () {

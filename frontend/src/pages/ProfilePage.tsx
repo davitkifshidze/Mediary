@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { DataExportCard } from '@/components/DataExportCard'
 import { PublicProfileCard } from '@/components/PublicProfileCard'
 import { StorageCard } from '@/components/StorageCard'
 import { WebQuotaCard } from '@/components/WebQuotaCard'
@@ -254,6 +255,13 @@ export function ProfilePage() {
           ფაილები (მხოლოდ `super_admin`-ს). `/settings`-ს მხოლოდ მოდულებზე
           ლიმიტების გაწერა დარჩა — ის მართლა პარამეტრია. */}
       <StorageCard />
+
+      {/* ---------- ჩემი მონაცემები (FEAT-06) ----------
+          ⚠️ **საცავის ქვემოთ განზრახ**: ზემოთ ატვირთული **ფაილების**
+          არქივია, აქ კი **ჩანაწერების** სია — ორი ნახევარი ერთი კითხვისა
+          („როგორ წავიღო ჩემი ბიბლიოთეკა"), და მეორეს პირველის გარეშე
+          აზრი აკლია (CSV-ის `poster_path` სწორედ არქივის ფაილს უთითებს). */}
+      <DataExportCard />
 
       {/* §7.6.6 — ვებძებნის კვოტა. ⚠️ **ცალკე ბარათია და არა საცავის შიგნით**:
           ეს SerpApi-ის თვიური **ძებნების** ბიუჯეტია და არა დისკი; ერთ ბლოკში
