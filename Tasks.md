@@ -48,7 +48,7 @@
 | DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ⬜ |
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ⬜ |
 | DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
-| DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ⬜ |
+| DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ✅ |
 | DEBT-20 | მოძველებული კომენტარები: `PublicProfileController` „მხოლოდ ორი GET" (ხუთია, ერთი POST), `sw.js` ელფოსტის არხს ასახელებს, CLAUDE.md ამ მანქანაზე yt-dlp/ffmpeg/python-ის არსებობას ამტკიცებს | Low | debt | S | ⬜ |
 | DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ⬜ |
 | DEBT-22 | `GenreController::store()` slug-ს შეუზღუდავი `while exists` ციკლით ქმნის — `DictionaryKey::make()` სწორედ ამისთვის დაიწერა | Low | debt | S | ✅ |
@@ -581,13 +581,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-19] `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `?? user.permissions['*']` ამოღებულია — wildcard 2026-09-15-ს მოიხსნა როლიდან, ვალიდატორიდან და მონაცემებიდანაც (მიგრაციამ `user` როლის მასკა მოდულებად გაშალა), ე.ი. backend `'*'`-ს არასდროს აბრუნებს და ბრანჩი მკვდარი იყო. ⚠️ **ტიპით ჩაკეტვა (`Record<ModuleKey, Action[]>`) შეუძლებელია და ეს არ არის გამორჩენა**: იგივე რუკა `admin:users`/`admin:audit` გასაღებებსაც ატარებს (`canAdmin()` მათ სწორედ აქედან კითხულობს), ე.ი. ვიწრო ტიპი ადმინის შტოს გატეხდა — `Record<string, string[]>` რჩება. `canAdmin()`-ის კომენტარი („`'*'` აქ განზრახ არ მოქმედებს") ახლა მთელ ფაილზე მართალია.
 - **ტიპი:** debt
 - **სად:** `frontend/src/lib/auth.tsx:104` (`user.permissions[module] ?? user.permissions['*'] ?? []`)
 - **პრობლემა:** wildcard 2026-09-15-ს ამოვიდა (`Role`, ვალიდატორი, მონაცემი — CLAUDE.md *The wildcard permission is gone*); backend `'*'`-ს არასდროს აბრუნებს, ე.ი. ბრანჩი მკვდარია და ცრუ შთაბეჭდილებას ტოვებს, რომ ფუნქცია ცოცხალია.
 - **რატომ:** მკვდარი კოდი უსაფრთხოების ლოგიკაში — მომდევნო მკითხველი მასზე დაეყრდნობა.
 - **გადაწყვეტა:** `?? user.permissions['*']` ამოღება; `RoleApiTest`-ის ანალოგი ფრონტზე არ სჭირდება — `tsc` ტიპით (`Record<ModuleKey, Action[]>`) ჩაკეტვა.
 - **Acceptance criteria:**
-  - [ ] `grep -n "'\*'" frontend/src/lib/auth.tsx` ცარიელია; `npm run build` მწვანე
+  - [x] `grep -n "'\*'" frontend/src/lib/auth.tsx` ცარიელია; `npm run build` მწვანე
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

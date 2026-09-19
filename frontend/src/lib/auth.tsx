@@ -101,8 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return false
         // სუპერ-ადმინს (permissions === null) ყველაფერი შეუძლია
         if (user.is_super_admin || user.permissions == null) return true
-        const granted = user.permissions[module] ?? user.permissions['*'] ?? []
-        return granted.includes(action)
+        /* ⚠️ `'*'` ფოლბექი ამოღებულია (Tasks DEBT-19): wildcard 2026-09-15-ს
+           მოიხსნა — `Role`-იდან, ვალიდატორიდან და მონაცემებიდანაც (მიგრაციამ
+           `user` როლის მასკა მოდულებად გაშალა). backend `'*'`-ს **არასდროს**
+           აბრუნებს, ე.ი. ეს ბრანჩი მკვდარი იყო და ცრუ შთაბეჭდილებას ტოვებდა,
+           რომ მექანიზმი ცოცხალია — ზუსტად ის, რის გამოც შემდეგი მკითხველი
+           მასზე დაეყრდნობოდა. */
+        return (user.permissions[module] ?? []).includes(action)
       },
       // ⚠️ `'*'` აქ განზრახ არ მოქმედებს — backend-იც ასე იქცევა (`Role::allowsAdmin`)
       canAdmin: (resource, action) => {

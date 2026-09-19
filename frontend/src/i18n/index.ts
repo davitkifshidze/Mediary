@@ -88,6 +88,28 @@ const backend = {
  * სამაგიეროდ ეკრანზე გასაღებების „აციმციმება" არ ხდება. ქართულისთვის
  * ლოდინი არაფერს უდრის — ბუნდლი უკვე ბუნდლშია.
  */
+/**
+ * **დოკუმენტის ენა ინტერფეისის ენას მიჰყვება (Tasks DEBT-25).**
+ *
+ * `index.html`-ში `lang="ka"` სტატიკურად ეწერა, ე.ი. ინგლისურ ინტერფეისზეც
+ * `ka` რჩებოდა — ეკრანის მკითხველი ინგლისურ ტექსტს ქართული ხმით კითხულობდა,
+ * ბრაუზერი კი „თარგმნა"-ს სთავაზობდა იქ, სადაც საჭირო არაა.
+ *
+ * ⚠️ **აქ და არა კომპონენტში**: ენის ცვლილების ერთადერთი წყარო i18next-ია
+ * (`LanguageDropdown` მას `changeLanguage()`-ით ცვლის), ე.ი. listener-ი
+ * სწორედ აქ ფარავს **ყველა** გზას — მათ შორის მომავალ გამომძახებელს.
+ *
+ * ⚠️ `typeof document` შემოწმება ტესტებისთვის არაა (jsdom-ში ის არსებობს) —
+ * ის ამ მოდულს ნებისმიერ DOM-ის გარეშე გარემოში უსაფრთხოს ხდის.
+ */
+function syncDocumentLanguage(language: string): void {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = language
+  }
+}
+
+i18n.on('languageChanged', syncDocumentLanguage)
+
 export const i18nReady = i18n
   .use(backend)
   .use(initReactI18next)
@@ -102,5 +124,8 @@ export const i18nReady = i18n
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   })
+
+// ⚠️ ინიციალიზაციაზე `languageChanged` გარანტირებული არაა — საწყისი მნიშვნელობა ცხადად იწერება
+syncDocumentLanguage(savedLanguage)
 
 export default i18n

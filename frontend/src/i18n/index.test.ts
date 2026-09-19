@@ -44,4 +44,21 @@ describe('i18n', () => {
     await i18n.changeLanguage('ka')
     expect(i18n.t('actions.save')).toBe('შენახვა')
   })
+
+  /**
+   * **დოკუმენტის ენა ინტერფეისს მიჰყვება (Tasks DEBT-25).**
+   *
+   * ⚠️ `index.html`-ში `lang="ka"` სტატიკური იყო, ე.ი. ინგლისურ ინტერფეისზეც
+   * `ka` რჩებოდა — ეკრანის მკითხველი, ბრაუზერის თარგმანი და ტირეებად დაშლა
+   * ინგლისურ ტექსტს ქართულად ექცეოდნენ.
+   */
+  it('`<html lang>` ენის გადართვას მიჰყვება', async () => {
+    expect(document.documentElement.lang).toBe('ka')
+
+    await i18n.changeLanguage('en')
+    expect(document.documentElement.lang).toBe('en')
+
+    await i18n.changeLanguage('ka')
+    expect(document.documentElement.lang).toBe('ka')
+  })
 })
