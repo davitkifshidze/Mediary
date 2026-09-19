@@ -54,7 +54,7 @@
 | DEBT-22 | `GenreController::store()` slug-ს შეუზღუდავი `while exists` ციკლით ქმნის — `DictionaryKey::make()` სწორედ ამისთვის დაიწერა | Low | debt | S | ✅ |
 | DEBT-23 | `GeorgianShops::fetch()` მთელ პასუხს კითხულობს და მერე ჭრის — „ჭერი ტყუილია"-ს იგივე პატერნი, რაც `LinkMetadata`-ს §A3-მდე ჰქონდა | Low | debt | S | ✅ |
 | DEBT-24 | უსასრულოდ მზარდი ცხრილები (`serp_searches`, `translation_usages`, `note_notifications`, `batch_items`, `job_batches`) არასდროს იწმინდება | Low | debt | S | ✅ |
-| DEBT-25 | `<html lang="ka">` სტატიკურია — ინგლისურ UI-ზეც `ka` რჩება | Low | debt | S | ⬜ |
+| DEBT-25 | `<html lang="ka">` სტატიკურია — ინგლისურ UI-ზეც `ka` რჩება | Low | debt | S | ✅ |
 | DEBT-26 | ქართული ორთოგრაფიის ავტომატური შემოწმება (hunspell `ka_GE`) CI-ში არ არის — BUG-18-ის ტიპის შეცდომას ვერავინ იჭერს | Low | debt | S | ⬜ |
 | FEAT-06 | მომხმარებლის საკუთარი მონაცემების ექსპორტი (JSON/CSV თითო მოდულზე) | — | feature | M | ⬜ |
 | FEAT-07 | იმპორტი გარე სერვისების CSV-დან (Letterboxd/IMDb, Goodreads, Steam) | — | feature | L | ⬜ |
@@ -651,13 +651,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-25] `<html lang="ka">` სტატიკურია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `i18n/index.ts`-ში `languageChanged` listener-ი `document.documentElement.lang`-ს აახლებს, საწყისი მნიშვნელობა კი ცხადად იწერება (init-ზე ივენთი გარანტირებული არაა). ⚠️ **ეს i18n-შია და არა კომპონენტში**: ენის ცვლილების ერთადერთი წყარო i18next-ია, ე.ი. listener-ი ყველა გზას ფარავს — მათ შორის მომავალ გამომძახებელს; `LanguageDropdown`-ში ჩაწერა ნიშნავდა, რომ პროგრამული `changeLanguage()` ჩუმად აღარ იმუშავებდა. ⚠️ **`index.html`-ის `lang="ka"` რჩება და ეს სწორია** — JS-მდე დოკუმენტს რაღაც ენა მაინც სჭირდება და აპის ნაგულისხმევი ქართულია (`savedLanguage`); სკრიპტი მას მაუნთამდე ასწორებს. ⚠️ `typeof document` შემოწმება ტესტისთვის არაა (jsdom-ში ის არსებობს) — ის მოდულს DOM-ის გარეშე გარემოშიც უსაფრთხოს ხდის. ტესტი `i18n/index.test.ts`-შია.
 - **ტიპი:** debt
 - **სად:** `frontend/index.html:2`
 - **პრობლემა:** ინგლისურ UI-ზეც დოკუმენტის ენა `ka` რჩება — ეკრანის მკითხველი, ბრაუზერის თარგმანი და hyphenation ინგლისურ ტექსტს ქართულად კითხულობს.
 - **რატომ:** მცირე დეფექტი წვდომადობაში.
 - **გადაწყვეტა:** `i18n.on('languageChanged', l => document.documentElement.lang = l)` `main.tsx`-ში.
 - **Acceptance criteria:**
-  - [ ] ენის გადართვაზე `document.documentElement.lang` იცვლება (Vitest)
+  - [x] ენის გადართვაზე `document.documentElement.lang` იცვლება (Vitest)
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
