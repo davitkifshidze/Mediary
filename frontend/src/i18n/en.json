@@ -3141,5 +3141,26 @@
   "duplicate": {
     "notice": "You have already saved this link:",
     "open": "Open"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Nothing new.",
+    "markAll": "Mark all read",
+    "clear": "Clear the list",
+    "clearConfirm": "Every notification will be removed. The audit log (/audit) is untouched.",
+    "kind": {
+      "request_approved": "Your request was approved",
+      "request_rejected": "Your request was rejected",
+      "storage_warning": "Storage is filling up",
+      "backup_failed": "The database backup failed",
+      "batch_done": "A background run has finished"
+    },
+    "detail": {
+      "module": "Module: {{name}}",
+      "note": "Note: {{note}}",
+      "storage": "{{percent}}% used (the {{threshold}}% mark was crossed).",
+      "backup": "Backup: {{name}}",
+      "batch": "{{total}} items, {{failed}} failed."
+    }
   }
 }

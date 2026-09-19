@@ -64,6 +64,14 @@ class AppServiceProvider extends ServiceProvider
             'bookmark' => Bookmark::class,
             // Tasks 10 — გალერეის ფოტოები მსახიობზეც ეკიდება
             'cast_member' => CastMember::class,
+            /* FEAT-19 — `notifications.notifiable` **ერთადერთი პოლიმორფული
+               კავშირია `User`-ზე**, და `enforceMorphMap()` რუკის გარეთ
+               მდგომ მოდელზე **გამონაკლისს აგდებს** — ე.ი. ალიასის გარეშე
+               ყოველი შეტყობინება 500 იქნებოდა.
+               ⚠️ მნიშვნელობა `'user'`-ია, ე.ი. ზუსტად ის, რასაც
+               `audit_logs.subject_type` ხელით წერდა — ორი სახელი ერთი
+               მოდელისთვის ლოგის ფილტრს დააშორებდა. */
+            'user' => User::class,
         ]);
 
         // სუპერ-ადმინი ყველა policy-ს გაივლის. ⚠️ `owner` global scope მასზეც

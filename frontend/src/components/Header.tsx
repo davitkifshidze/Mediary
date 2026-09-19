@@ -21,6 +21,7 @@ import { LAYER_POPUP } from '@/lib/layers'
 import { pageContainer } from '@/components/ui/page'
 import { GlobalSearch } from './GlobalSearch'
 import { LanguageDropdown } from './LanguageDropdown'
+import { NotificationBell } from './NotificationBell'
 import { StorageBar, storageLevel } from './StorageBar'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -147,6 +148,11 @@ export function Header({ onMenu }: { onMenu: () => void }) {
             </span>
           </Link>
         )}
+        {/* FEAT-19 — შეტყობინებების ზარი. ⚠️ **თარგმანის ღილაკის გვერდით**:
+            ორივე „რაღაც გელოდება"-ს ამბობს, ე.ი. ერთ ადგილას უნდა იდგნენ;
+            ორივე თვითონ ქრება, როცა სათქმელი არაფერია. */}
+        <NotificationBell />
+
         <div className="hidden w-36 sm:block">
           <LanguageDropdown />
         </div>

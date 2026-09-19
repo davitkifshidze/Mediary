@@ -3,7 +3,9 @@
 namespace App\Services\Backup;
 
 use App\Models\DatabaseBackup;
+use App\Services\Notify\Notifier;
 use App\Services\Storage\StorageMeter;
+use App\Support\NotificationType;
 use App\Support\Redact;
 use App\Support\StorageFolder;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +78,15 @@ class BackupRunner
                 'error' => mb_substr(Redact::secrets($e->getMessage()), 0, 480),
                 'finished_at' => now(),
             ])->save();
+
+            /* FEAT-19 — ⚠️ **ყველა სუპერ-ადმინს, და არა მხოლოდ
+               მფლობელს.** დაგეგმილი ასლის მფლობელი „პირველი სუპერ-ადმინია"
+               (FEAT-12), ე.ი. სწორედ ის შეიძლება თვეობით არ იყოს შესული —
+               ჩავარდნილი ასლი კი ყველა პასუხისმგებელს ეხება. */
+            app(Notifier::class)->toAdmins(NotificationType::BACKUP_FAILED, [
+                'name' => $backup->name,
+                'source' => $backup->source,
+            ]);
         } finally {
             if (is_file($temp)) {
                 @unlink($temp);

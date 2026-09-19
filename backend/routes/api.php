@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\NoteCategoryController;
 use App\Http\Controllers\Api\NoteEntryController;
 use App\Http\Controllers\Api\NoteEntryFileController;
 use App\Http\Controllers\Api\NoteReminderController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
@@ -192,6 +193,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/2fa/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:login');
     Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'recoveryCodes']);
     Route::delete('/auth/2fa', [TwoFactorController::class, 'destroy']);
+
+    /* ---------- შეტყობინებები (FEAT-19) ----------
+       ⚠️ **მოდულის ჯგუფის გარეთ**: შეტყობინება ანგარიშის ფაქტია და არა
+       მოდულის შიგთავსი (საცავისა და კვოტის იგივე რიგი).
+       ⚠️ **`/read` და `/unread` `{notification}`-ზე ზემოთ დგას**, თორემ
+       ისინი UUID-ად წაიკითხება — `/gallery/{type}/{id}`-ის იგივე წესი. */
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::patch('/notifications/read', [NotificationController::class, 'read']);
+    Route::delete('/notifications', [NotificationController::class, 'destroy']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 
     /* ---------- საცავი (Tasks 17.1/17.3) — მოდულებად დაშლა და გადათვლა ----------
        მსუბუქი ჯამი `GET /auth/me`-ზეც მოდის (`UserResource.storage`). */

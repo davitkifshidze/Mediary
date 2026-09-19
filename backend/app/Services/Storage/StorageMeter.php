@@ -12,7 +12,9 @@ use App\Models\NoteEntryFile;
 use App\Models\SongFile;
 use App\Models\User;
 use App\Models\VideoFile;
+use App\Services\Notify\Notifier;
 use App\Support\CustomFields;
+use App\Support\NotificationType;
 use App\Support\StorageFolder;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -1151,12 +1153,55 @@ class StorageMeter
             ->update(['storage_used_bytes' => DB::raw('storage_used_bytes + '.(int) $bytes)]) > 0;
 
         if ($ok) {
+            $before = (int) $user->storage_used_bytes;
+
             // მოდელის ატრიბუტი raw UPDATE-ის შემდეგ ძველია — იხ. `add()`
             $user->storage_used_bytes = (int) User::whereKey($user->getKey())->value('storage_used_bytes');
             $user->syncOriginalAttribute('storage_used_bytes');
+
+            $this->warnIfCrossed($user, $before);
         }
 
         return $ok;
+    }
+
+    /**
+     * **„საცავი ივსება" — ერთხელ, ზღვრის გადალახვისას (FEAT-19).**
+     *
+     * ⚠️ **გადალახვა და არა მდგომარეობა.** „80%-ზე მეტია" ყოველ
+     * ატვირთვაზე ჭეშმარიტი იქნებოდა, ე.ი. მომხმარებელი ერთსა და იმავე
+     * შეტყობინებას ათჯერ მიიღებდა და ბეჯს დაუჯერებლად აქცევდა. აქ
+     * პირობა **ორმხრივია**: ადრე ქვემოთ იყო, ახლა ზემოთ — ე.ი. თითო
+     * ზღვარზე ზუსტად ერთი შეტყობინება.
+     *
+     * ⚠️ **`reserve()`-შია და არა `add()`-ში**: ჯავშანი ერთადერთი
+     * ადგილია, სადაც მრიცხველი **იზრდება** ატვირთვისას; `add()`/`release()`
+     * კორექციებია და მათზე გაფრთხილება ცრუ იქნებოდა.
+     */
+    private function warnIfCrossed(User $user, int $before): void
+    {
+        $quota = (int) $user->storage_quota_bytes;
+
+        if ($quota <= 0) {
+            return;
+        }
+
+        $after = (int) $user->storage_used_bytes;
+
+        foreach ([self::CRITICAL_AT, self::WARN_AT] as $threshold) {
+            $line = (int) ceil($quota * $threshold / 100);
+
+            if ($before < $line && $after >= $line) {
+                app(Notifier::class)->send($user, NotificationType::STORAGE_WARNING, [
+                    'percent' => min(100, (int) round($after / $quota * 100)),
+                    'threshold' => $threshold,
+                ]);
+
+                // ⚠️ მხოლოდ **უმაღლესი** გადალახული ზღვარი — ერთი
+                // დიდი ატვირთვა ორივეს გადაახტება და ორ შეტყობინებას დაწერდა
+                return;
+            }
+        }
     }
 
     public function remaining(User $user): int

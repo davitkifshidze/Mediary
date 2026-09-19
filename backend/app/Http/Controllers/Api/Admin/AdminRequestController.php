@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApprovalRequestResource;
 use App\Models\ApprovalRequest;
 use App\Services\Genres\GenreRemover;
+use App\Services\Notify\Notifier;
+use App\Support\NotificationType;
 use Illuminate\Http\Request;
 
 /**
@@ -87,6 +89,8 @@ class AdminRequestController extends Controller
             'review_note' => $note,
         ])->save();
 
+        $this->tell($approvalRequest, NotificationType::REQUEST_APPROVED, $note);
+
         return new ApprovalRequestResource($approvalRequest->load(['user', 'module', 'genre', 'reviewer']));
     }
 
@@ -103,7 +107,32 @@ class AdminRequestController extends Controller
             'review_note' => $request->input('review_note'),
         ])->save();
 
+        $this->tell($approvalRequest, NotificationType::REQUEST_REJECTED, $request->input('review_note'));
+
         return new ApprovalRequestResource($approvalRequest->load(['user', 'module', 'genre', 'reviewer']));
+    }
+
+    /**
+     * **FEAT-19 — მთხოვნელს ვატყობინებთ.**
+     *
+     * ⚠️ **პასუხის დაბრუნებამდე და ცვლილების შემდეგ**: ადრე
+     * მომხმარებელი სტატუსს `/modules`-ზე ხელით ამოწმებდა, ე.ი. „დამტკიცდა"
+     * ფაქტი არსად არ მიდიოდა. `Notifier` არასდროს აგდებს გამონაკლისს,
+     * ამიტომ ეს ხაზი დამტკიცების ჩავარდნას ვერ გამოიწვევს.
+     *
+     * ⚠️ **მოდულის სახელი `data`-ში ორივე ენაზე მიდის** — ტექსტი
+     * ინტერფეისში იწერება, ე.ი. ერთ ენაზე ჩაწერილი სახელი მეორეზე
+     * გადართვისას უცვლელი დარჩებოდა.
+     */
+    private function tell(ApprovalRequest $req, string $type, ?string $note): void
+    {
+        app(Notifier::class)->send($req->user, $type, array_filter([
+            'request_type' => $req->type,
+            'module' => $req->module?->key,
+            'module_ka' => $req->module?->name_ka,
+            'module_en' => $req->module?->name_en,
+            'note' => $note,
+        ], fn ($v) => $v !== null && $v !== ''));
     }
 
     /* ---------- handler-ები ტიპების მიხედვით ---------- */

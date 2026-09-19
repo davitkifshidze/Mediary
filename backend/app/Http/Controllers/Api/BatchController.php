@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunBatchItem;
 use App\Models\BatchItem;
+use App\Models\User;
+use App\Services\Notify\Notifier;
 use App\Support\BackgroundProcess;
 use App\Support\MediaDomain;
+use App\Support\NotificationType;
 use Illuminate\Bus\Batch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -93,6 +96,20 @@ class BatchController extends Controller
                პარტიის გაუქმება შესაძლებელი იყო. `withOption()` `job_batches.options`-ში
                ჯდება, ე.ი. ცალკე ცხრილი არ სჭირდება. */
             ->withOption('user_id', (int) $user->getKey())
+            /* FEAT-19 — ⚠️ **`finally` და არა `then`**: `allowFailures()`-ის
+               პირობებში `then` მხოლოდ სუფთა გავლაზე ისვრის, ე.ი. სწორედ ის
+               პარტია, რომელსაც ყველაზე მეტად სჭირდება შეტყობინება (ერთი
+               ჩავარდნა სამასიდან), ჩუმად დამთავრდებოდა.
+               ⚠️ **`$user->getKey()` და არა `$user`**: callback სერიალიზდება
+               `job_batches`-ში და მთელი მოდელის ჩაკერვა იქ მის იმ დროინდელ
+               ასლს გაყინავდა. */
+            ->finally(function (Batch $done) use ($user, $data) {
+                app(Notifier::class)->send(User::find($user->getKey()), NotificationType::BATCH_DONE, [
+                    'kind' => $data['kind'],
+                    'total' => $done->totalJobs,
+                    'failed' => $done->failedJobs,
+                ]);
+            })
             ->dispatch();
 
         if (! $this->startWorker($background)) {
