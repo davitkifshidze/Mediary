@@ -14,6 +14,11 @@ import {
   fetchCourseCategories,
   reorderCourseCategories,
 } from '@/api/courses'
+import {
+  deletePlaceCategory,
+  fetchPlaceCategories,
+  reorderPlaceCategories,
+} from '@/api/places'
 import { deleteBookGenre, fetchBookGenres, reorderBookGenres } from '@/api/books'
 import { deleteGameGenre, fetchGameGenres, reorderGameGenres } from '@/api/games'
 import { deleteNoteCategory, fetchNoteCategories, reorderNoteCategories } from '@/api/notes'
@@ -23,6 +28,7 @@ import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
 import { BookGenreDialog } from '@/components/BookGenreDialog'
 import { BookmarkCategoryDialog } from '@/components/BookmarkCategoryDialog'
 import { CourseCategoryDialog } from '@/components/CourseCategoryDialog'
+import { PlaceCategoryDialog } from '@/components/PlaceCategoryDialog'
 import { GameGenreDialog } from '@/components/GameGenreDialog'
 import { NoteCategoryDialog } from '@/components/NoteCategoryDialog'
 import { SongGenreDialog } from '@/components/SongGenreDialog'
@@ -238,6 +244,21 @@ export const DICTIONARIES: DictionaryDef[] = [
     remove: deleteCourseCategory,
     count: (item) => num(item.courses_count),
     dialog: (item, onClose) => <CourseCategoryDialog category={item as never} onClose={onClose} />,
+  },
+  {
+    // FEAT-26 — ადგილის კატეგორიები (ბუკმარკის/კურსის ზუსტი რიგი)
+    key: 'place-categories',
+    module: 'place',
+    titleKey: 'placeCategories.title',
+    recordsRoute: '/places',
+    queryKey: ['place-categories'],
+    recordsQueryKey: 'places',
+    countKey: 'places.count',
+    list: fetchPlaceCategories as never,
+    reorder: reorderPlaceCategories as never,
+    remove: deletePlaceCategory,
+    count: (item) => num(item.places_count),
+    dialog: (item, onClose) => <PlaceCategoryDialog category={item as never} onClose={onClose} />,
   },
 ]
 

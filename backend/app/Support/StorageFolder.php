@@ -107,6 +107,13 @@ final class StorageFolder
 
     public const COURSE_DOCS = 'courses/files/docs';
 
+    /** FEAT-26 — ადგილის მთავარი ფოტო */
+    public const PLACE_PHOTOS = 'places/photos';
+
+    public const PLACE_IMAGES = 'places/files/images';
+
+    public const PLACE_DOCS = 'places/files/docs';
+
     public const NOTE_IMAGES = 'notes/files/images';
 
     public const NOTE_VIDEOS = 'notes/files/videos';
@@ -148,7 +155,7 @@ final class StorageFolder
      * სკანირება რეკურსიულია, ე.ი. ქვესაქაღალდის დამატება აქ არაფერს მოითხოვს.
      */
     public const ROOTS = [
-        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'gallery', 'chat', 'cast', 'backups',
+        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'places', 'gallery', 'chat', 'cast', 'backups',
     ];
 
     /**
@@ -211,6 +218,7 @@ final class StorageFolder
         'notes' => 'note',
         'bookmarks' => 'bookmark',
         'courses' => 'course',
+        'places' => 'place',
         'gallery' => 'gallery',
         'account' => 'account',
         'chat' => 'chat',
@@ -292,6 +300,15 @@ final class StorageFolder
             'certificate' => self::COURSE_CERTIFICATES,
             'image' => self::COURSE_IMAGES,
             default => self::COURSE_DOCS,
+        };
+    }
+
+    /** FEAT-26 — ადგილის ფაილი სახის მიხედვით */
+    public static function placeFiles(string $kind): string
+    {
+        return match ($kind) {
+            'image' => self::PLACE_IMAGES,
+            default => self::PLACE_DOCS,
         };
     }
 

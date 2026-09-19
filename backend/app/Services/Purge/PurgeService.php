@@ -19,6 +19,8 @@ use App\Models\GameNote;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Place;
+use App\Models\PlaceFile;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\SongFile;
@@ -57,7 +59,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PurgeService
 {
-    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'gallery'];
+    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'gallery'];
 
     public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'];
 
@@ -101,6 +103,7 @@ class PurgeService
         'bookmark' => ['ids', 'type', 'tag', 'status', 'all'],
         // FEAT-25 — „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
         'course' => ['ids', 'type', 'tag', 'status', 'all'],
+        'place' => ['ids', 'type', 'tag', 'status', 'all'],
         'gallery' => ['ids', 'genre', 'status', 'all'],
     ];
 
@@ -127,6 +130,7 @@ class PurgeService
         'note' => ['open', 'done', 'archived'],
         'bookmark' => ['to_read', 'read', 'archived'],
         'course' => Course::STATUSES,
+        'place' => Place::STATUSES,
     ];
 
     /**
@@ -182,6 +186,7 @@ class PurgeService
         'note' => [NoteEntryFile::class, null, 'note_entry_id'],
         // FEAT-25 — კურსს ფაილები აქვს, ჩანიშვნები კი არა
         'course' => [CourseFile::class, null, 'course_id'],
+        'place' => [PlaceFile::class, null, 'place_id'],
     ];
 
     /**
@@ -202,6 +207,7 @@ class PurgeService
         'game' => ['cover_path', 'cover_source'],
         'bookmark' => ['thumbnail_path', null],
         'course' => ['thumbnail_path', null],
+        'place' => ['photo_path', null],
     ];
 
     /**
@@ -711,6 +717,7 @@ class PurgeService
             'note' => NoteEntry::class,
             'bookmark' => Bookmark::class,
             'course' => Course::class,
+            'place' => Place::class,
             default => Movie::class,
         };
 
@@ -730,6 +737,7 @@ class PurgeService
             'note' => 'note',
             'bookmark' => 'bookmark',
             'course' => 'course',
+            'place' => 'place',
             default => 'movie',
         };
     }

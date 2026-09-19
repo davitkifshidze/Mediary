@@ -31,7 +31,7 @@ interface ModulesApi {
 }
 
 /** არა-მედია მოდულები, რომლებსაც საკუთარი გვერდი აქვთ (`App.tsx`-ის რეესტრი) */
-export const PAGE_MODULE_KEYS = ['video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'gallery'] as const
+export const PAGE_MODULE_KEYS = ['video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'gallery'] as const
 
 const ModulesContext = React.createContext<ModulesApi>({
   all: [],

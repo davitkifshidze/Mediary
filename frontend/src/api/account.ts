@@ -916,6 +916,8 @@ export const PURGE_TARGETS = [
   'anime',
   // FEAT-25 — კურსები
   'course',
+  // FEAT-26 — ადგილები
+  'place',
   'gallery',
 ] as const
 export type PurgeTarget = (typeof PURGE_TARGETS)[number]
@@ -953,6 +955,8 @@ export const PURGE_TARGET_MODES = {
   bookmark: ['ids', 'type', 'tag', 'status', 'all'],
   // FEAT-25 — კურსები; „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
   course: ['ids', 'type', 'tag', 'status', 'all'],
+  // FEAT-26 — ადგილზეც კატეგორიაა (`places.category_id`)
+  place: ['ids', 'type', 'tag', 'status', 'all'],
   gallery: ['ids', 'genre', 'status', 'all'],
 } as const satisfies Record<PurgeTarget, readonly PurgeMode[]>
 

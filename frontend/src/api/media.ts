@@ -85,7 +85,9 @@ export function createMediaApi(base: string) {
      * ⚠️ **`null` ნორმალური პასუხია** — „ფილტრში არაფერია" და არა შეცდომა.
      */
     pickRandom: async (filters: MediaFilters = {}): Promise<Movie | null> => {
-      const { all, ...rest } = filters
+      // ⚠️ `all` განზრახ ვარდება: შემთხვევითი არჩევა სერვერზე ხდება, ე.ი.
+      // მთელი სიის ჩამოტვირთვას აზრი არ აქვს (და `all=1` `meta`-საც შლის)
+      const { all: _all, ...rest } = filters
       const { data } = await api.get(base, { params: { ...rest, pick: 'random' } })
       return data.data ?? null
     },

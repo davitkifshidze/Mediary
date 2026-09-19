@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
@@ -89,6 +90,7 @@ final class CustomFields
         'note_field_values' => 'note_entries',
         'bookmark_field_values' => 'bookmarks',
         'course_field_values' => 'courses',
+        'place_field_values' => 'places',
     ];
 
     /** მოდულის key → მნიშვნელობების ცხრილი */
@@ -104,6 +106,7 @@ final class CustomFields
         'note' => 'note_field_values',
         'bookmark' => 'bookmark_field_values',
         'course' => 'course_field_values',
+        'place' => 'place_field_values',
     ];
 
     /**
@@ -127,6 +130,7 @@ final class CustomFields
             'note' => NoteEntry::class,
             'bookmark' => Bookmark::class,
             'course' => Course::class,
+            'place' => Place::class,
             default => null,
         };
     }

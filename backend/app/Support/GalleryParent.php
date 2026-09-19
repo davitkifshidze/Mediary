@@ -7,6 +7,7 @@ use App\Models\Book;
 use App\Models\CastMember;
 use App\Models\Game;
 use App\Models\Movie;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use Illuminate\Database\Eloquent\Model;
@@ -88,6 +89,14 @@ final class GalleryParent
         'game' => [
             'model' => Game::class, 'module' => 'game', 'category' => 'backdrop',
             'primary' => ['path' => 'cover_path', 'source' => 'cover_source', 'value' => self::FROM_GALLERY],
+        ],
+        /* FEAT-26 — ⚠️ **ადგილი გალერეის ყველაზე ბუნებრივი მშობელია**: ფოტო
+           სწორედ ის არის, რაც ნანახ ადგილს რჩება. `photo_source` სვეტი
+           განზრახ არ არსებობს (სიმღერის წესი), ე.ი. გალერეიდან არჩეული
+           მთავარი ფოტო კვოტაში აღარ ითვლება — ერთი ფაილი ორჯერ არ იხდის. */
+        'place' => [
+            'model' => Place::class, 'module' => 'place', 'category' => 'backdrop',
+            'primary' => ['path' => 'photo_path', 'source' => null, 'value' => null],
         ],
     ];
 

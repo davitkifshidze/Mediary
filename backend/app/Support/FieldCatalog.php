@@ -213,6 +213,23 @@ final class FieldCatalog
             ['key' => 'description', 'type' => 'text', 'sort_order' => 100],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 110],
         ],
+        /* FEAT-26 — ადგილები. ⚠️ კოორდინატი ერთი ველია (`coords`) და არა ორი:
+           განცალკევებული გრძედი უაზროა და მისი დამალვა ნახევრად გატეხილ
+           ფორმას დატოვებდა. */
+        'place' => [
+            ['key' => 'name', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
+            ['key' => 'status', 'type' => 'select', 'sort_order' => 20],
+            ['key' => 'category', 'type' => 'select', 'sort_order' => 30],
+            ['key' => 'address', 'type' => 'text', 'sort_order' => 40],
+            ['key' => 'city', 'type' => 'text', 'sort_order' => 50],
+            ['key' => 'country', 'type' => 'text', 'sort_order' => 60],
+            ['key' => 'coords', 'type' => 'text', 'sort_order' => 70],
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 80],
+            ['key' => 'visited_at', 'type' => 'date', 'sort_order' => 90],
+            ['key' => 'photo', 'type' => 'file', 'sort_order' => 100],
+            ['key' => 'description', 'type' => 'text', 'sort_order' => 110],
+            ['key' => 'tags', 'type' => 'list', 'sort_order' => 120],
+        ],
     ];
 
     /** გადახრებში დაშვებული ტექსტური ატრიბუტები */

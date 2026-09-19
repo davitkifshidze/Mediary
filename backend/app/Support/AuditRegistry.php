@@ -49,6 +49,9 @@ use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Models\NoteNotification;
 use App\Models\NoteReminder;
+use App\Models\Place;
+use App\Models\PlaceCategory;
+use App\Models\PlaceFile;
 use App\Models\Playlist;
 use App\Models\Role;
 use App\Models\Series;
@@ -156,6 +159,10 @@ class AuditRegistry
         Course::class => 'course',
         CourseCategory::class => 'course',
         CourseFile::class => 'course',
+
+        Place::class => 'place',
+        PlaceCategory::class => 'place',
+        PlaceFile::class => 'place',
 
         // ---- გალერეა
         GalleryAlbum::class => 'gallery',

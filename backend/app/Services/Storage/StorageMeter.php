@@ -11,6 +11,8 @@ use App\Models\GalleryImage;
 use App\Models\GameFile;
 use App\Models\Message;
 use App\Models\NoteEntryFile;
+use App\Models\Place;
+use App\Models\PlaceFile;
 use App\Models\SongFile;
 use App\Models\User;
 use App\Models\VideoFile;
@@ -316,6 +318,43 @@ class StorageMeter
                 'kind' => $f->kind === 'image' ? 'image' : 'doc',
                 'module' => 'course',
                 'owner_type' => 'course_file',
+                'owner_id' => (int) $f->id,
+                'path' => $f->path,
+                'name' => $f->original_name,
+                'size' => $f->size,
+                'mime' => $f->mime,
+                'created_at' => $f->created_at,
+            ]);
+        }
+
+        // FEAT-26 — ადგილის ატვირთული ფოტო
+        $places = $skip('place') ? collect() : Place::withoutGlobalScope('owner')
+            ->where('user_id', $user->id)
+            ->whereNotNull('photo_path')
+            ->get(['id', 'name', 'photo_path', 'created_at']);
+
+        foreach ($places as $place) {
+            $add([
+                'kind' => 'thumbnail',
+                'module' => 'place',
+                'owner_type' => 'place',
+                'owner_id' => (int) $place->id,
+                'path' => $place->photo_path,
+                'name' => $place->name,
+                'created_at' => $place->created_at,
+            ]);
+        }
+
+        // ადგილზე მიმაგრებული ფაილები — ჩემი ფოტო, ბილეთი, ბროშურა
+        $placeFiles = $skip('place') ? collect() : PlaceFile::withoutGlobalScope('owner')
+            ->where('user_id', $user->id)
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+
+        foreach ($placeFiles as $f) {
+            $add([
+                'kind' => $f->kind === 'image' ? 'image' : 'doc',
+                'module' => 'place',
+                'owner_type' => 'place_file',
                 'owner_id' => (int) $f->id,
                 'path' => $f->path,
                 'name' => $f->original_name,
@@ -731,6 +770,7 @@ class StorageMeter
             'game_file' => GameFile::class,
             'note_entry_file' => NoteEntryFile::class,
             'course_file' => CourseFile::class,
+            'place_file' => PlaceFile::class,
             'gallery_image' => GalleryImage::class,
             /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
                ბიბლიოთეკაში ფაილი ჩანდა, „წაშლა" კი ჩუმად აბრუნებდა `false`-ს
@@ -838,6 +878,7 @@ class StorageMeter
             'song' => 'songs',
             'bookmark' => 'bookmarks',
             'course' => 'courses',
+            'place' => 'places',
             'book' => 'books',
             'board_game' => 'boardGames',
             'game' => 'games',
@@ -858,6 +899,7 @@ class StorageMeter
         // „ხელით ატვირთული" ნიშანი უფაილო ჩანაწერზე დარჩება
         $record->forceFill(match ($relation) {
             'videos', 'songs', 'bookmarks', 'courses' => ['thumbnail_path' => null],
+            'places' => ['photo_path' => null],
             'books', 'games' => ['cover_path' => null, 'cover_source' => null],
             'boardGames' => ['image_path' => null, 'image_source' => null],
             default => ['poster_path' => null, 'poster_source' => null],
@@ -1082,6 +1124,7 @@ class StorageMeter
             'songs.thumbnail_path',
             'bookmarks.thumbnail_path',
             'courses.thumbnail_path',
+            'places.photo_path',
             'books.cover_path',
             'board_games.image_path',
             'games.cover_path',
@@ -1092,6 +1135,7 @@ class StorageMeter
             'game_files.path',
             'note_entry_files.path',
             'course_files.path',
+            'place_files.path',
             'gallery_images.path',
             'messages.attachment_path',
             'cast_members.photo_path',

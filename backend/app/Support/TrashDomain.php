@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
@@ -51,6 +52,7 @@ final class TrashDomain
         'note' => NoteEntry::class,
         'bookmark' => Bookmark::class,
         'course' => Course::class,
+        'place' => Place::class,
     ];
 
     /** რამდენ დღეს ინახება წაშლილი ჩანაწერი */

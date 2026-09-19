@@ -18,6 +18,7 @@ use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\SongGenre;
@@ -866,7 +867,7 @@ class PurgeTest extends TestCase
 
         // FEAT-18 — სამი მედია-დომენი ამ სიას ავტომატურად დაემატა
         $this->assertSame(
-            ['movie', 'series', 'anime', 'video', 'song', 'book', 'note', 'bookmark', 'course'],
+            ['movie', 'series', 'anime', 'video', 'song', 'book', 'note', 'bookmark', 'course', 'place'],
             $targets,
         );
 
@@ -931,9 +932,14 @@ class PurgeTest extends TestCase
                 Bookmark::create(['user_id' => $user, 'title' => 'უტეგო ბმული', 'url' => 'https://b.example/2']),
             ],
             // FEAT-25 — კურსებს ტეგები აქვს
-            default => [
+            'course' => [
                 Course::create(['user_id' => $user, 'title' => 'ტეგიანი კურსი', 'tags' => ['ტეგი']]),
                 Course::create(['user_id' => $user, 'title' => 'უტეგო კურსი']),
+            ],
+            // FEAT-26 — ადგილსაც
+            default => [
+                Place::create(['user_id' => $user, 'name' => 'ტეგიანი ადგილი', 'tags' => ['ტეგი']]),
+                Place::create(['user_id' => $user, 'name' => 'უტეგო ადგილი']),
             ],
         };
     }

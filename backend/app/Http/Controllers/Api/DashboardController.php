@@ -14,6 +14,7 @@ use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
@@ -52,6 +53,7 @@ class DashboardController extends Controller
         'note' => NoteEntry::class,
         'bookmark' => Bookmark::class,
         'course' => Course::class,
+        'place' => Place::class,
         /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
            გალერეა ფოტოებით სავსეა (ნანახი 2026-09-14). მიზეზი დაშვება იყო,
            რომ „გალერეას საკუთარი ჩანაწერი არ აქვს" — აქვს: `gallery_images`

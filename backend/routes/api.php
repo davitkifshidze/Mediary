@@ -64,6 +64,9 @@ use App\Http\Controllers\Api\NoteEntryFileController;
 use App\Http\Controllers\Api\NoteReminderController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PlaceCategoryController;
+use App\Http\Controllers\Api\PlaceController;
+use App\Http\Controllers\Api\PlaceFileController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\RecordCastController;
@@ -763,6 +766,41 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);
         Route::post('/courses/{course}/files', [CourseFileController::class, 'store']);
         Route::delete('/course-files/{courseFile}', [CourseFileController::class, 'destroy']);
+    });
+
+    /* ---------- ადგილები (module: place, FEAT-26) ----------
+       წყარო OSM Nominatim-ია: უფასო და გასაღების გარეშე, ე.ი. §12-ის
+       `candidates → lookup` ნაკადი აქ ნამდვილად მუშაობს.
+
+       ⚠️ **`lookup`/`candidates` `create`-ის უფლებას ითხოვს** — ზუსტად
+       ისევე, როგორც წიგნის, თამაშისა და სამაგიდო თამაშის ანალოგიური
+       endpoint-ები (`EnsureModulePermission` POST-იდან `create`-ს გამოიყვანს).
+       `VIEW_ENDPOINTS`-ში მათი გადატანა სამ არსებულ მოდულს ჩუმად
+       შეუცვლიდა უფლებას, ე.ი. ცალკე გადაწყვეტილებაა და არა ამ ტასქის. */
+    Route::middleware(['module:place', 'permission:place'])->group(function () {
+        /* კატეგორიები — per-user ლექსიკონი */
+        Route::get('/place-categories', [PlaceCategoryController::class, 'index']);
+        Route::post('/place-categories', [PlaceCategoryController::class, 'store']);
+        Route::post('/place-categories/reorder', [PlaceCategoryController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/place-categories/{placeCategory}', [PlaceCategoryController::class, 'update']);
+        Route::delete('/place-categories/{placeCategory}', [PlaceCategoryController::class, 'destroy']);
+
+        Route::get('/places', [PlaceController::class, 'index']);
+        // ⚠️ `{place}`-ზე ზემოთ, თორემ „countries" id-ად წაიკითხება
+        Route::get('/places/countries', [PlaceController::class, 'countries']);
+        Route::post('/places/lookup/candidates', [PlaceController::class, 'candidates']);
+        Route::post('/places/lookup', [PlaceController::class, 'lookup']);
+        Route::post('/places', [PlaceController::class, 'store']);
+        Route::get('/places/{place}', [PlaceController::class, 'show']);
+        Route::match(['put', 'patch'], '/places/{place}', [PlaceController::class, 'update']);
+        Route::delete('/places/{place}', [PlaceController::class, 'destroy']);
+        Route::patch('/places/{place}/favorite', [PlaceController::class, 'toggleFavorite']);
+        Route::patch('/places/{place}/status', [PlaceController::class, 'setStatus']);
+
+        /* ფაილები — ჩემი გადაღებული ფოტო და თანმხლები დოკუმენტი */
+        Route::get('/places/{place}/files', [PlaceFileController::class, 'index']);
+        Route::post('/places/{place}/files', [PlaceFileController::class, 'store']);
+        Route::delete('/place-files/{placeFile}', [PlaceFileController::class, 'destroy']);
     });
 
     /* ---------- გალერეა (module: gallery, Tasks 10) ----------

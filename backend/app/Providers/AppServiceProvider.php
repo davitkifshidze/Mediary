@@ -10,6 +10,7 @@ use App\Models\CastMember;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\User;
@@ -62,6 +63,8 @@ class AppServiceProvider extends ServiceProvider
             'note' => NoteEntry::class,
             // §18 — ბუკმარკები (გალერეა არ ეკიდება, მაგრამ alias `modules`-შია)
             'bookmark' => Bookmark::class,
+            // FEAT-26 — ადგილი გალერეის მშობელია (`GalleryParent`)
+            'place' => Place::class,
             // Tasks 10 — გალერეის ფოტოები მსახიობზეც ეკიდება
             'cast_member' => CastMember::class,
             /* FEAT-19 — `notifications.notifiable` **ერთადერთი პოლიმორფული

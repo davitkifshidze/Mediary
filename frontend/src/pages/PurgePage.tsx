@@ -28,6 +28,7 @@ import { fetchGameGenres } from '@/api/games'
 import { fetchNoteCategories, fetchNotes } from '@/api/notes'
 import { fetchBookmarkCategories, fetchBookmarks } from '@/api/bookmarks'
 import { fetchCourseCategories, fetchCourses } from '@/api/courses'
+import { fetchPlaceCategories, fetchPlaces } from '@/api/places'
 import { useAuth } from '@/lib/auth'
 import { videoTypeName } from '@/lib/display'
 import { useModules } from '@/lib/modules'
@@ -93,6 +94,8 @@ const DICTIONARIES: Record<PurgeTargetWithType, { key: string; load: () => Promi
   // §18 — ბუკმარკზეც კატეგორიაა
   bookmark: { key: 'bookmark-categories', load: fetchBookmarkCategories },
   course: { key: 'course-categories', load: fetchCourseCategories },
+  // FEAT-26 — ადგილზეც კატეგორიაა
+  place: { key: 'place-categories', load: fetchPlaceCategories },
 }
 
 /**
@@ -114,6 +117,7 @@ const STATUS_NAMESPACE: Record<
   board_game: 'boardGames.statuses',
   game: 'games.statuses',
   course: 'courses.statuses',
+  place: 'places.statuses',
 }
 
 const statusKey = (domain: PurgeDomain, status: string) =>
@@ -169,6 +173,7 @@ export function PurgePage() {
   const isNote = domain === 'note'
   const isBookmark = domain === 'bookmark'
   const isCourse = domain === 'course'
+  const isPlace = domain === 'place'
   /* FEAT-18 — მედია-დომენებსაც აქვს ტეგები. ⚠️ **სია ცალკე endpoint-იდან**
      (`/media/tags`) და არა `all: true`-ით: ფილმების ბიბლიოთეკა ხუთასიც
      შეიძლება იყოს, და მთელი სიის ჩამოტვირთვა მხოლოდ ტეგების შესაგროვებლად
@@ -292,6 +297,11 @@ export function PurgePage() {
     queryFn: () => fetchCourses({ all: true }).then((p) => p.items),
     enabled: isCourse,
   })
+  const placesQ = useQuery({
+    queryKey: ['places', 'purge'],
+    queryFn: () => fetchPlaces({ all: true }).then((p) => p.items),
+    enabled: isPlace,
+  })
   const bookmarksQ = useQuery({
     queryKey: ['bookmarks', 'purge'],
     queryFn: () => fetchBookmarks({ all: true }).then((p) => p.items),
@@ -312,10 +322,11 @@ export function PurgePage() {
           ...(notesQ.data ?? []).flatMap((n) => n.tags ?? []),
           ...(bookmarksQ.data ?? []).flatMap((b) => b.tags ?? []),
           ...(coursesQ.data ?? []).flatMap((c) => c.tags ?? []),
+          ...(placesQ.data ?? []).flatMap((p) => p.tags ?? []),
           ...(mediaTagsQ.data ?? []).map((row) => row.tag),
         ]),
       ].sort((a, b) => a.localeCompare(b)),
-    [videosQ.data, songsQ.data, booksQ.data, notesQ.data, bookmarksQ.data, coursesQ.data, mediaTagsQ.data],
+    [videosQ.data, songsQ.data, booksQ.data, notesQ.data, bookmarksQ.data, coursesQ.data, placesQ.data, mediaTagsQ.data],
   )
 
   const planQ = useQuery({

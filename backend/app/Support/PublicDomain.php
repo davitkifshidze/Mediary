@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
+use App\Models\Place;
 use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
@@ -58,6 +59,7 @@ final class PublicDomain
         'bookmark' => ['model' => Bookmark::class, 'module' => 'bookmark'],
         // FEAT-25 — კურსსაც `visibility` სვეტი აქვს, ე.ი. სიაშიც უნდა იყოს
         'course' => ['model' => Course::class, 'module' => 'course'],
+        'place' => ['model' => Place::class, 'module' => 'place'],
         /* ⚠️ **`gallery_album` დომენია, თუმცა „ჩანაწერი" არ არის** (Tasks §7.5).
            ფოტო მშობლის ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე
            გადამრთველი არ სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით
@@ -112,6 +114,10 @@ final class PublicDomain
            ⚠️ ბმულის გარეშე შენახული კურსი მატჩინგში **არ მონაწილეობს** —
            ცარიელი იდენტობის დოკუმენტირებული წესი. */
         'course' => ['columns' => ['url'], 'done' => 'done'],
+        /* ⚠️ `osm_id` გლობალური იდენტობაა (OSM ერთი ბაზაა ყველასთვის),
+           ხელით შეყვანილ ადგილს კი არ აქვს — ის მატჩინგში უბრალოდ არ
+           მონაწილეობს (ცარიელი იდენტობის დოკუმენტირებული წესი). */
+        'place' => ['columns' => ['osm_id'], 'done' => 'visited'],
     ];
 
     /**
@@ -136,6 +142,7 @@ final class PublicDomain
         'playlist' => ['relation' => null, 'columns' => ['name']],
         'bookmark' => ['relation' => null, 'columns' => ['title', 'url']],
         'course' => ['relation' => null, 'columns' => ['title']],
+        'place' => ['relation' => null, 'columns' => ['name']],
         'gallery_album' => ['relation' => null, 'columns' => ['name']],
     ];
 

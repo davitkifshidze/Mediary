@@ -11,6 +11,7 @@ use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Status;
@@ -79,6 +80,8 @@ class LibraryStats
         /* FEAT-25 — ⚠️ `done_at` **`finished_at`-ია და არა `updated_at`**:
            „წელს რამდენი დავასრულე" სწორედ ამით ითვლება (FEAT-08/FEAT-21). */
         'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => true],
+        // ⚠️ `done_at` = `visited_at` — „წელს სად ვიყავი“ სწორედ ეს კითხვაა
+        'place' => ['model' => Place::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'place_categories'], 'rating' => true],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */

@@ -68,6 +68,7 @@ const NoteRemindersPage = lazy(() =>
 )
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ default: m.CoursesPage })))
+const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
 const DictionariesPage = lazy(() => import('@/pages/DictionariesPage').then((m) => ({ default: m.DictionariesPage })))
 const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage').then((m) => ({ default: m.PlaylistsPage })))
 const PlaylistPage = lazy(() => import('@/pages/PlaylistPage').then((m) => ({ default: m.PlaylistPage })))
@@ -147,6 +148,8 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   bookmark: <BookmarksPage />,
   // FEAT-25 — კურსები
   course: <CoursesPage />,
+  // FEAT-26 — ადგილები
+  place: <PlacesPage />,
   // Tasks 10 — გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
   gallery: <GalleryPage />,
 }

@@ -30,6 +30,8 @@ export const CODES = [
   // §14 — BoardGameGeek Cloudflare-ის უკან დგას და შეიძლება არ გაიხსნას
   'bgg_unavailable',
   'openlibrary_unavailable',
+  // FEAT-26 — OSM Nominatim არ პასუხობს („ვერაფერი ვიპოვე“ სხვა ფაქტია)
+  'nominatim_unavailable',
   // §11 — RAWG კლავიშს ითხოვს; მისი გარეშე წყარო „მიუწვდომელია"
   'rawg_unavailable',
   // §16.2 — დამთხვევა ორ **საჯარო** პროფილს შორის ითვლება

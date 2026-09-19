@@ -33,6 +33,7 @@ class ModulesSeeder extends Seeder
         'bookmark' => '#0ea5e9',
         // FEAT-25 — ტეალი; მეზობლებისგან (ბუკმარკის ცისფერი) გასარჩევად
         'course' => '#0ea5a4',
+        'place' => '#f97316',
     ];
 
     public function run(): void
@@ -221,6 +222,22 @@ class ModulesSeeder extends Seeder
                 'morph_alias' => 'course',
                 'enabled_by_default' => false,
                 'sort_order' => 43,
+            ],
+            [
+                // FEAT-26 — ადგილები. წყარო OSM Nominatim-ია: უფასო, გასაღების
+                // გარეშე, სამაგიეროდ `User-Agent` სავალდებულოა და წამში ერთი
+                // მოთხოვნაა ნებადართული (`Services\Places\NominatimClient`).
+                'key' => 'place',
+                'name_ka' => 'ადგილები',
+                'name_en' => 'Places',
+                'description_ka' => 'სანახავი და ნანახი ადგილები — რუკის კოორდინატი, ფოტოები და შეფასება.',
+                'description_en' => 'Places to visit and places visited — map coordinates, photos and a rating.',
+                'icon' => 'MapPin',
+                'route_base' => '/places',
+                'api_base' => '/places',
+                'morph_alias' => 'place',
+                'enabled_by_default' => false,
+                'sort_order' => 44,
             ],
         ];
 

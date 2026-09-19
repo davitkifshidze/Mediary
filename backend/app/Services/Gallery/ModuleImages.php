@@ -15,6 +15,8 @@ use App\Models\GameFile;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Place;
+use App\Models\PlaceFile;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\SongFile;
@@ -78,6 +80,7 @@ class ModuleImages
         'game' => [Game::class, 'cover_path'],
         'bookmark' => [Bookmark::class, 'thumbnail_path'],
         'course' => [Course::class, 'thumbnail_path'],
+        'place' => [Place::class, 'photo_path'],
     ];
 
     /**
@@ -93,6 +96,7 @@ class ModuleImages
         'board_game' => [BoardGameFile::class, 'board_game_id', BoardGame::class, null],
         'game' => [GameFile::class, 'game_id', Game::class, null],
         'course' => [CourseFile::class, 'course_id', Course::class, null],
+        'place' => [PlaceFile::class, 'place_id', Place::class, null],
         // ⚠️ ჩანაწერების ფაილი პრივატულ დისკზეა და მხოლოდ ამ მარშრუტით გამოდის
         'note' => [NoteEntryFile::class, 'note_entry_id', NoteEntry::class, '/note-files/'],
     ];

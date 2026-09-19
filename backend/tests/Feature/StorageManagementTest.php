@@ -16,6 +16,7 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\User;
@@ -709,6 +710,17 @@ class StorageManagementTest extends TestCase
         $course->files()->create([
             'user_id' => $u->id, 'kind' => 'certificate',
             'path' => 'courses/files/certificates/c.pdf', 'original_name' => 'c.pdf', 'size' => 48,
+        ]);
+
+        // FEAT-26 — ადგილი: ფოტო + მიმაგრებული ფაილი
+        $place = Place::create([
+            'user_id' => $u->id, 'name' => 'p',
+            'photo_path' => 'places/photos/p.jpg',
+        ]);
+        $place->files()->create([
+            'user_id' => $u->id, 'kind' => 'image',
+            'path' => 'places/files/images/p.jpg', 'size' => 36,
+            'original_name' => 'p.jpg',
         ]);
 
         $note = NoteEntry::create(['user_id' => $u->id, 'title' => 'n']);

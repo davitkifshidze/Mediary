@@ -918,6 +918,7 @@
     "module_quota_exceeded": "This module's limit is used up: {{needed}} needed, {{remaining}} left (limit {{quota}}). Adjust the split in settings.",
     "allocation_exceeds_quota": "The allocated limits add up to more than your total quota.",
     "openlibrary_unavailable": "Open Library is not answering — try later or fill the fields by hand.",
+    "nominatim_unavailable": "OpenStreetMap is not answering right now. You can fill the place in by hand.",
     "bgg_unavailable": "BoardGameGeek is unavailable right now — try later or fill the fields by hand.",
     "rawg_unavailable": "RAWG is unavailable (no API key configured) — fill the fields by hand.",
     "profile_not_public": "Your own profile must be public to compare.",
@@ -1159,6 +1160,20 @@
         "thumbnail": "Thumbnail",
         "description": "Description",
         "tags": "Tags"
+      },
+      "place": {
+        "name": "Name",
+        "status": "Status",
+        "category": "Category",
+        "address": "Address",
+        "city": "City",
+        "country": "Country",
+        "coords": "Coordinates",
+        "rating": "My rating",
+        "visited_at": "Visit date",
+        "photo": "Photo",
+        "description": "Description",
+        "tags": "Tags"
       }
     },
     "desc": {
@@ -1229,6 +1244,10 @@
       "course": {
         "url": "The link is optional — an offline course has none.",
         "lessons": "Done and total; the percentage is computed from these and is never stored."
+      },
+      "place": {
+        "coords": "The source search fills these in; you can also type them.",
+        "visited_at": "Setting the status to “visited” writes the date by itself; here you can record an older visit."
       }
     },
     "edit": "Customise",
@@ -1315,7 +1334,8 @@
       "gallery": "Gallery photos",
       "bookmark": "Bookmarks",
       "anime": "Anime",
-      "course": "Courses"
+      "course": "Courses",
+      "place": "Places"
     },
     "targetHint": {
       "movie": "The film along with its genres, cast links and gallery.",
@@ -1329,7 +1349,8 @@
       "gallery": "Photos only — the records themselves stay.",
       "bookmark": "The bookmark together with its uploaded image.",
       "anime": "Anime records — poster, genres, cast and gallery.",
-      "course": "The course together with its certificate and attached files."
+      "course": "The course together with its certificate and attached files.",
+      "place": "The place together with its photos and files."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -2559,7 +2580,10 @@
       "user_block": "block",
       "course": "Course",
       "course_category": "Course category",
-      "course_file": "Course file"
+      "course_file": "Course file",
+      "place": "Place",
+      "place_category": "Place category",
+      "place_file": "Place file"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -3250,8 +3274,60 @@
     "sort_progress": "By progress",
     "sort_finished": "By finish date"
   },
+  "places": {
+    "title": "Places",
+    "count": "{{count}} places",
+    "add": "Add a place",
+    "edit": "Edit the place",
+    "saved": "The place has been saved.",
+    "deleted": "The place has been deleted.",
+    "delete": "Delete the place",
+    "deleteHint": "“{{name}}” will be deleted together with its files.",
+    "deleteFileHint": "“{{name}}” will be deleted and its space freed.",
+    "empty": "No places yet",
+    "emptyHint": "Write down a place you want to visit, or one you already have.",
+    "emptyFiltered": "No place matches this filter",
+    "emptyFilteredHint": "Change the filter or the search term.",
+    "status": "Status",
+    "categories": "Categories",
+    "country": "Country",
+    "lat": "Latitude",
+    "lng": "Longitude",
+    "coordsHint": "Latitude and longitude in degrees. The source search fills them in; zero is a real coordinate.",
+    "openMap": "Open on the map",
+    "visitedOn": "Visited {{date}}",
+    "files": "Files",
+    "noFiles": "No files.",
+    "noFilesTitle": "Nothing uploaded yet",
+    "photosHint": "Photos you took yourself live here; ones found on the web go to the gallery.",
+    "lookupTitle": "Search the source",
+    "lookupHint": "OpenStreetMap is free and needs no key. The search is a button of its own — the source allows one request per second.",
+    "lookupPlaceholder": "e.g. Vardzia",
+    "lookupAction": "Search",
+    "lookupEmpty": "Nothing found — fill it in by hand.",
+    "candidateTaken": "The address and the coordinates are filled in.",
+    "fileKinds": {
+      "image": "Photos",
+      "doc": "Documents"
+    },
+    "statuses": {
+      "to_visit": "To visit",
+      "visited": "Visited"
+    },
+    "sort_newest": "Newest",
+    "sort_oldest": "Oldest",
+    "sort_name": "By name",
+    "sort_rating": "By rating",
+    "sort_visited": "By visit date"
+  },
   "courseCategories": {
     "title": "Course categories",
+    "add": "Add a category",
+    "edit": "Edit the category",
+    "saved": "The category has been saved."
+  },
+  "placeCategories": {
+    "title": "Place categories",
     "add": "Add a category",
     "edit": "Edit the category",
     "saved": "The category has been saved."

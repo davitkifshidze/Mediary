@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
@@ -179,6 +180,16 @@ final class ExportDomain
                 'status_name', 'tags', 'lessons_total', 'lessons_done', 'minutes',
                 'rating', 'description', 'is_favorite', 'started_at', 'finished_at',
                 'thumbnail_path', 'image_url', 'visibility', 'created_at',
+            ],
+        ],
+        'place' => [
+            'model' => Place::class,
+            'with' => ['category'],
+            'fields' => [
+                'id', 'name', 'category', 'status', 'status_name', 'tags',
+                'address', 'city', 'country', 'lat', 'lng', 'osm_id', 'osm_type',
+                'rating', 'description', 'is_favorite', 'visited_at',
+                'photo_path', 'visibility', 'created_at',
             ],
         ],
     ];

@@ -12,6 +12,7 @@ use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
@@ -290,6 +291,24 @@ class GlobalSearch
                     ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
                 ],
                 'image' => 'thumbnail_path',
+            ],
+
+            'place' => [
+                'module' => 'place',
+                'model' => Place::class,
+                'custom' => 'place',
+                'title_rank' => ['columns' => ['name']],
+                'columns' => [
+                    'title' => ['name'],
+                    'description' => ['description'],
+                    // მისამართით ძებნა ისევე ბუნებრივია, როგორც სახელით
+                    'address' => ['address', 'city', 'country'],
+                ],
+                'json' => ['tags' => 'tags'],
+                'relations' => [
+                    ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
+                ],
+                'image' => 'photo_path',
             ],
 
             'bookmark' => [
