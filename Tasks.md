@@ -53,7 +53,7 @@
 | DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ⬜ |
 | DEBT-22 | `GenreController::store()` slug-ს შეუზღუდავი `while exists` ციკლით ქმნის — `DictionaryKey::make()` სწორედ ამისთვის დაიწერა | Low | debt | S | ✅ |
 | DEBT-23 | `GeorgianShops::fetch()` მთელ პასუხს კითხულობს და მერე ჭრის — „ჭერი ტყუილია"-ს იგივე პატერნი, რაც `LinkMetadata`-ს §A3-მდე ჰქონდა | Low | debt | S | ✅ |
-| DEBT-24 | უსასრულოდ მზარდი ცხრილები (`serp_searches`, `translation_usages`, `note_notifications`, `batch_items`, `job_batches`) არასდროს იწმინდება | Low | debt | S | ⬜ |
+| DEBT-24 | უსასრულოდ მზარდი ცხრილები (`serp_searches`, `translation_usages`, `note_notifications`, `batch_items`, `job_batches`) არასდროს იწმინდება | Low | debt | S | ✅ |
 | DEBT-25 | `<html lang="ka">` სტატიკურია — ინგლისურ UI-ზეც `ka` რჩება | Low | debt | S | ⬜ |
 | DEBT-26 | ქართული ორთოგრაფიის ავტომატური შემოწმება (hunspell `ka_GE`) CI-ში არ არის — BUG-18-ის ტიპის შეცდომას ვერავინ იჭერს | Low | debt | S | ⬜ |
 | FEAT-06 | მომხმარებლის საკუთარი მონაცემების ექსპორტი (JSON/CSV თითო მოდულზე) | — | feature | M | ⬜ |
@@ -637,13 +637,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-24] მზარდი ცხრილები არასდროს იწმინდება
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). ოთხივე მოდელს `MassPrunable` დაემატა თავისი ვადით: `SerpSearch`/`TranslationUsage` — `KEEP_MONTHS = 3`, `BatchItem` — `KEEP_DAYS = 30`, `NoteNotification` — **`KEEP_READ_DAYS = 90`**; `Schedule`-ში `model:prune` და `queue:prune-batches --hours=48` (ორივე დღეში ერთხელ). ⚠️ **`MassPrunable` და არა `Prunable`**: წაშლა ერთი query-ია, მოვლენების გარეშე — ოთხივე `AuditRegistry::NOT_LOGGED`-შია, ე.ი. observer-ს ისედაც არაფერი ეთქმოდა, ათასობით ობიექტის ჩატვირთვა კი ფუჭი ხარჯი იქნებოდა. ⚠️ **შეტყობინებებიდან მხოლოდ წაკითხული იშლება** — `read_at`-ის გარეშე რიგი ან ჯერ ეკრანზე არ ყოფილა, ან ჩავარდნილია (`failed` + მიზეზი); ვადით ბრმა წაშლა შეხსენებას უბრალოდ დაკარგავდა. ⚠️ **`owner` სკოუპი ცხადად ეხსნება** `BatchItem`/`NoteNotification`-ზე: CLI-ზე ის ისედაც არ მოქმედებს, მაგრამ ამაზე დაყრდნობა ნიშნავდა, რომ ვებიდან გაშვებული იგივე ბრძანება ჩუმად ერთი ანგარიშის რიგებს წაშლიდა (ტესტი სწორედ ამიტომ ავტორიზებულია). ⚠️ **`audit_logs` არ ეხება** (§4.7, ხელითაა) და **`failed_jobs`-იც განზრახ რჩება**: `tries = 1`, ე.ი. ჩავარდნა იშვიათია და თითოეული მოსაკვლევია — ავტომატური წაშლა სწორედ იმ კვალს გაანადგურებდა, რისთვისაც ის ცხრილი არსებობს. ცოცხლად გადამოწმდა: `php artisan model:prune --pretend` ოთხივე მოდელს ასახელებს, `schedule:list` — ოთხ ბრძანებას.
 - **ტიპი:** debt
 - **სად:** `backend/routes/console.php:41` (`Schedule` — მხოლოდ `notes:remind`); `Prunable` არცერთ მოდელზე (`grep -rl Prunable backend/app/Models` → 0)
 - **პრობლემა:** `serp_searches` (თითო ძებნა), `translation_usages` (თითო გამოძახება), `note_notifications` (ჟურნალი), `batch_items`, `job_batches`/`failed_jobs` შეუზღუდავად იზრდება; `audit_logs` განზრახ ხელითაა (§4.7), დანარჩენი — უბრალოდ დაუწერელი. კვოტის ფანჯარა 1 თვე/1 დღეა, ე.ი. ძველი რიგი ვერაფერს ემსახურება.
 - **რატომ:** SQLite-ზე არა, MySQL-ზე წლის შემდეგ მილიონობით რიგი ბექაპსა და ვიუერს ამძიმებს.
 - **გადაწყვეტა:** `Prunable` (`serp_searches` >3 თვე, `translation_usages` >3 თვე, `batch_items` >30 დღე, `note_notifications` წაკითხული >90 დღე) + `Schedule::command('model:prune')->daily()` და `queue:prune-batches --hours=48`; `audit_logs` — შეუხებელი.
 - **Acceptance criteria:**
-  - [ ] `php artisan model:prune --pretend` ოთხივე მოდელს ასახელებს; `schedule:list` ორ ახალ ბრძანებას აჩვენებს
+  - [x] `php artisan model:prune --pretend` ოთხივე მოდელს ასახელებს; `schedule:list` ორ ახალ ბრძანებას აჩვენებს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

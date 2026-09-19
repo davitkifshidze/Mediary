@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Support\AppTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,7 +20,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TranslationUsage extends Model
 {
+    use MassPrunable;
+
     public const PROVIDER_GEMINI = 'gemini';
+
+    /**
+     * რამდენი თვე ვინახავთ (Tasks DEBT-24).
+     *
+     * ⚠️ **ლიმიტის ფანჯარა ერთი დღეა** (`usedToday`) და RPM — ერთი წუთი,
+     * ე.ი. სამი თვის იქით რიგი მხოლოდ ისტორიაა. `serp_searches`-ის იგივე
+     * ვადა, რადგან ორივე ერთსა და იმავე კითხვას პასუხობს.
+     */
+    public const KEEP_MONTHS = 3;
 
     /**
      * ⚠️ **წყნარი ოკეანის დრო და არა UTC.** Gemini-ის უფასო დონის დღიური
@@ -85,5 +98,19 @@ class TranslationUsage extends Model
             ->where('created_at', '>=', CarbonImmutable::now()->subMinute())
             ->when($userId !== null, fn ($q) => $q->where('user_id', $userId))
             ->count();
+    }
+
+    /**
+     * ⚠️ **`MassPrunable`** — ერთი query, მოვლენების გარეშე: მოდელი
+     * `AuditRegistry::NOT_LOGGED`-შია და ათასობით ობიექტის ჩატვირთვა
+     * მხოლოდ წასაშლელად ფუჭი ხარჯია.
+     *
+     * ⚠️ ზღვარი `AppTime`-იდან მოდის და არა `CarbonImmutable::now()`-იდან:
+     * `created_at` აპლიკაციის ზონაშია ჩაწერილი (§8) და ამ ფაილის
+     * `QUOTA_TIMEZONE` აქ არ მოქმედებს — ის Google-ის ლიმიტის ფანჯარაა.
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', AppTime::now()->subMonths(self::KEEP_MONTHS));
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\AppTime;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,6 +24,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SerpSearch extends Model
 {
+    use MassPrunable;
+
+    /**
+     * რამდენი თვე ვინახავთ (Tasks DEBT-24).
+     *
+     * ⚠️ **კვოტის ფანჯარა ერთი თვეა** (გეგმა 7 რიცხვში განახლდება), ე.ი.
+     * ამაზე ძველი რიგი მრიცხველს ვეღარაფერში ემსახურება — სამი თვე
+     * ისტორიისთვისაა და არა დათვლისთვის.
+     */
+    public const KEEP_MONTHS = 3;
+
     protected $fillable = [
         'user_id',
         'engine',
@@ -39,5 +53,16 @@ class SerpSearch extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * ⚠️ **`MassPrunable` და არა `Prunable`**: წაშლა ერთი query-ია, მოვლენების
+     * გარეშე. ეს მოდელი `AuditRegistry::NOT_LOGGED`-შია, ე.ი. observer-ს
+     * ისედაც არაფერი ეთქმოდა — სამაგიეროდ ათასობით მოდელის ჩატვირთვა
+     * მხოლოდ იმისთვის, რომ წაიშალოს, სუფთა ფუჭი ხარჯია.
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', AppTime::now()->subMonths(self::KEEP_MONTHS));
     }
 }

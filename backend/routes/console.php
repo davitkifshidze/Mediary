@@ -51,3 +51,24 @@ Schedule::command('notes:remind')->everyMinute()->withoutOverlapping(5);
 | ე.ი. უფრო ხშირი გაშვება არაფერს შეცვლიდა.
 */
 Schedule::command('backups:prune-inspect')->hourly()->withoutOverlapping(5);
+
+/*
+| Tasks DEBT-24 — უსასრულოდ მზარდი ცხრილების გასუფთავება.
+|
+| ოთხი მოდელი `MassPrunable`-ია: `SerpSearch` და `TranslationUsage` (3 თვე),
+| `BatchItem` (30 დღე) და `NoteNotification` (**წაკითხული** 90 დღე). ვადები
+| თითო მოდელზე კონსტანტებია — ერთი საერთო რიცხვი აქ ოთხივეს ერთ კალათში
+| ჩასვამდა, არადა ისინი სხვადასხვა კითხვას პასუხობენ.
+|
+| ⚠️ **`audit_logs` აქ განზრახ არ არის** (§4.7): ის ხელითაა გასასუფთავებელი,
+| `/audit`-ის გეგმიდან, და `chat_delete`-ის მსგავსი რიგები საერთოდ არ იშლება.
+|
+| ⚠️ **`failed_jobs`-იც განზრახ რჩება**: `tries = 1`, ე.ი. ჩავარდნა იშვიათია
+| და თითოეული მათგანი მოსაკვლევია — ავტომატური წაშლა სწორედ იმ კვალს
+| გაანადგურებდა, რომლის გამოც ეს ცხრილი არსებობს.
+|
+| ⚠️ `queue:prune-batches` **Laravel-ის საკუთარ `job_batches`-ს** ასუფთავებს
+| და არა ჩვენს `batch_items`-ს — ორი სხვადასხვა ცხრილია.
+*/
+Schedule::command('model:prune')->daily()->withoutOverlapping(5);
+Schedule::command('queue:prune-batches --hours=48')->daily()->withoutOverlapping(5);
