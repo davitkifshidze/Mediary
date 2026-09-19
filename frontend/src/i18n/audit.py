@@ -33,7 +33,10 @@ i18next უბრალოდ თვითონ გასაღებს და
      ერთიანობა ქართული ტექსტის გამართულობის ნაწილია;
   9. **ბრჭყალის სტილი** (GAP-19) — ქართული ტიპოგრაფიული წყვილი „…“ (U+201E
      და U+201C). 21 ხაზზე გახსნა ტიპოგრაფიული იყო, დახურვა კი ASCII `"` —
-     `storage.allocationsWhere` ერთსა და იმავე წინადადებაში ორივეს იყენებდა.
+     `storage.allocationsWhere` ერთსა და იმავე წინადადებაში ორივეს იყენებდა;
+ 10. **ლათინური სიტყვა ქართულ წინადადებაში** (GAP-20) — „default-ად ჩართული",
+     „private დისკზე", „ერთი credit-ია". ტექნიკურ ტერმინს (`php.ini`, `slug`)
+     და ბრენდს (TMDB, YouTube) ეს არ ეხება — იხ. `LATIN_OK`.
 """
 import json
 import io
@@ -125,6 +128,39 @@ POLITE_OK_KEYS = {"matches.sharedTotal"}
 # გასწორების შემდეგ `ka.json`-ში ასეთი სიმბოლო საერთოდ არ დარჩა (გაზომილი),
 # ე.ი. მისი გამოჩენა ყოველთვის ან ახალი შერეული წყვილია, ან კოპირებული ტექსტი.
 ASCII_QUOTE = '"'
+
+
+# მე-10 შემოწმება (GAP-20): ლათინური სიტყვა ქართულ წინადადებაში.
+#
+# ⚠️ **განმასხვავებელი რეგისტრია და არა ლექსიკონი.** ბრენდი და აბრევიატურა
+# ყოველთვის დიდი ასოთია (`TMDB`, `RAWG`, `YouTube`, `Gemini`) — მათ ქართული
+# ბრუნვაც თავისუფლად მოსდევთ (`TMDB-ის`). დეფექტი კი ყოველთვის **პატარა
+# ასოებით** დაწერილი ჩვეულებრივი სიტყვაა: `default-ად`, `credit-ია`,
+# `abuse-ის`, `private`, `engine`. გაზომილია: 236 ლათინური ტოკენიდან ამ
+# ფილტრს 38 გადის და მათგან ექვსი იყო ნამდვილი დეფექტი.
+#
+# ⚠️ `{{…}}` და `` `…` `` ჯერ იჭრება: პირველი ინტერპოლაციის სახელია
+# (`{{count}}`), მეორე — კოდის ნაჭერი (`/sync`, `?view=`), ე.ი. არცერთი
+# ინტერფეისის ტექსტი არ არის.
+#
+# ⚠️ წერტილიანი/დახრილიანი ტოკენი (`php.ini`, `rawg.io`, `chat.id`) გამოტოვებულია
+# სტრუქტურულად და არა სიით — ის ყოველთვის მისამართი, ფაილი ან ველის გზაა.
+LATIN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:[.\-_/][A-Za-z0-9]+)*")
+LATIN_STRIP_RE = re.compile(r"\{\{[^}]*\}\}|`[^`]*`")
+GEORGIAN_RE = re.compile(r"[\u10a0-\u10ff]")
+# ⚠️ **ყოველ ჩანაწერს მიზეზი აქვს** — სია სწორედ იმისთვისაა მოკლე, რომ
+# „დავამატოთ და მოვისვენოთ" გამოსავალი არ გახდეს.
+LATIN_OK = {
+    # ბრძანებები და პროგრამები (`php artisan media:redownload --missing`)
+    "artisan", "php", "media", "redownload", "missing", "bootstrap",
+    "ffmpeg", "mysqldump", "yt-dlp",
+    # პროტოკოლი, ფორმატი, სქემის ტერმინი
+    "http", "https", "localhost", "sql", "mp4", "slug", "env", "backend",
+    # პროვაიდერის საკუთარი ტერმინი — მენიუს/ველის სახელია და ითარგმნება ცუდად
+    "credentials", "key", "auth", "bot", "newbot", "chat",
+    # TMDB-ის ზომის გასაღებები და IMDb-ის id-ს მაგალითი
+    "w154", "w185", "w300", "w342", "w500", "w780", "w1280", "h632", "tt0286106",
+}
 
 
 def source_files():
@@ -251,6 +287,25 @@ def ascii_quotes(flat):
         for key, value in sorted(flat.items())
         if isinstance(value, str) and ASCII_QUOTE in value
     ]
+
+
+def latin_words(flat):
+    """(გასაღები, სიტყვა) — ლათინური სიტყვა ქართულ ტექსტში (GAP-20)."""
+    out = []
+    for key, value in sorted(flat.items()):
+        if not isinstance(value, str):
+            continue
+        text = LATIN_STRIP_RE.sub(" ", value)
+        # სრულიად ლათინური მნიშვნელობა (ბრენდი, ბრძანება) — არა ქართული წინადადება
+        if not GEORGIAN_RE.search(text):
+            continue
+        for word in LATIN_RE.findall(text):
+            if word != word.lower() or len(word) < 3:
+                continue
+            if "." in word or "/" in word or word in LATIN_OK:
+                continue
+            out.append((key, word))
+    return out
 
 
 def flatten(node, prefix=""):
@@ -398,6 +453,13 @@ def main() -> int:
     print(f"\nascii quotes in ka.json: {len(quotes)}")
     for key in quotes:
         print(f"    {key}")
+
+    # 10. ლათინური სიტყვა ქართულ წინადადებაში (GAP-20)
+    latin = latin_words(locales["ka.json"])
+    problems += len(latin)
+    print(f"\nlatin words in ka.json: {len(latin)}")
+    for key, word in latin:
+        print(f"    {key}  — {word}")
 
     only_ka = sorted(set(locales["ka.json"]) - set(locales["en.json"]))
     only_en = sorted(set(locales["en.json"]) - set(locales["ka.json"]))
