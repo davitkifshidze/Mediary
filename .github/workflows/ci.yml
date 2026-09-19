@@ -66,6 +66,14 @@ jobs:
         working-directory: backend
         run: ./vendor/bin/pint --test
 
+      # ⚠️ **`--no-dev` განზრახაა** (Tasks DEBT-15): dev-დამოკიდებულება
+      # (PHPUnit, Pint, Faker) პროდაქშენში არ ჯდება, ე.ი. მისი
+      # მოწყვლადობა აპს არ ეხება — ჩათვლა CI-ს იმაზე აწითლებდა, რასაც
+      # ვერაფერს გავაკეთებდით, და შემოწმება პირველივე დღეს გამოირთვებოდა.
+      - name: Dependency audit
+        working-directory: backend
+        run: composer audit --no-dev
+
   frontend:
     name: Frontend — tsc + Vitest + oxlint
     runs-on: ubuntu-latest
@@ -95,6 +103,14 @@ jobs:
       - name: Lint
         working-directory: frontend
         run: npm run lint
+
+      # ⚠️ **`--audit-level=high`** — `npm audit` ტრანზიტულ dev-პაკეტებზე
+      # `low`/`moderate`-ს მუდმივად აბრუნებს, ხშირად ისეთს, რასაც upstream
+      # ჯერ არ გაუსწორებია. ყოველ push-ზე წითელი CI, რომელსაც ვერაფერს
+      # უშველი, შემოწმებას თვითონვე კლავს — `high`/`critical` კი ქმედებადია.
+      - name: Dependency audit
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
 
   i18n:
     name: i18n — ka/en სინქრონში

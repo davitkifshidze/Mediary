@@ -44,7 +44,7 @@
 | GAP-20 | ქართულ წინადადებებში ლათინური სიტყვებია: default, private, abuse, credit, engine | Low | gap | S | ✅ |
 | GAP-21 | უცნობი მისამართი უხმოდ `/`-ზე გადამისამართდება — 404 გვერდი არ არსებობს | Low | gap | S | ✅ |
 | BUG-25 | `LinkMetadata::absolute()` `img/x.png`-ს (დახრილის გარეშე) ჰოსტის ფესვთან ითვლის და არა გვერდის საქაღალდესთან | Low | bug | S | ✅ |
-| DEBT-15 | CI-ში დამოკიდებულებების აუდიტი (`composer audit`, `npm audit`) და Dependabot არ არის | Low | debt | S | ⬜ |
+| DEBT-15 | CI-ში დამოკიდებულებების აუდიტი (`composer audit`, `npm audit`) და Dependabot არ არის | Low | debt | S | ✅ |
 | DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ✅ |
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ✅ |
 | DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
@@ -538,14 +538,15 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-15] CI-ში დამოკიდებულებების აუდიტი და Dependabot არ არის
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). CI-ს ორივე ნაბიჯი დაემატა (`composer audit --no-dev` backend-ზე, `npm audit --omit=dev --audit-level=high` frontend-ზე) და დაიწერა `.github/dependabot.yml` (composer · npm · github-actions, კვირაში ერთხელ). ორივე აუდიტი ცოცხლად გაშვებულია სუფთაა („No security vulnerability advisories found", „found 0 vulnerabilities"). ⚠️ **აუდიტი და Dependabot ერთი და იგივე არ არის და ორივე საჭიროა**: პირველი ამბობს „აქ ცნობილი მოწყვლადობაა", მეორე PR-ს ხსნის — ე.ი. ერთი პოულობს, მეორე წყვეტს. ⚠️ **`--no-dev` და `--audit-level=high` გააზრებული ზღვრებია და არა სისუსტე**: dev-პაკეტი (PHPUnit, Pint) პროდაქშენში არ ჯდება, ხოლო `npm audit` ტრანზიტულ dev-დამოკიდებულებებზე მუდმივად აბრუნებს `low`/`moderate`-ს, რომელსაც ხშირად upstream ჯერ არ გაუსწორებია — ყოველ push-ზე წითელი CI, რომელსაც ვერაფერს უშველი, თვითონვე კლავს შემოწმებას. ⚠️ **`directory` ორივეზე ქვესაქაღალდეა** (`/backend`, `/frontend`): რეპოს ფესვში არც `composer.json` დგას და არც `package.json`, ე.ი. ნაგულისხმევი `/` ვერაფერს იპოვიდა. ⚠️ `github-actions` მესამე ეკოსისტემად განზრახ დაემატა — `actions/checkout@v4`-ის მიტოვებული ვერსია ჩუმად მოძველებულ Node-ზე გადის.
 - **ტიპი:** debt
 - **სად:** `.github/workflows/ci.yml:52` (`composer install` — `composer audit` არა), `:84` (`npm ci` — `npm audit` არა); `.github/dependabot.yml` არ არსებობს
 - **პრობლემა:** დღეს ორივე აუდიტი სუფთაა (გადამოწმდა 2026-09-18), მაგრამ ცნობილი მოწყვლადობა მომავალში მხოლოდ ხელით შემოწმებით გამოჩნდება; SEC-14-ის Guzzle-ის ქცევაც სწორედ ვერსიაზეა დამოკიდებული.
 - **რატომ:** spec-ის SEC „დამოკიდებულების ცნობილი მოწყვლადობა" — შემოწმების არქონა თვითონ დეფექტია.
 - **გადაწყვეტა:** `composer audit --no-dev`-ის და `npm audit --omit=dev --audit-level=high`-ის ნაბიჯები CI-ში; `.github/dependabot.yml` (composer + npm + github-actions, კვირაში ერთხელ).
 - **Acceptance criteria:**
-  - [ ] CI ორივე აუდიტს გადის და მოწყვლადობაზე წითლდება
-  - [ ] Dependabot PR-ებს ხსნის
+  - [x] CI ორივე აუდიტს გადის და მოწყვლადობაზე წითლდება
+  - [x] Dependabot PR-ებს ხსნის
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
