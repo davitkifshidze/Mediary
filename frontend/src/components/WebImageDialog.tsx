@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { Label } from '@/components/ui/label'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
 import { WebSourcePicker } from '@/components/WebSourcePicker'
 
@@ -365,7 +366,14 @@ export function WebImageDialog({
             </div>
 
             <div>
-              <Label htmlFor="web-pages">{t('web.pagesLabel')}</Label>
+              {/* ⚠️ „თითო გვერდი ერთი კრედიტია" ეკრანზე უნდა ეწეროს (Tasks DEBT-17):
+                  `web.pagesCostWarn` InfoHint-ის გაყოფისას გაჩნდა და არსად
+                  ჩაერთო — ე.ი. ფულის გაფრთხილება ლოკალში იწერებოდა და
+                  მომხმარებელს არასდროს უნახავს. */}
+              <Label htmlFor="web-pages" className="inline-flex items-center gap-1">
+                {t('web.pagesLabel')}
+                {pagedSelected && <InfoHint critical={t('web.pagesCostWarn')} />}
+              </Label>
               <Input
                 id="web-pages"
                 type="number"

@@ -36,7 +36,10 @@ i18next უბრალოდ თვითონ გასაღებს და
      `storage.allocationsWhere` ერთსა და იმავე წინადადებაში ორივეს იყენებდა;
  10. **ლათინური სიტყვა ქართულ წინადადებაში** (GAP-20) — „default-ად ჩართული",
      „private დისკზე", „ერთი credit-ია". ტექნიკურ ტერმინს (`php.ini`, `slug`)
-     და ბრენდს (TMDB, YouTube) ეს არ ეხება — იხ. `LATIN_OK`.
+     და ბრენდს (TMDB, YouTube) ეს არ ეხება — იხ. `LATIN_OK`;
+ 11. **გამოუყენებელი გასაღები** (DEBT-17) — წაშლილი ფუნქციის ტექსტი ორივე
+     ლოკალში ცოცხლობდა (`videos.kind*`, `admin.pageTitle`, ექვსი ლექსიკონის
+     წაშლის დიალოგი…), ითარგმნებოდა, იკითხებოდა და ყოველ გასწორებას აორმაგებდა.
 """
 import json
 import io
@@ -161,6 +164,21 @@ LATIN_OK = {
     # TMDB-ის ზომის გასაღებები და IMDb-ის id-ს მაგალითი
     "w154", "w185", "w300", "w342", "w500", "w780", "w1280", "h632", "tt0286106",
 }
+
+
+# მე-11 შემოწმება (DEBT-17): გამოუყენებელი გასაღები.
+#
+# ⚠️ **წაშლა საშიში მოქმედებაა, ამიტომ „გამოყენებულის" განსაზღვრება აქ
+# განზრახ ფართოა.** `TPL_RE` მხოლოდ `t(`ns.${…}`)`-ს ხედავს, `MovieFormPage`-ის
+# `tm()` კი `t(type === 'movie' ? `form.${key}` : …)`-ია — შაბლონი `t(`-ის
+# პირველი არგუმენტი **არ არის**. ვიწრო შემოწმებაზე დაყრდნობით `form.*`-ის
+# ოცდაათამდე ცოცხალი გასაღები „გამოუყენებლად" ჩაითვლებოდა და წაიშლებოდა.
+# ამიტომ აქ იკითხება **ნებისმიერი** `` `ns.${ `` და `'ns.' + x`, თუ `ns`
+# ლოკალის ნამდვილი namespace-ია.
+ANY_TPL_RE = re.compile(r"`([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*[._])\$\{")
+CONCAT_RE = re.compile(r"""['"]([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*[._])['"]\s*\+""")
+# `mediaKey(base, type)` — ბაზა სტატიკურად იკითხება, დომენი სუფიქსს ამატებს
+MEDIA_SUFFIXES = ("Series", "Anime")
 
 
 def source_files():
@@ -306,6 +324,31 @@ def latin_words(flat):
                 continue
             out.append((key, word))
     return out
+
+
+def unused_keys(flat, static, literal, dynamic):
+    """გასაღებები, რომელთაც კოდში ვერავითარი გზით ვერ მივადექით (DEBT-17)."""
+    used = set(static) | set(literal)
+    namespaces = {key.split(".", 1)[0] for key in flat}
+
+    prefixes = set(dynamic)
+    for _path, text in source_files():
+        for m in list(ANY_TPL_RE.finditer(text)) + list(CONCAT_RE.finditer(text)):
+            prefix = m.group(1)
+            if prefix.split(".", 1)[0] in namespaces:
+                prefixes.add(prefix)
+
+    def reachable(key):
+        if key in used:
+            return True
+        if any(key.startswith(prefix) for prefix in prefixes):
+            return True
+        return any(
+            key.endswith(suffix) and key[: -len(suffix)] in used
+            for suffix in MEDIA_SUFFIXES
+        )
+
+    return sorted(key for key in flat if not reachable(key))
 
 
 def flatten(node, prefix=""):
@@ -460,6 +503,13 @@ def main() -> int:
     print(f"\nlatin words in ka.json: {len(latin)}")
     for key, word in latin:
         print(f"    {key}  — {word}")
+
+    # 11. გამოუყენებელი გასაღები (DEBT-17)
+    unused = unused_keys(ka, static, literal, dynamic)
+    problems += len(unused)
+    print(f"\nunused keys: {len(unused)}")
+    for key in unused:
+        print(f"    {key}")
 
     only_ka = sorted(set(locales["ka.json"]) - set(locales["en.json"]))
     only_en = sorted(set(locales["en.json"]) - set(locales["ka.json"]))
