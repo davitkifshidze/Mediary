@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\GameNoteController;
 use App\Http\Controllers\Api\GameVideoController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\GenreItemController;
+use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaSyncController;
@@ -305,6 +306,17 @@ Route::middleware('auth:sanctum')->group(function () {
        საკუთარ მონაცემებს ვერ წაიღებდა. */
     Route::get('/export', [ExportController::class, 'index']);
     Route::get('/export/{module}', [ExportController::class, 'show']);
+
+    /* ---------- გარე სერვისის CSV-ის იმპორტი (FEAT-07) ----------
+       ⚠️ **ეს „ლინკების ბოტი" არ არის** (2026-09-05-ს სამუდამოდ მოხსნილი):
+       იქ აპი თვითონ დაეძებდა ბმულებს უცხო საიტებზე, აქ კი მომხმარებელი
+       საკუთარ ფაილს ტვირთავს.
+       ⚠️ **ჯგუფის middleware არ ადევს**: მოდული ფაილის შიგთავსიდან
+       ირკვევა და არა მისამართიდან, ე.ი. `@type`-ს წასაკითხი არაფერი აქვს —
+       ორივე შემოწმება (წვდომა + უფლება) კონტროლერშია, ცხადად. */
+    Route::get('/import/sources', [ImportController::class, 'sources']);
+    Route::post('/import/plan', [ImportController::class, 'plan']);
+    Route::post('/import/item', [ImportController::class, 'item']);
 
     /* ---------- ფილმები (module: movie) ---------- */
     Route::middleware(['module:movie', 'permission:movie'])->group(function () {

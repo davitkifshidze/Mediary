@@ -3,6 +3,7 @@ import {
   ContactRound,
   DatabaseBackup,
   DownloadCloud,
+  Import,
   Inbox,
   KeyRound,
   Languages,
@@ -56,6 +57,7 @@ export type ToolSectionKey =
   | 'audit'
   | 'credentials'
   | 'backups'
+  | 'import'
   | 'purge'
 
 type ToolSection = { color: string; icon: LucideIcon }
@@ -75,6 +77,7 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   audit: { color: 'var(--tool-audit)', icon: ScrollText },
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
+  import: { color: 'var(--tool-import)', icon: Import },
   purge: { color: 'var(--tool-purge)', icon: Trash2 },
 }
 

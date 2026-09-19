@@ -35,6 +35,7 @@ const ActorPage = lazy(() => import('@/pages/ActorPage').then((m) => ({ default:
 const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ default: m.GenresPage })))
 const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const ImportPage = lazy(() => import('@/pages/ImportPage').then((m) => ({ default: m.ImportPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -269,6 +270,10 @@ function AppShell() {
           {/* ძებნის შედეგები — ⚠️ **მოდულზე დამოცებული არაა**:
               ის თვითონ ეკითხება ძებნას ყველა ჩართულ დომენში და გამორთულს
               საერთოდ არ აჭვენებს. */}
+          {/* FEAT-07 — CSV-ის იმპორტი. ⚠️ **მოდულზე დამოკიდებული არაა**:
+              რომელ მოდულს ეხება, ფაილი წყვეტს, და კონტროლერი თვითონ
+              ამოწმებს წვდომასაც და უფლებასაც (ისევე, როგორც ძებნა). */}
+          <Route path="import" element={<ImportPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />

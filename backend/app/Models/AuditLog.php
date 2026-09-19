@@ -79,6 +79,17 @@ class AuditLog extends Model
      */
     public const ACTION_EXPORT = 'export';
 
+    /**
+     * გარე სერვისის ფაილიდან შემოტანილი ჩანაწერი (FEAT-07).
+     *
+     * ⚠️ **`create`-ს არ ცვლის, ემატება.** ჩანაწერის შექმნას `AuditObserver`
+     * ისედაც წერს; აქ ერთადერთი დამატებითი ფაქტია **წყარო** —
+     * „ეს ფილმი Letterboxd-ის ფაილიდან შემოვიდა". ამას მოდელის ივენთი
+     * ვერ იცის, ხოლო წლის შემდეგ სწორედ ის კითხვა ისმება, საიდან გაჩნდა
+     * ბიბლიოთეკაში 300 ჩანაწერი ერთ დღეს.
+     */
+    public const ACTION_IMPORT = 'import';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
@@ -93,6 +104,7 @@ class AuditLog extends Model
         self::ACTION_CAST_DETACH,
         self::ACTION_TRANSLATE,
         self::ACTION_EXPORT,
+        self::ACTION_IMPORT,
     ];
 
     /**

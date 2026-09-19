@@ -509,7 +509,9 @@
     "quotaStopped": "Out of space — the rest was stopped",
     "handOff": "Run on the server",
     "handedOff": "{{count}} items handed to the server — you can close the tab now",
-    "itemSkipped": "The record was gone — skipped"
+    "itemSkipped": "The record was gone — skipped",
+    "importing": "Importing…",
+    "importDone": "Import finished"
   },
   "missing": {
     "label": "Missing:",
@@ -992,7 +994,8 @@
     "unauthenticated": "Your session has ended — please sign in again.",
     "move_target_required": "Choose what happens to these records: move them to another entry, leave them without one, or delete them.",
     "move_target_is_self": "The move target is the entry being deleted — pick another one.",
-    "album_temporarily_locked": "Too many wrong attempts — this album is blocked for a while. Try again later."
+    "album_temporarily_locked": "Too many wrong attempts — this album is blocked for a while. Try again later.",
+    "import_source_unknown": "The file format was not recognised — pick the source by hand"
   },
   "fields": {
     "title": "Fields",
@@ -2420,7 +2423,8 @@
       "cast_attach": "Cast member added",
       "cast_detach": "Cast member removed",
       "translate": "Translation",
-      "export": "Export"
+      "export": "Export",
+      "import": "Import"
     },
     "modules": {
       "account": "Account",
@@ -2902,5 +2906,43 @@
     "records": "{{count}} records",
     "fields": "{{count}} columns",
     "empty": "You have no module to export"
+  },
+  "import": {
+    "title": "Import",
+    "hint": "An export file (CSV) from another service: Letterboxd and IMDb for films, Goodreads for books, Steam for games. The file is only read, never stored on the server.",
+    "stepFile": "File",
+    "stepFileHint": "Pick the export file — the format is recognised from its columns.",
+    "choose": "Choose a file",
+    "noFile": "No file chosen",
+    "read": "Read it",
+    "stepPlan": "Plan",
+    "stepPlanHint": "Source: {{source}}. Nothing is asked of the external source at this step — the file is read and local duplicates are checked.",
+    "new": "Will be added",
+    "duplicate": "Already have",
+    "invalid": "Could not read",
+    "state": {
+      "new": "new",
+      "duplicate": "duplicate",
+      "invalid": "broken"
+    },
+    "field": {
+      "title": "Title",
+      "year": "Year",
+      "rating": "Rating",
+      "imdb_id": "IMDb id",
+      "isbn": "ISBN",
+      "author": "Author",
+      "external_id": "External id",
+      "shelf": "Shelf",
+      "done_at": "Date"
+    },
+    "truncated": "The file has {{total}} rows; the first {{max}} were read.",
+    "noTitle": "no title",
+    "showAll": "Show all ({{count}})",
+    "stepRun": "Run",
+    "stepRunHint": "Each record is its own request — progress shows below and you can stop at any time.",
+    "run": "Import ({{count}})",
+    "empty": "No file chosen yet",
+    "emptyHint": "The export file comes from the service itself: Letterboxd from its settings, IMDb from a list page, Goodreads from “My Books”."
   }
 }

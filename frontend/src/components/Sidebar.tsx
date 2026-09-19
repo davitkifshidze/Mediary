@@ -9,6 +9,7 @@ import {
   Clapperboard,
   DatabaseBackup,
   DownloadCloud,
+  Import,
   Inbox,
   KeyRound,
   Languages,
@@ -990,6 +991,15 @@ export function Sidebar({
             {t('translate.title')}
           </Link>
         )}
+        {/* FEAT-07 — გარე სერვისის CSV-ის იმპორტი.
+            ⚠️ **პირობის გარეშე ჩანს**: ცნობადი ფორმატები სამ სხვადასხვა
+            მოდულს ეხება (ფილმი · წიგნი · თამაში), ე.ი. „მედია-მოდული მაქვს
+            თუ არა" აქ არასწორი კითხვაა — რომელ მოდულს ეხება, თვითონ ფაილი
+            წყვეტს და უფლებას სერვერი ამოწმებს. */}
+        <Link to="/import" onClick={() => setDrawerOpen(false)} style={toolAccent('import')} className={toolLink('/import')}>
+          <Import className="size-4 shrink-0" />
+          {t('import.title')}
+        </Link>
         {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
             ⚠️ **პირობის გარეშე ჩანს**: TMDB-ს მედია-მოდულები იყენებენ,
             RAWG-ს თამაშები, YouTube-ს ვიდეო — ე.ი. „რომელი მოდული მაქვს"

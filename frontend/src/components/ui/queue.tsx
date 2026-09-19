@@ -12,6 +12,7 @@ import {
   type GalleryOptions,
   type GalleryPlanItem,
 } from '@/api/gallery'
+import { importRow, type ImportPlanItem } from '@/api/import'
 import { mediaApi, syncItem, type SyncOptions, type SyncPlanItem } from '@/api/media'
 import {
   translateGenres,
@@ -34,11 +35,13 @@ import { cn } from '@/lib/utils'
        აქ **ერთი ერთეულია** (`genresDict`) — ის გლობალურია და ერთ რექვესთში მუშავდება.
      • `purge`   — მასობრივი წაშლა (Tasks 20.2). ⚠️ დესტრუქციულია, ამიტომ
        რიგში მხოლოდ `/purge`-ის ცხადი დადასტურების შემდეგ ჯდება.
+     • `import`  — გარე სერვისის CSV-ის რიგები (FEAT-07). ერთეული **ჩანაწერი
+       ჯერ არ არის**, ე.ი. `itemId` არ აქვს — რიგში ფაილის რიგი ზის.
    ნავიგაცია არ იბლოკება (რიგი გლობალურია); refresh/close კი აფრთხილებს.
    ============================================================ */
 
 type QStatus = 'pending' | 'running' | 'done' | 'error'
-type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge'
+type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import'
 
 /** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
 export interface PurgeQueueOptions {
@@ -95,6 +98,15 @@ interface QItem {
   review?: boolean
   /** purge — რა სამიზნეზე და ვისთან იშლება (20.2) */
   purgeOpts?: PurgeQueueOptions
+  /**
+   * import — გეგმის რიგი და წყარო (FEAT-07).
+   *
+   * ⚠️ **მთელი რიგი მიჰყვება ერთეულს და არა მხოლოდ id.** ჩანაწერი ჯერ
+   * არ არსებობს — სწორედ ამ მონაცემიდან უნდა შეიქმნას; ფაილი კი
+   * სერვერზე არ ინახება, ე.ი. სხვა წყარო მას აღარ აქვს.
+   */
+  importRow?: ImportPlanItem
+  importSource?: string
   /** ჩავარდნის მიზეზი (J5) ან 'cancelled' */
   error?: string
   /** შესრულების დრო — დარჩენილი დროის შესაფასებლად */
@@ -118,6 +130,8 @@ interface QueueApi {
   ) => void
   /** ⚠️ მასობრივი წაშლა (20.2) — მხოლოდ დადასტურებული სკოუპით */
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
+  /** CSV-ის იმპორტი (FEAT-07) — გეგმის რიგები + წყარო */
+  enqueueImport: (items: ImportPlanItem[], source: string) => void
   isQueued: (tmdbId: number, mediaType?: MediaType) => boolean
   active: number
   isBusy: boolean
@@ -131,6 +145,7 @@ const QueueContext = React.createContext<QueueApi>({
   enqueueGallery: () => {},
   enqueueTranslate: () => {},
   enqueuePurge: () => {},
+  enqueueImport: () => {},
   isQueued: () => false,
   active: 0,
   isBusy: false,
@@ -153,6 +168,7 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
   translate: { busy: 'queue.translating', done: 'queue.translateDone' },
   sync: { busy: 'queue.syncing', done: 'queue.syncDone' },
   add: { busy: 'queue.adding', done: 'queue.doneTitle' },
+  import: { busy: 'queue.importing', done: 'queue.importDone' },
 }
 
 export function QueueProvider({ children }: { children: React.ReactNode }) {
@@ -168,7 +184,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   /**
    * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
    * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Gemini-ის
-   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery` — TMDB.
+   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`import` — TMDB
+   * (იმპორტი გარე წყაროს რიგზე ერთხელ ეკითხება, ე.ი. იმავე ტემპს ემორჩილება).
    */
   const paceOf = React.useCallback(
     (kind: QKind) =>
@@ -346,6 +363,38 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  /**
+   * CSV-ის რიგები რიგში (FEAT-07).
+   *
+   * ⚠️ **დუბლის გასაღები ფაილის ხაზია და არა ჩანაწერის id** — ჩანაწერი
+   * ჯერ არ არსებობს, ხოლო ერთი და იგივე სათაური ფაილში ორჯერაც შეიძლება
+   * იყოს (და ორივე ნამდვილად უნდა შემოვიდეს, თუ სხვადასხვა წელია).
+   */
+  const enqueueImport = React.useCallback((rows: ImportPlanItem[], source: string) => {
+    setExpanded(true) // იმპორტი გრძელია — პროგრესი მაშინვე ჩანს
+    setItems((cur) => {
+      const base = freshBase(cur)
+      const busy = new Set(
+        cur
+          .filter((i) => i.kind === 'import' && (i.status === 'pending' || i.status === 'running'))
+          .map((i) => `${i.importSource}:${i.importRow?.line}`),
+      )
+      const fresh = rows
+        .filter((r) => !busy.has(`${source}:${r.line}`))
+        .map((r) => ({
+          id: nextId++,
+          kind: 'import' as QKind,
+          title: r.year ? `${r.title} (${r.year})` : r.title,
+          // ⚠️ ქეშის გასუფთავებას ემსახურება; იმპორტი მხოლოდ ერთ მოდულს ეხება
+          mediaType: 'movie' as MediaType,
+          status: 'pending' as QStatus,
+          importRow: r,
+          importSource: source,
+        }))
+      return fresh.length ? [...base, ...fresh] : base
+    })
+  }, [])
+
   const cancelPending = React.useCallback(() => {
     setItems((cur) => cur.filter((i) => i.status !== 'pending'))
     abortRef.current?.abort()
@@ -412,6 +461,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 ? translateGenres(next.sources, ctrl.signal)
                 : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal)
               ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped }))
+            : next.kind === 'import'
+              ? importRow(next.importSource!, next.importRow!, ctrl.signal).then((r) => ({
+                  ok: r.ok,
+                  error: r.error ?? undefined,
+                  // ⚠️ „უკვე მაქვს" ჩავარდნა არ არის — სერვერის მეორე შემოწმებაა
+                  skipped: r.skipped,
+                }))
             : next.kind === 'purge'
               ? purgeItem(next.purgeOpts!, next.itemId!, ctrl.signal).then((r) => ({
                   ok: r.ok,
@@ -440,6 +496,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'purge'
             ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan']
             : []),
+          /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს,
+             ე.ი. სამივე შესაძლო სია და დეშბორდის მრიცხველი ერთად ახლდება */
+          ...(next.kind === 'import' ? ['books', 'games', 'dashboard', 'export'] : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         setItems((cur) =>
           cur.map((i) =>
@@ -635,6 +694,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueueGallery,
       enqueueTranslate,
       enqueuePurge,
+      enqueueImport,
       isQueued,
       active,
       isBusy,
@@ -646,6 +706,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueueGallery,
       enqueueTranslate,
       enqueuePurge,
+      enqueueImport,
       isQueued,
       active,
       isBusy,
