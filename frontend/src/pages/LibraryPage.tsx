@@ -9,6 +9,7 @@ import {
   ArrowUpNarrowWide,
   ChevronLeft,
   ChevronRight,
+  Dices,
   Layers,
   Plus,
   Search,
@@ -42,6 +43,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -117,6 +119,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     setGroupBy(settings.defaultGrouping)
   }, [settings.defaultGrouping, groupTouched])
   const [discoverOpen, setDiscoverOpen] = useState(false)
+  /** FEAT-20 — „რა ვნახო დღეს" */
+  const [pickOpen, setPickOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [page, setPage] = useState(1)
 
@@ -355,6 +359,25 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 </TooltipContent>
               </Tooltip>
             )}
+            {/* FEAT-20 — „რა ვნახო დღეს". ⚠️ **ფილტრის ჩამრთველის გვერდით**:
+                არჩევანი ზუსტად მიმდინარე ფილტრის ფარგლებშია, ე.ი. ღილაკი
+                იმ კონტროლებს ეკუთვნის, რომლებიც სიას განსაზღვრავენ. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setPickOpen(true)}
+                  aria-label={t('pick.title')}
+                >
+                  <Dices className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm">
+                <p className="font-medium">{t('pick.title')}</p>
+                <p className="mt-1 text-muted-foreground">{t('pick.hint')}</p>
+              </TooltipContent>
+            </Tooltip>
             {/* ვიწრო ეკრანზე ფილტრები უჯრაშია — დესკტოპზე პანელი მარჯვნივ დგას */}
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button variant="outline" onClick={() => setDiscoverOpen(true)}>
@@ -504,6 +527,11 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
           </FilterGroup>
         </FilterPanel>
       </div>
+
+      {/* FEAT-20 — არჩევანი სერვერზე ხდება, იმავე ფილტრით, რაც სიას აქვს */}
+      {pickOpen && (
+        <RandomPickDialog type={type} filters={filters} onClose={() => setPickOpen(false)} />
+      )}
 
       <DiscoverModal
         open={discoverOpen}

@@ -3162,5 +3162,14 @@
       "backup": "Backup: {{name}}",
       "batch": "{{total}} items, {{failed}} failed."
     }
+  },
+  "pick": {
+    "title": "What should I watch",
+    "hint": "Picks one record at random from the current filter. With no section chosen it only considers what you have not started.",
+    "again": "Another",
+    "start": "Start it",
+    "started": "The status has changed — enjoy!",
+    "emptyTitle": "Nothing matches this filter",
+    "emptyHint": "Change the filter or the section and try again."
   }
 }

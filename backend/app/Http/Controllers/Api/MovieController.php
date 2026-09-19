@@ -71,6 +71,13 @@ class MovieController extends Controller
             $query->where('rating', '<=', $request->float('rating_max'));
         }
 
+        /* FEAT-20 — „რა ვნახო დღეს". ⚠️ **ფილტრების შემდეგ და დალაგებამდე**:
+           არჩევანი ზუსტად იმ სიიდან უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ,
+           დალაგებას კი შემთხვევით არჩევანზე აზრი არ აქვს. */
+        if ($request->string('pick')->toString() === 'random') {
+            return $this->randomPick($request, $query);
+        }
+
         $sort = $request->string('sort')->toString();
 
         match ($sort) {
@@ -227,6 +234,34 @@ class MovieController extends Controller
     }
 
     /* ---------- დამხმარეები ---------- */
+
+    /**
+     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერი (FEAT-20).**
+     *
+     * ⚠️ **`role = todo` ნაგულისხმევია და არა მყარი**: კითხვა „ჯერ რა არ
+     * მინახავს"-ია, მაგრამ ცხადად არჩეული სექცია (`?status=`) მასზე მაღლა
+     * დგას — თორემ „დაწყებულებიდან აირჩიე" შეუძლებელი იქნებოდა.
+     * ⚠️ **როლი და არა გასაღები** (§6.4): სტატუსი per-user ლექსიკონია,
+     * ე.ი. ჩემი „საყურებელი" და შენი „ვნახავ" ერთი და იგივეა მხოლოდ
+     * `role`-ის დონეზე.
+     *
+     * ⚠️ **`inRandomOrder()` და არა PHP-ში არჩევა**: სიის მთლიანად
+     * წამოღება მხოლოდ ერთი ჩანაწერის ასარჩევად ზუსტად ის არის, რის
+     * წინააღმდეგაც პაგინაცია დაიწერა.
+     *
+     * ⚠️ **ცარიელი შედეგი `data: null`-ია და არა 404**: „ფილტრში არაფერია"
+     * ნორმალური მდგომარეობაა და ეკრანზე `EmptyState`-ად იხატება, შეცდომად კი არა.
+     */
+    private function randomPick(Request $request, $query)
+    {
+        if (! $request->filled('status') && ! $request->boolean('favorite')) {
+            $query->statusRole('todo');
+        }
+
+        $record = $query->reorder()->inRandomOrder()->first();
+
+        return response()->json(['data' => $record ? new MovieResource($record->load(['genres', 'cast'])) : null]);
+    }
 
     private function applyData(Movie $movie, Request $request): void
     {

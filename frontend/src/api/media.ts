@@ -77,6 +77,18 @@ export function createMediaApi(base: string) {
       const { data } = await api.post(`${base}/bulk-status`, input)
       return data.updated as number
     },
+    /**
+     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერი ფილტრის ფარგლებში (FEAT-20).**
+     *
+     * ⚠️ **იგივე `filters` მიდის, რაც სიას**: არჩევანი ზუსტად იმ სიიდან
+     * უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ.
+     * ⚠️ **`null` ნორმალური პასუხია** — „ფილტრში არაფერია" და არა შეცდომა.
+     */
+    pickRandom: async (filters: MediaFilters = {}): Promise<Movie | null> => {
+      const { all, ...rest } = filters
+      const { data } = await api.get(base, { params: { ...rest, pick: 'random' } })
+      return data.data ?? null
+    },
     /** TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს) */
     addFromTmdb: async (tmdbId: number): Promise<Movie> => {
       const { data } = await api.post(`${base}/from-tmdb`, { tmdb_id: tmdbId })
