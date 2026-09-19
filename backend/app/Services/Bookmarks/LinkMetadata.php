@@ -154,14 +154,27 @@ class LinkMetadata
         $parts = parse_url($url);
 
         return isset($parts['scheme'], $parts['host'])
-            ? "{$parts['scheme']}://{$parts['host']}/favicon.ico"
+            ? "{$parts['scheme']}://".$this->authority($parts).'/favicon.ico'
             : null;
     }
 
-    /** შედარებითი გზა → აბსოლუტური (og:image ხშირად `/img/x.png`-ია) */
+    /**
+     * შედარებითი გზა → აბსოლუტური (og:image ხშირად `/img/x.png`-ია).
+     *
+     * ⚠️ **დახრილის გარეშე დაწყებული გზა გვერდის საქაღალდეს ეკუთვნის და არა
+     * ჰოსტის ფესვს** (RFC 3986 §5.2 — Tasks BUG-25). `img/x.png` გვერდზე
+     * `https://site.ge/blog/post/` **`https://site.ge/blog/post/img/x.png`-ია**;
+     * ძველი `$root.'/'.ltrim(...)` მას ფესვთან ითვლიდა და ბუკმარკის სურათი
+     * (და favicon-იც, იმავე მეთოდზე რომ გადის) გატეხილი გამოდიოდა.
+     *
+     * ⚠️ **პორტიც მოჰყვება** — `parse_url` მას ცალკე ველად აბრუნებს, ე.ი. მისი
+     * დავიწყება `http://host:8080/...`-ს ჩუმად 80-ზე გადაიყვანდა.
+     */
     private function absolute(string $base, ?string $path): ?string
     {
-        if (! $path) {
+        $path = trim((string) $path);
+
+        if ($path === '') {
             return null;
         }
         if (preg_match('#^https?://#i', $path)) {
@@ -174,14 +187,62 @@ class LinkMetadata
             return null;
         }
 
-        $root = "{$parts['scheme']}://{$parts['host']}";
-
         // `//cdn.example.com/x.png` — პროტოკოლის გარეშე
         if (str_starts_with($path, '//')) {
             return $parts['scheme'].':'.$path;
         }
 
-        return $root.'/'.ltrim($path, '/');
+        $root = "{$parts['scheme']}://".$this->authority($parts);
+
+        // `/img/x.png` — ჰოსტის ფესვიდან
+        if (str_starts_with($path, '/')) {
+            return $root.$this->removeDotSegments($path);
+        }
+
+        return $root.$this->removeDotSegments($this->directory($parts['path'] ?? '/').$path);
+    }
+
+    /** `host` + `:port`, როცა პორტი ცხადად წერია */
+    private function authority(array $parts): string
+    {
+        return $parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+    }
+
+    /** ბაზის გზის საქაღალდე: `/blog/post` → `/blog/`, `/blog/post/` → `/blog/post/` */
+    private function directory(string $path): string
+    {
+        $cut = strrpos($path, '/');
+
+        return $cut === false ? '/' : substr($path, 0, $cut + 1);
+    }
+
+    /** `.` და `..` სეგმენტების მოხსნა (RFC 3986 §5.2.4) */
+    private function removeDotSegments(string $path): string
+    {
+        $segments = explode('/', $path);
+        $last = array_key_last($segments);
+        $out = [];
+
+        foreach ($segments as $i => $segment) {
+            if ($segment === '.' || $segment === '..') {
+                // ⚠️ პირველი (ცარიელი) სეგმენტი გზას აბსოლუტურად ტოვებს — არ ვხსნით
+                if ($segment === '..' && count($out) > 1) {
+                    array_pop($out);
+                }
+                // ბოლო სეგმენტი იყო, ე.ი. გზა საქაღალდით სრულდება
+                if ($i === $last) {
+                    $out[] = '';
+                }
+
+                continue;
+            }
+
+            $out[] = $segment;
+        }
+
+        $result = implode('/', $out);
+
+        return str_starts_with($result, '/') ? $result : '/'.$result;
     }
 
     private function domain(string $url): ?string

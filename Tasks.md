@@ -43,7 +43,7 @@
 | GAP-19 | ბრჭყალების ორი სტილი ერევა: სწორი „…“ და შერეული „…" (21 ხაზი) | Low | gap | S | ⬜ |
 | GAP-20 | ქართულ წინადადებებში ლათინური სიტყვებია: default, private, abuse, credit, engine | Low | gap | S | ⬜ |
 | GAP-21 | უცნობი მისამართი უხმოდ `/`-ზე გადამისამართდება — 404 გვერდი არ არსებობს | Low | gap | S | ⬜ |
-| BUG-25 | `LinkMetadata::absolute()` `img/x.png`-ს (დახრილის გარეშე) ჰოსტის ფესვთან ითვლის და არა გვერდის საქაღალდესთან | Low | bug | S | ⬜ |
+| BUG-25 | `LinkMetadata::absolute()` `img/x.png`-ს (დახრილის გარეშე) ჰოსტის ფესვთან ითვლის და არა გვერდის საქაღალდესთან | Low | bug | S | ✅ |
 | DEBT-15 | CI-ში დამოკიდებულებების აუდიტი (`composer audit`, `npm audit`) და Dependabot არ არის | Low | debt | S | ⬜ |
 | DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ⬜ |
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ⬜ |
@@ -522,13 +522,14 @@
 - **დამოკიდებულება:** none
 
 ### [BUG-25] `LinkMetadata::absolute()` დახრილის გარეშე ფარდობით გზას ჰოსტის ფესვთან ითვლის
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `absolute()` ბაზის გზის **საქაღალდეს** იყენებს (`directory()`) და `.`/`..` სეგმენტებს `removeDotSegments()`-ით ხსნის (RFC 3986 §5.2.4) — `img/x.png` გვერდზე `…/blog/post/` ახლა `…/blog/post/img/x.png`-ია. ⚠️ **იგივე ბაგი favicon-საც ჰქონდა** (ერთსა და იმავე მეთოდზე გადის), ე.ი. ორივე ერთად გასწორდა. ⚠️ **პორტიც იკარგებოდა** — `parse_url` მას ცალკე ველად აბრუნებს და ძველი კოდი მხოლოდ `host`-ს კითხულობდა, ე.ი. `http://host:8080/…` ჩუმად 80-ზე გადადიოდა; `authority()` ერთადერთი ადგილია, სადაც ეს იწერება (`defaultFavicon()`-იც მასზე გადავიდა). ⚠️ **ფესვზე ზემოთ ასვლა შეუძლებელია**: `..` პირველ (ცარიელ) სეგმენტს არ ხსნის, ე.ი. `../../x.png` ფესვიდან `/x.png`-ია და არა ჰოსტს გარეთ გასვლა. `LinkMetadataTest` — 12 ტესტი, ძველ კოდზე **8 წითელია**.
 - **ტიპი:** bug
 - **სად:** `backend/app/Services/Bookmarks/LinkMetadata.php:184` (`return $root.'/'.ltrim($path, '/')`)
 - **პრობლემა:** `og:image="img/x.png"` გვერდზე `https://site.ge/blog/post/` → `https://site.ge/img/x.png`-ს ქმნის, სწორი კი `https://site.ge/blog/post/img/x.png`-ა (RFC 3986 §5.2). favicon-ზეც იგივე. შედეგი — ბუკმარკის სურათი გატეხილია.
 - **რატომ:** არასწორი ქცევა edge case-ში; ხილული, თუმცა იშვიათი.
 - **გადაწყვეტა:** ბაზის `path`-ის საქაღალდე (`dirname(parse_url($base, PHP_URL_PATH))`) დახრილის გარეშე გზაზე; ტესტი ორივე ფორმაზე (`/x.png`, `x.png`, `../x.png`).
 - **Acceptance criteria:**
-  - [ ] `LinkMetadataTest`: სამი ფარდობითი ფორმა სწორ აბსოლუტურ URL-ს იძლევა
+  - [x] `LinkMetadataTest`: სამი ფარდობითი ფორმა სწორ აბსოლუტურ URL-ს იძლევა
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
