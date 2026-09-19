@@ -37,7 +37,7 @@
 | DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ✅ |
 | GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
 | SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ⬜ |
-| SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ⬜ |
+| SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ✅ |
 | SEC-17 | `GalleryFetcher` `.svg`-ს `image/svg+xml`-ად საჯარო დისკზე წერს — `WebImageImporter` მას უარყოფს, ეს გზა კი არა | Low | security | S | ⬜ |
 | GAP-18 | სამი ტექსტი თქვენობითშია („ჩაწერეთ", „სცადეთ", „არ გირჩევთ") — მთელი აპი შენობითზეა | Low | gap | S | ⬜ |
 | GAP-19 | ბრჭყალების ორი სტილი ერევა: სწორი „…“ და შერეული „…" (21 ხაზი) | Low | gap | S | ⬜ |
@@ -453,13 +453,14 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-16] უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `SetSecurityHeaders`-ს სამი ჰედერი დაემატა (`Content-Security-Policy: frame-ancestors 'none'` + `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`) და სია კონსტანტაა, ე.ი. მეოთხის დამატება ერთი ხაზია. ⚠️ **სრული CSP განზრახ არ დაიწერა**: SPA-ს HTML-ს Laravel არ ემსახურება, ე.ი. `script-src` ამ პასუხებზე არაფერს იცავს. ⚠️ **`Permissions-Policy`-ის სია მოკლეა გააზრებულად** — `autoplay`/`fullscreen`/`encrypted-media`/`picture-in-picture`/`clipboard-write`/`accelerometer` `VideoEmbed`-ისა და `PlayerStage`-ის `allow=`-შია და ფლეერს/ლაითბოქსს/გასაღების კოპირებას გატეხავდა; `SecurityHeadersTest` ამას ცალკე ამოწმებს. ⚠️ უკვე დაყენებულ ჰედერს არ ვცვლით — `SafeMime::response()`-ის გარანტია რომ არ გადაიფაროს.
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Middleware/SetSecurityHeaders.php:28`
 - **პრობლემა:** `Content-Security-Policy: frame-ancestors 'none'` / `X-Frame-Options: DENY` (clickjacking — საჯარო ალბომის unlock ფორმა და ჩატი), `Referrer-Policy: strict-origin-when-cross-origin` (ბუკმარკის/ვიდეოს გარე ბმულზე გადასვლისას მიმართვა `mediary.local/…` გზას ატანს — თუმცა ანჩორებს `noreferrer` აქვთ, API-პასუხებს არა), `Permissions-Policy` არ დგას. dev-ზე HTTP-ა, ამიტომ HSTS მხოლოდ GAP-17-თან ერთად.
 - **რატომ:** იაფი, სტანდარტული დაცვა მრავალმომხმარებლიან აპზე; SEC-04-ის იგივე ფენა.
 - **გადაწყვეტა:** `SetSecurityHeaders`-ში სამი ჰედერი (`has()`-ის შემოწმებით), ტესტი `RateLimitTest`/`SecurityHeadersTest`-ში.
 - **Acceptance criteria:**
-  - [ ] `/api/health` და 404 პასუხზე სამივე ჰედერია
+  - [x] `/api/health` და 404 პასუხზე სამივე ჰედერია
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
