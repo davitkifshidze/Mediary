@@ -311,6 +311,20 @@ class TmdbClient
         return $this->get("/tv/{$id}", ['language' => $language, 'append_to_response' => 'external_ids']);
     }
 
+    /**
+     * ერთი სეზონის ეპიზოდები (FEAT-09).
+     *
+     * ⚠️ **`append_to_response`-ით ეს ვერ მოვა**: `/tv/{id}` მხოლოდ
+     * სეზონების **ჩამონათვალს** აბრუნებს (რაოდენობით), ეპიზოდების სია კი
+     * ცალკე მისამართზეა — ე.ი. სერიალზე იმდენი გამოძახებაა, რამდენი
+     * სეზონიცაა. სწორედ ამიტომ არ ხდება ეს ჩვეულებრივი სინქრონის დროს
+     * ავტომატურად.
+     */
+    public function tvSeason(int $id, int $season, string $language = 'en-US'): array
+    {
+        return $this->get("/tv/{$id}/season/{$season}", ['language' => $language]);
+    }
+
     public function tvCredits(int $id): array
     {
         return $this->get("/tv/{$id}/credits");

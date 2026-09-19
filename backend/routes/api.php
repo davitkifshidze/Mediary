@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
+use App\Http\Controllers\Api\EpisodeController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\GalleryAlbumController;
 use App\Http\Controllers\Api\GalleryController;
@@ -769,6 +770,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item'])
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+
+    /* ---------- სეზონები და ეპიზოდები (FEAT-09) ----------
+       ⚠️ **მხოლოდ TV-დომენები** (`MediaDomain::TV_TYPES`): ფილმს სეზონი
+       არ აქვს და TMDB-საც `/tv/*`-ზე არაფერი აქვს მასზე.
+       ⚠️ **ჩამოტანა `POST`-ია და მონიშვნა `PATCH`.** პირველი მართლა
+       **ქმნის** ეპიზოდების რიგებს, მეორე კი არსებულ ჩანაწერს ცვლის —
+       POST-ად დაწერილი მონიშვნა `create`-ად იკითხებოდა და მხოლოდ
+       რედაქტირების უფლების მქონე როლს ცრუ 403 დაუბრუნდებოდა. */
+    Route::get('/media/episodes/{type}/{id}', [EpisodeController::class, 'index'])
+        ->middleware(['module:@type', 'permission:@type,view'])
+        ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');
+    Route::post('/media/episodes/{type}/{id}', [EpisodeController::class, 'store'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');
+    Route::patch('/media/episodes/{type}/{id}', [EpisodeController::class, 'update'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');
 
     /* ---------- ჩანაწერის მსახიობები ხელით (ეტაპი 1) ----------
        ⚠️ **უფლება სამივეწე `update`-ია და არა მეთოდიდან გამოყვანილი.**

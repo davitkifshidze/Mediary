@@ -23,6 +23,7 @@ use App\Models\CastMemberTranslation;
 use App\Models\Conversation;
 use App\Models\ConversationNickname;
 use App\Models\DatabaseBackup;
+use App\Models\EpisodeWatch;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
@@ -55,6 +56,7 @@ use App\Models\SongGenre;
 use App\Models\SongNote;
 use App\Models\Status;
 use App\Models\TranslationUsage;
+use App\Models\TvEpisode;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Models\UserCredential;
@@ -210,6 +212,10 @@ class AuditRegistry
 
         // ერთი დაწკაპუნება — ლოგს დამარხავდნენ
         MessageReaction::class => 'ერთი დაწკაპუნება ბუშტზე',
+        // FEAT-09 — სეზონის მონიშვნა ოცი რიგია ერთ დაჭერაზე (რეაქციის იგივე მიზეზი)
+        EpisodeWatch::class => 'ეპიზოდის მონიშვნა — ერთი დაწკაპუნება, სეზონზე კი ოცი ერთდროულად',
+        // TMDB-ის ფაქტი და არა ადამიანის ქმედება — გლობალური ლექსიკონი (`Genre`-ის რიგში)
+        TvEpisode::class => 'TMDB-ის ეპიზოდი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
         MessageHide::class => 'ჩემთვის დამალვა; წაშლა კი ცხადად იწერება (§4.6)',
         ConversationNickname::class => 'საუბრის მეტსახელი — ჩემი ხედის პარამეტრი',
 

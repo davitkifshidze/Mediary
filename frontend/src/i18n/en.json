@@ -2971,5 +2971,20 @@
       "11": "November",
       "12": "December"
     }
+  },
+  "episodes": {
+    "title": "Seasons and episodes",
+    "hint": "Episodes are pulled from TMDB by an explicit button — it is one call per season, so it never happens on its own. A tick is yours alone and no other account can see it.",
+    "fetch": "Fetch episodes",
+    "refetch": "Refresh the list",
+    "synced": "{{seasons}} seasons, {{episodes}} episodes fetched",
+    "empty": "No episodes fetched yet.",
+    "progress": "{{watched}} of {{total}} watched",
+    "next": "Next:",
+    "season": "Season {{number}}",
+    "markSeason": "Mark the season",
+    "unmarkSeason": "Clear the season",
+    "mark": "Mark as watched",
+    "unmark": "Clear the mark"
   }
 }
