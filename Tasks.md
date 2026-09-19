@@ -49,7 +49,7 @@
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ✅ |
 | DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
 | DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ✅ |
-| DEBT-20 | მოძველებული კომენტარები: `PublicProfileController` „მხოლოდ ორი GET" (ხუთია, ერთი POST), `sw.js` ელფოსტის არხს ასახელებს, CLAUDE.md ამ მანქანაზე yt-dlp/ffmpeg/python-ის არსებობას ამტკიცებს | Low | debt | S | ⬜ |
+| DEBT-20 | მოძველებული კომენტარები: `PublicProfileController` „მხოლოდ ორი GET" (ხუთია, ერთი POST), `sw.js` ელფოსტის არხს ასახელებს, CLAUDE.md ამ მანქანაზე yt-dlp/ffmpeg/python-ის არსებობას ამტკიცებს | Low | debt | S | ✅ |
 | DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ✅ |
 | DEBT-22 | `GenreController::store()` slug-ს შეუზღუდავი `while exists` ციკლით ქმნის — `DictionaryKey::make()` სწორედ ამისთვის დაიწერა | Low | debt | S | ✅ |
 | DEBT-23 | `GeorgianShops::fetch()` მთელ პასუხს კითხულობს და მერე ჭრის — „ჭერი ტყუილია"-ს იგივე პატერნი, რაც `LinkMetadata`-ს §A3-მდე ჰქონდა | Low | debt | S | ✅ |
@@ -600,13 +600,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-20] მოძველებული კომენტარები და მანქანის შესახებ ჩანაწერები
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). სამივე ადგილი კოდის რეალობას აღწერს, და CLAUDE.md-ის მანქანის ფაქტები **ერთ დათარიღებულ ბლოკშია** („ეს მანქანა (გადამოწმებულია 2026-09-19)"). ⚠️ **ტასკის ერთი მტკიცება არასწორი აღმოჩნდა და გაშვებამ გამოასწორა**: `php artisan mediary:doctor` **ოთხივე ბინარზე OK-ს** აბრუნებს (`yt-dlp`, `ffmpeg`, `mysqldump`, `mysql`) და `python -m graphify` მუშაობს — ე.ი. CLAUDE.md-ის ეს ნაწილი **სწორი იყო** და მისი „გასწორება" ტყუილს შემოიტანდა. ⚠️ **სამაგიეროდ მთელი „On this machine (2026-09-17)" ბლოკი აღმოჩნდა მოძველებული**: `backend/.env` `DB_PORT=3306`-ია (და არა 3307), `my.ini`-შიც 3306 წერია, `mediary.local` hosts-ში **საერთოდ არ არის**, `VITE_API_URL=http://localhost:8000` (და არა ცარიელი), ხოლო `start-mysql.ps1`, რომლის არარსებობასაც ის ბლოკი ამტკიცებდა, **არსებობს**. WAMP/`mediary.local` აწყობა ახლა ცხადად მონიშნული ისტორიაა („მხოლოდ იმ მეორე დესკტოპისთვის"). ⚠️ **`crypto.randomUUID()`-ის ახსნაც გასწორდა**: `http://localhost` უსაფრთხო კონტექსტად ითვლება, ე.ი. ამ მანქანაზე ის *იმუშავებდა* — წესი რჩება, მაგრამ მიზეზი ახლა სწორად წერია (სხვაობა უხილავია, სანამ აპს ჰოსტის სახელით არ გახსნი). ⚠️ `sw.js`-ში „ტელეგრამი/**ელფოსტა**" → ტელეგრამი + `note_notifications`-ის ჟურნალი (ელფოსტის არხი §8.2-ში ამოვიდა და ახლა 422-ია), და „სერვერის **კლავიშები**" → „გასაღებები" (GLOSSARY). ⚠️ `PublicProfileController`-ის „მხოლოდ ორი GET" → ხუთი მარშრუტი, ოთხი GET + `unlockAlbum()`, რომელიც **სესიას ცვლის** — სწორედ ამ ხაზზე დაყრდნობით გაჩნდა GAP-06.
 - **ტიპი:** debt
 - **სად:** `backend/app/Http/Controllers/Api/PublicProfileController.php:27` („ჩაწერა აქ **არაფერი ხდება** — მხოლოდ ორი GET" — მარშრუტი ხუთია, ერთი `POST …/unlock`, GAP-06-ის შემდეგ), `frontend/public/sw.js:12` („ამ შემთხვევისთვის ტელეგრამი/ელფოსტაა" — ელფოსტის არხი §8.2-ში ამოვიდა), `CLAUDE.md` (*Local video download* — „ორივე ბინარი ამ მანქანაზე დაყენებულია" და *Knowledge graph* `python -m graphify` — ამ დესკტოპზე (2026-09-17-დან) `yt-dlp`/`ffmpeg` არ არის (`mediary:doctor` FAIL) და `python` Store-ის stub-ია — მხოლოდ uv-ის cpython გზით)
 - **პრობლემა:** კომენტარი, რომელიც კოდს ეწინააღმდეგება, უფრო ცუდია, ვიდრე მისი არქონა — შემდეგი ცვლილება მას დაეყრდნობა (GAP-06-ის მიზეზი).
 - **რატომ:** README/დოკუმენტაცია vs კოდი (spec-ის მე-3 ნაბიჯი).
 - **გადაწყვეტა:** სამი ტექსტის შესწორება; CLAUDE.md-ში მანქანის სპეციფიკური ფაქტები ერთ „ეს მანქანა" ბლოკში, თარიღით.
 - **Acceptance criteria:**
-  - [ ] სამივე ადგილი კოდის რეალობას აღწერს
+  - [x] სამივე ადგილი კოდის რეალობას აღწერს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
