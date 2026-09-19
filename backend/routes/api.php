@@ -888,6 +888,11 @@ Route::middleware('auth:sanctum')->group(function () {
     /* §10.7/§10.10 — ⚠️ **`PATCH`/`PUT` და არა `POST`**: `EnsureModulePermission`
        POST-ს `create`-ად კითხულობს. ⚠️ ორივე `{conversation}`-ზე
        ზემოთაა, თორემ „messages" საუბრის id-ად წაიკითხება. */
+    /* FEAT-13 — „დაამატე ჩემთანაც": გაზიარებული ჩანაწერი მიმღების ბიბლიოთეკაში.
+       ⚠️ **ბოლო სეგმენტი `save`-ია და არა `create`**: ჩატის მარშრუტებზე
+       `permission:` middleware არ დგას, მაგრამ უფლება კონტროლერში ცხადად
+       მოწმდება — შედეგი **ჩანაწერის შექმნაა** და არა წერილის წაკითხვა. */
+    Route::post('/chat/messages/{message}/save', [ChatController::class, 'saveRecord']);
     Route::patch('/chat/messages/{message}/pin', [ChatController::class, 'pin']);
     Route::put('/chat/messages/{message}/reaction', [ChatController::class, 'react']);
     Route::get('/chat/{conversation}', [ChatController::class, 'messages']);

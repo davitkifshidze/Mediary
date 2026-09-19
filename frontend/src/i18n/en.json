@@ -2210,7 +2210,8 @@
       "gif": "GIF",
       "image": "Image",
       "video": "Video",
-      "file": "File"
+      "file": "File",
+      "record": "Record"
     },
     "deleteTitle": "Delete message",
     "deleteHint": "The message stays in the database (for recovery) — pick who should stop seeing it.",
@@ -2257,7 +2258,20 @@
     },
     "nickname": "Nickname",
     "nicknameHint": "Only you see it; the real name stays unchanged.",
-    "nicknameSaved": "The nickname is saved"
+    "nicknameSaved": "The nickname is saved",
+    "share": "Share",
+    "shareTitle": "Share a record in chat",
+    "shareHint": "“{{name}}” is sent as a card. From a private record the other side sees only the title — sharing does not change visibility.",
+    "shareNote": "Comment",
+    "shareNotePlaceholder": "Optional",
+    "shareAction": "Send",
+    "shareDone": "Sent",
+    "shareSent": "The record has been sent",
+    "shareEmptyHint": "You have not written to anyone yet — a conversation starts from the People page.",
+    "recordAdd": "Add to my library",
+    "recordAdded": "The record has been added",
+    "recordAlready": "You already have this record",
+    "recordSaved": "Added"
   },
   "customFields": {
     "title": "Extra fields",

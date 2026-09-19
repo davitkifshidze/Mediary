@@ -44,6 +44,7 @@ import { highlightParts } from '@/lib/searchResults'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
 import { ChatThreadMenu } from '@/components/chat/ChatThreadMenu'
+import { SharedRecordCard } from '@/components/chat/SharedRecordCard'
 import { Button } from '@/components/ui/button'
 import { EmojiPicker } from '@/components/ui/emoji-picker'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -893,6 +894,19 @@ function Bubble({
   onDeleteFile?: (id: number) => void
 }) {
   const { t } = useTranslation()
+
+  /* FEAT-13 — გაზიარებული ჩანაწერი.
+     ⚠️ **დანართზე მაღლა მოწმდება**: `record`-ტიპის წერილს `attachment`
+     არასდროს აქვს, ე.ი. ქვემოთა `if (!m.attachment) return <>{m.body}</>`
+     მას ჩუმად ცარიელ ბუშტად დახატავდა. */
+  if (m.record) {
+    return (
+      <>
+        <SharedRecordCard messageId={m.id} record={m.record} mine={m.mine} />
+        {m.body && <p className="mt-1.5">{m.body}</p>}
+      </>
+    )
+  }
 
   if (m.attachment_deleted) {
     return (

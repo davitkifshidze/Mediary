@@ -91,6 +91,26 @@ final class MediaDomain
     }
 
     /**
+     * ჩანაწერის გამდიდრება — ერთი შესასვლელი სამივე დომენზე (FEAT-13).
+     *
+     * ⚠️ **სამ გამამდიდრებელს სამი სხვადასხვა მეთოდი ჰქვია**
+     * (`enrichMovie` · `enrichSeries` · `enrichAnime`), ე.ი. ყოველი
+     * გამომძახებელი იძულებული იყო თავისი `match` დაეწერა. ეს რუკა უკვე
+     * აქ არის — ასეთი `match`-ის მეორე ასლი ზუსტად ის დუბლირებაა, რის
+     * გამოც `['movie', 'series']` თოთხმეტ ადგილას ეწერა.
+     */
+    public static function enrich(string $type, Model $record): bool
+    {
+        $enricher = self::enricher($type);
+
+        return match ($type) {
+            'series' => $enricher->enrichSeries($record),
+            'anime' => $enricher->enrichAnime($record),
+            default => $enricher->enrichMovie($record),
+        };
+    }
+
+    /**
      * დომენის რელაციის სახელი **საერთო ლექსიკონზე** (`Genre`, `CastMember`).
      *
      * ⚠️ **მრავლობითობა დომენებს შორის არ ემთხვევა** (`movies`, `series`,

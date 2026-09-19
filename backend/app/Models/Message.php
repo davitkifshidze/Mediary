@@ -21,7 +21,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Message extends Model
 {
     /** §16.3 — შეტყობინების ტიპები */
-    public const TYPES = ['text', 'emoji', 'gif', 'image', 'video', 'file'];
+    public const TYPES = ['text', 'emoji', 'gif', 'image', 'video', 'file', 'record'];
+
+    /**
+     * FEAT-13 — გაზიარებული ჩანაწერი.
+     *
+     * ⚠️ **`MEDIA_TYPES`-ში არ არის და ეს არსებითია**: ის სია იმას
+     * ნიშნავს, რომ წერილს **ფაილი** აცვია (დისკზე, კვოტაში), და
+     * სწორედ ამაზე დგას `attachmentDeleted()`. გაზიარებული ჩანაწერი
+     * მხოლოდ მითითებაა — დისკზე არაფერი იწერება და კვოტა არ იხარჯება.
+     */
+    public const TYPE_RECORD = 'record';
 
     /** ტიპები, რომლებიც ატვირთვას ითხოვს */
     public const MEDIA_TYPES = ['image', 'video', 'file'];
@@ -43,6 +53,8 @@ class Message extends Model
         'removed_at' => 'datetime',
         // §10.7 — დაპინვა `removed_at`/`removed_by`-ის ზუსტი ფორმით
         'pinned_at' => 'datetime',
+        // FEAT-13 — დომენი, id, გლობალური იდენტობა და სათაური
+        'record' => 'array',
     ];
 
     /** §10.7 — დაპინილია ზუსტად მაშინ, როცა დროშტამპი არსებობს */

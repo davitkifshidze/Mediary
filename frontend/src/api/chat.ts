@@ -18,7 +18,7 @@ import type { PublicProfile } from './publicProfile'
    `attachment_deleted`-ით იხატება „ფაილი წაშლილია".
    ============================================================ */
 
-export const MESSAGE_TYPES = ['text', 'emoji', 'gif', 'image', 'video', 'file'] as const
+export const MESSAGE_TYPES = ['text', 'emoji', 'gif', 'image', 'video', 'file', 'record'] as const
 export type MessageType = (typeof MESSAGE_TYPES)[number]
 
 /** ატვირთვის ტიპები — რასაც `file` input-ი აძლევს */
@@ -56,7 +56,39 @@ export interface ChatMessage {
   my_reaction: string | null
   /** §10.7 — დაპინულია თუ არა; **ორივე მონაწილეს შეუძლია** */
   pinned: boolean
+  /** FEAT-13 — გაზიარებული ჩანაწერი; `null` — ჩვეულებრივი წერილი */
+  record: SharedRecord | null
   created_at: string | null
+}
+
+/* ============================================================
+   გაზიარებული ჩანაწერი (FEAT-13).
+
+   ⚠️ **`card` `null`-ია ორ შემთხვევაში და ეს განზრახვაა**: ჩანაწერი
+   პირადია, ან უკვე აღარ არსებობს. ორივეზე ინტერფეისს ერთი და იგივე
+   აქვს სათქმელი — „მხოლოდ სათაური".
+
+   ⚠️ **ბარათი სერვერზე იგება კითხვის მომენტში**, ე.ი. დღეს
+   დაპრივატებული ჩანაწერი გუშინდელ წერილშიც იხურება.
+   ============================================================ */
+
+export interface SharedRecord {
+  domain: string
+  title: string
+  identity: Record<string, string | number | null>
+  /** სრული ბარათი — მხოლოდ საჯარო ჩანაწერზე (ან ავტორისთვის) */
+  card: {
+    id: number
+    domain: string
+    title_ka?: string | null
+    title_en?: string | null
+    poster_url?: string | null
+    cover_url?: string | null
+    image_url?: string | null
+    thumbnail_url?: string | null
+    year?: number | null
+    rating?: number | null
+  } | null
 }
 
 /**
@@ -264,4 +296,42 @@ export function mediaTypeOf(file: File): MediaMessageType {
 export async function setBlocked(username: string, blocked: boolean): Promise<boolean> {
   const { data } = await api.put(`/chat/block/${encodeURIComponent(username)}`, { blocked })
   return data.blocked as boolean
+}
+
+/* ---------- ჩანაწერის გაზიარება (FEAT-13) ---------- */
+
+/**
+ * ჩანაწერის გაგზავნა ბარათად.
+ *
+ * ⚠️ **იმავე endpoint-ზეა, რაზეც ტექსტი და ფაილი** — `domain`-ის არსებობა
+ * წყვეტს, რომელია. ცალკე მისამართი დაბლოკვისა და საჯაროობის კარიბჭეს
+ * მესამედ გაიმეორებდა.
+ */
+export async function shareRecord(
+  conversationId: number,
+  domain: string,
+  recordId: number,
+  body?: string,
+): Promise<ChatMessage> {
+  const { data } = await api.post(`/chat/${conversationId}`, {
+    domain,
+    record_id: recordId,
+    ...(body ? { body } : {}),
+  })
+
+  return data.data as ChatMessage
+}
+
+/**
+ * „დაამატე ჩემთანაც".
+ *
+ * ⚠️ **იდენტობით ემატება და არა `id`-ით** — გამგზავნის ბიბლიოთეკის ნომერი
+ * მიმღებთან არაფერს ნიშნავს; `tmdb_id`/`url`/`platform`+`external_id`
+ * არის ის, რაც ორ ანგარიშს შორის ერთსა და იმავე ნივთს აღნიშნავს.
+ */
+export async function saveSharedRecord(
+  messageId: number,
+): Promise<{ created: boolean; id: number; domain: string }> {
+  const { data } = await api.post(`/chat/messages/${messageId}/save`)
+  return data
 }

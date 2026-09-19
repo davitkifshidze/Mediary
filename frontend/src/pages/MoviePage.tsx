@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Loader2,
+  Share2,
   SquarePen,
   Play,
   Plus,
@@ -25,6 +26,7 @@ import { EpisodeTracker } from '@/components/EpisodeTracker'
 import { RecordGallery } from '@/components/RecordGallery'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
 import { CastRoleDialog } from '@/components/CastRoleDialog'
+import { ShareRecordDialog } from '@/components/chat/ShareRecordDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { pageContainer } from '@/components/ui/page'
@@ -87,6 +89,8 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
   /* ეტაპი 1 — მსახიობის დამატება და როლის შესწორება */
   const [castOpen, setCastOpen] = useState(false)
+  // FEAT-13 — გაზიარება ჩატში
+  const [sharing, setSharing] = useState(false)
   const [roleOf, setRoleOf] = useState<CastMember | null>(null)
 
   const detachMut = useMutation({
@@ -289,6 +293,14 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <SquarePen className="size-4" />
                   {t('actions.edit')}
                 </Link>
+                {/* FEAT-13 — გაზიარება ჩატში ბარათად.
+                    ⚠️ **გაზიარება ხილვადობას არ ცვლის**: პირადი ჩანაწერიდან
+                    თანამოსაუბრემდე მხოლოდ სათაური და გლობალური იდენტობა
+                    მიდის — სწორედ იმდენი, რამდენიც რეკომენდაციას სჭირდება. */}
+                <Button variant="outline" onClick={() => setSharing(true)}>
+                  <Share2 className="size-4" />
+                  {t('chat.share')}
+                </Button>
                 <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
                   <Trash2 className="size-4" />
                   {t('actions.delete')}
@@ -481,6 +493,15 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
             </div>
           )}
         </section>
+
+        {sharing && (
+          <ShareRecordDialog
+            domain={type}
+            recordId={m.id}
+            title={movieTitle(m, lang)}
+            onClose={() => setSharing(false)}
+          />
+        )}
 
         {castOpen && (
           <CastMemberDialog

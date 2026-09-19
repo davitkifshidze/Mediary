@@ -7,16 +7,20 @@ use App\Models\AuditLog;
 use App\Models\Conversation;
 use App\Models\ConversationNickname;
 use App\Models\Message;
+use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\SharedRecord;
 use App\Services\Profile\PublicProfileService;
 use App\Services\Storage\StorageMeter;
 use App\Support\Like;
+use App\Support\PublicDomain;
 use App\Support\SafeMime;
 use App\Support\Snippet;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -54,6 +58,8 @@ class ChatController extends Controller
         private PublicProfileService $profiles,
         private StorageMeter $meter,
         private AuditLogger $audit,
+        // FEAT-13 — ჩანაწერის გაზიარება ბარათად
+        private SharedRecord $shared,
     ) {}
 
     /** ჩემი საუბრები — ბოლო შეტყობინებით და წაუკითხავის რაოდენობით */
@@ -412,6 +418,15 @@ class ChatController extends Controller
 
         $upload = $request->file('file');
 
+        /* ===== FEAT-13 — ჩანაწერის გაზიარება ბარათად =====
+           ⚠️ **იმავე endpoint-ზეა და არა ცალკე**: `file`-ის არსებობა უკვე
+           წყვეტს ტექსტსა და ფაილს შორის, ე.ი. `domain` მესამე ტოტია — და
+           ცალკე route დაბლოკვისა და საჯაროობის კარიბჭეს (`ChatService::guard()`)
+           მესამედ გაიმეორებდა. */
+        if (! $upload && $request->filled('domain')) {
+            return $this->sendRecord($request, $conversation, $me);
+        }
+
         if (! $upload) {
             $data = $request->validate([
                 'type' => ['nullable', Rule::in(['text', 'emoji', 'gif'])],
@@ -451,6 +466,83 @@ class ChatController extends Controller
         ]);
 
         return response()->json(['data' => $this->payload($message, $me->id)], 201);
+    }
+
+    /**
+     * ჩანაწერის გაგზავნა ბარათად (FEAT-13).
+     *
+     * ⚠️ **მხოლოდ **ჩემი** ჩანაწერი იზიარება.** `owner` scope ისედაც
+     * ჭრის, მაგრამ აქ ის ერთადერთი კარიბჭეა: სხვისი id-ის გაგზავნა
+     * სხვაგვარად უცხო ბიბლიოთეკის სათაურს გაამხელდა — და სწორედ
+     * სათაური ის ნაწილია, რომელიც პირად ჩანაწერზეც ჩანს.
+     *
+     * ⚠️ **`note` ვერ გაიზიარება** — `PublicDomain::MATCH`-ში არ არის
+     * (§16.5); ცალკე შემოწმება ამიტომ არ სჭირდება.
+     */
+    private function sendRecord(Request $request, Conversation $conversation, User $me)
+    {
+        $data = $request->validate([
+            'domain' => ['required', 'string', Rule::in(SharedRecord::domains())],
+            'record_id' => ['required', 'integer'],
+            // ⚠️ არჩევითი — ბარათი თვითონაა შეტყობინება; კომენტარი დამატებაა
+            'body' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        $domain = $data['domain'];
+
+        if (! $me->hasModule($domain) || ! $me->hasPermission($domain, 'view')) {
+            return response()->json(['message' => 'forbidden_permission'], 403);
+        }
+
+        /** @var class-string<Model> $model */
+        $model = PublicDomain::model($domain);
+
+        $record = $model::withoutGlobalScope('owner')
+            ->where('user_id', $me->getKey())
+            ->find($data['record_id']);
+
+        abort_unless($record, 404);
+
+        $message = $this->chat->send($conversation, $me, Message::TYPE_RECORD, $data['body'] ?? null, [
+            'record' => $this->shared->describe($domain, $record),
+        ]);
+
+        return response()->json(['data' => $this->payload($message, $me->id)], 201);
+    }
+
+    /**
+     * „დაამატე ჩემთანაც" (FEAT-13).
+     *
+     * ⚠️ **`POST .../save` და არა `create`** — მისამართის ბოლო სეგმენტი
+     * `EnsureModulePermission`-ისთვისაა კითხვადი; ჩატის მარშრუტებზე ის
+     * არ დგას, მაგრამ უფლებას **ცხადად** ვამოწმებთ, რადგან შედეგი
+     * **მიმღების** ბიბლიოთეკაში ჩანაწერის შექმნაა და არა წერილის წაკითხვა.
+     */
+    public function saveRecord(Request $request, Message $message)
+    {
+        $me = $request->user();
+        abort_unless($message->conversation?->has($me->id), 404);
+
+        $shared = $message->record;
+        abort_unless(is_array($shared) && SharedRecord::shareable((string) ($shared['domain'] ?? '')), 404);
+
+        $domain = (string) $shared['domain'];
+
+        if (! $me->hasModule($domain) || ! $me->hasPermission($domain, 'create')) {
+            return response()->json(['message' => 'forbidden_permission'], 403);
+        }
+
+        try {
+            $result = $this->shared->copyTo($me, $shared);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'created' => $result['created'],
+            'id' => $result['record']->getKey(),
+            'domain' => $domain,
+        ]);
     }
 
     /**
@@ -582,6 +674,9 @@ class ChatController extends Controller
             // ცალკე დროშა სქემაში არ არის — იხ. `Message::attachmentDeleted()`
             'attachment_deleted' => $message->attachmentDeleted(),
             'attachment_name' => $message->attachment_name,
+            /* FEAT-13 — ბარათი **კითხვის მომენტში** იგება და არა გაგზავნისას:
+               მოგვიანებით დაპრივატებული ჩანაწერი ძველ წერილში ღია დარჩებოდა. */
+            'record' => $message->record ? $this->shared->view($message, $meId) : null,
             'created_at' => $message->created_at?->toIso8601String(),
         ];
     }
