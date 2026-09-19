@@ -66,6 +66,20 @@ export interface Settings {
   autoResync: boolean
   /** თარიღის ფორმატი — `lib/dates.ts::useDateFormat()` კითხულობს */
   dateFormat: DateFormat
+
+  /* ---------- FEAT-21 ---------- */
+  /**
+   * **წლიური მიზნები** — `{ movie: { 2026: 50 } }`.
+   *
+   * ⚠️ **მიგრაციის გარეშე**, `users.settings`-ში: მიზანი წმინდა
+   * ინტერფეისის პარამეტრია და მას არც ერთი backend-ის გადაწყვეტილება
+   * არ ეყრდნობა — ცალკე ცხრილი ერთი რიცხვისთვის ზუსტად ის მექანიზმის
+   * გამრავლებაა, რომელსაც ეს პროექტი უარყოფს.
+   *
+   * ⚠️ **წელი გასაღებია და არა ერთი მნიშვნელობა**: შარშანდელი მიზანი
+   * ისტორიაა და ახლის დაყენებამ ის არ უნდა წაშალოს.
+   */
+  goals: Record<string, Record<string, number>>
 }
 
 /** ბიბლიოთეკის სორტირება — `LibraryPage`-ის ველი + მიმართულება */
@@ -108,6 +122,7 @@ const DEFAULT_SETTINGS: Settings = {
   posterQuality: 'w500',
   autoResync: true,
   dateFormat: 'ka-GE',
+  goals: {},
 }
 
 export const SORT_FIELD_OPTIONS: SortField[] = ['added', 'year', 'rating']

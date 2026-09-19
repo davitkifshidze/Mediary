@@ -3171,5 +3171,14 @@
     "started": "The status has changed — enjoy!",
     "emptyTitle": "Nothing matches this filter",
     "emptyHint": "Change the filter or the section and try again."
+  },
+  "goals": {
+    "title": "Goals for {{year}}",
+    "hint": "The progress is read from the same numbers the statistics block shows — so “finished” means what carries a date.",
+    "edit": "Change",
+    "set": "Set a goal",
+    "editHint": "Write how many you intend to finish this year. Zero means you have no goal.",
+    "missingHint": "Books, games, board games and notes have no “when did I finish it” date, so progress cannot be computed for them — that is why they are not in the list.",
+    "saved": "The goals have been saved."
   }
 }

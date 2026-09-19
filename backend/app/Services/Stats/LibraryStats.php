@@ -200,6 +200,12 @@ class LibraryStats
         $doneYear = 0;
         $doneMonth = 0;
         $months = array_fill(1, 12, 0);
+        /* FEAT-21 — წლიური მიზნებისთვის იგივე რიცხვი **მოდულებად**.
+           ⚠️ ცალკე query არ ემატება: თვეების სტრიქონები ისედაც მოდულ-მოდულ
+           იკითხება, ე.ი. აქ მხოლოდ მეორე ჯამი გროვდება. ორი წყარო ერთი
+           კითხვისთვის ორ განსხვავებულ რიცხვს მოგვცემდა (`byWatchLog()`-ის
+           იგივე გაკვეთილი). */
+        $doneByModule = [];
 
         foreach ($modules as $module) {
             $map = self::MODULES[$module] ?? null;
@@ -245,6 +251,7 @@ class LibraryStats
                 $count = (int) $bucket->total;
 
                 $months[$index] += $count;
+                $doneByModule[$module] = ($doneByModule[$module] ?? 0) + $count;
 
                 /* ⚠️ წლიური ჯამი აქვე იკრიბება და არა ცალკე query-თ: თვეები
                    ისედაც მთელ წელს ფარავს, ე.ი. მეორე დათვლა იმავე რიცხვს
@@ -270,7 +277,37 @@ class LibraryStats
                 fn (int $index) => ['month' => $index, 'count' => $months[$index]],
                 range(1, 12),
             ),
+            /* FEAT-21 — იგივე რიცხვი მოდულებად, **ნულებით შევსებული**:
+               გამოტოვებული გასაღები ინტერფეისში „მიზანი არ არსებობს"-ად
+               წაიკითხებოდა და არა „ჯერ არაფერი დაგისრულებია". */
+            'done_by_module' => collect(self::goalModules($modules))
+                ->mapWithKeys(fn (string $module) => [$module => $doneByModule[$module] ?? 0])
+                ->all(),
+            /* ⚠️ **რომელ მოდულს შეიძლება მიზანი ჰქონდეს საერთოდ.** მიზანი
+               „წელს რამდენი დავასრულე"-ს ითვლის, ე.ი. მოდულს თარიღი უნდა
+               ჰქონდეს (`done_at`). წიგნს, თამაშს, სამაგიდოსა და ჩანაწერს ის
+               **არ აქვს** — და `updated_at`-ით ჩანაცვლება ზუსტად ის იქნებოდა,
+               რასაც FEAT-08 თავიდან იცილებს (ერთ სვეტში ორი ფაქტი). */
+            'goal_modules' => array_values(self::goalModules($modules)),
         ];
+    }
+
+    /**
+     * **რომელ მოდულს შეუძლია წლიური მიზანი (FEAT-21).**
+     *
+     * ⚠️ მხოლოდ ისინი, ვისაც „როდის დავასრულე" თარიღი აქვს — სხვაგვარად
+     * მიზნის პროგრესი გამოსათვლელი არ არის. სია `MODULES`-იდან გამოითვლება
+     * და არა ხელით: მეთერთმეტე მოდული ავტომატურად შემოვა ან დარჩება გარეთ.
+     *
+     * @param  list<string>  $modules
+     * @return list<string>
+     */
+    public static function goalModules(array $modules): array
+    {
+        return array_values(array_filter(
+            $modules,
+            fn (string $module) => ! empty(self::MODULES[$module]['done_at']),
+        ));
     }
 
     /* ---------- ჭრილები ---------- */

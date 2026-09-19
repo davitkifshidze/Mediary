@@ -28,6 +28,10 @@ import { PageHeader } from '@/components/ui/page-header'
  * ე.ი. სწორედ ის „ცივი სტარტი" დაბრუნდებოდა, რასაც მარშრუტების დაყოფა
  * გაურბის. `fallback={null}` იმიტომ, რომ ბლოკი ცარიელზე ისედაც ქრება.
  */
+const YearGoals = lazy(() =>
+  import('@/components/YearGoals').then((m) => ({ default: m.YearGoals })),
+)
+
 const DashboardStats = lazy(() =>
   import('@/components/DashboardStats').then((m) => ({ default: m.DashboardStats })),
 )
@@ -137,6 +141,13 @@ export function DashboardPage() {
           მალე მჭკნარი ინფორმაციაა, აქ — ჯამები (არ ბერდება), ქვემოთ კი
           ნავიგაცია. ცარიელ ბიბლიოთეკაზე კომპონენტი თვითონ ქრება. */}
       <Suspense fallback={null}>{!isLoading && <DashboardStats />}</Suspense>
+
+      {/* ===== წლიური მიზნები (FEAT-21) =====
+          ⚠️ **სტატისტიკის ქვემოთ და ბარათებზე მაღლა**: მიზანი იმავე
+          რიცხვებზე დგას, რასაც ზემოთ ხედავ (`/stats/summary`), ე.ი. მათ
+          უნდა მიჰყვებოდეს. მიზნის გარეშე ბლოკი თვითონ ქრება — რჩება
+          მხოლოდ მისი დაყენების ღილაკი. */}
+      <Suspense fallback={null}>{!isLoading && <YearGoals />}</Suspense>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
