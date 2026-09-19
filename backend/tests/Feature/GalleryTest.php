@@ -393,6 +393,51 @@ class GalleryTest extends TestCase
         $this->assertSame(1, $body['skipped_without_tmdb']);
     }
 
+    /**
+     * **SEC-17 — `.svg` საერთოდ არ ჩამოიტვირთება.**
+     *
+     * ⚠️ გალერეის ფაილი **საჯარო დისკზეა**, ე.ი. `/storage/...`-ით ავტორიზაციის
+     * გარეშე იხსნება — `image/svg+xml` იქ აპის origin-ზე გაშვებადი სკრიპტია
+     * (SEC-05/SEC-08-ის იგივე სცენარი). TMDB სანდო წყაროა, ამიტომ ეს მეორე
+     * ფენაა: allow-სია ახალ, ნაკლებად სანდო წყაროზეც იმუშავებს.
+     */
+    public function test_an_svg_candidate_is_skipped_and_never_written(): void
+    {
+        Storage::fake('public');
+
+        Http::fake([
+            'api.themoviedb.org/3/movie/*/images*' => Http::response([
+                'backdrops' => [
+                    ['file_path' => '/x.svg', 'vote_average' => 9.0, 'width' => 800, 'height' => 600],
+                    ['file_path' => '/ok.jpg', 'vote_average' => 5.0, 'width' => 800, 'height' => 600],
+                ],
+                'posters' => [],
+                'logos' => [],
+            ]),
+            'image.tmdb.org/*' => Http::response(str_repeat('x', 128)),
+        ]);
+
+        $movie = $this->makeMovie('Fight Club');
+
+        $result = $this->actingAs($this->user)
+            ->postJson("/api/gallery/movie/{$movie->id}", ['subjects' => ['stills'], 'limit' => 2])
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(1, $result['added']);
+        $this->assertSame(1, $result['skipped']);
+
+        $images = GalleryImage::withoutGlobalScope('owner')->get();
+        $this->assertCount(1, $images);
+        $this->assertSame('/ok.jpg', $images[0]->remote_path);
+        $this->assertSame('image/jpeg', $images[0]->mime);
+
+        // დისკზე არცერთი svg
+        foreach (Storage::disk('public')->allFiles() as $file) {
+            $this->assertStringEndsNotWith('.svg', $file);
+        }
+    }
+
     /** ჩანაწერის ფოტოები: ხმებით დალაგება, ლიმიტი და ხელახლა გაშვებაზე დუბლის გამოტოვება */
     public function test_fetch_downloads_record_images_and_skips_duplicates_on_rerun(): void
     {

@@ -440,6 +440,19 @@ class GalleryFetcher
                 continue;
             }
 
+            $extension = $this->extension($candidate['remote_path']);
+
+            // ⚠️ **აქტიური შიგთავსი არ ჩამოიტვირთება** (Tasks SEC-17): ეს ფაილი
+            // **საჯარო დისკზე** ჯდება, ე.ი. `.svg` `/storage/...`-ით ავტორიზაციის
+            // გარეშე გაიხსნებოდა, `image/svg+xml`-ად, აპის საკუთარ origin-ზე —
+            // SEC-05/SEC-08-ის ზუსტად ის სცენარი, რომელიც იქ დაიხურა. შემოწმება
+            // **ჩამოტვირთვამდეა**: უარყოფილი კანდიდატი რექვესთსაც არ ღირს.
+            if ($extension === null) {
+                $result['skipped']++;
+
+                continue;
+            }
+
             $body = $this->downloader->contents($candidate['remote_path'], $candidate['size']);
 
             if ($body === null) {
@@ -456,7 +469,6 @@ class GalleryFetcher
                 return $result;
             }
 
-            $extension = pathinfo($candidate['remote_path'], PATHINFO_EXTENSION) ?: 'jpg';
             $path = $this->meter->storeContents($user, $body, StorageFolder::GALLERY_IMAGES, $extension);
 
             $parent->galleryImages()->create([
@@ -753,12 +765,34 @@ class GalleryFetcher
         }
     }
 
+    /**
+     * **კანდიდატის გაფართოება — allow-სია, და არა „აკრძალულების" სია** (Tasks SEC-17).
+     *
+     * ⚠️ `null` ნიშნავს „არ ჩამოვტვირთოთ". სიის allow-ად წერა განზრახულია:
+     * აკრძალულების სია ახალ ფორმატს ჩუმად უშვებს, allow-სია კი — არა.
+     * `WebImageImporter::extension()`-ის იგივე წესია, ოღონდ იქ MIME-ზე, აქ
+     * გაფართოებაზე: TMDB-ის `file_path` `.jpg`/`.png`/`.svg`-ია და MIME-ს
+     * CDN ისედაც ჩვენი გაფართოებიდან იღებს.
+     *
+     * ⚠️ **გაფართოების გარეშე მოსული გზა `jpg`-ია** — ეს ძველი ქცევაა და
+     * უსაფრთხოა: ყველაზე ვიწრო რასტრული ტიპი.
+     */
+    private function extension(string $remotePath): ?string
+    {
+        $extension = strtolower(pathinfo($remotePath, PATHINFO_EXTENSION) ?: 'jpg');
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'], true)
+            ? $extension
+            : null;
+    }
+
     private function mime(string $extension): string
     {
         return match (strtolower($extension)) {
             'png' => 'image/png',
             'webp' => 'image/webp',
-            'svg' => 'image/svg+xml',
+            'gif' => 'image/gif',
+            'avif' => 'image/avif',
             default => 'image/jpeg',
         };
     }

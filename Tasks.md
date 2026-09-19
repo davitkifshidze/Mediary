@@ -38,7 +38,7 @@
 | GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
 | SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ✅ |
 | SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ✅ |
-| SEC-17 | `GalleryFetcher` `.svg`-ს `image/svg+xml`-ად საჯარო დისკზე წერს — `WebImageImporter` მას უარყოფს, ეს გზა კი არა | Low | security | S | ⬜ |
+| SEC-17 | `GalleryFetcher` `.svg`-ს `image/svg+xml`-ად საჯარო დისკზე წერს — `WebImageImporter` მას უარყოფს, ეს გზა კი არა | Low | security | S | ✅ |
 | GAP-18 | სამი ტექსტი თქვენობითშია („ჩაწერეთ", „სცადეთ", „არ გირჩევთ") — მთელი აპი შენობითზეა | Low | gap | S | ⬜ |
 | GAP-19 | ბრჭყალების ორი სტილი ერევა: სწორი „…“ და შერეული „…" (21 ხაზი) | Low | gap | S | ⬜ |
 | GAP-20 | ქართულ წინადადებებში ლათინური სიტყვებია: default, private, abuse, credit, engine | Low | gap | S | ⬜ |
@@ -466,13 +466,14 @@
 - **დამოკიდებულება:** none
 
 ### [SEC-17] `GalleryFetcher` `.svg`-ს საჯარო დისკზე `image/svg+xml`-ად წერს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `GalleryFetcher::extension()` **allow-სიაა** (`jpg·jpeg·png·webp·gif·avif`) და არა „აკრძალულების" სია — აკრძალულების სია ახალ ფორმატს ჩუმად გაუშვებდა. `svg` `mime()`-იდან ამოვიდა (სამაგიეროდ `gif`/`avif` დაემატა, რომ allow-სიასა და MIME-ს შორის ხვრელი არ დარჩეს). ⚠️ **შემოწმება ჩამოტვირთვამდეა**: უარყოფილი კანდიდატი TMDB-ის რექვესთსაც არ ღირს და კვოტასაც არ ეხება. ⚠️ **გაფართოების გარეშე მოსული გზა ისევ `jpg`-ია** — ძველი ქცევა, და ყველაზე ვიწრო რასტრული ტიპი. `GalleryTest::test_an_svg_candidate_is_skipped_and_never_written` ძველ კოდზე წითელია („2 is identical to 1") და დისკზეც ამოწმებს, რომ `.svg` არ დარჩა.
 - **ტიპი:** security
 - **სად:** `backend/app/Services/Gallery/GalleryFetcher.php:760` (`'svg' => 'image/svg+xml'` — გაფართოება TMDB-ის `file_path`-იდან მოდის, უარყოფა არსად)
 - **პრობლემა:** SEC-05/SEC-08-ის წესია „SVG საჯარო დისკზე არასდროს" და `WebImageImporter::extension()` მას უარყოფს; TMDB-ის კადრები დღეს `.jpg`-ა (`.svg` მხოლოდ ლოგოებს აქვს, რომელთა ჩამოტვირთვა 2026-09-14-ს ამოვიდა), მაგრამ `taggedCandidates()` `image_type = logo`-ს კვლავ იღებს და კოდი svg-ს ცხადად „იცნობს". წყარო სანდოა, ამიტომ Low — თავდაცვის მეორე ფენაა.
 - **რატომ:** ერთი ჩვევა („svg-ს ვწერთ") ერთ დღეს სხვა წყაროზე გადავა.
 - **გადაწყვეტა:** `download()`-ში `svg`/`xml`/`html` გაფართოება → `skipped`; `mime()`-დან `svg` ამოღება; `CustomFieldTest::test_no_upload_rule_accepts_active_content`-ის მსგავსი შემოწმება ამ სიაზეც.
 - **Acceptance criteria:**
-  - [ ] ტესტი: `file_path: /x.svg` კანდიდატი `skipped`-ში ითვლება და დისკზე არაფერი იწერება
+  - [x] ტესტი: `file_path: /x.svg` კანდიდატი `skipped`-ში ითვლება და დისკზე არაფერი იწერება
 - **Estimate:** S
 - **დამოკიდებულება:** none
 
