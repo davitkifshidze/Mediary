@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
+use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\HasWatchLog;
 use App\Services\Storage\StorageMeter;
@@ -38,6 +39,9 @@ class Anime extends Model
     /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
 
+    /** FEAT-18 — პირადი ტეგები (`Video::normalizeTags()`-ის ერთი ქცევა) */
+    use HasTags;
+
     /**
      * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
@@ -69,6 +73,8 @@ class Anime extends Model
         'next_season' => 'integer',
         'next_episode' => 'integer',
         'sort_order' => 'integer',
+        // FEAT-18 — პირადი ტეგები; ჟანრს არ ცვლის, მეორე ღერძია
+        'tags' => 'array',
     ];
 
     /** morphs() FK-cascade-ს არ ქმნის — polymorphic pivot-ები ხელით უნდა მოიხსნას წაშლისას */

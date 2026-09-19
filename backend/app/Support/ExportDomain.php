@@ -70,7 +70,8 @@ final class ExportDomain
             'model' => Movie::class,
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
-                'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
+                // FEAT-18 — პირადი ტეგები (ჟანრისგან დამოუკიდებელი ღერძი)
+                'id', 'title_ka', 'title_en', 'year', 'genres', 'tags', 'status', 'status_name',
                 'rating', 'runtime', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
                 'imdb_url', 'ge_url', 'collection_name', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
@@ -80,7 +81,8 @@ final class ExportDomain
             'model' => Series::class,
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
-                'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
+                // FEAT-18 — პირადი ტეგები (ჟანრისგან დამოუკიდებელი ღერძი)
+                'id', 'title_ka', 'title_en', 'year', 'genres', 'tags', 'status', 'status_name',
                 'rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
@@ -90,7 +92,8 @@ final class ExportDomain
             'model' => Anime::class,
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
-                'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
+                // FEAT-18 — პირადი ტეგები (ჟანრისგან დამოუკიდებელი ღერძი)
+                'id', 'title_ka', 'title_en', 'year', 'genres', 'tags', 'status', 'status_name',
                 'rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',

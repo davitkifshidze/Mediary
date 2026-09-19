@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\BoardGameGenre;
 use App\Models\Book;
@@ -16,6 +17,7 @@ use App\Models\Genre;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Series;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Models\User;
@@ -475,7 +477,14 @@ class PurgeTest extends TestCase
         $this->assertSame(count(GameGenre::DEFAULTS), GameGenre::withoutGlobalScope('owner')->count());
     }
 
-    /** ჟანრი/სტატუსი ვიდეოზე და ტიპი/ტეგი მედიაზე — აზრი არ აქვს, 422 */
+    /**
+     * ჟანრი ვიდეოზე და ტიპი მედიაზე — აზრი არ აქვს, 422.
+     *
+     * ⚠️ **`tag` მედიაზე აღარ არის შეცდომა** (FEAT-18): სამივე მედია-დომენს
+     * პირადი ტეგები გაუჩნდა, ე.ი. ძველი მტკიცება სწორედ ახალ ფუნქციას
+     * აკრძალავდა. სამაგიეროდ `type` მედიაზე კვლავ უაზროა — მას ლექსიკონი
+     * არ აქვს, ჟანრი გლობალურია.
+     */
     public function test_mode_must_match_the_target(): void
     {
         $this->actingAs($this->admin)
@@ -483,7 +492,7 @@ class PurgeTest extends TestCase
             ->assertStatus(422);
 
         $this->actingAs($this->admin)
-            ->postJson('/api/admin/purge/plan', ['target' => 'movie', 'mode' => 'tag', 'tags' => ['x']])
+            ->postJson('/api/admin/purge/plan', ['target' => 'movie', 'mode' => 'type', 'type_ids' => [1]])
             ->assertStatus(422);
 
         // ჟანრი (გლობალური `genres`) წიგნზე არ არსებობს — მას ლექსიკონი აქვს
@@ -854,7 +863,11 @@ class PurgeTest extends TestCase
             fn (array $modes) => in_array('tag', $modes, true),
         ));
 
-        $this->assertSame(['video', 'song', 'book', 'note', 'bookmark'], $targets);
+        // FEAT-18 — სამი მედია-დომენი ამ სიას ავტომატურად დაემატა
+        $this->assertSame(
+            ['movie', 'series', 'anime', 'video', 'song', 'book', 'note', 'bookmark'],
+            $targets,
+        );
 
         $this->actingAs($this->admin->refresh());
 
@@ -883,6 +896,19 @@ class PurgeTest extends TestCase
         $user = $this->admin->id;
 
         return match ($target) {
+            // FEAT-18 — მედია-დომენებსაც აქვს `tags`
+            'movie' => [
+                Movie::create(['user_id' => $user, 'tags' => ['ტეგი']]),
+                Movie::create(['user_id' => $user]),
+            ],
+            'series' => [
+                Series::create(['user_id' => $user, 'tags' => ['ტეგი']]),
+                Series::create(['user_id' => $user]),
+            ],
+            'anime' => [
+                Anime::create(['user_id' => $user, 'tags' => ['ტეგი']]),
+                Anime::create(['user_id' => $user]),
+            ],
             'video' => [
                 Video::create(['user_id' => $user, 'title' => 'ტეგიანი ვიდეო', 'url' => 'https://youtu.be/ccccccccccc', 'tags' => ['ტეგი']]),
                 Video::create(['user_id' => $user, 'title' => 'უტეგო ვიდეო', 'url' => 'https://youtu.be/ddddddddddd']),

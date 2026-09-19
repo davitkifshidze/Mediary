@@ -44,6 +44,10 @@ class StoreAnimeRequest extends FormRequest
                უცნობი მნიშვნელობა ჩუმად „სტატუსის გარეშედ“ იქცეოდა. */
             'status' => ['required', 'string', Status::rule('anime')],
             'is_favorite' => ['nullable', 'boolean'],
+            // FEAT-18 — პირადი ტეგები. ⚠️ ჟანრს არ ცვლის: ჟანრი გაზიარებული
+            // ლექსიკონია და სინქრონიდან მოდის, ტეგი კი მხოლოდ ჩემია.
+            'tags' => ['nullable', 'array', 'max:20'],
+            'tags.*' => ['string', 'max:40'],
             'genres' => ['required', 'array', 'min:1'],
             'genres.*' => ['string', 'max:100'],
             'poster' => ['nullable', 'image', 'max:8192'],

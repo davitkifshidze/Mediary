@@ -44,6 +44,13 @@ class SeriesController extends Controller
             $query->whereHas('genres', fn ($q) => $q->where('slug', $slug));
         }
 
+        /* FEAT-18 — ტეგი მძიმით გამოყოფილი სიაა და **AND**-ით ვიწროვდება,
+           ზუსტად ისე, როგორც ვიდეოზე; ჟანრთან ერთადაც მუშაობს, რადგან ორი
+           სხვადასხვა ღერძია. */
+        foreach ($this->slugList($request->string('tag')->toString()) as $tag) {
+            $query->whereJsonContains('tags', $tag);
+        }
+
         if ($q = $request->string('q')->toString()) {
             $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($q)));
         }
@@ -182,6 +189,13 @@ class SeriesController extends Controller
 
         if ($request->has('is_favorite')) {
             $series->is_favorite = $request->boolean('is_favorite');
+        }
+
+        /* FEAT-18 — პირადი ტეგები. ⚠️ ნორმალიზაცია `Video::normalizeTags()`-ზე
+           გადის (`HasTags`), ე.ი. დუბლი ყველა მოდულში ერთნაირად იჭრება —
+           ფორმის `dedupeTags()` და ეს ერთსა და იმავეს უნდა ითვლიდნენ. */
+        if ($request->has('tags')) {
+            $series->tags = Series::normalizeTags($request->input('tags') ?? []);
         }
 
         // Tasks 16.1 — ხილვადობა. ⚠️ `filled` და არა `has`: multipart-ზე ველი

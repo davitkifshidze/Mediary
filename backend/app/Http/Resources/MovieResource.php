@@ -37,6 +37,8 @@ class MovieResource extends JsonResource
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
             'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
+            // FEAT-18 — პირადი ტეგები (`array` cast; `null` → ცარიელი სია)
+            'tags' => $this->tags ?? [],
             // Tasks 16.1 — ხილვადობა საჯარო პროფილზე (`private` default)
             'visibility' => $this->visibility,
             'watched_at' => $this->watched_at,

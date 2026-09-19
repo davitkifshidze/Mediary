@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Loader2, RefreshCw, Wand2 } from 'lucide-react'
 import {
   fetchGenres,
+  fetchMediaTags,
   lookupCandidates,
   lookupDraft,
   mediaApi,
@@ -27,6 +28,7 @@ import { PosterImage } from '@/components/PosterImage'
 import { PosterUploader } from '@/components/PosterUploader'
 import { PageContainer } from '@/components/ui/page'
 import { GenreSelect } from '@/components/GenreSelect'
+import { TagSelect } from '@/components/TagSelect'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { hiddenPicks, missingPicks } from '@/lib/requiredPicks'
@@ -46,6 +48,8 @@ const EMPTY = {
   // §2.5 — ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
   runtime: '',
   genres: [] as string[],
+  /** FEAT-18 — პირადი ტეგები (ჟანრისგან დამოუკიდებელი ღერძი) */
+  tags: [] as string[],
   /** §6.4 — ლექსიკონის **გასაღები**; ცარიელი = „როგორც არის" (ახალზე ნაგულისხმევი) */
   status: '',
   is_favorite: false,
@@ -88,6 +92,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   const movieQ = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!), enabled: editing })
   const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
+  /* FEAT-18 — შემოთავაზების სია. ⚠️ **დომენზეა გასაღები**: ფილმის ტეგები
+     სერიალის ფორმაზე რომ შემოგვეთავაზებინა, ორი ბიბლიოთეკა ერთად აირევა. */
+  const tagsQ = useQuery({ queryKey: ['media-tags', type], queryFn: () => fetchMediaTags(type) })
+  const knownTags = (tagsQ.data ?? []).map((row) => row.tag)
   useEffect(() => {
     const m = movieQ.data
     if (!m) return
@@ -103,6 +111,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       rating: m.rating ?? '',
       runtime: m.runtime ? String(m.runtime) : '',
       genres: m.genres.map((g) => g.slug),
+      tags: m.tags ?? [],
       status: m.status?.key ?? '',
       is_favorite: m.is_favorite,
     })
@@ -132,6 +141,11 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       const name = nameBySlug.get(slug)
       if (name) fd.append('genres[]', name)
     })
+    /* FEAT-18 — ტეგები. ⚠️ **ცარიელი სიაც იგზავნება** (`tags[]` = ''):
+       `has('tags')`-ზე დგას backend, ე.ი. გამოტოვებული გასაღები „არ
+       შეცვალო"-ს ნიშნავს და ბოლო ტეგის მოხსნა შეუძლებელი იქნებოდა. */
+    if (form.tags.length === 0) fd.append('tags', '')
+    form.tags.forEach((tag) => fd.append('tags[]', tag))
     if (poster) fd.append('poster', poster)
     if (removePoster) fd.append('remove_poster', '1')
     return fd
@@ -576,6 +590,22 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             {errors.genres && (
               <p className="mt-1 text-xs text-destructive">{errors.genres[0]}</p>
             )}
+          </div>
+
+          {/* FEAT-18 — პირადი ტეგები. ⚠️ **ჟანრისგან ცალკე ბლოკია განზრახ**:
+              ჟანრი TMDB-ის გაზიარებული ლექსიკონია და სინქრონი მას ხელახლა
+              წერს, ტეგს კი მხოლოდ მე ვწერ — ერთ რიგში ისინი ერთ ღერძად
+              წაიკითხებოდა. */}
+          <div className={fields.shows('tags') ? undefined : 'hidden'}>
+            <FieldLabel required={fields.required('tags')} hint={fields.hint('tags')}>
+              {fields.label('tags')}
+            </FieldLabel>
+            <TagSelect
+              value={form.tags}
+              onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
+              options={knownTags}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">{t('form.tagsHint')}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-6">

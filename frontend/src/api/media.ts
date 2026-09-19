@@ -11,6 +11,8 @@ import type { Genre, Movie, MovieListItem } from './types'
 export interface MediaFilters extends ListParams {
   status?: string
   genre?: string
+  /** FEAT-18 — მძიმით გამოყოფილი სია; ჟანრივით **AND**-ით ვიწროვდება */
+  tag?: string
   favorite?: boolean
   q?: string
   sort?: string
@@ -101,6 +103,26 @@ const MEDIA_APIS: Record<MediaType, MediaApi> = {
 
 export function mediaApi(type: MediaType): MediaApi {
   return MEDIA_APIS[type] ?? moviesApi
+}
+
+/* ---------- პირადი ტეგები (FEAT-18) ---------- */
+
+export interface MediaTag {
+  tag: string
+  count: number
+}
+
+/**
+ * ბიბლიოთეკაში უკვე გამოყენებული ტეგები — შემოთავაზების სია.
+ *
+ * ⚠️ **ლექსიკონის ცხრილი არ არსებობს** (ტეგი JSON სვეტია), ე.ი. სია
+ * სვეტიდან გროვდება — `GET /games/franchises`-ის იგივე ფორმა.
+ * ⚠️ **`all=1`-ით სიის ჩამოტვირთვა არ გამოდგებოდა**: ის მთელ ბიბლიოთეკას
+ * აბრუნებს და პაგინაცია სწორედ ამის წინააღმდეგ დაიწერა.
+ */
+export async function fetchMediaTags(type: MediaType): Promise<MediaTag[]> {
+  const { data } = await api.get('/media/tags', { params: { type } })
+  return data.data
 }
 
 /* ---------- მასობრივი სინქრონი TMDB-დან — სათითაოდ (Tasks J2/J3/J4) ---------- */

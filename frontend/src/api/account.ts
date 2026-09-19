@@ -933,10 +933,11 @@ export type PurgeMode = (typeof PURGE_MODES)[number]
  * ლიტერალებს შლიდა და ეს შემოწმება შეუძლებელი იყო.
  */
 export const PURGE_TARGET_MODES = {
-  movie: ['ids', 'genre', 'status', 'all'],
-  series: ['ids', 'genre', 'status', 'all'],
+  // FEAT-18 — `tag` სამივე მედია-დომენს გაუჩნდა (პირადი ტეგები)
+  movie: ['ids', 'genre', 'tag', 'status', 'all'],
+  series: ['ids', 'genre', 'tag', 'status', 'all'],
   // §7.1 — ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
-  anime: ['ids', 'genre', 'status', 'all'],
+  anime: ['ids', 'genre', 'tag', 'status', 'all'],
   // §6.4 — ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
   // ⚠️ `ids` თერთმეტივეს აქვს (§25.1) — სარკეა `PurgeService::TARGET_MODES`-ისა
   video: ['ids', 'type', 'tag', 'status', 'all'],

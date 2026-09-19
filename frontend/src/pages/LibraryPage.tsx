@@ -14,7 +14,7 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react'
-import { fetchGenres, mediaApi, type MediaFilters } from '@/api/media'
+import { fetchGenres, fetchMediaTags, mediaApi, type MediaFilters } from '@/api/media'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import {
   GROUP_BY_OPTIONS,
@@ -71,10 +71,12 @@ const EMPTY_RANGES: Ranges = { yearMin: '', yearMax: '', ratingMin: '', ratingMa
  */
 interface Draft {
   genres: string[]
+  /** FEAT-18 — პირადი ტეგები; ჟანრისგან ცალკე ღერძია */
+  tags: string[]
   ranges: Ranges
 }
 
-const EMPTY_DRAFT: Draft = { genres: [], ranges: EMPTY_RANGES }
+const EMPTY_DRAFT: Draft = { genres: [], tags: [], ranges: EMPTY_RANGES }
 
 export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const { t, i18n } = useTranslation()
@@ -90,6 +92,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const view = params.get('view') ?? settings.defaultView
   // ჟანრი URL-იდანაც მოდის (ჩანაწერის გვერდზე ჟანრზე დაჭერა — Tasks K9)
   const genreParam = params.get('genre')
+  const tagParam = params.get('tag')
 
   const [q, setQ] = useState('')
   // ნაგულისხმევი სორტირება პარამეტრებიდან (E4) — შემდეგ ხელით იცვლება
@@ -126,6 +129,10 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     () => (genreParam ? genreParam.split(',').filter(Boolean) : []),
     [genreParam],
   )
+  const tags = useMemo(
+    () => (tagParam ? tagParam.split(',').filter(Boolean) : []),
+    [tagParam],
+  )
   const ranges = useMemo<Ranges>(() => {
     const p = new URLSearchParams(search)
     return {
@@ -141,6 +148,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     const q = new URLSearchParams()
     if (view !== 'all') q.set('view', view)
     if (next.genres.length) q.set('genre', next.genres.join(','))
+    if (next.tags.length) q.set('tag', next.tags.join(','))
     if (next.ranges.yearMin) q.set('year_min', next.ranges.yearMin)
     if (next.ranges.yearMax) q.set('year_max', next.ranges.yearMax)
     if (next.ranges.ratingMin) q.set('rating_min', next.ranges.ratingMin)
@@ -152,7 +160,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
 
   // მონახაზი, „ცვლილებაა?" და მრიცხველი — ერთი აღწერა რვავე გვერდისთვის.
   // სტატუსი მრიცხველში არ ითვლება: ის სექციაა და არა ფილტრი (Tasks 3).
-  const applied = useMemo<Draft>(() => ({ genres, ranges }), [genres, ranges])
+  const applied = useMemo<Draft>(() => ({ genres, tags, ranges }), [genres, tags, ranges])
   const { draft, setDraft, dirty, apply, clear: clearFilters, activeCount } = useFilterDraft<Draft>(
     applied,
     EMPTY_DRAFT,
@@ -163,6 +171,12 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     setDraft((d) => ({
       ...d,
       genres: on ? [...d.genres, slug] : d.genres.filter((g) => g !== slug),
+    }))
+
+  const toggleTag = (tag: string, on: boolean) =>
+    setDraft((d) => ({
+      ...d,
+      tags: on ? [...d.tags, tag] : d.tags.filter((x) => x !== tag),
     }))
 
   const setRange = (key: keyof Ranges, value: string) =>
@@ -180,6 +194,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     q: q || undefined,
     // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს (2.2)
     genre: genres.length ? genres.join(',') : undefined,
+    // FEAT-18 — ჟანრის იგივე ფორმა: მძიმით გამოყოფილი სია, AND-ით
+    tag: tags.length ? tags.join(',') : undefined,
     sort: sortValue === 'added' ? undefined : sortValue,
     status: view !== 'all' && view !== 'favorite' ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
@@ -207,6 +223,11 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     placeholderData: keepPreviousData,
   })
   const genresQ = useQuery({ queryKey: ['genres', type], queryFn: () => fetchGenres(type) })
+  /* FEAT-18 — პირადი ტეგები ფილტრის პანელისთვის. ⚠️ **სია სვეტიდან
+     გროვდება და არა ჩატვირთული გვერდიდან**: „მეტის ჩვენებამდე" ფილტრი
+     მხოლოდ პირველი გვერდის ტეგებს იცნობდა. */
+  const tagsQ = useQuery({ queryKey: ['media-tags', type], queryFn: () => fetchMediaTags(type) })
+  const tagList = tagsQ.data ?? []
   const movies = moviesQ.data?.items ?? []
   /** ⚠️ **გაფილტრული სიის** ჯამი — გვერდების რაოდენობაც ამით ითვლება */
   const total = moviesQ.data?.total ?? 0
@@ -224,7 +245,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   // ფილტრის/დალაგების ცვლილებაზე პირველ გვერდზე ვბრუნდებით
   useEffect(() => {
     setPage(1)
-  }, [q, genres, view, sortValue, ranges, grouped, pageSize])
+  }, [q, genres, tags, view, sortValue, ranges, grouped, pageSize])
 
   const allTitle = t(mediaKey('library.title', type))
   /* §6.4 — სექციის სახელი ლექსიკონიდან: სტატუსი per-user-ია და გადაერქმევა,
@@ -429,6 +450,27 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               ))}
             </FilterOptionList>
           </FilterGroup>
+
+          {/* FEAT-18 — პირადი ტეგები. ⚠️ **ჟანრისგან ცალკე ჯგუფია**: ჟანრი
+              TMDB-ის გაზიარებული ლექსიკონია, ტეგი კი მხოლოდ ჩემი — ერთ
+              სიაში ისინი ერთ ღერძად წაიკითხებოდა. ⚠️ **ჯგუფი მხოლოდ მაშინ
+              ჩანს, როცა ტეგი მართლა არსებობს**: ცარიელი სია ისეთი ფილტრია,
+              რომელიც ვერასდროს დაემთხვევა (`FilterPanel`-ის არსებული წესი). */}
+          {tagList.length > 0 && (
+            <FilterGroup title={t('filter.tags')} count={draft.tags.length}>
+              <FilterOptionList>
+                {tagList.map((row) => (
+                  <FilterOption
+                    key={row.tag}
+                    label={row.tag}
+                    count={row.count}
+                    checked={draft.tags.includes(row.tag)}
+                    onChange={(on) => toggleTag(row.tag, on)}
+                  />
+                ))}
+              </FilterOptionList>
+            </FilterGroup>
+          )}
 
           {/* ⚠️ §1.4 — დიაპაზონები **გაშლილია** (ჯგუფის ნაგულისხმევი მდგომარეობა):
               შეკეცილი ჯგუფი მალავდა იმას, რომ წელი და ქულა საერთოდ იფილტრება.

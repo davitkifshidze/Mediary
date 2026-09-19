@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaSyncController;
+use App\Http\Controllers\Api\MediaTagController;
 use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\MovieCollectionController;
@@ -810,6 +811,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/lookup/candidates', [LookupController::class, 'candidates']);
         Route::post('/lookup', [LookupController::class, 'lookup']);
         Route::get('/discover', [DiscoverController::class, 'index']);
+        /* FEAT-18 — ბიბლიოთეკაში უკვე გამოყენებული ტეგები (შემოთავაზებისთვის).
+           ⚠️ ლექსიკონის ცხრილი არ არსებობს — სია `tags` სვეტიდან გროვდება,
+           `GET /games/franchises`-ის ზუსტი ფორმა. */
+        Route::get('/media/tags', [MediaTagController::class, 'index']);
     });
 
     // სინქრონი **არსებულ ჩანაწერს ცვლის** — ე.ი. `update` და არა `create`

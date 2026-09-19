@@ -79,10 +79,13 @@ class PurgeService
      * @var array<string, list<string>>
      */
     public const TARGET_MODES = [
-        'movie' => ['ids', 'genre', 'status', 'all'],
-        'series' => ['ids', 'genre', 'status', 'all'],
+        // FEAT-18 — `tag` სამივე მედია-დომენს გაუჩნდა (პირადი ტეგები).
+        // ⚠️ `supportsTag()` ამ სიიდან იკითხება (BUG-16), ე.ი. სხვაგან
+        // არაფრის დამატება არ სჭირდება — ფილტრიც ავტომატურად მუშაობს.
+        'movie' => ['ids', 'genre', 'tag', 'status', 'all'],
+        'series' => ['ids', 'genre', 'tag', 'status', 'all'],
         // §7.1 — ანიმეს ფილმის/სერიალის იგივე ღერძები აქვს
-        'anime' => ['ids', 'genre', 'status', 'all'],
+        'anime' => ['ids', 'genre', 'tag', 'status', 'all'],
         // §6.4 — ვიდეოს სტატუსი ახლა აქვს, ე.ი. სკოუპიც
         'video' => ['ids', 'type', 'tag', 'status', 'all'],
         'song' => ['ids', 'type', 'tag', 'all'],

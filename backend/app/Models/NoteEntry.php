@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasStatus;
+use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,9 @@ class NoteEntry extends Model
 
     /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
+
+    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    use HasTags;
 
     /**
      * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
@@ -91,11 +95,5 @@ class NoteEntry extends Model
     public function reminders(): HasMany
     {
         return $this->hasMany(NoteReminder::class)->orderBy('next_at')->orderBy('id');
-    }
-
-    /** ტეგები იმავე წესებით ნორმალიზდება, რაც ვიდეოზე/სიმღერაზე (ერთი წყარო) */
-    public static function normalizeTags(array $values): array
-    {
-        return Video::normalizeTags($values);
     }
 }

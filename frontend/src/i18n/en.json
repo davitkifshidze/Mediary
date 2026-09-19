@@ -463,7 +463,8 @@
     "lookupPlaceholderAnime": "Paste a ge.movie/IMDb link or an anime title",
     "lookupPickAnime": "Pick the right anime:",
     "lookupNotFoundAnime": "Anime not found",
-    "alreadyAddedAnime": "This anime is already in your collection"
+    "alreadyAddedAnime": "This anime is already in your collection",
+    "tagsHint": "A personal axis beside the genre — “to watch with the family”, “Christmas”, “comfort film”. Sync never touches them."
   },
   "detail": {
     "watch": "Watch",
@@ -1042,7 +1043,8 @@
         "description": "Description",
         "poster": "Poster",
         "status": "Status",
-        "is_favorite": "Favorite"
+        "is_favorite": "Favorite",
+        "tags": "Tags"
       },
       "series": {
         "rating": "My rating",
@@ -1055,7 +1057,8 @@
         "description": "Description",
         "poster": "Poster",
         "status": "Status",
-        "is_favorite": "Favorite"
+        "is_favorite": "Favorite",
+        "tags": "Tags"
       },
       "song": {
         "album": "Album",
@@ -1138,6 +1141,9 @@
         "status": "Status",
         "category": "Category",
         "thumbnail": "Image"
+      },
+      "anime": {
+        "tags": "Tags"
       }
     },
     "desc": {
@@ -1153,7 +1159,8 @@
         "trailer_url": "Left empty, sync fetches it from TMDB by itself.",
         "runtime": "Normally comes from TMDB — fill it in by hand only if it is wrong or missing.",
         "is_favorite": "Shows up in the favourites section.",
-        "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't."
+        "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't.",
+        "tags": "Personal tags — a classification independent of the genre, which the TMDB sync never changes."
       },
       "series": {
         "rating": "From 1 to 10. TMDB's own score is stored separately and isn't touched.",
@@ -1161,7 +1168,8 @@
         "trailer_url": "Left empty, sync fetches it from TMDB by itself.",
         "runtime": "Normally comes from TMDB — fill it in by hand only if it is wrong or missing.",
         "is_favorite": "Shows up in the favourites section.",
-        "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't."
+        "poster": "A poster you upload counts against the quota; one downloaded from TMDB doesn't.",
+        "tags": "Personal tags — a classification independent of the genre, which the TMDB sync never changes."
       },
       "song": {
         "album": "Which album it's from.",
@@ -1199,6 +1207,9 @@
         "description": "A short summary — filled in from the page automatically.",
         "tags": "Free-form tags used by the filter.",
         "url": "The link is the bookmark's identity — that is what a match compares."
+      },
+      "anime": {
+        "tags": "Personal tags — a classification independent of the genre, which the TMDB sync never changes."
       }
     },
     "edit": "Customise",

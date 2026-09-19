@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
+use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,9 @@ class Book extends Model
 
     /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
+
+    /** FEAT-18 — ტეგების ერთი ქცევა (`Video::normalizeTags()`) */
+    use HasTags;
 
     /**
      * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
@@ -141,12 +145,6 @@ class Book extends Model
             $this->progress_page = max(0, $page);
             $this->progress_percent = null;
         }
-    }
-
-    /** ტეგები იმავე წესებით ნორმალიზდება, რაც ვიდეოზე/სიმღერაზე */
-    public static function normalizeTags(array $tags): array
-    {
-        return Video::normalizeTags($tags);
     }
 
     /** სათაური ფაილის სახელისთვის — ინგლისური ჯობია (ლათინური slug) */

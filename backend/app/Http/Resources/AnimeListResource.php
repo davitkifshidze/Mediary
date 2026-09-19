@@ -25,6 +25,8 @@ class AnimeListResource extends JsonResource
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
             'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
+            // FEAT-18 — პირადი ტეგები (`array` cast; `null` → ცარიელი სია)
+            'tags' => $this->tags ?? [],
             'description_ka' => $this->description_ka,
             'description_en' => $this->description_en,
             'collection_id' => null,

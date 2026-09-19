@@ -43,6 +43,8 @@ class AnimeResource extends JsonResource
                ერთსა და იმავე ფაქტს ორ ადგილას გაიმეორებდა. */
             'status' => StatusResource::brief($this->status),
             'is_favorite' => $this->is_favorite,
+            // FEAT-18 — პირადი ტეგები (`array` cast; `null` → ცარიელი სია)
+            'tags' => $this->tags ?? [],
             'visibility' => $this->visibility,
             'watched_at' => $this->watched_at,
             'sync_status' => $this->sync_status,

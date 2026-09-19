@@ -74,6 +74,11 @@ export interface MovieListItem {
   seasons?: number | null
   episodes?: number | null
   genres: Genre[]
+  /**
+   * FEAT-18 — პირადი ტეგები. ⚠️ **ჟანრი არ არის**: ჟანრი TMDB-ის
+   * გაზიარებული ლექსიკონია და სინქრონი მას წერს, ტეგი კი მხოლოდ ჩემია.
+   */
+  tags: string[]
   missing?: string[]
 }
 
