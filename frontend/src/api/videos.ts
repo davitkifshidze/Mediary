@@ -231,11 +231,21 @@ export interface VideoMetadata {
   source: 'oembed' | 'youtube_api' | null
   /** დაყენებულია თუ არა YOUTUBE_API_KEY (ხანგრძლივობა/ტეგებისთვის) */
   youtube_key: boolean
+  /**
+   * FEAT-17 — ამ ბმულის ჩანაწერი უკვე გაქვს?
+   * ⚠️ **გაფრთხილებაა და არა აკრძალვა**: ერთი ბმულის ორჯერ შენახვა
+   * ლეგიტიმურია (სხვა ტიპით, სხვა ტეგებით), ამიტომ ფორმა მხოლოდ ამბობს
+   * და არავის აჩერებს.
+   */
+  existing: { id: number; title: string | null } | null
 }
 
-/** ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის */
-export async function fetchVideoMetadata(url: string): Promise<VideoMetadata> {
-  const { data } = await api.post('/videos/metadata', { url })
+/**
+ * ბმულის მეტამონაცემი ფორმის შესავსებად (K2) — ჩანაწერს არ ქმნის.
+ * ⚠️ `exclude` რედაქტირებისთვისაა: ჩანაწერი საკუთარი თავის დუბლი არაა.
+ */
+export async function fetchVideoMetadata(url: string, exclude?: number): Promise<VideoMetadata> {
+  const { data } = await api.post('/videos/metadata', { url, ...(exclude ? { exclude } : {}) })
   return data
 }
 
@@ -261,6 +271,12 @@ export interface VideoDownloadStatus {
   version: string | null
   /** ⚠️ ffmpeg-ის გარეშე „საუკეთესო" ერთფაილიან ვარიანტამდე ეცემა */
   ffmpeg: boolean
+}
+
+/** ერთი ვიდეო id-ით — FEAT-17-ის „დუბლის გახსნა" (სიაში შეიძლება არც იყოს) */
+export async function fetchVideo(id: number): Promise<Video> {
+  const { data } = await api.get(`/videos/${id}`)
+  return data.data
 }
 
 export async function fetchVideoDownloadStatus(): Promise<VideoDownloadStatus> {

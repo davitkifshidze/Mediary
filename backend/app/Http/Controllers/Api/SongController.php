@@ -7,6 +7,7 @@ use App\Http\Resources\SongResource;
 use App\Models\Song;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
+use App\Support\DuplicateLink;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
@@ -85,13 +86,28 @@ class SongController extends Controller
         );
     }
 
-    /** ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის */
+    /**
+     * ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
+     *
+     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა** (FEAT-17): ეს
+     * ერთი კითხვის ორი ნახევარია („რა არის ამ ბმულის უკან და ხომ არ მაქვს
+     * უკვე"), და ორი მოთხოვნა ფორმას ორ ცალკე მდგომარეობას შეაძენინებდა.
+     * გაფრთხილებაა და არა აკრძალვა — შენახვა მაინც შესაძლებელია.
+     *
+     * ⚠️ **`exclude` რედაქტირებისთვისაა**: არსებული ჩანაწერის ფორმა
+     * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
+     * „ეს უკვე გაქვს".
+     */
     public function metadata(Request $request, VideoMetadata $meta)
     {
-        $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
+        $data = $request->validate([
+            'url' => ['required', 'string', 'max:1000', 'url'],
+            'exclude' => ['nullable', 'integer'],
+        ]);
 
         return response()->json($meta->fetch($data['url']) + [
             'youtube_key' => $meta->hasYoutubeKey(),
+            'existing' => DuplicateLink::find(Song::class, $data['url'], $data['exclude'] ?? null),
         ]);
     }
 

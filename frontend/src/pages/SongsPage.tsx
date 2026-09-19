@@ -10,6 +10,7 @@ import {
   createSong,
   deleteSong,
   fetchSongGenres,
+  fetchSong,
   fetchSongMetadata,
   fetchSongs,
   toggleSongFavorite,
@@ -35,6 +36,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { PosterUploader } from '@/components/PosterUploader'
 import { SongGenreDialog } from '@/components/SongGenreDialog'
+import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
 import { SongDetail } from '@/components/SongDetail'
 import { TagSelect } from '@/components/TagSelect'
 import {
@@ -520,6 +522,14 @@ export function SongsPage() {
             qc.invalidateQueries({ queryKey: ['playlists'] })
             setEditing(null)
           }}
+          /* FEAT-17 — „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
+             და არა ჩატვირთული სიიდან: დუბლი შეიძლება მიმდინარე ფილტრს
+             მიღმა იყოს. */
+          onOpenExisting={async (existingId) => {
+            const found = await fetchSong(existingId)
+            setEditing(null)
+            setMaterial(found)
+          }}
         />
       )}
     </PageContainer>
@@ -534,12 +544,15 @@ function SongForm({
   genres,
   onClose,
   onSaved,
+  onOpenExisting,
 }: {
   song: Song | null
   allTags: string[]
   genres: SongGenre[]
   onClose: () => void
   onSaved: () => void
+  /** FEAT-17 — დუბლის გახსნა */
+  onOpenExisting: (id: number) => void
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -585,7 +598,7 @@ function SongForm({
     setMetaLoading(true)
     let fetchedDuration: number | null = null
     try {
-      const m = await fetchSongMetadata(clean)
+      const m = await fetchSongMetadata(clean, song?.id)
       setMeta(m)
       fetchedDuration = m.duration
       if (m.duration) setDuration((d) => d ?? m.duration)
@@ -719,6 +732,13 @@ function SongForm({
               <Loader2 className="size-3.5 animate-spin" />
               {t('videos.metaLoading')}
             </p>
+          )}
+          {/* FEAT-17 — ბმულის დუბლი (ვიდეოს იგივე კომპონენტი) */}
+          {!metaLoading && meta?.existing && (
+            <DuplicateLinkNotice
+              title={meta.existing.title}
+              onOpen={() => onOpenExisting(meta.existing!.id)}
+            />
           )}
           {!metaLoading && meta && (
             <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card/50 p-2">

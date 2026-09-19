@@ -31,6 +31,7 @@ import {
   deleteVideo,
   deleteVideoDownload,
   fetchVideoDownloadStatus,
+  fetchVideo,
   fetchVideoMetadata,
   fetchVideoTypes,
   fetchVideos,
@@ -60,6 +61,7 @@ import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
+import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
 import { VideoDetail } from '@/components/VideoDetail'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import {
@@ -699,6 +701,14 @@ export function VideosPage() {
             qc.invalidateQueries({ queryKey: ['video-types'] })
             setEditing(null)
           }}
+          /* FEAT-17 — „ეს უკვე გაქვს → გახსნა". ⚠️ ჩანაწერი id-ით მოაქვს
+             და არა ჩატვირთული სიიდან: დუბლი შეიძლება მიმდინარე ფილტრს
+             მიღმა იყოს, ე.ი. სიაში მისი ძებნა ხშირად ვერაფერს იპოვიდა. */
+          onOpenExisting={async (existingId) => {
+            const found = await fetchVideo(existingId)
+            setEditing(null)
+            setDetail(found)
+          }}
         />
       )}
     </PageContainer>
@@ -713,6 +723,7 @@ function VideoForm({
   types,
   onClose,
   onSaved,
+  onOpenExisting,
 }: {
   video: Video | null
   /** არსებული ტეგები შემოთავაზებისთვის (L8) */
@@ -720,6 +731,8 @@ function VideoForm({
   types: VideoType[]
   onClose: () => void
   onSaved: () => void
+  /** FEAT-17 — დუბლის გახსნა */
+  onOpenExisting: (id: number) => void
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -765,7 +778,7 @@ function VideoForm({
     setMetaLoading(true)
     let fetchedDuration: number | null = null
     try {
-      const m = await fetchVideoMetadata(clean)
+      const m = await fetchVideoMetadata(clean, video?.id)
       setMeta(m)
       fetchedDuration = m.duration
       if (m.duration) setDuration((d) => d ?? m.duration)
@@ -916,6 +929,14 @@ function VideoForm({
               <Loader2 className="size-3.5 animate-spin" />
               {t('videos.metaLoading')}
             </p>
+          )}
+          {/* FEAT-17 — ბმულის დუბლი. ⚠️ `metaLoading`-ის მიღმაც ჩანს:
+              ჩანაწერის არსებობა oEmbed-ის პასუხზე არ არის დამოკიდებული. */}
+          {!metaLoading && meta?.existing && (
+            <DuplicateLinkNotice
+              title={meta.existing.title}
+              onOpen={() => onOpenExisting(meta.existing!.id)}
+            />
           )}
           {!metaLoading && meta && (
             <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card/50 p-2">

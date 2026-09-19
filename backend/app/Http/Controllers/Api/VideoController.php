@@ -9,6 +9,7 @@ use App\Models\Video;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Services\Video\VideoSearch;
+use App\Support\DuplicateLink;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
@@ -95,13 +96,26 @@ class VideoController extends Controller
     /**
      * ბმულის მეტამონაცემი — ფორმა ამით ივსება ჩასმისთანავე (Tasks K2).
      * ჩანაწერს არ ქმნის.
+     *
+     * ⚠️ **`existing` აქვე მოდის და ცალკე endpoint არაა** (FEAT-17): ეს
+     * ერთი კითხვის ორი ნახევარია („რა არის ამ ბმულის უკან და ხომ არ მაქვს
+     * უკვე"), და ორი მოთხოვნა ფორმას ორ ცალკე მდგომარეობას შეაძენინებდა.
+     * გაფრთხილებაა და არა აკრძალვა — შენახვა მაინც შესაძლებელია.
+     *
+     * ⚠️ **`exclude` რედაქტირებისთვისაა**: არსებული ჩანაწერის ფორმა
+     * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
+     * „ეს უკვე გაქვს".
      */
     public function metadata(Request $request, VideoMetadata $meta)
     {
-        $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
+        $data = $request->validate([
+            'url' => ['required', 'string', 'max:1000', 'url'],
+            'exclude' => ['nullable', 'integer'],
+        ]);
 
         return response()->json($meta->fetch($data['url']) + [
             'youtube_key' => $meta->hasYoutubeKey(),
+            'existing' => DuplicateLink::find(Video::class, $data['url'], $data['exclude'] ?? null),
         ]);
     }
 

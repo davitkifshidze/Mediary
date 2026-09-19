@@ -3126,5 +3126,9 @@
     "enabled": "Two-factor sign-in is on.",
     "disabled": "Two-factor sign-in is off.",
     "codesRegenerated": "New recovery codes have been created."
+  },
+  "duplicate": {
+    "notice": "You have already saved this link:",
+    "open": "Open"
   }
 }

@@ -104,9 +104,12 @@ function toFormData(input: SongInput): FormData {
   return fd
 }
 
-/** ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის */
-export async function fetchSongMetadata(url: string): Promise<VideoMetadata> {
-  const { data } = await api.post('/songs/metadata', { url })
+/**
+ * ბმულის მეტამონაცემი ფორმის შესავსებად — ჩანაწერს არ ქმნის.
+ * ⚠️ `exclude` რედაქტირებისთვისაა: ჩანაწერი საკუთარი თავის დუბლი არაა.
+ */
+export async function fetchSongMetadata(url: string, exclude?: number): Promise<VideoMetadata> {
+  const { data } = await api.post('/songs/metadata', { url, ...(exclude ? { exclude } : {}) })
   return data
 }
 
