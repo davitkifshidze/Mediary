@@ -3090,5 +3090,13 @@
   "lang": {
     "ka": "ქართული",
     "en": "English"
+  },
+  "notFound": {
+    "title": "No such page",
+    "hint": "The address is wrong or the page has moved. Check the link or go back to the dashboard.",
+    "home": "Dashboard",
+    "recordTitle": "No such record",
+    "recordHint": "The record has been deleted, or it belongs to someone else.",
+    "backToList": "Back to the list"
   }
 }

@@ -2,6 +2,8 @@ import { Suspense, lazy, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+// ⚠️ **`lazy()` განზრახ არაა** — ეს ეკრანი გატეხილ მდგომარეობაშიც უნდა დაიხატოს
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
 import { PlayerBar } from '@/components/PlayerBar'
@@ -304,8 +306,13 @@ function AppShell() {
           <Route path="admin" element={<Navigate to="/users" replace />} />
           <Route path="admin/users/:id" element={<Navigate to="/users" replace />} />
 
-          {/* არარსებული/მიუწვდომელი მისამართი → დეშბორდი (ის ყოველთვის არსებობს) */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ⚠️ არარსებული მისამართი **ცხადად** ითქმის (Tasks GAP-21): აქამდე ის
+              უხმოდ დეშბორდზე გადადიოდა, ე.ი. ძველი გაზიარებული ბმულიც და
+              შეცდომით აკრეფილი მისამართიც ერთნაირად „მუშაობდა".
+              ⚠️ **გამორთული მოდულის მისამართიც აქ ჩავარდება** (მისი მარშრუტი
+              საერთოდ არ იქმნება) და ესეც სწორია: backend-იც უცხო ჩანაწერზე
+              404-ს აბრუნებს და არა 403-ს — „ეს არსებობს" თვითონაც ინფორმაციაა. */}
+          <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>

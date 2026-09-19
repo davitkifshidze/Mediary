@@ -19,6 +19,7 @@ import { fetchMovieCollection, mediaApi } from '@/api/media'
 import { detachCastMember } from '@/api/cast'
 import type { CastMember } from '@/api/types'
 import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
+import { NotFound } from '@/pages/NotFoundPage'
 import { PosterImage } from '@/components/PosterImage'
 import { RecordGallery } from '@/components/RecordGallery'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
@@ -124,8 +125,28 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     if (ok) delMut.mutate()
   }
 
-  if (isLoading || !m) {
+  if (isLoading) {
     return <div className={pageContainer('wide', 'py-10 text-muted-foreground')}>{t('api.loading')}</div>
+  }
+
+  /* ⚠️ **წაშლილი/სხვისი ჩანაწერი აქამდე სამუდამოდ „იტვირთებოდა"** (Tasks GAP-21):
+     404-ზე `isLoading` false ხდება, `m` კი ცარიელი რჩება — ერთი პირობა ორივე
+     მდგომარეობას ფარავდა და მომხმარებელი უსასრულო „იტვირთება"-ს ხედავდა.
+     ⚠️ ღილაკი სექციაში აბრუნებს და არა დეშბორდზე: სწორედ იქიდან მოხვედი. */
+  if (!m) {
+    return (
+      <div className={pageContainer('wide', 'py-10')}>
+        <NotFound
+          title={t('notFound.recordTitle')}
+          hint={t('notFound.recordHint')}
+          actions={
+            <Link to={libraryPath} className={buttonVariants()}>
+              {t('notFound.backToList')}
+            </Link>
+          }
+        />
+      </div>
+    )
   }
 
   const description = lang === 'ka' ? m.description_ka || m.description_en : m.description_en || m.description_ka
