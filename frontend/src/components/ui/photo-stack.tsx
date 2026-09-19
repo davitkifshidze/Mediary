@@ -3,7 +3,25 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, ImageOff, Lock } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { PrivateImage } from '@/components/PrivateFile'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+
+/**
+ * ერთი ესკიზი დასტისთვის.
+ *
+ * ⚠️ **საჯარო ფაილი სტრიქონია, პრივატული — ობიექტი** და ეს სერვერის
+ * ფორმაა (`GalleryImage::preview()`), და არა აქაური მოხერხებულობა:
+ * `/storage/*` პირად დისკს ვერ წვდება, ე.ი. `gallery/locked`-ში მდგარ
+ * ფაილს **მისამართი კი არა, ნებართვა სჭირდება** და blob-ად უნდა
+ * წაიკითხოს (`usePrivateFileUrl`).
+ *
+ * ⚠️ **ეს ტიპი აქამდე `string[]` ეწერა და ცრუობდა** — სერვერი ობიექტს
+ * უკვე აგზავნიდა, კლიენტი კი მას `storageUrl()`-ს აწოდებდა:
+ * `path.replace is not a function`, ე.ი. მთელი ჭრილი თეთრ გვერდად.
+ * `tsc`-ს ამის დანახვა არ შეეძლო — JSON-ის პასუხი ხელით აღწერილი ტიპია,
+ * და ტიპი სწორედ იმაზე ცრუობდა, რაც მოდიოდა.
+ */
+export type StackPreview = string | { url: string; private?: boolean }
 
 /* ============================================================
    ფოტოების **დასტა** — ერთი ჯგუფი ერთი კარტით (Tasks §4.2 → **§8.6**).
@@ -80,8 +98,8 @@ export function PhotoStack({
   subtitle?: ReactNode
   /** ქვედა ხაზი — „12 ფოტო · 4 MB" და მისთანები (ტექსტს **გამომძახებელი** წერს) */
   label: ReactNode
-  /** storage-ის გზები ან სრული URL-ები; პირველი ზემოთ ხატება */
-  images: string[]
+  /** storage-ის გზები, სრული URL-ები ან პრივატული ესკიზები; პირველი ზემოთ ხატება */
+  images: StackPreview[]
   /** ჯგუფის სრული რაოდენობა — კუთხეში პატარა ნიშნად */
   count?: number
   open?: boolean
@@ -170,23 +188,31 @@ export function PhotoStack({
             </span>
           )}
 
-          {[...cards].reverse().map((path, reverseIndex) => {
+          {[...cards].reverse().map((preview, reverseIndex) => {
             const index = cards.length - 1 - reverseIndex
             const offset = index - (cards.length - 1) / 2
+            const isPrivate = typeof preview !== 'string' && !!preview.private
+            const src = typeof preview === 'string' ? preview : preview.url
 
             return (
               <span
-                key={`${path}-${index}`}
+                key={`${src}-${index}`}
                 className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-transform duration-300 ease-out"
                 style={{ ...fan(offset, spread), zIndex: cards.length - index }}
               >
-                <img
-                  src={storageUrl(path) ?? ''}
-                  alt=""
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  className="size-full object-cover"
-                />
+                {/* ⚠️ პრივატული ფაილი blob-ად იკითხება — `<img src>`-ს
+                    `/storage/*` პირად დისკამდე ვერ მიჰყავს (§17.5) */}
+                {isPrivate ? (
+                  <PrivateImage url={src} alt="" className="size-full object-cover" />
+                ) : (
+                  <img
+                    src={storageUrl(src) ?? ''}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="size-full object-cover"
+                  />
+                )}
               </span>
             )
           })}

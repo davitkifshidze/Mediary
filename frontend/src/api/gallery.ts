@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import type { StorageUsage } from './account'
 import type { Status } from './types'
+import type { StackPreview } from '@/components/ui/photo-stack'
 import type { MediaType } from '@/lib/media'
 
 /* ============================================================
@@ -324,7 +325,7 @@ export interface GalleryGroup {
   /** მსახიობების ჭრილში — „ყველა ქალის მონიშვნა" ღილაკს სჭირდება */
   gender?: number | null
   /** მოდულების ჭრილში ესკიზები ჯგუფშივე მოდის */
-  previews?: string[]
+  previews?: StackPreview[]
   /** მოდულების ჭრილი პრივატულ დისკზეც ცხოვრობს (`note`) */
   private?: boolean
   /** ალბომების ჭრილში — ჩაკეტილ ჯგუფს ესკიზი არ მოსდევს (2026-09-16) */
@@ -359,7 +360,7 @@ export interface GalleryGroups {
     types?: Partial<Record<string, number>>
   }
   /** `kind:id` → ესკიზების გზები (ბადეზე „რა დევს შიგნით") */
-  previews: Record<string, string[]>
+  previews: Record<string, StackPreview[]>
 }
 
 export interface GalleryPageMeta {
