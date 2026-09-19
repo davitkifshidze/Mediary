@@ -172,7 +172,11 @@ class CustomFieldTest extends TestCase
             ->putJson("/api/custom-fields/video/{$video->id}", ['values' => ['mood' => 'კარგი']])
             ->assertOk();
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/video/{$video->id}")->assertNoContent();
 
         $this->assertSame(0, DB::table('video_field_values')->count());
     }

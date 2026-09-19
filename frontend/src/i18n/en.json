@@ -3012,5 +3012,24 @@
   "upcoming": {
     "title": "Coming soon",
     "hint": "The next 30 days: an episode airing, a game release, a note falling due. Books and board games only carry a release year, so they cannot sit on a particular day."
+  },
+  "trash": {
+    "title": "Trash",
+    "hint": "A deleted record is kept here for {{days}} days — with its files, notes and links. After that it is deleted for good, and only then is the space freed.",
+    "count": "{{count}} records",
+    "empty": "The trash is empty",
+    "emptyHint": "Records you delete from the sections land here, so an accidental deletion can be undone.",
+    "restore": "Restore",
+    "restored": "The record is back",
+    "deleteNow": "Delete for good",
+    "deleted": "The record is gone for good",
+    "deleteTitle": "Delete for good?",
+    "deleteHint": "“{{name}}” and its files are deleted permanently — nothing stays in the trash.",
+    "expiresIn": "deleted in {{count}} days",
+    "expiresToday": "deleted today",
+    "more": "and {{count}} more",
+    "confirmLabel": "Type {{word}} to confirm",
+    "emptyAction": "Empty the trash",
+    "emptied": "{{count}} records deleted"
   }
 }

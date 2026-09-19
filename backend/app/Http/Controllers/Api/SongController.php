@@ -119,8 +119,12 @@ class SongController extends Controller
 
     public function destroy(Song $song)
     {
-        // ⚠️ თამბნეილს `Song::booted()` შლის — იხ. `Video::booted()`
-        $song->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $song->moveToTrash();
 
         return response()->noContent();
     }

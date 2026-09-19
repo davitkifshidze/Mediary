@@ -679,6 +679,13 @@ class PurgeService
      * ⚠️ `withoutGlobalScope('owner') + where user_id` განზრახ: ადმინს სხვისი
      * ანგარიშის გასუფთავებაც სჭირდება (`user_id` პარამეტრით), ე.ი. სკოუპს
      * ცხადად ვწერთ და არა Auth-ზე ვეყრდნობით.
+     *
+     * ⚠️ **`trash` scope-იც ცხადად ითიშება (FEAT-11).** კალათაში მყოფი
+     * ჩანაწერი ისევ ბაზაშია, ფაილებიც დისკზეა და კვოტაშიც ითვლება — ე.ი.
+     * მისი გამოტოვება ორ რამეს გააფუჭებდა: „წაშალე ყველაფერი" ჩუმად
+     * დატოვებდა ნაწილს (ანგარიშის წაშლისას ობოლი ფაილები დისკზე
+     * დარჩებოდა — BUG-21-ის ზუსტი განმეორება), და `plan()`-ის „გათავისუფლდება
+     * N ბაიტი" ტყუილი იქნებოდა.
      */
     private function modelQuery(User $user, string $type): Builder
     {
@@ -695,7 +702,7 @@ class PurgeService
             default => Movie::class,
         };
 
-        return $model::withoutGlobalScope('owner')->where('user_id', $user->getKey());
+        return $model::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $user->getKey());
     }
 
     private function morphAlias(string $target): string

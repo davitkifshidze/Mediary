@@ -108,8 +108,12 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
-        // ყდას, ფაილებს და გალერეას `Book::booted()` შლის — კვოტაც იქვე თავისუფლდება
-        $book->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $book->moveToTrash();
 
         return response()->noContent();
     }

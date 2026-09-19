@@ -30,7 +30,7 @@ class EnsureModulePermission
        კი ცრუ 403-ს იღებდა. ⚠️ **როუტზე ცხადი `permission:gallery,update`
        აქ არ შველის** — ჯგუფის `permission:gallery` რჩება და **ორივე**
        ეშვება, ე.ი. update-only როლი ისევ 403-ს მიიღებდა. */
-    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock', 'move'];
+    private const UPDATE_ENDPOINTS = ['resync', 'watched', 'played', 'visited', 'bulk-status', 'bulk', 'reorder', 'primary', 'download', 'unlock', 'lock', 'move', 'restore'];
 
     /**
      * POST, რომელიც **არაფერს ცვლის** — probe ან „რამდენს შეეხება" (Tasks GAP-04).

@@ -154,8 +154,12 @@ class AnimeController extends Controller
     /** წაშლა */
     public function destroy(Anime $anime)
     {
-        // ⚠️ პოსტერს `Anime::booted()` შლის — იხ. `Movie::deletePoster()`
-        $anime->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $anime->moveToTrash();
 
         return response()->noContent();
     }

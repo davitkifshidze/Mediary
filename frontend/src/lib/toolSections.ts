@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Tags,
   Trash2,
+  ArchiveRestore,
   UserCog,
 } from 'lucide-react'
 import { modAccent } from '@/lib/modules'
@@ -60,6 +61,7 @@ export type ToolSectionKey =
   | 'backups'
   | 'import'
   | 'stats'
+  | 'trash'
   | 'purge'
 
 type ToolSection = { color: string; icon: LucideIcon }
@@ -81,6 +83,11 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
   import: { color: 'var(--tool-import)', icon: Import },
   stats: { color: 'var(--tool-stats)', icon: ChartColumn },
+  /* ⚠️ **ურნა და არა კალათა** — `Trash2` რიგში უკვე მასობრივ წაშლას
+     (`purge`) აქვს; ერთი ხატვა ორ სხვადასხვა რამეს რომ ნიშნავდეს,
+     ზუსტად ის შეცდომაა, რომელიც CLAUDE.md-ს იკონების წესში წერია.
+     `ArchiveRestore` იმასაც ამბობს, რასაც გვერდი აკეთებს — დაბრუნებას. */
+  trash: { color: 'var(--tool-trash)', icon: ArchiveRestore },
   purge: { color: 'var(--tool-purge)', icon: Trash2 },
 }
 

@@ -1026,8 +1026,15 @@ class GalleryTest extends TestCase
             ->postJson("/api/gallery/movie/{$movie->id}", ['limit' => 2])
             ->assertOk();
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფოტოები და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user->refresh())
             ->deleteJson("/api/movies/{$movie->id}")
+            ->assertNoContent();
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/trash/movie/{$movie->id}")
             ->assertNoContent();
 
         $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
@@ -1295,7 +1302,11 @@ class GalleryTest extends TestCase
             ->assertJsonCount(1, 'videos');
 
         // ⚠️ ჩანაწერის წაშლა ვიდეოებსაც შლის — SQL-კასკადი ივენთს არ ისვრის
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/movies/{$movie->id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/movie/{$movie->id}")->assertNoContent();
         $this->assertSame(0, GalleryVideo::withoutGlobalScope('owner')->count());
     }
 

@@ -90,6 +90,17 @@ class AuditLog extends Model
      */
     public const ACTION_IMPORT = 'import';
 
+    /**
+     * კალათიდან აღდგენილი ჩანაწერი (FEAT-11).
+     *
+     * ⚠️ **`update`-ად ვერ ჩაითვლებოდა და `create`-ადაც არა.** წაშლას
+     * `AuditObserver` **ვერ ხედავს**, რადგან კალათაში გადატანა `delete`
+     * არ არის — ეს `trashed_at`-ის ჩუმი (`saveQuietly`) ჩაწერაა; ე.ი.
+     * ლოგში სხვაგვარად დარჩებოდა „წაშლილი, მერე უცნობი გზით დაბრუნებული"
+     * ჩანაწერი, ანუ ზუსტად ის ისტორია, რომლისთვისაც ჟურნალი არსებობს.
+     */
+    public const ACTION_RESTORE = 'restore';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
@@ -105,6 +116,7 @@ class AuditLog extends Model
         self::ACTION_TRANSLATE,
         self::ACTION_EXPORT,
         self::ACTION_IMPORT,
+        self::ACTION_RESTORE,
     ];
 
     /**

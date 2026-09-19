@@ -37,6 +37,7 @@ const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => (
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const ImportPage = lazy(() => import('@/pages/ImportPage').then((m) => ({ default: m.ImportPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
+const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -278,6 +279,7 @@ function AppShell() {
           {/* FEAT-08 — სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
               ყველა ჩართულ მოდულს ეხება და ჩაურთველი სიიდან თვითონ ცვივა. */}
           <Route path="stats" element={<StatsPage />} />
+          <Route path="trash" element={<TrashPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />

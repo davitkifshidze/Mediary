@@ -321,7 +321,11 @@ class BookModuleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('modules.book', $used);
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/books/{$id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/book/{$id}")->assertNoContent();
 
         Storage::disk('public')->assertMissing($path);
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);

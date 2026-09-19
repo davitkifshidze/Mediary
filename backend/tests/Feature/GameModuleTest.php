@@ -353,7 +353,11 @@ class GameModuleTest extends TestCase
         $used = (int) $this->user->refresh()->storage_used_bytes;
         $this->assertGreaterThan(0, $used);
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/games/{$id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/game/{$id}")->assertNoContent();
 
         $this->assertSame(0, GameFile::withoutGlobalScope('owner')->count());
         $this->assertSame(0, GameNote::withoutGlobalScope('owner')->count());

@@ -146,8 +146,12 @@ class SeriesController extends Controller
     /** წაშლა */
     public function destroy(Series $series)
     {
-        // ⚠️ პოსტერს `Series::booted()` შლის — იხ. `Movie::deletePoster()`
-        $series->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $series->moveToTrash();
 
         return response()->noContent();
     }

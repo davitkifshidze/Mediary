@@ -264,7 +264,11 @@ class BoardGameModuleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('modules.board_game', $used);
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/board-games/{$id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/board_game/{$id}")->assertNoContent();
 
         Storage::disk('public')->assertMissing($rules);
         Storage::disk('public')->assertMissing($photo);

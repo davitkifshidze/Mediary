@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
+  ArchiveRestore,
   BellRing,
   ChartColumn,
   ChevronDown,
@@ -1006,6 +1007,15 @@ export function Sidebar({
         <Link to="/import" onClick={() => setDrawerOpen(false)} style={toolAccent('import')} className={toolLink('/import')}>
           <Import className="size-4 shrink-0" />
           {t('import.title')}
+        </Link>
+        {/* FEAT-11 — კალათა.
+            ⚠️ **პირობის გარეშე ჩანს**: წაშლილი ჩანაწერი ათივე მოდულიდან
+            აქ ხვდება, ე.ი. „რომელი მოდული მაქვს" აქ არასწორი კითხვაა —
+            სერვერი ისედაც მხოლოდ იმ დომენებს აბრუნებს, რომლებზეც წაშლის
+            უფლება მაქვს და რაღაც წაშლილი მიდევს. */}
+        <Link to="/trash" onClick={() => setDrawerOpen(false)} style={toolAccent('trash')} className={toolLink('/trash')}>
+          <ArchiveRestore className="size-4 shrink-0" />
+          {t('trash.title')}
         </Link>
         {/* Tasks §21 — „მონაცემები": ჩემი გასაღებები და ლიმიტები.
             ⚠️ **პირობის გარეშე ჩანს**: TMDB-ს მედია-მოდულები იყენებენ,

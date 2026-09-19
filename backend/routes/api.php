@@ -73,6 +73,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TranslationController;
+use App\Http\Controllers\Api\TrashController;
 use App\Http\Controllers\Api\UpcomingController;
 use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
@@ -331,6 +332,17 @@ Route::middleware('auth:sanctum')->group(function () {
        თამაშის გამოსვლა, ჩანიშვნის ვადა. ⚠️ წიგნსა და ბორდგეიმს მხოლოდ
        `year` აქვთ, ე.ი. კონკრეტულ დღეს ვერ დადგებიან. */
     Route::get('/upcoming', [UpcomingController::class, 'index']);
+
+    /* ---------- კალათა (FEAT-11) ----------
+       ⚠️ **`module:`/`permission:` middleware განზრახ არ ადევს**: პარამეტრს
+       `domain` ჰქვია და არა `type`, ე.ი. `@type` ყოველთვის `movie`-ს
+       შეამოწმებდა. ორივე შემოწმება (წვდომა + `delete` უფლება) კონტროლერშია.
+       ⚠️ **`DELETE /trash` `/trash/{domain}/{id}`-ზე მაღლა დგას** — თორემ
+       დაცლის მისამართს როუტერი ვერ გაარჩევდა ერთი ჩანაწერის წაშლისგან. */
+    Route::get('/trash', [TrashController::class, 'index']);
+    Route::delete('/trash', [TrashController::class, 'empty']);
+    Route::post('/trash/{domain}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id');
+    Route::delete('/trash/{domain}/{id}', [TrashController::class, 'destroy'])->whereNumber('id');
 
     Route::get('/import/sources', [ImportController::class, 'sources']);
     Route::post('/import/plan', [ImportController::class, 'plan']);

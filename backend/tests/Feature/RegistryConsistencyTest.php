@@ -22,6 +22,7 @@ use App\Support\GalleryParent;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
+use App\Support\TrashDomain;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -339,6 +340,35 @@ class RegistryConsistencyTest extends TestCase
         $this->assertSame([], $missing, implode(PHP_EOL, [
             'მოდულს ჩანაწერები აქვს, `ExportDomain`-ში კი არც `MODULES`-შია და არც `NOT_EXPORTED`-ში.',
             'შედეგი: „ჩემი მონაცემები" ამ მოდულს უხმოდ ტოვებს — შეცდომა ჩუმია.',
+            'გამორჩენილი: '.implode(', ', $missing),
+        ]));
+    }
+
+    /**
+     * ⚠️ **ყოველ ჩანაწერიან მოდულს კალათა უნდა ჰქონდეს** (FEAT-11).
+     *
+     * გამორჩენა აქაც **ჩუმია და უფრო ძვირი**: მოდული ჩვეულებრივ იმუშავებს,
+     * უბრალოდ მისი წაშლა ისევ მყისიერი და შეუქცევადი იქნება — და ამას
+     * მომხმარებელი მხოლოდ მაშინ გაიგებს, როცა უკან დაბრუნებას მოინდომებს
+     * და კალათაში ვერაფერს იპოვის.
+     *
+     * ⚠️ **`gallery` ერთადერთი გამონაკლისია და მიზეზით**: მისი შიგთავსი
+     * **ფაილებია** და არა ჩანაწერები (`ExportDomain`-ის იგივე გამიჯვნა),
+     * ე.ი. მას `user_id`-იანი „მთავარი ცხრილი" საერთოდ არ აქვს.
+     */
+    public function test_every_record_module_has_a_trash(): void
+    {
+        $covered = TrashDomain::domains();
+
+        // ⚠️ ჯერ თვითონ წამკითხველი — რუკის გადარქმევაზე ტესტი ცრუდ გაივლიდა
+        $this->assertContains('movie', $covered, '`TrashDomain::MODELS` ცარიელია ან გადაერქვა');
+
+        $expected = array_values(array_diff(array_keys(PurgeService::TARGET_MODES), ['gallery']));
+        $missing = array_values(array_diff($expected, $covered));
+
+        $this->assertSame([], $missing, implode(PHP_EOL, [
+            'მოდულს ჩანაწერები აქვს, `TrashDomain::MODELS`-ში კი არ არის.',
+            'შედეგი: წაშლა ამ მოდულზე ისევ შეუქცევადია — შეცდომა ჩუმია.',
             'გამორჩენილი: '.implode(', ', $missing),
         ]));
     }

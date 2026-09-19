@@ -190,7 +190,11 @@ class NoteModuleTest extends TestCase
 
         $this->assertGreaterThan(0, (int) $this->user->refresh()->storage_used_bytes);
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/notes/{$noteId}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/note/{$noteId}")->assertNoContent();
 
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
         $this->assertSame(0, NoteEntry::withoutGlobalScope('owner')->count());

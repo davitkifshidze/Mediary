@@ -154,8 +154,12 @@ class GameController extends Controller
 
     public function destroy(Game $game)
     {
-        // ყდას, ფაილებსა და გალერეას `Game::booted()` შლის — კვოტაც იქვე თავისუფლდება
-        $game->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $game->moveToTrash();
 
         return response()->noContent();
     }

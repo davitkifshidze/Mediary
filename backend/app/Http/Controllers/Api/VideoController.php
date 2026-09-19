@@ -129,9 +129,12 @@ class VideoController extends Controller
 
     public function destroy(Video $video)
     {
-        // ⚠️ თამბნეილს `Video::booted()` შლის — ერთი წყარო, რომელიც
-        // მასობრივ წაშლაზეც (Tasks 20) მუშაობს
-        $video->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $video->moveToTrash();
 
         return response()->noContent();
     }

@@ -156,7 +156,11 @@ class VideoModuleTest extends TestCase
         Storage::disk('public')->assertExists($path);
 
         // ვიდეოს წაშლა → ჩანაწერებიც და ფაილებიც ქრება
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/video/{$video->id}")->assertNoContent();
 
         $this->assertSame(0, VideoFile::withoutGlobalScope('owner')->count());
         $this->assertSame(0, VideoNote::withoutGlobalScope('owner')->count());
@@ -318,7 +322,11 @@ class VideoModuleTest extends TestCase
         $this->assertSame(1, VideoFile::withoutGlobalScope('owner')->count());
 
         // ვიდეოს წაშლა კასკადით ათავისუფლებს კვოტას
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/videos/{$video->id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/video/{$video->id}")->assertNoContent();
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 

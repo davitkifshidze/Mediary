@@ -236,7 +236,11 @@ class SongModuleTest extends TestCase
         // მოდულის ჭრილშიც სიმღერას ეკუთვნის და არა ვიდეოს
         $this->actingAs($this->user)->getJson('/api/storage')->assertJsonPath('modules.song', $used);
 
+        /* ⚠️ **კალათა (FEAT-11)** — `DELETE /api/<module>/{id}` ჩანაწერს
+           აღარ შლის, კალათაში გადააქვს; ფაილი და კვოტა მაშინ თავისუფლდება,
+           როცა ის კალათიდანაც წაიშლება. ტესტი სწორედ ამ სრულ გზას გადის. */
         $this->actingAs($this->user)->deleteJson("/api/songs/{$id}")->assertNoContent();
+        $this->actingAs($this->user)->deleteJson("/api/trash/song/{$id}")->assertNoContent();
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 

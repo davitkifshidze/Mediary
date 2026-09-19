@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasStatus;
+use App\Models\Concerns\HasTrash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,12 @@ class NoteEntry extends Model
 
     /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
+
+    /**
+     * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
+     * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
+     */
+    use HasTrash;
 
     protected $guarded = ['id'];
 

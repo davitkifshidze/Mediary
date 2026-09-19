@@ -97,8 +97,12 @@ class NoteEntryController extends Controller
 
     public function destroy(NoteEntry $note)
     {
-        // ფაილებს `NoteEntry::booted()` შლის — კვოტაც იქვე თავისუფლდება
-        $note->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $note->moveToTrash();
 
         return response()->noContent();
     }

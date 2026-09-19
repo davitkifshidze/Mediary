@@ -209,9 +209,12 @@ class MovieController extends Controller
     /** წაშლა */
     public function destroy(Movie $movie)
     {
-        // ⚠️ პოსტერს `Movie::booted()` შლის და არა აქაური კოდი — ერთი წყარო,
-        // რომელიც მასობრივ წაშლაზეც (Tasks 20) მუშაობს
-        $movie->delete();
+        /* ⚠️ **კალათა (FEAT-11)** — `delete()` კი არა, `moveToTrash()`.
+           ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
+           გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
+           ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
+           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+        $movie->moveToTrash();
 
         return response()->noContent();
     }
