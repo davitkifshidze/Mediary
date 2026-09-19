@@ -73,6 +73,22 @@ export interface PhotoItem {
   id: number
   /** public URL (`/storage/…`) ან პრივატული API-ს გზა (`/note-files/12`) */
   src: string
+  /**
+   * **ეს ფოტო პირად დისკზეა** — `src` API-ის მარშრუტია და blob-ად უნდა
+   * წაიკითხოს (`usePrivateFileUrl`).
+   *
+   * ⚠️ **თითო ფოტოზე და არა მთელ ბადეზე.** `privateDisk` ბადის დროშაა და
+   * იმ ერთგვაროვან შემთხვევას ემსახურება, სადაც ყველა რიგი პირადია
+   * (`note`-ის მოდულის ჭრილი). გალერეა კი **შერეულია**: სესიაში გახსნილი
+   * ალბომის ფაილები `gallery/locked`-შია, დანარჩენები `gallery/images`-ში —
+   * ე.ი. ერთი ბადის დროშა ერთ ნახევარს ყოველთვის ტყუოდა და პრივატული
+   * მისამართი `storageUrl()`-ში ხვდებოდა: `/storage/gallery/images/788/file`,
+   * რომელიც არსად არსებობს (`/storage/*` პირად დისკს ვერ წვდება).
+   *
+   * ⚠️ **ფაქტი სერვერისაა** (`GalleryImageResource.private`) — `PRIVATE_ROOTS`-ის
+   * ასლი SPA-ში ერთ დღეს დაშორდებოდა (§17.5-ის დაწერილი წესი).
+   */
+  private?: boolean
   title?: string | null
   subtitle?: string | null
   /**
@@ -288,8 +304,17 @@ export function PhotoGrid({
     setSelected((cur) => cur.filter((id) => items.some((i) => i.id === id)))
   }, [items])
 
+  /**
+   * პირადია თუ არა **ეს** ფოტო.
+   *
+   * ⚠️ ბადის `privateDisk` მხოლოდ ნაგულისხმევია: ერთგვაროვან ჭრილში
+   * (ყველა რიგი პირადი) ის საკმარისია, შერეულში კი რიგის საკუთარი
+   * პასუხი უპირატესია — თორემ ერთ ნახევარს მისამართი ეტყუება.
+   */
+  const isPrivate = (item: PhotoItem) => item.private ?? privateDisk ?? false
+
   const urlOf = (item: PhotoItem) =>
-    privateDisk ? resolved.current[item.id] : (storageUrl(item.src) ?? item.src)
+    isPrivate(item) ? resolved.current[item.id] : (storageUrl(item.src) ?? item.src)
 
   /**
    * უჯრამ მისამართი მიიღო.
@@ -394,7 +419,7 @@ export function PhotoGrid({
 
       setTimeout(async () => {
         const ready = urlOf(item)
-        const fetched = ready || !privateDisk ? null : await fetchPrivateObjectUrl(item.src)
+        const fetched = ready || !isPrivate(item) ? null : await fetchPrivateObjectUrl(item.src)
         const url = ready ?? fetched
         if (!url) return
 
@@ -518,7 +543,7 @@ export function PhotoGrid({
               key={item.id}
               item={item}
               index={index}
-              privateDisk={privateDisk}
+              privateDisk={isPrivate(item)}
               preload={!!preloadIds?.has(item.id)}
               picking={picking}
               checked={selected.includes(item.id)}

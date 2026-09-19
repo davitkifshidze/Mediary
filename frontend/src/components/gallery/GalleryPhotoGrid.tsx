@@ -73,6 +73,10 @@ export function GalleryPhotoGrid({
   const toItem = (image: GalleryOwnedImage) => ({
     id: image.id,
     src: image.url,
+    /* ⚠️ **პირადი დისკი თითო ფოტოზეა** — გალერეის ბადე შერეულია
+       (გახსნილი ალბომის ფაილები `gallery/locked`-შია), ე.ი. ბადის ერთი
+       დროშა ერთ ნახევარს ყოველთვის ატყუებდა. */
+    private: image.private,
     title: image.original_name,
     subtitle: showOwner
       ? (ownerOf(image) ?? undefined)
