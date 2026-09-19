@@ -72,7 +72,7 @@
 | FEAT-19 | შეტყობინებების ცენტრი: მოთხოვნა დამტკიცდა, კვოტა ივსება, ასლი ჩავარდა, პარტია დასრულდა | — | feature | M | ✅ |
 | FEAT-20 | „რა ვნახო დღეს" — შემთხვევითი არჩევანი `todo` სტატუსიდან ფილტრით | — | feature | S | ✅ |
 | FEAT-21 | წლიური მიზნები (წიგნი/ფილმი წელიწადში) — FEAT-08-ზე დგას | — | feature | M | 🟡 ნაწილობრივ |
-| FEAT-25 | ახალი მოდული: **კურსები** (ხელით, გაკვეთილების პროგრესით) | — | feature | L | ⬜ |
+| FEAT-25 | ახალი მოდული: **კურსები** (ხელით, გაკვეთილების პროგრესით) | — | feature | L | ✅ |
 | FEAT-26 | ახალი მოდული: **ადგილები** (ნანახი/სანახავი; OSM Nominatim — უფასო) | — | feature | L | ⬜ |
 
 ## Critical
@@ -987,13 +987,14 @@
 - **დამოკიდებულება:** FEAT-08
 
 ### [FEAT-25] ახალი მოდული: კურსები
+- **სტატუსი:** ✅ შესრულებულია (2026-09-21). მეთერთმეტე მოდული `course` — ბუკმარკის რეცეპტით (გარე წყარო არ არსებობს; `LinkMetadata`-ს probe სათაურსა და სურათს ავსებს). ოთხი ცხრილი: `courses` · `course_categories` (per-user ლექსიკონი) · `course_files` (`certificate`/`image`/`doc`) · `course_field_values`. ⚠️ **სტატუსი enum-ია** (`to_take`/`taking`/`done`/`dropped`) — `StatusDomain`-ის როლები სამია და „მივატოვე" მეოთხე ფაქტია. ⚠️ **პროგრესი ორ სვეტშია, პროცენტი გამოთვლადია**; `Course::syncProgress()` ერთადერთი ადგილია, სადაც სტატუსი, პროგრესი და `finished_at` თანხმდება — ავტომატური დაწინაურება მხოლოდ მაშინ, როცა **პროგრესი** შეიცვალა. ⚠️ **ხანგრძლივობა წუთებშია** (ტასქში „hours" ეწერა; §2.5-ის ერთეული). ⚠️ **ბმული არასავალდებულოა** — ოფლაინ კურსსაც ჩაწერ. UI: `/courses` (სია, ფილტრი, ფორმა), `components/CourseDetail.tsx` (სერტიფიკატი ცალკე ბლოკად), ლექსიკონი `/dictionaries/course-categories`. ტესტი: `CourseModuleTest` (11); `RegistryConsistencyTest` მწვანეა.
 - **ტიპი:** feature
 - **სად:** n/a (რეესტრები — `ModulesSeeder`, `StatusDomain`, `PublicDomain`, `PurgeService` 4 რუკა, `AuditRegistry`, `DashboardController::COUNTERS`, `StorageFolder`, `StorageMeter::files()/referencedPaths()`, `CustomFields`, `FieldCatalog`, `ModuleImages`, frontend `PAGE_MODULE_KEYS`/`MODULE_PAGES`/`dictionaries`/`PURGE_TARGET_MODES`, `ModuleIcon`, `cutStyle`, i18n — `RegistryConsistencyTest`-ის 17 შემოწმება გამორჩენას იჭერს)
 - **პრობლემა:** ონლაინ-კურსი (Udemy/Coursera/YouTube-პლეილისტი) დღეს ან „ვიდეოა", ან „ბუკმარკი" — არც პროგრესი აქვს გაკვეთილებით, არც სერტიფიკატის ფაილი. გარე უფასო API არ არსებობს (Udemy/Coursera-ს კატალოგი დახურულია) — მოდული **ხელითაა**, ბუკმარკის `LinkMetadata` პრობით სათაურისა და სურათისთვის.
 - **რატომ:** `note`/`bookmark`-ის მსგავსი „წყაროს გარეშე" მოდულის მზა რეცეპტი; პროგრესი წიგნის მოდელით.
 - **გადაწყვეტა:** `courses` (`url`, `platform` დომენიდან, `lessons_total`/`lessons_done`, `hours`, `status` enum `to_take/taking/done/dropped`, `certificate` ფაილი `course_files`-ში), per-user კატეგორიები, `MATCH` `url`-ით (ბუკმარკის წესი).
 - **Acceptance criteria:**
-  - [ ] კურსი პროგრესით და სერტიფიკატით ინახება; ბმულის პრობი სათაურს ავსებს; `RegistryConsistencyTest` მწვანე
+  - [x] კურსი პროგრესით და სერტიფიკატით ინახება; ბმულის პრობი სათაურს ავსებს; `RegistryConsistencyTest` მწვანე
 - **Estimate:** L
 - **დამოკიდებულება:** none
 

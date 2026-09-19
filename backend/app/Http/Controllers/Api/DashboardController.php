@@ -7,6 +7,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Course;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Game;
@@ -50,6 +51,7 @@ class DashboardController extends Controller
         // იხატებოდა (`count: null`). შეცდომა ჩუმია: მოდული ჩანს, რიცხვი კი არა.
         'note' => NoteEntry::class,
         'bookmark' => Bookmark::class,
+        'course' => Course::class,
         /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
            გალერეა ფოტოებით სავსეა (ნანახი 2026-09-14). მიზეზი დაშვება იყო,
            რომ „გალერეას საკუთარი ჩანაწერი არ აქვს" — აქვს: `gallery_images`

@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Course;
 use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
@@ -75,6 +76,9 @@ class LibraryStats
         'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => null, 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => true],
         'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => false],
         'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => false],
+        /* FEAT-25 — ⚠️ `done_at` **`finished_at`-ია და არა `updated_at`**:
+           „წელს რამდენი დავასრულე" სწორედ ამით ითვლება (FEAT-08/FEAT-21). */
+        'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => true],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */

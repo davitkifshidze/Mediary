@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Course;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -87,6 +88,7 @@ final class CustomFields
         'game_field_values' => 'games',
         'note_field_values' => 'note_entries',
         'bookmark_field_values' => 'bookmarks',
+        'course_field_values' => 'courses',
     ];
 
     /** მოდულის key → მნიშვნელობების ცხრილი */
@@ -101,6 +103,7 @@ final class CustomFields
         'game' => 'game_field_values',
         'note' => 'note_field_values',
         'bookmark' => 'bookmark_field_values',
+        'course' => 'course_field_values',
     ];
 
     /**
@@ -123,6 +126,7 @@ final class CustomFields
             'game' => Game::class,
             'note' => NoteEntry::class,
             'bookmark' => Bookmark::class,
+            'course' => Course::class,
             default => null,
         };
     }

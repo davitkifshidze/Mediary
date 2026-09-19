@@ -400,6 +400,7 @@ class RegistryConsistencyTest extends TestCase
             'game' => ['title_en' => 'g'],
             'note' => ['title' => 'n'],
             'bookmark' => ['title' => 'bm', 'url' => 'https://example.com/b', 'domain' => 'example.com'],
+            'course' => ['title' => 'c'],
         ];
 
         foreach (ExportDomain::keys() as $module) {

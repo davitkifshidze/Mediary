@@ -31,6 +31,8 @@ class ModulesSeeder extends Seeder
         'gallery' => '#a855f7',
         'note' => '#64748b',
         'bookmark' => '#0ea5e9',
+        // FEAT-25 — ტეალი; მეზობლებისგან (ბუკმარკის ცისფერი) გასარჩევად
+        'course' => '#0ea5a4',
     ];
 
     public function run(): void
@@ -203,6 +205,22 @@ class ModulesSeeder extends Seeder
                 'morph_alias' => 'bookmark',
                 'enabled_by_default' => false,
                 'sort_order' => 42,
+            ],
+            [
+                // FEAT-25 — კურსები. გამამდიდრებელი წყარო არ არსებობს
+                // (Udemy/Coursera-ს კატალოგი დახურულია); სათაურსა და სურათს
+                // ბუკმარკის იგივე probe ავსებს (`Services\Bookmarks\LinkMetadata`).
+                'key' => 'course',
+                'name_ka' => 'კურსები',
+                'name_en' => 'Courses',
+                'description_ka' => 'ონლაინ-კურსები — გაკვეთილების პროგრესი, სერტიფიკატი და კატეგორიები.',
+                'description_en' => 'Online courses — lesson progress, the certificate and categories.',
+                'icon' => 'GraduationCap',
+                'route_base' => '/courses',
+                'api_base' => '/courses',
+                'morph_alias' => 'course',
+                'enabled_by_default' => false,
+                'sort_order' => 43,
             ],
         ];
 

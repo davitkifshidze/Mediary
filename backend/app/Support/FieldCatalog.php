@@ -197,6 +197,22 @@ final class FieldCatalog
             ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 70],
         ],
+        /* FEAT-25 — კურსები. ⚠️ `url` **`locked` არ არის** (ბუკმარკისგან
+           განსხვავებით): ოფლაინ კურსსაც მისამართი არ აქვს და ჩანაწერი მის
+           გარეშეც სრულფასოვანია. */
+        'course' => [
+            ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
+            ['key' => 'url', 'type' => 'link', 'sort_order' => 20],
+            ['key' => 'status', 'type' => 'select', 'sort_order' => 30],
+            ['key' => 'category', 'type' => 'select', 'sort_order' => 40],
+            ['key' => 'instructor', 'type' => 'text', 'sort_order' => 50],
+            ['key' => 'lessons', 'type' => 'number', 'sort_order' => 60],
+            ['key' => 'minutes', 'type' => 'number', 'sort_order' => 70],
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 80],
+            ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 90],
+            ['key' => 'description', 'type' => 'text', 'sort_order' => 100],
+            ['key' => 'tags', 'type' => 'list', 'sort_order' => 110],
+        ],
     ];
 
     /** გადახრებში დაშვებული ტექსტური ატრიბუტები */

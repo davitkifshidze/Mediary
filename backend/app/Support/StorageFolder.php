@@ -28,6 +28,8 @@ namespace App\Support;
  *   games/files/{images,docs} — `game_files` (ატვირთული სქრინშოტი/დოკუმენტი)
  *   notes/files/{images,videos,docs} — `note_entry_files` (Tasks §13)
  *   bookmarks/thumbnails   — `bookmarks.thumbnail_path` (Tasks §18)
+ *   courses/thumbnails     — `courses.thumbnail_path` (FEAT-25)
+ *   courses/files/*        — `course_files.path` (`certificate`/`image`/`doc`)
  *   {მოდულის ფესვი}/fields — `<module>_field_values.value_path` (§6 ფაზა 4b)
  *   gallery/images         — `gallery_images` (polymorphic — Tasks 10)
  *   chat/files/{images,videos,docs} — `messages.attachment_path` (§16.3, **პრივატული**)
@@ -95,6 +97,16 @@ final class StorageFolder
     /** ბუკმარკის ატვირთული ფოტო (og:image **არ** ჩამოგვაქვს — ის დაშორებული URL-ია) */
     public const BOOKMARK_THUMBNAILS = 'bookmarks/thumbnails';
 
+    /** FEAT-25 — კურსის ესკიზი (og:image დაშორებული რჩება, ბუკმარკის წესი) */
+    public const COURSE_THUMBNAILS = 'courses/thumbnails';
+
+    /** სერტიფიკატს ცალკე საქაღალდე აქვს — ის ცალკე `kind`-ია და ცალკე ბლოკიც */
+    public const COURSE_CERTIFICATES = 'courses/files/certificates';
+
+    public const COURSE_IMAGES = 'courses/files/images';
+
+    public const COURSE_DOCS = 'courses/files/docs';
+
     public const NOTE_IMAGES = 'notes/files/images';
 
     public const NOTE_VIDEOS = 'notes/files/videos';
@@ -136,7 +148,7 @@ final class StorageFolder
      * სკანირება რეკურსიულია, ე.ი. ქვესაქაღალდის დამატება აქ არაფერს მოითხოვს.
      */
     public const ROOTS = [
-        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'gallery', 'chat', 'cast', 'backups',
+        'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'gallery', 'chat', 'cast', 'backups',
     ];
 
     /**
@@ -198,6 +210,7 @@ final class StorageFolder
         'games' => 'game',
         'notes' => 'note',
         'bookmarks' => 'bookmark',
+        'courses' => 'course',
         'gallery' => 'gallery',
         'account' => 'account',
         'chat' => 'chat',
@@ -269,6 +282,16 @@ final class StorageFolder
             'image' => self::BOOK_IMAGES,
             'doc' => self::BOOK_DOCS,
             default => self::BOOK_EBOOKS,
+        };
+    }
+
+    /** FEAT-25 — კურსის ფაილი სახის მიხედვით */
+    public static function courseFiles(string $kind): string
+    {
+        return match ($kind) {
+            'certificate' => self::COURSE_CERTIFICATES,
+            'image' => self::COURSE_IMAGES,
+            default => self::COURSE_DOCS,
         };
     }
 

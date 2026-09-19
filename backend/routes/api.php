@@ -26,6 +26,9 @@ use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\CourseCategoryController;
+use App\Http\Controllers\Api\CourseController;
+use App\Http\Controllers\Api\CourseFileController;
 use App\Http\Controllers\Api\CredentialController;
 use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\DashboardController;
@@ -731,6 +734,35 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ „visited" `EnsureModulePermission::UPDATE_ENDPOINTS`-შიც უნდა იყოს,
         // თორემ POST-იდან `create` გამოვიდოდა და view+update უფლება 403-ს მიიღებდა
         Route::post('/bookmarks/{bookmark}/visited', [BookmarkController::class, 'markVisited']);
+    });
+
+    /* ---------- კურსები (module: course, FEAT-25) ----------
+       ბუკმარკის ზუსტი რეცეპტი: გარე გამამდიდრებელი წყარო არ არსებობს,
+       ერთადერთი დახმარება გვერდის probe-ია. */
+    Route::middleware(['module:course', 'permission:course'])->group(function () {
+        /* კატეგორიები — per-user ლექსიკონი */
+        Route::get('/course-categories', [CourseCategoryController::class, 'index']);
+        Route::post('/course-categories', [CourseCategoryController::class, 'store']);
+        Route::post('/course-categories/reorder', [CourseCategoryController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/course-categories/{courseCategory}', [CourseCategoryController::class, 'update']);
+        Route::delete('/course-categories/{courseCategory}', [CourseCategoryController::class, 'destroy']);
+
+        Route::get('/courses', [CourseController::class, 'index']);
+        // ⚠️ `{course}`-ზე ზემოთ, თორემ „metadata" id-ად წაიკითხება.
+        // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — ეს ძებნაა და არა შექმნა.
+        Route::post('/courses/metadata', [CourseController::class, 'metadata']);
+        Route::post('/courses', [CourseController::class, 'store']);
+        Route::get('/courses/{course}', [CourseController::class, 'show']);
+        Route::match(['put', 'patch'], '/courses/{course}', [CourseController::class, 'update']);
+        Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
+        Route::patch('/courses/{course}/favorite', [CourseController::class, 'toggleFavorite']);
+        Route::patch('/courses/{course}/status', [CourseController::class, 'setStatus']);
+        Route::patch('/courses/{course}/progress', [CourseController::class, 'setProgress']);
+
+        /* ფაილები — სერტიფიკატი, ეკრანის ასლი, კონსპექტი */
+        Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);
+        Route::post('/courses/{course}/files', [CourseFileController::class, 'store']);
+        Route::delete('/course-files/{courseFile}', [CourseFileController::class, 'destroy']);
     });
 
     /* ---------- გალერეა (module: gallery, Tasks 10) ----------

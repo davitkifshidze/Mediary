@@ -10,6 +10,8 @@ use App\Models\Book;
 use App\Models\BookFile;
 use App\Models\Bookmark;
 use App\Models\BookNote;
+use App\Models\Course;
+use App\Models\CourseFile;
 use App\Models\GalleryImage;
 use App\Models\Game;
 use App\Models\GameFile;
@@ -55,7 +57,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PurgeService
 {
-    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'gallery'];
+    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'gallery'];
 
     public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'];
 
@@ -97,6 +99,8 @@ class PurgeService
         'note' => ['ids', 'type', 'tag', 'status', 'all'],
         // §18 — ბუკმარკზეც კატეგორიაა (`bookmarks.category_id`)
         'bookmark' => ['ids', 'type', 'tag', 'status', 'all'],
+        // FEAT-25 — „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
+        'course' => ['ids', 'type', 'tag', 'status', 'all'],
         'gallery' => ['ids', 'genre', 'status', 'all'],
     ];
 
@@ -122,6 +126,7 @@ class PurgeService
         'game' => Game::STATUSES,
         'note' => ['open', 'done', 'archived'],
         'bookmark' => ['to_read', 'read', 'archived'],
+        'course' => Course::STATUSES,
     ];
 
     /**
@@ -175,6 +180,8 @@ class PurgeService
         'board_game' => [BoardGameFile::class, BoardGameNote::class, 'board_game_id'],
         'game' => [GameFile::class, GameNote::class, 'game_id'],
         'note' => [NoteEntryFile::class, null, 'note_entry_id'],
+        // FEAT-25 — კურსს ფაილები აქვს, ჩანიშვნები კი არა
+        'course' => [CourseFile::class, null, 'course_id'],
     ];
 
     /**
@@ -194,6 +201,7 @@ class PurgeService
         'board_game' => ['image_path', 'image_source'],
         'game' => ['cover_path', 'cover_source'],
         'bookmark' => ['thumbnail_path', null],
+        'course' => ['thumbnail_path', null],
     ];
 
     /**
@@ -702,6 +710,7 @@ class PurgeService
             'game' => Game::class,
             'note' => NoteEntry::class,
             'bookmark' => Bookmark::class,
+            'course' => Course::class,
             default => Movie::class,
         };
 
@@ -720,6 +729,7 @@ class PurgeService
             'game' => 'game',
             'note' => 'note',
             'bookmark' => 'bookmark',
+            'course' => 'course',
             default => 'movie',
         };
     }

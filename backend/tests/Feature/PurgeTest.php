@@ -10,6 +10,7 @@ use App\Models\BookGenre;
 use App\Models\Bookmark;
 use App\Models\BookNote;
 use App\Models\CastMember;
+use App\Models\Course;
 use App\Models\GalleryImage;
 use App\Models\Game;
 use App\Models\GameGenre;
@@ -865,7 +866,7 @@ class PurgeTest extends TestCase
 
         // FEAT-18 — სამი მედია-დომენი ამ სიას ავტომატურად დაემატა
         $this->assertSame(
-            ['movie', 'series', 'anime', 'video', 'song', 'book', 'note', 'bookmark'],
+            ['movie', 'series', 'anime', 'video', 'song', 'book', 'note', 'bookmark', 'course'],
             $targets,
         );
 
@@ -925,9 +926,14 @@ class PurgeTest extends TestCase
                 NoteEntry::create(['user_id' => $user, 'title' => 'ტეგიანი ჩანაწერი', 'tags' => ['ტეგი']]),
                 NoteEntry::create(['user_id' => $user, 'title' => 'უტეგო ჩანაწერი']),
             ],
-            default => [
+            'bookmark' => [
                 Bookmark::create(['user_id' => $user, 'title' => 'ტეგიანი ბმული', 'url' => 'https://b.example/1', 'tags' => ['ტეგი']]),
                 Bookmark::create(['user_id' => $user, 'title' => 'უტეგო ბმული', 'url' => 'https://b.example/2']),
+            ],
+            // FEAT-25 — კურსებს ტეგები აქვს
+            default => [
+                Course::create(['user_id' => $user, 'title' => 'ტეგიანი კურსი', 'tags' => ['ტეგი']]),
+                Course::create(['user_id' => $user, 'title' => 'უტეგო კურსი']),
             ],
         };
     }

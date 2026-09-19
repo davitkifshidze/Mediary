@@ -22,6 +22,9 @@ use App\Models\CastMemberTag;
 use App\Models\CastMemberTranslation;
 use App\Models\Conversation;
 use App\Models\ConversationNickname;
+use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\CourseFile;
 use App\Models\DatabaseBackup;
 use App\Models\EpisodeWatch;
 use App\Models\GalleryAlbum;
@@ -148,6 +151,11 @@ class AuditRegistry
         // ---- ბუკმარკები
         Bookmark::class => 'bookmark',
         BookmarkCategory::class => 'bookmark',
+
+        // FEAT-25 — კურსები
+        Course::class => 'course',
+        CourseCategory::class => 'course',
+        CourseFile::class => 'course',
 
         // ---- გალერეა
         GalleryAlbum::class => 'gallery',

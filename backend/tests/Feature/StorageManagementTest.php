@@ -7,6 +7,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Concerns\StoredFile;
+use App\Models\Course;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\Game;
@@ -699,6 +700,16 @@ class StorageManagementTest extends TestCase
 
         $game = Game::create(['user_id' => $u->id, 'title_en' => 'g', 'cover_path' => 'games/covers/g.jpg', 'cover_source' => 'upload']);
         $game->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'games/files/docs/g.pdf', 'size' => 32]);
+
+        // FEAT-25 — კურსი: ესკიზი + სერტიფიკატი
+        $course = Course::create([
+            'user_id' => $u->id, 'title' => 'c',
+            'thumbnail_path' => 'courses/thumbnails/c.jpg',
+        ]);
+        $course->files()->create([
+            'user_id' => $u->id, 'kind' => 'certificate',
+            'path' => 'courses/files/certificates/c.pdf', 'original_name' => 'c.pdf', 'size' => 48,
+        ]);
 
         $note = NoteEntry::create(['user_id' => $u->id, 'title' => 'n']);
         NoteEntryFile::create([

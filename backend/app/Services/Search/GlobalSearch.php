@@ -7,6 +7,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\CastMember;
+use App\Models\Course;
 use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
@@ -271,6 +272,24 @@ class GlobalSearch
                 'relations' => [
                     ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
                 ],
+            ],
+
+            'course' => [
+                'module' => 'course',
+                'model' => Course::class,
+                'custom' => 'course',
+                'title_rank' => ['columns' => ['title']],
+                'columns' => [
+                    'title' => ['title'],
+                    'description' => ['description'],
+                    'instructor' => ['instructor'],
+                    'url' => ['url'],
+                ],
+                'json' => ['tags' => 'tags'],
+                'relations' => [
+                    ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
+                ],
+                'image' => 'thumbnail_path',
             ],
 
             'bookmark' => [

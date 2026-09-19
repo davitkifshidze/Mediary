@@ -4,6 +4,8 @@ namespace App\Services\Storage;
 
 use App\Models\BoardGameFile;
 use App\Models\BookFile;
+use App\Models\Course;
+use App\Models\CourseFile;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\GameFile;
@@ -283,6 +285,43 @@ class StorageMeter
                 'path' => $bookmark->thumbnail_path,
                 'name' => $bookmark->title,
                 'created_at' => $bookmark->created_at,
+            ]);
+        }
+
+        // FEAT-25 — კურსის ატვირთული ესკიზი (og:image აქაც დაშორებული რჩება)
+        $courses = $skip('course') ? collect() : Course::withoutGlobalScope('owner')
+            ->where('user_id', $user->id)
+            ->whereNotNull('thumbnail_path')
+            ->get(['id', 'title', 'thumbnail_path', 'created_at']);
+
+        foreach ($courses as $course) {
+            $add([
+                'kind' => 'thumbnail',
+                'module' => 'course',
+                'owner_type' => 'course',
+                'owner_id' => (int) $course->id,
+                'path' => $course->thumbnail_path,
+                'name' => $course->title,
+                'created_at' => $course->created_at,
+            ]);
+        }
+
+        // კურსზე მიმაგრებული ფაილები — სერტიფიკატი, ეკრანის ასლი, კონსპექტი
+        $courseFiles = $skip('course') ? collect() : CourseFile::withoutGlobalScope('owner')
+            ->where('user_id', $user->id)
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+
+        foreach ($courseFiles as $f) {
+            $add([
+                'kind' => $f->kind === 'image' ? 'image' : 'doc',
+                'module' => 'course',
+                'owner_type' => 'course_file',
+                'owner_id' => (int) $f->id,
+                'path' => $f->path,
+                'name' => $f->original_name,
+                'size' => $f->size,
+                'mime' => $f->mime,
+                'created_at' => $f->created_at,
             ]);
         }
 
@@ -691,6 +730,7 @@ class StorageMeter
             'board_game_file' => BoardGameFile::class,
             'game_file' => GameFile::class,
             'note_entry_file' => NoteEntryFile::class,
+            'course_file' => CourseFile::class,
             'gallery_image' => GalleryImage::class,
             /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
                ბიბლიოთეკაში ფაილი ჩანდა, „წაშლა" კი ჩუმად აბრუნებდა `false`-ს
@@ -797,6 +837,7 @@ class StorageMeter
             'video' => 'videos',
             'song' => 'songs',
             'bookmark' => 'bookmarks',
+            'course' => 'courses',
             'book' => 'books',
             'board_game' => 'boardGames',
             'game' => 'games',
@@ -816,7 +857,7 @@ class StorageMeter
         // `poster_source`/`cover_source` ერთად უნდა მოიხსნას, თორემ
         // „ხელით ატვირთული" ნიშანი უფაილო ჩანაწერზე დარჩება
         $record->forceFill(match ($relation) {
-            'videos', 'songs', 'bookmarks' => ['thumbnail_path' => null],
+            'videos', 'songs', 'bookmarks', 'courses' => ['thumbnail_path' => null],
             'books', 'games' => ['cover_path' => null, 'cover_source' => null],
             'boardGames' => ['image_path' => null, 'image_source' => null],
             default => ['poster_path' => null, 'poster_source' => null],
@@ -1040,6 +1081,7 @@ class StorageMeter
             'videos.download_path',
             'songs.thumbnail_path',
             'bookmarks.thumbnail_path',
+            'courses.thumbnail_path',
             'books.cover_path',
             'board_games.image_path',
             'games.cover_path',
@@ -1049,6 +1091,7 @@ class StorageMeter
             'board_game_files.path',
             'game_files.path',
             'note_entry_files.path',
+            'course_files.path',
             'gallery_images.path',
             'messages.attachment_path',
             'cast_members.photo_path',

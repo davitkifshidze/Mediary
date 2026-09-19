@@ -7,6 +7,7 @@ use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
+use App\Models\Course;
 use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
@@ -55,6 +56,8 @@ final class PublicDomain
         'song' => ['model' => Song::class, 'module' => 'song'],
         'playlist' => ['model' => Playlist::class, 'module' => 'song'],
         'bookmark' => ['model' => Bookmark::class, 'module' => 'bookmark'],
+        // FEAT-25 — კურსსაც `visibility` სვეტი აქვს, ე.ი. სიაშიც უნდა იყოს
+        'course' => ['model' => Course::class, 'module' => 'course'],
         /* ⚠️ **`gallery_album` დომენია, თუმცა „ჩანაწერი" არ არის** (Tasks §7.5).
            ფოტო მშობლის ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე
            გადამრთველი არ სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით
@@ -104,6 +107,11 @@ final class PublicDomain
         // ⚠️ ბუკმარკის იდენტობა **თვითონ ბმულია** — გარე ლექსიკონი (TMDB/RAWG-ის
         // ანალოგი) აქ არ არსებობს, სამაგიეროდ URL თავისთავად გლობალური გასაღებია
         'bookmark' => ['columns' => ['url'], 'done' => null],
+        /* FEAT-25 — კურსის იდენტობა მისი მისამართია (ბუკმარკის წესი: გარე
+           ლექსიკონი არ არსებობს, URL კი ისედაც გლობალური გასაღებია).
+           ⚠️ ბმულის გარეშე შენახული კურსი მატჩინგში **არ მონაწილეობს** —
+           ცარიელი იდენტობის დოკუმენტირებული წესი. */
+        'course' => ['columns' => ['url'], 'done' => 'done'],
     ];
 
     /**
@@ -127,6 +135,7 @@ final class PublicDomain
         'song' => ['relation' => null, 'columns' => ['title', 'artist']],
         'playlist' => ['relation' => null, 'columns' => ['name']],
         'bookmark' => ['relation' => null, 'columns' => ['title', 'url']],
+        'course' => ['relation' => null, 'columns' => ['title']],
         'gallery_album' => ['relation' => null, 'columns' => ['name']],
     ];
 

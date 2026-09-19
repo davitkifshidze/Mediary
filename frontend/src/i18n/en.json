@@ -293,7 +293,8 @@
   "nav": {
     "movies": "Movies",
     "series": "Series",
-    "anime": "Anime"
+    "anime": "Anime",
+    "courses": "Courses"
   },
   "actions": {
     "add": "Add movie",
@@ -315,7 +316,8 @@
     "less": "Less",
     "close": "Close",
     "clear": "Clear",
-    "download": "Download"
+    "download": "Download",
+    "upload": "Upload"
   },
   "filter": {
     "all": "All",
@@ -1144,6 +1146,19 @@
       },
       "anime": {
         "tags": "Tags"
+      },
+      "course": {
+        "title": "Name",
+        "url": "Link",
+        "status": "Status",
+        "category": "Category",
+        "instructor": "Instructor",
+        "lessons": "Lessons",
+        "minutes": "Length (minutes)",
+        "rating": "My rating",
+        "thumbnail": "Thumbnail",
+        "description": "Description",
+        "tags": "Tags"
       }
     },
     "desc": {
@@ -1210,6 +1225,10 @@
       },
       "anime": {
         "tags": "Personal tags — a classification independent of the genre, which the TMDB sync never changes."
+      },
+      "course": {
+        "url": "The link is optional — an offline course has none.",
+        "lessons": "Done and total; the percentage is computed from these and is never stored."
       }
     },
     "edit": "Customise",
@@ -1295,7 +1314,8 @@
       "note": "Notes",
       "gallery": "Gallery photos",
       "bookmark": "Bookmarks",
-      "anime": "Anime"
+      "anime": "Anime",
+      "course": "Courses"
     },
     "targetHint": {
       "movie": "The film along with its genres, cast links and gallery.",
@@ -1308,7 +1328,8 @@
       "note": "The note along with its files and reminders.",
       "gallery": "Photos only — the records themselves stay.",
       "bookmark": "The bookmark together with its uploaded image.",
-      "anime": "Anime records — poster, genres, cast and gallery."
+      "anime": "Anime records — poster, genres, cast and gallery.",
+      "course": "The course together with its certificate and attached files."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -2535,7 +2556,10 @@
       "approval_request": "request",
       "conversation": "conversation",
       "message": "message",
-      "user_block": "block"
+      "user_block": "block",
+      "course": "Course",
+      "course_category": "Course category",
+      "course_file": "Course file"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -3180,5 +3204,56 @@
     "editHint": "Write how many you intend to finish this year. Zero means you have no goal.",
     "missingHint": "Books, games, board games and notes have no “when did I finish it” date, so progress cannot be computed for them — that is why they are not in the list.",
     "saved": "The goals have been saved."
+  },
+  "courses": {
+    "title": "Courses",
+    "count": "{{count}} courses",
+    "add": "Add a course",
+    "edit": "Edit the course",
+    "saved": "The course has been saved.",
+    "deleted": "The course has been deleted.",
+    "delete": "Delete the course",
+    "deleteHint": "“{{name}}” will be deleted together with its files.",
+    "deleteFileHint": "“{{name}}” will be deleted and its space freed.",
+    "empty": "No courses yet",
+    "emptyHint": "Write down an online course you are taking or plan to take.",
+    "emptyFiltered": "No course matches this filter",
+    "emptyFilteredHint": "Change the filter or the search term.",
+    "status": "Status",
+    "categories": "Categories",
+    "progress": "Progress",
+    "lessonsDone": "Lessons done",
+    "lessonsTotal": "Lessons in total",
+    "lessonsHint": "Done / total. Leave the total empty if you do not know it — then no percentage is computed.",
+    "minutesHint": "Length in minutes — one unit across the whole app.",
+    "urlHint": "The link is optional: an offline course has none. When given, we try to read the title and the image from the page.",
+    "open": "Open the course",
+    "files": "Files",
+    "noFiles": "No files.",
+    "noFilesTitle": "Nothing uploaded yet",
+    "certificateHint": "The completion certificate — the thing a course ends with, which is why it has a block of its own rather than sitting among the notes.",
+    "fileKinds": {
+      "certificate": "Certificate",
+      "image": "Images",
+      "doc": "Documents"
+    },
+    "statuses": {
+      "to_take": "To take",
+      "taking": "Taking",
+      "done": "Done",
+      "dropped": "Dropped"
+    },
+    "sort_newest": "Newest",
+    "sort_oldest": "Oldest",
+    "sort_title": "By name",
+    "sort_rating": "By rating",
+    "sort_progress": "By progress",
+    "sort_finished": "By finish date"
+  },
+  "courseCategories": {
+    "title": "Course categories",
+    "add": "Add a category",
+    "edit": "Edit the category",
+    "saved": "The category has been saved."
   }
 }
