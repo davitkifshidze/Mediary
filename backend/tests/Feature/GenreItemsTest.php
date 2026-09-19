@@ -206,4 +206,48 @@ class GenreItemsTest extends TestCase
         $this->assertTrue($theirs->fresh()->genres->contains($this->action->id));
         $this->assertFalse($mine->fresh()->genres->contains($this->action->id));
     }
+
+    /* ================= DEBT-22 — slug-ის შექმნა ================= */
+
+    /**
+     * **გრძელი ქართული სახელის slug სვეტს ეტევა და უნიკალურია.**
+     *
+     * ⚠️ ქართული ტრანსლიტერაციაში ერთი ასო ორ-სამ სიმბოლოდ იქცევა
+     * (`ჩ`→`ch`, `ძ`→`dz`, `ღ`→`gh`), ე.ი. 100-სიმბოლოიანი სახელის `Str::slug`
+     * `genres.slug`-ის 120 სიმბოლოს გადააჭარბებს. ძველი ციკლი ჭრას საერთოდ
+     * არ აკეთებდა — ე.ი. ჩვეულებრივი შენახვა ან 500-ით ვარდებოდა, ან
+     * MySQL-ზე ჩუმად იჭრებოდა და `-2` სუფიქსი იკარგებოდა.
+     */
+    public function test_a_long_georgian_name_gets_a_unique_slug_that_fits_the_column(): void
+    {
+        $name = trim(str_repeat('ღვიძე ', 16));   // 95 სიმბოლო, slug კი — 127, სამივე ასო
+
+        $first = $this->actingAs($this->user)
+            ->postJson('/api/genres', ['name_ka' => $name])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $second = $this->actingAs($this->user)
+            ->postJson('/api/genres', ['name_ka' => $name])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $slugs = Genre::whereIn('id', [$first, $second])->pluck('slug')->all();
+
+        $this->assertCount(2, array_unique($slugs), 'ორი ჟანრი ერთი slug-ით');
+        foreach ($slugs as $slug) {
+            $this->assertLessThanOrEqual(120, mb_strlen($slug), "slug სვეტს არ ეტევა: {$slug}");
+        }
+    }
+
+    /** სახელში ლათინური საერთოდ არ არის — slug მაინც იქნება და ცარიელი არ არის */
+    public function test_a_name_without_latin_still_produces_a_slug(): void
+    {
+        $id = $this->actingAs($this->user)
+            ->postJson('/api/genres', ['name_ka' => 'ძალიან მოკლე'])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->assertNotSame('', (string) Genre::find($id)->slug);
+    }
 }

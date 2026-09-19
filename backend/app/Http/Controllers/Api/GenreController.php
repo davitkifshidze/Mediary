@@ -8,12 +8,15 @@ use App\Http\Resources\GenreResource;
 use App\Models\ApprovalRequest;
 use App\Models\Genre;
 use App\Services\Genres\GenreRemover;
+use App\Support\DictionaryKey;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class GenreController extends Controller
 {
+    /** `genres.slug` სვეტის სიგრძე (მიგრაცია: `string('slug', 120)`) */
+    private const SLUG_LENGTH = 120;
+
     /**
      * ჟანრები **ყველა** მედია-დომენის რაოდენობით (`movies_count`,
      * `series_count`, `animes_count`). `type` მხოლოდ დალაგებაზე მოქმედებს —
@@ -41,21 +44,30 @@ class GenreController extends Controller
         return GenreResource::collection($genres);
     }
 
-    /** ახალი ჟანრი */
+    /**
+     * ახალი ჟანრი.
+     *
+     * ⚠️ **slug-ს `DictionaryKey::make()` ქმნის** (Tasks DEBT-22) — ის ზუსტად
+     * ამ ციკლის ცხრა ასლის გასაერთიანებლად დაიწერა (§B3) და გლობალური ჟანრი
+     * მეათე ასლად დარჩა. ორი რამ იცვლება: ციკლს **ჭერი** აქვს (უსასრულო
+     * `while`, რომელიც ყოველ ბიჯზე ბაზას ეკითხება, ხარვეზზე სერვერს
+     * დაბლოკავდა) და **ჭრა სუფიქსამდეა** — 100-სიმბოლოიანი ქართული სახელის
+     * `Str::slug` `slug`-ის 120 სიმბოლოსაც გადააჭარბებდა და `-2` ჩუმად
+     * დაიკარგებოდა, ე.ი. უნიკალურობის დარღვევა → 500 ჩვეულებრივ შენახვაზე.
+     *
+     * ⚠️ **ჟანრი გლობალურია**, ე.ი. `$taken` მომხმარებლით არ იჭრება.
+     */
     public function store(Request $request)
     {
         $data = $this->validateNames($request);
 
-        $base = Str::slug($data['name_en'] ?? '') ?: Str::slug($data['name_ka'] ?? '');
-        if (! $base) {
-            $base = 'g-'.substr(md5(($data['name_en'] ?? '').($data['name_ka'] ?? '')), 0, 8);
-        }
-        $slug = $base;
-        $i = 2;
-        while (Genre::where('slug', $slug)->exists()) {
-            $slug = $base.'-'.$i;
-            $i++;
-        }
+        $slug = DictionaryKey::make(
+            ($data['name_en'] ?? '') ?: ($data['name_ka'] ?? ''),
+            fn (string $key) => Genre::where('slug', $key)->exists(),
+            // ლათინურად არაფერი გამოვიდა — სტაბილური, სახელზე მიბმული ფოლბექი
+            'g-'.substr(md5(($data['name_en'] ?? '').($data['name_ka'] ?? '')), 0, 8),
+            max: self::SLUG_LENGTH,
+        );
 
         $genre = Genre::create(['slug' => $slug]);
         $genre->setTranslation('en', $data['name_en'] ?? $data['name_ka']);
