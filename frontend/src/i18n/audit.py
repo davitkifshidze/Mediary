@@ -27,12 +27,16 @@ i18next უბრალოდ თვითონ გასაღებს და
   7. **აკრძალული ტერმინი** (GAP-15) — ერთ ცნებას ერთი სიტყვა უნდა ჰქონდეს.
      „ლინკი"/„ბმული", „ჩამოწერა"/„ჩამოტვირთვა", „კლავიში"/„გასაღები" ერთ
      ინტერფეისში ერთდროულად ცხოვრობდნენ და მომხმარებელი ვერ ხვდებოდა, ერთი
-     საქმეა თუ ორი. სრული ცხრილი — `GLOSSARY.md`.
+     საქმეა თუ ორი. სრული ცხრილი — `GLOSSARY.md`;
+  8. **თქვენობითი ფორმა** (GAP-18) — აპი მთლიანად შენობითზეა („აირჩიე",
+     „დააჭირე"), 2690 გასაღებიდან კი სამი თქვენობითში იყო. რეგისტრის
+     ერთიანობა ქართული ტექსტის გამართულობის ნაწილია.
 """
 import json
 import io
 import os
 import re
+import sys
 import collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -87,6 +91,26 @@ BANNED = (
     ("ჩამოწერ", "ჩამოტვირთვა"),
     ("ჩამოიწერ", "ჩამოტვირთვა"),
 )
+
+
+# მე-8 შემოწმება (GAP-18): აპი შენობითზეა, ე.ი. თქვენობითი ზმნა შეცდომაა.
+#
+# ⚠️ **`-ეთ` დაბოლოება მარტო საკმარისი ნიშანი არაა** და ეს გაზომილია: `ka.json`
+# 10 ასეთ სიტყვას შეიცავს და მათგან მხოლოდ ორი იყო თქვენობითი. „ასეთ"/„გარეთ"
+# ზმნები საერთოდ არაა, ხოლო „ვნახეთ"/„წავიკითხეთ"/„გავიარეთ"/„მივყვეთ"
+# **პირველი პირის მრავლობითია** („ორივემ ვნახეთ") — სწორი ფორმაა. ამიტომ
+# გამონაკლისი **სიტყვების** სიაა და არა გასაღებების.
+POLITE_RE = re.compile(r"[ა-ჰ]+ეთ\b")
+POLITE_OK_WORDS = {
+    "ასეთ", "გარეთ",          # ზმნები არაა
+    "ვნახეთ", "წავიკითხეთ", "გავიარეთ", "მივყვეთ",   # I პირი, მრავლობითი
+}
+# ცხადი თქვენობითი ფორმები — აქ დაბოლოება ვერ შველის
+POLITE_FORMS = ("გირჩევთ", "გთხოვთ", "შეგიძლიათ", "გაქვთ", "იცოდეთ", "ისარგებლეთ")
+# ⚠️ **გასაღების გამონაკლისი მხოლოდ მიზეზით.** „თქვენ ორივეს გაქვთ" **ორ
+# ადამიანს** მიმართავს (მე და შენ), ე.ი. ზრდილობის ფორმა არ არის — მრავლობითი
+# სწორედ იმიტომაა, რომ ორნი არიან.
+POLITE_OK_KEYS = {"matches.sharedTotal"}
 
 
 def source_files():
@@ -191,6 +215,21 @@ def banned_terms(flat):
     return out
 
 
+def polite_forms(flat):
+    """(გასაღები, სიტყვა) — თქვენობითი ფორმა `ka.json`-ში (GAP-18)."""
+    out = []
+    for key, value in sorted(flat.items()):
+        if not isinstance(value, str) or key in POLITE_OK_KEYS:
+            continue
+        for word in POLITE_RE.findall(value):
+            if word not in POLITE_OK_WORDS:
+                out.append((key, word))
+        for word in POLITE_FORMS:
+            if word in value:
+                out.append((key, word))
+    return out
+
+
 def flatten(node, prefix=""):
     out = {}
     for key, value in node.items():
@@ -203,6 +242,12 @@ def flatten(node, prefix=""):
 
 
 def main() -> int:
+    # ⚠️ Windows-ის კონსოლი cp1252-ია: ქართული სიტყვის ბეჭდვა `UnicodeEncodeError`-ით
+    # **წთვებდა** სკრიპტს, ე.ი. ნაპოვნი დარღვევა ეკრანამდე ვერ აღწევდა — აუდიტი
+    # „მწვანებდა" თავისი შეცდომით და მიზეზს ვერ დაასახელებდა.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     static, dynamic, literal, value_sets, local_tails, imports = used_keys()
     locales = {
         name: flatten(json.load(io.open(os.path.join(HERE, name), encoding="utf-8")))
@@ -316,6 +361,13 @@ def main() -> int:
     print(f"\nbanned terms in ka.json: {len(banned)}")
     for key, word, correct in banned:
         print(f"    {key}  — {word}... -> {correct}")
+
+    # 8. თქვენობითი ფორმა (GAP-18) — მთელი აპი შენობითზეა
+    polite = polite_forms(locales["ka.json"])
+    problems += len(polite)
+    print(f"\npolite forms in ka.json: {len(polite)}")
+    for key, word in polite:
+        print(f"    {key}  — {word}")
 
     only_ka = sorted(set(locales["ka.json"]) - set(locales["en.json"]))
     only_en = sorted(set(locales["en.json"]) - set(locales["ka.json"]))
