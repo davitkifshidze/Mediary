@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Services\Stats\LibraryStats;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * **FEAT-08 — სტატისტიკა.**
@@ -37,14 +38,7 @@ class StatsController extends Controller
         ]);
 
         $user = $request->user();
-
-        $modules = Module::where('is_active', true)
-            ->whereIn('key', LibraryStats::modules())
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->filter(fn (Module $m) => $user->hasModule($m->key) && $user->hasPermission($m->key, 'view'))
-            ->values();
+        $modules = $this->visible($request);
 
         $keys = $modules->pluck('key')->all();
         $years = $this->stats->activeYears($user, $keys);
@@ -66,5 +60,47 @@ class StatsController extends Controller
                 ...$this->stats->forModule($user, $m->key, $year),
             ])->all(),
         ]);
+    }
+
+    /**
+     * `GET /api/stats/summary` — დეშბორდის ოთხი რიცხვი და წლის დინამიკა.
+     *
+     * ⚠️ **ცალკე endpoint-ია და არა `index()`-ის ველი.** დეშბორდი მთავარი
+     * გვერდია: სრული პასუხი ათივე მოდულის ხუთივე ჭრილს ითვლის (~50 query),
+     * აქ კი ოთხი რიცხვი და თორმეტი თვე სჭირდება — ე.ი. „უბრალოდ იგივე
+     * გამოვიძახოთ" გვერდის გახსნას ორჯერ გააძვირებდა.
+     *
+     * ⚠️ **`GET` და არა `POST`** — კითხვაა; POST-ს `EnsureModulePermission`
+     * `create`-ად წაიკითხავდა და მხოლოდ-ნახვის როლი საკუთარ დეშბორდს ვერ
+     * დაინახავდა.
+     */
+    public function summary(Request $request)
+    {
+        $modules = $this->visible($request);
+
+        return response()->json(
+            $this->stats->summary($request->user(), $modules->pluck('key')->all()),
+        );
+    }
+
+    /**
+     * ჩართული, ნებადართული და სტატისტიკაში მონაწილე მოდულები.
+     *
+     * ⚠️ **ერთი ადგილი ორივე endpoint-ზე** — ორი ასლი პირველივე ახალ
+     * მოდულზე დაშორდებოდა და ჯამი ჭრილებს აცდებოდა.
+     *
+     * @return Collection<int, Module>
+     */
+    private function visible(Request $request)
+    {
+        $user = $request->user();
+
+        return Module::where('is_active', true)
+            ->whereIn('key', LibraryStats::modules())
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (Module $m) => $user->hasModule($m->key) && $user->hasPermission($m->key, 'view'))
+            ->values();
     }
 }

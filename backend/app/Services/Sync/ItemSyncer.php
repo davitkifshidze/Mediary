@@ -165,6 +165,7 @@ class ItemSyncer
                 $set('runtime', $d['episode_run_time'][0] ?? null, 'runtime');
                 $set('seasons', $d['number_of_seasons'] ?? null, 'seasons');
                 $set('episodes', $d['number_of_episodes'] ?? null, 'episodes');
+                $this->applyNextAir($item, $d, $changed);
             } else {
                 $set('runtime', $d['runtime'] ?? null, 'runtime');
                 if (! empty($d['belongs_to_collection'])) {
@@ -175,6 +176,48 @@ class ItemSyncer
         }
 
         return $changed;
+    }
+
+    /**
+     * „მალე" კალენდრის სამი სვეტი (FEAT-10, გასწორებულია 2026-09-19).
+     *
+     * ⚠️ **ეს სვეტები მხოლოდ `TvEnricher`-ს ეწერა, ე.ი. მასობრივ სინქრონს
+     * კალენდარი საერთოდ არ შეუვსია.** ჩანაწერის დამატება და თითო
+     * ჩანაწერის `resync` enricher-ზე გადის, `/sync`-ის რიგი კი — აქ;
+     * ბიბლიოთეკის სინქრონიზაციის შემდეგ „მალე" ისევ ცარიელი რჩებოდა და
+     * ეს იკითხებოდა, როგორც „ფუნქცია არ მუშაობს".
+     *
+     * ⚠️ **`$set()` აქ არ გამოდგება და ეს არსებითია.** ის „ცარიელს ავსებს,
+     * შევსებულს არ ეხება" წესზე დგას, რაც მომხმარებლის ტექსტს იცავს —
+     * აქ კი **მოძრავი ფაქტია**: შენახული ძველი თარიღი სამუდამოდ წარსულში
+     * დარჩებოდა. `null`-ზე გასუფთავებაც ასევე სავალდებულოა: დასრულებულ
+     * სერიალს შემდეგი ეპიზოდი აღარ აქვს.
+     *
+     * ⚠️ **`overwrite`-ს არ ეკითხება** — იმავე მიზეზით. ეს TMDB-ის ფაქტია
+     * და არა ჩანაწერის ველი, რომელსაც ხელით წერენ.
+     *
+     * @param  list<string>  $changed
+     */
+    private function applyNextAir(Model $item, array $d, array &$changed): void
+    {
+        $next = $d['next_episode_to_air'] ?? null;
+
+        $date = ($next['air_date'] ?? '') ?: null;
+        $season = isset($next['season_number']) ? (int) $next['season_number'] : null;
+        $episode = isset($next['episode_number']) ? (int) $next['episode_number'] : null;
+
+        /* ⚠️ `next_air_at` `date`-ად იკასტება, ე.ი. შედარება სტრიქონთან
+           პირდაპირ ცრუობდა — `Carbon` და `'2026-10-01'` არასდროს ტოლდება.
+           ამიტომ ნორმალიზებული სახე ედრება ნორმალიზებულს. */
+        $before = $item->next_air_at?->format('Y-m-d');
+
+        $item->next_air_at = $date;
+        $item->next_season = $season;
+        $item->next_episode = $episode;
+
+        if ($before !== $date) {
+            $changed[] = 'next_air';
+        }
     }
 
     /**

@@ -154,6 +154,50 @@ class UpcomingTest extends TestCase
     }
 
     /**
+     * **მასობრივი სინქრონიც ავსებს კალენდარს** (გასწორებულია 2026-09-19).
+     *
+     * ⚠️ ზემოთა ტესტი `resync`-ზე გადის, ე.ი. `TvEnricher`-ზე; `/sync`-ის
+     * გვერდის რიგი კი `ItemSyncer`-ს იძახებს, რომელსაც ეს სამი სვეტი
+     * **საერთოდ არ ეწერა**. შედეგად ბიბლიოთეკის სინქრონიზაციის შემდეგაც
+     * „მალე" ცარიელი რჩებოდა — ე.ი. ფუნქცია არსებობდა და არ მუშაობდა.
+     *
+     * ⚠️ **ცარიელ პასუხზე წმენდაც აქ მოწმდება**, რადგან `ItemSyncer`-ის
+     * ჩვეულებრივი წესი („ცარიელს ავსებს, შევსებულს არ ეხება") სწორედ
+     * იმას აკეთებდა, რაც აქ აკრძალულია.
+     */
+    public function test_the_bulk_sync_fills_and_clears_the_next_air_date(): void
+    {
+        config()->set('services.tmdb.key', 'test-key');
+
+        $series = Series::create(['user_id' => $this->me->id, 'tmdb_id' => 1402]);
+
+        $this->next = ['air_date' => '2026-10-02', 'season_number' => 5, 'episode_number' => 3];
+        $this->fakeTv();
+
+        $this->actingAs($this->me)
+            ->postJson("/api/media/sync/series/{$series->id}", ['fields' => ['details']])
+            ->assertOk();
+
+        $series->refresh();
+
+        $this->assertSame('2026-10-02', $series->next_air_at?->format('Y-m-d'));
+        $this->assertSame(5, $series->next_season);
+        $this->assertSame(3, $series->next_episode);
+
+        // ⚠️ დასრულებული სერიალი — ძველი თარიღი უნდა გაქრეს და არა შენარჩუნდეს
+        $this->next = null;
+
+        $this->actingAs($this->me)
+            ->postJson("/api/media/sync/series/{$series->id}", ['fields' => ['details']])
+            ->assertOk();
+
+        $series->refresh();
+
+        $this->assertNull($series->next_air_at);
+        $this->assertNull($series->next_season);
+    }
+
+    /**
      * ⚠️ **`Http::fake()` **ამატებს** stub-ებს და არ ცვლის.**
      *
      * `Factory::fake()` თითოეულ URL-ს `stubUrl()`-ით **აწყობს სიაში** და

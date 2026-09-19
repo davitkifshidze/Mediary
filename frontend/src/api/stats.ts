@@ -60,3 +60,27 @@ export async function fetchStats(year?: number): Promise<StatsPayload> {
   const res = await api.get('/stats', { params: year ? { year } : {} })
   return res.data
 }
+
+/* ---------- დეშბორდის ჯამი (2026-09-19) ---------- */
+
+export interface StatsSummary {
+  year: number
+  month: number
+  totals: {
+    /** სულ ჩანაწერი ათივე მოდულში — ⚠️ გალერეის ფოტოები აქ არ ითვლება */
+    records: number
+    favorites: number
+    done_year: number
+    done_month: number
+  }
+  months: { month: number; count: number }[]
+}
+
+/**
+ * ⚠️ **ცალკე რექვესთია და არა `fetchStats()`-ის ნაწილი** — სრული პასუხი
+ * ათივე მოდულის ხუთივე ჭრილს ითვლის, დეშბორდს კი ოთხი რიცხვი სჭირდება.
+ */
+export async function fetchStatsSummary(): Promise<StatsSummary> {
+  const res = await api.get('/stats/summary')
+  return res.data
+}

@@ -48,6 +48,7 @@ class DoctorCommand extends Command
     public function handle(YtDlp $ytdlp, DatabaseDumper $dumper, StorageMeter $meter, BackupInspector $inspector): int
     {
         $this->line('');
+        $this->migrations();
         $this->binaries($ytdlp, $dumper);
         $this->scheduler();
         $this->storage($meter);
@@ -67,6 +68,47 @@ class DoctorCommand extends Command
     }
 
     /* ---------- შემოწმებები ---------- */
+
+    /**
+     * გაშვებული მიგრაციები (2026-09-19).
+     *
+     * ⚠️ **ეს შემოწმება ცოცხალმა შეცდომამ დაბადა.** ხუთი მიგრაცია
+     * გაუშვებელი იყო, ე.ი. `tv_episodes` არ არსებობდა და ეპიზოდების
+     * ჩამოტვირთვა ნედლი SQL-შეცდომით ვარდებოდა („Base table or view not
+     * found"), ხოლო „მალე" კალენდარი უხმოდ ცარიელი იყო (`next_air_at`
+     * სვეტიც აკლდა). **სიმპტომი ორ სხვადასხვა ფუნქციაზე გამოჩნდა და
+     * არცერთი არ ამბობდა ნამდვილ მიზეზს.**
+     *
+     * ⚠️ **აქ კოდი არ სწორდება — სწორდება კითხვა.** „რატომ არ მუშაობს"
+     * პასუხი ერთ ბრძანებაშია და არა ლოგის კითხვაში.
+     *
+     * ⚠️ **FAIL და არა WARN**: გაუშვებელი მიგრაცია აპს არ ანელებს — ის მას
+     * **ტეხავს**, უბრალოდ იმ ერთ ადგილას, რომელიც ჯერ არ გაგიხსნია.
+     */
+    private function migrations(): void
+    {
+        $this->section('ბაზა');
+
+        try {
+            $pending = collect($this->laravel['migrator']->getMigrationFiles(
+                $this->laravel['migrator']->paths() + [$this->laravel->databasePath('migrations')],
+            ))->keys()
+                ->diff($this->laravel['migrator']->getRepository()->getRan())
+                ->values();
+        } catch (\Throwable $e) {
+            $this->check('მიგრაციები', false, 'ვერ წაიკითხა — '.$e->getMessage());
+
+            return;
+        }
+
+        $this->check(
+            'მიგრაციები',
+            $pending->isEmpty(),
+            $pending->isEmpty()
+                ? 'ყველა გაშვებულია'
+                : $pending->count().' გაუშვებელი — `php artisan migrate` ('.$pending->first().'…)',
+        );
+    }
 
     private function binaries(YtDlp $ytdlp, DatabaseDumper $dumper): void
     {

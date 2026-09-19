@@ -162,6 +162,113 @@ class LibraryStats
         return $years;
     }
 
+    /**
+     * დეშბორდის მოკლე ჯამი (2026-09-19, შენი მითითებით).
+     *
+     * ⚠️ **ეს `forModule()`-ის შემოკლება არ არის.** ის თითო მოდულზე ხუთ
+     * ჭრილს აგებს (ჟანრი, ქულა, გამოშვების წელი), ე.ი. ათი მოდული
+     * ~50 query-ა; დეშბორდი კი მთავარი გვერდია და შედეგს მეორე წამში
+     * უნდა აბრუნებდეს. ამიტომ სკალარები ერთ პირობით აგრეგატში იკითხება
+     * — თითო მოდულზე ორი query, სულ ~16.
+     *
+     * ⚠️ **წელი პარამეტრი არ არის და ეს განზრახია.** დეშბორდი „რა მახსოვს
+     * და რა გავაკეთე ბოლო დროს" გვერდია; წლის ამორჩევანი `/stats`-ისაა.
+     * უამისოდ „ამ თვეში" საერთოდ ვერ ითქმებოდა: არჩეულ 2019 წელს
+     * „ამ თვეს" აზრი არ აქვს.
+     *
+     * ⚠️ **გალერეა აქ არ ითვლება და ეს გამორჩენა არ არის** — მისი შიგთავსი
+     * **ფაილებია** და არა ჩანაწერები, ზუსტად ისევე, როგორც `ExportDomain`-ში
+     * (FEAT-06). ამიტომ „სულ ჩანაწერი" ბარათების ჯამს გალერეის ოდენობით
+     * შეიძლება დააკლდეს.
+     *
+     * @param  list<string>  $modules
+     * @return array<string, mixed>
+     */
+    public function summary(User $user, array $modules): array
+    {
+        $now = now();
+        $year = (int) $now->format('Y');
+        $month = (int) $now->format('n');
+
+        $records = 0;
+        $favorites = 0;
+        $doneYear = 0;
+        $doneMonth = 0;
+        $months = array_fill(1, 12, 0);
+
+        foreach ($modules as $module) {
+            $map = self::MODULES[$module] ?? null;
+
+            if (! $map) {
+                continue;
+            }
+
+            $model = $map['model'];
+            $base = fn () => $model::withoutGlobalScope('owner')->where('user_id', $user->getKey());
+
+            /* ⚠️ ორი რიცხვი — ერთი query. `sum(case when …)` ორივე დრაივერზე
+               ერთნაირად მუშაობს (boolean ორივეგან 0/1-ია), `count()`-ის და
+               `where()`-ის ორი ცალკე გამოძახება კი ორი წასვლაა ბაზაში. */
+            $row = $base()->toBase()
+                ->selectRaw('count(*) as total')
+                ->selectRaw('sum(case when is_favorite = 1 then 1 else 0 end) as favorites')
+                ->first();
+
+            $records += (int) ($row->total ?? 0);
+            $favorites += (int) ($row->favorites ?? 0);
+
+            if (! $map['done_at']) {
+                continue;
+            }
+
+            $column = $map['done_at'];
+            $expr = SqlDate::month($column);
+
+            $rows = $base()->toBase()
+                ->whereNotNull($column)
+                ->whereYear($column, $year)
+                ->groupByRaw($expr)
+                ->selectRaw($expr.' as bucket, count(*) as total')
+                ->get();
+
+            foreach ($rows as $bucket) {
+                $index = (int) $bucket->bucket;
+
+                if ($index < 1 || $index > 12) {
+                    continue;
+                }
+
+                $count = (int) $bucket->total;
+
+                $months[$index] += $count;
+
+                /* ⚠️ წლიური ჯამი აქვე იკრიბება და არა ცალკე query-თ: თვეები
+                   ისედაც მთელ წელს ფარავს, ე.ი. მეორე დათვლა იმავე რიცხვს
+                   მიიღებდა — და განსხვავებაც კი ვერასდროს აიხსნებოდა. */
+                $doneYear += $count;
+
+                if ($index === $month) {
+                    $doneMonth += $count;
+                }
+            }
+        }
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'totals' => [
+                'records' => $records,
+                'favorites' => $favorites,
+                'done_year' => $doneYear,
+                'done_month' => $doneMonth,
+            ],
+            'months' => array_map(
+                fn (int $index) => ['month' => $index, 'count' => $months[$index]],
+                range(1, 12),
+            ),
+        ];
+    }
+
     /* ---------- ჭრილები ---------- */
 
     /**

@@ -84,6 +84,65 @@ class StatsTest extends TestCase
         $this->fail("მოდული {$key} პასუხში არ არის");
     }
 
+    /* ---------- დეშბორდის ჯამი (2026-09-19) ---------- */
+
+    /**
+     * ⚠️ **იგივე საფრთხე, რაც სრულ პასუხს აქვს** — სხვისი ბიბლიოთეკის
+     * ჩათვლა. `summary()` ცხად `user_id`-ზე დგას და არა `owner` scope-ზე,
+     * ე.ი. ტესტი სწორედ იმას ამოწმებს, რაც scope-ს რომ ენდობოდა, გატყდებოდა.
+     */
+    public function test_the_summary_counts_only_my_records(): void
+    {
+        $this->movie($this->me, 2001, '2026-03-04');
+        $this->movie($this->me, 2002);
+        $this->movie($this->other, 1999, '2026-03-04');
+
+        $payload = $this->actingAs($this->me)->getJson('/api/stats/summary')->assertOk()->json();
+
+        $this->assertSame(2, $payload['totals']['records']);
+        $this->assertSame(1, $payload['totals']['done_year']);
+    }
+
+    /**
+     * ⚠️ **თორმეტივე თვე ბრუნდება, ნულებიანიც** — თორემ გრაფიკის ღერძი
+     * წელს არათანაბრად დაჭიმავდა და „მარტში არაფერი" იმ თვისგან ვერ
+     * განირჩეოდა, რომელიც სიაში საერთოდ არ იყო.
+     */
+    public function test_the_summary_returns_every_month_of_the_current_year(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-10 12:00:00', 'UTC'));
+
+        $this->movie($this->me, 2001, '2026-03-04');
+        $this->movie($this->me, 2002, '2026-03-20');
+        $this->movie($this->me, 2003, '2026-05-01');
+        // ⚠️ სხვა წელი ჯამში არ უნდა შევიდეს
+        $this->movie($this->me, 2004, '2025-03-04');
+
+        $payload = $this->actingAs($this->me)->getJson('/api/stats/summary')->assertOk()->json();
+
+        $this->assertCount(12, $payload['months']);
+        $this->assertSame(2026, $payload['year']);
+        $this->assertSame(2, $payload['months'][2]['count']);   // მარტი
+        $this->assertSame(0, $payload['months'][3]['count']);   // აპრილი
+        $this->assertSame(3, $payload['totals']['done_year']);
+        $this->assertSame(1, $payload['totals']['done_month']); // მიმდინარე თვე — მაისი
+
+        Carbon::setTestNow();
+    }
+
+    /** რჩეულები ყველა მოდულში ჯამდება */
+    public function test_the_summary_sums_favorites_across_modules(): void
+    {
+        $this->movie($this->me, 2001)->update(['is_favorite' => true]);
+        Song::create(['user_id' => $this->me->id, 'title' => 'a', 'url' => 'https://example.com/a', 'is_favorite' => true]);
+        Song::create(['user_id' => $this->me->id, 'title' => 'b', 'url' => 'https://example.com/b']);
+
+        $payload = $this->actingAs($this->me)->getJson('/api/stats/summary')->assertOk()->json();
+
+        $this->assertSame(3, $payload['totals']['records']);
+        $this->assertSame(2, $payload['totals']['favorites']);
+    }
+
     /** ⚠️ ერთადერთი რამ, რაც აქ მართლა საშიშია: სხვისი ბიბლიოთეკის დათვლა */
     public function test_the_numbers_are_mine_only(): void
     {

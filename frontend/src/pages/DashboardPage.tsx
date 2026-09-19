@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -12,6 +13,24 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { UpcomingCard } from '@/components/UpcomingCard'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+
+/**
+ * მთავარი რიცხვები — **ცალკე ჩანქად** (2026-09-19).
+ *
+ * ⚠️ **გრაფიკების ბიბლიოთეკა ≈104 kB gzip-ია და დეშბორდი სადესანტო
+ * გვერდია** — ჩვეულებრივი იმპორტი მას ყოველ შესვლაზე ბარათების **წინ**
+ * ჩამოტვირთავდა, ე.ი. აპის პირველი ეკრანი ერთი ბლოკის გამო დაელოდებოდა.
+ * `lazy()`-თ ბარათები მაშინვე იხატება და ჯამი ერთ მომენტში მოგვიანებით
+ * ჩნდება.
+ *
+ * ⚠️ **ლოკალური `Suspense` სავალდებულოა.** `lazy()` უახლოეს საზღვარს
+ * ეკიდება; მისი გარეშე მთელი გვერდი `App.tsx`-ის ფოლბექზე ჩავარდებოდა —
+ * ე.ი. სწორედ ის „ცივი სტარტი" დაბრუნდებოდა, რასაც მარშრუტების დაყოფა
+ * გაურბის. `fallback={null}` იმიტომ, რომ ბლოკი ცარიელზე ისედაც ქრება.
+ */
+const DashboardStats = lazy(() =>
+  import('@/components/DashboardStats').then((m) => ({ default: m.DashboardStats })),
+)
 
 /* ============================================================
    დეშბორდი — მთავარი გვერდი (Tasks 2).
@@ -112,6 +131,12 @@ export function DashboardPage() {
           თარიღიანია და ამიტომ დროში მალე ფუჭდება — ქვემოთ მას ვერავინ
           ნახავდა. ცარიელზე კომპონენტი თვითონ ქრება. */}
       {!isLoading && <UpcomingCard />}
+
+      {/* ===== მთავარი რიცხვები (FEAT-08 → 2026-09-19) =====
+          ⚠️ **„მალე"-ს ქვემოთ და ბარათებზე მაღლა.** ზემოთ თარიღიანი და
+          მალე მჭკნარი ინფორმაციაა, აქ — ჯამები (არ ბერდება), ქვემოთ კი
+          ნავიგაცია. ცარიელ ბიბლიოთეკაზე კომპონენტი თვითონ ქრება. */}
+      <Suspense fallback={null}>{!isLoading && <DashboardStats />}</Suspense>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (

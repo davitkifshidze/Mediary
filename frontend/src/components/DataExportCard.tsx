@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Download, PackageOpen } from 'lucide-react'
+import { ArrowRight, Download, Import, PackageOpen } from 'lucide-react'
 import { downloadExport, fetchExportModules, type ExportFormat } from '@/api/export'
 import { errorMessage } from '@/lib/errors'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
@@ -123,6 +124,29 @@ export function DataExportCard() {
           ))}
         </ul>
       )}
+
+      {/* ===== საპირისპირო მიმართულება (FEAT-07) =====
+          ⚠️ **ეს ბმული აქ იმიტომაა, რომ იმპორტი ვერ მოიძებნა.** გვერდი
+          `/import` და გვერდითა მენიუს რიგი თავიდანვე არსებობდა, მაგრამ
+          ექსპორტი **`/profile`-ზეა**, ე.ი. „როგორ წავიღო და როგორ
+          შემოვიტანო" ერთი კითხვის ორი ნახევარი ორ სხვადასხვა ადგილას იდგა
+          — და მეორე ნახევარს თხუთმეტრიგიან ხელსაწყოების სიაში ეძებდი.
+          ⚠️ **ბმულია და არა ფორმა**: იმპორტი სამნაბიჯიანია (ფაილი →
+          გეგმა → რიგი) და ბარათში ვერ ჩაჯდებოდა; ორი ადგილი კი, სადაც
+          ფაილს ირჩევ, ორ სხვადასხვა ქცევად იკითხებოდა. */}
+      <Link
+        to="/import"
+        className="mt-4 flex items-center gap-3 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted [&>svg]:size-5 [&>svg]:text-muted-foreground">
+          <Import />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{t('exportData.importLink')}</span>
+          <span className="block truncate text-xs text-muted-foreground">{t('exportData.importHint')}</span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
     </section>
   )
 }
