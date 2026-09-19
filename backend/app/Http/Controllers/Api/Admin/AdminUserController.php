@@ -6,12 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApprovalRequestResource;
 use App\Http\Resources\UserResource;
 use App\Models\ApprovalRequest;
+use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use App\Services\Storage\StorageMeter;
 use App\Services\Users\AccountEraser;
+use App\Support\AppTime;
 use App\Support\PublicDomain;
+use App\Support\ResetLink;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -279,6 +283,55 @@ class AdminUserController extends Controller
         }
 
         return new UserResource($user->load('modules', 'role'));
+    }
+
+    /**
+     * **ერთჯერადი აღდგენის ბმული (FEAT-16).**
+     *
+     * ამ აპს ელფოსტის არხი არ აქვს (§8.2), ე.ი. დავიწყებული პაროლი აქამდე
+     * ადმინის ხელით დაწერილ SQL-ს ნიშნავდა. ადმინი ბმულს აგენერირებს და
+     * თვითონ გადასცემს — არხი ადამიანია.
+     *
+     * ⚠️ **`POST` და არა `GET`**: ყოველი გამოძახება **ახალ** ტოკენს ქმნის
+     * და ძველს კლავს, ე.ი. ეს ცვლილებაა და არა წაკითხვა — გვერდის
+     * გადატვირთვა მოქმედ ბმულს არ უნდა აუქმებდეს.
+     *
+     * ⚠️ **SEC-02-ის იგივე კარი**: შენზე მაღლა მდგომი ანგარიშის პაროლის
+     * აღდგენის ბმული მისი ანგარიშის აღებაა. `admin:users`-ის მქონე
+     * ადმინი ამით სუპერ-ადმინად იქცეოდა — ზუსტად ის ესკალაცია, რომელსაც
+     * `outranks()` აჩერებს.
+     *
+     * ⚠️ **ნედლი ტოკენი მხოლოდ ამ პასუხშია** — ბაზაში `sha256` წერია, ე.ი.
+     * დაკარგულის ხელახლა ნახვა შეუძლებელია (ახალი გენერირდება).
+     * ⚠️ **ჟურნალში ტოკენი არ იწერება**, მხოლოდ ფაქტი: `/audit` ადმინებს
+     * უჩანს და იქ ჩაწერილი ბმული სამუდამოდ მოქმედი კარი იქნებოდა.
+     */
+    public function resetLink(Request $request, User $user)
+    {
+        if ($this->outranks($user->effectiveRole(), $request->user())) {
+            return response()->json(['message' => 'role_escalation'], 403);
+        }
+
+        $token = ResetLink::issue($user);
+
+        app(AuditLogger::class)->log(AuditLog::ACTION_UPDATE, [
+            'module' => 'account',
+            'subject_type' => 'user',
+            'subject_id' => $user->id,
+            'subject_label' => $user->username,
+            'new_values' => ['password_reset_link' => 'issued'],
+        ]);
+
+        /* ⚠️ **მისამართს backend აწყობს და არა SPA**: ბმული ჩატში/მესენჯერში
+           იგზავნება, ე.ი. სრული უნდა იყოს. ფესვი `FRONTEND_URL`-ია — იგივე
+           წყარო, რომელსაც Sanctum-ის stateful დომენი იყენებს. */
+        $base = rtrim((string) config('mediary.frontend_url'), '/');
+
+        return response()->json([
+            'url' => $base.'/reset/'.$token,
+            'expires_at' => AppTime::now()->addHours(ResetLink::HOURS)->toIso8601String(),
+            'hours' => ResetLink::HOURS,
+        ]);
     }
 
     public function destroy(Request $request, User $user)

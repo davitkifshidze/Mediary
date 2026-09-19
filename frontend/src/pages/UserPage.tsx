@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Check,
+  Copy,
   Film,
+  KeyRound,
   Globe,
   HardDrive,
   ShieldCheck,
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react'
 import {
   approveRequest,
+  createResetLink,
   deleteUser,
   fetchAssignableRoles,
   fetchUserDetail,
@@ -26,6 +29,7 @@ import {
   type UserDetail,
 } from '@/api/account'
 import { useAuth } from '@/lib/auth'
+import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { storageUrl } from '@/lib/api'
@@ -123,6 +127,14 @@ export function UserPage() {
   useEffect(() => {
     if (quotaBytes != null) setQuotaMb(String(Math.round(quotaBytes / 1024 / 1024)))
   }, [quotaBytes])
+
+  /* FEAT-16 — ერთჯერადი აღდგენის ბმული. ⚠️ **`useMutation` და არა
+     `useQuery`**: ყოველი გამოძახება ახალ ტოკენს ქმნის და ძველს კლავს, ე.ი.
+     გვერდის გახსნა/refetch მოქმედ ბმულს გააუქმებდა. */
+  const resetLink = useMutation({
+    mutationFn: () => createResetLink(userId),
+    onError: fail,
+  })
 
   const remove = useMutation({
     mutationFn: () => deleteUser(userId),
@@ -426,6 +438,51 @@ export function UserPage() {
           </ul>
         </section>
       )}
+
+      {/* ---------- პაროლის აღდგენის ბმული (FEAT-16) ----------
+          ⚠️ **საშიში ზონის გარეთაა**: ბმულის გაცემა არაფერს შლის და
+          წითელ ჩარჩოში მოხვედრა მას იმაზე მძიმედ წაიკითხავდა, ვიდრე არის. */}
+      <section className="mb-6 rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">
+          {t('admin.resetLink.title')}
+        </h2>
+        <p className="mb-4 text-xs text-muted-foreground">
+          {t('admin.resetLink.hint', { hours: resetLink.data?.hours ?? 24 })}
+        </p>
+
+        {resetLink.data ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 break-all rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs">
+                {resetLink.data.url}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => copyText(resetLink.data!.url)}
+              >
+                <Copy className="size-4" />
+                {t('twoFactor.copy')}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('admin.resetLink.expires', { date: fmt.dateTime(resetLink.data.expires_at) })}
+            </p>
+            <p className="text-xs text-destructive">{t('admin.resetLink.warn')}</p>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => resetLink.mutate()}
+            disabled={resetLink.isPending}
+          >
+            <KeyRound className="size-4" />
+            {t('admin.resetLink.create')}
+          </Button>
+        )}
+      </section>
 
       {/* ---------- საშიში ზონა ---------- */}
       <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">

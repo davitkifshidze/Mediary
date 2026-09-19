@@ -15,6 +15,7 @@ import { DataExportCard } from '@/components/DataExportCard'
 import { InstallApp } from '@/components/InstallApp'
 import { PublicProfileCard } from '@/components/PublicProfileCard'
 import { StorageCard } from '@/components/StorageCard'
+import { TwoFactorCard } from '@/components/TwoFactorCard'
 import { WebQuotaCard } from '@/components/WebQuotaCard'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -247,6 +248,11 @@ export function ProfilePage() {
           </Button>
         </div>
       </form>
+      {/* ---------- ორფაქტორიანი შესვლა (FEAT-16) ----------
+          ⚠️ **პაროლის ბლოკის მიყოლებით**: ორივე „როგორ შევდივარ"-ზეა და
+          ერთმანეთის გვერდით უნდა იდგეს; საჯარო პროფილი უკვე სხვა კითხვაა. */}
+      <TwoFactorCard />
+
       {/* ---------- საჯარო პროფილი (Tasks 16.1 + §6.1) ---------- */}
       {/* FEAT-15 — „მთავარ ეკრანზე დამატება".
           ⚠️ ბლოკი **მხოლოდ მაშინ ჩანდება, როცა ბრაუზერი თვითონ ამბობს**,

@@ -28,7 +28,10 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureAdminAccess
 {
     /** POST, რომელიც არსებულ ჩანაწერს ცვლის და არა ახალს ქმნის */
-    private const UPDATE_ENDPOINTS = ['approve', 'reject', 'modules'];
+    // ⚠️ `reset-link` (FEAT-16) — არსებულ ანგარიშზე აღდგენის ბმულის გაცემაა
+    // და არა ახალი ანგარიშის შექმნა; უამისოდ `admin:users.update`-ის მქონე
+    // ადმინი ცრუ 403-ს იღებდა, `create`-ის მქონე კი — გაივლიდა.
+    private const UPDATE_ENDPOINTS = ['approve', 'reject', 'modules', 'reset-link'];
 
     public function handle(Request $request, Closure $next, string $resource, ?string $action = null): Response
     {

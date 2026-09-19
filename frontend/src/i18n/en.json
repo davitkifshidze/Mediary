@@ -26,7 +26,14 @@
     "firstName": "First name",
     "lastName": "Last name",
     "username": "Username",
-    "email": "Email"
+    "email": "Email",
+    "twoFactorTitle": "One-time code",
+    "twoFactorHint": "Enter the six-digit code from your authenticator, or one recovery code.",
+    "code": "Code",
+    "verify": "Verify",
+    "backToPassword": "Back to password",
+    "forgotTitle": "Forgot your password?",
+    "forgotHint": "This app cannot send email. Ask an admin for a one-time recovery link — it is valid for 24 hours."
   },
   "roles": {
     "super_admin": "Super admin",
@@ -274,7 +281,14 @@
     "moduleHoldersCount": "Enabled for {{count}} of {{total}} users",
     "moduleHoldersOpen": "Open the list",
     "moduleState": "State",
-    "ownRoleLocked": "Your own role can only be changed by another admin."
+    "ownRoleLocked": "Your own role can only be changed by another admin.",
+    "resetLink": {
+      "title": "Password recovery link",
+      "hint": "The link is valid for {{hours}} hours, works once and cancels the previous one. Hand it over yourself — the app sends no email.",
+      "warn": "The link will not be shown again: if you lose it, generate a new one.",
+      "expires": "Valid until {{date}}",
+      "create": "Generate the link"
+    }
   },
   "nav": {
     "movies": "Movies",
@@ -995,7 +1009,13 @@
     "move_target_required": "Choose what happens to these records: move them to another entry, leave them without one, or delete them.",
     "move_target_is_self": "The move target is the entry being deleted — pick another one.",
     "album_temporarily_locked": "Too many wrong attempts — this album is blocked for a while. Try again later.",
-    "import_source_unknown": "The file format was not recognised — pick the source by hand"
+    "import_source_unknown": "The file format was not recognised — pick the source by hand",
+    "two_factor_required": "Enter the one-time code.",
+    "two_factor_code_invalid": "The code is wrong or expired.",
+    "two_factor_already_enabled": "Two-factor sign-in is already on.",
+    "two_factor_not_started": "Start turning it on first — there is no secret yet.",
+    "two_factor_not_enabled": "Two-factor sign-in is not on.",
+    "reset_link_expired": "The link no longer works — it either expired or has already been used."
   },
   "fields": {
     "title": "Fields",
@@ -3066,5 +3086,45 @@
     "title": "Install the app",
     "hint": "Mediary is added to the home screen and opens in its own window, without the browser address bar. This is the browser’s ordinary install and it stores no files.",
     "action": "Install"
+  },
+  "reset": {
+    "title": "New password",
+    "subtitle": "The link is single-use and disappears once used.",
+    "forAccount": "Account",
+    "submit": "Set the password",
+    "done": "The password has been changed — you can sign in now.",
+    "toLogin": "Go to sign in",
+    "expiredTitle": "This link no longer works",
+    "expiredHint": "It either expired (24 hours) or has already been used. Ask an admin for a new one.",
+    "checking": "Checking…"
+  },
+  "twoFactor": {
+    "title": "Two-factor sign-in",
+    "subtitle": "Besides the password, a one-time code will be required.",
+    "off": "Off",
+    "on": "On",
+    "pending": "Started, not confirmed yet",
+    "pendingHint": "The secret exists, but sign-in does not change until you confirm a code.",
+    "enable": "Turn on",
+    "disable": "Turn off",
+    "continue": "Continue",
+    "passwordLabel": "Account password",
+    "passwordHint": "Silently turning the second factor off from an open tab is exactly the hole this feature closes.",
+    "scanTitle": "Scan with an authenticator",
+    "scanHint": "Google Authenticator, Aegis, 1Password — any TOTP app will do.",
+    "manualTitle": "Cannot scan?",
+    "manualHint": "Type this secret in by hand.",
+    "confirmTitle": "Confirm with a code",
+    "confirmHint": "Only then does it take effect — that is how we know the secret really got stored.",
+    "recoveryTitle": "Recovery codes",
+    "recoveryHint": "Keep them somewhere safe. Each works once and is the only way in if you lose the phone.",
+    "recoveryWarn": "This list will not be shown again — after closing you can only generate new ones.",
+    "regenerate": "New codes",
+    "regenerateWarn": "The old codes die immediately.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "enabled": "Two-factor sign-in is on.",
+    "disabled": "Two-factor sign-in is off.",
+    "codesRegenerated": "New recovery codes have been created."
   }
 }

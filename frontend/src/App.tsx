@@ -42,6 +42,9 @@ const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+const ResetPasswordPage = lazy(() =>
+  import('@/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+)
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })))
 const PeoplePage = lazy(() => import('@/pages/PeoplePage').then((m) => ({ default: m.PeoplePage })))
@@ -360,6 +363,12 @@ export default function App() {
             </GuestOnly>
           }
         />
+        {/* FEAT-16 — ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **`GuestOnly`-ის
+            გარეთაა განზრახ**: შესულმაც შეიძლება გახსნას (მეორე ანგარიშის
+            ბმული, ან უბრალოდ დამახსოვრებული სესია) და დეშბორდზე გადაგდება
+            იმ ერთადერთ ქმედებას წაშლიდა, რისთვისაც ბმული გაიცა. */}
+        <Route path="/reset/:token" element={<ResetPasswordPage />} />
+
         {/* Tasks §16.1 — საჯარო პროფილი. ⚠️ **განზრახ `Protected`-ის გარეთაა**:
             გაზიარებადი ბმული ავტორიზაციის გარეშეც უნდა იხსნებოდეს. დაცვა
             backend-შია — სამი ფენა, ყველა default-ით `private`. */}

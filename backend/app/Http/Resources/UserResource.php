@@ -43,6 +43,12 @@ class UserResource extends JsonResource
              */
             'admin_resources' => $this->adminResources(),
             'is_active' => (bool) $this->is_active,
+            /* FEAT-16 — მხოლოდ **ფაქტი**: არც საიდუმლო, არც აღდგენის კოდები.
+               ⚠️ `hasTwoFactor()` და არა „საიდუმლო არსებობს": ჩართვის
+               შუალედურ მდგომარეობაში (QR ნაჩვენებია, კოდი ჯერ არ დადასტურდა)
+               მეორე ფაქტორი ჯერ არ მოქმედებს — და გვერდი სწორედ ამას ხატავს. */
+            'two_factor_enabled' => $this->hasTwoFactor(),
+            'two_factor_pending' => ! $this->hasTwoFactor() && (bool) $this->two_factor_secret,
             'settings' => $this->settings,
             'created_at' => $this->created_at?->toIso8601String(),
             // მინიჭებული მოდულების key-ები — ნავიგაციისა და gate-ებისთვის

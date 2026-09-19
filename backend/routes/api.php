@@ -58,6 +58,7 @@ use App\Http\Controllers\Api\NoteCategoryController;
 use App\Http\Controllers\Api\NoteEntryController;
 use App\Http\Controllers\Api\NoteEntryFileController;
 use App\Http\Controllers\Api\NoteReminderController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\RecordCastController;
@@ -75,6 +76,7 @@ use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TranslationController;
 use App\Http\Controllers\Api\TrashController;
+use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UpcomingController;
 use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
@@ -119,12 +121,21 @@ Route::get('/health', function () {
 Route::middleware('throttle:login')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+
+    /* FEAT-16 — ადმინის ერთჯერადი აღდგენის ბმული. ⚠️ **ღიაა განზრახ**:
+       ბმულით შემოსული ადამიანი სწორედ იმიტომ მოვიდა, რომ ვერ შედის.
+       ვადაგასული/გამოყენებული ბმული **410**-ია და არა 404 — „ასეთი
+       არასდროს ყოფილა" და „ვადა გაუშვა" სხვადასხვა ქმედებას ითხოვს. */
+    Route::get('/auth/reset/{token}', [PasswordResetController::class, 'show']);
+    Route::post('/auth/reset/{token}', [PasswordResetController::class, 'store']);
 });
 
 /* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
-   ⚠️ **ეს ხუთი endpoint-ია `auth:sanctum`-ის გარეთ არსებული მთელი ზედაპირი**
-   (`/health`-სა და `register`/`login`-ის გარდა), ე.ი. ყველაზე სენსიტიური სია
-   პროექტში — შემდეგმა reviewer-მა ზუსტად უნდა იცოდეს, რამდენია:
+   ⚠️ **ეს ხუთი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
+   ზედაპირი**; მის გარეთ ღიაა კიდევ ხუთი — `/health`, `register`, `login`
+   და FEAT-16-ის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
+   `throttle:login`-ის უკან). ეს ყველაზე სენსიტიური სიაა პროექტში —
+   შემდეგმა reviewer-მა ზუსტად უნდა იცოდეს, რამდენია:
 
      1. `GET  /public/profiles/{username}`                           — პროფილის თავი
      2. `GET  /public/profiles/{username}/gallery-photos`            — ფოტოების გვერდი
@@ -169,6 +180,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['put', 'patch'], '/auth/profile', [AuthController::class, 'updateProfile']);
     Route::patch('/auth/password', [AuthController::class, 'updatePassword']);
     Route::put('/auth/settings', [AuthController::class, 'updateSettings']);
+
+    /* FEAT-16 — არჩევითი TOTP. ⚠️ **ოთხივე ანგარიშის პაროლს ითხოვს**
+       (გარდა `confirm`-ისა, სადაც დასადასტურებელი თვითონ კოდია) — გახსნილ
+       ტაბთან მისული ადამიანისთვის მეორე ფაქტორის ჩუმად გამორთვა სწორედ
+       ის ხვრელია, რომლის დახურვასაც ეს მექანიზმი ცდილობს.
+       ⚠️ `throttle:login` **`confirm`-ზეც** დგას: ეს ერთადერთი ადგილია,
+       სადაც ექვსნიშნა კოდი მოწმდება შესვლის გარეთ. */
+    Route::post('/auth/2fa', [TwoFactorController::class, 'store']);
+    Route::post('/auth/2fa/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:login');
+    Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'recoveryCodes']);
+    Route::delete('/auth/2fa', [TwoFactorController::class, 'destroy']);
 
     /* ---------- საცავი (Tasks 17.1/17.3) — მოდულებად დაშლა და გადათვლა ----------
        მსუბუქი ჯამი `GET /auth/me`-ზეც მოდის (`UserResource.storage`). */
@@ -1010,6 +1032,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/users/{user}', [AdminUserController::class, 'update']);
             Route::put('/users/{user}/modules', [AdminUserController::class, 'syncModules']);
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
+            /* FEAT-16 — ერთჯერადი აღდგენის ბმული. ⚠️ `POST`, რადგან ყოველი
+               გამოძახება ახალ ტოკენს ქმნის და ძველს კლავს. */
+            Route::post('/users/{user}/reset-link', [AdminUserController::class, 'resetLink']);
         });
 
         Route::middleware('admin_access:roles')->group(function () {

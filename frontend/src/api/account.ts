@@ -37,6 +37,10 @@ export interface User {
   profile_visibility?: 'private' | 'public'
   bio?: string | null
   settings: Partial<Settings> | null
+  /** FEAT-16 — მხოლოდ ფაქტი; საიდუმლო და აღდგენის კოდები აქ არასდროს მოდის */
+  two_factor_enabled?: boolean
+  /** საიდუმლო შექმნილია, კოდი ჯერ არ დადასტურებულა — შესვლა ჯერ არ იცვლება */
+  two_factor_pending?: boolean
   created_at: string | null
   /** ადმინის მიერ მინიჭებული მოდულები */
   modules?: string[]
@@ -254,6 +258,13 @@ export interface LoginInput {
   login: string
   password: string
   remember?: boolean
+  /**
+   * FEAT-16 — TOTP ან აღდგენის კოდი.
+   * ⚠️ პაროლი კოდთან ერთად **ხელახლა** იგზავნება: სერვერზე „ნახევრად
+   * შესული" მდგომარეობა განზრახ არ არსებობს (მისი ვადა და გაუქმება ცალკე
+   * დასაცავი იქნებოდა), ე.ი. მეორე ნაბიჯი იმავე მოთხოვნის გამეორებაა.
+   */
+  code?: string
 }
 
 export interface RegisterInput {
@@ -307,6 +318,65 @@ export async function saveSettings(settings: Settings): Promise<void> {
 }
 
 /* ---------- მოდულები / მოთხოვნები ---------- */
+
+/* ---------- ორფაქტორიანი შესვლა და აღდგენა (FEAT-16) ---------- */
+
+export interface TwoFactorStart {
+  secret: string
+  /** `otpauth://` — QR-ისთვის და ხელით ჩასაწერად */
+  uri: string
+}
+
+export async function startTwoFactor(password: string): Promise<TwoFactorStart> {
+  const { data } = await api.post('/auth/2fa', { password })
+  return data
+}
+
+export async function confirmTwoFactor(code: string): Promise<string[]> {
+  const { data } = await api.post('/auth/2fa/confirm', { code })
+  return data.recovery_codes
+}
+
+export async function regenerateRecoveryCodes(password: string): Promise<string[]> {
+  const { data } = await api.post('/auth/2fa/recovery-codes', { password })
+  return data.recovery_codes
+}
+
+export async function disableTwoFactor(password: string): Promise<void> {
+  await api.delete('/auth/2fa', { data: { password } })
+}
+
+export interface ResetLinkInfo {
+  url: string
+  expires_at: string
+  hours: number
+}
+
+/** ადმინის ერთჯერადი ბმული — ⚠️ ნედლი ტოკენი მხოლოდ ამ პასუხშია */
+export async function createResetLink(userId: number): Promise<ResetLinkInfo> {
+  const { data } = await api.post(`/admin/users/${userId}/reset-link`)
+  return data
+}
+
+export interface ResetTarget {
+  display_name: string
+  username: string | null
+}
+
+/** ⚠️ ორივე ავტორიზაციის გარეთაა — ბმულით შემოსული ვერ შედის */
+export async function fetchResetTarget(token: string): Promise<ResetTarget> {
+  const { data } = await api.get(`/auth/reset/${encodeURIComponent(token)}`)
+  return data
+}
+
+export async function submitReset(
+  token: string,
+  password: string,
+  password_confirmation: string,
+): Promise<void> {
+  await ensureCsrfCookie()
+  await api.post(`/auth/reset/${encodeURIComponent(token)}`, { password, password_confirmation })
+}
 
 export async function fetchModules(): Promise<ModuleInfo[]> {
   const { data } = await api.get('/modules')

@@ -172,6 +172,18 @@ export const CODES = [
      ველის ქვეით დახატული `account_disabled` ისევე გაუგებარი იქნებოდა. */
   'account_disabled',
   'current_password_wrong',
+  /* FEAT-16 — მეორე ფაქტორი და აღდგენის ბმული. ⚠️ `two_factor_required`
+     **შეცდომა არ არის**: ის 409-ია და ფორმას მხოლოდ იმას ეუბნება, რომ
+     კოდის ველი აჩვენოს — მაგრამ სიაშია, რომ „backend-ის ყველა კოდი ⊆
+     CODES" წესს გამონაკლისი არ ჰქონდეს. */
+  'two_factor_required',
+  'two_factor_code_invalid',
+  'two_factor_already_enabled',
+  'two_factor_not_started',
+  'two_factor_not_enabled',
+  /* ⚠️ 410 და არა 404: „ასეთი ბმული არასდროს ყოფილა" და „ვადა გაუშვა"
+     მომხმარებლისგან სხვადასხვა ქმედებას ითხოვს. */
+  'reset_link_expired',
   'genre_name_required',
   'imdb_already_added',
   'title_required_either',

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Copy, Eye, EyeOff, Loader2, SquarePen, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { copyText } from '@/lib/clipboard'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -30,27 +31,6 @@ import { cn } from '@/lib/utils'
    `type="password"` სწორედ ისაა, რასაც ბრაუზერის პაროლის მენეჯერი და
    ავტოშევსება ეყრდნობა.
    ============================================================ */
-
-/** ერთი გზა ბუფერში ჩასაწერად — `navigator.clipboard` ყველგან არ არსებობს */
-async function copyText(text: string): Promise<void> {
-  try {
-    // დაცული კონტექსტი (https / localhost)
-    await navigator.clipboard.writeText(text)
-  } catch {
-    /* ⚠️ სათადარიგო გზა: იმავე dev-სერვერზე, ქსელის IP-ით გახსნილს,
-       `navigator.clipboard` **საერთოდ არ აქვს** — პირდაპირი გამოძახება
-       გაუგებარ „არაფერი მოხდა"-ს იძლეოდა. */
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.position = 'fixed'
-    area.style.opacity = '0'
-    document.body.appendChild(area)
-    area.select()
-    document.execCommand('copy')
-    area.remove()
-  }
-}
 
 export function SecretInput({
   value,

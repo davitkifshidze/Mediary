@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clapperboard, LogIn } from 'lucide-react'
+import { ArrowLeft, Clapperboard, LogIn, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { fieldErrors, errorMessage } from '@/lib/errors'
+import { fieldErrors, errorMessage, isApiCode } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { LanguageDropdown } from '@/components/LanguageDropdown'
@@ -19,6 +20,11 @@ export function LoginPage() {
   const location = useLocation()
 
   const [form, setForm] = useState({ login: '', password: '' })
+  /* FEAT-16 — მეორე ნაბიჯი. ⚠️ **პაროლი ფორმაში რჩება და თან ხელახლა
+     იგზავნება**: სერვერზე „ნახევრად შესული" მდგომარეობა განზრახ არ
+     არსებობს, ე.ი. მეორე ნაბიჯი იმავე მოთხოვნის გამეორებაა კოდით. */
+  const [code, setCode] = useState('')
+  const [needsCode, setNeedsCode] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -31,9 +37,20 @@ export function LoginPage() {
     setErrors({})
     setMessage(null)
     try {
-      await login({ login: form.login, password: form.password, remember: true })
+      await login({
+        login: form.login,
+        password: form.password,
+        remember: true,
+        ...(needsCode ? { code } : {}),
+      })
       navigate(from, { replace: true })
     } catch (err) {
+      /* ⚠️ 409 **შეცდომა არ არის** — ის მხოლოდ იმას ამბობს, რომ კოდის ველი
+         უნდა გამოჩნდეს; წითელი ტექსტი აქ ცრუ განგაშია. */
+      if (isApiCode(err, 'two_factor_required')) {
+        setNeedsCode(true)
+        return
+      }
       const fe = fieldErrors(err)
       setErrors(fe)
       if (!Object.keys(fe).length) setMessage(errorMessage(err, t('auth.failed')))
@@ -60,11 +77,18 @@ export function LoginPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6">
-          <h1 className="mb-1 text-xl font-semibold tracking-tight">{t('auth.loginTitle')}</h1>
-          <p className="mb-5 text-sm text-muted-foreground">{t('auth.loginSubtitle')}</p>
+          <h1 className="mb-1 text-xl font-semibold tracking-tight">
+            {needsCode ? t('auth.twoFactorTitle') : t('auth.loginTitle')}
+          </h1>
+          <p className="mb-5 text-sm text-muted-foreground">
+            {needsCode ? t('auth.twoFactorHint') : t('auth.loginSubtitle')}
+          </p>
 
           <form onSubmit={submit} className="space-y-4">
-            <div>
+            {/* ⚠️ **ველები არ ინთქმება, მხოლოდ იმალება** (`hidden`): პაროლი
+                კოდთან ერთად ხელახლა იგზავნება, ე.ი. ის ფორმაში უნდა დარჩეს —
+                ხელახლა აკრეფა მეორე ნაბიჯს უსაფუძვლოდ გაართულებდა. */}
+            <div className={needsCode ? 'hidden' : undefined}>
               <Label htmlFor="login">{t('auth.loginField')}</Label>
               <Input
                 id="login"
@@ -76,17 +100,31 @@ export function LoginPage() {
               {errors.login && <p className="mt-1 text-xs text-destructive">{errors.login}</p>}
             </div>
 
-            <div>
+            <div className={needsCode ? 'hidden' : undefined}>
               <Label htmlFor="password">{t('auth.password')}</Label>
               <PasswordInput
                 id="password"
                 autoComplete="current-password"
-               
                 value={form.password}
                 onChange={(value) => setForm((f) => ({ ...f, password: value }))}
               />
               {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
             </div>
+
+            {needsCode && (
+              <div>
+                <Label htmlFor="code">{t('auth.code')}</Label>
+                <Input
+                  id="code"
+                  autoFocus
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  className="font-mono tracking-widest"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              </div>
+            )}
 
             {message && (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -95,17 +133,42 @@ export function LoginPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={busy}>
-              <LogIn className="size-4" />
-              {busy ? t('auth.loggingIn') : t('auth.login')}
+              {needsCode ? <ShieldCheck className="size-4" /> : <LogIn className="size-4" />}
+              {busy ? t('auth.loggingIn') : needsCode ? t('auth.verify') : t('auth.login')}
             </Button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-muted-foreground">
-            {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary hover:text-primary/70">
-              {t('auth.register')}
-            </Link>
-          </p>
+          {needsCode ? (
+            <button
+              type="button"
+              className="mt-5 flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
+              onClick={() => {
+                setNeedsCode(false)
+                setCode('')
+                setMessage(null)
+              }}
+            >
+              <ArrowLeft className="size-4" />
+              {t('auth.backToPassword')}
+            </button>
+          ) : (
+            <>
+              <p className="mt-5 text-center text-sm text-muted-foreground">
+                {t('auth.noAccount')}{' '}
+                <Link to="/register" className="text-primary hover:text-primary/70">
+                  {t('auth.register')}
+                </Link>
+              </p>
+
+              {/* FEAT-16 — ამ აპს წერილის გაგზავნა არ შეუძლია, ე.ი. „აღდგენა"
+                  ღილაკი ვერაფერს გააკეთებდა; ერთადერთი ნამდვილი გზა ადმინია
+                  და ტექსტიც ზუსტად ამას ამბობს. */}
+              <p className="mt-2 text-center text-sm text-muted-foreground">
+                {t('auth.forgotTitle')}
+                <InfoHint className="ml-1.5" info={t('auth.forgotHint')} />
+              </p>
+            </>
+          )}
         </div>
 
         <div className="mt-5">

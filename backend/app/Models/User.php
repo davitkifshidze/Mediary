@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Totp;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -15,7 +16,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'first_name', 'last_name', 'username', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -28,6 +29,10 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'settings' => 'array',
+            // FEAT-16 — ორივე `APP_KEY`-ით იშიფრება (იხ. მიგრაციის შენიშვნა)
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
@@ -309,6 +314,69 @@ class User extends Authenticatable
             ->filter(fn (Module $m) => $m->is_active && ! $m->pivot->is_hidden)
             ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
             ->values();
+    }
+
+    /* ---------- ორფაქტორიანი შესვლა (FEAT-16) ---------- */
+
+    /**
+     * მოქმედებს თუ არა მეორე ფაქტორი.
+     *
+     * ⚠️ **საიდუმლოს არსებობა საკმარისი არ არის** — სანამ მომხმარებელს
+     * კოდი არ შეუყვანია, ჩვენ არ ვიცით, ავთენტიფიკატორში საერთოდ ჩაიწერა
+     * თუ არა; მაშინ ჩართვა ანგარიშის სამუდამო დაკეტვას ნიშნავდა.
+     */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && (bool) $this->two_factor_secret;
+    }
+
+    /**
+     * მეორე ფაქტორის შემოწმება — TOTP **ან** აღდგენის კოდი.
+     *
+     * ⚠️ **გამოყენებული აღდგენის კოდი აქვე იშლება** (`save()`-ით), ე.ი.
+     * ერთი კოდი ერთხელ მუშაობს. სწორედ ამიტომ ეს მოდელზეა და არა
+     * კონტროლერში: წაშლა და შემოწმება ერთი ქმედებაა და მათი დაშორება
+     * იმას ნიშნავდა, რომ ერთ გზაზე კოდი მარადიული დარჩებოდა.
+     */
+    public function verifySecondFactor(string $code): bool
+    {
+        if (! $this->hasTwoFactor()) {
+            return true;
+        }
+
+        if (Totp::verify((string) $this->two_factor_secret, $code)) {
+            return true;
+        }
+
+        return $this->consumeRecoveryCode($code);
+    }
+
+    /** ახალი აღდგენის კოდები — აბრუნებს **ნედლ** სიას (ერთხელ საჩვენებლად) */
+    public function regenerateRecoveryCodes(int $count = 8): array
+    {
+        $codes = collect(range(1, $count))->map(fn () => Totp::recoveryCode())->all();
+
+        $this->two_factor_recovery_codes = $codes;
+
+        return $codes;
+    }
+
+    private function consumeRecoveryCode(string $code): bool
+    {
+        $code = strtoupper(trim($code));
+        $codes = $this->two_factor_recovery_codes ?? [];
+
+        foreach ($codes as $i => $stored) {
+            if (hash_equals((string) $stored, $code)) {
+                unset($codes[$i]);
+                $this->two_factor_recovery_codes = array_values($codes);
+                $this->save();
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** სრული სახელი — first+last, ან `name`, ან username */

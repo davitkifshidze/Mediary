@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Storage\StorageMeter;
 use App\Support\PublicDomain;
+use App\Support\ResetLink;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -92,36 +93,82 @@ class AuthController extends Controller
         return (new UserResource($user->load('modules', 'role')))->response()->setStatusCode(201);
     }
 
-    /** login — email ან username */
+    /**
+     * login — email ან username, არჩევით მეორე ფაქტორით (FEAT-16).
+     *
+     * ⚠️ **`Auth::validate()` და არა `Auth::attempt()`**: `attempt()`
+     * წარმატებისთანავე სესიას ქმნის, ე.ი. მეორე ფაქტორამდე ანგარიში უკვე
+     * შესული იქნებოდა და „გამოსვლა უკან" თავად შესვლის ფაქტს ვერ გააუქმებდა
+     * (`remember` ქუქიც უკვე დაწერილი იყო). `validate()` მხოლოდ ამოწმებს და
+     * ნაპოვნ მომხმარებელს `getLastAttempted()`-ში ტოვებს; სესია ერთადერთ
+     * ადგილას იბადება — ყველა შემოწმების შემდეგ.
+     *
+     * ⚠️ **გარდი ცხადად `web`-ია** (როგორც `logout()`-ს აქვს). ნაგულისხმევი
+     * გარდი მოთხოვნის განმავლობაში იცვლება: `auth:sanctum` მას `sanctum`-ზე
+     * გადაიყვანს, `RequestGuard`-ს კი არც `validate()` აქვს და არც
+     * `getLastAttempted()` — იგივე ხაფანგი, რამაც `RunBatchItem`-ში
+     * `onceUsingId()` ჩააგდო. ტესტში ეს მყისვე ჩანს (ერთ პროცესში ორი
+     * მოთხოვნა, მეორე უკვე `sanctum`-ზე), პროდაქშენში კი — მხოლოდ იმ
+     * დღეს, როცა `/auth/login`-ის ჯგუფს რამე შეეცვლება.
+     *
+     * ⚠️ **კოდი იმავე მოთხოვნაში მოდის და არა „ნახევრად შესულ" სესიაში.**
+     * პაროლი ხელახლა იგზავნება: ასე სერვერზე შუალედური მდგომარეობა
+     * საერთოდ არ ჩნდება (მისი ვადა, გაუქმება და გატაცება ცალკე დასაცავი
+     * იქნებოდა), ხოლო 409 `two_factor_required` ფრონტს ზუსტად ერთ რამეს
+     * ეუბნება — კოდის ველი აჩვენე.
+     */
     public function login(Request $request)
     {
         $data = $request->validate([
             'login' => ['required', 'string'],
             'password' => ['required', 'string'],
             'remember' => ['nullable', 'boolean'],
+            'code' => ['nullable', 'string', 'max:64'],
         ]);
 
         $field = filter_var($data['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        if (! Auth::attempt([$field => $data['login'], 'password' => $data['password']], $request->boolean('remember', true))) {
+        $guard = Auth::guard('web');
+
+        if (! $guard->validate([$field => $data['login'], 'password' => $data['password']])) {
             throw ValidationException::withMessages(['login' => __('auth.failed')]);
         }
 
-        if (! Auth::user()->is_active) {
-            Auth::logout();
+        /** @var User $user */
+        $user = $guard->getLastAttempted();
+
+        if (! $user->is_active) {
             throw ValidationException::withMessages(['login' => 'account_disabled']);
         }
+
+        if ($user->hasTwoFactor()) {
+            $code = trim((string) ($data['code'] ?? ''));
+
+            /* ⚠️ **ორი სხვადასხვა პასუხია და ორივე საჭირო**: „კოდი მჭირდება"
+               (ფორმამ ველი უნდა აჩვენოს) და „კოდი მცდარია" (ველი უკვე ჩანს
+               და შეცდომა უნდა დაიწეროს). ერთი კოდი მეორე ნაბიჯს ან უხმოდ
+               გაიმეორებდა, ან შეცდომას ჩუმად დაკარგავდა. */
+            if ($code === '') {
+                return response()->json(['message' => 'two_factor_required'], 409);
+            }
+
+            if (! $user->verifySecondFactor($code)) {
+                return response()->json(['message' => 'two_factor_code_invalid'], 422);
+            }
+        }
+
+        $guard->login($user, $request->boolean('remember', true));
 
         $this->regenerateSession($request);
 
         $this->audit->log(AuditLog::ACTION_LOGIN, [
             'module' => 'account',
             'subject_type' => 'user',
-            'subject_id' => Auth::id(),
-            'subject_label' => Auth::user()->username,
+            'subject_id' => $user->id,
+            'subject_label' => $user->username,
         ]);
 
-        return new UserResource(Auth::user()->load('modules', 'role'));
+        return new UserResource($user->load('modules', 'role'));
     }
 
     public function logout(Request $request)
@@ -234,6 +281,11 @@ class AuthController extends Controller
         }
 
         $request->user()->forceFill(['password' => Hash::make($data['password'])])->save();
+
+        /* ⚠️ **გაცემული აღდგენის ბმული აქვე კვდება** (FEAT-16): ის 24 საათს
+           ცოცხლობს, ე.ი. პაროლის შეცვლის შემდეგაც მოქმედი დარჩებოდა — და
+           სწორედ ის ადამიანი, ვისგანაც პაროლი იცვლება, ბმულს უკვე ფლობს. */
+        ResetLink::forget($request->user());
 
         /* ⚠️ **სხვა სესიებიც უქმდება** (აუდიტი 2026-09-14). პაროლი სწორედ
            იმიტომ იცვლება, რომ ძველი კომპრომეტირებულია — ძველი სესია კი
