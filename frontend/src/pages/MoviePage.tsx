@@ -23,6 +23,7 @@ import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { NotFound } from '@/pages/NotFoundPage'
 import { PosterImage } from '@/components/PosterImage'
 import { EpisodeTracker } from '@/components/EpisodeTracker'
+import { WatchLog } from '@/components/WatchLog'
 import { RecordGallery } from '@/components/RecordGallery'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
 import { CastRoleDialog } from '@/components/CastRoleDialog'
@@ -354,6 +355,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
             მას არ იღებს. ტრეილერის ქვემოთ დგას, რადგან „სად გავჩერდი"
             ყოველდღიური კითხვაა და გალერეაზე მაღლა უნდა იყოს. */}
         {(type === 'series' || type === 'anime') && <EpisodeTracker type={type} id={m.id} />}
+
+        {/* FEAT-14 — ხელახლა ნახვის ჟურნალი.
+            ⚠️ ბლოკი მხოლოდ ნახულ ჩანაწერზე ადგება: ჟურნალის პირველ რიგს
+            სტატუსი ქმნის, ე.ი. ცარიელი ჟურნალი „ჯერ არ მინახავს"-ა —
+            და იქ „კიდევ ვნახე" უაზრო ღილაკი იქნებოდა. */}
+        <WatchLog type={type} recordId={m.id} watched={!!m.watched_at} />
 
         {/* ===== გალერეა (Tasks 10) — ტრეილერის ქვემოთ, user-ის მოთხოვნით =====
             სექცია თვითონ ჩუმდება, თუ `gallery` მოდული ჩართული არ არის. */}

@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaSyncController;
+use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\MovieCollectionController;
 use App\Http\Controllers\Api\MovieController;
@@ -810,6 +811,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/media/episodes/{type}/{id}', [EpisodeController::class, 'update'])
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TV_TYPES)->whereNumber('id');
+
+    /* ---------- ხელახლა ნახვის ჟურნალი (FEAT-14) ----------
+       ⚠️ **უფლება ცხადად წერია** (audit §A4-ის წესი): ბოლო სეგმენტი
+       ჩანაწერის **id**-ია და არაფერს ამბობს იმაზე, რა ხდება — ე.ი.
+       `EnsureModulePermission` POST-ს `create`-ად წაიკითხავდა, მაშინ
+       როცა ნახვის ჩაწერა **არსებულ ჩანაწერს** ეხება.
+       ⚠️ **სამივე მედია-დომენი** და არა მხოლოდ TV: ფილმის ხელახლა
+       ნახვა ზუსტად ისეთივე ჩვეულებრივი ფაქტია. */
+    Route::get('/media/watches/{type}/{id}', [MediaWatchController::class, 'index'])
+        ->middleware(['module:@type', 'permission:@type,view'])
+        ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    Route::post('/media/watches/{type}/{id}', [MediaWatchController::class, 'store'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    Route::delete('/media-watches/{mediaWatch}', [MediaWatchController::class, 'destroy'])
+        ->whereNumber('mediaWatch');
 
     /* ---------- ჩანაწერის მსახიობები ხელით (ეტაპი 1) ----------
        ⚠️ **უფლება სამივეწე `update`-ია და არა მეთოდიდან გამოყვანილი.**

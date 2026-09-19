@@ -34,6 +34,7 @@ use App\Models\GameNote;
 use App\Models\GameVideo;
 use App\Models\Genre;
 use App\Models\GenreTranslation;
+use App\Models\MediaWatch;
 use App\Models\Message;
 use App\Models\MessageHide;
 use App\Models\MessageReaction;
@@ -214,6 +215,10 @@ class AuditRegistry
         MessageReaction::class => 'ერთი დაწკაპუნება ბუშტზე',
         // FEAT-09 — სეზონის მონიშვნა ოცი რიგია ერთ დაჭერაზე (რეაქციის იგივე მიზეზი)
         EpisodeWatch::class => 'ეპიზოდის მონიშვნა — ერთი დაწკაპუნება, სეზონზე კი ოცი ერთდროულად',
+        /* FEAT-14 — ნახვის რიგი `watched_at`-ის ტყუპია და მისი მწერელი
+           სტატუსია: სტატუსის ცვლილებას `AuditObserver` **ისედაც წერს**,
+           ე.ი. აქაური რიგი იმავე ფაქტს მეორედ იტყოდა. */
+        MediaWatch::class => 'ნახვის ჩაწერა — სტატუსის ცვლილება ჟურნალში უკვე წერია',
         // TMDB-ის ფაქტი და არა ადამიანის ქმედება — გლობალური ლექსიკონი (`Genre`-ის რიგში)
         TvEpisode::class => 'TMDB-ის ეპიზოდი — გლობალური ფაქტი, რომელსაც მომხმარებელი არ ქმნის',
         MessageHide::class => 'ჩემთვის დამალვა; წაშლა კი ცხადად იწერება (§4.6)',

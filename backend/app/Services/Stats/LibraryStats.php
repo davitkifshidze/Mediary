@@ -18,6 +18,7 @@ use App\Models\Video;
 use App\Support\SqlDate;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -64,9 +65,9 @@ class LibraryStats
      * @var array<string, array{model: class-string<Model>, year: ?string, done_at: ?string, genres: ?array, rating: bool}>
      */
     private const MODULES = [
-        'movie' => ['model' => Movie::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'movie'], 'rating' => true],
-        'series' => ['model' => Series::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'series'], 'rating' => true],
-        'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => true],
+        'movie' => ['model' => Movie::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'movie'], 'rating' => true, 'watch_log' => 'movie'],
+        'series' => ['model' => Series::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'series'], 'rating' => true, 'watch_log' => 'series'],
+        'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => true, 'watch_log' => 'anime'],
         'video' => ['model' => Video::class, 'year' => null, 'done_at' => 'watched_at', 'genres' => ['kind' => 'column', 'column' => 'type_id', 'table' => 'video_types'], 'rating' => false],
         'song' => ['model' => Song::class, 'year' => 'year', 'done_at' => 'played_at', 'genres' => ['kind' => 'pivot', 'table' => 'song_genre_song', 'local' => 'song_id', 'foreign' => 'song_genre_id', 'dictionary' => 'song_genres'], 'rating' => true],
         'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => true],
@@ -115,7 +116,11 @@ class LibraryStats
             'years' => $map['year'] ? $this->byYear($base, $map['year']) : [],
             'genres' => $map['genres'] ? $this->byGenre($base, $map['genres']) : [],
             'ratings' => $map['rating'] ? $this->byRating($base) : [],
-            'months' => $map['done_at'] ? $this->byMonth($base, $map['done_at'], $year) : [],
+            /* FEAT-14 — მედია-დომენები თვეებს **ნახვების ჟურნალიდან** კითხულობენ,
+               ე.ი. ხელახლა ნახვასაც ითვლიან; დანარჩენი — `done_at` სვეტიდან. */
+            'months' => isset($map['watch_log'])
+                ? $this->byWatchLog($user, $map['watch_log'], $year)
+                : ($map['done_at'] ? $this->byMonth($base, $map['done_at'], $year) : []),
             'has_months' => $map['done_at'] !== null,
         ];
     }
@@ -221,15 +226,14 @@ class LibraryStats
                 continue;
             }
 
-            $column = $map['done_at'];
-            $expr = SqlDate::month($column);
-
-            $rows = $base()->toBase()
-                ->whereNotNull($column)
-                ->whereYear($column, $year)
-                ->groupByRaw($expr)
-                ->selectRaw($expr.' as bucket, count(*) as total')
-                ->get();
+            /* FEAT-14 — მედიაზე თვეები **ჟურნალიდან** იკითხება, ე.ი. ჯამიც
+               ხელახლა ნახვებს ითვლის. ⚠️ ორი სხვადასხვა წყარო ერთსა და იმავე
+               კითხვაზე (`/stats` და დეშბორდი) ორ განსხვავებულ რიცხვს
+               აჩვენებდა — და განსხვავებას ვერავინ ახსნიდა. */
+            $rows = isset($map['watch_log'])
+                ? collect($this->byWatchLog($user, $map['watch_log'], $year))
+                    ->map(fn (array $row) => (object) ['bucket' => $row['month'], 'total' => $row['count']])
+                : $this->monthRows($base, $map['done_at'], $year);
 
             foreach ($rows as $bucket) {
                 $index = (int) $bucket->bucket;
@@ -465,17 +469,66 @@ class LibraryStats
      */
     private function byMonth(callable $base, string $column, ?int $year): array
     {
-        $year ??= (int) now()->format('Y');
+        $counts = $this->monthRows($base, $column, $year ?? (int) now()->format('Y'))
+            ->mapWithKeys(fn ($row) => [(int) $row->bucket => (int) $row->total]);
+
+        return $this->months($counts);
+    }
+
+    /**
+     * ⚠️ **ერთი query ორ გამომძახებელზე** (`byMonth()` და `summary()`) —
+     * ორი ასლი პირველივე შეცვლაზე დაშორდებოდა და გვერდი დეშბორდს
+     * აცდებოდა, ისე რომ არცერთი არ იქნებოდა ცხადად მცდარი.
+     */
+    private function monthRows(callable $base, string $column, int $year): Collection
+    {
         $expr = SqlDate::month($column);
 
-        $counts = $base()->toBase()
+        return $base()->toBase()
             ->whereNotNull($column)
             ->whereYear($column, $year)
+            ->groupByRaw($expr)
+            ->selectRaw($expr.' as bucket, count(*) as total')
+            ->get();
+    }
+
+    /**
+     * თვეები **ნახვების ჟურნალიდან** (FEAT-14).
+     *
+     * ⚠️ **ეს ზუსტად ის მიზეზია, რის გამოც ჟურნალი დაიწერა.** `watched_at`
+     * ერთი მომენტია, ე.ი. „წელს რამდენი ვნახე" **გამეორებებს ვერ ითვლიდა**:
+     * მარტში ნანახი და სექტემბერში ხელახლა ნანახი ფილმი ერთ თვეში ჩანდა
+     * და მეორეში — არა.
+     *
+     * ⚠️ **`DB::table()` და არა Eloquent** — `media_watches`-ს `owner` scope
+     * აქვს და კონსოლიდან (სტატისტიკა რექვესთის გარეთაც გამოიძახება)
+     * `Auth::id()` ცარიელია; ცხადი `user_id` იგივე წესია, რასაც მთელი
+     * ეს კლასი მიჰყვება.
+     */
+    private function byWatchLog(User $user, string $alias, ?int $year): array
+    {
+        $year ??= (int) now()->format('Y');
+        $expr = SqlDate::month('watched_at');
+
+        $counts = DB::table('media_watches')
+            ->where('user_id', $user->getKey())
+            ->where('watchable_type', $alias)
+            ->whereYear('watched_at', $year)
             ->groupByRaw($expr)
             ->selectRaw($expr.' as bucket, count(*) as total')
             ->get()
             ->mapWithKeys(fn ($row) => [(int) $row->bucket => (int) $row->total]);
 
+        return $this->months($counts);
+    }
+
+    /**
+     * ⚠️ **თორმეტივე თვე ბრუნდება, ნულებიანიც** — მხოლოდ არსებული თვეების
+     * დაბრუნება წელს არათანაბრად დაჭიმავდა და „ივლისში არაფერი" იმ
+     * თვისგან ვერ განირჩეოდა, რომელიც სიაშივე არ იყო.
+     */
+    private function months(Collection $counts): array
+    {
         return array_map(
             fn (int $month) => ['month' => $month, 'count' => (int) ($counts[$month] ?? 0)],
             range(1, 12),

@@ -7,6 +7,7 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasWatchLog;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,12 @@ class Movie extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
+
+    /**
+     * ⚠️ **ხელახლა ნახვის ჟურნალი (FEAT-14)** — `watched_at` „ბოლო ნახვაა"
+     * და `media_watches`-იდან იწერება; გამეორება აღარ იკარგება.
+     */
+    use HasWatchLog;
 
     protected $guarded = ['id'];
 

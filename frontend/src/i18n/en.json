@@ -3050,5 +3050,16 @@
     "confirmLabel": "Type {{word}} to confirm",
     "emptyAction": "Empty the trash",
     "emptied": "{{count}} records deleted"
+  },
+  "watchLog": {
+    "title": "Watches",
+    "count": "{{count}}",
+    "hint": "Every watch is its own row. The first one comes from the status — and the record’s “last watched” is counted from this list.",
+    "again": "Watched again",
+    "added": "The watch has been logged",
+    "show": "Show the list",
+    "hide": "Hide",
+    "deleteTitle": "Delete this watch?",
+    "deleteHint": "This one date is removed. If it was the latest, the record’s “last watched” moves back to the previous one."
   }
 }
