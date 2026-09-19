@@ -218,9 +218,16 @@ const ENUM_STATUS_NS: Record<string, string> = {
   board_game: 'boardGames.statuses',
 }
 
+/**
+ * ⚠️ **`min-w-0` აუცილებელია და არა კოსმეტიკა.** grid-ის ელემენტს
+ * ნაგულისხმევად `min-width: auto` აქვს, ე.ი. ის შიგთავსზე ვიწრო ვერ
+ * ხდება — `ResponsiveContainer` კი მშობლის სიგანეს ზომავს და შემდეგ
+ * იმავე მშობელს აგანიერებს. შედეგი უჯრედის უწყვეტი ზრდაა ეკრანის
+ * შევიწროებისას.
+ */
 function Cut({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <h3 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h3>
       {children}
     </div>
