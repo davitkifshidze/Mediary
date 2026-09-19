@@ -36,6 +36,7 @@ const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ defaul
 const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const ImportPage = lazy(() => import('@/pages/ImportPage').then((m) => ({ default: m.ImportPage })))
+const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
 const TranslationsPage = lazy(() => import('@/pages/TranslationsPage').then((m) => ({ default: m.TranslationsPage })))
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -274,6 +275,9 @@ function AppShell() {
               რომელ მოდულს ეხება, ფაილი წყვეტს, და კონტროლერი თვითონ
               ამოწმებს წვდომასაც და უფლებასაც (ისევე, როგორც ძებნა). */}
           <Route path="import" element={<ImportPage />} />
+          {/* FEAT-08 — სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
+              ყველა ჩართულ მოდულს ეხება და ჩაურთველი სიიდან თვითონ ცვივა. */}
+          <Route path="stats" element={<StatsPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="profile" element={<ProfilePage />} />

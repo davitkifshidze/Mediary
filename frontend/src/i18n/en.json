@@ -2944,5 +2944,32 @@
     "run": "Import ({{count}})",
     "empty": "No file chosen yet",
     "emptyHint": "The export file comes from the service itself: Letterboxd from its settings, IMDb from a list page, Goodreads from “My Books”."
+  },
+  "stats": {
+    "title": "Statistics",
+    "hint": "What you did, not what you have: statuses, genres, scores, release years and activity by month. Every number comes from your own library only.",
+    "total": "{{count}} in total",
+    "byStatus": "By status",
+    "byMonth": "By month — {{year}}",
+    "byGenre": "By genre",
+    "byRating": "By score",
+    "byYear": "By release year",
+    "other": "Other",
+    "empty": "Nothing to count yet",
+    "emptyHint": "Add a record to your library and the status, genre and score breakdowns appear here.",
+    "month": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    }
   }
 }

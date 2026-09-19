@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ChartColumn,
   ContactRound,
   DatabaseBackup,
   DownloadCloud,
@@ -58,6 +59,7 @@ export type ToolSectionKey =
   | 'credentials'
   | 'backups'
   | 'import'
+  | 'stats'
   | 'purge'
 
 type ToolSection = { color: string; icon: LucideIcon }
@@ -78,6 +80,7 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
   import: { color: 'var(--tool-import)', icon: Import },
+  stats: { color: 'var(--tool-stats)', icon: ChartColumn },
   purge: { color: 'var(--tool-purge)', icon: Trash2 },
 }
 

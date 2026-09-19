@@ -68,6 +68,7 @@ use App\Http\Controllers\Api\SongController;
 use App\Http\Controllers\Api\SongFileController;
 use App\Http\Controllers\Api\SongGenreController;
 use App\Http\Controllers\Api\SongNoteController;
+use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TranslationController;
@@ -314,6 +315,11 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **ჯგუფის middleware არ ადევს**: მოდული ფაილის შიგთავსიდან
        ირკვევა და არა მისამართიდან, ე.ი. `@type`-ს წასაკითხი არაფერი აქვს —
        ორივე შემოწმება (წვდომა + უფლება) კონტროლერშია, ცხადად. */
+    /* ---------- სტატისტიკა (FEAT-08) ----------
+       ⚠️ **დეშბორდს არ ცვლის**: ის „რა მაქვს"-ს პასუხობს, ეს — „რა გავაკეთე".
+       ⚠️ ერთი რექვესთი ყველა ჩართულ მოდულზე; ჩაურთველი სიიდან თვითონ ცვივა. */
+    Route::get('/stats', [StatsController::class, 'index']);
+
     Route::get('/import/sources', [ImportController::class, 'sources']);
     Route::post('/import/plan', [ImportController::class, 'plan']);
     Route::post('/import/item', [ImportController::class, 'item']);

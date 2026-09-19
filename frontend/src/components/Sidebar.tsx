@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
   BellRing,
+  ChartColumn,
   ChevronDown,
   Clapperboard,
   DatabaseBackup,
@@ -991,6 +992,12 @@ export function Sidebar({
             {t('translate.title')}
           </Link>
         )}
+        {/* FEAT-08 — სტატისტიკა. „რა გავაკეთე" — დეშბორდის („რა მაქვს")
+            წყვილი და არა შემცვლელი; ამიტომ ცალკე სექციაა. */}
+        <Link to="/stats" onClick={() => setDrawerOpen(false)} style={toolAccent('stats')} className={toolLink('/stats')}>
+          <ChartColumn className="size-4 shrink-0" />
+          {t('stats.title')}
+        </Link>
         {/* FEAT-07 — გარე სერვისის CSV-ის იმპორტი.
             ⚠️ **პირობის გარეშე ჩანს**: ცნობადი ფორმატები სამ სხვადასხვა
             მოდულს ეხება (ფილმი · წიგნი · თამაში), ე.ი. „მედია-მოდული მაქვს
