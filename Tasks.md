@@ -36,7 +36,7 @@
 | GAP-16 | ასლის ვიუერის დროებითი ბაზა (`<db>_inspect_<id>`) ვადას არ იწურავს და ასლის წაშლაზე არ იშლება | Medium | gap | S | ✅ |
 | DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ✅ |
 | GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
-| SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ⬜ |
+| SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ✅ |
 | SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ✅ |
 | SEC-17 | `GalleryFetcher` `.svg`-ს `image/svg+xml`-ად საჯარო დისკზე წერს — `WebImageImporter` მას უარყოფს, ეს გზა კი არა | Low | security | S | ⬜ |
 | GAP-18 | სამი ტექსტი თქვენობითშია („ჩაწერეთ", „სცადეთ", „არ გირჩევთ") — მთელი აპი შენობითზეა | Low | gap | S | ⬜ |
@@ -442,13 +442,14 @@
 ## Low
 
 ### [SEC-15] პირველი რეგისტრაციის super_admin-შემოწმება race-ია
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). „ეს პირველი ანგარიშია?" და ანგარიშის შექმნა ერთ `DB::transaction`-შია, წაკითხვა კი ჩაკეტილი — **`User::accountsLocked()`**, ერთადერთი განსაზღვრება. ⚠️ **ბილდერს აბრუნებს და არა `bool`-ს განზრახ**: sqlite-ის გრამატიკა `for update`-ს აგდებს, ე.ი. SQL-ზე დაწერილი ტესტი ტესტურ ბაზაზე ვერაფერს დაიჭერდა — `getQuery()->lock` ორივე დრაივერზე ერთნაირად ჩანს. ⚠️ **ტესტი კინაღამ ცარიელი გამოვიდა**: `unique:users,username` ვალიდაციაც `count(*)`-ია და `RefreshDatabase` თვითონ ატრიალებს ტრანზაქციას, ე.ი. „დონე > 0" ძველ კოდზეც მართალი იყო — ფილტრი `where`-ის არქონასაც ითხოვს და შედარება საბაზისო დონესთანაა (ძველ კოდზე: „Failed asserting that 1 is greater than 1"). ⚠️ დაემატა **`FIRST_USER_IS_ADMIN`** (ნაგულისხმევად `true`, ე.ი. ქცევა არ შეცვლილა): საჯარო სერვერზე გამორთვა ნიშნავს, რომ სუპერ-ადმინი მხოლოდ `mediary:bootstrap-admin`-ით იქმნება — გამორთულზე ჩაკეტილი წაკითხვა საერთოდ არ სრულდება (ფლაგი შედარებაში პირველია).
 - **ტიპი:** security
 - **სად:** `backend/app/Http/Controllers/Api/AuthController.php:49` (`$isFirst = User::count() === 0;` — შემდეგ `create()`)
 - **პრობლემა:** check-then-create ტრანზაქციისა და ლოკის გარეშე: ორი ერთდროული `POST /auth/register` ცარიელ ბაზაზე ორივეს super_admin-ად ქმნის. მხოლოდ ინსტალაციის პირველ წუთებში მიღწევადია, მაგრამ `ALLOW_REGISTRATION=true` ნაგულისხმევია და `setup.sh` ბაზას ცარიელს ტოვებს.
 - **რატომ:** ღია რეგისტრაციაზე პირველი ანგარიშის მოპოვება = ინსტალაციის დაპატრონება; შემთხვევითი „ორი პირველი" ერთი ხაზით იხურება.
 - **გადაწყვეტა:** `DB::transaction` + `User::lockForUpdate()->count()` (ან `Cache::lock('first-user')`); სასურველია `mediary:bootstrap-admin` ერთადერთი გზა და პირველი რეგისტრაცია ჩვეულებრივი `user` — `.env`-ის `FIRST_USER_IS_ADMIN=false`-ით.
 - **Acceptance criteria:**
-  - [ ] ტესტი: ორი პარალელური რეგისტრაციის სიმულაციაზე (ლოკის დაკავებით) მხოლოდ ერთია super_admin
+  - [x] ტესტი: ორი პარალელური რეგისტრაციის სიმულაციაზე (ლოკის დაკავებით) მხოლოდ ერთია super_admin
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

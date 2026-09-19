@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -132,6 +133,27 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->roleKey() === 'super_admin';
+    }
+
+    /**
+     * **„ჯერ არცერთი ანგარიში არ არსებობს?" — ჩაკეტილი წაკითხვა (Tasks SEC-15).**
+     *
+     * ⚠️ **მხოლოდ ტრანზაქციის შიგნით აქვს აზრი.** ღია რეგისტრაციაზე პირველი
+     * ანგარიში super_admin-ია, ე.ი. „დათვალე და შექმენი" ორი ერთდროული
+     * მოთხოვნისას **ორ** სუპერ-ადმინს იძლევა — ინსტალაციის დაპატრონება.
+     * `lockForUpdate()` ცარიელ ცხრილზე InnoDB-ს ხარვეზის (gap) ლოკს ატანინებს,
+     * ე.ი. მეორე მოთხოვნა პირველის დასრულებამდე ელოდება და უკვე 1-ს ხედავს.
+     *
+     * ⚠️ **ბილდერს აბრუნებს და არა `bool`-ს განზრახ**: sqlite-ის გრამატიკა
+     * `for update`-ს უბრალოდ აგდებს, ე.ი. SQL-ზე დაწერილი ტესტი ტესტურ ბაზაზე
+     * ვერაფერს დაიჭერდა — `getQuery()->lock` კი ორივე დრაივერზე ერთნაირად
+     * ჩანს (`SecurityHeadersTest`-ის მეზობელი `AuthTest`).
+     *
+     * @return Builder<static>
+     */
+    public static function accountsLocked(): Builder
+    {
+        return static::query()->lockForUpdate();
     }
 
     /** როლის მინიჭება key-ით (bootstrap, რეგისტრაცია, ტესტები) */

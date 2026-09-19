@@ -13,6 +13,7 @@ use App\Support\PublicDomain;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -30,6 +31,15 @@ class AuthController extends Controller
      * რეგისტრაცია ღიაა (შეთანხმებული), მაგრამ ანგარიში „ცარიელი" იქმნება:
      * ეძლევა მხოლოდ `enabled_by_default` მოდულები, დანარჩენს ითხოვს ადმინისგან.
      * პირველი რეგისტრირებული ავტომატურად super_admin-ია (bootstrap).
+     *
+     * ⚠️ **„პირველია?" და ანგარიშის შექმნა ერთ ტრანზაქციაშია და წაკითხვა
+     * ჩაკეტილია** (Tasks SEC-15): ამის გარეშე ორი ერთდროული რეგისტრაცია
+     * ცარიელ ბაზაზე **ორ** სუპერ-ადმინს ქმნიდა. ერთადერთ „ვინ წყვეტს"
+     * განსაზღვრებას `User::accountsLocked()` ინახავს.
+     *
+     * ⚠️ **`FIRST_USER_IS_ADMIN=false` ამ გზას სულ თიშავს** — მაშინ პირველიც
+     * ჩვეულებრივი `user`-ია და სუპერ-ადმინი მხოლოდ `mediary:bootstrap-admin`-ით
+     * იქმნება; ეს პროდაქშენზე გაშვების რეკომენდებული ვარიანტია (README).
      */
     public function register(Request $request)
     {
@@ -46,21 +56,27 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $isFirst = User::count() === 0;
+        $user = DB::transaction(function () use ($data) {
+            // ⚠️ ფლაგი პირველია: გამორთულზე ჩაკეტილი წაკითხვა საერთოდ არ ხდება
+            $isFirst = config('mediary.first_user_is_admin')
+                && User::accountsLocked()->count() === 0;
 
-        $user = new User;
-        $user->fill($data);
-        $user->password = Hash::make($data['password']);
-        $user->assignRole($isFirst ? 'super_admin' : 'user');
-        $user->is_active = true;
-        $user->save();
+            $user = new User;
+            $user->fill($data);
+            $user->password = Hash::make($data['password']);
+            $user->assignRole($isFirst ? 'super_admin' : 'user');
+            $user->is_active = true;
+            $user->save();
 
-        $defaults = Module::where('is_active', true)
-            ->when(! $isFirst, fn ($q) => $q->where('enabled_by_default', true))
-            ->pluck('id')
-            ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])
-            ->all();
-        $user->modules()->sync($defaults);
+            $defaults = Module::where('is_active', true)
+                ->when(! $isFirst, fn ($q) => $q->where('enabled_by_default', true))
+                ->pluck('id')
+                ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])
+                ->all();
+            $user->modules()->sync($defaults);
+
+            return $user;
+        });
 
         Auth::login($user, remember: true);
         $this->regenerateSession($request);

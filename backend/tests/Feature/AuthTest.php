@@ -10,6 +10,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Tests\TestCase;
@@ -109,6 +110,63 @@ class AuthTest extends TestCase
             Module::where('is_active', true)->where('enabled_by_default', true)->count(),
             $second->modules()->count(),
         );
+    }
+
+    /**
+     * **SEC-15 — „ეს პირველი ანგარიშია?" ჩაკეტილი წაკითხვაა ტრანზაქციაში.**
+     *
+     * ⚠️ ორი მართლა პარალელური რექვესთი PHPUnit-ში არ იმართება, ამიტომ
+     * მექანიზმი ორ ნაწილად მოწმდება: (ა) კითხვა ტრანზაქციის შიგნით სმება —
+     * მის გარეშე ვერცერთი ლოკი ვერ იმუშავებდა; (ბ) `User::accountsLocked()`
+     * ლოკს **მართლა ითხოვს**. ძველ კოდზე (ა) წითელია: `User::count()`
+     * ტრანზაქციის დონეზე 0-ზე სრულდებოდა.
+     *
+     * ⚠️ SQL-ზე (`for update`) დაწერილი შემოწმება აქ უსარგებლოა: sqlite-ის
+     * გრამატიკა ლოკს უბრალოდ აგდებს, ე.ი. ტესტური ბაზა მას ვერასდროს
+     * დაინახავდა — `getQuery()->lock` კი ორივე დრაივერზე ერთნაირია.
+     */
+    public function test_the_first_account_check_runs_locked_inside_a_transaction(): void
+    {
+        // ⚠️ `RefreshDatabase` თვითონ ატრიალებს ტრანზაქციას, ე.ი. საბაზისო დონე 0 არაა
+        $baseline = DB::transactionLevel();
+        $levels = [];
+
+        DB::listen(function ($query) use (&$levels) {
+            // ⚠️ `where`-ის გარეშე: `unique:users,username` ვალიდაციაც `count(*)`-ია
+            // და ის ჩვენს ტრანზაქციამდე სრულდება — მისი ჩათვლა ტესტს ცარიელს ხდიდა
+            if (str_contains($query->sql, 'count(*)')
+                && str_contains($query->sql, 'users')
+                && ! str_contains($query->sql, 'where')) {
+                $levels[] = DB::transactionLevel();
+            }
+        });
+
+        $this->postJson('/api/auth/register', $this->payload('first'))->assertStatus(201);
+
+        $this->assertNotEmpty($levels, 'პირველი ანგარიშის შემოწმება საერთოდ არ შესრულდა');
+        $this->assertGreaterThan($baseline, $levels[0], 'შემოწმება ტრანზაქციის გარეთაა — ლოკს აზრი არ აქვს');
+    }
+
+    /** SEC-15 — ლოკი მართლა იბმება (sqlite-ზე SQL-ში ვერ ჩანს, ბილდერზე — ჩანს) */
+    public function test_the_first_account_check_asks_for_a_row_lock(): void
+    {
+        $this->assertTrue(User::accountsLocked()->getQuery()->lock);
+    }
+
+    /**
+     * SEC-15 — `FIRST_USER_IS_ADMIN=false`-ზე პირველიც ჩვეულებრივი `user`-ია.
+     *
+     * ეს საჯარო სერვერის რეკომენდებული რეჟიმია: ღია რეგისტრაციაზე პირველის
+     * მოპოვება ინსტალაციის დაპატრონებაა, ადმინს კი `mediary:bootstrap-admin` ქმნის.
+     */
+    public function test_the_first_account_is_ordinary_when_the_switch_is_off(): void
+    {
+        config(['mediary.first_user_is_admin' => false]);
+
+        $this->postJson('/api/auth/register', $this->payload('first'))->assertStatus(201);
+
+        $this->assertFalse(User::first()->isSuperAdmin());
+        $this->assertSame('user', User::first()->roleKey());
     }
 
     /** ⚠️ **პირველ ანგარიშს ყველა აქტიური მოდული ეძლევა** — bootstrap-ის წესი */
