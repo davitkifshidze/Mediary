@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      PWA — „მთავარ ეკრანზე დამატება" (FEAT-15).
+
+      ⚠️ **`theme-color` ორია და ეს აუცილებელია.** manifest-ს მხოლოდ ერთი
+      აქვს, ე.ი. მუქ თემაზე ბრაუზერის ზოლი ნათელი ლაქა იქნებოდა. ორივე
+      მნიშვნელობა `index.css`-ის `--background`-ია — მესამე პალიტრა აქ
+      იმავე დღეს დაშორდებოდა თემას.
+
+      ⚠️ **iOS manifest-ის ხატულას **არ** კითხულობს** — მას `apple-touch-icon`
+      სჭირდება და **მხოლოდ PNG**. ამ რეპოში რასტერიზატორი არ არის
+      (და ერთი ხატულისთვის მისი დამატება ზედმეტია), ამიტომ iPhone-ზე
+      ხატულა ეკრანის სურათი იქნება. სხვა ყველაფერი — standalone-რეჟიმი,
+      სახელი, ფერი — იქაც მუშაობს.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f7f2" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16130e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Mediary" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

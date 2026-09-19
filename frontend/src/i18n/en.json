@@ -3061,5 +3061,10 @@
     "hide": "Hide",
     "deleteTitle": "Delete this watch?",
     "deleteHint": "This one date is removed. If it was the latest, the record’s “last watched” moves back to the previous one."
+  },
+  "install": {
+    "title": "Install the app",
+    "hint": "Mediary is added to the home screen and opens in its own window, without the browser address bar. This is the browser’s ordinary install and it stores no files.",
+    "action": "Install"
   }
 }

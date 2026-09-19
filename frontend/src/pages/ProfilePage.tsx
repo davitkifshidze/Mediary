@@ -12,6 +12,7 @@ import { PasswordInput } from '@/components/ui/secret-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DataExportCard } from '@/components/DataExportCard'
+import { InstallApp } from '@/components/InstallApp'
 import { PublicProfileCard } from '@/components/PublicProfileCard'
 import { StorageCard } from '@/components/StorageCard'
 import { WebQuotaCard } from '@/components/WebQuotaCard'
@@ -247,6 +248,12 @@ export function ProfilePage() {
         </div>
       </form>
       {/* ---------- საჯარო პროფილი (Tasks 16.1 + §6.1) ---------- */}
+      {/* FEAT-15 — „მთავარ ეკრანზე დამატება".
+          ⚠️ ბლოკი **მხოლოდ მაშინ ჩანდება, როცა ბრაუზერი თვითონ ამბობს**,
+          რომ დაყენება შესაძლებელია — დაყენებულზე, Safari-ზე და Firefox-ზე
+          მუდმივი ღილაკი იტყუებოდა. */}
+      <InstallApp />
+
       <PublicProfileCard />
 
       {/* ---------- ჩემი საცავი (ეტაპი 5) ----------

@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Mediary",
+  "short_name": "Mediary",
+  "description": "პირადი მედია-კატალოგი: ფილმები, სერიალები, წიგნები, თამაშები და სხვა.",
+  "lang": "ka",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8f7f2",
+  "theme_color": "#f8f7f2",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
