@@ -47,7 +47,7 @@
 | DEBT-15 | CI-ში დამოკიდებულებების აუდიტი (`composer audit`, `npm audit`) და Dependabot არ არის | Low | debt | S | ⬜ |
 | DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ⬜ |
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ⬜ |
-| DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ⬜ |
+| DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
 | DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ⬜ |
 | DEBT-20 | მოძველებული კომენტარები: `PublicProfileController` „მხოლოდ ორი GET" (ხუთია, ერთი POST), `sw.js` ელფოსტის არხს ასახელებს, CLAUDE.md ამ მანქანაზე yt-dlp/ffmpeg/python-ის არსებობას ამტკიცებს | Low | debt | S | ⬜ |
 | DEBT-21 | ენების სახელები („ქართული"/„English") 4 კომპონენტში hardcoded-ია და არა i18n-ში | Low | debt | S | ⬜ |
@@ -569,13 +569,14 @@
 - **დამოკიდებულება:** GAP-13, GAP-14
 
 ### [DEBT-18] მკვდარი backend კოდი
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). წაიშალა `Translator::translateBatch()`/`toGeorgianBatch()`, `inspire` (Laravel-ის სკელეტი) და `BackfillCollections` (`movies:backfill-collections`); `composer.json`-ის სახელი `mediary/backend`-ია (აღწერასთან და keyword-ებთან ერთად). ⚠️ `translateBatch()` მხოლოდ „გამოუყენებელი" არ იყო — ის ტექსტებს `\n`-ით ამწებებდა და **ერთ** `ask()`-ად ითვლებოდა, ე.ი. ვინც მას „აღმოაჩენდა", კვოტის მრიცხველსაც აცდენდა და ხაზების აღდგენაზეც დაეყრდნობოდა, რაც Gemini-ზე არასდროს შემოწმებულა. ⚠️ `movies:backfill-collections` ერთჯერადი იყო და `ItemSyncer`-ის `details` ველით უკვე დაფარულია. ⚠️ **`composer.lock`-ის content-hash `name`-საც ითვლის**, ე.ი. სახელის შეცვლა `composer update --lock`-ს ითხოვდა (მხოლოდ ჰეში შეიცვალა — `composer validate` სუფთაა, ვერსიები უცვლელია). `php artisan list` აღარც `inspire`-ს აჩვენებს და აღარც `movies:backfill-collections`-ს.
 - **ტიპი:** debt
 - **სად:** `backend/app/Services/Translation/Translator.php:270,289` (`translateBatch()`/`toGeorgianBatch()` — გამომძახებელი არსად, `grep` 0), `backend/routes/console.php:7` (Laravel-ის სკელეტის `inspire`), `backend/app/Console/Commands/BackfillCollections.php:12` (`movies:backfill-collections` — 2026-08-ის ერთჯერადი backfill), `backend/composer.json:3` (`"name": "laravel/laravel"`)
 - **პრობლემა:** `translateBatch()` `\n`-ით ტექსტების შერწყმას აკეთებს — Gemini-ზე ეს პატერნი შემოწმებული არაა და კვოტას/`ask()`-ს გვერდს უვლის (`translate()`-ით გადის, ე.ი. ერთ გამოძახებად ითვლება); ვინც მას „აღმოაჩენს", არაპროგნოზირებად შედეგს მიიღებს. `inspire` აპისთვის უცხოა; backfill-ის ბრძანება `ItemSyncer`-ის `details` ველით უკვე დაფარულია.
 - **რატომ:** dead code (spec-ის DEBT).
 - **გადაწყვეტა:** ორივე მეთოდის, `inspire`-ის და `BackfillCollections`-ის წაშლა (ან CLAUDE.md-ში მიზეზის დაწერა, თუ დარჩენა გადაწყდა); `composer.json` `"name": "mediary/backend"`.
 - **Acceptance criteria:**
-  - [ ] `php artisan list` `inspire`-სა და `movies:backfill-collections`-ს არ აჩვენებს; `php artisan test` მწვანე
+  - [x] `php artisan list` `inspire`-სა და `movies:backfill-collections`-ს არ აჩვენებს; `php artisan test` მწვანე
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

@@ -267,31 +267,6 @@ class Translator
         ]);
     }
 
-    /** ბევრი ტექსტი ერთ მოთხოვნაში (ხაზებად); აბრუნებს იმავე რაოდენობის მასივს */
-    public function translateBatch(array $texts, string $to, string $context = 'text'): array
-    {
-        $texts = array_values(array_map(fn ($t) => str_replace("\n", ' ', trim((string) $t)), $texts));
-        if (! $texts) {
-            return [];
-        }
-
-        $result = $this->translate(implode("\n", $texts), $to, $context);
-        if (! $result) {
-            return $texts;
-        }
-
-        $lines = array_map('trim', explode("\n", $result));
-
-        // თუ ხაზები არ ემთხვევა — ვაბრუნებთ ორიგინალებს (უსაფრთხოდ)
-        return count($lines) === count($texts) ? $lines : $texts;
-    }
-
-    /** უკან თავსებადობა: ძველი გამოძახება `toGeorgianBatch()` */
-    public function toGeorgianBatch(array $texts): array
-    {
-        return $this->translateBatch($texts, 'ka');
-    }
-
     private function gemini(string $prompt): ?string
     {
         $model = $this->model();
