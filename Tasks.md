@@ -45,7 +45,7 @@
 | GAP-21 | უცნობი მისამართი უხმოდ `/`-ზე გადამისამართდება — 404 გვერდი არ არსებობს | Low | gap | S | ✅ |
 | BUG-25 | `LinkMetadata::absolute()` `img/x.png`-ს (დახრილის გარეშე) ჰოსტის ფესვთან ითვლის და არა გვერდის საქაღალდესთან | Low | bug | S | ✅ |
 | DEBT-15 | CI-ში დამოკიდებულებების აუდიტი (`composer audit`, `npm audit`) და Dependabot არ არის | Low | debt | S | ⬜ |
-| DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ⬜ |
+| DEBT-16 | README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს; `package.json`-ს `engines` არ აქვს | Low | debt | S | ✅ |
 | DEBT-17 | ~180 გამოუყენებელი i18n გასაღები (`videos.kind*`, `admin.pageTitle`, `library.tabSynced`, `audit.subjects.gallery_theme`…) — `audit.py` „unused"-ს არ ამოწმებს | Low | debt | S | ✅ |
 | DEBT-18 | მკვდარი backend კოდი: `Translator::translateBatch()/toGeorgianBatch()`, `inspire` ბრძანება, ერთჯერადი `movies:backfill-collections`, `composer.json`-ის `laravel/laravel` სახელი | Low | debt | S | ✅ |
 | DEBT-19 | `auth.tsx`-ში მკვდარი `permissions['*']` ბრანჩი — wildcard 2026-09-15-ს ამოვიდა | Low | debt | S | ✅ |
@@ -550,13 +550,14 @@
 - **დამოკიდებულება:** none
 
 ### [DEBT-16] README „Node.js 18+"-ს ითხოვს, Vite 8/Vitest 5 კი ≥20.19-ს
+- **სტატუსი:** ✅ შესრულებულია (2026-09-19). `frontend/package.json`-ს დაემატა `engines` და დაიწერა `.nvmrc` (`24`); README ამავე რიცხვს ამბობს. ⚠️ **ტასკის „≥20.19" არასწორი აღმოჩნდა და გაზომვამ გამოასწორა**: `vite@8.2.1`-ის `engines` მართლაც `^20.19.0 || >=22.12.0`-ია, მაგრამ **`vitest@5.0.0`-ისა `^22.12.0 || ^24.0.0 || >=26.0.0`** — ე.ი. ნამდვილი ზღვარი **22.12**-ია და არა 20.19, ხოლო **Node 25 საერთოდ გამორიცხულია** (vitest-ს ის არ უშვებს, vite კი უშვებს). `engines`-ში ზუსტად vitest-ის (უფრო მკაცრი) დიაპაზონი ჩაიწერა — გადაკვეთა სწორედ ისაა. ⚠️ CI უკვე `node-version: '24'`-ზეა, ე.ი. სამივე წყარო (README · `engines` · CI) ერთსა და იმავეს ამბობს. ⚠️ `setup.sh`/`setup.ps1` ვერსიას არ ამოწმებენ — მხოლოდ `node`-ის არსებობას; `npm ci` `EBADENGINE`-ს თვითონ გააფრთხილებს.
 - **ტიპი:** debt
 - **სად:** `README.md:24` (`| **Node.js** | 18+ |`), `frontend/package.json:54-55` (`vite ^8.2.0`, `vitest ^5.0.0` — Vite 8-ის მინიმუმი Node 20.19/22.12), `engines` ველი არ არსებობს; CI `node-version: '24'`
 - **პრობლემა:** README-ს მიმდევარი Node 18-ზე `npm run dev`-ზე `crypto.hash is not a function`-ის მსგავს შეცდომას მიიღებს; `engines`-ის გარეშე `npm` არ აფრთხილებს.
 - **რატომ:** დოკუმენტაცია კოდს არ ემთხვევა (spec-ის პროცესის მე-3 ნაბიჯი).
 - **გადაწყვეტა:** README `20.19+ (რეკომენდებულია 22 LTS)`; `package.json` `"engines": {"node": ">=20.19"}` + `.nvmrc`.
 - **Acceptance criteria:**
-  - [ ] README და `engines` ერთ რიცხვს ამბობენ; `npm ci` Node 18-ზე `EBADENGINE`-ს აფრთხილებს
+  - [x] README და `engines` ერთ რიცხვს ამბობენ; `npm ci` Node 18-ზე `EBADENGINE`-ს აფრთხილებს
 - **Estimate:** S
 - **დამოკიდებულება:** none
 

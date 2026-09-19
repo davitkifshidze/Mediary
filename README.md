@@ -21,7 +21,7 @@
 |---|---|---|
 | **PHP** | 8.3+ | `pdo_mysql`, `mbstring`, `openssl`, `fileinfo` გაფართოებებით |
 | **Composer** | 2.x | PHP პაკეტების მენეჯერი |
-| **Node.js** | 18+ | `npm`-თან ერთად |
+| **Node.js** | 22.12+ (რეკომენდებულია 24 LTS) | `npm`-თან ერთად; ზუსტი დიაპაზონი `frontend/package.json`-ის `engines`-შია |
 | **MySQL** | 8.x (ან MariaDB / XAMPP) | ბაზა `mediary` |
 
 ---
