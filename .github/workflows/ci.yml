@@ -111,3 +111,19 @@ jobs:
       # ის ჩავარდნისას **არა-ნულოვან კოდს** აბრუნებს, ე.ი. CI-ს ცალკე შემოწმება არ უნდა.
       - name: Audit translations
         run: python frontend/src/i18n/audit.py
+
+      # ── ქართული ორთოგრაფია (Tasks DEBT-26) ──────────────────
+      #
+      # ⚠️ **ორივე ნაბიჯი განზრახ არ ამტვრევს CI-ს.** `hunspell-ka` apt-ში
+      # შეიძლება არ აღმოჩნდეს (ან სახელი შეიცვალოს) — მაშინ სკრიპტი მიზეზს
+      # ბეჭდავს და 0-ს აბრუნებს. შემოწმება, რომელიც საკუთარი ინფრასტრუქტურის
+      # გამო წითლდება, პირველივე დღეს გამოირთვება.
+      #
+      # ⚠️ **WARN და არა FAIL**: `ka_GE` აპის ლექსიკას (ბუკმარკი, ტეგი,
+      # ესკიზი) რამდენად ფარავს, მხოლოდ ცოცხალ გაშვებაზე ჩანს. ცრუ
+      # დადებითების გაზომვის შემდეგ `--strict` ერთი სიტყვის დამატებაა.
+      - name: Install Georgian dictionary
+        run: sudo apt-get update -qq && sudo apt-get install -y hunspell hunspell-ka || true
+
+      - name: Georgian spelling (WARN)
+        run: python scripts/ka-spell.py
