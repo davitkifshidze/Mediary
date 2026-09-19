@@ -132,7 +132,111 @@ php artisan media:redownload --missing
 - ⚠️ `.env.example` **უსაფრთხო default-ებზეა** (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`
   — Tasks SEC-11); `setup.sh`/`setup.ps1` ლოკალურ ინსტალაციაზე ორივეს ცხადად აბრუნებს,
   რადგან ლოკალურად `http://`-ზე secure-ქუქი საერთოდ არ იგზავნება.
-- `frontend/.env` — `VITE_API_URL` (backend-ის მისამართი).
+- `frontend/.env` — `VITE_API_URL` (backend-ის მისამართი). ⚠️ **ცარიელი მნიშვნელობა**
+  ნიშნავს ფარდობით `/api`-ს და სწორედ ისაა საჭირო, როცა SPA და API ერთ origin-ზეა
+  (იხ. „პროდაქშენში გაშვება") — Sanctum-ის cookie-რეჟიმი ამას ითხოვს.
+- ⚠️ `VITE_DEV_HOST` — მხოლოდ მაშინ, როცა dev-სერვერი პროქსის (Apache/nginx, პორტი 80)
+  უკან დგას. ცარიელზე Vite ჩვეულებრივად მუშაობს. ადრე აქ `mediary.local` ჩაბეტონებული
+  იყო, ე.ი. იმ სახელის გარეშე მანქანაზე HMR **უხმოდ ვერ მუშაობდა** (Tasks GAP-17).
+
+## პროდაქშენში გაშვება
+
+⚠️ **`php artisan serve` და `npm run dev` მხოლოდ დეველოპმენტისთვისაა.** პირველი
+ერთნაკადიანია (ერთი ნელი რექვესთი მთელ აპს აჩერებს), მეორე კი ჩაუთარგმნელ
+წყაროს გასცემს. სერვერზე Apache/nginx **აგებულ `frontend/dist`-ს** ემსახურება,
+PHP კი FPM-ის (ან `mod_php`-ის) უკან დგას.
+
+```bash
+cd backend  && composer install --no-dev --optimize-autoloader && php artisan migrate --force
+cd frontend && npm ci && npm run build        # → frontend/dist
+```
+
+`backend/.env`-ში:
+
+```ini
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://example.com
+FRONTEND_URL=https://example.com
+SANCTUM_STATEFUL_DOMAINS=example.com
+# ⚠️ სესიის ქუქი თვითონაა შესვლა (Sanctum cookie) — HTTP-ზე ის არ უნდა გავიდეს
+SESSION_SECURE_COOKIE=true
+# ⚠️ საჯარო სერვერზე: სუპერ-ადმინი მხოლოდ `mediary:bootstrap-admin`-ით (Tasks SEC-15)
+FIRST_USER_IS_ADMIN=false
+```
+
+⚠️ **SPA და API ერთ origin-ზე უნდა იყოს.** Sanctum-ის cookie-რეჟიმი სწორედ ამას
+ითხოვს, ამიტომ `/api`, `/sanctum` და `/storage` იმავე ჰოსტზე იდგმება და
+`frontend/.env`-ის `VITE_API_URL` **ცარიელი რჩება** (ფარდობითი `/api`).
+
+### Apache — ერთი ვჰოსტი
+
+```apache
+<VirtualHost *:443>
+    ServerName example.com
+    DocumentRoot /srv/mediary/frontend/dist
+
+    # ⚠️ **`Alias` საქაღალდეზე და არა `index.php`-ზე.** ფაილზე მიბმული alias
+    # მხოლოდ ზუსტ `/api`-ს ფარავს, `/api/movies` კი `PATH_INFO`-ზე დარჩებოდა —
+    # საქაღალდე + `FallbackResource` Laravel-ის front controller-ის ჩვეულებრივი
+    # სქემაა და `REQUEST_URI`-საც უცვლელს ტოვებს.
+    Alias /api     /srv/mediary/backend/public
+    Alias /sanctum /srv/mediary/backend/public
+    # ⚠️ `/storage` **ნამდვილი ფაილებია** — მას fallback არ უნდა: არარსებული
+    # ფაილი 404 უნდა იყოს და არა აპლიკაციის პასუხი.
+    Alias /storage /srv/mediary/backend/storage/app/public
+
+    <Directory /srv/mediary/backend/public>
+        Require all granted
+        # ⚠️ ორივე alias-ს ერთი front controller ემსახურება: `/sanctum/csrf-cookie`
+        # `/api`-ს ქვეშ არ არის, მაგრამ იმავე `index.php`-ზე მიდის და მარშრუტს
+        # Laravel `REQUEST_URI`-დან კითხულობს.
+        FallbackResource /api/index.php
+    </Directory>
+
+    <Directory /srv/mediary/frontend/dist>
+        Require all granted
+        # SPA-ს მარშრუტები კლიენტზეა — უცნობი გზაც `index.html`-ია
+        FallbackResource /index.html
+    </Directory>
+
+    # ⚠️ **ჰედერები აქაც საჭიროა** (Tasks SEC-16 + GAP-17): SPA-ს HTML-სა და
+    # `/storage/*`-ს **Laravel არ ემსახურება**, ე.ი. `SetSecurityHeaders` მათ
+    # ვერ სწვდება — ორივე ფენას თავისი უნდა ჰქონდეს.
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Content-Security-Policy "frame-ancestors 'none'"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/example.com/privkey.pem
+</VirtualHost>
+```
+
+### რა **არ** სჭირდება
+
+- ⚠️ **`queue:work`-ის მუდმივი პროცესი არ არის საჭირო.** პარტიები worker-ს
+  მოთხოვნისას თვითონ უშვებენ (`BackgroundProcess` → `queue:work --stop-when-empty`),
+  ე.ი. მეოთხე მუდმივი პროცესი არ არსებობს. თუ მაინც გინდა — ჩვეულებრივი
+  supervisor-ის ერთეული უშლელია, პარალელური worker უვნებელია.
+- ⚠️ **`schedule:run` კი სჭირდება** — შეხსენებები, `model:prune` და
+  `backups:prune-inspect` მასზეა:
+
+  ```cron
+  * * * * * cd /srv/mediary/backend && php artisan schedule:run >> /dev/null 2>&1
+  ```
+
+- ⚠️ **`php artisan storage:link`** — პოსტერები და გალერეა `/storage/*`-იდან გაიცემა.
+- ⚠️ **პირადი დისკი ვებიდან არ უნდა იხსნებოდეს**: `storage/app/private-uploads`
+  (ჩანიშვნების ფაილები, ჩატის მედია, ბაზის ასლები, ჩაკეტილი ალბომები) მხოლოდ
+  ავტორიზებულ მარშრუტებზე გადის — `Alias`-ი მასზე **არ** დაამატო.
+
+⚠️ **აგების შემდეგ ერთი შემოწმება ღირს**: ძველი ტაბით გახსნილი აპი ახალ `dist`-ზე
+ვერ იპოვის წაშლილ chunk-ს — ეს `ErrorBoundary`-ის „გვერდი ვერ ჩაიტვირთა"-ს უნდა
+აჩვენებდეს და არა თეთრ ეკრანს.
+
+---
 
 ## ხშირი ბრძანებები
 

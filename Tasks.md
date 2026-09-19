@@ -35,7 +35,7 @@
 | DEBT-13 | `LIKE`-ის wildcard-ები 37 ადგილას/13 კონტროლერში არ იესკეიპება — `App\Support\Like` არსებობს და მხოლოდ 4 ადგილას გამოიყენება | Medium | debt | M | ✅ |
 | GAP-16 | ასლის ვიუერის დროებითი ბაზა (`<db>_inspect_<id>`) ვადას არ იწურავს და ასლის წაშლაზე არ იშლება | Medium | gap | S | ✅ |
 | DEBT-14 | ტესტის გარეშეა `/movies/{id}/collection`, სამივე `resync`, `GenreItemController`, `LookupController`, `DiscoverController`, `VideoBulkController`, `AdminAuditController`-ის უმეტესობა | Medium | debt | M | ✅ |
-| GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | ⬜ |
+| GAP-17 | პროდაქშენში გაშვების გზა არ არსებობს: README მხოლოდ dev-ს აღწერს, Apache Vite-ის dev-სერვერზე პროქსირებს, `dist/`-ს არავინ ემსახურება | Medium | gap | M | 🟡 |
 | SEC-15 | პირველი რეგისტრაციის „`User::count() === 0` → super_admin" race-ია — ორი ერთდროული რეგისტრაცია ორ სუპერ-ადმინს ქმნის | Low | security | S | ✅ |
 | SEC-16 | უსაფრთხოების ჰედერებიდან მხოლოდ `nosniff` დგას — `frame-ancestors`/`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` არ არის | Low | security | S | ✅ |
 | SEC-17 | `GalleryFetcher` `.svg`-ს `image/svg+xml`-ად საჯარო დისკზე წერს — `WebImageImporter` მას უარყოფს, ეს გზა კი არა | Low | security | S | ✅ |
@@ -428,6 +428,12 @@
 - **დამოკიდებულება:** BUG-16, BUG-19
 
 ### [GAP-17] პროდაქშენში გაშვების გზა არ არსებობს
+- **სტატუსი:** 🟡 ნაწილობრივ შესრულებულია (2026-09-19). დაიწერა README-ის სექცია **„პროდაქშენში გაშვება"** (Apache-ის სრული ვჰოსტი `frontend/dist`-ზე, `/api`+`/sanctum`+`/storage` → PHP-FPM, `.env`-ის პროდაქშენის მნიშვნელობები, `schedule:run`-ის cron, `storage:link`, უსაფრთხოების ჰედერები) და გასწორდა `vite.config.ts`. ⚠️ **რჩება მხოლოდ შენი ქმედება: სუფთა მანქანაზე გაშვება და შესვლის გადამოწმება** — ამ დესკტოპზე Apache/nginx არ დგას (MySQL-იც გამორთულია), ე.ი. ვჰოსტი ცოცხლად ვერ შევამოწმე.
+  - ⚠️ **`vite.config.ts` ცოცხალი ხარვეზი აღმოჩნდა და არა მხოლოდ დოკუმენტაციის**: `hmr.host` ჩაბეტონებული იყო `mediary.local`-ზე, რომელიც ამ მანქანაზე hosts-ში **არ არის** — ე.ი. ბრაუზერი HMR-ის websocket-ს არარსებულ სახელზე ხსნიდა და **ცხელი გადატვირთვა უხმოდ არ მუშაობდა** (გვერდი იხსნებოდა, ფაილის შენახვაზე კი არაფერი იცვლებოდა; არც `vite` და არც `npm run build` შეცდომას არ აბრუნებს). ახლა ის `VITE_DEV_HOST`-ია და ცარიელზე Vite თვითონ გამოთვლის; `allowedHosts`-იც იმავე მნიშვნელობიდან იგება.
+  - ⚠️ **`Alias` საქაღალდეზეა და არა `index.php`-ზე**: ფაილზე მიბმული alias მხოლოდ ზუსტ `/api`-ს ფარავს, `/api/movies` კი `PATH_INFO`-ზე დარჩებოდა. `/sanctum` `/api`-ს ქვეშ არ არის, მაგრამ იმავე front controller-ზე მიდის.
+  - ⚠️ **`/storage`-ს fallback არ ეძლევა** — არარსებული ფაილი 404 უნდა იყოს და არა აპლიკაციის პასუხი; `storage/app/private-uploads`-ზე alias საერთოდ არ იწერება (ჩანიშვნები, ჩატის მედია, ბაზის ასლები, ჩაკეტილი ალბომები მხოლოდ ავტორიზებულ მარშრუტზე გადის).
+  - ⚠️ **უსაფრთხოების ჰედერები ვჰოსტშიც წერია**: SPA-ს HTML-სა და `/storage/*`-ს Laravel **არ** ემსახურება, ე.ი. `SetSecurityHeaders` (SEC-16) მათ ვერ სწვდება.
+  - ⚠️ **`queue:work`-ის მუდმივი პროცესი არ სჭირდება** (`BackgroundProcess` worker-ს მოთხოვნისას უშვებს), `schedule:run`-ის cron კი **სჭირდება** — შეხსენებები, `model:prune` და `backups:prune-inspect` მასზეა.
 - **ტიპი:** gap
 - **სად:** `README.md:82-89` (მხოლოდ dev — `php artisan serve` + `npm run dev`), `frontend/vite.config.ts:14-21` (`server.allowedHosts: ['mediary.local']`, HMR პორტ 80-ზე — dev-სერვერი Apache-ს უკან), `backend/app/Http/Middleware/SetSecurityHeaders.php:28` (SPA-ს HTML-ს Laravel არ ემსახურება, ე.ი. მისი ჰედერი მას არ ეხება)
 - **პრობლემა:** `npm run build` CI-ში გადის, მაგრამ `dist/`-ს არავინ ემსახურება: `mediary.local`-ის ვჰოსტი Vite-ის **dev**-სერვერზე პროქსირებს, `artisan serve` ერთნაკადიანია (CLAUDE.md-ის განმეორებადი გაფრთხილება), `SESSION_SECURE_COOKIE`/HTTPS მხოლოდ `.env.example`-ის კომენტარშია. აპი მრავალმომხმარებლიანია და საჯარო პროფილს/ჩატს ჰპირდება, მაგრამ „როგორ გავუშვა სერვერზე" არსად წერია.
@@ -435,7 +441,7 @@
 - **გადაწყვეტა:** `docs`-ის გარეშე — README-ის სექცია „Production": Apache/nginx ვჰოსტი `frontend/dist`-ზე (`FallbackResource /index.html`), `/api`+`/sanctum`+`/storage` → PHP-FPM/Apache+PHP (არა `artisan serve`), HTTPS + `SESSION_SECURE_COOKIE=true`, `queue:work`-ის არქონა (`BackgroundProcess`), `schedule:run` cron; `npm run build`-ის შედეგის შემოწმება `ErrorBoundary`-ის „ძველი ჩანქი" სცენარზე.
 - **Acceptance criteria:**
   - [ ] README-ის მიხედვით `dist/` სუფთა მანქანაზე Apache-ით იხსნება და შესვლა (Sanctum cookie) მუშაობს
-  - [ ] SPA-ს HTML პასუხზეც `X-Content-Type-Options`/`frame-ancestors` ჰედერებია (SEC-16-თან ერთად)
+  - [x] SPA-ს HTML პასუხზეც `X-Content-Type-Options`/`frame-ancestors` ჰედერებია (SEC-16-თან ერთად)
 - **Estimate:** M
 - **დამოკიდებულება:** SEC-16
 
