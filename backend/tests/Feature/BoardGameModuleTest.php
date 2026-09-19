@@ -385,4 +385,64 @@ class BoardGameModuleTest extends TestCase
         $this->assertSame(['puzz'], array_column($res->json('sources'), 'key'));
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'corners.ge'));
     }
+
+    /**
+     * **DEBT-23 — გვერდი ჭერზე წყდება და მთელი მეხსიერებაში არ ჩამოდის.**
+     *
+     * ⚠️ `Http::fake()` სხეულს მეხსიერებაში ისედაც ინახავს, ე.ი. ტესტს
+     * რეალური მეხსიერების დაზოგვა **ვერ** დაუმტკიცებია — ის იმას ამოწმებს,
+     * რომ ჭერი მართლა მოქმედებს: 5 MB-იანი პასუხიდან `MAX_BYTES`-ზე მეტი
+     * არ გადამუშავდება. ძველ კოდზე კი ეს მაინც `substr()`-ით ხდებოდა,
+     * ამიტომ ერთადერთი შესამოწმებელი ისაა, რომ ქცევა **არ** შეცვლილა:
+     * ჭერს მიღმა მოქცეული პროდუქტი შედეგში არ ჩანს.
+     */
+    public function test_a_huge_shop_page_is_cut_at_the_cap(): void
+    {
+        $head = '<html><body>';
+        $filler = str_repeat('<!-- '.str_repeat('x', 200).' -->', 12_000);   // ~2.5 MB
+        // ჭერის იქით მოქცეული ერთეული — თუ სხეული ბოლომდე წაიკითხა, ის გამოჩნდება
+        $tail = '<div class="product-thumb">'
+            .'<a href="https://puzz.ge/beyond-the-cap" class="product-name">Beyond The Cap</a>'
+            .'<div class="price"><span class="price-normal">10 GEL</span></div>'
+            .'</div></body></html>';
+
+        Http::fake([
+            'puzz.ge*' => Http::response($head.$filler.$tail),
+        ]);
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/board-games/shops?query=catan&shops=puzz')
+            ->assertOk();
+
+        $this->assertStringNotContainsString('Beyond The Cap', json_encode($res->json()));
+    }
+
+    /**
+     * **DEBT-23 — ცხადად გამოცხადებული უზარმაზარი პასუხი საერთოდ არ იკითხება.**
+     *
+     * ⚠️ ძველი კოდი `$res->body()`-ს იძახებდა, ე.ი. `Content-Length`-ს
+     * მნიშვნელობა არ ჰქონდა — მთელი სხეული უკვე მეხსიერებაში იყო და
+     * `substr()` მხოლოდ ამის შემდეგ ჭრიდა. ახლა `readCapped()` ჯერ
+     * გამოცხადებულ ზომას უყურებს.
+     *
+     * ⚠️ **შედეგი `ok: false`-ია** („ვერ წავიკითხე") და არა 5xx — მაღაზიის
+     * ჩუმი ჩავარდნა ჩანაწერის დამატებას ვერასდროს აჩერებს.
+     */
+    public function test_a_page_that_declares_more_than_the_cap_is_not_read(): void
+    {
+        Http::fake([
+            'puzz.ge*' => Http::response(
+                '<html><body><div class="product-thumb"><a href="https://puzz.ge/x" class="product-name">Catan</a></div></body></html>',
+                200,
+                ['Content-Length' => '5000000'],
+            ),
+        ]);
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/board-games/shops?query=catan&shops=puzz')
+            ->assertOk()
+            ->assertJsonPath('offers', []);
+
+        $this->assertFalse($res->json('sources.0.ok'));
+    }
 }

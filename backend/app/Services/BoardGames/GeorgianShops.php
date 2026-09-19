@@ -2,6 +2,7 @@
 
 namespace App\Services\BoardGames;
 
+use App\Support\SafeHttp;
 use App\Support\SourceLog;
 use DOMDocument;
 use DOMElement;
@@ -61,6 +62,11 @@ class GeorgianShops
      * პასუხის ჭერი. საძიებო გვერდი ~0.5 MB-ია; ამაზე დიდი მთელ HTML-ს
      * მეხსიერებაში აიღებდა და `php artisan serve`-ს (ერთი რექვესთი ერთდროულად)
      * დაბლოკავდა.
+     *
+     * ⚠️ **2026-09-19-მდე ეს ჭერი ტყუილი იყო** (Tasks DEBT-23): `$res->body()`
+     * მთელ პასუხს **უკვე** მეხსიერებაში კითხულობდა და `substr()` მხოლოდ
+     * ამის შემდეგ ჭრიდა — ზუსტად ის, რაც `LinkMetadata`-ზე §A3-ში გასწორდა.
+     * ახლა კითხვა ნაკადურია (`SafeHttp::readCapped()`).
      */
     private const MAX_BYTES = 2_000_000;
 
@@ -125,7 +131,9 @@ class GeorgianShops
         }
 
         try {
-            $res = SourceLog::request(20, ['allow_redirects' => true])
+            // ⚠️ `stream => true` — სხეული ნაკადად რჩება და `readCapped()` მას
+            // ჭერზე წყვეტს; ამის გარეშე Guzzle მთელს ისედაც ჩამოიღვრიდა
+            $res = SourceLog::request(20, ['allow_redirects' => true, 'stream' => true])
                 // ბოტად აღქმული რექვესთი 403-ს იღებს; ბრაუზერული UA ამას ხსნის
                 ->withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (compatible; Mediary/1.0; +personal library)',
@@ -140,7 +148,18 @@ class GeorgianShops
             return SourceLog::status('shops', $res->status(), '', ['url' => $url]);
         }
 
-        $html = substr($res->body(), 0, self::MAX_BYTES);
+        /* ⚠️ **SSRF-ის ფენა (DNS + IP-ის მიბმა) აქ არ გვჭირდება** — ჰოსტები
+           ფიქსირებულია (`SHOPS`) და მომხმარებელი მათ ვერ კარნახობს; საჭიროა
+           მხოლოდ ნაკადური ჭერი, ამიტომ `SafeHttp::fetch()`-ის ნაცვლად მისი
+           **ეს** ნაწილი გამოიყენება. სრული `fetch()` ტესტებს ქსელზეც
+           დამოკიდებულს გახდიდა (`Http::fake()` DNS-ს არ ცვლის). */
+        $read = SafeHttp::readCapped($res, self::MAX_BYTES);
+
+        if ($read === null) {
+            return SourceLog::failed('shops', 'body_unreadable', ['url' => $url]);
+        }
+
+        $html = $read['body'];
 
         Cache::put($this->cacheKey($url), $html, now()->addMinutes(self::CACHE_MINUTES));
 

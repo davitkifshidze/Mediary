@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -117,7 +118,7 @@ class SafeHttp
                 return null;
             }
 
-            $body = $this->read($res, $maxBytes);
+            $body = self::readCapped($res, $maxBytes);
 
             if ($body === null) {
                 return null;
@@ -266,9 +267,19 @@ class SafeHttp
      * ვჩერდებით. ეს არის ის, რასაც ორივე გამომძახებლის კომენტარი ჰპირდებოდა
      * და არცერთი არ აკეთებდა.
      *
+     * ⚠️ **საჯარო და სტატიკურია** (Tasks DEBT-23): იგივე „ჭერი ტყუილია"
+     * `GeorgianShops`-საც ჰქონდა — ის ფიქსირებულ ჰოსტებს ხსნის, ე.ი.
+     * `SafeHttp::fetch()`-ის SSRF-ფენა (DNS + IP-ის მიბმა) იქ არ სჭირდება
+     * და ტესტებსაც ქსელზე დამოკიდებულს გახდიდა. საჭირო მხოლოდ **ეს**
+     * ნაწილია, ამიტომ ის გასაზიარებელია და არა გადასაწერი.
+     *
+     * ⚠️ რექვესთს `'stream' => true` უნდა ჰქონდეს, თორემ Guzzle სხეულს
+     * მეხსიერებაში ისედაც ჩამოიღვრის და ეს ფუნქცია მხოლოდ ჭრის.
+     *
+     * @param  Response  $res
      * @return array{body: string, truncated: bool}|null
      */
-    private function read($res, int $maxBytes): ?array
+    public static function readCapped($res, int $maxBytes): ?array
     {
         // სერვერმა თუ ცხადად თქვა, რომ დიდია — არც დავიწყოთ
         $declared = (int) $res->header('Content-Length');
