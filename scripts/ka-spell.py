@@ -30,6 +30,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCALE = os.path.join(ROOT, 'frontend', 'src', 'i18n', 'ka.json')
 WORDS = os.path.join(ROOT, 'frontend', 'src', 'i18n', 'ka-words.txt')
 
+# ⚠️ **ლექსიკონი რეპოშია და ეს აუცილებლობაა, არა მოხერხებულობა** (2026-09-20).
+# `hunspell-ka` პაკეტი **არ არსებობს** — არც Debian-ში, არც Ubuntu-ში; მეტიც,
+# `ka_GE.dic`-ის შემცველი პაკეტი მთელ რეპოზიტორიაში არ არის და LibreOffice-ის
+# ლექსიკონების კრებულშიც ქართული არ შედის. ე.ი. CI-ის ძველი ნაბიჯი
+# (`apt-get install hunspell-ka || true`) ყოველ გაშვებაზე ჩუმად ვარდებოდა და
+# შემოწმება **არასდროს გაშვებულა**.
+#
+# წყარო: `gamag/ka_GE.spell`-ის აგებული გამოსავალი (`wooorm/dictionaries`),
+# **MIT** — იხ. `scripts/ka_GE/LICENSE` და `scripts/ka_GE/README.md`.
+DICT = os.path.join(ROOT, 'scripts', 'ka_GE', 'ka_GE')
+
 # ⚠️ ინტერპოლაციის სახელი (`{{count}}`) და კოდის ნაჭერი (`` `?view=` ``)
 # ინტერფეისის ტექსტი არ არის — `audit.py`-ის მე-10 შემოწმების იგივე წესი.
 STRIP = re.compile(r'\{\{[^}]*\}\}|`[^`]*`|<[^>]+>')
@@ -70,11 +81,21 @@ def georgian_words():
     return found
 
 
+def dictionary():
+    """რომელ ლექსიკონს ვახმარებთ hunspell-ს — ჯერ რეპოსას, მერე სისტემისას."""
+    if os.path.exists(DICT + '.dic') and os.path.exists(DICT + '.aff'):
+        return DICT
+
+    # ⚠️ fallback მხოლოდ იმისთვისაა, ვისაც სისტემაში თავისი `ka_GE` უდევს;
+    # მასზე დაყრდნობა აღარ შეიძლება — ასეთი პაკეტი არსად არ იშოვება.
+    return 'ka_GE'
+
+
 def hunspell_unknown(words):
-    """`hunspell -d ka_GE -l` → უცნობი სიტყვების სიმრავლე, ან `None`."""
+    """`hunspell -d <ლექსიკონი> -l` → უცნობი სიტყვების სიმრავლე, ან `None`."""
     try:
         proc = subprocess.run(
-            ['hunspell', '-d', 'ka_GE', '-l'],
+            ['hunspell', '-d', dictionary(), '-l'],
             input='\n'.join(sorted(words)),
             capture_output=True,
             text=True,
@@ -107,9 +128,11 @@ def main():
     unknown = hunspell_unknown(candidates)
 
     if unknown is None:
-        print('hunspell / ka_GE არ არის — შემოწმება გამოტოვებულია.')
-        print('  Ubuntu:  sudo apt-get install hunspell hunspell-ka')
-        print('  სხვაგან: LibreOffice-ის ქართული ლექსიკონი (ka_GE.dic/.aff)')
+        # ⚠️ ლექსიკონი უკვე რეპოშია, ე.ი. აქ მოხვედრა ახლა **მხოლოდ**
+        # `hunspell`-ის ბინარის არქონას ნიშნავს და არა ლექსიკონისას.
+        print('hunspell არ არის — შემოწმება გამოტოვებულია (ლექსიკონი რეპოშია).')
+        print('  Ubuntu:  sudo apt-get install hunspell')
+        print('  Windows: hunspell PATH-ზე უნდა იდგეს; ლექსიკონი — scripts/ka_GE/')
         return 0
 
     print(f'ქართული სიტყვა: {len(found)} · ცნობილი სიაში: {len(known)} · უცნობი: {len(unknown)}')
