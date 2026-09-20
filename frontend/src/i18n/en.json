@@ -3226,7 +3226,6 @@
     "edit": "Change",
     "set": "Set a goal",
     "editHint": "Write how many you intend to finish this year. Zero means you have no goal.",
-    "missingHint": "Books, games, board games and notes have no “when did I finish it” date, so progress cannot be computed for them — that is why they are not in the list.",
     "saved": "The goals have been saved."
   },
   "courses": {

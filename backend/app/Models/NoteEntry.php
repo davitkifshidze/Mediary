@@ -54,6 +54,7 @@ class NoteEntry extends Model
         'due_at' => 'datetime',
         'is_favorite' => 'boolean',
         'sort_order' => 'integer',
+        'finished_at' => 'date',
     ];
 
     /**
@@ -74,10 +75,22 @@ class NoteEntry extends Model
         });
     }
 
-    /** სტატუსი `watched_at`-ს არ ეხება — იხ. `HasStatus::statusDoneColumn()` */
+    /**
+     * **„როდის დავასრულე" — `finished_at` (FEAT-21).**
+     *
+     * ⚠️ აქამდე `null` იყო და ეს **ვიდეოს მიზეზით** იყო გამართლებული:
+     * მისი `watched_at` დაკვრის დროშტამპია (`POST /videos/{id}/watched`),
+     * ე.ი. სტატუსი მას ვერ შეეხებოდა. ჩანაწერს ასეთი მეორე ფაქტი **არ
+     * ჰქონია** — უბრალოდ სვეტი არ არსებობდა, ამიტომ წლიურ მიზანში
+     * მონაწილეობას ვერ იღებდა.
+     *
+     * ⚠️ **ახალი მექანიზმი არ დაწერილა**: `HasStatus::applyStatus()` უკვე
+     * არის ერთადერთი წერტილი, სადაც ეს სვეტი `done` როლზე ივსება და უკან
+     * დაბრუნებაზე იწმინდება — ე.ი. საკმარისი იყო სახელის დაბრუნება.
+     */
     protected function statusDoneColumn(): ?string
     {
-        return null;
+        return 'finished_at';
     }
 
     /* ---------- relations ---------- */

@@ -7,6 +7,7 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\TracksCompletion;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,13 @@ class Book extends Model
      */
     use HasTrash;
 
+    /**
+     * FEAT-21 — „როდის წავიკითხე" თარიღის ერთადერთი მწერალი. ლექსიკონიან
+     * დომენებზე ამას `HasStatus::applyStatus()` აკეთებს; enum-იანს საერთო
+     * წერტილი არ ჰქონდა და სტატუსს სამი ადგილი წერს.
+     */
+    use TracksCompletion;
+
     /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
     public const MAX_RATING = 10;
 
@@ -55,7 +63,19 @@ class Book extends Model
         'links' => 'array',
         'tags' => 'array',
         'sort_order' => 'integer',
+        'finished_at' => 'date',
     ];
+
+    /** FEAT-21 — წიგნის „გაკეთებული" `read`-ია, ე.ი. თარიღი წაკითხვისაა */
+    public function completionColumn(): string
+    {
+        return 'finished_at';
+    }
+
+    public function completionDomain(): string
+    {
+        return 'book';
+    }
 
     /**
      * ⚠️ `book_files`/`book_notes` SQL-ის cascade-ით იშლება, მაგრამ cascade

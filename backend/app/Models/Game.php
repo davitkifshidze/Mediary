@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\TracksCompletion;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,6 +35,9 @@ class Game extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
+
+    /** FEAT-21 — „როდის გავიარე" თარიღი; `finished` სტატუსზე ივსება */
+    use TracksCompletion;
 
     /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
     public const MAX_RATING = 10;
@@ -72,7 +76,19 @@ class Game extends Model
         'igdb_id' => 'integer',
         'is_favorite' => 'boolean',
         'sort_order' => 'integer',
+        'finished_at' => 'date',
     ];
+
+    /** FEAT-21 — თამაშის „გაკეთებული" `finished`-ია */
+    public function completionColumn(): string
+    {
+        return 'finished_at';
+    }
+
+    public function completionDomain(): string
+    {
+        return 'game';
+    }
 
     /**
      * ⚠️ `game_*` ცხრილები SQL-ის cascade-ით იშლება, მაგრამ cascade **მოდელის

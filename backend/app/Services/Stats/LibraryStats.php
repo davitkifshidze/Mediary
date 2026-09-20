@@ -57,12 +57,15 @@ class LibraryStats
      * `genres` — `morph` (გლობალური polymorphic) · `pivot` · `column`;
      * `rating` — არსებობს თუ არა შეფასების სვეტი.
      *
-     * ⚠️ **`done_at` ყველგან არ არსებობს და ეს არ არის გამორჩენა.** წიგნს
-     * „როდის წავიკითხე" **სვეტად არ აქვს** (სტატუსი აქვს, თარიღი — არა),
-     * ჩანაწერსა და თამაშს — მითუმეტეს. `null` ნიშნავს, რომ ამ მოდულს
-     * თვეების ჭრილი არ ეხატება; გამოგონილი თარიღი (`updated_at`) ორ
-     * სხვადასხვა ფაქტს ერთ სვეტში შეურევდა — ზუსტად ის ხაფანგი, რომლის
-     * გამოც ვიდეოს `watched_at` სტატუსს არ ეხმიანება.
+     * ⚠️ **`done_at` დღეს ყველა მოდულს აქვს, მაგრამ `null` კვლავ კანონიერია.**
+     * 2026-09-20-მდე წიგნს, თამაშს, ბორდგეიმსა და ჩანაწერს ასეთი სვეტი არ
+     * ჰქონდათ, ე.ი. არც თვეების ჭრილი და არც წლიური მიზანი (FEAT-21) მათზე
+     * არ მუშაობდა; ახლა თითოეულს თავისი აქვს. ახალ მოდულს რომ არ ჰქონდეს,
+     * `null` სწორედ ამას იტყვის — ჭრილი არ დაიხატება.
+     *
+     * ⚠️ **გამოგონილი თარიღი (`updated_at`) მაინც გამორიცხულია**: ორი
+     * სხვადასხვა ფაქტი ერთ სვეტში ზუსტად ის ხაფანგია, რომლის გამოც ვიდეოს
+     * `watched_at` სტატუსს არ ეხმიანება.
      *
      * @var array<string, array{model: class-string<Model>, year: ?string, done_at: ?string, genres: ?array, rating: bool}>
      */
@@ -72,10 +75,13 @@ class LibraryStats
         'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => true, 'watch_log' => 'anime'],
         'video' => ['model' => Video::class, 'year' => null, 'done_at' => 'watched_at', 'genres' => ['kind' => 'column', 'column' => 'type_id', 'table' => 'video_types'], 'rating' => false],
         'song' => ['model' => Song::class, 'year' => 'year', 'done_at' => 'played_at', 'genres' => ['kind' => 'pivot', 'table' => 'song_genre_song', 'local' => 'song_id', 'foreign' => 'song_genre_id', 'dictionary' => 'song_genres'], 'rating' => true],
-        'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => true],
-        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => true],
-        'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => null, 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => true],
-        'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => false],
+        /* FEAT-21-ის ნარჩენი (2026-09-20) — ოთხივეს ახლა თავისი სვეტი აქვს.
+           ⚠️ ბორდგეიმის `acquired_at`-ია და არა `finished_at`: მისი
+           „გაკეთებული" `owned`-ია, ე.ი. თარიღი შეძენას ნიშნავს. */
+        'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => true],
+        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => 'acquired_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => true],
+        'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => 'finished_at', 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => true],
+        'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => false],
         'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => false],
         /* FEAT-25 — ⚠️ `done_at` **`finished_at`-ია და არა `updated_at`**:
            „წელს რამდენი დავასრულე" სწორედ ამით ითვლება (FEAT-08/FEAT-21). */

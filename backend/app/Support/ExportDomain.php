@@ -124,7 +124,7 @@ final class ExportDomain
             'with' => ['genre'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'author', 'publisher', 'year', 'genre',
-                'status', 'rating', 'is_favorite', 'progress_page', 'progress_percent',
+                'status', 'finished_at', 'rating', 'is_favorite', 'progress_page', 'progress_percent',
                 'pages', 'language', 'format', 'isbn', 'series_name', 'series_number',
                 'tags', 'openlibrary_id', 'source_url',
                 'description_ka', 'description_en', 'cover_path', 'visibility', 'created_at',
@@ -134,7 +134,7 @@ final class ExportDomain
             'model' => BoardGame::class,
             'with' => ['genre'],
             'fields' => [
-                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'status', 'rating',
+                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'status', 'acquired_at', 'rating',
                 'is_favorite', 'players_min', 'players_max', 'age_min', 'playtime_min',
                 'playtime_max', 'complexity', 'bgg_id', 'bgg_rating',
                 'description', 'image_path', 'visibility', 'created_at',
@@ -144,7 +144,7 @@ final class ExportDomain
             'model' => Game::class,
             'with' => ['genres'],
             'fields' => [
-                'id', 'title_ka', 'title_en', 'release_date', 'genres', 'status', 'rating',
+                'id', 'title_ka', 'title_en', 'release_date', 'genres', 'status', 'finished_at', 'rating',
                 'is_favorite', 'developer', 'publisher', 'franchise', 'platforms',
                 'my_platform', 'modes', 'hltb_main', 'hltb_main_extra', 'hltb_complete',
                 'metacritic', 'opencritic', 'users_score', 'age_rating', 'languages',
@@ -159,7 +159,7 @@ final class ExportDomain
             'model' => NoteEntry::class,
             'with' => ['status', 'category'],
             'fields' => [
-                'id', 'title', 'category', 'status', 'status_name', 'tags', 'description',
+                'id', 'title', 'category', 'status', 'status_name', 'finished_at', 'tags', 'description',
                 'due_at', 'is_favorite', 'visibility', 'created_at',
             ],
         ],
