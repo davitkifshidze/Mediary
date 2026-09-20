@@ -243,21 +243,39 @@ export interface GalleryImage {
    * `PrivateImage`-ით უნდა დაიხატოს.
    */
   private?: boolean
+  /** დისკრიმინანტი — `GalleryLockedImage`-სგან გასარჩევად (2026-09-20) */
+  locked?: false
 }
 
 /**
- * **ჩაკეტილი ალბომის ფოტო — მხოლოდ სამი ფაქტი (Tasks §7.11).**
+ * **ჩაკეტილი ალბომის ფოტო — მხოლოდ ოთხი ფაქტი (Tasks §7.11 → 2026-09-20).**
  *
  * ⚠️ `url` აქ **არ არსებობს** და ეს არ არის დავიწყებული ველი: სერვერი
  * ბილიკს საერთოდ არ აგზავნის, ე.ი. ინსპექტორშიც არაფერია საპოვნელი.
  * ზომები კი მოდის, თორემ ბადე პროპორციას ვერ დაიცავდა.
+ *
+ * ⚠️ **`album_id` მეოთხე ველია და ის აუცილებელია მას შემდეგ, რაც ჩაკეტილი
+ * ფოტო ბრტყელ სიაშიც ჩანს** (შენი მითითება: „ყველა ფოტოში ჩანდეს
+ * დაბლარულად"): ფილაზე დაჭერით სწორედ **ამ** ალბომის პაროლი უნდა
+ * იკითხებოდეს, ცალკე აღებულ ალბომში კი ეს კონტექსტიდან ცნობილი იყო.
  */
 export interface GalleryLockedImage {
   id: number
+  album_id: number | null
   width: number | null
   height: number | null
   locked: true
 }
+
+/**
+ * ფოტო, რომელიც **შეიძლება ჩაკეტილი იყოს** — ყველა სია ასეთია (2026-09-20).
+ *
+ * ⚠️ **გაერთიანება და არა „არჩევითი `url`"**: `url?: string` კომპილატორს
+ * ატყუებდა და ბადე `undefined`-ს ჩასვამდა `<img src>`-ში. `locked`
+ * დისკრიმინანტია, ე.ი. `tsc` თვითონ მოითხოვს განშტოებას ყველგან,
+ * სადაც ბილიკი იკითხება.
+ */
+export type GalleryAnyImage = GalleryImage | GalleryLockedImage
 
 /** ფოტო მშობლის მითითებით — ბრტყელ სიას სჭირდება */
 export interface GalleryOwnedImage extends GalleryImage {
@@ -371,7 +389,7 @@ export interface GalleryPageMeta {
 }
 
 export interface GalleryPhotoPage {
-  data: GalleryOwnedImage[]
+  data: (GalleryOwnedImage | GalleryLockedImage)[]
   meta: GalleryPageMeta
 }
 
@@ -506,10 +524,16 @@ export interface GalleryActor extends GalleryCastMember {
   details_synced_at: string | null
 }
 
-/** მსახიობის ფოტო ჩანაწერის გვერდზე — ვიცით, ვისია */
-export interface GalleryCastImage extends GalleryImage {
-  actor: { id: number; name: string; name_ka: string | null } | null
-}
+/**
+ * მსახიობის ფოტო ჩანაწერის გვერდზე — ვიცით, ვისია.
+ *
+ * ⚠️ **ჩაკეტილსაც მოსდევს `actor` და ეს განზრახულია** (2026-09-20): საიდუმლო
+ * ფოტოა და არა ის, ვინ თამაშობს ამ ფილმში (შემადგენლობა იმავე გვერდზე
+ * წერია). უამისოდ დაბლარული კადრი მსახიობების დაჯგუფებიდან ამოვარდებოდა
+ * და ბარათზე რიცხვი სიას აღარ დაემთხვეოდა.
+ */
+export type GalleryCastImageOwner = { actor: { id: number; name: string; name_ka: string | null } | null }
+export type GalleryCastImage = (GalleryImage | GalleryLockedImage) & GalleryCastImageOwner
 
 export interface GalleryRecordRef {
   type: MediaType
@@ -523,7 +547,7 @@ export interface GalleryRecordRef {
 
 export interface GalleryDetail {
   record: GalleryRecordRef
-  images: GalleryImage[]
+  images: GalleryAnyImage[]
   cast_images: GalleryCastImage[]
   cast: GalleryCastMember[]
   videos: GalleryVideo[]
@@ -532,7 +556,7 @@ export interface GalleryDetail {
 
 export interface GalleryActorDetail {
   actor: GalleryActor
-  images: GalleryImage[]
+  images: GalleryAnyImage[]
   videos: GalleryVideo[]
   bytes: number
 }

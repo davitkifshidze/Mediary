@@ -117,7 +117,14 @@ class GalleryController extends Controller
     {
         $user = $request->user();
 
-        $images = GalleryImage::query()
+        /* ⚠️ **ქვე-მენიუს რიცხვი ბადეს უნდა დაემთხვას (2026-09-20).**
+           მას შემდეგ, რაც ჩაკეტილი ფოტო სიაში დაბლარულად ჩანს, scope-ს
+           დამორჩილებული მთვლელი „110"-ს დაწერდა 113 ფილაზე. რიცხვი
+           ფოტოს არ ამხელს — ამხელს ბილიკი, რომელსაც resource არ ატარებს
+           (ალბომის ბარათის იგივე წესი: „0 ფოტო" ჩაკეტილზე ტყუილი იყო). */
+        $photos = fn () => GalleryImage::withoutGlobalScope('album_lock');
+
+        $images = $photos()
             ->selectRaw('count(*) as photos, coalesce(sum(size), 0) as bytes')
             ->first();
 
@@ -127,7 +134,7 @@ class GalleryController extends Controller
         /* ⚠️ `whereNotNull` ცხადად: SQL-ში `!=` ისედაც `NULL`-ს ტოვებს გარეთ,
            მაგრამ §26-ის შემდეგ უმშობლო რიგები მართლა არსებობს და ეს
            გამორიცხვა განზრახული უნდა ჩანდეს და არა შემთხვევითი. */
-        $records = GalleryImage::query()
+        $records = $photos()
             ->whereNotNull('imageable_type')
             ->where('imageable_type', '!=', GalleryParent::ACTOR)
             ->distinct()
@@ -135,7 +142,7 @@ class GalleryController extends Controller
                 ? DB::raw('imageable_type, imageable_id')
                 : DB::raw("imageable_type || ':' || imageable_id"));
 
-        $actors = GalleryImage::query()
+        $actors = $photos()
             ->where('imageable_type', GalleryParent::ACTOR)
             ->distinct()
             ->count('imageable_id');
@@ -145,7 +152,7 @@ class GalleryController extends Controller
            ამიტომ „ლოგო" მაშინაც ჩანდა, როცა ბიბლიოთეკაში **არცერთი ლოგო**
            არ არის (გაზომილი: actor 103 · backdrop 14 · poster 4 · logo 0).
            ნულიან კატეგორიას ჩიპი აღარ ეხატება. */
-        $categories = GalleryImage::query()
+        $categories = $photos()
             ->selectRaw('category, count(*) as photos')
             ->groupBy('category')
             ->pluck('photos', 'category')
@@ -156,7 +163,7 @@ class GalleryController extends Controller
            ⚠️ ქვე-მენიუს ორივე რიცხვი აქედან მოსდის — ცალკე `groups`
            გამოძახება მთელ სიას ჩამოტვირთავდა მხოლოდ იმისთვის, რომ
            მენიუზე ერთი ციფრი დაეწერა. */
-        $loose = GalleryImage::query()->whereNull('imageable_type')->count();
+        $loose = $photos()->whereNull('imageable_type')->count();
 
         return response()->json([
             'photos' => (int) ($images->photos ?? 0),
@@ -260,7 +267,7 @@ class GalleryController extends Controller
      */
     private function actorGroups(array $data, ?string $q, int $previews)
     {
-        $rows = GalleryImage::query()
+        $rows = GalleryImage::withoutGlobalScope('album_lock')
             ->where('imageable_type', GalleryParent::ACTOR)
             ->selectRaw('imageable_id, count(*) photos, sum(size) bytes')
             ->groupBy('imageable_id')
@@ -357,17 +364,24 @@ class GalleryController extends Controller
             /** @var class-string<Model> $model */
             $model = GalleryParent::model($type);
 
+            /* ⚠️ **ჩაკეტილი ფოტოც ითვლება (2026-09-20).** scope-ს რომ
+               დამორჩილებოდა, მხოლოდ ჩაკეტილფოტოებიანი ჩანაწერი „0 ფოტოს"
+               აჩვენებდა და `has()`-ის გამო ჭრილიდან **საერთოდ ქრებოდა** —
+               ე.ი. პაროლის შეყვანამდე მასთან მისვლა შეუძლებელი იქნებოდა.
+               ესკიზები ქვემოთ, `previews()`-ში, scope-ს ისევ ემორჩილება. */
+            $unlocked = fn ($q) => $q->withoutGlobalScope('album_lock');
+
             $query = $model::query()
-                ->withCount('galleryImages as photos')
-                ->withSum('galleryImages as photo_bytes', 'size');
+                ->withCount(['galleryImages as photos' => $unlocked])
+                ->withSum(['galleryImages as photo_bytes' => $unlocked], 'size');
 
             /* ⚠️ **„უფოტო" ცალკე შეკითხვაა და არა გაფილტრული სია.** `photos = 0`
                `withCount`-ის შედეგია, ე.ი. `where`-ში ვერ შევა (HAVING-ს კი
                ექვსი დომენის გაერთიანებაზე აზრი არ აქვს) — ამიტომ დარჩა `doesntHave`. */
             match ($have) {
-                'without' => $query->doesntHave('galleryImages'),
+                'without' => $query->whereDoesntHave('galleryImages', $unlocked),
                 'all' => null,
-                default => $query->has('galleryImages'),
+                default => $query->whereHas('galleryImages', $unlocked),
             };
 
             if ($q) {
@@ -539,6 +553,7 @@ class GalleryController extends Controller
             }
 
             $rows = $this->sourceQuery($type)
+                ->withoutGlobalScope('album_lock')
                 ->selectRaw('count(*) photos, sum(size) bytes')
                 ->first();
 
@@ -577,7 +592,7 @@ class GalleryController extends Controller
      */
     private function providerGroups(int $previews)
     {
-        $rows = GalleryImage::query()
+        $rows = GalleryImage::withoutGlobalScope('album_lock')
             ->selectRaw('source, count(*) photos, sum(size) bytes')
             ->groupBy('source')
             ->orderByDesc('photos')
@@ -972,6 +987,26 @@ class GalleryController extends Controller
             ? $this->sourceQuery($from)
             : GalleryImage::query();
 
+        /* ⚠️ **ჩაკეტილი ფოტო ბრტყელ სიაში ჩანს — დაბლარულად (2026-09-20).**
+
+           შენი სიტყვები: „როდესაც ჩაკეტილ კატეგორიაში იქნება, ყველა ფოტოში
+           ჩანდეს დაბლარულად და თუ პაროლს არ შეიყვან, არ გამოჩნდება".
+
+           ⚠️ **გაქრობა და დაბლარვა სხვადასხვა პასუხია.** აქამდე scope რიგს
+           სიიდან **აცლიდა**, ე.ი. ჩაკეტილი ალბომის ფოტო „ყველა ფოტოში"
+           საერთოდ არ იყო — პაროლის კითხვაც არსად ჩნდებოდა. ახლა რიგი
+           მოდის, ფაილი — არა: გაშიშვლება `GalleryImageResource`-შია, ერთ
+           ადგილას, ე.ი. აქაური `withoutGlobalScope` ვერაფერს გაატანს.
+
+           ⚠️ **ესკიზები scope-ს ისევ ემორჩილება** (`previews()`,
+           `sourcePreviews()`, ალბომის ბარათი): ერთი ესკიზიც `path`-ს
+           გამოიტანდა და blur-ის მოხსნა devtools-ში ერთი კლიკი იქნებოდა.
+
+           ⚠️ **ცალკე აღებული ალბომი ამას არ ეხება** — `owner=album:N` და
+           `album_id=N` ქვემოთ `lockedPhotos()`-ზე გადიან: იქ სათაურიცაა და
+           პაროლის ღილაკიც, ე.ი. ჭრილს თავისი გვერდი აქვს. */
+        $query->withoutGlobalScope('album_lock');
+
         if ($owner = $data['owner'] ?? null) {
             [$kind, $id] = $owner === 'none' ? ['none', 0] : explode(':', $owner);
 
@@ -1137,10 +1172,18 @@ class GalleryController extends Controller
             }
         }
 
-        return $images->map(fn (GalleryImage $image) => [
-            ...(new GalleryImageResource($image))->resolve(),
-            'owner' => $names[$image->imageable_type.':'.$image->imageable_id] ?? null,
-        ])->values()->all();
+        return $images->map(function (GalleryImage $image) use ($names) {
+            $row = (new GalleryImageResource($image))->resolve();
+
+            /* ⚠️ ჩაკეტილ ფილას მშობელი არ მიეწერება: წარწერა მასზე ისედაც
+               არ იხატება, ხოლო „ეს კადრი ამ ფილმისაა" იმაზე მეტია, ვიდრე
+               დაბლარულ უჯრას სჭირდება. */
+            if ($row['locked'] ?? false) {
+                return $row;
+            }
+
+            return $row + ['owner' => $names[$image->imageable_type.':'.$image->imageable_id] ?? null];
+        })->values()->all();
     }
 
     /**
@@ -1190,10 +1233,15 @@ class GalleryController extends Controller
             return response()->json(['message' => 'not_found'], 404);
         }
 
-        $images = $record->galleryImages()->get();
+        /* ⚠️ **ჩაკეტილი აქაც ჩანს, დაბლარულად** (2026-09-20): ჭრილი რომ
+           გამოგვეტოვებინა, ერთი და იგივე ფოტო „ყველა ფოტოში" დაბლარული
+           იქნებოდა და ჩანაწერის გვერდზე — უბრალოდ არ იქნებოდა. ბილიკს
+           `GalleryImageResource` ისედაც არ ატარებს. */
+        $images = $record->galleryImages()->withoutGlobalScope('album_lock')->get();
 
         $cast = $record->cast()->get();
-        $castImages = GalleryImage::where('imageable_type', GalleryParent::ACTOR)
+        $castImages = GalleryImage::withoutGlobalScope('album_lock')
+            ->where('imageable_type', GalleryParent::ACTOR)
             ->whereIn('imageable_id', $cast->pluck('id'))
             ->orderBy('imageable_id')
             ->orderBy('sort_order')
@@ -1247,7 +1295,8 @@ class GalleryController extends Controller
      */
     public function castShow(CastMember $castMember)
     {
-        $images = $castMember->galleryImages()->get();
+        // ⚠️ ჩაკეტილი აქაც დაბლარულად ჩანს — `show()`-ის იგივე წესი (2026-09-20)
+        $images = $castMember->galleryImages()->withoutGlobalScope('album_lock')->get();
 
         return response()->json([
             'actor' => $castMember->toDetailArray(),

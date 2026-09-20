@@ -433,7 +433,14 @@ class GalleryAlbumTest extends TestCase
         return $album;
     }
 
-    /** ჩაკეტილი ალბომის ფოტო არცერთი endpoint-იდან არ გამოდის */
+    /**
+     * ჩაკეტილი ალბომის ფოტოს **ბილიკი** არცერთი endpoint-იდან არ გამოდის.
+     *
+     * ⚠️ **რიგი კი გამოდის და ეს 2026-09-20-ს შეიცვალა** (შენი მითითება:
+     * „როდესაც ჩაკეტილ კატეგორიაში იქნება, ყველა ფოტოში ჩანდეს
+     * დაბლარულად"). ამ ტესტის დაპირება იგივეა — ბილიკი არსად ჟონავს —
+     * უბრალოდ „საერთოდ არ ჩანს"-ის ნაცვლად ახლა „ჩანს, მაგრამ შიშველი"-ა.
+     */
     public function test_a_locked_album_never_leaks_a_photo_path(): void
     {
         Storage::fake('public');
@@ -442,12 +449,17 @@ class GalleryAlbumTest extends TestCase
         $image->update(['album_id' => $album->id]);
         $open = $this->photo(null, 'gallery/images/open.jpg');
 
-        // სია
-        $this->actingAs($this->user)->getJson('/api/gallery/photos')
+        // სია — ორივე რიგი, ჩაკეტილი ბილიკის გარეშე
+        $list = $this->actingAs($this->user)->getJson('/api/gallery/photos')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $open->id)
+            ->assertJsonCount(2, 'data')
             ->assertDontSee('secret.jpg');
+
+        $rows = collect($list->json('data'))->keyBy('id');
+        $this->assertFalse($rows[$open->id]['locked']);
+        $this->assertTrue($rows[$image->id]['locked']);
+        $this->assertArrayNotHasKey('url', $rows[$image->id]);
+        $this->assertSame($album->id, $rows[$image->id]['album_id'], 'the tile must know which password to ask for');
 
         // ჯგუფები — რიცხვი ჩანს, ესკიზი არა
         $groups = $this->actingAs($this->user)->getJson('/api/gallery/groups?by=album')
@@ -465,10 +477,13 @@ class GalleryAlbumTest extends TestCase
             ->assertOk()
             ->assertDontSee('secret.jpg');
 
-        // შეჯამება — ჩაკეტილი ფოტო რიცხვშიც აღარაა
+        /* შეჯამება — რიცხვი **ორივეს** ითვლის (2026-09-20).
+           ⚠️ ადრე აქ 1 ეწერა, რადგან ჩაკეტილი სიიდანაც ქრებოდა. ახლა ბადე
+           ორ ფილას ხატავს, ე.ი. ქვე-მენიუში „1"-ის დაწერა იმ ბადეს
+           ატყუებდა, რომელსაც ის ეხება. */
         $this->actingAs($this->user)->getJson('/api/gallery')
             ->assertOk()
-            ->assertJsonPath('photos', 1);
+            ->assertJsonPath('photos', 2);
     }
 
     /**
@@ -494,6 +509,64 @@ class GalleryAlbumTest extends TestCase
 
         $this->assertStringNotContainsString('secret.jpg', $response->getContent());
         $this->assertArrayNotHasKey('url', $response->json('data.0'));
+    }
+
+    /**
+     * **ჩანაწერის გვერდზეც დაბლარულია და არა გამქრალი (2026-09-20).**
+     *
+     * ⚠️ ეს ხვრელი ბრტყელი სიის გასწორების შემდეგ იქნებოდა ყველაზე თვალში
+     * საცემი: ერთი და იგივე ფოტო „ყველა ფოტოში" ბლარიანი ფილა იქნებოდა,
+     * ფილმის გვერდზე კი — უბრალოდ არ იქნებოდა.
+     */
+    public function test_the_record_page_shows_a_locked_photo_stripped(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+        $movie = $this->makeMovie();
+        $locked = $this->photo($movie, 'gallery/images/secret.jpg');
+        $locked->update(['album_id' => $album->id]);
+        $open = $this->photo($movie, 'gallery/images/open.jpg');
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/api/gallery/movie/'.$movie->id)
+            ->assertOk()
+            ->assertJsonCount(2, 'images');
+
+        $this->assertStringNotContainsString('secret.jpg', $response->getContent());
+
+        $rows = collect($response->json('images'))->keyBy('id');
+        $this->assertTrue($rows[$locked->id]['locked']);
+        $this->assertArrayNotHasKey('url', $rows[$locked->id]);
+        $this->assertFalse($rows[$open->id]['locked']);
+    }
+
+    /**
+     * **მხოლოდ ჩაკეტილფოტოებიანი ჩანაწერი ჭრილიდან არ ქრება (2026-09-20).**
+     *
+     * ⚠️ ეს იყო ნამდვილი ჩიხი: `withCount`/`has()` scope-ს ემორჩილებოდა, ე.ი.
+     * ასეთი ფილმი „0 ფოტოს" აჩვენებდა და „აქვს ფოტო" ჭრილიდან საერთოდ
+     * ამოვარდებოდა — პაროლის შესაყვანად მასთან მისვლა შეუძლებელი იქნებოდა.
+     * ესკიზი კი ისევ არ მოდის: ერთიც ბილიკს გამოიტანდა.
+     */
+    public function test_a_record_whose_photos_are_all_locked_stays_in_the_records_cut(): void
+    {
+        Storage::fake('public');
+        $album = $this->lockedAlbum();
+        $movie = $this->makeMovie();
+        $this->photo($movie, 'gallery/images/secret.jpg')->update(['album_id' => $album->id]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/api/gallery/groups?by=record&type=movie')
+            ->assertOk()
+            ->assertDontSee('secret.jpg');
+
+        $group = collect($response->json('groups'))->firstWhere('id', $movie->id);
+        $this->assertNotNull($group, 'the record must not disappear behind the lock');
+        $this->assertSame(1, $group['photos'], 'the count must match what the grid draws');
+        /* ⚠️ გასაღები არსებობს, **მასივი კი ცარიელია** — ესკიზს scope ისევ
+           აჩერებს. სწორედ ეს არის დაპირება: ბილიკი არ მოდის, რიცხვი კი
+           მოდის (ბადე ერთ ბლარიან ფილას დახატავს). */
+        $this->assertSame([], $response->json('previews')['movie:'.$movie->id] ?? null);
     }
 
     /** სწორი პაროლი ხსნის, არასწორი — 422 */

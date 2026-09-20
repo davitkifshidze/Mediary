@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2, User } from 'lucide-react'
 import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
+import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { castName } from '@/lib/display'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
-import { PhotoGrid } from '@/components/ui/photo-grid'
+import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 
@@ -49,6 +50,8 @@ export function CastPhotoStacks({
   const lang = useContentLang(i18n.language)
   const [openActor, setOpenActor] = useState<number | null>(null)
   const [layout, setLayout] = useState<Layout>('grouped')
+  /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
+  const [unlocking, setUnlocking] = useState<number | null>(null)
 
   /**
    * ჯგუფები — **ჩანაწერის შემადგენლობის რიგით** (billing order), რომ მთავარი
@@ -96,17 +99,38 @@ export function CastPhotoStacks({
 
   const nameOf = (member: GalleryCastMember) => castName(member, lang)
 
-  const toItem = (image: GalleryCastImage, owner: string | null) => ({
-    id: image.id,
-    src: image.url,
-    title: image.original_name,
-    subtitle: owner ?? undefined,
-    portrait: image.category === 'actor' || image.category === 'poster',
-    size: image.size,
-    width: image.width,
-    height: image.height,
-    info: galleryPhotoInfo(image, t, { owner }),
-  })
+  /* ⚠️ **ჩაკეტილი ალბომის კადრი აქაც ჩანს — დაბლარულად** (2026-09-20).
+     ბილიკი, სახელი და ზომა პასუხში არ მოსულა, ე.ი. ჩვეულებრივ უჯრად
+     გადაქცევა გატეხილ `<img>`-ს ნიშნავდა. `actor` კი ჩაკეტილსაც მოსდევს —
+     უამისოდ დაბლარული კადრი მსახიობის დასტიდან ამოვარდებოდა და ბარათზე
+     რიცხვი სიას აღარ დაემთხვეოდა. */
+  const toItem = (image: GalleryCastImage, owner: string | null): PhotoItem =>
+    image.locked
+      ? {
+          id: image.id,
+          src: '',
+          locked: true,
+          albumId: image.album_id,
+          width: image.width,
+          height: image.height,
+        }
+      : {
+          id: image.id,
+          src: image.url,
+          title: image.original_name,
+          subtitle: owner ?? undefined,
+          portrait: image.category === 'actor' || image.category === 'poster',
+          size: image.size,
+          width: image.width,
+          height: image.height,
+          info: galleryPhotoInfo(image, t, { owner }),
+        }
+
+  /** ⚠️ წაშლა ჩაკეტილს ვერ ეხება — `PhotoGrid` მას მონიშვნაშიც არ უშვებს */
+  const pick = (ids: number[], pool: GalleryCastImage[]) =>
+    ids
+      .map((id) => pool.find((i) => i.id === id))
+      .filter((i): i is GalleryCastImage & GalleryImage => Boolean(i) && !i!.locked)
 
   return (
     <section className="mt-6 border-t border-border pt-5">
@@ -137,15 +161,8 @@ export function CastPhotoStacks({
             toItem(image, image.actor ? castName(image.actor, lang) : null),
           )}
           emptyText={t('gallery.emptyActor')}
-          onDelete={
-            onDelete &&
-            ((ids) =>
-              onDelete(
-                ids
-                  .map((id) => images.find((i) => i.id === id))
-                  .filter((i): i is GalleryCastImage => Boolean(i)),
-              ))
-          }
+          onDelete={onDelete && ((ids) => onDelete(pick(ids, images)))}
+          onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
         />
       ) : (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -155,7 +172,10 @@ export function CastPhotoStacks({
                 title={nameOf(member)}
                 label={t('gallery.photos', { count: photos.length })}
                 count={photos.length}
-                images={photos.map((image) => image.url)}
+                /* ⚠️ **ესკიზში ჩაკეტილი არ ხვდება** — ერთი ესკიზიც ბილიკს
+                   გამოიტანდა; რიცხვი კი (`count`) ისევ სრულია, თორემ
+                   ბარათი იტყუებოდა („0 ფოტო" სავსე დასტაზე). */
+                images={photos.filter((image) => !image.locked).map((image) => image.url)}
                 open={openActor === member.id}
                 onClick={() => setOpenActor((cur) => (cur === member.id ? null : member.id))}
                 actions={
@@ -164,16 +184,21 @@ export function CastPhotoStacks({
                      ე.ი. ოცფოტოიანი მსახიობის გასუფთავება ოცი დაჭერა იყო.
                      ⚠️ დადასტურებას გამომძახებელი კითხულობს (`onDelete`),
                      ე.ი. კითხვა ერთი და იგივეა ბადეზეც და აქაც. */
-                  onDelete ? (
+                  /* ⚠️ **ჩაკეტილი ამ წაშლაშიც არ ხვდება** (2026-09-20) და
+                     რიცხვიც მისი გამოკლებით იწერება: ღილაკი 12-ს რომ
+                     წერდეს და 9-ს შლიდეს, დაბლარულ ფოტოს ჩუმად წაშლიდა. */
+                  onDelete && photos.some((image) => !image.locked) ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs text-destructive"
-                      onClick={() => onDelete(photos)}
+                      onClick={() => onDelete(pick(photos.map((i) => i.id), photos))}
                     >
                       <Trash2 className="size-3.5" />
-                      {t('photos.deleteSelected', { count: photos.length })}
+                      {t('photos.deleteSelected', {
+                        count: photos.filter((image) => !image.locked).length,
+                      })}
                     </Button>
                   ) : undefined
                 }
@@ -206,19 +231,18 @@ export function CastPhotoStacks({
               <PhotoGrid
                 items={group.photos.map((image) => toItem(image, nameOf(group.member)))}
                 emptyText={t('gallery.emptyActor')}
-                onDelete={
-                  onDelete &&
-                  ((ids) =>
-                    onDelete(
-                      ids
-                        .map((id) => group.photos.find((i) => i.id === id))
-                        .filter((i): i is GalleryCastImage => Boolean(i)),
-                    ))
-                }
+                onDelete={onDelete && ((ids) => onDelete(pick(ids, group.photos)))}
+                onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
               />
             </div>
           )
         })()}
+
+      {/* ⚠️ ერთი განთავსება ორივე შტოზე (დაჯგუფებული და არეული) — მდგომარეობაც
+          და JSX-იც ერთ კომპონენტშია, `GroupsCut`-ის ცოცხალი ხარვეზის წესი. */}
+      {unlocking != null && (
+        <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
+      )}
     </section>
   )
 }

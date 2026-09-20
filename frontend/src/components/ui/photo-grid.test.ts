@@ -182,3 +182,89 @@ describe('PhotoGrid — PERF-13', () => {
     expect(slides.filter((src) => src === 'blob:/note-files/1').length).toBeGreaterThan(1)
   })
 })
+
+/* ============================================================
+   **ჩაკეტილი ალბომის ფილა (2026-09-20).**
+
+   შენი მითითება: „როდესაც ჩაკეტილ კატეგორიაში იქნება, ყველა ფოტოში
+   ჩანდეს დაბლარულად და თუ პაროლს არ შეიყვან, არ გამოჩნდება".
+
+   ⚠️ **ამას ვერც `tsc` და ვერც lint ვერ ხედავს**: `src: ''` სრულიად
+   კანონიერი სტრიქონია, ე.ი. გატეხილი ვერსია უბრალოდ ცარიელ `<img>`-ს
+   დახატავდა და პაროლს არასდროს იკითხავდა — ზუსტად ის, რაც ამ ფუნქციას
+   უაზროდ აქცევს. მხოლოდ დამაუნთება იჭერს.
+   ============================================================ */
+describe('PhotoGrid — ჩაკეტილი ფილა', () => {
+  /** ჩვეულებრივი და ჩაკეტილი ერთ ბადეში — ზუსტად ის შერეული სია, რაც სერვერს გამოაქვს */
+  const mixed = [
+    { id: 1, src: '/storage/gallery/images/open.jpg', title: 'open' },
+    { id: 2, src: '', locked: true, albumId: 7, width: 800, height: 600 },
+  ]
+
+  async function mount(props: Record<string, unknown>) {
+    const { PhotoGrid } = await import('@/components/ui/photo-grid')
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    await act(async () => {
+      root!.render(h(TooltipProvider, null, h(PhotoGrid, props as never)))
+    })
+    await flush()
+  }
+
+  it('draws the blur placeholder and never the real file', async () => {
+    await mount({ items: mixed, pageSize: 0 })
+
+    const sources = [...container!.querySelectorAll('img')].map((img) => img.getAttribute('src'))
+
+    expect(sources).toContain('/locked-photo.svg')
+    /* ⚠️ სწორედ ესაა რეგრესია, რომელსაც ეს ტესტი იჭერს: `src: ''`-ის
+       პირდაპირ გატარება ცარიელ `<img>`-ს დახატავდა (ან `undefined`-ს). */
+    expect(sources).not.toContain('')
+    expect(sources.filter(Boolean)).toHaveLength(2)
+  })
+
+  it('asks for that album password when the tile is clicked', async () => {
+    const onLocked = vi.fn()
+    await mount({ items: mixed, pageSize: 0, onLocked })
+
+    const tile = [...container!.querySelectorAll('button')].find(
+      (b) => b.querySelector('img')?.getAttribute('src') === '/locked-photo.svg',
+    )
+
+    await act(async () => tile!.click())
+
+    expect(onLocked).toHaveBeenCalledTimes(1)
+    expect(onLocked.mock.calls[0]![0]).toMatchObject({ id: 2, albumId: 7 })
+  })
+
+  /**
+   * ⚠️ **„ყველას მონიშვნა" ჩაკეტილს ვერ ეხება.** ეს უსაფრთხოების მხარეა და
+   * არა მოხერხებულობის: მონიშვნაში მოხვედრილ ჩაკეტილ ფოტოს „მონიშნულების
+   * წაშლა" ჩუმად წაშლიდა — ე.ი. პაროლს შემოუვლიდა. თანაც `allSelected`
+   * ვერასდროს გახდებოდა `true` და ღილაკი სამუდამოდ „მონიშნე ყველა"
+   * დარჩებოდა.
+   */
+  it('leaves the locked tile out of select-all and bulk delete', async () => {
+    const onDelete = vi.fn()
+    const i18n = (await import('@/i18n')).default
+    await mount({ items: mixed, pageSize: 0, onDelete })
+
+    const click = async (label: string) => {
+      const button = [...container!.querySelectorAll('button')].find(
+        (b) => b.textContent?.trim() === label,
+      )
+      expect(button, `button "${label}" is missing`).toBeTruthy()
+      await act(async () => button!.click())
+    }
+
+    await click(i18n.t('photos.pickOn'))
+    await click(i18n.t('photos.selectAll'))
+    // ⚠️ რიცხვიც მტკიცებულებაა: 2 რომ ეწეროს, ჩაკეტილიც მონიშნულია
+    await click(i18n.t('photos.deleteSelected', { count: 1 }))
+
+    expect(onDelete).toHaveBeenCalledWith([1])
+  })
+})

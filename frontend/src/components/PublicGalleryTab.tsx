@@ -9,6 +9,7 @@ import {
 } from '@/api/publicProfile'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
+import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,9 +37,6 @@ import { useToast } from '@/components/ui/feedback'
    რჩება; მექანიზმი კი უნდა არსებობდეს, თორემ მფლობელიც ვერ ნახავდა
    საკუთარ საჯარო ბმულზე.
    ============================================================ */
-
-/** ერთადერთი ბლარის აქტივი — `frontend/public/locked-photo.svg` */
-const PLACEHOLDER = '/locked-photo.svg'
 
 export function PublicGalleryTab({ username }: { username: string }) {
   const { t } = useTranslation()
@@ -110,7 +108,7 @@ export function PublicGalleryTab({ username }: { username: string }) {
                 className="relative size-full cursor-pointer"
                 title={t('gallery.albumUnlock')}
               >
-                <img src={PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
+                <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
                 <span className="absolute inset-0 grid place-items-center">
                   <Lock className="size-5 text-white/90 drop-shadow" />
                 </span>

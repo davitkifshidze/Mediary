@@ -42,9 +42,22 @@ export function useDeleteGroupPhotos() {
 
       for (let round = 0; round < DELETE_MAX_ROUNDS; round++) {
         const page = await fetchGalleryPhotos({ ...filters, per_page: DELETE_CHUNK })
-        if (!page.data.length) break
 
-        for (const image of page.data) {
+        /* ⚠️ **ჩაკეტილი ალბომის ფოტო აქ აღარ იშლება** (2026-09-20). მას შემდეგ,
+           რაც ის ბრტყელ სიაში დაბლარულად ჩანს, გვერდზე ასეთი რიგებიც მოდის —
+           `DELETE /gallery/images/{id}` კი მათზე **404-ია** (route-binding
+           global scope-ს ემორჩილება), ე.ი. ციკლი შეცდომით წყდებოდა. და
+           `page.data.length`-ზე შეჩერება აქ აღარ გამოდგებოდა: მხოლოდ
+           ჩაკეტილებით სავსე გვერდი ორმოცდაათჯერ გადაიკითხებოდა.
+
+           ⚠️ **ეს არ არის გამოტოვება — ეს თვითონ ლოკია**: „ჯგუფის წაშლამ"
+           დაბლარული ფოტო ჩუმად რომ წაშალოს, პაროლი აზრს კარგავს. ამიტომ
+           ჯგუფის ბარათზე დაწერილი რიცხვი შეიძლება წაშლილზე მეტი იყოს,
+           და **ტოსტი ნამდვილ რიცხვს ამბობს**. */
+        const deletable = page.data.filter((image) => !image.locked)
+        if (!deletable.length) break
+
+        for (const image of deletable) {
           await deleteGalleryImage(image.id)
           removed++
         }

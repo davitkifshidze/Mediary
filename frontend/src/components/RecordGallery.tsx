@@ -144,6 +144,14 @@ export function RecordGallery({
   const detail = detailQ.data
   const images = detail?.images ?? []
   const castImages = detail?.cast_images ?? []
+  /**
+   * ⚠️ **ჩაკეტილი ალბომის ფოტო აქ ჩანს, მაგრამ მასობრივი წაშლის მიღმაა**
+   * (2026-09-20): ბადეშიც მონიშვნას არ ექვემდებარება, ე.ი. „ამ ჩანაწერის
+   * გალერეის წაშლა" მასაც რომ შლიდეს, დაბლარულ ფოტოს ჩუმად წაშლიდა —
+   * ზუსტად ის, რასაც პაროლი აჩერებს. რიცხვიც აქედან იწერება, თორემ
+   * ღილაკი 12-ს დაწერდა და 9-ს წაშლიდა.
+   */
+  const deletable = images.filter((image) => !image.locked)
 
   /* ⚠️ **შეკითხვა ინგლისური სათაურით იწყება და ეს განზრახაა** — ვებძებნა
      ქართულ სათაურზე პრაქტიკულად ვერაფერს პოულობს. წელი იმიტომ ერთვის, რომ
@@ -161,7 +169,8 @@ export function RecordGallery({
     <>
       <GalleryPanel
         images={images}
-        bytes={images.reduce((sum, image) => sum + (image.size ?? 0), 0)}
+        /* ⚠️ ჩაკეტილის ზომა პასუხში არ მოსულა — ის ჯამში არ ითვლება */
+        bytes={images.reduce((sum, image) => sum + (image.locked ? 0 : (image.size ?? 0)), 0)}
         primaryPath={detail?.record.poster_path}
         onDelete={(list) => askDelete(list, detail?.record.poster_path)}
         onPrimary={(image) => primary.mutate(image)}
@@ -194,16 +203,16 @@ export function RecordGallery({
                 წაშლა ერთი მოქმედებით. ⚠️ **მსახიობების ფოტოებს არ ეხება** —
                 ისინი მსახიობზეა მიბმული და სხვა ფილმებშიც ჩანს; მათ თავისი
                 დასტის ღილაკი შლის. */}
-            {images.length > 0 && (
+            {deletable.length > 0 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="rounded-none text-destructive"
-                onClick={() => askDelete(images, detail?.record.poster_path)}
+                onClick={() => askDelete(deletable, detail?.record.poster_path)}
               >
                 <Trash2 className="size-4" />
-                {t('photos.deleteSelected', { count: images.length })}
+                {t('photos.deleteSelected', { count: deletable.length })}
               </Button>
             )}
           </>

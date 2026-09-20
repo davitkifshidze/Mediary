@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteGalleryImage, type GalleryOwnedImage } from '@/api/gallery'
+import {
+  deleteGalleryImage,
+  type GalleryLockedImage,
+  type GalleryOwnedImage,
+} from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
-import { PhotoGrid } from '@/components/ui/photo-grid'
+import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 
 /* ============================================================
@@ -36,9 +41,14 @@ export function GalleryPhotoGrid({
   total,
   extraTools,
 }: {
-  images: GalleryOwnedImage[]
+  /**
+   * ⚠️ **სიაში ჩაკეტილი ალბომის ფოტოც ურევია** (2026-09-20, შენი მითითება:
+   * „ყველა ფოტოში ჩანდეს დაბლარულად"). ასეთ რიგს ბილიკი არ მოსდევს —
+   * ბადე მის ადგილას ბლარს ხატავს და დაჭერაზე პაროლს ითხოვს.
+   */
+  images: (GalleryOwnedImage | GalleryLockedImage)[]
   /** გახსნილი ხედის სრული სია (§3.7) — ბადეზე მეტიც შეიძლება იყოს */
-  lightboxImages?: GalleryOwnedImage[]
+  lightboxImages?: (GalleryOwnedImage | GalleryLockedImage)[]
   loading?: boolean
   showOwner?: boolean
   emptyText?: string
@@ -54,6 +64,8 @@ export function GalleryPhotoGrid({
   const { toast } = useToast()
   /** §26.3 — რომელი ფოტოები გადაგვაქვს (ცარიელი = დიალოგი დახურულია) */
   const [moving, setMoving] = useState<number[] | null>(null)
+  /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
+  const [unlocking, setUnlocking] = useState<number | null>(null)
 
   const remove = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map((id) => deleteGalleryImage(id))),
@@ -70,7 +82,23 @@ export function GalleryPhotoGrid({
   const ownerOf = (image: GalleryOwnedImage) =>
     (image.owner?.title_ka || image.owner?.title) ?? null
 
-  const toItem = (image: GalleryOwnedImage) => ({
+  /* ⚠️ **ჩაკეტილი ცალკე შტოა და არა „ცარიელი ველებით" ჩვეულებრივი უჯრა**
+     (2026-09-20): `url`, სახელი, ზომა და მშობელი პასუხში საერთოდ არ
+     მოსულა — `src: ''` ბადეს გატეხილ `<img>`-ს დაახატვინებდა. `albumId`
+     ერთადერთი დამატებაა და ის დაჭერისთვისაა: რომელი ალბომის პაროლი. */
+  const toItem = (image: GalleryOwnedImage | GalleryLockedImage): PhotoItem =>
+    image.locked
+      ? {
+          id: image.id,
+          src: '',
+          locked: true,
+          albumId: image.album_id,
+          width: image.width,
+          height: image.height,
+        }
+      : unlockedItem(image)
+
+  const unlockedItem = (image: GalleryOwnedImage): PhotoItem => ({
     id: image.id,
     src: image.url,
     /* ⚠️ **პირადი დისკი თითო ფოტოზეა** — გალერეის ბადე შერეულია
@@ -104,6 +132,7 @@ export function GalleryPhotoGrid({
       onPageSizeChange={onPageSizeChange}
       total={total}
       extraTools={extraTools}
+      onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
       onMove={(ids) => setMoving(ids)}
       onDelete={async (ids) => {
         const ok = await confirm({
@@ -117,6 +146,12 @@ export function GalleryPhotoGrid({
     />
 
     {moving && <GalleryMoveDialog ids={moving} onClose={() => setMoving(null)} />}
+
+    {/* ⚠️ მდგომარეობაც და პორტალის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
+        ცოცხალი ხარვეზის წესი. */}
+    {unlocking != null && (
+      <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
+    )}
     </>
   )
 }

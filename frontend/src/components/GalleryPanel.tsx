@@ -1,9 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GalleryCastImage, GalleryImage } from '@/api/gallery'
+import type { GalleryAnyImage, GalleryCastImage, GalleryImage } from '@/api/gallery'
 import { formatBytes } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
+import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { galleryPhotoInfo } from '@/lib/galleryPhoto'
 
 /* ============================================================
@@ -38,8 +39,14 @@ export function GalleryPanel({
   emptyText,
   categories = true,
 }: {
-  /** ჩანაწერის ფოტოები + (სურვილისამებრ) მსახიობების ფოტოები ერთ ბადეში */
-  images: (GalleryImage | GalleryCastImage)[]
+  /**
+   * ჩანაწერის ფოტოები + (სურვილისამებრ) მსახიობების ფოტოები ერთ ბადეში.
+   *
+   * ⚠️ **ზოგი მათგანი ჩაკეტილი ალბომისაა** (2026-09-20) — ასეთს ბილიკი არ
+   * მოსდევს და ბადე მის ადგილას ბლარს ხატავს; `GalleryAnyImage`-ის
+   * დისკრიმინანტი სწორედ იმიტომაა, რომ `tsc` ყველა განშტოებას მოითხოვდეს.
+   */
+  images: (GalleryAnyImage | GalleryCastImage)[]
   bytes?: number
   /** ⚠️ **მასივი** — მონიშნულების წაშლა ერთი ქმედებაა (§2.9) */
   onDelete?: (images: GalleryImage[]) => void
@@ -53,24 +60,38 @@ export function GalleryPanel({
 }) {
   const { t } = useTranslation()
   const [cut, setCut] = useState<CategoryCut>('all')
+  /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
+  const [unlocking, setUnlocking] = useState<number | null>(null)
+
+  /**
+   * ⚠️ **ჩაკეტილს კატეგორია არ მოსდევს და ეს განზრახულია.** პასუხში მხოლოდ
+   * `id`, ზომები და `album_id` მოდის, ე.ი. „კადრია თუ პოსტერი" ჯერ არ
+   * ვიცით — ჩიპებში ის „ყველაში" ჩანს და კონკრეტულ ჭრილში არა. მოგონილი
+   * კატეგორია ჩიპის რიცხვს ატყუებდა.
+   */
+  const categoryOf = (image: GalleryAnyImage | GalleryCastImage) =>
+    image.locked ? null : image.category
 
   const shown = useMemo(
-    () => (cut === 'all' ? images : images.filter((i) => i.category === cut)),
+    () => (cut === 'all' ? images : images.filter((i) => categoryOf(i) === cut)),
     [images, cut],
   )
 
   const present = useMemo(() => {
-    const set = new Set(images.map((i) => i.category))
+    const set = new Set(images.map((i) => categoryOf(i)))
     return (['backdrop', 'poster', 'logo', 'actor'] as const).filter((c) => set.has(c))
   }, [images])
 
   /** „მთავარი" ფოტო id-ით — `PhotoGrid` მისამართს არ ადარებს */
   const primaryId = useMemo(
-    () => (primaryPath ? (images.find((i) => i.url === primaryPath)?.id ?? null) : null),
+    () =>
+      primaryPath
+        ? (images.find((i) => !i.locked && i.url === primaryPath)?.id ?? null)
+        : null,
     [images, primaryPath],
   )
 
-  const actorOf = (image: GalleryImage | GalleryCastImage) =>
+  const actorOf = (image: GalleryAnyImage | GalleryCastImage) =>
     'actor' in image ? image.actor?.name : null
 
   return (
@@ -104,7 +125,8 @@ export function GalleryPanel({
             options={(['all', ...present] as CategoryCut[]).map((c) => ({
               key: c,
               label: c === 'all' ? t('filter.all') : t(`gallery.category.${c}`),
-              count: c === 'all' ? images.length : images.filter((i) => i.category === c).length,
+              count:
+                c === 'all' ? images.length : images.filter((i) => categoryOf(i) === c).length,
             }))}
             value={cut}
             onChange={(key) => setCut(key as CategoryCut)}
@@ -118,36 +140,53 @@ export function GalleryPanel({
           ⚠️ ჩიპები აქ რჩება: ისინი გალერეის საქმეა და არა ბადის, ე.ი.
           `PhotoGrid`-ს მოდულის ცოდნა არ სჭირდება. */}
       <PhotoGrid
-        items={shown.map((image) => ({
-          id: image.id,
-          src: image.url,
-          title: image.original_name,
-          subtitle:
-            actorOf(image) ??
-            (image.category
-              ? t(`gallery.category.${image.category}`)
-              : t('gallery.category.other')),
-          portrait: image.category === 'actor' || image.category === 'poster',
-          /* ⚠️ **პასუხს backend იძლევა** (Tasks BUG-20): მშობელს მთავარი
-             სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
-             გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
-             შემთხვევას ხურავდა და სიმღერაზე/წიგნზე/თამაშზე ღილაკს ხატავდა,
-             სადაც დაჭერა 500-ს აბრუნებდა. `?? true` — ძველი პასუხისთვის. */
-          canPrimary: image.supports_primary ?? image.category !== 'actor',
-          size: image.size,
-          width: image.width,
-          height: image.height,
-          // §4.3 — „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
-          info: galleryPhotoInfo(image, t, { owner: actorOf(image) }),
-        }))}
+        items={shown.map((image) =>
+          /* ⚠️ **ჩაკეტილი უჯრა ცალკე შტოა და არა „ცარიელი ველებით"**
+             (2026-09-20): ბილიკი, სახელი, ზომა და კატეგორია პასუხში
+             საერთოდ არ მოსულა — `src: ''`-ის გაგზავნა ბადეს გატეხილ
+             `<img>`-ს დაახატვინებდა. `albumId` კი ის ერთადერთია, რაც
+             დაჭერისას სჭირდება: რომელი ალბომის პაროლი ვკითხოთ. */
+          image.locked
+            ? {
+                id: image.id,
+                src: '',
+                locked: true,
+                albumId: image.album_id,
+                width: image.width,
+                height: image.height,
+              }
+            : {
+                id: image.id,
+                src: image.url,
+                title: image.original_name,
+                subtitle:
+                  actorOf(image) ??
+                  (image.category
+                    ? t(`gallery.category.${image.category}`)
+                    : t('gallery.category.other')),
+                portrait: image.category === 'actor' || image.category === 'poster',
+                /* ⚠️ **პასუხს backend იძლევა** (Tasks BUG-20): მშობელს მთავარი
+                   სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
+                   გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
+                   შემთხვევას ხურავდა და სიმღერაზე/წიგნზე/თამაშზე ღილაკს ხატავდა,
+                   სადაც დაჭერა 500-ს აბრუნებდა. `?? true` — ძველი პასუხისთვის. */
+                canPrimary: image.supports_primary ?? image.category !== 'actor',
+                size: image.size,
+                width: image.width,
+                height: image.height,
+                // §4.3 — „რა ვიცით ამ ფოტოზე": ერთი ფუნქცია ყველგან
+                info: galleryPhotoInfo(image, t, { owner: actorOf(image) }),
+              },
+        )}
         emptyText={emptyText ?? t('gallery.emptyRecord')}
         primaryId={primaryId}
+        onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
         onPrimary={
           onPrimary &&
           ((id) => {
             const image = shown.find((i) => i.id === id)
             // ⚠️ მეორე ფენა: `canPrimary`-ს გარდა თვითონ გამოძახებაც იცავს თავს
-            if (image && image.category !== 'actor') onPrimary(image as GalleryImage)
+            if (image && !image.locked && image.category !== 'actor') onPrimary(image)
           })
         }
         onDelete={
@@ -156,10 +195,16 @@ export function GalleryPanel({
             onDelete(
               ids
                 .map((id) => shown.find((i) => i.id === id))
-                .filter((i): i is GalleryImage => Boolean(i)),
+                .filter((i): i is GalleryImage => Boolean(i) && !i!.locked),
             ))
         }
       />
+
+      {/* ⚠️ მდგომარეობაც და პორტალის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
+          ცოცხალი ხარვეზის წესი (ღილაკი ერთ შტოში, დიალოგი მეორეში). */}
+      {unlocking != null && (
+        <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
+      )}
     </>
   )
 }

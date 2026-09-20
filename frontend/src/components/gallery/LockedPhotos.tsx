@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 import type { GalleryLockedImage } from '@/api/gallery'
+import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { Button } from '@/components/ui/button'
 
 /* ============================================================
@@ -25,9 +26,6 @@ import { Button } from '@/components/ui/button'
    საერთოდ არ მოსულა (და თვითონაც პირად დისკზე გადავიდა, §7.9), ე.ი.
    ინსპექტორში კლასის მოხსნას გასაშიშვლებელი არაფერი აქვს.
    ============================================================ */
-
-/** ერთადერთი ბლარის აქტივი — `frontend/public/locked-photo.svg` */
-const PLACEHOLDER = '/locked-photo.svg'
 
 export function LockedPhotos({
   photos,
@@ -59,7 +57,7 @@ export function LockedPhotos({
             className="overflow-hidden rounded-md border border-border bg-muted"
             style={{ aspectRatio: photo.width && photo.height ? `${photo.width} / ${photo.height}` : '3 / 2' }}
           >
-            <img src={PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
+            <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
           </li>
         ))}
       </ul>

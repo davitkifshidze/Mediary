@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Download,
   ImageOff,
+  Lock,
   MoveRight,
   Square,
   SquareDashed,
@@ -20,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
+import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { photoActions } from '@/lib/photoActions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { NumberPick } from '@/components/ui/number-pick'
@@ -114,6 +116,23 @@ export interface PhotoItem {
   size?: number | null
   width?: number | null
   height?: number | null
+  /**
+   * **ჩაკეტილი ალბომის ფოტო — ფაილის გარეშე (2026-09-20).**
+   *
+   * შენი მითითება: „როდესაც ჩაკეტილ კატეგორიაში იქნება, ყველა ფოტოში
+   * ჩანდეს დაბლარულად და თუ პაროლს არ შეიყვან, არ გამოჩნდება".
+   *
+   * ⚠️ **`src` ასეთ რიგზე ცარიელია** — სერვერი ბილიკს არ აგზავნის. ამიტომ
+   * უჯრა ერთ სტატიკურ ბლარს ხატავს, დაჭერა კი `onLocked`-ს ეძახის
+   * (პაროლის ფანჯარა გამომძახებლისაა: ბადემ ალბომები არ იცის).
+   *
+   * ⚠️ **ასეთი ფოტო არც იხსნება, არც ინიშნება და არც იშლება**: ლაითბოქსში
+   * ცარიელი სლაიდი იქნებოდა, ხოლო „მონიშნულების წაშლა/ჩამოტვირთვა"
+   * იმაზე იმოქმედებდა, რასაც ვერც ხედავ.
+   */
+  locked?: boolean
+  /** რომელი ალბომის პაროლი უნდა იკითხოს `onLocked`-მა */
+  albumId?: number | null
 }
 
 const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen]
@@ -205,6 +224,7 @@ export function PhotoGrid({
   privateDisk,
   onDelete,
   onMove,
+  onLocked,
   onPrimary,
   primaryId,
   emptyText,
@@ -237,6 +257,13 @@ export function PhotoGrid({
    * მონიშვნას ვერ ხედავს. `onDelete`-ის იგივე ხელმოწერა.
    */
   onMove?: (ids: number[]) => void
+  /**
+   * ჩაკეტილ ფილაზე დაჭერა — პაროლის ფანჯარა (2026-09-20).
+   *
+   * ⚠️ **ბადე ალბომს არ ხსნის თვითონ**: `ui/` არაფერს იცის გალერეის
+   * ალბომებზე და არც უნდა იცოდეს (`PhotoGrid` პროფილის ფაილებსაც ემსახურება).
+   */
+  onLocked?: (item: PhotoItem) => void
   onPrimary?: (id: number) => void
   primaryId?: number | null
   emptyText?: string
@@ -352,7 +379,10 @@ export function PhotoGrid({
    * ⚠️ არამართულ რეჟიმში lightbox **მთელ სიას** ხედავს და არა მიმდინარე
    * გვერდს, ე.ი. ისრები გვერდის საზღვარს კვეთს.
    */
-  const viewable = lightboxItems ?? items
+  /* ⚠️ **ჩაკეტილი გახსნილ ხედში არ შედის** (2026-09-20): მისამართი არ
+     აქვს, ე.ი. სლაიდი ცარიელი იქნებოდა და ისრებით მასზე გაჩერება
+     „ლაითბოქსი გატყდა"-დ წაიკითხებოდა. */
+  const viewable = (lightboxItems ?? items).filter((item) => !item.locked)
 
   /**
    * გახსნილი სლაიდი და მისი მეზობლები — მათი blob უჯრის ხილვადობის
@@ -389,7 +419,16 @@ export function PhotoGrid({
     [viewable, privateDisk, open, slideVersion],
   )
 
-  const allSelected = items.length > 0 && selected.length === items.length
+  /**
+   * **მოსანიშნი უჯრები — ჩაკეტილის გარეშე** (2026-09-20).
+   *
+   * ⚠️ `items`-ზე დაყრდნობილი „ყველას მონიშვნა" ჩაკეტილსაც მონიშნავდა და
+   * `allSelected` ვერასდროს გახდებოდა `true` (ჩაკეტილი `targets`-ში არ
+   * ხვდება), ე.ი. ღილაკი სამუდამოდ „მონიშნე ყველა" დარჩებოდა.
+   */
+  const selectable = useMemo(() => items.filter((item) => !item.locked), [items])
+
+  const allSelected = selectable.length > 0 && selected.length === selectable.length
 
   /**
    * ⚠️ **მონიშვნა მონიშვნის რეჟიმსაც რთავს** (შენი მითითება, 2026-09-14).
@@ -438,7 +477,7 @@ export function PhotoGrid({
     })
   }
 
-  const targets = selected.length ? selected : items.map((i) => i.id)
+  const targets = selected.length ? selected : selectable.map((i) => i.id)
 
   return (
     <div className={className}>
@@ -464,7 +503,7 @@ export function PhotoGrid({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setSelected(allSelected ? [] : items.map((i) => i.id))}
+                onClick={() => setSelected(allSelected ? [] : selectable.map((i) => i.id))}
               >
                 {allSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
                 {t(allSelected ? 'photos.clear' : 'photos.selectAll')}
@@ -538,7 +577,14 @@ export function PhotoGrid({
         />
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {shown.map((item, index) => (
+          {shown.map((item, index) =>
+            item.locked ? (
+              <LockedPhotoCell
+                key={item.id}
+                item={item}
+                onOpen={() => onLocked?.(item)}
+              />
+            ) : (
             <PhotoCell
               key={item.id}
               item={item}
@@ -566,7 +612,8 @@ export function PhotoGrid({
               onDelete={onDelete}
               onResolved={noteResolved}
             />
-          ))}
+            ),
+          )}
         </ul>
       )}
 
@@ -632,6 +679,52 @@ export function PhotoGrid({
  * მხოლოდ ჰოვერზე იყო, ე.ი. სენსორულ ეკრანზე და კლავიატურით პრაქტიკულად
  * მიუწვდომელი, მარჯვენა კლიკი კი ბრაუზერის მენიუს ხსნიდა.
  */
+/* ============================================================
+   **ჩაკეტილი ფილა — ბლარი და პაროლი (2026-09-20).**
+
+   ⚠️ **ცალკე კომპონენტია და არა `PhotoCell`-ის ადრეული `return`**, და ეს
+   არა სტილის, არამედ hooks-ის საკითხია: `PhotoCell` ქვემოთ სამ hook-ს
+   იძახის (ხილვადობა, blob, ეფექტი), ე.ი. შუაში გაჩერებული `return`
+   პაროლის შეყვანის მომენტში — როცა **იგივე** `key` ჩაკეტილიდან
+   ჩვეულებრივ უჯრად იქცევა — hook-ების რიგს შეცვლიდა და React გაწყდებოდა.
+   სხვა ტიპის ელემენტს კი React თავისით ამაუნთებს ხელახლა.
+
+   ⚠️ **აქ არაფერია ფაილზე დამოკიდებული და ეს განზრახულია**: ბილიკი
+   პასუხში არ მოსულა, ე.ი. lightbox, „შესახებ", ჩამოტვირთვა, „მთავარად
+   დაყენება" და წაშლა ვერაფერს გააკეთებდნენ — კონტექსტური მენიუ მხოლოდ
+   ერთადერთ სათქმელს გადაფარავდა: „შეიყვანე პაროლი".
+
+   ⚠️ **პროპორცია რიგის ზომებიდან მოდის** და არა ფიქსირებული ჩარჩოდან:
+   პაროლის შეყვანის შემდეგ იმავე ადგილას ნამდვილი ფოტო ჯდება და ბადე
+   არ უნდა ახტეს.
+   ============================================================ */
+function LockedPhotoCell({ item, onOpen }: { item: PhotoItem; onOpen: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <li className="relative overflow-hidden rounded-xl border border-border bg-muted">
+      <button
+        type="button"
+        onClick={onOpen}
+        title={t('gallery.albumUnlock')}
+        aria-label={t('gallery.albumUnlock')}
+        className={cn(
+          'block w-full cursor-pointer',
+          item.portrait ? 'aspect-[2/3]' : 'aspect-video',
+        )}
+        style={
+          item.width && item.height ? { aspectRatio: `${item.width} / ${item.height}` } : undefined
+        }
+      >
+        <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
+        <span className="absolute inset-0 grid place-items-center">
+          <Lock className="size-5 text-white/90 drop-shadow" />
+        </span>
+      </button>
+    </li>
+  )
+}
+
 function PhotoCell({
   item,
   index,
