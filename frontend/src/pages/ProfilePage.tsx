@@ -20,6 +20,7 @@ import { WebQuotaCard } from '@/components/WebQuotaCard'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /** პროფილი (F4): სახელი/გვარი/username/მეილი/ავატარი + პაროლის ცვლილება */
 export function ProfilePage() {
@@ -180,9 +181,8 @@ export function ProfilePage() {
             {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="bio">{t('profile.bio')}</Label>
+            <Label htmlFor="bio" className="flex items-center gap-1.5">{t('profile.bio')} <InfoHint info={t('profile.bioHint')} /></Label>
             <Textarea id="bio" rows={3} maxLength={1000} {...field('bio')} />
-            <p className="mt-1 text-xs text-muted-foreground">{t('profile.bioHint')}</p>
             {errors.bio && <p className="mt-1 text-xs text-destructive">{errors.bio}</p>}
           </div>
         </div>

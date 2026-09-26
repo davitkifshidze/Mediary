@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { StepSection } from '@/components/ui/step-section'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    იმპორტი გარე სერვისის CSV-იდან (FEAT-07).
@@ -90,7 +91,7 @@ export function ImportPage() {
 
   return (
     <PageContainer>
-      <PageHeader tool="import" title={t('import.title')} hint={t('import.hint')} />
+      <PageHeader tool="import" title={t('import.title')} hint={<InfoHint info={t('import.hint')} />} />
 
       {/* ---------- 1. ფაილი ---------- */}
       <StepSection step={1} title={t('import.stepFile')} hint={t('import.stepFileHint')}>

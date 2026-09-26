@@ -361,7 +361,9 @@ export function WebImageDialog({
               დანარჩენებზე ველი გამორთულია, რომ ცრუ დაპირება არ იყოს. */}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="web-limit">{t('web.limitLabel')}</Label>
+              <Label htmlFor="web-limit" className="flex items-center gap-1.5">
+                {t('web.limitLabel')} <InfoHint info={t('web.limitHint', { max: WEB_MAX_PHOTOS })} />
+              </Label>
               <Input
                 id="web-limit"
                 type="number"
@@ -372,9 +374,6 @@ export function WebImageDialog({
                 disabled={search.isPending}
                 onChange={(e) => setLimit(Number(e.target.value))}
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('web.limitHint', { max: WEB_MAX_PHOTOS })}
-              </p>
             </div>
 
             <div>
@@ -445,7 +444,7 @@ export function WebImageDialog({
         <StepSection
           step={STEP.results}
           title={t('web.stepResults')}
-          hint={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
+          status={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
           action={
             items.length > 0 ? (
               <>

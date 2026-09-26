@@ -57,7 +57,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { IconAction } from '@/components/ui/icon-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -743,7 +743,7 @@ function BookmarkForm({
         </div>
 
         <div className={fields.shows('tags') ? '' : 'hidden'}>
-          <FieldLabel htmlFor="b-tags" required={fields.required('tags')} hint={fields.hint('tags')}>
+          <FieldLabel htmlFor="b-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
             {fields.label('tags')}
           </FieldLabel>
           <TagSelect
@@ -752,7 +752,6 @@ function BookmarkForm({
             options={allTags}
             onChange={(next) => setForm((f) => ({ ...f, tags: next }))}
           />
-          <p className="mt-1 text-xs text-muted-foreground">{t('videos.tagsDedupeHint')}</p>
         </div>
 
         <div className={fields.shows('thumbnail') ? undefined : 'hidden'}>

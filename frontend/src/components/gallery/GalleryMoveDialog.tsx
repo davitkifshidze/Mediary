@@ -129,9 +129,7 @@ export function GalleryMoveDialog({
   return (
     <ModalShell
       title={t('gallery.moveTitle', { count: ids.length })}
-      onClose={onClose}
-    >
-      <p className="mb-4 text-sm text-muted-foreground">{t('gallery.moveHint')}</p>
+      onClose={onClose} hint={t('gallery.moveHint')}>
 
       {/* ---------- 1. სად ეკიდოს ---------- */}
       <Label className="mb-2 block">{t('gallery.moveTarget')}</Label>

@@ -16,6 +16,7 @@ import { PasswordInput } from '@/components/ui/secret-input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **ალბომის დამატება/რედაქტირება — მოდალი (შენი მითითება, 2026-09-16).**
@@ -145,8 +146,8 @@ export function AlbumDialog({
             <div className="flex items-center gap-2 text-sm font-medium">
               <Globe className={isPublic ? 'size-4 text-primary' : 'size-4 text-muted-foreground'} />
               {t('gallery.albumPublic')}
+              <InfoHint info={t('gallery.albumPublicHint')} />
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t('gallery.albumPublicHint')}</p>
           </div>
           <Switch
             checked={isPublic}
@@ -172,16 +173,16 @@ export function AlbumDialog({
 
           {needsCurrent && (removing || password) && (
             <div className="mb-3">
-              <Label htmlFor="album-current">{t('gallery.albumAccountPassword')}</Label>
+              <Label htmlFor="album-current" className="flex items-center gap-1.5">
+                {t('gallery.albumAccountPassword')}
+                <InfoHint info={t('gallery.albumAccountPasswordHint')} />
+              </Label>
               <PasswordInput
                 id="album-current"
                 value={current}
                 onChange={setCurrent}
                 autoComplete="current-password"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('gallery.albumAccountPasswordHint')}
-              </p>
             </div>
           )}
 

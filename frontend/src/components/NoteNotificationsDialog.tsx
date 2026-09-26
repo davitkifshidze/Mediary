@@ -44,8 +44,7 @@ export function NoteNotificationsDialog({ onClose }: { onClose: () => void }) {
   const rows = data?.data ?? []
 
   return (
-    <ModalShell title={t('notes.logTitle')} onClose={onClose} wide>
-      <p className="mt-2 text-xs text-muted-foreground">{t('notes.logHint')}</p>
+    <ModalShell title={t('notes.logTitle')} onClose={onClose} wide hint={t('notes.logHint')}>
 
       <div className="mt-4 max-h-[60vh] space-y-2 overflow-y-auto pr-1">
         {isLoading && <p className="text-sm text-muted-foreground">{t('api.loading')}</p>}

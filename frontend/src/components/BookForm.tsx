@@ -34,6 +34,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    წიგნის ფორმა (Tasks §12).
@@ -255,7 +256,7 @@ export function BookForm({
       <form onSubmit={submit} className="mt-4 space-y-4">
         {/* ---------- სწრაფი შევსება ---------- */}
         <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="b-lookup">{t('books.lookup')}</Label>
+          <Label htmlFor="b-lookup" className="flex items-center gap-1.5">{t('books.lookup')} <InfoHint info={t('books.lookupHint')} /></Label>
           <div className="mt-1.5 flex gap-2">
             <Input
               id="b-lookup"
@@ -280,7 +281,6 @@ export function BookForm({
               {t('books.lookupSearch')}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t('books.lookupHint')}</p>
 
           {candidates && (
             <div className="mt-3 space-y-1.5">

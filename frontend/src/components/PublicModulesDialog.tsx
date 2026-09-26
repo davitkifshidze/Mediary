@@ -57,9 +57,8 @@ export function PublicModulesDialog({
   }
 
   return (
-    <ModalShell title={t('publicProfile.modules')} onClose={onClose}>
+    <ModalShell title={t('publicProfile.modules')} onClose={onClose} hint={t('publicProfile.modulesHint')}>
       <div className="mt-4 space-y-3">
-        <p className="text-xs text-muted-foreground">{t('publicProfile.modulesHint')}</p>
 
         {!profilePublic && (
           <p className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">

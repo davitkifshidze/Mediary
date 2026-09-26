@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    ნაბიჯად დაყოფილი სექცია დიალოგში (ეტაპი 5, 2026-09-13).
@@ -23,14 +24,17 @@ export function StepSection({
   step,
   title,
   hint,
+  status,
   action,
   className,
   children,
 }: {
   step: number
   title: ReactNode
-  /** ერთი წინადადება სათაურის ქვეშ — რას ნიშნავს ეს ნაბიჯი ან რა მდგომარეობაშია */
+  /** რას ნიშნავს ეს ნაბიჯი — Tasks §8.3: i სათაურის გვერდით, არა ხაზი ქვეშ */
   hint?: ReactNode
+  /** **ცოცხალი ფაქტი** („ნაპოვნია N") — ის ტექსტად რჩება სათაურის ქვეშ */
+  status?: ReactNode
   /** ღილაკი/მრიცხველი სათაურის მარჯვნივ */
   action?: ReactNode
   className?: string
@@ -47,8 +51,11 @@ export function StepSection({
         </span>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {hint && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hint}</p>}
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            {title}
+            <InfoHint info={hint} />
+          </h3>
+          {status && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{status}</p>}
         </div>
 
         {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}

@@ -21,7 +21,7 @@ import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { NoteRemindersDialog, NoteRemindersLink } from '@/components/NoteRemindersDialog'
 import { NoteUploads } from '@/components/NoteUploads'
@@ -270,7 +270,7 @@ export function NoteForm({
 
         {fields.shows('tags') && (
           <div>
-            <FieldLabel htmlFor="note-tags" required={fields.required('tags')} hint={fields.hint('tags')}>
+            <FieldLabel htmlFor="note-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('notes.tagsHint'))}>
               {fields.label('tags')}
             </FieldLabel>
             <TagSelect
@@ -279,7 +279,6 @@ export function NoteForm({
               value={form.tags}
               onChange={(tags) => setForm((f) => ({ ...f, tags }))}
             />
-            <p className="mt-1 text-xs text-muted-foreground">{t('notes.tagsHint')}</p>
           </div>
         )}
 

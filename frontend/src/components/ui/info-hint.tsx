@@ -57,17 +57,31 @@ import { cn } from '@/lib/utils'
 
 type Side = 'top' | 'right' | 'bottom' | 'left'
 
+/* ⚠️ Tasks §8.1 — **მხოლოდ ლურჯ `i`-ს აქვს ტონი**; წითელი სამკუთხედი
+   ყოველთვის წითელია, თორემ „კრიტიკულის" მნიშვნელობა გაფერმკრთალდებოდა.
+   ტონი `--icon-*` ტოკენებიდან მოდის (მუქ თემაზეც თავისი მნიშვნელობით). */
+export type InfoTone = 'info' | 'warn' | 'ok' | 'muted'
+
+const TONE: Record<InfoTone, string | undefined> = {
+  info: undefined,
+  warn: 'text-[var(--icon-warn)]',
+  ok: 'text-[var(--icon-ok)]',
+  muted: 'text-muted-foreground',
+}
+
 function Hint({
   text,
   critical,
   label,
   side,
+  tone = 'info',
   className,
 }: {
   text: ReactNode
   critical: boolean
   label: string
   side: Side
+  tone?: InfoTone
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -88,7 +102,7 @@ function Hint({
         {critical ? (
           <AlertTriangle className="size-3.5 text-destructive" />
         ) : (
-          <Info className="size-3.5" />
+          <Info className={cn('size-3.5', TONE[tone])} />
         )}
       </PopoverPrimitive.Trigger>
 
@@ -121,8 +135,11 @@ export function InfoHint({
   info,
   critical,
   side = 'top',
+  tone,
   className,
 }: {
+  /** `i`-ის ფერი (ნაგულისხმევად ლურჯი) — მაგ. ტექსტის წყარო (§8.1) */
+  tone?: InfoTone
   /** ლურჯი `i` — ახსნა. **უკვე ნათარგმნი ტექსტი**, არასდროს გასაღები. */
   info?: ReactNode
   /** წითელი სამკუთხედი — კრიტიკული. **უკვე ნათარგმნი ტექსტი**. */
@@ -141,7 +158,7 @@ export function InfoHint({
         <Hint text={critical} critical label={t('common.warning')} side={side} className={className} />
       )}
       {info && (
-        <Hint text={info} critical={false} label={t('common.info')} side={side} className={className} />
+        <Hint text={info} critical={false} label={t('common.info')} side={side} tone={tone} className={className} />
       )}
     </span>
   )

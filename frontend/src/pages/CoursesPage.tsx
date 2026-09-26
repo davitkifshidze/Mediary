@@ -55,7 +55,7 @@ import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
@@ -657,7 +657,7 @@ function CourseForm({
 
         {/* ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსსაც მისამართი არ აქვს */}
         <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="c-url" hint={fields.hint('url')}>
+          <FieldLabel htmlFor="c-url" hint={joinHints(fields.hint('url'), t('courses.urlHint'))}>
             {fields.label('url')}
           </FieldLabel>
           <Input
@@ -667,7 +667,6 @@ function CourseForm({
             onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
             onBlur={(e) => void loadMeta(e.target.value)}
           />
-          <p className="mt-1 text-xs text-muted-foreground">{t('courses.urlHint')}</p>
           {probing && (
             <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
@@ -743,7 +742,7 @@ function CourseForm({
           </div>
 
           <div className={fields.shows('lessons') ? undefined : 'hidden'}>
-            <FieldLabel>{fields.label('lessons')}</FieldLabel>
+            <FieldLabel hint={t('courses.lessonsHint')}>{fields.label('lessons')}</FieldLabel>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -763,11 +762,10 @@ function CourseForm({
                 onChange={(e) => setForm((f) => ({ ...f, lessonsTotal: e.target.value }))}
               />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{t('courses.lessonsHint')}</p>
           </div>
 
           <div className={fields.shows('minutes') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="c-minutes">{fields.label('minutes')}</FieldLabel>
+            <FieldLabel hint={t('courses.minutesHint')} htmlFor="c-minutes">{fields.label('minutes')}</FieldLabel>
             <Input
               id="c-minutes"
               type="number"
@@ -776,7 +774,6 @@ function CourseForm({
               onChange={(e) => setForm((f) => ({ ...f, minutes: e.target.value }))}
             />
             {/* ⚠️ ერთეული **წუთია** მთელ პროექტში (§2.5) — ეს ცხადად წერია */}
-            <p className="mt-1 text-xs text-muted-foreground">{t('courses.minutesHint')}</p>
           </div>
         </div>
 

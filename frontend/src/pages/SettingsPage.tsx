@@ -266,10 +266,10 @@ export function SettingsPage() {
 
       {/* ---------- „აღმოაჩინე" (E3) ---------- */}
       <section className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-1 font-display text-lg font-semibold tracking-tight">{t('settings.discover')}</h2>
-        <p className="mb-2 text-xs text-muted-foreground">
-          {t('settings.discoverHint', { max: TMDB_MAX_PAGE })}
-        </p>
+        <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('settings.discover')}
+          <InfoHint info={t('settings.discoverHint', { max: TMDB_MAX_PAGE })} />
+        </h2>
 
         <Row
           label={t('settings.discoverMaxPages')}

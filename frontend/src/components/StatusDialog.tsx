@@ -19,6 +19,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    სტატუსის დამატება/რედაქტირება (Tasks §6.4).
@@ -109,8 +110,7 @@ export function StatusDialog({
 
         {/* მნიშვნელობა — სამი შესაძლებლობა, განმარტებით */}
         <div>
-          <Label>{t('statuses.role')}</Label>
-          <p className="mb-2 text-xs text-muted-foreground">{t('statuses.roleHint')}</p>
+          <Label className="flex items-center gap-1.5">{t('statuses.role')} <InfoHint info={t('statuses.roleHint')} /></Label>
           <div className="flex flex-wrap gap-1.5">
             {ROLES.map((role) => (
               <button

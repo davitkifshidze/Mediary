@@ -50,7 +50,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -694,7 +694,7 @@ function SongForm({
             მაგრამ `shows()`-ს ფორმა მაინც ეკითხება: მოხსნის შემდეგ
             ჩამრთველი რომ მართლა მუშაობდეს. */}
         <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="s-url" required>{fields.label('url')}</FieldLabel>
+          <FieldLabel hint={t('songs.urlHint')} htmlFor="s-url" required>{fields.label('url')}</FieldLabel>
           <Input
             id="s-url"
             autoFocus
@@ -708,7 +708,6 @@ function SongForm({
             }}
           />
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
-          <p className="mt-1 text-xs text-muted-foreground">{t('songs.urlHint')}</p>
 
           {metaLoading && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -869,7 +868,7 @@ function SongForm({
             {errors.genre_ids && <p className="mt-1 text-xs text-destructive">{errors.genre_ids}</p>}
 
             <div className={fields.shows('tags') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="s-tags" required={fields.required('tags')} hint={fields.hint('tags')}>
+              <FieldLabel htmlFor="s-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
                 {fields.label('tags')}
               </FieldLabel>
               <TagSelect
@@ -878,11 +877,10 @@ function SongForm({
                 value={form.tags}
                 onChange={(tags) => setForm((f) => ({ ...f, tags }))}
               />
-              <p className="mt-1 text-xs text-muted-foreground">{t('videos.tagsDedupeHint')}</p>
             </div>
 
             <div className={fields.shows('playlists') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="s-playlists" required={fields.required('playlists')} hint={fields.hint('playlists')}>
+              <FieldLabel htmlFor="s-playlists" required={fields.required('playlists')} hint={joinHints(fields.hint('playlists'), t('playlists.songHint'))}>
                 {fields.label('playlists')}
               </FieldLabel>
               <IdMultiSelect
@@ -891,7 +889,6 @@ function SongForm({
                 onChange={setPlaylistIds}
                 placeholder={playlistsQ.isLoading ? t('api.loading') : t('playlists.pickForSong')}
               />
-              <p className="mt-1 text-xs text-muted-foreground">{t('playlists.songHint')}</p>
             </div>
           </div>
 

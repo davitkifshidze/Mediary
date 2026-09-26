@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **საუბრის პარამეტრები ერთ ფანჯარაში (Tasks §10.5/§10.6/§10.11).**
@@ -87,8 +88,10 @@ export function ChatThreadMenu({
         {/* ---------- დადუმება (§10.5) ---------- */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">{t('chat.mute')}</div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t('chat.muteHint')}</p>
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              {t('chat.mute')}
+              <InfoHint info={t('chat.muteHint')} />
+            </div>
           </div>
           <Button
             variant="outline"
@@ -106,8 +109,8 @@ export function ChatThreadMenu({
           <div className="flex items-center gap-1.5 text-sm font-medium">
             <Palette className="size-4" />
             {t('chat.theme')}
+            <InfoHint info={t('chat.themeHint')} />
           </div>
-          <p className="mt-0.5 mb-2 text-xs text-muted-foreground">{t('chat.themeHint')}</p>
           <div className="flex flex-wrap gap-2">
             {CHAT_THEMES.map((key) => (
               <button
@@ -135,8 +138,8 @@ export function ChatThreadMenu({
           <Label htmlFor="chat-nickname" className="flex items-center gap-1.5">
             <SquarePen className="size-4" />
             {t('chat.nickname')}
+            <InfoHint info={t('chat.nicknameHint')} />
           </Label>
-          <p className="mt-0.5 mb-2 text-xs text-muted-foreground">{t('chat.nicknameHint')}</p>
           <div className="flex gap-2">
             <Input
               id="chat-nickname"

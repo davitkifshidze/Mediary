@@ -228,7 +228,7 @@ export function UserPage() {
 
         <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-border pt-4">
           <div className="min-w-44">
-            <Label htmlFor="quota">{t('storage.quota')}</Label>
+            <Label htmlFor="quota" className="flex items-center gap-1.5">{t('storage.quota')} <InfoHint info={t('storage.quotaHint')} /></Label>
             <div className="mt-1.5 flex items-center gap-2">
               <Input
                 id="quota"
@@ -256,7 +256,6 @@ export function UserPage() {
           >
             {t('actions.save')}
           </Button>
-          <p className="w-full text-xs text-muted-foreground">{t('storage.quotaHint')}</p>
         </div>
       </section>
 

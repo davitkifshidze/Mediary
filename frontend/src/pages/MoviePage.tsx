@@ -31,6 +31,7 @@ import { ShareRecordDialog } from '@/components/chat/ShareRecordDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { IconAction } from '@/components/ui/icon-action'
+import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -43,6 +44,14 @@ import { useContentLang } from '@/lib/settings'
 import { errorMessage } from '@/lib/errors'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 
+
+/** Tasks §8.1 — ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
+const SOURCE_TONE: Record<string, InfoTone> = {
+  tmdb: 'info',
+  translation: 'warn',
+  manual: 'ok',
+  ge_movie: 'muted',
+}
 
 export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const { id } = useParams()
@@ -315,22 +324,24 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
       {/* ===== BODY ===== */}
       <div className={pageContainer('wide', 'space-y-8 pb-12')}>
         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="mb-3 font-mono text-sm uppercase tracking-wider text-muted-foreground">
+          {/* Tasks §8.1 — „საიდან მოვიდა ტექსტი" ცალკე ხაზი აღარაა: სათაურის
+              გვერდით i, **ფერი წყაროს მიხედვით** (TMDB — ლურჯი, ავტომატური
+              თარგმანი — ქარვისფერი, შენი — მწვანე, ძველი/უცნობი — ნაცრისფერი).
+              ხელით გადაწერა `manual`-ს ნიშნავს, ე.ი. ნიშანი არ ტყუის. */}
+          <h2 className="mb-3 flex items-center gap-1.5 font-mono text-sm uppercase tracking-wider text-muted-foreground">
             {t('detail.content')}
+            {description && descriptionSource && (
+              <InfoHint
+                tone={SOURCE_TONE[descriptionSource] ?? 'muted'}
+                info={t(`detail.source.${descriptionSource}`, {
+                  defaultValue: t('detail.sourceUnknown'),
+                })}
+              />
+            )}
           </h2>
           <p className="whitespace-pre-line leading-relaxed text-foreground/90">
             {description || t('detail.noDescription')}
           </p>
-
-          {/* Tasks §7 — „საიდან მოვიდა ტექსტი". ხელით გადაწერა `manual`-ს ნიშნავს,
-              ე.ი. ნიშანი აღარ ტყუის მას შემდეგ, რაც თვითონ შეასწორე. */}
-          {description && descriptionSource && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              {t(`detail.source.${descriptionSource}`, {
-                defaultValue: t('detail.sourceUnknown'),
-              })}
-            </p>
-          )}
         </section>
 
         {/* ===== ტრეილერი (Tasks 9) ===== */}
@@ -369,7 +380,10 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
         {parts.length > 1 && (
           <section>
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">{t('parts.title')}</h2>
+              <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+                {t('parts.title')}
+                <InfoHint info={t('parts.watchOrderNote')} />
+              </h2>
               {missingParts.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => enqueue(missingParts)}>
                   <Plus className="size-4" />
@@ -377,7 +391,6 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 </Button>
               )}
             </div>
-            <p className="mb-4 text-xs text-muted-foreground">{t('parts.watchOrderNote')}</p>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {parts.map((p, i) => {
                 const adding = isQueued(p.tmdb_id)

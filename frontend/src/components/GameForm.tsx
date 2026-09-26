@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { DurationInput } from '@/components/ui/duration-input'
 import { Label } from '@/components/ui/label'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -44,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    თამაშის ფორმა (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -357,7 +358,7 @@ export function GameForm({
       <form onSubmit={submit} className="mt-4 space-y-4">
         {/* ---------- სწრაფი შევსება ---------- */}
         <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="g-lookup">{t('games.lookup')}</Label>
+          <Label htmlFor="g-lookup" className="flex items-center gap-1.5">{t('games.lookup')} <InfoHint info={t('games.lookupHint')} /></Label>
           <div className="mt-1.5 flex gap-2">
             <Input
               id="g-lookup"
@@ -386,7 +387,6 @@ export function GameForm({
               {t('games.lookupSearch')}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t('games.lookupHint')}</p>
 
           {unavailable && (
             <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
@@ -580,7 +580,7 @@ export function GameForm({
 
         {/* ---------- HowLongToBeat (11.4 — ხელით) ---------- */}
         <div className={fields.shows('hltb') ? undefined : 'hidden'}>
-          <FieldLabel required={fields.required('hltb')} hint={fields.hint('hltb')}>
+          <FieldLabel required={fields.required('hltb')} hint={joinHints(fields.hint('hltb'), t('games.hltbHint'))}>
             {fields.label('hltb')}
           </FieldLabel>
           {/* ⚠️ §2.5 — სვეტი **წუთებშია** და ველი საერთო `DurationInput`-ია.
@@ -600,7 +600,6 @@ export function GameForm({
               </div>
             ))}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t('games.hltbHint')}</p>
         </div>
 
         {/* ⚠️ §5.1 — ქულების მთელი ბლოკი (Metacritic · OpenCritic ·

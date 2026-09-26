@@ -158,7 +158,7 @@ export function PublicGalleryTab({ username }: { username: string }) {
       )}
 
       {unlocking !== null && (
-        <ModalShell title={t('gallery.albumUnlock')} onClose={() => setUnlocking(null)}>
+        <ModalShell title={t('gallery.albumUnlock')} onClose={() => setUnlocking(null)} hint={t('gallery.albumUnlockHint')}>
           <form
             className="mt-4 space-y-4"
             onSubmit={(e) => {
@@ -166,7 +166,6 @@ export function PublicGalleryTab({ username }: { username: string }) {
               if (password) unlock.mutate(unlocking)
             }}
           >
-            <p className="text-sm text-muted-foreground">{t('gallery.albumUnlockHint')}</p>
             <div>
               <Label htmlFor="public-album-password">{t('gallery.albumPassword')}</Label>
               <Input

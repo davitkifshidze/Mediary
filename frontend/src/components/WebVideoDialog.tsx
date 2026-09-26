@@ -154,12 +154,8 @@ export function WebVideoDialog({
   }
 
   return (
-    <ModalShell title={title} onClose={onClose} wide fixedHeight>
+    <ModalShell title={title} onClose={onClose} wide fixedHeight hint={t('web.videosHint')}>
       <div className="mt-5 space-y-3">
-        {/* რა ინახება — ერთი წინადადება ზემოთ, რომ „შენახვა" ღილაკს ახსნა ჰქონდეს */}
-        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          {t('web.videosHint')}
-        </p>
 
         {/* ---------- 1. რას ვეძებთ ---------- */}
         <StepSection step={1} title={t('web.stepQuery')}>
@@ -201,7 +197,7 @@ export function WebVideoDialog({
         <StepSection
           step={3}
           title={t('web.stepResults')}
-          hint={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
+          status={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
         >
           {offline.length > 0 && (
             <p className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">

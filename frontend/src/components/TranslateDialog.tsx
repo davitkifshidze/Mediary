@@ -25,6 +25,7 @@ import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    თარგმანების დიალოგი (Tasks 7):
@@ -127,11 +128,13 @@ export function TranslateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Tasks §7.2 — შიგთავსი იტვირთება/იფილტრება, ამიტომ სიმაღლე ფიქსირებულია */}
       <DialogContent className="h-[88vh]">
-        <DialogTitle>{t('translate.title')}</DialogTitle>
+        <DialogTitle className="flex items-center gap-1.5">
+          {t('translate.title')}
+          <InfoHint info={t('translate.howItWorks')} />
+        </DialogTitle>
 
         <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
           {/* ---------- რითი ითარგმნება ---------- */}
-          <p className="text-sm text-muted-foreground">{t('translate.howItWorks')}</p>
 
           {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა */}
           {summaryQ.data && !summaryQ.data.translator_configured && (

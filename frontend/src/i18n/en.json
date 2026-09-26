@@ -483,8 +483,7 @@
       "ge_movie": "Description from ge.movie (an old import)",
       "tmdb": "Description from TMDB",
       "translation": "Description was translated automatically — check it and rewrite if needed",
-      "manual": "You wrote this description",
-      "synced": "Description from sync"
+      "manual": "You wrote this description"
     }
   },
   "actor": {

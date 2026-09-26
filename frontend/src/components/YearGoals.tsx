@@ -108,9 +108,8 @@ export function YearGoals() {
   }
 
   const editor = editing && (
-    <ModalShell title={t('goals.title', { year: data.year })} onClose={close}>
+    <ModalShell title={t('goals.title', { year: data.year })} onClose={close} hint={t('goals.editHint')}>
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t('goals.editHint')}</p>
 
         <div className="space-y-3">
           {available.map((key) => {

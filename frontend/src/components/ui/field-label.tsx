@@ -28,6 +28,12 @@ import { InfoHint } from '@/components/ui/info-hint'
    იყოს მთელ აპში, თორემ „წითელი" ორ სხვადასხვა რამეს ნიშნავს.
    ============================================================ */
 
+/** Tasks §8.3 — ველის აღწერა და მისი ინსტრუქცია ერთ თულთიპად (ცარიელები იყრება) */
+export function joinHints(...parts: (string | null | undefined)[]): string | undefined {
+  const text = parts.filter(Boolean).join(' ')
+  return text || undefined
+}
+
 export function FieldHint({
   hint,
   required,

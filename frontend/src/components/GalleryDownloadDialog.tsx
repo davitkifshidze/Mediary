@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **ჩამოტვირთვის ცენტრი (Tasks §8.2/§8.5).**
@@ -687,7 +688,7 @@ export function GalleryDownloadDialog({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="mb-2 block">{t('gallery.perActor')}</Label>
+                  <Label className="mb-2 flex items-center gap-1.5">{t('gallery.perActor')} <InfoHint info={t('gallery.perActorHint')} /></Label>
                   <NumberPick
                     allowNone
                     value={perActor}
@@ -695,10 +696,9 @@ export function GalleryDownloadDialog({
                     options={PER_ACTOR_OPTIONS}
                     max={GALLERY_MAX_PER_ACTOR}
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">{t('gallery.perActorHint')}</p>
                 </div>
                 <div>
-                  <Label className="mb-2 block">{t('gallery.castSize')}</Label>
+                  <Label className="mb-2 flex items-center gap-1.5">{t('gallery.castSize')} <InfoHint info={t('gallery.castSizeHint')} /></Label>
                   <Select value={castSize} onValueChange={(v) => setCastSize(v as GalleryCastSize)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -711,7 +711,6 @@ export function GalleryDownloadDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-xs text-muted-foreground">{t('gallery.castSizeHint')}</p>
                 </div>
 
                 {/* ჭერი მხოლოდ ჯგუფურ არჩევანს ეხება — ხელით მონიშნული სია თვითონაა ჭერი */}

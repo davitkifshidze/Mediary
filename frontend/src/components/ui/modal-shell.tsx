@@ -4,6 +4,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ArrowLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AutoHeight } from '@/components/ui/auto-height'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /**
  * კომპაქტური მოდალი (ჟანრები, ვიდეოს ფორმა …).
@@ -107,6 +108,7 @@ export function ModalShell({
   wide,
   size,
   fixedHeight,
+  hint,
   children,
 }: {
   title: string
@@ -130,6 +132,8 @@ export function ModalShell({
    * ჩატვირთვაზე ხტება. დანარჩენები სიმაღლეს **რბილად** იცვლიან (`AutoHeight`).
    */
   fixedHeight?: boolean
+  /** Tasks §8.3 — მოდალის შესავალი ახსნა: i სათაურის გვერდით და არა აბზაცი */
+  hint?: string
   children: ReactNode
 }) {
   const { t } = useTranslation()
@@ -182,18 +186,19 @@ export function ModalShell({
 
             <DialogPrimitive.Title
               className={cn(
-                'min-w-0 flex-1 truncate font-display text-lg font-semibold tracking-tight',
+                'min-w-0 truncate font-display text-lg font-semibold tracking-tight',
                 destructive && 'text-destructive',
               )}
             >
               {title}
             </DialogPrimitive.Title>
+            <InfoHint info={hint} />
 
             {/* ⚠️ დახურვა **წითელ ჰოვერზეა** — იმავე ენაზე, რითაც ფილტრების
                 „გასუფთავება" ლაპარაკობს: ეს ერთადერთი ღილაკია, რომელიც ეკრანს ხურავს. */}
             <DialogPrimitive.Close
               aria-label={t('actions.close')}
-              className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+              className="ml-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
             >
               <X className="size-4" />
             </DialogPrimitive.Close>

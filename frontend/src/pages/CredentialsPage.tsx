@@ -325,7 +325,9 @@ function ProviderCard({
 
       {credential.usage && (
         <div className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm">
-          <span className="font-medium">{t('credentials.usage')}: </span>
+          <span className="font-medium">
+            {t('credentials.usage')} <InfoHint info={t('credentials.usageHint')} />:{' '}
+          </span>
           <span className="tabular-nums">{credential.usage.used}</span>
           {credential.usage.limit ? <span className="text-muted-foreground"> / {credential.usage.limit}</span> : null}
           {credential.usage.remaining !== null && credential.usage.remaining !== undefined && (
@@ -333,7 +335,6 @@ function ProviderCard({
           )}
           {/* ⚠️ მრიცხველი **ჩვენია** და არა provider-ისა — ეს ცხადად ეწერება,
               თორემ რიცხვი ავტორიტეტულად წაიკითხებოდა */}
-          <p className="mt-1 text-xs text-muted-foreground">{t('credentials.usageHint')}</p>
         </div>
       )}
 

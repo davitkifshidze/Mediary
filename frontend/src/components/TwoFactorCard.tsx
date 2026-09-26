@@ -176,14 +176,13 @@ export function TwoFactorCard() {
   const passwordGate = (onDone: () => void, action: string) => (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="tfa-password">{t('twoFactor.passwordLabel')}</Label>
+        <Label htmlFor="tfa-password" className="flex items-center gap-1.5">{t('twoFactor.passwordLabel')} <InfoHint info={t('twoFactor.passwordHint')} /></Label>
         <PasswordInput
           id="tfa-password"
           autoComplete="current-password"
           value={password}
           onChange={setPassword}
         />
-        <p className="mt-1 text-xs text-muted-foreground">{t('twoFactor.passwordHint')}</p>
       </div>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -233,8 +232,10 @@ export function TwoFactorCard() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{t('twoFactor.manualTitle')}</p>
-                  <p className="mb-2 text-xs text-muted-foreground">{t('twoFactor.manualHint')}</p>
+                  <p className="flex items-center gap-1.5 text-sm font-medium">
+                    {t('twoFactor.manualTitle')}
+                    <InfoHint info={t('twoFactor.manualHint')} />
+                  </p>
                   <code className="block break-all rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs">
                     {secret.secret}
                   </code>

@@ -76,7 +76,7 @@ import { IconAction } from '@/components/ui/icon-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -881,7 +881,7 @@ function VideoForm({
             სწორედ ამიტომ ითხოვს ჩაკეტვის ცხად მოხსნას (§4). ⚠️ `shows()`-ს
             მაინც ეკითხება, თორემ მოხსნის შემდეგ ჩამრთველი ტყუილი იქნებოდა. */}
         <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="v-url" required>{fields.label('url')}</FieldLabel>
+          <FieldLabel hint={t('videos.urlHint')} htmlFor="v-url" required>{fields.label('url')}</FieldLabel>
           <Input
             id="v-url"
             autoFocus
@@ -895,7 +895,6 @@ function VideoForm({
             }}
           />
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
-          <p className="mt-1 text-xs text-muted-foreground">{t('videos.urlHint')}</p>
 
           {/* ბმულიდან წამოღებული მონაცემი (K2) */}
           {metaLoading && (
@@ -1066,7 +1065,7 @@ function VideoForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className={fields.shows('tags') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-tags" required={fields.required('tags')} hint={fields.hint('tags')}>
+            <FieldLabel htmlFor="v-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
               {fields.label('tags')}
             </FieldLabel>
             {/* multi-select — იგივე ბიბლიოთეკა, რაც ჟანრებზე (L8) */}
@@ -1076,7 +1075,6 @@ function VideoForm({
               value={form.tags}
               onChange={(tags) => setForm((f) => ({ ...f, tags }))}
             />
-            <p className="mt-1 text-xs text-muted-foreground">{t('videos.tagsDedupeHint')}</p>
           </div>
 
           {/* 5.4 — thumbnail იმავე კომპონენტით, რითიც ფილმის პოსტერი */}

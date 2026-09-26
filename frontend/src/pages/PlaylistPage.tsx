@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    ერთი პლეილისტი — სიმღერების რიგი.
@@ -160,7 +161,7 @@ export function PlaylistPage() {
       {/* ---------- სიმღერების დამატება ---------- */}
       {adding && (
         <section className="mb-4 rounded-xl border border-border bg-card p-5">
-          <Label className="mb-2 block">{t('playlists.pickSongs')}</Label>
+          <Label className="mb-2 flex items-center gap-1.5">{t('playlists.pickSongs')} <InfoHint info={t('playlists.addHint')} /></Label>
           <IdMultiSelect
             items={available.map((s) => ({
               id: s.id,
@@ -170,7 +171,6 @@ export function PlaylistPage() {
             onChange={setToAdd}
             placeholder={poolQ.isLoading ? t('api.loading') : t('playlists.pickSongs')}
           />
-          <p className="mt-2 text-xs text-muted-foreground">{t('playlists.addHint')}</p>
           <div className="mt-3 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setAdding(false)}>
               {t('actions.cancel')}

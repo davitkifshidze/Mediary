@@ -469,8 +469,7 @@ function ModuleHolders({
   )
 
   return (
-    <ModalShell title={t('admin.moduleAssign')} onClose={onClose} wide>
-      <p className="mt-2 text-xs text-muted-foreground">{t('admin.userModulesHint')}</p>
+    <ModalShell title={t('admin.moduleAssign')} onClose={onClose} wide hint={t('admin.userModulesHint')}>
 
       <div className="mt-4">
         <DataTable

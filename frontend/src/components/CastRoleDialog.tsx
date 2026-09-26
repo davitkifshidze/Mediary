@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    როლის და რიგის შესწორება (ეტაპი 1, 2026-09-13).
@@ -73,7 +74,7 @@ export function CastRoleDialog({
           />
         </div>
         <div>
-          <Label htmlFor="cast-order">{t('cast.billingOrder')}</Label>
+          <Label htmlFor="cast-order" className="flex items-center gap-1.5">{t('cast.billingOrder')} <InfoHint info={t('cast.billingOrderHint')} /></Label>
           <Input
             id="cast-order"
             type="number"
@@ -82,7 +83,6 @@ export function CastRoleDialog({
             value={order}
             onChange={(e) => setOrder(e.target.value)}
           />
-          <p className="mt-1 text-xs text-muted-foreground">{t('cast.billingOrderHint')}</p>
         </div>
       </div>
 

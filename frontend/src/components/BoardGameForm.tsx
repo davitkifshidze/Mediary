@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    ბორდგეიმის ფორმა (Tasks §14).
@@ -299,7 +300,7 @@ export function BoardGameForm({
       <form onSubmit={submit} className="mt-4 space-y-4">
         {/* ---------- სწრაფი შევსება ---------- */}
         <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="bg-lookup">{t('boardGames.lookup')}</Label>
+          <Label htmlFor="bg-lookup" className="flex items-center gap-1.5">{t('boardGames.lookup')} <InfoHint info={t('boardGames.lookupHint')} /></Label>
           <div className="mt-1.5 flex gap-2">
             <Input
               id="bg-lookup"
@@ -328,7 +329,6 @@ export function BoardGameForm({
               {t('boardGames.lookupSearch')}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t('boardGames.lookupHint')}</p>
 
           {unavailable && (
             <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
