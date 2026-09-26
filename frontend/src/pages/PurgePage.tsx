@@ -18,8 +18,7 @@ import {
   type PurgeTargetWithStatus,
   type PurgeTargetWithType,
 } from '@/api/account'
-import { fetchGenres, fetchMediaTags } from '@/api/media'
-import type { MediaType } from '@/lib/media'
+import { fetchGenres } from '@/api/media'
 import { fetchVideos, fetchVideoTypes } from '@/api/videos'
 import { fetchSongGenres, fetchSongs } from '@/api/songs'
 import { fetchBookGenres, fetchBooks } from '@/api/books'
@@ -168,11 +167,6 @@ export function PurgePage() {
   const isBookmark = domain === 'bookmark'
   const isCourse = domain === 'course'
   const isPlace = domain === 'place'
-  /* FEAT-18 — მედია-დომენებსაც აქვს ტეგები. ⚠️ **სია ცალკე endpoint-იდან**
-     (`/media/tags`) და არა `all: true`-ით: ფილმების ბიბლიოთეკა ხუთასიც
-     შეიძლება იყოს, და მთელი სიის ჩამოტვირთვა მხოლოდ ტეგების შესაგროვებლად
-     ზუსტად ის არის, რის წინააღმდეგაც პაგინაცია დაიწერა. */
-  const isMedia = domain === 'movie' || domain === 'series' || domain === 'anime'
   /** per-user ლექსიკონიანი დომენი (იხ. `DICTIONARIES`) vs გლობალური `genres` */
   const dict = dictionaryFor(domain)
   const byDictionary = !!dict
@@ -301,11 +295,6 @@ export function PurgePage() {
     queryFn: () => fetchBookmarks({ all: true }).then((p) => p.items),
     enabled: isBookmark,
   })
-  const mediaTagsQ = useQuery({
-    queryKey: ['media-tags', domain],
-    queryFn: () => fetchMediaTags(domain as MediaType),
-    enabled: isMedia,
-  })
   const knownTags = useMemo(
     () =>
       [
@@ -317,10 +306,9 @@ export function PurgePage() {
           ...(bookmarksQ.data ?? []).flatMap((b) => b.tags ?? []),
           ...(coursesQ.data ?? []).flatMap((c) => c.tags ?? []),
           ...(placesQ.data ?? []).flatMap((p) => p.tags ?? []),
-          ...(mediaTagsQ.data ?? []).map((row) => row.tag),
         ]),
       ].sort((a, b) => a.localeCompare(b)),
-    [videosQ.data, songsQ.data, booksQ.data, notesQ.data, bookmarksQ.data, coursesQ.data, placesQ.data, mediaTagsQ.data],
+    [videosQ.data, songsQ.data, booksQ.data, notesQ.data, bookmarksQ.data, coursesQ.data, placesQ.data],
   )
 
   const planQ = useQuery({

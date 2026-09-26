@@ -6,7 +6,6 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
-use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\HasWatchLog;
 use App\Services\Storage\StorageMeter;
@@ -29,9 +28,6 @@ class Movie extends Model
 
     /** Tasks §6.4 — სტატუსი per-user ლექსიკონია (`statuses`), enum-ი აღარაა */
     use HasStatus;
-
-    /** FEAT-18 — პირადი ტეგები (`Video::normalizeTags()`-ის ერთი ქცევა) */
-    use HasTags;
 
     /**
      * ⚠️ **კალათა (FEAT-11)** — `destroy()` `moveToTrash()`-ს იძახის და არა
@@ -59,8 +55,6 @@ class Movie extends Model
         'is_favorite' => 'boolean',
         'watched_at' => 'datetime',
         'sort_order' => 'integer',
-        // FEAT-18 — პირადი ტეგები; ჟანრს არ ცვლის, მეორე ღერძია
-        'tags' => 'array',
     ];
 
     /**
