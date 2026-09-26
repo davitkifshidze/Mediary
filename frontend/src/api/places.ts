@@ -129,14 +129,15 @@ function toFormData(input: PlaceInput): FormData {
   fd.append('description', input.description ?? '')
   /* ⚠️ `!= null` და არა truthy: **ნული ნამდვილი კოორდინატია** (ეკვატორი,
      გრინვიჩი) და `if (input.lat)` მას ჩუმად გადააგდებდა. */
-  if (input.lat != null) fd.append('lat', String(input.lat))
-  if (input.lng != null) fd.append('lng', String(input.lng))
+  if (input.lat !== undefined) fd.append('lat', input.lat == null ? '' : String(input.lat))
+  if (input.lng !== undefined) fd.append('lng', input.lng == null ? '' : String(input.lng))
   if (input.osm_id) fd.append('osm_id', input.osm_id)
   if (input.osm_type) fd.append('osm_type', input.osm_type)
   if (input.category_id != null) fd.append('category_id', String(input.category_id))
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  if (input.rating != null) fd.append('rating', String(input.rating))
+  // Tasks §4.8 — გასუფთავებული შეფასება (`null`) ცარიელად იგზავნება, თორემ უკან ბრუნდებოდა
+  if (input.rating !== undefined) fd.append('rating', input.rating == null ? '' : String(input.rating))
   if (input.visited_at) fd.append('visited_at', input.visited_at)
   /* ⚠️ **ცარიელი სიაც იგზავნება**: backend `has('tags')`-ზე დგას, ე.ი.
      გამოტოვებული გასაღები „არ შეცვალო"-ს ნიშნავს და ბოლო ტეგის მოხსნა

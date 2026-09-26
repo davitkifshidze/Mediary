@@ -491,11 +491,7 @@ export function UserPage() {
         </h2>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            {t('admin.deleteUserHint', {
-              name: user.display_name,
-              movies: content.movies,
-              series: content.series,
-            })}
+            {t('admin.deleteUserHint', { name: user.display_name })}
           </p>
           <Button
             variant="destructive"
@@ -503,11 +499,7 @@ export function UserPage() {
             onClick={async () => {
               const ok = await confirm({
                 title: t('admin.deleteUser'),
-                description: t('admin.deleteUserHint', {
-                  name: user.display_name,
-                  movies: content.movies,
-                  series: content.series,
-                }),
+                description: t('admin.deleteUserHint', { name: user.display_name }),
                 variant: 'destructive',
               })
               if (ok) remove.mutate()

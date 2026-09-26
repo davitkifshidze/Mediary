@@ -176,7 +176,7 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
             size="sm"
             disabled={resync.isPending || actor.has_tmdb === false}
             onClick={() => resync.mutate()}
-            title={actor.has_tmdb === false ? t('gallery.noTmdbId') : undefined}
+            title={actor.has_tmdb === false ? t('actor.noTmdbId') : undefined}
           >
             {resync.isPending ? (
               <Loader2 className="size-4 animate-spin" />

@@ -116,12 +116,13 @@ function toFormData(input: CourseInput): FormData {
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
   if (input.image_url) fd.append('image_url', input.image_url)
-  if (input.lessons_total != null) fd.append('lessons_total', String(input.lessons_total))
-  if (input.lessons_done != null) fd.append('lessons_done', String(input.lessons_done))
-  if (input.minutes != null) fd.append('minutes', String(input.minutes))
-  if (input.rating != null) fd.append('rating', String(input.rating))
-  if (input.started_at) fd.append('started_at', input.started_at)
-  if (input.finished_at) fd.append('finished_at', input.finished_at)
+  /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება, მხოლოდ
+     `undefined` („არ შეეხო“) რჩება გამოტოვებული — თორემ გასუფთავებული ველი
+     შენახვის შემდეგ ძველ მნიშვნელობაზე ბრუნდებოდა. */
+  for (const key of ['lessons_total', 'lessons_done', 'minutes', 'rating', 'started_at', 'finished_at'] as const) {
+    const value = input[key]
+    if (value !== undefined) fd.append(key, value == null ? '' : String(value))
+  }
   /* ⚠️ **ცარიელი სიაც იგზავნება**: backend `has('tags')`-ზე დგას, ე.ი.
      გამოტოვებული გასაღები „არ შეცვალო"-ს ნიშნავს და ბოლო ტეგის მოხსნა
      შეუძლებელი იქნებოდა. */

@@ -12,6 +12,7 @@ import {
   type SyncPlanFilters,
 } from '@/api/media'
 import { MEDIA_NAV_KEY, emptyMediaIds, type MediaType } from '@/lib/media'
+import { useModules } from '@/lib/modules'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -38,7 +39,17 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const { enqueueSync, isBusy } = useQueue()
 
   // --- სკოუპი ---
-  const [types, setTypes] = useState<MediaType[]>(['movie', 'series'])
+  /* Tasks §4.2 — დომენები ჩართული მედია-მოდულებიდან მოდის. ხელით ჩაწერილი
+     `['movie', 'series']` ანიმეს საერთოდ არ სთავაზობდა, გამორთულ მოდულს კი
+     სთავაზობდა. `null` = „ყველა ხელმისაწვდომი“ — მოდულები შეიძლება დიალოგის
+     შემდეგ ჩაიტვირთოს და საწყისი მნიშვნელობა ცარიელი არ უნდა გაიყინოს. */
+  const { mediaModules } = useModules()
+  const domains = useMemo(() => mediaModules.map((m) => m.type), [mediaModules])
+  const [picked, setPicked] = useState<MediaType[] | null>(null)
+  const types = useMemo(
+    () => (picked ?? domains).filter((d) => domains.includes(d)),
+    [picked, domains],
+  )
   const lang = useContentLang(i18n.language)
   // §6.4 — სტატუსების სია არჩეულ დომენებს მიჰყვება
   const statuses = useMergedStatuses(types)
@@ -77,7 +88,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   // კონკრეტული ჩანაწერების ასარჩევად სრული სიები
 
   const toggleType = (v: MediaType) =>
-    setTypes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]))
+    setPicked(types.includes(v) ? types.filter((x) => x !== v) : [...types, v])
   const toggleField = (f: SyncField) =>
     setFields((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]))
 
@@ -105,7 +116,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <div>
             <Label className="mb-2 block">{t('sync.domains')}</Label>
             <div className="flex flex-wrap gap-4">
-              {(['movie', 'series'] as MediaType[]).map((d) => (
+              {domains.map((d) => (
                 <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
                   <Checkbox checked={types.includes(d)} onCheckedChange={() => toggleType(d)} />
                   {t(MEDIA_NAV_KEY[d])}

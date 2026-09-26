@@ -250,7 +250,7 @@
     "disabled": "Disabled",
     "byDefault": "On by default",
     "deleteUser": "Delete user",
-    "deleteUserHint": "{{name}} and all of their records ({{movies}} movies, {{series}} series) will be deleted permanently.",
+    "deleteUserHint": "{{name}} and all of their records — in every module, files included — will be deleted permanently.",
     "usersCount": "{{count}} users",
     "colName": "Name",
     "colLastName": "Last name",
@@ -498,7 +498,8 @@
     "detailsUpdated": "Details updated",
     "detailsUnavailable": "The source returned nothing",
     "noDetails": "No biography fetched yet — press “Refresh from TMDB”.",
-    "homepage": "Official site"
+    "homepage": "Official site",
+    "noTmdbId": "This actor has no TMDB id — there is nothing to refresh from"
   },
   "franchise": {
     "continue": "Continue franchise"
@@ -666,7 +667,7 @@
     "deleteRecord": "Delete movie",
     "deleteRecordSeries": "Delete series",
     "deleteRecordAnime": "Delete anime",
-    "deleteRecordDesc": "“{{name}}” will be permanently removed from your collection. Are you sure?"
+    "deleteRecordDesc": "“{{name}}” will move to the trash — you can restore it from there. Are you sure?"
   },
   "genres": {
     "manage": "Manage genres",
@@ -888,7 +889,8 @@
       "image": "Image",
       "video": "Video",
       "doc": "Document",
-      "field": "Extra field"
+      "field": "Extra field",
+      "backup": "Database backup"
     },
     "chat": "Chat",
     "privateFile": "On the private disk — not reachable by URL",
@@ -907,7 +909,8 @@
     "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted for good: avatar, posters, main photos, other photos and documents. The records stay.",
     "orphansWhy": "Where they come from: a record or attachment was deleted straight from the database (a script, a migration) and the copy stayed on disk · an upload was interrupted — the file landed, the row never did · the database was restored from a backup that is older than the files on disk.",
     "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only.",
-    "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block."
+    "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block.",
+    "backup": "Database backup"
   },
   "errors": {
     "storage_quota_exceeded": "Out of space: {{needed}} needed, {{remaining}} left (quota {{quota}}).",
@@ -2101,7 +2104,10 @@
     "franchiseAddHint": "Find it on RAWG and add it — the new game lands in this franchise right away.",
     "franchiseAddManual": "Add manually: “{{name}}”",
     "minutesShort": "min",
-    "notesEmpty": "No notes yet."
+    "notesEmpty": "No notes yet.",
+    "franchiseGenre": "Genre of the new part",
+    "franchiseGenreAuto": "RAWG’s genre, if it is in your list",
+    "franchisePickGenre": "Pick a genre — RAWG’s genre is not in your list"
   },
   "notes": {
     "title": "Notes",
@@ -2385,7 +2391,7 @@
     "saved": "Saved",
     "deleted": "Bookmark deleted",
     "deleteTitle": "Delete bookmark?",
-    "deleteHint": "“{{name}}” will be deleted permanently.",
+    "deleteHint": "“{{name}}” will move to the trash — you can restore it from there.",
     "sort": {
       "newest": "Newest first",
       "oldest": "Oldest first",
@@ -2655,7 +2661,9 @@
     "pagesLabel": "Pages",
     "pagesHint": "Up to {{max}}.",
     "pagesOnlySerper": "Only Google Images (Serper) has pages.",
-    "pagesCostWarn": "Each page costs one credit."
+    "pagesCostWarn": "Each page costs one credit.",
+    "importQuotaStopped": "Storage ran out — {{count}} photos were not downloaded",
+    "importProgress": "Downloading {{done}} / {{total}}"
   },
   "empty": {
     "filteredHint": "A filter or the search is cutting the list — clear it and the records come back.",

@@ -317,17 +317,39 @@ class RegistryConsistencyTest extends TestCase
      */
     public function test_the_spa_public_domain_list_mirrors_the_backend(): void
     {
-        $source = (string) file_get_contents(base_path('../frontend/src/api/publicProfile.ts'));
+        $this->assertSame(PublicDomain::keys(), $this->tsConstList('api/publicProfile.ts', 'PUBLIC_DOMAINS'));
+    }
 
-        $this->assertSame(1, preg_match('/export const PUBLIC_DOMAINS = \[(.*?)\] as const/s', $source, $m));
-        // კომენტარები ამოვიღოთ — მათში ბრჭყალებიანი სიტყვები ცრუ დომენად წაიკითხებოდა
+    /**
+     * ⚠️ **გალერეის მშობლების ორი სარკე SPA-ში** (Tasks §4.10) — §2-ის ტყუპი:
+     * `GALLERY_PARENTS`-ს ადგილი აკლდა, ამიტომ „ბიბლიოთეკის" ჩანართი არ
+     * ჩანდა და ფოტოს ადგილზე ვერ გადაიტანდი; `SERP_IMPORT_TARGETS`-ს —
+     * იგივე, ვებიდან ძებნის დიალოგისთვის.
+     */
+    public function test_the_spa_gallery_parent_lists_mirror_the_backend(): void
+    {
+        $this->assertSame(GalleryParent::recordKeys(), $this->tsConstList('api/gallery.ts', 'GALLERY_PARENTS'));
+        $this->assertSame(GalleryParent::keys(), $this->tsConstList('api/web.ts', 'SERP_IMPORT_TARGETS'));
+    }
+
+    /**
+     * SPA-ის `export const X = [...] as const` სიის წაკითხვა წყაროდან.
+     *
+     * @return list<string>
+     */
+    private function tsConstList(string $file, string $const): array
+    {
+        $source = (string) file_get_contents(base_path('../frontend/src/'.$file));
+
+        $this->assertSame(1, preg_match('/export const '.$const.' = \[(.*?)\] as const/s', $source, $m), "{$const} ვერ მოიძებნა");
+        // კომენტარები ამოვიღოთ — მათში ბრჭყალებიანი სიტყვები ცრუ გასაღებად წაიკითხებოდა
         $body = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], '', $m[1]);
         preg_match_all("/'([a-z_]+)'/", $body, $keys);
 
         // ⚠️ ყალბი სიმწვანის წინააღმდეგ: ცარიელი ამონაკითხი „ორივე ცარიელია"-ს ჰგავს
-        $this->assertContains('movie', $keys[1]);
+        $this->assertNotEmpty($keys[1], "{$const} ცარიელად წაიკითხა");
 
-        $this->assertSame(PublicDomain::keys(), $keys[1]);
+        return $keys[1];
     }
 
     /**

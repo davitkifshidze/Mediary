@@ -17,6 +17,8 @@ import {
   WEB_MAX_PAGES,
   WEB_MAX_PHOTOS,
   importWebImages,
+  notImported,
+  WEB_IMPORT_CHUNK,
   searchWebImages,
   webSearchStatus,
   type SerpImage,
@@ -193,26 +195,36 @@ export function WebImageDialog({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  /** Tasks §4.3 — ნაწილებად შემოტანის ერთი პროგრესი (`null` = არ მიმდინარეობს) */
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+
   const importing = useMutation({
     mutationFn: () =>
-      importWebImages({
-        target,
-        id,
-        distribute: distribute.length ? distribute : undefined,
-        images: items
-          .filter((i) => picked.has(keyOf(i)))
-          .map((image) => {
-            const manual = overrides[keyOf(image)]
-            return manual && manual !== AUTO
-              ? { ...image, target_id: Number(manual) }
-              : image
-          }),
-      }),
+      importWebImages(
+        {
+          target,
+          id,
+          distribute: distribute.length ? distribute : undefined,
+          images: items
+            .filter((i) => picked.has(keyOf(i)))
+            .map((image) => {
+              const manual = overrides[keyOf(image)]
+              return manual && manual !== AUTO
+                ? { ...image, target_id: Number(manual) }
+                : image
+            }),
+        },
+        (done, total) => setProgress({ done, total }),
+      ),
+    onSettled: () => setProgress(null),
     onSuccess: (res) => {
       setResult(res)
+      const missed = notImported(res, picked.size)
       toast({
         title: t('web.imported', { count: res.added }),
         description: [
+          // ⚠️ კვოტამ შუაში გააჩერა — რამდენი შემოვიდა და რამდენი არა, ორივე ითქვას
+          res.quota_exceeded && missed > 0 ? t('web.importQuotaStopped', { count: missed }) : null,
           // §8.4 — სად წავიდა: „ჰელენა 3 · ფილმი 7"
           assignedLine(res.assigned, people, context?.attachesTo, t),
           res.thumbnails > 0 ? t('web.importedThumbnails', { count: res.thumbnails }) : null,
@@ -222,7 +234,7 @@ export function WebImageDialog({
         ]
           .filter(Boolean)
           .join(' · '),
-        variant: res.added > 0 ? 'success' : 'info',
+        variant: res.quota_exceeded ? 'error' : res.added > 0 ? 'success' : 'info',
       })
       setPicked(new Set())
       onImported?.()
@@ -640,7 +652,9 @@ export function WebImageDialog({
           disabled={picked.size === 0 || importing.isPending}
         >
           {importing.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          {t('web.download', { count: picked.size })}
+          {progress && progress.total > WEB_IMPORT_CHUNK
+            ? t('web.importProgress', { done: progress.done, total: progress.total })
+            : t('web.download', { count: picked.size })}
         </Button>
       </div>
     </ModalShell>

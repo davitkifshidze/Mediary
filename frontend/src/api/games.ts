@@ -166,9 +166,12 @@ function toFormData(input: GameInput): FormData {
     'hltb_main', 'hltb_main_extra', 'hltb_complete',
     'metacritic', 'opencritic', 'users_score', 'rating', 'size_gb', 'rawg_id', 'igdb_id',
   ]
+  /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება და მხოლოდ
+     `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე გასუფთავებული ქულა
+     საერთოდ არ იგზავნებოდა და შენახვის შემდეგ ძველი უკან ბრუნდებოდა. */
   numbers.forEach((key) => {
     const value = input[key]
-    if (value != null) fd.append(key, String(value))
+    if (value !== undefined) fd.append(key, value == null ? '' : String(value))
   })
 
   if (input.status) fd.append('status', input.status)
@@ -181,6 +184,15 @@ function toFormData(input: GameInput): FormData {
   if (input.genre_ids) {
     if (input.genre_ids.length === 0) fd.append('genre_ids', '')
     input.genre_ids.forEach((id) => fd.append('genre_ids[]', String(id)))
+  }
+  /* ⚠️ ცარიელი სიაც იგზავნება (backend `array_key_exists`-ზე დგას) — თორემ
+     ბოლო ბმულის, DLC-ის ან ენის წაშლა შენახვის შემდეგ უკან ბრუნდებოდა */
+  if (input.links !== undefined && !input.links.length) fd.append('links', '')
+  if (input.dlcs !== undefined && !input.dlcs.length) fd.append('dlcs', '')
+  if (input.languages !== undefined) {
+    ;(['interface', 'audio', 'subtitles'] as const).forEach((key) => {
+      if (!(input.languages?.[key] ?? []).length) fd.append(`languages[${key}]`, '')
+    })
   }
   ;(input.links ?? []).forEach((link, i) => {
     fd.append(`links[${i}][url]`, link.url)

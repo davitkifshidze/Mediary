@@ -12,7 +12,7 @@ import {
   Square,
   Trash2,
 } from 'lucide-react'
-import type { UploadedFile } from '@/api/account'
+import { STORAGE_PSEUDO_MODULES, type UploadedFile } from '@/api/account'
 import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { moduleName, useModules } from '@/lib/modules'
@@ -45,7 +45,7 @@ type View = 'grid' | 'list'
 /** ⚠️ `primary` — ჩანაწერის მთავარი ფოტო **ყველა** მოდულში (Tasks §9.4). ადრე ის
  *  `cover`-ად და `thumbnail`-ად ცალ-ცალკე მოდიოდა, ე.ი. „მთავარი ფოტოს“ ორი ბარათი
  *  დაიხატებოდა; `poster` ცალკე რჩება — ფილმის, სერიალისა და ანიმეს ტერმინია. */
-const KINDS = ['avatar', 'poster', 'primary', 'image', 'video', 'doc', 'field'] as const
+const KINDS = ['avatar', 'poster', 'primary', 'image', 'video', 'doc', 'field', 'backup'] as const
 
 /**
  * **Tasks §3 — ჩეკბოქსის დაჭერა მწკრივამდე არ უნდა ავიდეს.**
@@ -102,7 +102,7 @@ export function StorageLibrary({
 
   /** მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან (§16.4) */
   const label = (key: string) =>
-    key === 'account' || key === 'chat'
+    STORAGE_PSEUDO_MODULES.includes(key)
       ? t(`storage.${key}`)
       : (() => {
           const m = all.find((mod) => mod.key === key)

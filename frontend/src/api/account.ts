@@ -672,8 +672,16 @@ export async function fetchUsers(): Promise<User[]> {
  * `kind`/`owner_type` აქაც უნდა ჩაიწეროს, თორემ `storage.fileKind.*`
  * ლეიბლი და წაშლის გზა ჩუმად ამოვარდება (ასე გამოჩნდა `field` 2026-09-06-ზე).
  */
+/**
+ * **ფსევდო-მოდულები მეხსიერების ჭრილში** — `modules` ცხრილში რიგი არ აქვთ,
+ * ამიტომ სახელი `storage.<key>`-იდან მოდის. ⚠️ Tasks §4.11: `backup` ამ სიას
+ * აკლდა და ბაზის ასლი ლათინური „backup“-ით იხატებოდა; სია ორ ფაილში
+ * ცალ-ცალკე ეწერა (`StorageCard`, `StorageLibrary`).
+ */
+export const STORAGE_PSEUDO_MODULES: readonly string[] = ['account', 'chat', 'backup']
+
 export interface UploadedFile {
-  kind: 'avatar' | 'poster' | 'primary' | 'image' | 'video' | 'doc' | 'field'
+  kind: 'avatar' | 'poster' | 'primary' | 'image' | 'video' | 'doc' | 'field' | 'backup'
   /** მოდულის `key` (ან `account` ავატარზე, `chat` მიმაგრებაზე) */
   module: string
   /** ჩანაწერი, რომელსაც ფაილი ჰკიდია — წაშლა ამით მიდის სწორ გზაზე */

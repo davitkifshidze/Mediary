@@ -207,6 +207,8 @@ export const SERP_IMPORT_TARGETS = [
   'song',
   'book',
   'game',
+  // Tasks §4.10 — ადგილი `GalleryParent`-ში FEAT-26-იდან დგას
+  'place',
 ] as const
 export type SerpImportTarget = (typeof SERP_IMPORT_TARGETS)[number]
 
@@ -226,6 +228,9 @@ export interface SerpImportResult {
   assigned?: Record<string, number>
 }
 
+/** backend-ის `images` → `max:50` — ერთ მოთხოვნაზე მეტს სერვერი 422-ით უარყოფს */
+export const WEB_IMPORT_CHUNK = 50
+
 /**
  * მონიშნული ფოტოების ჩამოტვირთვა და მიმაგრება.
  * ⚠️ **`POST`-ია, რადგან მართლა იქმნება ჩანაწერი** (ძებნა კი `GET` რჩება),
@@ -243,7 +248,52 @@ export async function importWebImages(body: {
    */
   distribute?: number[]
   images: (SerpImage & { target_id?: number | null })[]
-}): Promise<SerpImportResult> {
-  const { data } = await api.post<SerpImportResult>('/web/import', body)
-  return data
+}, onProgress?: (done: number, total: number) => void): Promise<SerpImportResult> {
+  /* Tasks §4.3 — სერვერი ერთ მოთხოვნაზე მაქსიმუმ `WEB_IMPORT_CHUNK` ფოტოს იღებს,
+     ძებნა კი ნაგულისხმევად 100-ს აბრუნებს ⇒ „ყველას მონიშვნა“ 422 იყო. ახლა
+     ნაწილებად მიდის, **ერთი პროგრესით** და ერთი შეჯამებული შედეგით.
+     ⚠️ ნაწილი, რომელიც კვოტამ გააჩერა (413), უკვე შემოსულს არ აუქმებს:
+     მისი პასუხიც შეჯამებაში ჯდება, დანარჩენი ნაწილები კი აღარ იგზავნება. */
+  const total = body.images.length
+  const sum: SerpImportResult = {
+    added: 0, skipped: 0, failed: 0, thumbnails: 0, bytes: 0, quota_exceeded: false, assigned: {},
+  }
+  let sent = 0
+
+  onProgress?.(0, total)
+
+  for (let i = 0; i < total; i += WEB_IMPORT_CHUNK) {
+    const images = body.images.slice(i, i + WEB_IMPORT_CHUNK)
+    let part: SerpImportResult
+
+    try {
+      part = (await api.post<SerpImportResult>('/web/import', { ...body, images })).data
+    } catch (e) {
+      const res = (e as { response?: { status?: number; data?: SerpImportResult } }).response
+      // კვოტა — პასუხი შედეგს შეიცავს; სხვა შეცდომა პირველ ნაწილზე ჩვეულებრივ ვარდება
+      if (res?.status === 413 && res.data) part = res.data
+      else if (sent === 0) throw e
+      else break
+    }
+
+    for (const k of ['added', 'skipped', 'failed', 'thumbnails', 'bytes'] as const) sum[k] += part[k]
+    for (const [key, n] of Object.entries(part.assigned ?? {})) {
+      sum.assigned![key] = (sum.assigned![key] ?? 0) + n
+    }
+
+    sent += images.length
+    onProgress?.(sent, total)
+
+    if (part.quota_exceeded) {
+      sum.quota_exceeded = true
+      break
+    }
+  }
+
+  return sum
+}
+
+/** რამდენი ფოტო დარჩა ჩამოუტვირთავი (კვოტამ ან შეცდომამ გააჩერა) */
+export function notImported(res: SerpImportResult, requested: number): number {
+  return Math.max(0, requested - res.added - res.skipped - res.failed)
 }

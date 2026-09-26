@@ -174,11 +174,7 @@ export function UsersPage() {
                   onClick={async () => {
                     const ok = await confirm({
                       title: t('admin.deleteUser'),
-                      description: t('admin.deleteUserHint', {
-                        name: u.display_name,
-                        movies: u.movies_count ?? 0,
-                        series: u.series_count ?? 0,
-                      }),
+                      description: t('admin.deleteUserHint', { name: u.display_name }),
                       variant: 'destructive',
                     })
                     if (ok) remove.mutate(u.id)

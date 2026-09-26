@@ -206,7 +206,10 @@ export function readGalleryDefaults(raw?: Record<string, unknown> | null): Galle
 /* ---------- ფოტო ---------- */
 
 /** ვისაც ფოტო/ვიდეო ჰკიდია — backend-ის `GalleryParent`-ის ასლი */
-export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'song', 'book', 'game'] as const
+/* Tasks §4.10 — `place` აკლდა (FEAT-26-იდან backend-ში დგას), ამიტომ ადგილის
+   ჩანართი არ ჩანდა და ფოტოს მასზე ვერ გადაიტანდი. ⚠️ სია
+   `RegistryConsistencyTest`-ით `GalleryParent::recordKeys()`-ს ედარება. */
+export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'song', 'book', 'game', 'place'] as const
 export type GalleryParentKind = (typeof GALLERY_PARENTS)[number]
 /** ბადეში მშობელი ან ჩანაწერია, ან მსახიობი */
 export type GalleryOwnerKind = GalleryParentKind | 'actor'

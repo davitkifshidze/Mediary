@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Check, Loader2, SquarePen, Target } from 'lucide-react'
@@ -45,6 +45,7 @@ export function YearGoals() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
   const { settings, set, save } = useSettings()
+  const snapshot = useRef(settings.goals)
   const { enabled: modules } = useModules()
   const { toast } = useToast()
 
@@ -82,6 +83,19 @@ export function YearGoals() {
     set('goals', next)
   }
 
+  /* Tasks §4.5 — ⚠️ დიალოგი ცვლილებას საერთო სამუშაო ასლში წერს, ამიტომ
+     შეუნახავად დახურვაზე **მხოლოდ მიზნები** უნდა დაბრუნდეს (მთლიანი
+     `revert()` სხვა შეუნახავ პარამეტრსაც წაშლიდა). იგივე ობიექტის
+     დაბრუნება `dirty`-ს თავისით აქრობს — ის მითითებით ადარებს. */
+  const open = () => {
+    snapshot.current = settings.goals
+    setEditing(true)
+  }
+  const close = () => {
+    set('goals', snapshot.current)
+    setEditing(false)
+  }
+
   const commit = async () => {
     setBusy(true)
     try {
@@ -94,7 +108,7 @@ export function YearGoals() {
   }
 
   const editor = editing && (
-    <ModalShell title={t('goals.title', { year: data.year })} onClose={() => setEditing(false)}>
+    <ModalShell title={t('goals.title', { year: data.year })} onClose={close}>
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t('goals.editHint')}</p>
 
@@ -146,7 +160,7 @@ export function YearGoals() {
               <InfoHint info={t('goals.hint')} />
             </h2>
 
-            <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <Button type="button" variant="ghost" size="sm" onClick={open}>
               <SquarePen className="size-4" />
               {t('goals.edit')}
             </Button>
@@ -190,7 +204,7 @@ export function YearGoals() {
       {/* მიზნის დაყენება მაშინაც შესაძლებელია, როცა ჯერ არცერთი არ დგას */}
       {rows.length === 0 && available.length > 0 && (
         <div className="mb-6 flex justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+          <Button type="button" variant="outline" size="sm" onClick={open}>
             <Target className="size-4" />
             {t('goals.set')}
           </Button>

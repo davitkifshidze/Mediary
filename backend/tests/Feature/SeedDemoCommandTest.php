@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BoardGame;
 use App\Models\Bookmark;
 use App\Models\Module;
 use App\Models\Movie;
@@ -44,6 +45,10 @@ class SeedDemoCommandTest extends TestCase
         $this->assertSame(2, Video::withoutGlobalScope('owner')->where('user_id', $demo->id)->count());
         $this->assertSame(1, NoteEntry::withoutGlobalScope('owner')->where('user_id', $demo->id)->count());
         $this->assertSame(1, Bookmark::withoutGlobalScope('owner')->where('user_id', $demo->id)->count());
+
+        // Tasks §4.9 — სვეტები `players_min`/`players_max`-ია; `min_players` ჩუმად არ იწერებოდა
+        $board = BoardGame::withoutGlobalScope('owner')->where('user_id', $demo->id)->firstOrFail();
+        $this->assertSame([2, 4], [$board->players_min, $board->players_max]);
 
         // ყველა აქტიური მოდული ჩართულია, თორემ სექციები საიდბარში არ გამოჩნდება
         $this->assertSame(

@@ -5,10 +5,12 @@ import { AlertTriangle, Check, Loader2, Plus, Search, X } from 'lucide-react'
 import {
   createGame,
   fetchGameFranchises,
+  fetchGameGenres,
   fetchGames,
   fetchRawgCandidates,
   fetchRawgDraft,
   type Game,
+  type GameGenre,
   type RawgCandidate,
 } from '@/api/games'
 import { errorMessage, isApiCode } from '@/lib/errors'
@@ -16,6 +18,7 @@ import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -78,6 +81,29 @@ export function GameFranchiseDialog({
   const [candidates, setCandidates] = useState<RawgCandidate[] | null>(null)
   const [unavailable, setUnavailable] = useState(false)
 
+  /* Tasks §4.4 — სტატუსი და ჟანრი სავალდებულოა, ღილაკი კი ორივეს გარეშე
+     იძახებდა `createGame`-ს ⇒ ყოველთვის 422. სტატუსი ნაგულისხმევად
+     „გასავლელია“, ჟანრი კი — ხელით არჩეული, ან RAWG-ის ჟანრი, თუ ის ჩემს
+     ლექსიკონში არსებობს. ⚠️ ლექსიკონში თავისით არაფერი იქმნება. */
+  const { data: genres = [] } = useQuery({ queryKey: ['game-genres'], queryFn: fetchGameGenres })
+  const [genreId, setGenreId] = useState('')
+  const [genreMissing, setGenreMissing] = useState(false)
+
+  /** RAWG-ის ჟანრის სახელები → ლექსიკონის id-ები (ორივე ენა, რეგისტრი და სივრცეები არ ითვლება) */
+  const matchGenres = (names: string[] | undefined): number[] => {
+    const wanted = new Set((names ?? []).map(normalizeGenre))
+    return genres
+      .filter((g: GameGenre) => wanted.has(normalizeGenre(g.name_en)) || wanted.has(normalizeGenre(g.name_ka)))
+      .map((g) => g.id)
+  }
+
+  /** ხელით არჩეული იმარჯვებს; მის გარეშე — RAWG-ის დამთხვევა; ორივეს გარეშე — `null` */
+  const resolveGenres = (names?: string[]): number[] | null => {
+    if (genreId) return [Number(genreId)]
+    const matched = matchGenres(names)
+    return matched.length ? matched : null
+  }
+
   const lookup = useMutation({
     mutationFn: () => fetchRawgCandidates(query.trim()),
     onSuccess: (results) => {
@@ -96,7 +122,11 @@ export function GameFranchiseDialog({
   const add = useMutation({
     /** `candidate = null` → ხელით დამატება, მხოლოდ აკრეფილი სახელით */
     mutationFn: async (candidate: RawgCandidate | null) => {
-      if (!candidate) return createGame({ title_en: query.trim(), franchise: trimmed })
+      if (!candidate) {
+        const genre_ids = resolveGenres()
+        if (!genre_ids) throw new GenreRequired()
+        return createGame({ title_en: query.trim(), franchise: trimmed, status: DEFAULT_STATUS, genre_ids })
+      }
 
       /* დეტალები კანდიდატს ავსებს — ⚠️ **მხოლოდ არაცარიელით**, ზუსტად ისე,
          როგორც `GameForm`-ში: სიის რიგსა და დეტალებს სხვადასხვა ველები აქვს */
@@ -114,8 +144,13 @@ export function GameFranchiseDialog({
         /* დეტალების ჩავარდნა დამატებას არ უნდა აჩერებდეს */
       }
 
+      const genre_ids = resolveGenres(draft.genres)
+      if (!genre_ids) throw new GenreRequired()
+
       return createGame({
         title_en: draft.title_en || candidate.title_en || query.trim(),
+        status: DEFAULT_STATUS,
+        genre_ids,
         release_date: draft.release_date ?? null,
         developer: draft.developer ?? null,
         publisher: draft.publisher ?? null,
@@ -139,9 +174,17 @@ export function GameFranchiseDialog({
       toast({ title: t('games.saved'), variant: 'success' })
       setCandidates(null)
       setQuery('')
+      setGenreMissing(false)
     },
-    // ⚠️ ყველაზე ხშირი შეცდომა — იგივე `rawg_id` უკვე ბიბლიოთეკაშია (422)
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+    onError: (e) => {
+      if (e instanceof GenreRequired) {
+        setGenreMissing(true)
+        toast({ title: t('games.franchisePickGenre'), variant: 'error' })
+        return
+      }
+      // ⚠️ ყველაზე ხშირი შეცდომა — იგივე `rawg_id` უკვე ბიბლიოთეკაშია (422)
+      toast({ title: errorMessage(e), variant: 'error' })
+    },
   })
 
   return (
@@ -254,6 +297,31 @@ export function GameFranchiseDialog({
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{t('games.franchiseAddHint')}</p>
 
+              <div className="mt-2">
+                <Label htmlFor="gf-genre">{t('games.franchiseGenre')}</Label>
+                <Select
+                  value={genreId}
+                  onValueChange={(v) => {
+                    setGenreId(v)
+                    setGenreMissing(false)
+                  }}
+                >
+                  <SelectTrigger id="gf-genre" className={cn('mt-1.5', genreMissing && 'border-destructive')}>
+                    <SelectValue placeholder={t('games.franchiseGenreAuto')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {genres.map((g) => (
+                      <SelectItem key={g.id} value={String(g.id)}>
+                        {lang === 'ka' ? g.name_ka || g.name_en : g.name_en || g.name_ka}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {genreMissing && (
+                  <p className="mt-1 text-xs text-destructive">{t('games.franchisePickGenre')}</p>
+                )}
+              </div>
+
               {unavailable && (
                 <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
@@ -335,4 +403,15 @@ export function GameFranchiseDialog({
       </div>
     </ModalShell>
   )
+}
+
+/** ახალი ნაწილის სტატუსი — „გასავლელი“ (Tasks §4.4) */
+const DEFAULT_STATUS = 'to_play' as const
+
+/** ჟანრი ვერ გაირკვა — ეს ვალიდაციაა და არა ქსელის შეცდომა */
+class GenreRequired extends Error {}
+
+/** ლექსიკონის სახელის შედარება: რეგისტრი, სივრცეები და პუნქტუაცია არ ითვლება */
+function normalizeGenre(name: string | null | undefined): string {
+  return (name ?? '').toLocaleLowerCase().replace(/[\s\-_.,&/]+/g, '')
 }

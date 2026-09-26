@@ -14,6 +14,7 @@ import {
   fetchStorageUsage,
   recalculateStorage,
   requestStorageIncrease,
+  STORAGE_PSEUDO_MODULES,
   type StorageScope,
   type UploadedFile,
 } from '@/api/account'
@@ -84,7 +85,7 @@ export function StorageCard() {
   const usage = usageQ.data
   // მოდულის სახელი key-იდან; `account` და `chat` მოდულები არ არიან (§16.4)
   const label = (key: string) =>
-    key === 'account' || key === 'chat'
+    STORAGE_PSEUDO_MODULES.includes(key)
       ? t(`storage.${key}`)
       : (() => {
           const m = all.find((mod) => mod.key === key)

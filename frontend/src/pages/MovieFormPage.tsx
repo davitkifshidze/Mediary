@@ -13,7 +13,7 @@ import {
   type LookupDraft,
 } from '@/api/media'
 import { useModuleFields } from '@/lib/fields'
-import { mediaOf, type MediaType } from '@/lib/media'
+import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { useSettings } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
@@ -302,13 +302,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {editing
-            ? type === 'series'
-              ? t('form.editTitleSeries')
-              : t('form.editTitle')
-            : type === 'series'
-              ? t('form.addTitleSeries')
-              : t('form.addTitle')}
+          {/* Tasks §4.1 — ტერნარი ანიმეს „ფილმის დამატებას“ აწერდა */}
+          {t(mediaKey(editing ? 'form.editTitle' : 'form.addTitle', type))}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {editing ? t('form.editSubtitle') : t('form.addSubtitle')}
