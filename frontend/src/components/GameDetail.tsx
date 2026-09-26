@@ -32,6 +32,7 @@ import { formatMinutes } from '@/lib/videoDuration'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VideoEmbed } from '@/components/VideoEmbed'
+import { IconAction } from '@/components/ui/icon-action'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { formatBytes } from '@/lib/utils'
 
@@ -273,18 +274,15 @@ function Videos({ game }: { game: Game }) {
                 {t(`games.videoKinds.${video.kind}`)}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm">{video.title || video.url}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-destructive"
+              <IconAction
+                icon={Trash2}
+                tone="danger"
+                label={t('actions.delete')}
                 onClick={async () => {
                   const ok = await confirm({ title: t('games.videoDeleteTitle'), variant: 'destructive' })
                   if (ok) remove.mutate(video.id)
                 }}
-                aria-label={t('actions.delete')}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              />
             </div>
             {/* ⚠️ iframe მხოლოდ allowlist-ის `embed_url`-ს იღებს — ჰოსტი აქაც მოწმდება */}
             <VideoEmbed
@@ -442,20 +440,11 @@ function Files({ game }: { game: Game }) {
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {formatBytes(file.size)}
             </span>
-            <a
-              href={storageUrl(file.url) ?? '#'}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t('books.fileDownload')}
-              className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-            >
-              <Download className="size-4" />
-            </a>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
+            <IconAction icon={Download} href={storageUrl(file.url) ?? '#'} download label={t('books.fileDownload')} />
+            <IconAction
+              icon={Trash2}
+              tone="danger"
+              label={t('actions.delete')}
               onClick={async () => {
                 const ok = await confirm({
                   title: t('books.fileDeleteTitle'),
@@ -464,10 +453,7 @@ function Files({ game }: { game: Game }) {
                 })
                 if (ok) remove.mutate(file.id)
               }}
-              aria-label={t('actions.delete')}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            />
           </li>
         ))}
       </ul>

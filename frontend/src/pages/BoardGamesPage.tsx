@@ -52,7 +52,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
@@ -351,47 +351,41 @@ export function BoardGamesPage() {
                     </p>
                   </div>
 
+                  {/* Tasks §6.4 — არჩევითი მარცხნივ, მუდმივი მოქმედებები მარჯვნივ */}
                   <span className="flex shrink-0 items-center gap-1">
-                    <Badge className={cn('mr-1', STATUS_TONE[game.status] ?? 'bg-secondary')}>
+                    <Badge row className={STATUS_TONE[game.status] ?? 'bg-secondary'}>
                       {t(`boardGames.statuses.${game.status}`)}
                     </Badge>
                     {game.bgg_rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge row className="bg-secondary tabular-nums">
                         BGG {game.bgg_rating}
                       </Badge>
                     )}
                     {game.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge row className="bg-secondary tabular-nums">
                         {game.rating}/{BOARD_GAME_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(game.id)}
-                      aria-label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
-                    >
-                      <Star className={cn('size-4', game.is_favorite && 'fill-gold text-gold')} />
-                    </button>
                     {(game.links[0]?.url || game.bgg_url) && (
-                      <a
+                      <IconAction
+                        icon={ExternalLink}
                         href={game.links[0]?.url || game.bgg_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('books.openLink')}
-                        title={game.links[0]?.label || game.bgg_url || ''}
-                        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
+                        label={game.links[0]?.label || t('books.openLink')}
+                      />
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(game)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
+                    <IconAction
+                      icon={Star}
+                      tone="favorite"
+                      active={game.is_favorite}
+                      pressed={game.is_favorite}
+                      label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
+                      onClick={() => favorite.mutate(game.id)}
+                    />
+                    <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(game)} />
+                    <IconAction
+                      icon={Trash2}
+                      tone="danger"
+                      label={t('actions.delete')}
                       onClick={async () => {
                         const ok = await confirm({
                           title: t('boardGames.deleteTitle'),
@@ -400,9 +394,7 @@ export function BoardGamesPage() {
                         })
                         if (ok) remove.mutate(game.id)
                       }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    />
                   </span>
                 </li>
               )

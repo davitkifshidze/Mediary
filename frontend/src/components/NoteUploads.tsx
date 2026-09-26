@@ -9,6 +9,7 @@ import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { IconAction } from '@/components/ui/icon-action'
 import { limitFor, limitHint, useUploadLimits } from '@/lib/uploadLimits'
 import { formatBytes } from '@/lib/utils'
 
@@ -252,15 +253,7 @@ function Files({ noteId, kind }: { noteId: number; kind: 'video' | 'doc' }) {
             >
               <Download className="size-4" />
             </PrivateFileLink>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-destructive"
-              onClick={() => drop(file.id)}
-              aria-label={t('actions.delete')}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            <IconAction icon={Trash2} tone="danger" label={t('actions.delete')} onClick={() => drop(file.id)} />
           </li>
         ))}
       </ul>

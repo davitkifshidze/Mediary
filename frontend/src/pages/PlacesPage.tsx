@@ -53,6 +53,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -69,7 +70,6 @@ import { ShowMore } from '@/components/ui/show-more'
 import { StepSection } from '@/components/ui/step-section'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -332,7 +332,6 @@ export function PlacesPage() {
                           {t(`places.statuses.${place.status}`)}
                         </Badge>
                         {place.rating && <Badge className="bg-secondary">★ {place.rating}</Badge>}
-                        <VisibilityBadge value={place.visibility} />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -357,12 +356,16 @@ export function PlacesPage() {
                       )}
                     </div>
 
+                    {/* Tasks §6.4 — არჩევითი („საჯარო", რუკა) მარცხნივ, მუდმივი მარჯვნივ */}
                     <div className="flex shrink-0 items-start gap-1">
+                      <VisibilityBadge value={place.visibility} />
+                      {/* რუკა გარე სერვისია (OSM) */}
+                      {place.map_url && <IconAction icon={MapIcon} href={place.map_url} label={t('places.openMap')} />}
                       <Select
                         value={place.status}
                         onValueChange={(v) => status.mutate({ id: place.id, next: v as PlaceStatus })}
                       >
-                        <SelectTrigger className="h-9 w-32" aria-label={t('places.status')}>
+                        <SelectTrigger className="h-8 w-32 text-xs" aria-label={t('places.status')}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -373,52 +376,25 @@ export function PlacesPage() {
                           ))}
                         </SelectContent>
                       </Select>
-
-                      {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
-                          `asChild` არ აქვს. რუკა გარე სერვისია (OSM). */}
-                      {place.map_url && (
-                        <a
-                          href={place.map_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={t('places.openMap')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <MapIcon className="size-4" />
-                        </a>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      <IconAction
+                        icon={Paperclip}
+                        label={t('places.files')}
+                        count={place.files_count ?? 0}
                         onClick={() => setDetail(place)}
-                        aria-label={t('places.files')}
-                      >
-                        <Paperclip className="size-4" />
-                        <span className="w-3 text-[11px] tabular-nums">
-                          {place.files_count || ''}
-                        </span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      />
+                      <IconAction
+                        icon={Star}
+                        tone="favorite"
+                        active={place.is_favorite}
+                        pressed={place.is_favorite}
+                        label={t(place.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                         onClick={() => favorite.mutate(place.id)}
-                        aria-label={t('filter.favorite')}
-                      >
-                        <Star
-                          className={cn('size-4', place.is_favorite && 'fill-current text-[var(--favorite)]')}
-                        />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditing(place)}
-                        aria-label={t('actions.edit')}
-                      >
-                        <SquarePen className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      />
+                      <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(place)} />
+                      <IconAction
+                        icon={Trash2}
+                        tone="danger"
+                        label={t('actions.delete')}
                         onClick={async () => {
                           if (
                             await confirm({
@@ -430,10 +406,7 @@ export function PlacesPage() {
                             remove.mutate(place.id)
                           }
                         }}
-                        aria-label={t('actions.delete')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      />
                     </div>
                   </li>
                 ))}

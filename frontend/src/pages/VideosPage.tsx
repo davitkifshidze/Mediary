@@ -72,6 +72,7 @@ import {
   FilterTrigger,
 } from '@/components/FilterPanel'
 import { useFilterDraft } from '@/lib/filters'
+import { IconAction } from '@/components/ui/icon-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
@@ -470,13 +471,15 @@ export function VideosPage() {
                       <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={v.title}>
                         {v.title}
                       </h3>
-                      <button
+                      <IconAction
+                        icon={Star}
+                        tone="favorite"
+                        active={v.is_favorite}
+                        pressed={v.is_favorite}
+                        label={t(v.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                         onClick={() => favorite.mutate(v.id)}
-                        aria-label={t(v.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                        className="cursor-pointer text-muted-foreground hover:text-gold"
-                      >
-                        <Star className={cn('size-4', v.is_favorite && 'fill-gold text-gold')} />
-                      </button>
+                        className="-my-1.5 -mr-1.5"
+                      />
                     </div>
 
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -513,51 +516,28 @@ export function VideosPage() {
                       </p>
                     )}
 
+                    {/* Tasks §6.4 — არჩევითი (ლოკალური ასლი) მარცხნივ, მუდმივი
+                        რედაქტირება/წაშლა — მარჯვნივ, ფიქსირებულ ადგილას */}
                     <div className="mt-3 flex items-center gap-1 border-t border-border pt-2">
-                      <a
-                        href={v.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <ExternalLink className="size-3.5" />
-                        {t('videos.source')}
-                      </a>
+                      <IconAction icon={ExternalLink} href={v.url} label={t('videos.source')} />
                       {/* §7.2 — რიგში ჩართვა: აქედან **გაფილტრული სია** უკრავს
-                          რიგრიგობით, ე.ი. დამთავრებისას შემდეგი თავისით ჩაირთვება.
-                          ⚠️ სურათზე დაჭერა კვლავ დეტალებს ხსნის — ერთი ვიდეოს
-                          ყურება დიდ მოდალში ჯობია, ვიდრე ქვედა ზოლში. */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => playFrom(i)}
-                        aria-label={t('playback.playFromHere')}
-                        title={t('playback.playFromHere')}
-                      >
-                        <ListVideo className="size-3.5" />
-                      </Button>
-                      {/* §7.1 — ლოკალური ასლი. სამი სხვადასხვა მდგომარეობა,
-                          სამი სხვადასხვა ღილაკი: ჯერ „ჩამოწერა", მიმდინარეზე —
-                          დამტრიალებელი, მზაზე — გახსნა + მოშორება. */}
+                          რიგრიგობით. ⚠️ სურათზე დაჭერა კვლავ დეტალებს ხსნის. */}
+                      <IconAction icon={ListVideo} label={t('playback.playFromHere')} onClick={() => playFrom(i)} />
+                      {/* §7.1 — ლოკალური ასლი. სამი მდგომარეობა, სამი ღილაკი:
+                          ჯერ „ჩამოტვირთვა", მიმდინარეზე — დამტრიალებელი, მზაზე —
+                          გახსნა + მოშორება. */}
                       {v.download_status === 'ready' ? (
                         <>
-                          <a
+                          <IconAction
+                            icon={HardDriveDownload}
                             href={videoDownloadUrl(v.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t('videos.local.open')}
-                            title={`${t('videos.local.open')}${v.download_format ? ` · ${v.download_format}` : ''}`}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <HardDriveDownload className="size-3.5" />
-                            {formatBytes(v.download_size)}
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                            label={`${t('videos.local.open')} · ${formatBytes(v.download_size)}${v.download_format ? ` · ${v.download_format}` : ''}`}
+                          />
+                          <IconAction
+                            icon={FileX}
+                            tone="danger"
                             disabled={dropDownload.isPending}
-                            aria-label={t('videos.local.remove')}
-                            title={t('videos.local.remove')}
+                            label={t('videos.local.remove')}
                             onClick={async () => {
                               const ok = await confirm({
                                 title: t('videos.local.removeTitle'),
@@ -569,20 +549,27 @@ export function VideosPage() {
                               })
                               if (ok) dropDownload.mutate(v.id)
                             }}
-                          >
-                            <FileX className="size-3.5" />
-                          </Button>
+                          />
                         </>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <IconAction
+                          icon={
+                            v.download_status === 'running' && !v.download_stale
+                              ? Loader2
+                              : /* ⚠️ გაჭედილზე დამტრიალებელი ტყუილი იქნებოდა —
+                                   ხატულა „ხელახლა სცადე"-ს ამბობს */
+                                v.download_stale
+                                ? RotateCcw
+                                : Download
+                          }
+                          iconClassName={
+                            v.download_status === 'running' && !v.download_stale ? 'animate-spin' : undefined
+                          }
                           disabled={
                             (v.download_status === 'running' && !v.download_stale) ||
                             download.isPending
                           }
-                          aria-label={t('videos.local.start')}
-                          title={
+                          label={
                             ytdlpQ.data && !ytdlpQ.data.available
                               ? t('videos.local.unavailable')
                               : downloadHint(v)
@@ -594,37 +581,24 @@ export function VideosPage() {
                             }
                             download.mutate(v.id)
                           }}
-                        >
-                          {v.download_status === 'running' && !v.download_stale ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : v.download_stale ? (
-                            /* ⚠️ დამტრიალებელი აქ ტყუილი იქნებოდა — არაფერი
-                               ტრიალებს; ხატულა „ხელახლა სცადე"-ს ამბობს */
-                            <RotateCcw className="size-3.5" />
-                          ) : (
-                            <Download className="size-3.5" />
-                          )}
-                        </Button>
+                        />
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(v)}>
-                        <SquarePen className="size-3.5" />
-                        {t('actions.edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: t('videos.deleteTitle'),
-                            description: t('videos.deleteHint', { name: v.title }),
-                            variant: 'destructive',
-                          })
-                          if (ok) remove.mutate(v.id)
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                      <span className="ml-auto flex items-center gap-1">
+                        <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(v)} />
+                        <IconAction
+                          icon={Trash2}
+                          tone="danger"
+                          label={t('actions.delete')}
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: t('videos.deleteTitle'),
+                              description: t('videos.deleteHint', { name: v.title }),
+                              variant: 'destructive',
+                            })
+                            if (ok) remove.mutate(v.id)
+                          }}
+                        />
+                      </span>
                     </div>
                   </div>
                 </div>

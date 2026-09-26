@@ -50,7 +50,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
@@ -377,45 +377,38 @@ export function BooksPage() {
                     )}
                   </div>
 
+                  {/* Tasks §6.4 — არჩევითი მარცხნივ, მუდმივი მოქმედებები მარჯვნივ */}
                   <span className="flex shrink-0 items-center gap-1">
-                    <Badge className={cn('mr-1', STATUS_TONE[book.status] ?? 'bg-secondary')}>
+                    <Badge row className={STATUS_TONE[book.status] ?? 'bg-secondary'}>
                       {t(`books.statuses.${book.status}`)}
                     </Badge>
                     {book.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge row className="bg-secondary tabular-nums">
                         {book.rating}/{BOOK_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(book.id)}
-                      aria-label={t(book.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
-                    >
-                      <Star className={cn('size-4', book.is_favorite && 'fill-gold text-gold')} />
-                    </button>
                     {/* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი
-                        ჩანაწერებისთვის რჩება (მიგრაციამ პირველი ბმული გადმოიტანა,
-                        მაგრამ ხელახლა შეყვანილი ლინკი ახლა აქ წერია) */}
+                        ჩანაწერებისთვის რჩება */}
                     {(book.source_url || book.links[0]?.url) && (
-                      <a
+                      <IconAction
+                        icon={ExternalLink}
                         href={book.source_url || book.links[0].url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('books.openLink')}
-                        title={book.source_url || book.links[0].label || book.links[0].url}
-                        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
+                        label={t('books.openLink')}
+                      />
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(book)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
+                    <IconAction
+                      icon={Star}
+                      tone="favorite"
+                      active={book.is_favorite}
+                      pressed={book.is_favorite}
+                      label={t(book.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
+                      onClick={() => favorite.mutate(book.id)}
+                    />
+                    <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(book)} />
+                    <IconAction
+                      icon={Trash2}
+                      tone="danger"
+                      label={t('actions.delete')}
                       onClick={async () => {
                         const ok = await confirm({
                           title: t('books.deleteTitle'),
@@ -424,9 +417,7 @@ export function BooksPage() {
                         })
                         if (ok) remove.mutate(book.id)
                       }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    />
                   </span>
                 </li>
               )

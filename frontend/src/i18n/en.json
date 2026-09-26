@@ -783,7 +783,8 @@
     "bulkPrivate": "Make records private",
     "bulkSelectedHint": "The {{count}} selected record(s) will change visibility.",
     "bulkAllHint": "Every record in “{{name}}” ({{count}}) will change visibility.",
-    "bulkDone": "{{count}} record(s) changed"
+    "bulkDone": "{{count}} record(s) changed",
+    "publicMark": "Public — shown on your public profile"
   },
   "publicProfile": {
     "title": "Public profile",
@@ -1567,7 +1568,6 @@
     "pickForSong": "Which playlists it belongs to",
     "removeSong": "Remove",
     "openSource": "Open the source",
-    "public": "Public",
     "deleted": "Playlist deleted",
     "deleteTitle": "Delete this playlist?",
     "deleteHint": "“{{name}}” will be deleted. The songs stay in your library."

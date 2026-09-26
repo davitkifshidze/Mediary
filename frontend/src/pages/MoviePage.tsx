@@ -30,6 +30,7 @@ import { CastRoleDialog } from '@/components/CastRoleDialog'
 import { ShareRecordDialog } from '@/components/chat/ShareRecordDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
+import { IconAction } from '@/components/ui/icon-action'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -244,7 +245,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 </div>
               )}
 
-              {/* status + favorite */}
+              {/* status + favorite — Tasks §6: ერთ რიგში ერთი სიმაღლე (40px) */}
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 {/* §6.4 — სტატუსები per-user ლექსიკონიდან და არა კოდიდან */}
                 {statuses.map((s) => (
@@ -252,60 +253,59 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     key={s.id}
                     onClick={() => statusMut.mutate(s.key)}
                     className={cn(
-                      'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'h-10 cursor-pointer rounded-md border px-3 text-sm font-medium transition-colors',
                       m.status?.id === s.id ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
                   >
                     {statusName(s, lang)}
                   </button>
                 ))}
-                <button
+                <IconAction
+                  size="md"
+                  icon={Star}
+                  tone="favorite"
+                  active={m.is_favorite}
+                  pressed={m.is_favorite}
+                  label={t(m.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                   onClick={() => favMut.mutate()}
-                  aria-label="favorite"
-                  className={cn(
-                    'ml-1 grid size-9 cursor-pointer place-items-center rounded-md border transition-colors',
-                    m.is_favorite
-                      ? 'border-favorite bg-favorite/10 text-favorite'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  <Star className={cn('size-4', m.is_favorite && 'fill-current')} />
-                </button>
-
-                {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
-                    `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-                {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-                <VisibilityBadge value={m.visibility} />
+                  className="ml-1"
+                />
+                {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ნიშანი ჩანს */}
+                <VisibilityBadge value={m.visibility} size="md" />
               </div>
 
-              {/* actions */}
-              <div className="mt-4 flex flex-wrap gap-2">
+              {/* actions — „ყურება" მთავარი მოქმედებაა და ტექსტს ინარჩუნებს;
+                  დანარჩენი აიქონებია თულთიპით (Tasks §6.5) */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {m.ge_url && (
                   <a href={m.ge_url} target="_blank" rel="noreferrer" className={buttonVariants()}>
                     <Play className="size-4" />
                     {t('detail.watch')}
                   </a>
                 )}
-                <Button variant="outline" onClick={() => resyncMut.mutate()} disabled={resyncMut.isPending}>
-                  {resyncMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                  {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
-                </Button>
-                <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'outline' })}>
-                  <SquarePen className="size-4" />
-                  {t('actions.edit')}
-                </Link>
+                <IconAction
+                  size="md"
+                  icon={resyncMut.isPending ? Loader2 : RefreshCw}
+                  iconClassName={resyncMut.isPending ? 'animate-spin' : undefined}
+                  disabled={resyncMut.isPending}
+                  label={resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
+                  onClick={() => resyncMut.mutate()}
+                />
+                <IconAction size="md" icon={SquarePen} to={`${detailBase}/${m.id}/edit`} label={t('actions.edit')} />
                 {/* FEAT-13 — გაზიარება ჩატში ბარათად.
                     ⚠️ **გაზიარება ხილვადობას არ ცვლის**: პირადი ჩანაწერიდან
                     თანამოსაუბრემდე მხოლოდ სათაური და გლობალური იდენტობა
                     მიდის — სწორედ იმდენი, რამდენიც რეკომენდაციას სჭირდება. */}
-                <Button variant="outline" onClick={() => setSharing(true)}>
-                  <Share2 className="size-4" />
-                  {t('chat.share')}
-                </Button>
-                <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
-                  <Trash2 className="size-4" />
-                  {t('actions.delete')}
-                </Button>
+                <IconAction size="md" icon={Share2} label={t('chat.share')} onClick={() => setSharing(true)} />
+                {/* §6.7 — `askDelete` დადასტურებას გადის */}
+                <IconAction
+                  size="md"
+                  icon={Trash2}
+                  tone="danger"
+                  disabled={delMut.isPending}
+                  label={t('actions.delete')}
+                  onClick={askDelete}
+                />
               </div>
             </div>
           </div>

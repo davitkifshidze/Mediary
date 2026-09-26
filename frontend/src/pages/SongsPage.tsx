@@ -59,6 +59,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
@@ -401,50 +402,34 @@ export function SongsPage() {
                     )}
                   </div>
 
+                  {/* Tasks §6.4 — არჩევითი მარცხნივ, მუდმივი მოქმედებები მარჯვნივ */}
                   <span className="flex shrink-0 items-center gap-1">
                     {song.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge row className="bg-secondary tabular-nums">
                         {song.rating}/{SONG_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(song.id)}
-                      aria-label={t(song.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
-                    >
-                      <Star className={cn('size-4', song.is_favorite && 'fill-gold text-gold')} />
-                    </button>
-                    <a
-                      href={song.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t('songs.source')}
-                      title={t('songs.source')}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                    >
-                      <ExternalLink className="size-4" />
-                    </a>
+                    <IconAction icon={ExternalLink} href={song.url} label={t('songs.source')} />
                     {/* §7.4 — ტექსტი, ნოტები, ფოტოები, ჩანიშვნები */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <IconAction
+                      icon={Paperclip}
+                      label={t('songs.material')}
+                      count={materialCount(song)}
                       onClick={() => setMaterial(song)}
-                      aria-label={t('songs.material')}
-                      title={t('songs.material')}
-                    >
-                      <Paperclip className="size-3.5" />
-                      {materialCount(song) > 0 && (
-                        <span className="tabular-nums">{materialCount(song)}</span>
-                      )}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(song)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
+                    />
+                    <IconAction
+                      icon={Star}
+                      tone="favorite"
+                      active={song.is_favorite}
+                      pressed={song.is_favorite}
+                      label={t(song.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
+                      onClick={() => favorite.mutate(song.id)}
+                    />
+                    <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(song)} />
+                    <IconAction
+                      icon={Trash2}
+                      tone="danger"
+                      label={t('actions.delete')}
                       onClick={async () => {
                         const ok = await confirm({
                           title: t('songs.deleteTitle'),
@@ -453,9 +438,7 @@ export function SongsPage() {
                         })
                         if (ok) remove.mutate(song.id)
                       }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    />
                   </span>
                 </li>
               )

@@ -21,12 +21,13 @@ import { songItem, usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { cn } from '@/lib/utils'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
+import { IconAction } from '@/components/ui/icon-action'
 import { DragHandle } from '@/components/ui/drag-handle'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
    ერთი პლეილისტი — სიმღერების რიგი.
@@ -45,6 +46,7 @@ export function PlaylistPage() {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const confirm = useConfirm()
   // §7.2 — სწორედ აქ აქვს აზრი ავტომატურ გადასვლას: რიგი პლეილისტის რიგია
   const player = usePlayer()
 
@@ -128,15 +130,15 @@ export function PlaylistPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{playlist.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
+            {/* Tasks §6.3 — „საჯარო" აქ აღარ წერია: ნიშანი მოქმედებების რიგშია */}
             {t('playlists.songCount', { count: songs.length })}
-            {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. ⚠️ `playlist` დომენია,
               მოდული კი `song` — პლეილისტი მუსიკის მოდულში ცხოვრობს (§15). */}
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-          <VisibilityBadge value={playlist.visibility} />
+          <VisibilityBadge value={playlist.visibility} size="md" />
           {/* §7.2 — მთელი პლეილისტი თანმიმდევრობით; ერთი დამთავრდება →
               შემდეგი თავისით ჩაირთვება (ეს არის ამოცანის არსი) */}
           {songs.length > 0 && (
@@ -232,45 +234,34 @@ export function PlaylistPage() {
               </span>
 
               <span className="flex shrink-0 items-center gap-1">
-                {/* `Button` `asChild`-ს არ იცნობს — ბმულს იმავე სტილს პირდაპირ ვაძლევთ */}
-                <a
-                  href={song.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={t('playlists.openSource')}
-                  title={t('playlists.openSource')}
-                  className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-                >
-                  <ExternalLink className="size-4" />
-                </a>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <IconAction icon={ExternalLink} href={song.url} label={t('playlists.openSource')} />
+                <IconAction
+                  icon={ChevronUp}
                   disabled={i === 0 || save.isPending}
                   onClick={() => drag.moveBy(song.id, -1)}
-                  aria-label={t('videoTypes.moveUp')}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                  label={t('videoTypes.moveUp')}
+                />
+                <IconAction
+                  icon={ChevronDown}
                   disabled={i === songs.length - 1 || save.isPending}
                   onClick={() => drag.moveBy(song.id, 1)}
-                  aria-label={t('videoTypes.moveDown')}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive"
+                  label={t('videoTypes.moveDown')}
+                />
+                {/* §6.7 — წითელი აიქონი დადასტურებას გადის */}
+                <IconAction
+                  icon={X}
+                  tone="danger"
                   disabled={save.isPending}
-                  onClick={() => save.mutate(songIds.filter((x) => x !== song.id))}
-                  aria-label={t('playlists.removeSong')}
-                >
-                  <X className="size-4" />
-                </Button>
+                  label={t('playlists.removeSong')}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: t('playlists.removeSong'),
+                      description: song.title,
+                      variant: 'destructive',
+                    })
+                    if (ok) save.mutate(songIds.filter((x) => x !== song.id))
+                  }}
+                />
               </span>
             </li>
           )

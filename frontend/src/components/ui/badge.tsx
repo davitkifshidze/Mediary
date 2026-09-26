@@ -19,11 +19,20 @@ import { cn } from '@/lib/utils'
    (`index.css`-ის `@theme inline`); ლიტერალი მას გვერდს უვლის.
    ============================================================ */
 
-export function Badge({ className, children, ...props }: ComponentProps<'span'>) {
+/* ⚠️ `row` (Tasks §6.2) — მოქმედებების რიგში მდგომი ნიშანი (სტატუსი, ქულა)
+   `IconAction`-ის სიმაღლეს (32px) იღებს, თორემ ერთ რიგში სამი სიმაღლე
+   ჩნდებოდა. რიგს გარეთ (ტეგის ბოლოში, სიის ქვეხაზში) ნაგულისხმევი რჩება. */
+export function Badge({
+  className,
+  children,
+  row,
+  ...props
+}: ComponentProps<'span'> & { row?: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium',
+        'inline-flex shrink-0 items-center gap-1 rounded-md text-xs font-medium',
+        row ? 'h-8 px-3' : 'px-2.5 py-1',
         className,
       )}
       {...props}

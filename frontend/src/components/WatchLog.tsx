@@ -7,6 +7,7 @@ import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import type { MediaType } from '@/lib/media'
 import { Button } from '@/components/ui/button'
+import { IconAction } from '@/components/ui/icon-action'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
 
@@ -106,16 +107,14 @@ export function WatchLog({ type, recordId, watched }: { type: MediaType; recordI
             >
               <span className="tabular-nums">{w.watched_at ? date(w.watched_at) : '—'}</span>
               {w.note && <span className="min-w-0 flex-1 truncate text-muted-foreground">{w.note}</span>}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+              <IconAction
+                icon={Trash2}
+                tone="danger"
                 className="ml-auto"
                 disabled={remove.isPending}
+                label={t('actions.delete')}
                 onClick={() => askRemove(w.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              />
             </li>
           ))}
         </ul>

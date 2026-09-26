@@ -54,6 +54,7 @@ import {
   FilterTrigger,
 } from '@/components/FilterPanel'
 import { useFilterDraft } from '@/lib/filters'
+import { IconAction } from '@/components/ui/icon-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FieldLabel } from '@/components/ui/field-label'
@@ -64,7 +65,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
@@ -370,7 +370,11 @@ export function BookmarksPage() {
                     )}
                   </div>
 
+                  {/* Tasks §6.4 — არჩევითი („საჯარო") მარცხნივ, მუდმივი მარჯვნივ */}
                   <div className="flex shrink-0 items-center gap-1">
+                    {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ნიშანი */}
+                    <VisibilityBadge value={bookmark.visibility} />
+
                     <Select
                       value={bookmark.status?.key ?? ''}
                       onValueChange={(v) => status.mutate({ id: bookmark.id, next: v })}
@@ -388,29 +392,19 @@ export function BookmarksPage() {
                       </SelectContent>
                     </Select>
 
-                    {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი */}
-                    <VisibilityBadge value={bookmark.visibility} />
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('filter.favorite')}
+                    <IconAction
+                      icon={Star}
+                      tone="favorite"
+                      active={bookmark.is_favorite}
+                      pressed={bookmark.is_favorite}
+                      label={t(bookmark.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                       onClick={() => favorite.mutate(bookmark.id)}
-                    >
-                      <Star
-                        className={cn(
-                          'size-4',
-                          bookmark.is_favorite && 'fill-gold text-gold',
-                        )}
-                      />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(bookmark)}>
-                      <SquarePen className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
+                    />
+                    <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(bookmark)} />
+                    <IconAction
+                      icon={Trash2}
+                      tone="danger"
+                      label={t('actions.delete')}
                       onClick={async () => {
                         if (
                           await confirm({
@@ -423,9 +417,7 @@ export function BookmarksPage() {
                           remove.mutate(bookmark.id)
                         }
                       }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    />
                   </div>
                 </li>
               )

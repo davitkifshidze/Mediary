@@ -51,6 +51,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -64,7 +65,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    კურსების მოდული (`course`, FEAT-25).
@@ -320,7 +320,6 @@ export function CoursesPage() {
                           {t(`courses.statuses.${course.status}`)}
                         </Badge>
                         {course.rating && <Badge className="bg-secondary">★ {course.rating}</Badge>}
-                        <VisibilityBadge value={course.visibility} />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -369,12 +368,15 @@ export function CoursesPage() {
                       )}
                     </div>
 
+                    {/* Tasks §6.4 — არჩევითი („საჯარო", ბმული) მარცხნივ, მუდმივი მარჯვნივ */}
                     <div className="flex shrink-0 items-start gap-1">
+                      <VisibilityBadge value={course.visibility} />
+                      {course.url && <IconAction icon={ExternalLink} href={course.url} label={t('courses.open')} />}
                       <Select
                         value={course.status}
                         onValueChange={(v) => status.mutate({ id: course.id, next: v as CourseStatus })}
                       >
-                        <SelectTrigger className="h-9 w-32" aria-label={t('courses.status')}>
+                        <SelectTrigger className="h-8 w-32 text-xs" aria-label={t('courses.status')}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -385,52 +387,25 @@ export function CoursesPage() {
                           ))}
                         </SelectContent>
                       </Select>
-
-                      {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
-                          `asChild` არ აქვს; გარე ბმული ბუკმარკის იგივე ფორმაშია. */}
-                      {course.url && (
-                        <a
-                          href={course.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={t('courses.open')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      <IconAction
+                        icon={Paperclip}
+                        label={t('courses.files')}
+                        count={course.files_count ?? 0}
                         onClick={() => setDetail(course)}
-                        aria-label={t('courses.files')}
-                      >
-                        <Paperclip className="size-4" />
-                        <span className="w-3 text-[11px] tabular-nums">
-                          {course.files_count || ''}
-                        </span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      />
+                      <IconAction
+                        icon={Star}
+                        tone="favorite"
+                        active={course.is_favorite}
+                        pressed={course.is_favorite}
+                        label={t(course.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                         onClick={() => favorite.mutate(course.id)}
-                        aria-label={t('filter.favorite')}
-                      >
-                        <Star
-                          className={cn('size-4', course.is_favorite && 'fill-current text-[var(--favorite)]')}
-                        />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditing(course)}
-                        aria-label={t('actions.edit')}
-                      >
-                        <SquarePen className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      />
+                      <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(course)} />
+                      <IconAction
+                        icon={Trash2}
+                        tone="danger"
+                        label={t('actions.delete')}
                         onClick={async () => {
                           if (
                             await confirm({
@@ -442,10 +417,7 @@ export function CoursesPage() {
                             remove.mutate(course.id)
                           }
                         }}
-                        aria-label={t('actions.delete')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      />
                     </div>
                   </li>
                 ))}

@@ -55,6 +55,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { IconAction } from '@/components/ui/icon-action'
 import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
@@ -382,60 +383,40 @@ export function NotesPage() {
                   )}
                 </div>
 
+                {/* Tasks §6.4 — არჩევითი (ბმული) მარცხნივ, მუდმივი მოქმედებები მარჯვნივ */}
                 <span className="flex shrink-0 items-center gap-1">
-                  <Badge className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
+                  <Badge row className={STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary'}>
                     {statusName(note.status, lang)}
                   </Badge>
-                  <button
-                    onClick={() => favorite.mutate(note.id)}
-                    aria-label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
-                  >
-                    <Star className={cn('size-4', note.is_favorite && 'fill-gold text-gold')} />
-                  </button>
                   {note.links[0]?.url && (
-                    <a
+                    <IconAction
+                      icon={ExternalLink}
                       href={note.links[0].url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t('books.openLink')}
-                      title={note.links[0].label || note.links[0].url}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                    >
-                      <ExternalLink className="size-4" />
-                    </a>
+                      label={note.links[0].label || t('books.openLink')}
+                    />
                   )}
-                  {/* ⚠️ **ზარი მოქმედებების რიგშია, რედაქტირების გვერდით**
-                      (შენი მითითება, 2026-09-14) — და აღარ მეტა-ხაზში,
-                      კატეგორიისა და ფაილების მრიცხველებს შორის: იქ ის
-                      *ინფორმაცია* ეგონა თვალს და არა ღილაკი, თუმცა ღილაკი იყო.
-                      ⚠️ ყოველთვის ჩანს (ნულზეც), თორემ „შეხსენება დავამატო"
-                      მხოლოდ იმას ეჩვენებოდა, ვისაც უკვე ჰქონდა. */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  {/* ⚠️ **ზარი მოქმედებების რიგშია** (2026-09-14) და ყოველთვის
+                      ჩანს (ნულზეც). ⚠️ რიცხვს ფიქსირებული ადგილი აქვს
+                      (`IconAction`-ის `count`) — პირობითი ციფრი რიგებს აშლიდა. */}
+                  <IconAction
+                    icon={BellRing}
+                    label={t('notes.remindersTitle')}
+                    count={note.reminders_count ?? 0}
                     onClick={() => setReminders(note)}
-                    title={t('notes.remindersTitle')}
-                    aria-label={t('notes.remindersTitle')}
-                  >
-                    <BellRing className="size-3.5" />
-                    {/* ⚠️ **რიცხვს ფიქსირებული ადგილი აქვს** (შენი მითითება,
-                        2026-09-14): პირობითად დახატული ციფრი ღილაკს აგანიერებდა,
-                        ე.ი. შეხსენებიანი და უშეხსენებო ჩანაწერის რიგები ერთმანეთს
-                        არ ემთხვეოდა. `tabular-nums` — ერთნიშნა და ორნიშნა რიცხვიც
-                        ერთსა და იმავე სიგანეშია. */}
-                    <span className="w-3 text-center tabular-nums">
-                      {(note.reminders_count ?? 0) > 0 ? note.reminders_count : ''}
-                    </span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(note)}>
-                    <SquarePen className="size-3.5" />
-                    {t('actions.edit')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
+                  />
+                  <IconAction
+                    icon={Star}
+                    tone="favorite"
+                    active={note.is_favorite}
+                    pressed={note.is_favorite}
+                    label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
+                    onClick={() => favorite.mutate(note.id)}
+                  />
+                  <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(note)} />
+                  <IconAction
+                    icon={Trash2}
+                    tone="danger"
+                    label={t('actions.delete')}
                     onClick={async () => {
                       const ok = await confirm({
                         title: t('notes.deleteTitle'),
@@ -444,9 +425,7 @@ export function NotesPage() {
                       })
                       if (ok) remove.mutate(note.id)
                     }}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                  />
                 </span>
               </li>
             ))}

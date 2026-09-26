@@ -20,6 +20,7 @@ import { formatBytes } from '@/lib/utils'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
+import { IconAction } from '@/components/ui/icon-action'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -177,17 +178,11 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
                       {f.original_name}
                     </button>
                     <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(f.size)}</span>
-                    <a
-                      href={storageUrl(f.url) ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
-                      aria-label={t('songs.download')}
-                    >
-                      <Download className="size-4" />
-                    </a>
-                    <button
+                    <IconAction icon={Download} href={storageUrl(f.url) ?? '#'} download label={t('songs.download')} />
+                    <IconAction
+                      icon={Trash2}
+                      tone="danger"
+                      label={t('actions.delete')}
                       onClick={async () => {
                         const ok = await confirm({
                           title: t('songs.deleteSongFile'),
@@ -195,11 +190,7 @@ export function SongDetail({ song, onClose }: { song: Song; onClose: () => void 
                         })
                         if (ok) removeFile.mutate(f.id)
                       }}
-                      aria-label={t('actions.delete')}
-                      className="shrink-0 cursor-pointer text-destructive hover:opacity-80"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    />
                   </li>
                 ))}
               </ul>
