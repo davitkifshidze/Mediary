@@ -13,6 +13,18 @@ import { formatBytes } from '@/lib/utils'
    ⚠️ **ცარიელი ველი არ იწერება** — „წყარო: —" არაფერს ეუბნება მკითხველს.
    ============================================================ */
 
+/**
+ * **ვერტიკალური ჩარჩო — პოსტერი და მსახიობი** (`PhotoItem.portrait`).
+ *
+ * ⚠️ ერთი წესი ოთხივე ბადისთვის — ჩანაწერის გალერეა, მსახიობების დასტები,
+ * გალერეის ბადე და საჯარო პროფილი (Tasks §1). სამ ადგილას ხელით იყო
+ * დაწერილი; მეოთხე ასლი საჯარო გვერდზე პოსტერს სხვა ჩარჩოში ჩასვამდა იმ
+ * დღეს, როცა წესი ერთგან შეიცვლებოდა.
+ */
+export function isPortraitCategory(category?: string | null): boolean {
+  return category === 'actor' || category === 'poster'
+}
+
 export function galleryPhotoInfo(
   image: GalleryImage,
   t: TFunction,

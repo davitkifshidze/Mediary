@@ -207,9 +207,17 @@ class PublicProfileService
         /* ⚠️ **ალბომის რიცხვი ლოკის მიღმა იზომება** (Tasks §7.5): scope-ს
            რომ დამორჩილებოდა, ჩაკეტილი ალბომი „0 ფოტოს" იტყოდა და ბარათი
            იტყუებოდა. რიცხვი ფოტოს არ ამხელს — ამხელს გზა ფაილამდე,
-           რომელიც `PublicGallery::row()`-ში საერთოდ არ იწერება. */
+           რომელიც `PublicGallery::row()`-ში საერთოდ არ იწერება.
+
+           ⚠️ **`owner`-იც აქ იხსნება და მფლობელი ცხადად იწერება** (Tasks §1.2) —
+           კლასის docblock-ის იგივე ორმხრივი მიზეზი, ოღონდ ქვე-query-ში:
+           `GalleryImage`-ის `owner` scope **შესულ** უცხოს `user_id = <მისი id>`-ით
+           ჭრიდა და ბარათი „0 ფოტოს" წერდა, ანონიმს კი — სწორ რიცხვს. */
         if ($domain === 'gallery_album') {
-            $q->withCount(['images' => fn ($i) => $i->withoutGlobalScope('album_lock')]);
+            $q->withCount(['images' => fn ($i) => $i
+                ->withoutGlobalScope('album_lock')
+                ->withoutGlobalScope('owner')
+                ->where('gallery_images.user_id', $user->id)]);
         }
 
         return $q->orderByDesc('id');

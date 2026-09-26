@@ -187,18 +187,40 @@ class PublicGalleryTest extends TestCase
             ->assertJsonPath('message', 'album_password_wrong');
     }
 
+    /** ალისის პროფილს **შესული** უცხო ათვალიერებს — `owner` scope მასზე ჭრის */
+    private function stranger(): User
+    {
+        $bob = User::create([
+            'name' => 'bob', 'username' => 'bob', 'email' => 'bob@example.com', 'password' => 'password',
+        ]);
+        $bob->forceFill(['profile_visibility' => 'public'])->save();
+
+        return $bob;
+    }
+
     /**
-     * **სწორი პაროლი ხსნის და ფოტოც მაშინვე გამოდის** (Tasks BUG-02).
+     * **სწორი პაროლი ხსნის და ფოტოც მაშინვე გამოდის** (Tasks BUG-02 → §1).
      *
-     * ⚠️ ერთ ტესტში ორი მოთხოვნაა განზრახ: „გავხსენი" მხოლოდ მაშინ ნიშნავს
-     * რამეს, თუ მომდევნო კითხვა ნამდვილ `path`-ს აბრუნებს. სესია ტესტებში
-     * `array` დრაივერზეა, მაგრამ ერთი ტესტის შიგნით ინახება — `spa()`-ის
-     * `Referer` კი ყველა შემდეგ მოთხოვნას stateful-ად ტოვებს.
+     * ⚠️ ერთ ტესტში სამი მოთხოვნაა განზრახ: „გავხსენი" მხოლოდ მაშინ ნიშნავს
+     * რამეს, თუ მომდევნო სია ნამდვილ მისამართს აბრუნებს **და ეს მისამართი
+     * მართლა ბაიტებს იძლევა**. სესია ტესტებში `array` დრაივერზეა, მაგრამ ერთი
+     * ტესტის შიგნით ინახება — `spa()`-ის `Referer` კი ყველა შემდეგ მოთხოვნას
+     * stateful-ად ტოვებს.
+     *
+     * ⚠️ **§1-ის ხარვეზი აქ არ ჩანდა და ამიტომ ტესტი გაფართოვდა.** სერვერი
+     * ყოველთვის სწორ პასუხს აბრუნებდა — `private: true` და API-ის მარშრუტი —,
+     * SPA კი ამ ნიშანს აგდებდა და მარშრუტს `/storage/...`-ად აწყობდა (404,
+     * ცარიელი ფილა). ეს ტესტი იმ კონტრაქტს იჭერს, რომელზეც SPA დგას:
+     * ზუსტად რა მისამართი მოდის და რომ `api` + ეს მისამართი იმავე სესიაში
+     * ფაილს აბრუნებს.
      */
     public function test_the_public_unlock_opens_the_album(): void
     {
+        Storage::fake('private');
+
         $album = $this->lockedPublicAlbum();
-        $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
+        $image = $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
+        Storage::disk('private')->put('gallery/locked/secret.jpg', 'locked-bytes');
 
         $spa = $this->spa();
 
@@ -206,12 +228,80 @@ class PublicGalleryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('unlocked', true);
 
-        $photos = $spa->getJson('/api/public/profiles/alice/gallery-photos')
+        $row = $spa->getJson('/api/public/profiles/alice/gallery-photos')
             ->assertOk()
-            ->assertJsonPath('data.0.locked', false);
+            ->assertJsonPath('data.0.locked', false)
+            ->json('data.0');
 
         // სწორედ ეს იყო გატეხილი: „გავხსენი" მოდიოდა, რიგი კი გაშიშვლებული რჩებოდა
-        $this->assertArrayHasKey('path', $photos->json('data.0'));
+        $this->assertArrayHasKey('path', $row);
+
+        /* ⚠️ ფაილი პირად დისკზეა (`gallery/locked`), ე.ი. `path` სვეტი კი არა,
+           **მისამართია** — და SPA-მ ის blob-ად უნდა წაიკითხოს. */
+        $this->assertTrue($row['private']);
+        $this->assertSame("/public/profiles/alice/gallery-photos/{$image->id}/file", $row['path']);
+
+        // ზუსტად ის, რასაც SPA იძახებს: `api` (`/api`) + მისამართი, იმავე სესიაში
+        $response = $spa->get('/api'.$row['path'])->assertOk();
+        $this->assertSame('locked-bytes', $response->streamedContent());
+    }
+
+    /**
+     * **შესული უცხოსთვისაც გახსნილი ფაილი არ იკეშება** (Tasks §1.2).
+     *
+     * ⚠️ `photoFile()` ალბომს `$galleryImage->album`-ით პოულობდა, ეს
+     * რელაცია კი `owner` scope-ის ქვეშაა: ანონიმზე scope ცარიელია და
+     * ყველაფერი მუშაობდა, **შესულ** უცხოს კი ის **მის საკუთარ** ალბომებზე
+     * ჭრიდა — ალბომი `null`, ე.ი. `Cache-Control: no-store` არ იგზავნებოდა
+     * და პაროლით გახსნილი ფოტო შუამავალსა და ბრაუზერის კეშში რჩებოდა.
+     * ანონიმური ტესტი (`…_is_404_until_the_password_is_given`) ამას ვერ
+     * დაიჭერდა — სწორედ ამიტომაა ეს ცალკე.
+     */
+    public function test_a_signed_in_stranger_never_caches_an_unlocked_file(): void
+    {
+        Storage::fake('private');
+
+        $album = $this->lockedPublicAlbum();
+        $image = $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
+        Storage::disk('private')->put('gallery/locked/secret.jpg', 'locked-bytes');
+
+        $spa = $this->actingAs($this->stranger())->spa();
+
+        $spa->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])
+            ->assertOk();
+
+        $cache = (string) $spa->get("/api/public/profiles/alice/gallery-photos/{$image->id}/file")
+            ->assertOk()
+            ->headers->get('Cache-Control');
+
+        $this->assertStringContainsString('no-store', $cache);
+        $this->assertStringContainsString('private', $cache);
+    }
+
+    /**
+     * **ალბომის ბარათი ფოტოების ნამდვილ რაოდენობას ამბობს — ორივე მნახველს** (Tasks §1.2).
+     *
+     * ⚠️ `withCount('images')`-ის ქვე-query `GalleryImage`-ის `owner` scope-ს
+     * ემორჩილებოდა: შესულ უცხოს ის `gallery_images.user_id = <მისი id>`-ით
+     * ჭრიდა და ბარათი „0 ფოტოს" წერდა. ანონიმზე იგივე ბარათი სწორი იყო —
+     * ე.ი. ერთსა და იმავე ბმულზე პასუხი იმაზე იყო დამოკიდებული, ვინ გახსნა.
+     */
+    public function test_the_album_card_counts_the_same_for_every_visitor(): void
+    {
+        $album = GalleryAlbum::create([
+            'user_id' => $this->alice->id, 'name' => 'საჯარო', 'sort_order' => 1, 'visibility' => 'public',
+        ]);
+        $this->photo(null, 'gallery/images/a.jpg', $album->id);
+        $this->photo(null, 'gallery/images/b.jpg', $album->id);
+
+        $this->getJson('/api/public/profiles/alice/gallery_album')
+            ->assertOk()
+            ->assertJsonPath('data.0.photos', 2);
+
+        $this->actingAs($this->stranger())
+            ->getJson('/api/public/profiles/alice/gallery_album')
+            ->assertOk()
+            ->assertJsonPath('data.0.photos', 2);
     }
 
     /**
@@ -349,10 +439,7 @@ class PublicGalleryTest extends TestCase
     {
         Storage::fake('public');
 
-        $bob = User::create([
-            'name' => 'bob', 'username' => 'bob', 'email' => 'bob@example.com', 'password' => 'password',
-        ]);
-        $bob->forceFill(['profile_visibility' => 'public'])->save();
+        $bob = $this->stranger();
 
         $movie = Movie::create(['user_id' => $bob->id, 'year' => 2021, 'visibility' => 'public']);
         $image = GalleryImage::create([

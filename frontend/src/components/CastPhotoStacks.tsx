@@ -5,7 +5,7 @@ import { Trash2, User } from 'lucide-react'
 import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { castName } from '@/lib/display'
-import { galleryPhotoInfo } from '@/lib/galleryPhoto'
+import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
@@ -119,7 +119,7 @@ export function CastPhotoStacks({
           src: image.url,
           title: image.original_name,
           subtitle: owner ?? undefined,
-          portrait: image.category === 'actor' || image.category === 'poster',
+          portrait: isPortraitCategory(image.category),
           size: image.size,
           width: image.width,
           height: image.height,

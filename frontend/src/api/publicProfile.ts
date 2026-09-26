@@ -283,21 +283,46 @@ export async function setModulePublic(key: string, isPublic: boolean): Promise<v
 
 /* ---------- საჯარო გალერეა (Tasks §7.4) ---------- */
 
-/**
- * ერთი ფოტო საჯარო პროფილზე.
- *
- * ⚠️ **ჩაკეტილ ალბომში მდგომს `path` საერთოდ არ აქვს** (§7.11) — მხოლოდ
- * `id`, ზომები და `locked: true`. ე.ი. ინსპექტორში საპოვნელი არაფერია.
- */
-export interface PublicGalleryPhoto {
+interface PublicGalleryPhotoBase {
   id: number
   width: number | null
   height: number | null
   album_id: number | null
-  locked: boolean
-  path?: string
-  category?: string | null
 }
+
+/**
+ * **ჩაკეტილ ალბომში მდგომი ფოტო — ფაილის გარეშე** (§7.11): მხოლოდ `id`,
+ * ზომები და `locked: true`. ე.ი. ინსპექტორში საპოვნელი არაფერია.
+ */
+export interface PublicLockedPhoto extends PublicGalleryPhotoBase {
+  locked: true
+}
+
+export interface PublicOpenPhoto extends PublicGalleryPhotoBase {
+  locked: false
+  /**
+   * ⚠️ **საჯარო დისკზე storage-ის გზაა, პირადზე — API-ის მარშრუტი**
+   * (`/public/profiles/{u}/gallery-photos/{id}/file`, `private: true`).
+   * გახსნილი ჩაკეტილი ალბომის ფაილი `gallery/locked`-შია, სადაც `/storage/*`
+   * ვერ წვდება — ე.ი. `storageUrl()`-ში გატარებული ეს მისამართი 404-ია და
+   * ფილა ცარიელი რჩება (Tasks §1: „პაროლი შევიყვანე და ფოტოები მაინც არ
+   * ჩაიტვირთა").
+   */
+  path: string
+  /** ფაქტი სერვერისაა (§17.5) — `PRIVATE_ROOTS`-ის ასლი SPA-ში ერთ დღეს დაშორდებოდა */
+  private: boolean
+  category: string | null
+}
+
+/**
+ * ერთი ფოტო საჯარო პროფილზე.
+ *
+ * ⚠️ **ორი ფორმაა და არა ერთი არჩევითი ველებით** (Tasks §1): ღია ფოტოს
+ * `path` ყოველთვის აქვს, ჩაკეტილს — არასდროს. არჩევითი `path?` და `private`-ის
+ * არქონა სწორედ ის იყო, რის გამოც `tsc` ხარვეზს ვერ ხედავდა
+ * (`GalleryLockedImage`-ის იგივე მიზეზი).
+ */
+export type PublicGalleryPhoto = PublicLockedPhoto | PublicOpenPhoto
 
 export interface PublicGalleryPage {
   data: PublicGalleryPhoto[]

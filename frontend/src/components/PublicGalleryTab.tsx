@@ -1,19 +1,19 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Lock } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import {
   fetchPublicGalleryPhotos,
   unlockPublicAlbum,
   type PublicGalleryPhoto,
 } from '@/api/publicProfile'
-import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
-import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
+import { isPortraitCategory } from '@/lib/galleryPhoto'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -30,13 +30,52 @@ import { useToast } from '@/components/ui/feedback'
    ორასი ფოტოა.
 
    ⚠️ **ჩაკეტილი ფოტო რიგად მოდის, ფაილის გარეშე** (§7.11): `path` პასუხში
-   საერთოდ არ არის, ე.ი. blur ნამდვილად ცარიელია. პროპორცია `width`/`height`-ს
-   მოსდევს, თორემ პაროლის შეყვანისას ბადე ახტებოდა.
+   საერთოდ არ არის, ე.ი. blur ნამდვილად ცარიელია.
+
+   ⚠️ **ბადე საერთო `PhotoGrid`-ია, კითხვის რეჟიმში (Tasks §1).** აქამდე ტაბი
+   თავის `<img>`-ებს ხატავდა და ყველა `path`-ს `storageUrl()`-ში ატარებდა —
+   პაროლით გახსნილი ალბომის ფაილი კი პირად დისკზეა და მისი `path` API-ის
+   მარშრუტია, ე.ი. მისამართი `/storage/public/profiles/…` ხდებოდა (404) და
+   ფილა ცარიელი რჩებოდა. `PhotoGrid` პირადს blob-ად კითხულობს (axios ქუქის
+   აგზავნის, ე.ი. სესიის განბლოკვა მოქმედებს), ჩაკეტილს ბლარად ხატავს და
+   ჩვეულებრივ ფოტოზე ლაითბოქსს ხსნის — აქამდე დაჭერა არაფერს აკეთებდა.
+   ⚠️ **კითხვის რეჟიმი** (`readOnly`): სხვისი პროფილია, ე.ი. მონიშვნა,
+   ჩამოტვირთვა და წაშლა აქ არაფერს ნიშნავს.
 
    ⚠️ **პაროლი მფლობელისაა** — უცხოსთვის ალბომი პრაქტიკულად ჩაკეტილი
    რჩება; მექანიზმი კი უნდა არსებობდეს, თორემ მფლობელიც ვერ ნახავდა
    საკუთარ საჯარო ბმულზე.
    ============================================================ */
+
+/**
+ * სერვერის რიგი → ბადის უჯრა.
+ *
+ * ⚠️ **ჩაკეტილი ცალკე შტოა** (`GalleryPhotoGrid`-ის წესი): მისამართი მას არ
+ * აქვს, ე.ი. `src: ''` ბადეს ბლარის დახატვას და პაროლის კითხვას ეუბნება;
+ * `albumId` — რომელი ალბომის პაროლი.
+ */
+function toItem(photo: PublicGalleryPhoto): PhotoItem {
+  if (photo.locked) {
+    return {
+      id: photo.id,
+      src: '',
+      locked: true,
+      albumId: photo.album_id,
+      width: photo.width,
+      height: photo.height,
+    }
+  }
+
+  return {
+    id: photo.id,
+    src: photo.path,
+    // ⚠️ თითო ფოტოზე და არა ბადეზე: ერთ გვერდზე ორივე დისკი ერევა
+    private: photo.private,
+    portrait: isPortraitCategory(photo.category),
+    width: photo.width,
+    height: photo.height,
+  }
+}
 
 export function PublicGalleryTab({ username }: { username: string }) {
   const { t } = useTranslation()
@@ -61,6 +100,9 @@ export function PublicGalleryTab({ username }: { username: string }) {
       : [...rows.filter((r) => !query.data!.data.some((n) => n.id === r.id)), ...query.data.data]
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rows დაგროვილი შედეგია და deps-ში მისი ჩადება უსასრულო ციკლია
   }, [query.data])
+
+  // ⚠️ memo: პაროლის აკრეფა ტაბს ხელახლა ხატავს და ახალი მასივი ბადის ეფექტებს ყოველ ასოზე გაუშვებდა
+  const items = useMemo(() => photos.map(toItem), [photos])
 
   const unlock = useMutation({
     mutationFn: (albumId: number) => unlockPublicAlbum(username, albumId, password),
@@ -90,40 +132,14 @@ export function PublicGalleryTab({ username }: { username: string }) {
 
   return (
     <div className="pb-10">
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-        {photos.map((photo) => (
-          <li
-            key={photo.id}
-            className="overflow-hidden rounded-md border border-border bg-muted"
-            style={{
-              aspectRatio: photo.width && photo.height ? `${photo.width} / ${photo.height}` : '3 / 2',
-            }}
-          >
-            {photo.locked ? (
-              /* ⚠️ ღილაკი თვითონ ფილაზეა — ჩაკეტილ ალბომამდე სხვა გზა
-                 საჯარო გვერდზე არ არის (ალბომების სია აქ არ იხატება). */
-              <button
-                type="button"
-                onClick={() => photo.album_id && setUnlocking(photo.album_id)}
-                className="relative size-full cursor-pointer"
-                title={t('gallery.albumUnlock')}
-              >
-                <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
-                <span className="absolute inset-0 grid place-items-center">
-                  <Lock className="size-5 text-white/90 drop-shadow" />
-                </span>
-              </button>
-            ) : (
-              <img
-                src={storageUrl(photo.path) ?? ''}
-                alt=""
-                loading="lazy"
-                className="size-full object-cover"
-              />
-            )}
-          </li>
-        ))}
-      </ul>
+      {/* ⚠️ გვერდებს სერვერი ჭრის („მეტის ჩვენება" ქვემოთ), ე.ი. ბადე მიღებულ
+          სიას მთლიანად ხატავს — საკუთარი გვერდები აქ მეორე, ცრუ დაყოფა იქნებოდა */}
+      <PhotoGrid
+        readOnly
+        items={items}
+        pageSize={PHOTO_PAGE_ALL}
+        onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
+      />
 
       {!!meta && meta.current_page < meta.last_page && (
         <div className="flex justify-center pt-6">

@@ -7,7 +7,7 @@ import {
   type GalleryOwnedImage,
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
-import { galleryPhotoInfo } from '@/lib/galleryPhoto'
+import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
@@ -111,7 +111,7 @@ export function GalleryPhotoGrid({
       : image.category
         ? t(`gallery.category.${image.category}`)
         : undefined,
-    portrait: image.category === 'actor' || image.category === 'poster',
+    portrait: isPortraitCategory(image.category),
     size: image.size,
     width: image.width,
     height: image.height,

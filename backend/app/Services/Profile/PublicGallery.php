@@ -131,10 +131,22 @@ class PublicGallery
      *
      * ⚠️ იგივე `query()` და იგივე `hiddenIdsFor()`, რაც სიას — მეორე
      * „ვინ ხედავს" ფორმულა სწორედ ის ორი წყაროა, რაც ერთ დღეს გაშორდებოდა.
+     *
+     * ⚠️ **ალბომი აქვე იტვირთება, `owner` scope-ის გარეშე და მფლობელის ცხადი
+     * id-ით** (Tasks §1.2). გამომძახებელი `$image->album`-ს კითხულობს (ჩაკეტილ
+     * ფაილს `no-store` სჭირდება), რელაცია კი `GalleryAlbum`-ის `owner` scope-ს
+     * ემორჩილება: ანონიმზე ის ცარიელია და ყველაფერი მუშაობდა, **შესულ** უცხოს
+     * კი მის საკუთარ ალბომებზე ჭრიდა — ალბომი `null`, ე.ი. პაროლით გახსნილი
+     * ფოტო `Cache-Control: no-store`-ის გარეშე გადიოდა.
      */
     public function visible(User $user, int $imageId): ?GalleryImage
     {
-        $image = $this->query($user)->whereKey($imageId)->first();
+        $image = $this->query($user)
+            ->with(['album' => fn ($album) => $album
+                ->withoutGlobalScope('owner')
+                ->where('gallery_albums.user_id', $user->id)])
+            ->whereKey($imageId)
+            ->first();
 
         if (! $image) {
             return null;

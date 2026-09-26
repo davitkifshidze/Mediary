@@ -171,7 +171,12 @@ class PublicProfileController extends Controller
            განსაზღვრებით საჯაროა და მათი კეშირება სასურველია.
 
            ⚠️ `private` **და** `no-store` ერთად: პირველი შუამავალს კრძალავს,
-           მეორე — ბრაუზერის დისკსაც. */
+           მეორე — ბრაუზერის დისკსაც.
+
+           ⚠️ **`album` `visible()`-მა უკვე ჩატვირთა** — `owner` scope-ის გარეშე
+           და მფლობელის ცხადი id-ით (Tasks §1.2). აქ თავიდან წაკითხული რელაცია
+           შესულ უცხოს მის საკუთარ ალბომებზე მოჭრიდა → `null` → `no-store`
+           აღარ გაიგზავნებოდა. */
         $locked = $galleryImage->album_id !== null && $galleryImage->album?->isLocked();
 
         return $disk->response(

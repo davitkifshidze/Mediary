@@ -222,6 +222,7 @@ export function PhotoGrid({
   items,
   lightboxItems,
   privateDisk,
+  readOnly,
   onDelete,
   onMove,
   onLocked,
@@ -247,6 +248,24 @@ export function PhotoGrid({
   lightboxItems?: PhotoItem[]
   /** ფაილები პრივატულ დისკზეა (`notes/`, `chat/`) — blob-ად იკითხება */
   privateDisk?: boolean
+  /**
+   * **კითხვის რეჟიმი — მხოლოდ ნახვა** (Tasks §1: საჯარო პროფილის გალერეა).
+   *
+   * რჩება ის, რაც ფოტოს **სანახავად** სჭირდება: ლაითბოქსი, პირადი ფაილის
+   * blob-ად წაკითხვა და ჩაკეტილი ფილა პაროლით (`onLocked`). ქრება
+   * ხელსაწყოთა ზოლი (მონიშვნა · „ყველას ჩამოტვირთვა" · „რამდენი
+   * გამოჩნდეს" · `extraTools`) და უჯრის მოქმედებები — ჩამოტვირთვა,
+   * ორიგინალი, მონიშვნა.
+   *
+   * ⚠️ **ჩამწერ მოქმედებებს (`onDelete` · `onMove` · `onPrimary`) ბადე თვითონ
+   * აშორებს** და არა მხოლოდ გამომძახებლის კეთილსინდისიერებით: ეს რეჟიმი
+   * სხვის გვერდს ემსახურება, სადაც წაშლის ღილაკი არასდროს უნდა გაჩნდეს.
+   *
+   * ⚠️ **გვერდებს აქ გამომძახებელი ჭრის** („მეტის ჩვენება" სერვერიდან), ამიტომ
+   * ის `pageSize={PHOTO_PAGE_ALL}`-ს გადასცემს — „რამდენი გამოჩნდეს" არჩევანი
+   * ხომ ზოლთან ერთად ქრება.
+   */
+  readOnly?: boolean
   /** წაშლა — **ერთსაც და მონიშნულებსაც ერთი ხელმოწერით** */
   onDelete?: (ids: number[]) => void
   /**
@@ -314,6 +333,12 @@ export function PhotoGrid({
   /** არამართული რეჟიმის საკუთარი მდგომარეობა */
   const [ownSize, setOwnSize] = useState(pageSize ?? PHOTO_PAGE_DEFAULT)
   const [page, setPage] = useState(1)
+
+  /* ⚠️ კითხვის რეჟიმში ჩამწერი მოქმედებები აქვე ქრება — ზოლიც და უჯრაც ამ
+     სამს კითხულობს და არა პროპებს (იხ. `readOnly`) */
+  const remove = readOnly ? undefined : onDelete
+  const move = readOnly ? undefined : onMove
+  const makePrimary = readOnly ? undefined : onPrimary
 
   const controlled = !!onPageSizeChange
   const size = controlled ? (pageSize ?? PHOTO_PAGE_DEFAULT) : ownSize
@@ -481,8 +506,10 @@ export function PhotoGrid({
 
   return (
     <div className={className}>
-      {/* ---------- ხელსაწყოები ---------- */}
-      {items.length > 0 && (
+      {/* ---------- ხელსაწყოები ----------
+          ⚠️ კითხვის რეჟიმში ზოლი საერთოდ არ არის: მასში ყველაფერი ან მონიშვნას,
+          ან მასობრივ მოქმედებას, ან გვერდების ზომას ეხება — სამივე მფლობელისაა. */}
+      {items.length > 0 && !readOnly && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <Button
             type="button"
@@ -521,8 +548,8 @@ export function PhotoGrid({
             })}
           </Button>
 
-          {onMove && (
-            <Button type="button" variant="outline" size="sm" onClick={() => onMove(targets)}>
+          {move && (
+            <Button type="button" variant="outline" size="sm" onClick={() => move(targets)}>
               <MoveRight className="size-3.5" />
               {t(selected.length ? 'gallery.moveSelected' : 'gallery.moveAll', {
                 count: targets.length,
@@ -530,13 +557,13 @@ export function PhotoGrid({
             </Button>
           )}
 
-          {onDelete && (
+          {remove && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-destructive"
-              onClick={() => onDelete(targets)}
+              onClick={() => remove(targets)}
             >
               <Trash2 className="size-3.5" />
               {t(selected.length ? 'photos.deleteSelected' : 'photos.deleteAll', {
@@ -603,13 +630,16 @@ export function PhotoGrid({
                  სურათის ღილაკშია, თორემ მენიუს „გახსნა" ზოგჯერ მონიშვნას
                  ნიშნავდა და პუნქტი თავის სახელს ატყუებდა. */
               onOpen={() => setOpen(viewable.findIndex((x) => x.id === item.id))}
-              onToggle={() => toggle(item.id)}
-              onDownload={download}
+              /* ⚠️ კითხვის რეჟიმში მონიშვნა და ჩამოტვირთვა არ არსებობს — უჯრა
+                 მათ პუნქტებს ვეღარ დახატავს (`photoActions()`-ის წესი) */
+              onToggle={readOnly ? undefined : () => toggle(item.id)}
+              onDownload={readOnly ? undefined : download}
+              readOnly={readOnly}
               onPrimary={
-                onPrimary && item.canPrimary !== false ? () => onPrimary(item.id) : undefined
+                makePrimary && item.canPrimary !== false ? () => makePrimary(item.id) : undefined
               }
-              onMove={onMove}
-              onDelete={onDelete}
+              onMove={move}
+              onDelete={remove}
               onResolved={noteResolved}
             />
             ),
@@ -729,6 +759,7 @@ function PhotoCell({
   item,
   index,
   privateDisk,
+  readOnly,
   preload,
   picking,
   checked,
@@ -745,6 +776,8 @@ function PhotoCell({
   item: PhotoItem
   index: number
   privateDisk?: boolean
+  /** კითხვის რეჟიმი — „ორიგინალიც" ქრება (იხ. `PhotoGrid`-ის `readOnly`) */
+  readOnly?: boolean
   /** გახსნილი სლაიდის მეზობელია — blob ხილვადობის მოლოდინის გარეშე მოდის */
   preload: boolean
   picking: boolean
@@ -753,8 +786,10 @@ function PhotoCell({
   /** რომელ id-ებზე იმოქმედებს ჩამოტვირთვა/წაშლა — იხ. მონიშვნის წესი ზემოთ */
   targets: number[]
   onOpen: () => void
-  onToggle: () => void
-  onDownload: (ids: number[]) => void
+  /** მითითების გარეშე (კითხვის რეჟიმი) უჯრა არ ინიშნება */
+  onToggle?: () => void
+  /** მითითების გარეშე (კითხვის რეჟიმი) ჩამოტვირთვის პუნქტი არ იხატება */
+  onDownload?: (ids: number[]) => void
   onPrimary?: () => void
   onMove?: (ids: number[]) => void
   onDelete?: (ids: number[]) => void
@@ -788,19 +823,35 @@ function PhotoCell({
     onOpen,
     onInfo: item.info?.length ? () => setInfo((on) => !on) : undefined,
     onPrimary,
-    onDownload: () => onDownload(targets),
+    onDownload: onDownload && (() => onDownload(targets)),
     /* ⚠️ **ორიგინალი პრივატულზე არ იხატება** — იქ მისამართი blob-ია და ახალ
        ტაბში გახსნილი ბმული ამ გვერდთან ერთად კვდება; წესი `photoActions()`-შია,
-       ე.ი. ერთხელ წერია და ტესტიც აქვს. */
-    onOriginal: url ? () => window.open(url, '_blank', 'noopener,noreferrer') : undefined,
+       ე.ი. ერთხელ წერია და ტესტიც აქვს. კითხვის რეჟიმში კი საერთოდ არ არის —
+       ფოტოს სანახავად ლაითბოქსი საკმარისია (zoom · სრული ეკრანი). */
+    onOriginal: !readOnly && url ? () => window.open(url, '_blank', 'noopener,noreferrer') : undefined,
     onToggle,
     onMove: onMove && (() => onMove(targets)),
     onDelete: onDelete && (() => onDelete(targets)),
   })
 
+  /* ⚠️ **მხოლოდ „გახსნა" მენიუ არ არის** (კითხვის რეჟიმი, Tasks §1): იმავეს
+     სურათზე დაჭერაც აკეთებს, ე.ი. ერთპუნქტიანი „⋯" და მარჯვენა კლიკის მენიუ
+     მხოლოდ იმავე ღილაკს გაიმეორებდა. მართვის რეჟიმში სიაში ყოველთვის მეტია
+     (ჩამოტვირთვა, მონიშვნა), ე.ი. იქ აქედან არაფერი იცვლება. */
+  const menu = actions.length > 1
+  const quick = actions.filter((action) => action.quick)
+  const caption = item.subtitle ?? item.title
+
+  /* ⚠️ ცარიელი ქვედა ზოლი არ იხატება: კითხვის რეჟიმში შეიძლება არც წარწერა
+     იყოს და არც მოქმედება, ცარიელი ზოლი კი ყველა ფილას ერთსა და იმავე
+     უაზრო კიდეს მიაბამდა. */
+  const footer = menu || quick.length > 0 || isPrimary || !!caption || item.size != null
+
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
+      {/* ⚠️ მენიუს გარეშე მარჯვენა კლიკი ბრაუზერისაა — `disabled` Radix-ს
+          `preventDefault()`-ს აღარ აკეთებინებს და ცარიელი მენიუ არ ჩნდება */}
+      <ContextMenuTrigger asChild disabled={!menu}>
         <li
           ref={tileRef}
           className={cn(
@@ -883,23 +934,22 @@ function PhotoCell({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-            <span className="min-w-0 text-xs text-muted-foreground">
-              <span className="block truncate">{item.subtitle ?? item.title}</span>
-              {item.size != null && formatBytes(item.size)}
-            </span>
-            <span className="flex shrink-0 items-center gap-1">
-              {/* ⚠️ „ეს მთავარია" **ნიშანია და არა გამორთული ღილაკი** — მოქმედება,
-                  რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}
-              {isPrimary && (
-                <span className="grid size-7 place-items-center" title={t('gallery.isPrimary')}>
-                  <Star className="size-3.5 fill-primary text-primary" />
-                </span>
-              )}
+          {footer && (
+            <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+              <span className="min-w-0 text-xs text-muted-foreground">
+                <span className="block truncate">{caption}</span>
+                {item.size != null && formatBytes(item.size)}
+              </span>
+              <span className="flex shrink-0 items-center gap-1">
+                {/* ⚠️ „ეს მთავარია" **ნიშანია და არა გამორთული ღილაკი** — მოქმედება,
+                    რომელიც ვერ იმუშავებს, სიაშიც აღარაა */}
+                {isPrimary && (
+                  <span className="grid size-7 place-items-center" title={t('gallery.isPrimary')}>
+                    <Star className="size-3.5 fill-primary text-primary" />
+                  </span>
+                )}
 
-              {actions
-                .filter((action) => action.quick)
-                .map((action) => (
+                {quick.map((action) => (
                   <button
                     key={action.key}
                     type="button"
@@ -917,24 +967,27 @@ function PhotoCell({
                   </button>
                 ))}
 
-              {/* ⚠️ **„⋯" კლავიატურის გზაა** — მარჯვენა კლიკი მალსახმობია და არა
-                  ერთადერთი კარი (სენსორული ეკრანი, Tab-ნავიგაცია) */}
-              <ActionMenu label={t('actions.more')}>
-                {actions.map((action) => (
-                  <ActionMenuClose key={action.key} asChild>
-                    <button
-                      type="button"
-                      onClick={action.run}
-                      className={actionItemClass(action.danger ? 'destructive' : undefined)}
-                    >
-                      <action.icon className="size-3.5" />
-                      {action.label}
-                    </button>
-                  </ActionMenuClose>
-                ))}
-              </ActionMenu>
-            </span>
-          </div>
+                {/* ⚠️ **„⋯" კლავიატურის გზაა** — მარჯვენა კლიკი მალსახმობია და არა
+                    ერთადერთი კარი (სენსორული ეკრანი, Tab-ნავიგაცია) */}
+                {menu && (
+                  <ActionMenu label={t('actions.more')}>
+                    {actions.map((action) => (
+                      <ActionMenuClose key={action.key} asChild>
+                        <button
+                          type="button"
+                          onClick={action.run}
+                          className={actionItemClass(action.danger ? 'destructive' : undefined)}
+                        >
+                          <action.icon className="size-3.5" />
+                          {action.label}
+                        </button>
+                      </ActionMenuClose>
+                    ))}
+                  </ActionMenu>
+                )}
+              </span>
+            </div>
+          )}
         </li>
       </ContextMenuTrigger>
 

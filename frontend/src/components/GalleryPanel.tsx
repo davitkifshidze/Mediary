@@ -5,7 +5,7 @@ import { formatBytes } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
-import { galleryPhotoInfo } from '@/lib/galleryPhoto'
+import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 
 /* ============================================================
    გალერეის ფილტრები + ბადე (Tasks 10 · §2.9).
@@ -164,7 +164,7 @@ export function GalleryPanel({
                   (image.category
                     ? t(`gallery.category.${image.category}`)
                     : t('gallery.category.other')),
-                portrait: image.category === 'actor' || image.category === 'poster',
+                portrait: isPortraitCategory(image.category),
                 /* ⚠️ **პასუხს backend იძლევა** (Tasks BUG-20): მშობელს მთავარი
                    სურათის სვეტი ან საერთოდ არ აქვს (მსახიობი — `photo_path`
                    გლობალურია), ან სხვა ჰქვია. `category !== 'actor'` მხოლოდ პირველ
