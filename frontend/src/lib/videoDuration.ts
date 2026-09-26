@@ -22,26 +22,6 @@ export function formatDuration(seconds: number | null | undefined): string | nul
     : `${m}:${String(s).padStart(2, '0')}`
 }
 
-/**
- * წუთები → „2 სთ 20 წთ" (Tasks §2.5).
- *
- * ⚠️ `formatDuration`-ის ტყუპი არ არის და განზრახ: ის **წამებს** იღებს და
- * `h:mm:ss`-ს ხატავს (მედია-პლეერის ენა), აქ კი სვეტი წუთებშია და მკითხველს
- * „55:30" ორაზროვნად წაეკითხებოდა. ერთეულების წარწერები არგუმენტად მოდის,
- * რომ ამ ფაილს i18n არ დასჭირდეს.
- */
-export function formatMinutes(
-  total: number | null | undefined,
-  hoursShort: string,
-  minutesShort: string,
-): string | null {
-  if (!total || total < 0) return null
-  const h = Math.floor(total / 60)
-  const m = Math.round(total % 60)
-  if (!h) return `${m} ${minutesShort}`
-  return m ? `${h} ${hoursShort} ${m} ${minutesShort}` : `${h} ${hoursShort}`
-}
-
 /** ბმული პირდაპირი მედია-ფაილია? (backend-ის `VideoUrl::parse`-ის ანალოგი) */
 export function isDirectMediaUrl(url: string): boolean {
   return FILE_EXTENSIONS.test(url.trim())

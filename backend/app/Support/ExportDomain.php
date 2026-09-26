@@ -143,8 +143,8 @@ final class ExportDomain
             'fields' => [
                 'id', 'title_ka', 'title_en', 'release_date', 'genres', 'status', 'finished_at', 'rating',
                 'is_favorite', 'developer', 'publisher', 'franchise', 'platforms',
-                'my_platform', 'modes', 'hltb_main', 'hltb_main_extra', 'hltb_complete',
-                'metacritic', 'opencritic', 'users_score', 'age_rating', 'languages',
+                'my_platform', 'modes',
+                'opencritic', 'users_score', 'age_rating',
                 'size_gb', 'rawg_id', 'igdb_id',
                 'description_ka', 'description_en', 'cover_path', 'visibility', 'created_at',
             ],

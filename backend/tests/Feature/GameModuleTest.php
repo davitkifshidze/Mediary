@@ -13,6 +13,7 @@ use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -59,6 +60,34 @@ class GameModuleTest extends TestCase
     }
 
     /**
+     * Tasks §13 — სტატუსი მხოლოდ სამია, ხოლო HLTB, ენები, DLC და Metacritic
+     * ამოღებულია: ძველი სტატუსი 422-ია, ამოღებული ველი კი პასუხში აღარ ჩანს.
+     */
+    public function test_the_trimmed_game_fields(): void
+    {
+        foreach (['undecided', 'abandoned'] as $gone) {
+            $this->actingAs($this->user)
+                ->postJson('/api/games', ['status' => $gone] + $this->gameDefaults() + ['title_en' => 'X'])
+                ->assertStatus(422);
+        }
+
+        $id = $this->makeGame(['metacritic' => 90, 'hltb_main' => 60]);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/games/{$id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'to_play')
+            ->assertJsonMissingPath('data.metacritic')
+            ->assertJsonMissingPath('data.hltb_main')
+            ->assertJsonMissingPath('data.languages')
+            ->assertJsonMissingPath('data.dlcs');
+
+        foreach (['hltb_main', 'hltb_main_extra', 'hltb_complete', 'metacritic', 'languages', 'dlcs'] as $column) {
+            $this->assertFalse(Schema::hasColumn('games', $column), $column);
+        }
+    }
+
+    /**
      * ⚠️ სტატუსი და ჟანრი სავალდებულოა — ჟანრი აქ pivot-ია, ე.ი. მინიმუმ ერთი.
      */
     private function gameDefaults(?User $user = null): array
@@ -66,7 +95,7 @@ class GameModuleTest extends TestCase
         $user ??= $this->user;
 
         return [
-            'status' => 'undecided',
+            'status' => 'to_play',
             'genre_ids' => [$this->actingAs($user)->getJson('/api/game-genres')->json('data.0.id')],
         ];
     }
@@ -100,16 +129,10 @@ class GameModuleTest extends TestCase
                 'my_platform' => 'pc',
                 'modes' => ['single', 'coop_online'],
                 'genre_ids' => $genres,
-                // ⚠️ წუთები და არა საათები (§2.5): 55 სთ 30 წთ
-                'hltb_main' => 3330,
-                'hltb_complete' => 7980,
-                'metacritic' => 96,
                 'users_score' => 4.4,
                 'rating' => 10,
                 'age_rating' => 'ESRB Mature',
-                'languages' => ['interface' => ['EN', 'KA'], 'audio' => ['EN']],
                 'size_gb' => 60.5,
-                'dlcs' => [['name' => 'Shadow of the Erdtree', 'note' => 'DLC']],
                 'links' => [['label' => 'Steam', 'url' => 'https://store.steampowered.com/app/1245620', 'kind' => 'steam']],
                 'status' => 'finished',
             ])
@@ -119,10 +142,7 @@ class GameModuleTest extends TestCase
             ->assertJsonPath('data.title_ka', 'ელდენ რინგი')
             // ⚠️ `year` სვეტი არაა — `release_date`-ის აქსესორია
             ->assertJsonPath('data.year', 2022)
-            ->assertJsonPath('data.hltb_main', 3330)
-            ->assertJsonPath('data.metacritic', 96)
             ->assertJsonPath('data.size_gb', 60.5)
-            ->assertJsonPath('data.dlcs.0.name', 'Shadow of the Erdtree')
             ->assertJsonPath('data.links.0.kind', 'steam')
             ->assertJsonPath('data.status', 'finished')
             // 16.5 — ხილვადობა default-ად პრივატულია

@@ -42,8 +42,9 @@ class Game extends Model
     /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
     public const MAX_RATING = 10;
 
-    /** გადასაწყვეტი · სათამაშო · ვთამაშობ · გავიარე · მივატოვე */
-    public const STATUSES = ['undecided', 'to_play', 'playing', 'finished', 'abandoned'];
+    /** Tasks §13 — მხოლოდ სამი: გასავლელი · ვთამაშობ · დახურული (`finished` —
+        გასაღები რჩება: ის `PublicDomain::MATCH`-ის „done"-ია და `finished_at`-ს ადგენს) */
+    public const STATUSES = ['to_play', 'playing', 'finished'];
 
     /** 11.1-ის ჩამონათვალი; „ჩემი პლატფორმა" ერთია ამათგან */
     public const PLATFORMS = ['pc', 'ps5', 'ps4', 'xbox_series', 'xbox_one', 'switch', 'mobile'];
@@ -61,13 +62,6 @@ class Game extends Model
         'platforms' => 'array',
         'modes' => 'array',
         'links' => 'array',
-        'languages' => 'array',
-        'dlcs' => 'array',
-        // ⚠️ წუთები და არა საათები (§2.5) — იგივე ერთეული, რაც `movies.runtime`-ს
-        'hltb_main' => 'integer',
-        'hltb_main_extra' => 'integer',
-        'hltb_complete' => 'integer',
-        'metacritic' => 'integer',
         'opencritic' => 'integer',
         'users_score' => 'float',
         'rating' => 'integer',

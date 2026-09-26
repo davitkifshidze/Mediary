@@ -28,7 +28,6 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
-import { formatMinutes } from '@/lib/videoDuration'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VideoEmbed } from '@/components/VideoEmbed'
@@ -55,16 +54,6 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
       ? game.description_ka || game.description_en
       : game.description_en || game.description_ka
 
-  const hltb = [
-    { key: 'main', value: game.hltb_main },
-    { key: 'main_extra', value: game.hltb_main_extra },
-    { key: 'complete', value: game.hltb_complete },
-  ].filter((row) => row.value != null)
-
-  const languages = (['interface', 'audio', 'subtitles'] as const).filter(
-    (key) => (game.languages?.[key]?.length ?? 0) > 0,
-  )
-
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
@@ -87,7 +76,6 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               {t('games.franchise')}: {game.franchise}
             </span>
           )}
-          {game.metacritic != null && <span className="text-muted-foreground">MC {game.metacritic}</span>}
           {/* ⚠️ RAWG-ის შკალა 0–5-ია და არა 0–100 — ისე ვწერთ, როგორც მოდის */}
           {game.users_score != null && (
             <span className="text-muted-foreground">
@@ -98,49 +86,8 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           {game.size_gb != null && <span className="text-muted-foreground">{game.size_gb} GB</span>}
         </section>
 
-        {/* ---------- HowLongToBeat (11.4 — ხელით ივსება) ---------- */}
-        {hltb.length > 0 && (
-          <section className="flex flex-wrap gap-4 text-sm">
-            {hltb.map((row) => (
-              <span key={row.key} className="rounded-md bg-secondary px-2.5 py-1">
-                {t(`games.hltb.${row.key}`)}:{' '}
-                <b className="tabular-nums">
-                  {formatMinutes(row.value, t('games.hoursShort'), t('games.minutesShort'))}
-                </b>
-              </span>
-            ))}
-          </section>
-        )}
-
         {description && (
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>
-        )}
-
-        {/* ---------- ენები ---------- */}
-        {languages.length > 0 && (
-          <section className="space-y-1 text-sm">
-            {languages.map((key) => (
-              <p key={key}>
-                <span className="text-muted-foreground">{t(`games.languages.${key}`)}: </span>
-                {game.languages[key]!.join(', ')}
-              </p>
-            ))}
-          </section>
-        )}
-
-        {/* ---------- DLC-ები ---------- */}
-        {game.dlcs.length > 0 && (
-          <section>
-            <h3 className="mb-2 text-sm font-semibold">{t('games.dlcTitle')}</h3>
-            <ul className="space-y-1 text-sm">
-              {game.dlcs.map((dlc, i) => (
-                <li key={i}>
-                  {dlc.name}
-                  {dlc.note && <span className="text-muted-foreground"> — {dlc.note}</span>}
-                </li>
-              ))}
-            </ul>
-          </section>
         )}
 
         {/* ---------- მაღაზიები / ოფიციალური საიტი ---------- */}

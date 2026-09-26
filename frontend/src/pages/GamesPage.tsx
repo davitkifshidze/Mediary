@@ -5,7 +5,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import {
-  Clock,
   ExternalLink,
   Gamepad2,
   Image as ImageIcon,
@@ -55,7 +54,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { formatMinutes } from '@/lib/videoDuration'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11).
@@ -65,14 +63,12 @@ import { formatMinutes } from '@/lib/videoDuration'
    „რა მაქვს PS5-ზე გასავლელი" ამ მოდულის მთავარი კითხვაა.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'year', 'rating', 'metacritic', 'playtime'] as const
+const SORTS = ['newest', 'oldest', 'title', 'year', 'rating'] as const
 
 const STATUS_TONE: Record<string, string> = {
-  undecided: 'bg-secondary',
   to_play: 'bg-primary/15 text-primary',
   playing: 'bg-gold/20 text-gold',
   finished: 'bg-secondary text-foreground',
-  abandoned: 'bg-destructive/15 text-destructive',
 }
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
@@ -319,12 +315,6 @@ export function GamesPage() {
                     <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
                       {game.developer && <span className="truncate">{game.developer}</span>}
                       {game.year ? <span>{game.year}</span> : null}
-                      {game.hltb_main ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {formatMinutes(game.hltb_main, t('games.hoursShort'), t('games.minutesShort'))}
-                        </span>
-                      ) : null}
                       {(game.videos_count ?? 0) > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Play className="size-3" />
@@ -370,11 +360,6 @@ export function GamesPage() {
                     <Badge className={cn('mr-1', STATUS_TONE[game.status] ?? 'bg-secondary')}>
                       {t(`games.statuses.${game.status}`)}
                     </Badge>
-                    {game.metacritic != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
-                        MC {game.metacritic}
-                      </Badge>
-                    )}
                     {game.rating != null && (
                       <Badge className="mr-1 bg-secondary tabular-nums">
                         {game.rating}/{GAME_MAX_RATING}

@@ -156,7 +156,6 @@ export function GameFranchiseDialog({
         publisher: draft.publisher ?? null,
         franchise: trimmed,
         platforms: draft.platforms ?? [],
-        metacritic: draft.metacritic ?? null,
         users_score: draft.users_score ?? null,
         age_rating: draft.age_rating ?? null,
         // ⚠️ IGDB-ის რიგს `rawg_id` არ აქვს — ცალკე ველში ჯდება

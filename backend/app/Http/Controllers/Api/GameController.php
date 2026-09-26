@@ -79,8 +79,6 @@ class GameController extends Controller
             // ⚠️ `year` სვეტი არ არსებობს (აქსესორია) — სორტირება თარიღზეა
             'year' => $query->orderByDesc('release_date'),
             'rating' => $query->orderByDesc('rating'),
-            'metacritic' => $query->orderByDesc('metacritic'),
-            'playtime' => $query->orderBy('hltb_main'),
             'oldest' => $query->orderBy('id'),
             default => $query->orderByDesc('id'),
         };
@@ -304,13 +302,6 @@ class GameController extends Controller
                 Rule::exists('game_genres', 'id')->where('user_id', $userId),
             ],
 
-            // HowLongToBeat — ხელით (11.4). ⚠️ **წუთები** (§2.5), ე.ი. ჭერი
-            // იგივე 2000 საათია, ოღონდ 120 000 წუთად დაწერილი.
-            'hltb_main' => ['nullable', 'integer', 'min:0', 'max:120000'],
-            'hltb_main_extra' => ['nullable', 'integer', 'min:0', 'max:120000'],
-            'hltb_complete' => ['nullable', 'integer', 'min:0', 'max:120000'],
-
-            'metacritic' => ['nullable', 'integer', 'min:0', 'max:100'],
             'opencritic' => ['nullable', 'integer', 'min:0', 'max:100'],
             'users_score' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:'.Game::MAX_RATING],
@@ -324,17 +315,7 @@ class GameController extends Controller
             'is_favorite' => ['nullable', 'boolean'],
 
             'age_rating' => ['nullable', 'string', 'max:20'],
-            'languages' => ['nullable', 'array'],
-            'languages.interface' => ['nullable', 'array', 'max:30'],
-            'languages.interface.*' => ['string', 'max:40'],
-            'languages.audio' => ['nullable', 'array', 'max:30'],
-            'languages.audio.*' => ['string', 'max:40'],
-            'languages.subtitles' => ['nullable', 'array', 'max:30'],
-            'languages.subtitles.*' => ['string', 'max:40'],
             'size_gb' => ['nullable', 'numeric', 'min:0', 'max:99999'],
-            'dlcs' => ['nullable', 'array', 'max:50'],
-            'dlcs.*.name' => ['required_with:dlcs', 'string', 'max:255'],
-            'dlcs.*.note' => ['nullable', 'string', 'max:500'],
 
             'rawg_id' => [
                 'nullable', 'integer', 'min:1',
@@ -362,8 +343,7 @@ class GameController extends Controller
         $plain = [
             'title_ka', 'title_en', 'description_ka', 'description_en',
             'release_date', 'developer', 'publisher', 'franchise', 'my_platform',
-            'hltb_main', 'hltb_main_extra', 'hltb_complete',
-            'metacritic', 'opencritic', 'users_score', 'rating',
+            'opencritic', 'users_score', 'rating',
             'age_rating', 'size_gb', 'rawg_id', 'rawg_slug', 'igdb_id', 'igdb_slug',
         ];
 
@@ -386,19 +366,6 @@ class GameController extends Controller
         }
         if (array_key_exists('modes', $data)) {
             $game->modes = Game::normalizeKeys($data['modes'] ?? [], Game::MODES);
-        }
-        if (array_key_exists('languages', $data)) {
-            $game->languages = array_filter([
-                'interface' => array_values($data['languages']['interface'] ?? []),
-                'audio' => array_values($data['languages']['audio'] ?? []),
-                'subtitles' => array_values($data['languages']['subtitles'] ?? []),
-            ]) ?: null;
-        }
-        if (array_key_exists('dlcs', $data)) {
-            $game->dlcs = array_values(array_map(fn (array $dlc) => [
-                'name' => $dlc['name'],
-                'note' => $dlc['note'] ?? null,
-            ], $data['dlcs'] ?? []));
         }
         if (array_key_exists('links', $data)) {
             $game->links = array_values(array_map(fn (array $link) => [

@@ -179,11 +179,12 @@ class RowImporter
             'developer' => $draft['developer'] ?? null,
             'publisher' => $draft['publisher'] ?? null,
             'platforms' => $draft['platforms'] ?? null,
-            'metacritic' => $draft['metacritic'] ?? null,
             'users_score' => $draft['users_score'] ?? null,
             'cover_url' => $draft['cover_url'] ?? null,
             'rawg_id' => $draft['rawg_id'] ?? null,
             'rawg_slug' => $draft['rawg_slug'] ?? null,
+            // Tasks §13 — სამიდან პირველი; ძველი `undecided` აღარ არსებობს
+            'status' => 'to_play',
         ]);
 
         $game->save();

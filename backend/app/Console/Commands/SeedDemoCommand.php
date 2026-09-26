@@ -249,7 +249,7 @@ class SeedDemoCommand extends Command
                 $game = Game::create([
                     'title_ka' => 'დემო-თამაში',
                     'title_en' => 'Demo Game',
-                    'status' => 'undecided',
+                    'status' => 'to_play',
                 ]);
 
                 if ($genre) {

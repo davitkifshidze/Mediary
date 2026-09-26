@@ -122,13 +122,10 @@ final class FieldCatalog
             ['key' => 'genres', 'type' => 'list', 'sort_order' => 60],
             // ⚠️ ტექსტის ნაცვლად მოდალის ღილაკია (§5.1) — ველი მაინც ველია
             ['key' => 'franchise', 'type' => 'text', 'sort_order' => 70],
-            ['key' => 'hltb', 'type' => 'number', 'sort_order' => 80],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 90],
             ['key' => 'rawg_id', 'type' => 'number', 'sort_order' => 100],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 110],
-            ['key' => 'dlcs', 'type' => 'list', 'sort_order' => 120],
             // ინტერფეისი / ხმა / სუბტიტრები — ერთი ველი სამივე სიისთვის
-            ['key' => 'languages', 'type' => 'list', 'sort_order' => 125],
             ['key' => 'cover', 'type' => 'file', 'sort_order' => 130],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 140],
         ],

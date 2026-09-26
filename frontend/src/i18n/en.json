@@ -1084,12 +1084,9 @@
         "platforms": "Platforms",
         "modes": "Modes",
         "genres": "Genres",
-        "hltb": "How long it takes",
         "status": "Status",
         "rawg_id": "RAWG id",
         "links": "Links",
-        "dlcs": "DLC and add-ons",
-        "languages": "Languages",
         "cover": "Main photo",
         "description": "Description"
       },
@@ -1203,9 +1200,7 @@
         "franchise": "The series it belongs to.",
         "age_rating": "e.g. PEGI 18.",
         "size_gb": "How much space it takes on disk.",
-        "hltb": "HowLongToBeat time — typed by hand, there is no API.",
-        "rawg_id": "The source's id. Quick fill sets it for you.",
-        "languages": "Interface / audio / subtitles."
+        "rawg_id": "The source's id. Quick fill sets it for you."
       },
       "book": {
         "publisher": "Who published it.",
@@ -1974,8 +1969,6 @@
     "lookupHint": "Pick the right game — the fields fill themselves.",
     "lookupEmpty": "Nothing found on RAWG.",
     "lookupUnavailable": "RAWG is unavailable (no API key) — fill the fields by hand.",
-    "hltbHint": "HowLongToBeat has no API — the time is entered by hand (hours + minutes).",
-    "hoursShort": "h",
     "videosTitle": "Videos",
     "videosHint": "Walkthrough, trailer, review.",
     "videosEmpty": "No videos yet.",
@@ -1990,21 +1983,15 @@
     "docsHint": "e.g. a walkthrough text or a saved config.",
     "docsEmpty": "No documents yet.",
     "addDocs": "Upload document",
-    "dlcTitle": "DLC and add-ons",
-    "addDlc": "Add DLC",
-    "dlcName": "Name",
-    "dlcNote": "Note",
     "notesTitle": "Notes",
     "notePlaceholder": "e.g. “the level-3 boss is hard”",
     "saved": "Saved",
     "deleteTitle": "Delete this game?",
     "deleteHint": "“{{name}}” will be deleted along with its videos, screenshots and notes.",
     "statuses": {
-      "undecided": "Undecided",
       "to_play": "To play",
       "playing": "Playing",
-      "finished": "Finished",
-      "abandoned": "Abandoned"
+      "finished": "Completed"
     },
     "platforms": {
       "pc": "PC",
@@ -2038,24 +2025,12 @@
       "guide": "Guide",
       "other": "Other"
     },
-    "hltb": {
-      "main": "Main story",
-      "main_extra": "Main + extras",
-      "complete": "Completionist"
-    },
-    "languages": {
-      "interface": "Interface",
-      "audio": "Audio",
-      "subtitles": "Subtitles"
-    },
     "sort": {
       "newest": "Newest",
       "oldest": "Oldest",
       "title": "By name",
       "year": "By year",
-      "rating": "By my rating",
-      "metacritic": "By Metacritic",
-      "playtime": "By play time"
+      "rating": "By my rating"
     },
     "edit": "Edit game",
     "franchiseTitle": "Franchise",
@@ -2068,7 +2043,6 @@
     "franchiseAdd": "Add a new part to the library",
     "franchiseAddHint": "Find it on RAWG and add it — the new game lands in this franchise right away.",
     "franchiseAddManual": "Add manually: “{{name}}”",
-    "minutesShort": "min",
     "notesEmpty": "No notes yet.",
     "franchiseGenre": "Genre of the new part",
     "franchiseGenreAuto": "RAWG’s genre, if it is in your list",

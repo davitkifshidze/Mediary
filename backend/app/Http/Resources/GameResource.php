@@ -39,11 +39,6 @@ class GameResource extends JsonResource
             'genres' => GameGenreResource::collection($this->whenLoaded('genres')),
             'genre_ids' => $this->whenLoaded('genres', fn () => $this->genres->pluck('id')->all()),
 
-            'hltb_main' => $this->hltb_main,
-            'hltb_main_extra' => $this->hltb_main_extra,
-            'hltb_complete' => $this->hltb_complete,
-
-            'metacritic' => $this->metacritic,
             'opencritic' => $this->opencritic,
             'users_score' => $this->users_score,
             'rating' => $this->rating,
@@ -57,9 +52,7 @@ class GameResource extends JsonResource
             'is_favorite' => $this->is_favorite,
 
             'age_rating' => $this->age_rating,
-            'languages' => $this->languages ?? new \stdClass,
             'size_gb' => $this->size_gb,
-            'dlcs' => $this->dlcs ?? [],
 
             'rawg_id' => $this->rawg_id,
             'rawg_slug' => $this->rawg_slug,

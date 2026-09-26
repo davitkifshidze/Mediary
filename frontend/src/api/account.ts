@@ -997,7 +997,7 @@ export type PurgeTargetWithStatus = {
  */
 export const PURGE_TARGET_STATUSES: Record<string, string[]> = {
   book: ['to_read', 'reading', 'read', 'abandoned'],
-  game: ['undecided', 'to_play', 'playing', 'finished', 'abandoned'],
+  game: ['to_play', 'playing', 'finished'],
   // Tasks §2 — აკლდა, ე.ი. `/purge`-ის „სტატუსით" სკოუპი ცარიელ სიას ხატავდა
   course: ['to_take', 'taking', 'done', 'dropped'],
   place: ['to_visit', 'visited'],

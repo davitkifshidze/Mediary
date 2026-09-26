@@ -16,8 +16,8 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 /** „ჩემი ქულის" ჭერი — იგივე რიცხვი `Game::MAX_RATING`-შია */
 export const GAME_MAX_RATING = 10
 
-/** გადასაწყვეტი · სათამაშო · ვთამაშობ · გავიარე · მივატოვე */
-export const GAME_STATUSES = ['undecided', 'to_play', 'playing', 'finished', 'abandoned'] as const
+/** Tasks §13 — გასავლელი · ვთამაშობ · დახურული (`finished` — გასაღები რჩება) */
+export const GAME_STATUSES = ['to_play', 'playing', 'finished'] as const
 export type GameStatus = (typeof GAME_STATUSES)[number]
 
 export const GAME_PLATFORMS = ['pc', 'ps5', 'ps4', 'xbox_series', 'xbox_one', 'switch', 'mobile'] as const
@@ -33,17 +33,6 @@ export interface GameLink {
   label?: string | null
   url: string
   kind?: GameLinkKind
-}
-
-export interface GameDlc {
-  name: string
-  note?: string | null
-}
-
-export interface GameLanguages {
-  interface?: string[]
-  audio?: string[]
-  subtitles?: string[]
 }
 
 export interface Game {
@@ -63,10 +52,6 @@ export interface Game {
   modes: GameMode[]
   genres?: GameGenre[]
   genre_ids?: number[]
-  hltb_main: number | null
-  hltb_main_extra: number | null
-  hltb_complete: number | null
-  metacritic: number | null
   opencritic: number | null
   /** RAWG-ის შკალა 0–5 (და არა 0–100) */
   users_score: number | null
@@ -78,9 +63,7 @@ export interface Game {
   status: GameStatus
   is_favorite: boolean
   age_rating: string | null
-  languages: GameLanguages
   size_gb: number | null
-  dlcs: GameDlc[]
   rawg_id: number | null
   rawg_slug: string | null
   igdb_id: number | null
@@ -123,19 +106,13 @@ export interface GameInput {
   my_platform?: GamePlatform | null
   modes?: GameMode[]
   genre_ids?: number[]
-  hltb_main?: number | null
-  hltb_main_extra?: number | null
-  hltb_complete?: number | null
-  metacritic?: number | null
   opencritic?: number | null
   users_score?: number | null
   rating?: number | null
   links?: GameLink[]
   status?: GameStatus
   age_rating?: string | null
-  languages?: GameLanguages
   size_gb?: number | null
-  dlcs?: GameDlc[]
   rawg_id?: number | null
   rawg_slug?: string | null
   igdb_id?: number | null
@@ -163,8 +140,7 @@ function toFormData(input: GameInput): FormData {
   })
 
   const numbers: (keyof GameInput)[] = [
-    'hltb_main', 'hltb_main_extra', 'hltb_complete',
-    'metacritic', 'opencritic', 'users_score', 'rating', 'size_gb', 'rawg_id', 'igdb_id',
+    'opencritic', 'users_score', 'rating', 'size_gb', 'rawg_id', 'igdb_id',
   ]
   /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება და მხოლოდ
      `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე გასუფთავებული ქულა
@@ -186,25 +162,12 @@ function toFormData(input: GameInput): FormData {
     input.genre_ids.forEach((id) => fd.append('genre_ids[]', String(id)))
   }
   /* ⚠️ ცარიელი სიაც იგზავნება (backend `array_key_exists`-ზე დგას) — თორემ
-     ბოლო ბმულის, DLC-ის ან ენის წაშლა შენახვის შემდეგ უკან ბრუნდებოდა */
+     ბოლო ბმულის წაშლა შენახვის შემდეგ უკან ბრუნდებოდა */
   if (input.links !== undefined && !input.links.length) fd.append('links', '')
-  if (input.dlcs !== undefined && !input.dlcs.length) fd.append('dlcs', '')
-  if (input.languages !== undefined) {
-    ;(['interface', 'audio', 'subtitles'] as const).forEach((key) => {
-      if (!(input.languages?.[key] ?? []).length) fd.append(`languages[${key}]`, '')
-    })
-  }
   ;(input.links ?? []).forEach((link, i) => {
     fd.append(`links[${i}][url]`, link.url)
     fd.append(`links[${i}][label]`, link.label ?? '')
     fd.append(`links[${i}][kind]`, link.kind ?? 'other')
-  })
-  ;(input.dlcs ?? []).forEach((dlc, i) => {
-    fd.append(`dlcs[${i}][name]`, dlc.name)
-    if (dlc.note) fd.append(`dlcs[${i}][note]`, dlc.note)
-  })
-  ;(['interface', 'audio', 'subtitles'] as const).forEach((key) => {
-    (input.languages?.[key] ?? []).forEach((lang) => fd.append(`languages[${key}][]`, lang))
   })
 
   if (input.rawg_cover_url) fd.append('rawg_cover_url', input.rawg_cover_url)
@@ -292,7 +255,6 @@ export interface RawgCandidate {
   description_en?: string | null
   release_date: string | null
   cover_url: string | null
-  metacritic: number | null
   users_score: number | null
   platforms: GamePlatform[]
   /** RAWG-ის ჟანრების **სახელები** — ჩვენს ლექსიკონს სახელით ვუთავსებთ */

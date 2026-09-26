@@ -20,9 +20,6 @@ use Throwable;
  * `platforms`, `genres`…) და ერთი ველით მეტი: `source`. ფორმა ორ სხვადასხვა
  * ფორმას რომ ხატავდეს, ორივე ცალკე გასამართავი გახდებოდა.
  *
- * ⚠️ **HowLongToBeat-ის საათები აქაც არ მოდის** — IGDB მათ არ იძლევა და HLTB-ს
- * ოფიციალური API არ აქვს (11.4). `hltb_*` ველები ხელით რჩება.
- *
  * ⚠️ **მოთხოვნის ენა APIcalypse-ია** (SQL-ის მსგავსი ტექსტი POST-ის ტანში) და
  * არა query string. ესეც განსხვავებაა RAWG-ისგან და კიდევ ერთი მიზეზი, რატომაც
  * ეს კლიენტი ცალკეა და არა `RawgClient`-ის პარამეტრი.
@@ -89,7 +86,7 @@ class IgdbClient
             '/games',
             'search "'.$safe.'"; '
             .'fields name, slug, first_release_date, cover.image_id, genres.name, '
-            .'platforms, aggregated_rating, total_rating; '
+            .'platforms, total_rating; '
             ."limit {$limit};",
         );
 
@@ -107,7 +104,7 @@ class IgdbClient
             '/games',
             "where id = {$igdbId}; "
             .'fields name, slug, summary, storyline, first_release_date, cover.image_id, '
-            .'genres.name, platforms, aggregated_rating, total_rating, age_ratings.rating, '
+            .'genres.name, platforms, total_rating, age_ratings.rating, '
             .'websites.url, websites.category, '
             .'involved_companies.developer, involved_companies.publisher, involved_companies.company.name; '
             .'limit 1;',
@@ -281,10 +278,6 @@ class IgdbClient
             'release_date' => $this->releaseDate($row),
             'cover_url' => isset($row['cover']['image_id'])
                 ? $this->imageUrl((string) $row['cover']['image_id'], 't_cover_big')
-                : null,
-            // IGDB-ის `aggregated_rating` კრიტიკოსების 0–100-ია — Metacritic-ის ანალოგი
-            'metacritic' => isset($row['aggregated_rating'])
-                ? (int) round((float) $row['aggregated_rating'])
                 : null,
             // ⚠️ `users_score` ჩვენთან 0–5-ია (RAWG-ის შკალა), IGDB კი 0–100-ს იძლევა
             'users_score' => isset($row['total_rating'])

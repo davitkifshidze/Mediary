@@ -19,9 +19,6 @@ use Throwable;
  * და `blocked()` ცალ-ცალკეა, ზუსტად ისე, როგორც `BggClient`-ზე: ცარიელი სია
  * ჩუმად რომ არ ეთარგმნა user-ს „ასეთი თამაში არ არსებობს"-ად. კლავიშის გარეშე
  * მოდული სრულად მუშაობს, ველები კი ხელით ივსება.
- *
- * ⚠️ **HowLongToBeat-ის საათები აქ არ მოდის** — RAWG მათ არ იძლევა და HLTB-ს
- * ოფიციალური API არ აქვს (11.4). `hltb_*` ველები ხელით ივსება.
  */
 class RawgClient
 {
@@ -192,7 +189,6 @@ class RawgClient
             'title_en' => $row['name'] ?? null,
             'release_date' => $row['released'] ?? null,
             'cover_url' => $row['background_image'] ?? null,
-            'metacritic' => isset($row['metacritic']) ? (int) $row['metacritic'] : null,
             // RAWG-ის `rating` 0–5-ია და არა 0–100 — ისე ვინახავთ, როგორც მოდის
             'users_score' => isset($row['rating']) && $row['rating'] > 0 ? round((float) $row['rating'], 2) : null,
             'platforms' => $this->platforms($row),

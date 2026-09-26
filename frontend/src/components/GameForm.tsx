@@ -12,7 +12,6 @@ import {
   GAME_STATUSES,
   updateGame,
   type Game,
-  type GameDlc,
   type GameGenre,
   type GameInput,
   type GameLink,
@@ -30,13 +29,11 @@ import { useContentLang } from '@/lib/settings'
 import { GameFranchiseDialog } from '@/components/GameFranchiseDialog'
 import { GameGenreDialog } from '@/components/GameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
-import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
-import { DurationInput } from '@/components/ui/duration-input'
 import { Label } from '@/components/ui/label'
-import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FieldLabel } from '@/components/ui/field-label'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -51,8 +48,10 @@ import { InfoHint } from '@/components/ui/info-hint'
 
    ⚠️ **§5.1 (2026-09-10) — ველების სია შემოკლდა.** ფორმიდან მოიხსნა:
    ქართული სახელი · დეველოპერი · „სად ვთამაშობ" · ასაკობრივი რეიტინგი ·
-   ზომა · ქართული აღწერა · **ქულების მთელი ბლოკი** (Metacritic, OpenCritic,
-   მოთამაშეების ქულა, ჩემი ქულა).
+   ზომა · ქართული აღწერა · **ქულების ბლოკი** (OpenCritic, მოთამაშეების
+   ქულა, ჩემი ქულა). ⚠️ **Tasks §13 (2026-09-27)** — Metacritic, HLTB, ენები
+   და DLC-ის ბლოკი **მთლიანად** ამოვიდა (სვეტიც), ე.ი. ქვემოთი „state-ში
+   განზრახ რჩება" მათ აღარ ეხება.
 
    ⚠️ **მონაცემი არსად წაშლილა**: ამოღებული ველები `state`-ში და payload-ში
    **განზრახ** რჩება (წიგნების §5.7-ის ზუსტი პრეცედენტი) — თორემ ძველი
@@ -129,10 +128,6 @@ export function GameForm({
     publisher: game?.publisher ?? '',
     franchise: game?.franchise ?? '',
     my_platform: game?.my_platform ?? '',
-    hltb_main: game?.hltb_main != null ? String(game.hltb_main) : '',
-    hltb_main_extra: game?.hltb_main_extra != null ? String(game.hltb_main_extra) : '',
-    hltb_complete: game?.hltb_complete != null ? String(game.hltb_complete) : '',
-    metacritic: game?.metacritic != null ? String(game.metacritic) : '',
     opencritic: game?.opencritic != null ? String(game.opencritic) : '',
     users_score: game?.users_score != null ? String(game.users_score) : '',
     rating: game?.rating != null ? String(game.rating) : '',
@@ -154,12 +149,6 @@ export function GameForm({
      ე.ი. ფოკუსი, კარეტი და Radix `Select`-ის ღია მდგომარეობა სხვა ჩანაწერზე
      გადადიოდა. გასაღები მონაცემი არ არის — payload-ში `unkeyRows()` ჭრის. */
   const [links, setLinks] = useState<Keyed<GameLink>[]>(() => keyRows(game?.links ?? []))
-  const [dlcs, setDlcs] = useState<Keyed<GameDlc>[]>(() => keyRows(game?.dlcs ?? []))
-  const [languages, setLanguages] = useState({
-    interface: game?.languages?.interface ?? [],
-    audio: game?.languages?.audio ?? [],
-    subtitles: game?.languages?.subtitles ?? [],
-  })
 
   const [rawgCoverUrl, setRawgCoverUrl] = useState<string | null>(null)
   const [cover, setCover] = useState<File | null>(null)
@@ -226,7 +215,6 @@ export function GameForm({
       release_date: f.release_date || (draft.release_date ?? ''),
       developer: f.developer || (draft.developer ?? ''),
       publisher: f.publisher || (draft.publisher ?? ''),
-      metacritic: f.metacritic || (draft.metacritic != null ? String(draft.metacritic) : ''),
       users_score: f.users_score || (draft.users_score != null ? String(draft.users_score) : ''),
       age_rating: f.age_rating || (draft.age_rating ?? ''),
       // ⚠️ IGDB-ის დრაფტს `rawg_id` **არ აქვს** — ცარიელი რჩება და მისი
@@ -326,17 +314,11 @@ export function GameForm({
       my_platform: (form.my_platform || null) as GamePlatform | null,
       modes,
       genre_ids: genreIds,
-      hltb_main: num(form.hltb_main),
-      hltb_main_extra: num(form.hltb_main_extra),
-      hltb_complete: num(form.hltb_complete),
-      metacritic: num(form.metacritic),
       opencritic: num(form.opencritic),
       users_score: num(form.users_score),
       rating: num(form.rating),
       age_rating: form.age_rating || null,
       size_gb: num(form.size_gb),
-      languages,
-      dlcs: unkeyRows(dlcs.filter((d) => d.name.trim())),
       links: unkeyRows(links.filter((l) => l.url.trim())),
       rawg_id: num(form.rawgId),
       rawg_slug: form.rawgSlug || null,
@@ -423,7 +405,6 @@ export function GameForm({
                       {[
                         candidate.release_date,
                         candidate.genres?.join(', '),
-                        candidate.metacritic ? `MC ${candidate.metacritic}` : null,
                         // საიდან მოვიდა — IGDB სათადარიგოა და ეს ცხადად ჩანს
                         candidate.source === 'igdb' ? 'IGDB' : null,
                       ]
@@ -578,33 +559,9 @@ export function GameForm({
           </div>
         </div>
 
-        {/* ---------- HowLongToBeat (11.4 — ხელით) ---------- */}
-        <div className={fields.shows('hltb') ? undefined : 'hidden'}>
-          <FieldLabel required={fields.required('hltb')} hint={joinHints(fields.hint('hltb'), t('games.hltbHint'))}>
-            {fields.label('hltb')}
-          </FieldLabel>
-          {/* ⚠️ §2.5 — სვეტი **წუთებშია** და ველი საერთო `DurationInput`-ია.
-              ადრე ათწილადი საათი ეწერა, ე.ი. „2 სთ 20 წთ" 2.3-ად ინახებოდა
-              და უკან 2 სთ 18 წთ-ად იკითხებოდა. */}
-          <div className="mt-1.5 grid gap-4 sm:grid-cols-3">
-            {(['hltb_main', 'hltb_main_extra', 'hltb_complete'] as const).map((key) => (
-              <div key={key}>
-                <p className="mb-1 text-xs text-muted-foreground">
-                  {t(`games.hltb.${key.replace('hltb_', '')}`)}
-                </p>
-                <DurationInput
-                  unit="minutes"
-                  value={form[key] ? Number(form[key]) : null}
-                  onChange={(v) => setForm((f) => ({ ...f, [key]: v == null ? '' : String(v) }))}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ⚠️ §5.1 — ქულების მთელი ბლოკი (Metacritic · OpenCritic ·
-            მოთამაშეების ქულა · ჩემი ქულა) ფორმიდან მოიხსნა. RAWG-ის
-            მოტანილი ქულები payload-ში ისევ მიდის და ჩანაწერზე ჩანს. */}
+        {/* ⚠️ §5.1 — ქულების ბლოკი (OpenCritic · მოთამაშეების ქულა · ჩემი ქულა)
+            ფორმიდან მოიხსნა; RAWG-ის ქულები payload-ში ისევ მიდის. Metacritic
+            Tasks §13-ით მთლიანად ამოვიდა. */}
 
         {/* ---------- სტატუსი / დამატებითი ---------- */}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -645,21 +602,6 @@ export function GameForm({
             />
             {errors.rawg_id && <p className="mt-1 text-xs text-destructive">{errors.rawg_id}</p>}
           </div>
-        </div>
-
-        {/* ---------- ენები ---------- */}
-        <div className={fields.shows('languages') ? 'grid gap-4 sm:grid-cols-3' : 'hidden'}>
-          {(['interface', 'audio', 'subtitles'] as const).map((key) => (
-            <div key={key}>
-              <Label htmlFor={`g-lang-${key}`}>{t(`games.languages.${key}`)}</Label>
-              <TagSelect
-                inputId={`g-lang-${key}`}
-                options={['EN', 'KA', 'RU', 'DE', 'FR', 'ES', 'IT', 'PL', 'JA', 'ZH']}
-                value={languages[key]}
-                onChange={(v) => setLanguages((cur) => ({ ...cur, [key]: v }))}
-              />
-            </div>
-          ))}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -722,52 +664,6 @@ export function GameForm({
               </Button>
             </div>
 
-            {/* DLC-ები */}
-            <div className={fields.shows('dlcs') ? 'mt-4' : 'hidden'}>
-              <FieldLabel required={fields.required('dlcs')} hint={fields.hint('dlcs')}>
-                {fields.label('dlcs')}
-              </FieldLabel>
-              <div className="mt-1.5 space-y-1.5">
-                {dlcs.map((dlc, i) => (
-                  <div key={dlc._key} className="flex gap-1.5">
-                    <Input
-                      placeholder={t('games.dlcName')}
-                      value={dlc.name}
-                      onChange={(e) =>
-                        setDlcs((all) => all.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-                      }
-                    />
-                    <Input
-                      className="w-32 shrink-0"
-                      placeholder={t('games.dlcNote')}
-                      value={dlc.note ?? ''}
-                      onChange={(e) =>
-                        setDlcs((all) => all.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0"
-                      onClick={() => setDlcs((all) => all.filter((_, j) => j !== i))}
-                      aria-label={t('actions.delete')}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDlcs((all) => [...all, keyRow({ name: '', note: '' })])}
-                >
-                  <Plus className="size-3.5" />
-                  {t('games.addDlc')}
-                </Button>
-              </div>
-            </div>
           </div>
 
           <div>
