@@ -50,7 +50,8 @@ class RequiredFieldsTest extends TestCase
             'video' => ['/api/videos', ['title' => 'X', 'url' => 'https://youtu.be/abc123'], ['status', 'type_id']],
             'song' => ['/api/songs', ['title' => 'X', 'url' => 'https://youtu.be/abc123', 'autofill' => 0], ['genre_ids']],
             'book' => ['/api/books', ['title_en' => 'X'], ['status', 'genre_id']],
-            'board_game' => ['/api/board-games', ['title' => 'X'], ['status', 'genre_id']],
+            // Tasks §12 — სტატუსი აღარ აქვს, სავალდებულო მხოლოდ ჟანრია
+            'board_game' => ['/api/board-games', ['title' => 'X'], ['genre_id']],
             'game' => ['/api/games', ['title_en' => 'X'], ['status', 'genre_ids']],
             'note' => ['/api/notes', ['title' => 'X'], ['status', 'category_id']],
             'bookmark' => ['/api/bookmarks', ['title' => 'X', 'url' => 'https://a.com', 'autofill' => 0], ['status', 'category_id']],

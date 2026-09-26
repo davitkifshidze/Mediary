@@ -231,7 +231,6 @@ class SeedDemoCommand extends Command
                 BoardGame::create([
                     'title' => 'Demo Board Game',
                     'genre_id' => BoardGameGenre::orderBy('sort_order')->value('id'),
-                    'status' => 'owned',
                     'players_min' => 2,
                     'players_max' => 4,
                 ]);

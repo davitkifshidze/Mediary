@@ -38,9 +38,6 @@ class BoardGameController extends Controller
     {
         $query = BoardGame::query()->with('genre')->withCount(['files', 'images', 'notes']);
 
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
-        }
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);
         }
@@ -143,19 +140,6 @@ class BoardGameController extends Controller
         return new BoardGameResource($boardGame->load('genre'));
     }
 
-    /** სტატუსი ცალკე endpoint-ია — ბარათიდან ერთი კლიკია (მედიის ანალოგი) */
-    public function setStatus(Request $request, BoardGame $boardGame)
-    {
-        $data = $request->validate([
-            'status' => ['required', Rule::in(BoardGame::STATUSES)],
-        ]);
-
-        $boardGame->status = $data['status'];
-        $boardGame->save();
-
-        return new BoardGameResource($boardGame->load('genre'));
-    }
-
     /* ---------- BoardGameGeek (§14-ის enrichment) ---------- */
 
     /**
@@ -228,7 +212,7 @@ class BoardGameController extends Controller
     {
         $userId = $request->user()->id;
 
-        // ⚠️ სტატუსი და ტიპი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ შეინახება.
+        // ⚠️ ტიპი (ჟანრი) სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს (Tasks §12).
         // რედაქტირებისას `sometimes`: თუ ველი საერთოდ არ გამოიგზავნა, ძველი
         // მნიშვნელობა რჩება (შექმნისას სავალდებულო იყო) — მაგრამ ცარიელს ვეღარ გაგზავნი.
         $must = $game ? ['sometimes', 'required'] : ['required'];
@@ -259,7 +243,6 @@ class BoardGameController extends Controller
             ],
             'bgg_rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
 
-            'status' => [...$must, Rule::in(BoardGame::STATUSES)],
             'rating' => ['nullable', 'integer', 'min:1', 'max:'.BoardGame::MAX_RATING],
             'is_favorite' => ['nullable', 'boolean'],
 
@@ -294,7 +277,7 @@ class BoardGameController extends Controller
         if (array_key_exists('genre_id', $data)) {
             $game->genre_id = $data['genre_id'] ?: null;
         }
-        foreach (['status', 'visibility'] as $field) {
+        foreach (['visibility'] as $field) {
             if (! empty($data[$field])) {
                 $game->{$field} = $data[$field];
             }

@@ -87,6 +87,8 @@ export interface StatsSummary {
    * გამოსათვლელი არ იქნებოდა.
    */
   goal_modules: string[]
+  /** Tasks §12.5 — ჩემი მოდულები, რომლებსაც მიზანი ვერ ექნება (თარიღის გარეშე) */
+  no_goal_modules: string[]
 }
 
 /**

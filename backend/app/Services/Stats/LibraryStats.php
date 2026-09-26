@@ -75,11 +75,11 @@ class LibraryStats
         'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => true, 'watch_log' => 'anime'],
         'video' => ['model' => Video::class, 'year' => null, 'done_at' => 'watched_at', 'genres' => ['kind' => 'column', 'column' => 'type_id', 'table' => 'video_types'], 'rating' => false],
         'song' => ['model' => Song::class, 'year' => 'year', 'done_at' => 'played_at', 'genres' => ['kind' => 'pivot', 'table' => 'song_genre_song', 'local' => 'song_id', 'foreign' => 'song_genre_id', 'dictionary' => 'song_genres'], 'rating' => true],
-        /* FEAT-21-ის ნარჩენი (2026-09-20) — ოთხივეს ახლა თავისი სვეტი აქვს.
-           ⚠️ ბორდგეიმის `acquired_at`-ია და არა `finished_at`: მისი
-           „გაკეთებული" `owned`-ია, ე.ი. თარიღი შეძენას ნიშნავს. */
+        /* FEAT-21-ის ნარჩენი (2026-09-20) — წიგნს თავისი სვეტი აქვს. */
         'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => true],
-        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => 'acquired_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => true],
+        /* Tasks §12 — სამაგიდო თამაშს სტატუსი და შეძენის თარიღი აღარ აქვს, ე.ი.
+           თვეების ჭრილი და მიზანი მას არ ეხება. */
+        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => true],
         'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => 'finished_at', 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => true],
         'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => false],
         'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => false],
@@ -302,6 +302,10 @@ class LibraryStats
                **არ აქვს** — და `updated_at`-ით ჩანაცვლება ზუსტად ის იქნებოდა,
                რასაც FEAT-08 თავიდან იცილებს (ერთ სვეტში ორი ფაქტი). */
             'goal_modules' => array_values(self::goalModules($modules)),
+            /* Tasks §12.5 — **რომელ ჩემს მოდულს არ შეუძლია მიზანი** (დასრულების
+               თარიღი არ აქვს — დღეს სამაგიდო თამაში). სია სერვერზეა, რომ
+               გალერეის მსგავსი არა-ჩანაწერიანი მოდული „აკლიად" არ ჩაითვალოს. */
+            'no_goal_modules' => array_values(array_diff($modules, self::goalModules($modules))),
         ];
     }
 

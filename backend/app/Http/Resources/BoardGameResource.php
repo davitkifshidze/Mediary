@@ -40,7 +40,6 @@ class BoardGameResource extends JsonResource
             'image' => $this->image_path ?: $this->image_url,
             'image_source' => $this->image_source,
 
-            'status' => $this->status,
             'rating' => $this->rating,
             'is_favorite' => $this->is_favorite,
             'links' => $this->links ?? [],

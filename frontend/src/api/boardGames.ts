@@ -13,8 +13,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 export const BOARD_GAME_MAX_RATING = 10
 
 /** მაქვს · მინდა · ვთამაშობ · გავყიდე */
-export const BOARD_GAME_STATUSES = ['owned', 'wanted', 'playing', 'sold'] as const
-export type BoardGameStatus = (typeof BOARD_GAME_STATUSES)[number]
 
 export interface BoardGameLink {
   label?: string | null
@@ -44,7 +42,6 @@ export interface BoardGame {
   /** storage-ის გზა ან გარე URL */
   image: string | null
   image_source: 'upload' | 'bgg' | null
-  status: BoardGameStatus
   rating: number | null
   is_favorite: boolean
   links: BoardGameLink[]
@@ -57,7 +54,6 @@ export interface BoardGame {
 
 export interface BoardGameFilters extends ListParams {
   q?: string
-  status?: string
   favorite?: boolean
   /** ჟანრები — მძიმით გამოყოფილი id-ები */
   genre_id?: string
@@ -83,7 +79,6 @@ export interface BoardGameInput {
   complexity?: number | null
   bgg_id?: number | null
   bgg_rating?: number | null
-  status?: BoardGameStatus
   rating?: number | null
   links?: BoardGameLink[]
   visibility?: 'private' | 'public'
@@ -115,7 +110,6 @@ function toFormData(input: BoardGameInput): FormData {
     if (value != null) fd.append(key, String(value))
   })
 
-  if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
   ;(input.links ?? []).forEach((link, i) => {
     fd.append(`links[${i}][url]`, link.url)
@@ -161,11 +155,6 @@ export async function deleteBoardGame(id: number): Promise<void> {
 
 export async function toggleBoardGameFavorite(id: number): Promise<BoardGame> {
   const { data } = await api.patch(`/board-games/${id}/favorite`)
-  return data.data
-}
-
-export async function setBoardGameStatus(id: number, status: BoardGameStatus): Promise<BoardGame> {
-  const { data } = await api.patch(`/board-games/${id}/status`, { status })
   return data.data
 }
 

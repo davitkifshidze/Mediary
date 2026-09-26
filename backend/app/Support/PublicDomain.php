@@ -103,7 +103,8 @@ final class PublicDomain
         'anime' => ['columns' => ['tmdb_id'], 'done' => null],
         'game' => ['columns' => ['rawg_id'], 'done' => 'finished'],
         'book' => ['columns' => ['openlibrary_id'], 'done' => 'read'],
-        'board_game' => ['columns' => ['bgg_id'], 'done' => 'owned'],
+        // Tasks §12 — სტატუსი აღარ აქვს: `both_done` „არ ითვლება" (სიმღერის წესი)
+        'board_game' => ['columns' => ['bgg_id'], 'done' => null],
         'video' => ['columns' => ['platform', 'external_id'], 'done' => null],
         'song' => ['columns' => ['platform', 'external_id'], 'done' => null],
         // ⚠️ ბუკმარკის იდენტობა **თვითონ ბმულია** — გარე ლექსიკონი (TMDB/RAWG-ის
@@ -285,7 +286,6 @@ final class PublicDomain
                 'subtitle' => $record->designer,
                 'year' => $record->year,
                 'image' => $record->image_path ?: $record->image_url,
-                'status' => $record->status,
                 'rating' => $record->rating,
             ],
             'video' => [

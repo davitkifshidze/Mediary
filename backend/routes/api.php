@@ -525,7 +525,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'patch'], '/board-games/{boardGame}', [BoardGameController::class, 'update']);
         Route::delete('/board-games/{boardGame}', [BoardGameController::class, 'destroy']);
         Route::patch('/board-games/{boardGame}/favorite', [BoardGameController::class, 'toggleFavorite']);
-        Route::patch('/board-games/{boardGame}/status', [BoardGameController::class, 'setStatus']);
 
         /* წესების PDF, გალერეის ფოტოები და ჩანიშვნები — სექციის ცხრილები */
         Route::get('/board-games/{boardGame}/files', [BoardGameFileController::class, 'index']);

@@ -90,7 +90,7 @@ class PurgeService
         'video' => ['ids', 'type', 'tag', 'status', 'all'],
         'song' => ['ids', 'type', 'tag', 'all'],
         'book' => ['ids', 'type', 'tag', 'status', 'all'],
-        'board_game' => ['ids', 'type', 'status', 'all'],
+        'board_game' => ['ids', 'type', 'all'],
         // ⚠️ თამაშს ტეგები არ აქვს (ჟანრები და პლატფორმები ფარავს)
         'game' => ['ids', 'type', 'status', 'all'],
         // §13 — „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
@@ -121,7 +121,6 @@ class PurgeService
         'anime' => ['undecided', 'to_watch', 'watching', 'watched'],
         'video' => ['undecided', 'to_watch', 'watching', 'watched'],
         'book' => Book::STATUSES,
-        'board_game' => BoardGame::STATUSES,
         'game' => Game::STATUSES,
         'note' => ['open', 'done', 'archived'],
         'bookmark' => ['to_read', 'read', 'archived'],

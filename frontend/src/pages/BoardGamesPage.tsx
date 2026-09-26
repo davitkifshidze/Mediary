@@ -20,7 +20,6 @@ import {
 } from 'lucide-react'
 import {
   BOARD_GAME_MAX_RATING,
-  BOARD_GAME_STATUSES,
   deleteBoardGame,
   fetchBoardGameGenres,
   fetchBoardGames,
@@ -68,13 +67,6 @@ const SORTS = ['newest', 'oldest', 'title', 'year', 'rating', 'bgg', 'complexity
 /** ფილტრის ჩიპები „რამდენი კაცით ვთამაშობთ"-ისთვის */
 const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6, 8]
 
-const STATUS_TONE: Record<string, string> = {
-  owned: 'bg-gold/20 text-gold',
-  wanted: 'bg-primary/15 text-primary',
-  playing: 'bg-secondary text-foreground',
-  sold: 'bg-destructive/15 text-destructive',
-}
-
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { genres: [] as string[], players: [] as string[] }
 type PanelFilters = typeof EMPTY_FILTERS
@@ -119,8 +111,6 @@ export function BoardGamesPage() {
     genre_id: genres.length ? genres.join(',') : undefined,
     players: players.length ? players.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
-    // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
-    status: (BOARD_GAME_STATUSES as readonly string[]).includes(view) ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
   }
 
@@ -198,9 +188,7 @@ export function BoardGamesPage() {
   const heading =
     view === 'favorite'
       ? t('filter.favorite')
-      : (BOARD_GAME_STATUSES as readonly string[]).includes(view)
-        ? t(`boardGames.statuses.${view}`)
-        : onlyGenre
+      : onlyGenre
           ? dictionaryName(onlyGenre, lang)
           : t('boardGames.title')
 
@@ -352,9 +340,6 @@ export function BoardGamesPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    <Badge className={cn('mr-1', STATUS_TONE[game.status] ?? 'bg-secondary')}>
-                      {t(`boardGames.statuses.${game.status}`)}
-                    </Badge>
                     {game.bgg_rating != null && (
                       <Badge className="mr-1 bg-secondary tabular-nums">
                         BGG {game.bgg_rating}

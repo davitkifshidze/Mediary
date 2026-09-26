@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Game;
 use App\Models\Movie;
@@ -83,9 +82,25 @@ class YearGoalsTest extends TestCase
         $goal = LibraryStats::goalModules(LibraryStats::modules());
 
         foreach (LibraryStats::modules() as $key) {
+            if (isset(self::NO_GOAL[$key])) {
+                $this->assertNotContains($key, $goal, "`{$key}` is listed as having no goal");
+
+                continue;
+            }
+
             $this->assertContains($key, $goal, "`{$key}` has no completion date");
         }
     }
+
+    /**
+     * ცხადი გამონაკლისები — **მიზეზით** (`ExportDomain::NOT_EXPORTED`-ის
+     * ყალიბი), რომ მომავალი მოდული თარიღის გარეშე ჩუმად არ გავიდეს.
+     *
+     * @var array<string, string>
+     */
+    private const NO_GOAL = [
+        'board_game' => 'Tasks §12 — სტატუსი და შეძენის თარიღი ამოღებულია (Q10)',
+    ];
 
     /**
      * **enum-სტატუსიანი სამი მოდული — `TracksCompletion`-ის ერთადერთი მწერალი.**
@@ -119,9 +134,6 @@ class YearGoalsTest extends TestCase
         return [
             'book' => [Book::class, 'finished_at', 'read', 'reading'],
             'game' => [Game::class, 'finished_at', 'finished', 'playing'],
-            // ⚠️ ბორდგეიმის „გაკეთებული" `owned`-ია, ე.ი. სვეტიც შეძენისაა;
-            // მისი `title` `NOT NULL`-ია (ერთენოვანი, §14) — აქედან `$extra`
-            'board_game' => [BoardGame::class, 'acquired_at', 'owned', 'wanted', ['title' => 'Catan']],
         ];
     }
 
@@ -187,6 +199,21 @@ class YearGoalsTest extends TestCase
         $this->assertArrayHasKey('movie', $body['done_by_module']);
         $this->assertSame(0, $body['done_by_module']['movie']);
         $this->assertContains('movie', $body['goal_modules']);
+    }
+
+    /**
+     * Tasks §12.5 — **რატომ აკლია მოდული**: სამაგიდო თამაშს დასრულების
+     * თარიღი აღარ აქვს, ე.ი. `goal_modules`-იდან გადის და `no_goal_modules`-ში
+     * ჩნდება; გალერეა (ჩანაწერის გარეშე) არც ერთ სიაში არ ხვდება.
+     */
+    public function test_a_module_without_a_date_is_reported_as_unable_to_take_a_goal(): void
+    {
+        $body = $this->getJson('/api/stats/summary')->assertOk()->json();
+
+        $this->assertNotContains('board_game', $body['goal_modules']);
+        $this->assertContains('board_game', $body['no_goal_modules']);
+        $this->assertNotContains('gallery', $body['no_goal_modules']);
+        $this->assertNotContains('movie', $body['no_goal_modules']);
     }
 
     /** მიზნები `users.settings`-ში ინახება — ცალკე ცხრილის გარეშე */

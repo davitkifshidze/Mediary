@@ -1119,7 +1119,6 @@
         "playtime": "Play time",
         "age": "Age",
         "bgg_id": "BGG id",
-        "status": "Status",
         "genre": "Genre",
         "links": "Shops",
         "image": "Main photo",
@@ -1853,12 +1852,6 @@
     "saved": "Saved",
     "deleteTitle": "Delete this board game?",
     "deleteHint": "“{{name}}” will be deleted along with its rules, photos and notes.",
-    "statuses": {
-      "owned": "Owned",
-      "wanted": "Wanted",
-      "playing": "Playing",
-      "sold": "Sold"
-    },
     "sort": {
       "newest": "Newest",
       "oldest": "Oldest",
@@ -3203,7 +3196,8 @@
     "edit": "Change",
     "set": "Set a goal",
     "editHint": "Write how many you intend to finish this year. Zero means you have no goal.",
-    "saved": "The goals have been saved."
+    "saved": "The goals have been saved.",
+    "missingHint": "No goal is possible for: {{modules}} — this module has no completion date."
   },
   "courses": {
     "title": "Courses",

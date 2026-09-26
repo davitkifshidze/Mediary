@@ -11,6 +11,7 @@ use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -49,14 +50,13 @@ class BoardGameModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ სტატუსი და ჟანრი სავალდებულოა — ჩანაწერი ვერცერთის გარეშე ვერ იქმნება.
+     * ⚠️ ჟანრი სავალდებულოა — სტატუსი სამაგიდო თამაშს აღარ აქვს (Tasks §12).
      */
     private function gameDefaults(?User $user = null): array
     {
         $user ??= $this->user;
 
         return [
-            'status' => 'owned',
             'genre_id' => $this->actingAs($user)->getJson('/api/board-game-genres')->json('data.0.id'),
         ];
     }
@@ -93,7 +93,6 @@ class BoardGameModuleTest extends TestCase
                 'complexity' => 3.87,
                 'bgg_id' => 174430,
                 'bgg_rating' => 8.6,
-                'status' => 'owned',
                 'rating' => 10,
                 'links' => [
                     ['label' => 'Amazon', 'url' => 'https://amazon.com/x', 'price' => 149.99, 'currency' => 'USD'],
@@ -276,19 +275,27 @@ class BoardGameModuleTest extends TestCase
         $this->assertSame(0, $meter->recalculate($this->user->refresh()));
     }
 
-    /** სტატუსი ცალკე endpoint-ია და მხოლოდ ცნობილ მნიშვნელობებს იღებს */
-    public function test_status_endpoint_is_bounded(): void
+    /**
+     * Tasks §12 — **სტატუსი და შეძენის თარიღი აღარ არსებობს**: endpoint 404-ია,
+     * გაგზავნილი `status` კი ჩუმად იგნორირდება (სვეტი აღარაა), ჩანაწერი
+     * მის გარეშე იქმნება და პასუხში ველი აღარ ჩანს.
+     */
+    public function test_a_board_game_has_no_status_any_more(): void
     {
-        $id = $this->makeGame();
+        $id = $this->makeGame(['status' => 'sold']);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/board-games/{$id}")
+            ->assertOk()
+            ->assertJsonMissingPath('data.status')
+            ->assertJsonMissingPath('data.acquired_at');
 
         $this->actingAs($this->user)
             ->patchJson("/api/board-games/{$id}/status", ['status' => 'sold'])
-            ->assertOk()
-            ->assertJsonPath('data.status', 'sold');
+            ->assertNotFound();
 
-        $this->actingAs($this->user)
-            ->patchJson("/api/board-games/{$id}/status", ['status' => 'lost'])
-            ->assertStatus(422);
+        $this->assertFalse(Schema::hasColumn('board_games', 'status'));
+        $this->assertFalse(Schema::hasColumn('board_games', 'acquired_at'));
     }
 
     /** სხვისი ჩანაწერი 404-ია (`BelongsToUser`-ის global scope) */

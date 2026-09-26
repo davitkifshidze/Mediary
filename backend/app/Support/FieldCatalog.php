@@ -164,7 +164,6 @@ final class FieldCatalog
             ['key' => 'age', 'type' => 'number', 'sort_order' => 70],
             ['key' => 'complexity', 'type' => 'number', 'sort_order' => 80],
             ['key' => 'bgg_id', 'type' => 'number', 'sort_order' => 90],
-            ['key' => 'status', 'type' => 'select', 'sort_order' => 100],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 110],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 130],
             ['key' => 'image', 'type' => 'file', 'sort_order' => 140],

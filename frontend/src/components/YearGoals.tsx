@@ -32,10 +32,10 @@ import { cn } from '@/lib/utils'
  * საკუთარი მაგალითი („წელს 24 წიგნი") არ მუშაობდა; ახლა ოთხივეს თავისი
  * სვეტი აქვს და სიაში ყველა ჩანს.
  *
- * ⚠️ **ამიტომ „რატომ აკლია მოდულები" განმარტება წაშლილია** — ის ცარიელ
- * კითხვას პასუხობდა. თუ ოდესმე მოდული დასრულების თარიღის გარეშე გაჩნდა,
- * ის აქ **უხმოდ** ამოვარდება: ახსნა მაშინ უნდა დაბრუნდეს (და სია
- * სერვერიდან მოვიდეს, თორემ „გალერეა" ყოველთვის აკლიად ჩაითვლება).
+ * ⚠️ **„რატომ აკლია მოდული" ახსნა დაბრუნდა (Tasks §12.5)**: სამაგიდო თამაშს
+ * სტატუსი და შეძენის თარიღი აღარ აქვს, ე.ი. მიზანი ვერ ექნება. სია
+ * სერვერიდან მოდის (`no_goal_modules`), თორემ „გალერეა" ყოველთვის აკლიად
+ * ჩაითვლებოდა; ტექსტი სათაურის `i`-შია (§8).
  *
  * ⚠️ **ბლოკი მხოლოდ მაშინ ჩანს, როცა მიზანი მართლა დგას** — ცარიელი
  * „მიზნები" დეშბორდზე ყოველდღიური ხმაურია (იგივე წესი, რაც „მალე"-ს
@@ -63,6 +63,12 @@ export function YearGoals() {
   const year = String(data.year)
   const goals = settings.goals ?? {}
   const available = data.goal_modules
+  const missing = (data.no_goal_modules ?? [])
+    .map((key) => {
+      const mod = modules.find((m) => m.key === key)
+      return mod ? moduleName(mod, lang) : key
+    })
+    .join(', ')
 
   const rows = available
     .map((key) => ({
@@ -108,7 +114,11 @@ export function YearGoals() {
   }
 
   const editor = editing && (
-    <ModalShell title={t('goals.title', { year: data.year })} onClose={close} hint={t('goals.editHint')}>
+    <ModalShell
+      title={t('goals.title', { year: data.year })}
+      onClose={close}
+      hint={missing ? `${t('goals.editHint')} ${t('goals.missingHint', { modules: missing })}` : t('goals.editHint')}
+    >
       <div className="space-y-4">
 
         <div className="space-y-3">

@@ -379,7 +379,7 @@ class PurgeTest extends TestCase
         $this->assertSame(count(BookGenre::DEFAULTS), BookGenre::withoutGlobalScope('owner')->count());
     }
 
-    /** ბორდგეიმები (§14): ჟანრი და სტატუსი; ტეგი მათ არ აქვთ — 422 */
+    /** ბორდგეიმები (§14): ჟანრი; ტეგი და (Tasks §12) სტატუსი მათ არ აქვთ — 422 */
     public function test_board_games_by_genre_and_status(): void
     {
         BoardGameGenre::ensureDefaults($this->admin->id);
@@ -390,13 +390,11 @@ class PurgeTest extends TestCase
             'title' => 'Catan',
             'year' => 1995,
             'genre_id' => $genres[0]->id,
-            'status' => 'sold',
         ]);
         $keep = BoardGame::create([
             'user_id' => $this->admin->id,
             'title' => 'Carcassonne',
             'genre_id' => $genres[1]->id,
-            'status' => 'owned',
         ]);
 
         $this->actingAs($this->admin)
@@ -409,6 +407,10 @@ class PurgeTest extends TestCase
         // ტეგები ბორდგეიმს არ აქვს (მექანიკები სხვა ღერძია)
         $this->actingAs($this->admin)
             ->postJson('/api/admin/purge/plan', ['target' => 'board_game', 'mode' => 'tag', 'tags' => ['x']])
+            ->assertStatus(422);
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/admin/purge/plan', ['target' => 'board_game', 'mode' => 'status', 'status' => 'owned'])
             ->assertStatus(422);
 
         $this->actingAs($this->admin)

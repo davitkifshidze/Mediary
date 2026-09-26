@@ -124,7 +124,6 @@ export function statusTone(status: Status | null | undefined): string {
  */
 export const ENUM_STATUS_NS = {
   book: 'books.statuses',
-  board_game: 'boardGames.statuses',
   game: 'games.statuses',
   course: 'courses.statuses',
   place: 'places.statuses',

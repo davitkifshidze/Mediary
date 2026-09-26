@@ -131,7 +131,7 @@ final class ExportDomain
             'model' => BoardGame::class,
             'with' => ['genre'],
             'fields' => [
-                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'status', 'acquired_at', 'rating',
+                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'rating',
                 'is_favorite', 'players_min', 'players_max', 'age_min', 'playtime_min',
                 'playtime_max', 'complexity', 'bgg_id', 'bgg_rating',
                 'description', 'image_path', 'visibility', 'created_at',

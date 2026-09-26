@@ -954,7 +954,7 @@ export const PURGE_TARGET_MODES = {
   video: ['ids', 'type', 'tag', 'status', 'all'],
   song: ['ids', 'type', 'tag', 'all'],
   book: ['ids', 'type', 'tag', 'status', 'all'],
-  board_game: ['ids', 'type', 'status', 'all'],
+  board_game: ['ids', 'type', 'all'],
   game: ['ids', 'type', 'status', 'all'],
   // §13 — „ტიპი" აქ **კატეგორიაა** (`note_entries.category_id`)
   note: ['ids', 'type', 'tag', 'status', 'all'],
@@ -987,17 +987,16 @@ export type PurgeTargetWithStatus = {
 
 /**
  * სტატუსების ლექსიკონი დომენზე — ⚠️ **არ ემთხვევა** ერთმანეთს: ფილმს
- * `watched` აქვს, წიგნს `read`, ბორდგეიმს `owned`.
+ * `watched` აქვს, წიგნს `read`.
  * სარკეა `PurgeService::TARGET_STATUSES`-ისა.
  *
- * ⚠️ **§6.4-ის შემდეგ აქ მხოლოდ `enum`-იანი დომენებია** (წიგნი · ბორდგეიმი ·
- * თამაში). დანარჩენ ექვსს per-user ლექსიკონი აქვს, ე.ი. სია **სამიზნე
+ * ⚠️ **§6.4-ის შემდეგ აქ მხოლოდ `enum`-იანი დომენებია** (წიგნი · თამაში ·
+ * კურსი · ადგილი). დანარჩენ ექვსს per-user ლექსიკონი აქვს, ე.ი. სია **სამიზნე
  * ანგარიშიდან** ჩამოდის (`GET /statuses/{domain}?user_id=`) — ჩემი
  * ნაგულისხმევები სხვის გადარქმეულ სტატუსზე ცრუ პასუხს გასცემდა.
  */
 export const PURGE_TARGET_STATUSES: Record<string, string[]> = {
   book: ['to_read', 'reading', 'read', 'abandoned'],
-  board_game: ['owned', 'wanted', 'playing', 'sold'],
   game: ['undecided', 'to_play', 'playing', 'finished', 'abandoned'],
   // Tasks §2 — აკლდა, ე.ი. `/purge`-ის „სტატუსით" სკოუპი ცარიელ სიას ხატავდა
   course: ['to_take', 'taking', 'done', 'dropped'],

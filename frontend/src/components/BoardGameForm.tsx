@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Check, Loader2, Plus, Search, Store, X } from 'lucide-react'
 import {
-  BOARD_GAME_STATUSES,
   createBoardGame,
   fetchBggCandidates,
   fetchBggDraft,
@@ -83,7 +82,6 @@ export function BoardGameForm({
     bggId: game?.bgg_id ? String(game.bgg_id) : '',
     bggRating: game?.bgg_rating ? String(game.bgg_rating) : '',
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
-    status: game?.status ?? '',
   })
   /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
      ინდექსზე შუა სტრიქონის წაშლა ფოკუსს, კარეტსა და Radix `Select`-ის ღია
@@ -254,10 +252,10 @@ export function BoardGameForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    /* ⚠️ სტატუსიც და ჟანრიც სავალდებულოა — შემოწმება ქსელამდე, რათა ველი
-       იმავე წამს გაწითლდეს. გასაღებები backend-ის შეცდომებისაა, ე.ი. ცემა ერთია. */
+    /* ⚠️ ჟანრი სავალდებულოა (სტატუსი Tasks §12-ით ამოვიდა) — შემოწმება
+       ქსელამდე, რათა ველი იმავე წამს გაწითლდეს. */
     const picked = pickErrors(
-      { status: form.status, genre_id: form.genreId },
+      { genre_id: form.genreId },
       t('validation.pickOne'),
     )
     if (Object.keys(picked).length > 0) {
@@ -286,8 +284,6 @@ export function BoardGameForm({
       bgg_rating: num(form.bggRating),
       // ⚠️ §5.2 — „ჩემი ქულა" ფორმიდან მოიხსნა და **საერთოდ აღარ იგზავნება**:
       // ცარიელი მნიშვნელობის გაგზავნა არსებულ ქულას ჩუმად წაშლიდა
-      // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის
-      status: form.status as (typeof BOARD_GAME_STATUSES)[number],
       links: unkeyRows(links.filter((l) => l.url.trim())),
       bgg_image_url: bggImageUrl,
       image,
@@ -611,30 +607,6 @@ export function BoardGameForm({
               onChange={(e) => setForm((f) => ({ ...f, bggId: e.target.value }))}
             />
             {errors.bgg_id && <p className="mt-1 text-xs text-destructive">{errors.bgg_id}</p>}
-          </div>
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="bg-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
-            >
-              <SelectTrigger
-                id="bg-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {BOARD_GAME_STATUSES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {t(`boardGames.statuses.${value}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
           </div>
         </div>
 

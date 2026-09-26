@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTrash;
-use App\Models\Concerns\TracksCompletion;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,21 +31,14 @@ class BoardGame extends Model
      */
     use HasTrash;
 
-    /**
-     * FEAT-21 — „როდის შემემატა" თარიღი.
-     *
-     * ⚠️ **სვეტს `acquired_at` ჰქვია და არა `finished_at`**: ბორდგეიმის
-     * „გაკეთებული" `owned`-ია, ე.ი. თარიღი შეძენას ნიშნავს და არა
-     * დასრულებას. სხვა მოდულებთან სახელის გატოლება ლამაზი იქნებოდა და
-     * მტყუანი — სვეტი იმას უნდა ერქვას, რასაც ინახავს.
-     */
-    use TracksCompletion;
-
     /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
     public const MAX_RATING = 10;
 
-    /** მაქვს · მინდა · ვთამაშობ · გავყიდე */
-    public const STATUSES = ['owned', 'wanted', 'playing', 'sold'];
+    /* ⚠️ Tasks §12 — **სტატუსი არ აქვს** (შენი სიტყვები: „სტატუსიც საერთოდ
+       ამოიღე, საჭირო არ არის"). კოლექციაში მყოფი თამაში ისედაც „მაქვს"-ია;
+       ამიტომ წავიდა შეძენის თარიღიც (`acquired_at`, Q10) და მისი
+       `TracksCompletion`. ეს „სტატუსი ყველა მოდულში სავალდებულოა" წესის
+       მეორე გამონაკლისია — პირველი სიმღერაა. */
 
     protected $guarded = ['id'];
 
@@ -64,18 +56,7 @@ class BoardGame extends Model
         'is_favorite' => 'boolean',
         'links' => 'array',
         'sort_order' => 'integer',
-        'acquired_at' => 'date',
     ];
-
-    public function completionColumn(): string
-    {
-        return 'acquired_at';
-    }
-
-    public function completionDomain(): string
-    {
-        return 'board_game';
-    }
 
     /**
      * ⚠️ ფაილები SQL-ის cascade-ით იშლება, მაგრამ cascade **მოდელის ივენთს
