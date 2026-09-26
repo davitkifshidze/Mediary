@@ -39,19 +39,11 @@ export interface Course {
   url: string | null
   /** ჰოსტი `www.`-ის გარეშე — backend-ის `Course::applyUrl()` ავსებს */
   platform: string | null
-  instructor: string | null
   description: string | null
   category_id: number | null
   category?: CourseCategory | null
   tags: string[]
-  lessons_total: number | null
-  lessons_done: number
-  /** ⚠️ **გამოთვლადია და არ ინახება**; `null` = გაკვეთილების რაოდენობა უცნობია */
-  percent: number | null
-  /** ხანგრძლივობა **წუთებში** (§2.5-ის ერთეული მთელ პროექტში) */
-  minutes: number | null
   status: CourseStatus
-  rating: string | null
   is_favorite: boolean
   /** ატვირთული ესკიზი ან გვერდის og:image */
   image: string | null
@@ -88,15 +80,10 @@ export interface CourseFilters extends ListParams {
 export interface CourseInput {
   title: string
   url?: string | null
-  instructor?: string | null
   description?: string | null
   category_id?: number | null
   tags?: string[]
-  lessons_total?: number | null
-  lessons_done?: number | null
-  minutes?: number | null
   status?: CourseStatus
-  rating?: number | null
   visibility?: 'private' | 'public'
   image_url?: string | null
   /** ატვირთული ესკიზი; მითითების შემთხვევაში multipart-ად იგზავნება */
@@ -110,7 +97,6 @@ function toFormData(input: CourseInput): FormData {
   const fd = new FormData()
   fd.append('title', input.title)
   fd.append('url', input.url ?? '')
-  fd.append('instructor', input.instructor ?? '')
   fd.append('description', input.description ?? '')
   if (input.category_id != null) fd.append('category_id', String(input.category_id))
   if (input.status) fd.append('status', input.status)
@@ -119,7 +105,7 @@ function toFormData(input: CourseInput): FormData {
   /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება, მხოლოდ
      `undefined` („არ შეეხო“) რჩება გამოტოვებული — თორემ გასუფთავებული ველი
      შენახვის შემდეგ ძველ მნიშვნელობაზე ბრუნდებოდა. */
-  for (const key of ['lessons_total', 'lessons_done', 'minutes', 'rating', 'started_at', 'finished_at'] as const) {
+  for (const key of ['started_at', 'finished_at'] as const) {
     const value = input[key]
     if (value !== undefined) fd.append(key, value == null ? '' : String(value))
   }
@@ -177,12 +163,6 @@ export async function toggleCourseFavorite(id: number): Promise<Course> {
 
 export async function setCourseStatus(id: number, status: CourseStatus): Promise<Course> {
   const { data } = await api.patch(`/courses/${id}/status`, { status })
-  return data.data
-}
-
-/** გავლილი გაკვეთილები — სტატუსს backend თვითონ ათანხმებს (`syncProgress()`) */
-export async function setCourseProgress(id: number, lessonsDone: number): Promise<Course> {
-  const { data } = await api.patch(`/courses/${id}/progress`, { lessons_done: lessonsDone })
   return data.data
 }
 

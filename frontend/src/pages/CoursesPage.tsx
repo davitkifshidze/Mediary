@@ -20,7 +20,6 @@ import {
   fetchCourseCategories,
   fetchCourseMetadata,
   fetchCourses,
-  setCourseProgress,
   setCourseStatus,
   toggleCourseFavorite,
   updateCourse,
@@ -77,7 +76,7 @@ import { cn } from '@/lib/utils'
    სტატუსით ფილტრი პანელშია.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'rating', 'progress', 'finished'] as const
+const SORTS = ['newest', 'oldest', 'title', 'finished'] as const
 
 interface PanelFilters {
   categories: string[]
@@ -168,11 +167,6 @@ export function CoursesPage() {
   const favorite = useMutation({ mutationFn: toggleCourseFavorite, onSuccess: invalidate, onError: fail })
   const status = useMutation({
     mutationFn: ({ id, next }: { id: number; next: CourseStatus }) => setCourseStatus(id, next),
-    onSuccess: invalidate,
-    onError: fail,
-  })
-  const progress = useMutation({
-    mutationFn: ({ id, done }: { id: number; done: number }) => setCourseProgress(id, done),
     onSuccess: invalidate,
     onError: fail,
   })
@@ -319,48 +313,17 @@ export function CoursesPage() {
                         <Badge className={STATUS_TONE[course.status]}>
                           {t(`courses.statuses.${course.status}`)}
                         </Badge>
-                        {course.rating && <Badge className="bg-secondary">★ {course.rating}</Badge>}
                         <VisibilityBadge value={course.visibility} />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {[
                           course.platform,
-                          course.instructor,
                           course.category ? dictionaryName(course.category, lang) : null,
                         ]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
-
-                      {/* პროგრესი — მხოლოდ მაშინ, როცა გაკვეთილების რაოდენობა ცნობილია */}
-                      {course.percent != null && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-md bg-secondary">
-                            <div
-                              className="h-full rounded-md bg-primary"
-                              style={{ width: `${course.percent}%` }}
-                            />
-                          </div>
-                          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                            {course.lessons_done} / {course.lessons_total}
-                          </span>
-                          {/* ერთი გაკვეთილი წინ — ყველაზე ხშირი ქმედება */}
-                          {course.lessons_done < (course.lessons_total ?? 0) && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={progress.isPending}
-                              onClick={() =>
-                                progress.mutate({ id: course.id, done: course.lessons_done + 1 })
-                              }
-                            >
-                              +1
-                            </Button>
-                          )}
-                        </div>
-                      )}
 
                       {course.tags.length > 0 && (
                         <p className="mt-1.5 truncate text-xs text-muted-foreground">
@@ -559,16 +522,11 @@ function CourseForm({
   const [form, setForm] = useState({
     title: course?.title ?? '',
     url: course?.url ?? '',
-    instructor: course?.instructor ?? '',
     description: course?.description ?? '',
     // ⚠️ ცარიელი სტრიქონი და არა პირველი კატეგორია: ჩუმად წინასწარშევსებული
     // პასუხი არჩევანი არაა (2026-09-16-ის წესი)
     categoryId: course?.category_id ? String(course.category_id) : '',
     status: (course?.status ?? '') as CourseStatus | '',
-    lessonsTotal: course?.lessons_total != null ? String(course.lessons_total) : '',
-    lessonsDone: String(course?.lessons_done ?? 0),
-    minutes: course?.minutes != null ? String(course.minutes) : '',
-    rating: course?.rating ?? '',
     tags: course?.tags ?? [],
   })
   const [thumbnail, setThumbnail] = useState<File | null>(null)
@@ -655,14 +613,9 @@ function CourseForm({
     save.mutate({
       title: form.title,
       url: form.url || null,
-      instructor: form.instructor || null,
       description: form.description || null,
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status as CourseStatus,
-      lessons_total: form.lessonsTotal ? Number(form.lessonsTotal) : null,
-      lessons_done: Number(form.lessonsDone) || 0,
-      minutes: form.minutes ? Number(form.minutes) : null,
-      rating: form.rating ? Number(form.rating) : null,
       tags,
       thumbnail,
       remove_thumbnail: removeThumb,
@@ -747,63 +700,6 @@ function CourseForm({
             {errors.category_id && (
               <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
             )}
-          </div>
-
-          <div className={fields.shows('instructor') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="c-instructor">{fields.label('instructor')}</FieldLabel>
-            <Input
-              id="c-instructor"
-              value={form.instructor}
-              onChange={(e) => setForm((f) => ({ ...f, instructor: e.target.value }))}
-            />
-          </div>
-
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="c-rating">{fields.label('rating')}</FieldLabel>
-            <Input
-              id="c-rating"
-              type="number"
-              min={0}
-              max={10}
-              step="0.1"
-              value={form.rating}
-              onChange={(e) => setForm((f) => ({ ...f, rating: e.target.value }))}
-            />
-          </div>
-
-          <div className={fields.shows('lessons') ? undefined : 'hidden'}>
-            <FieldLabel hint={t('courses.lessonsHint')}>{fields.label('lessons')}</FieldLabel>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                max={9999}
-                aria-label={t('courses.lessonsDone')}
-                value={form.lessonsDone}
-                onChange={(e) => setForm((f) => ({ ...f, lessonsDone: e.target.value }))}
-              />
-              <span className="text-muted-foreground">/</span>
-              <Input
-                type="number"
-                min={0}
-                max={9999}
-                aria-label={t('courses.lessonsTotal')}
-                value={form.lessonsTotal}
-                onChange={(e) => setForm((f) => ({ ...f, lessonsTotal: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div className={fields.shows('minutes') ? undefined : 'hidden'}>
-            <FieldLabel hint={t('courses.minutesHint')} htmlFor="c-minutes">{fields.label('minutes')}</FieldLabel>
-            <Input
-              id="c-minutes"
-              type="number"
-              min={0}
-              value={form.minutes}
-              onChange={(e) => setForm((f) => ({ ...f, minutes: e.target.value }))}
-            />
-            {/* ⚠️ ერთეული **წუთია** მთელ პროექტში (§2.5) — ეს ცხადად წერია */}
           </div>
         </div>
 

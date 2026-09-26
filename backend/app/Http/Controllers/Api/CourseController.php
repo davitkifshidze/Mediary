@@ -56,7 +56,6 @@ class CourseController extends Controller
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
                 ->orWhere('description', 'like', Like::contains($q))
-                ->orWhere('instructor', 'like', Like::contains($q))
                 ->orWhere('platform', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
@@ -64,8 +63,6 @@ class CourseController extends Controller
         match ($request->string('sort')->toString()) {
             'title' => $query->orderBy('title'),
             'oldest' => $query->orderBy('id'),
-            'rating' => $query->orderByDesc('rating'),
-            'progress' => $query->orderByDesc('lessons_done'),
             'finished' => $query->orderByDesc('finished_at'),
             default => $query->orderByDesc('id'),
         };
@@ -130,22 +127,8 @@ class CourseController extends Controller
         $data = $request->validate(['status' => ['required', Rule::in(Course::STATUSES)]]);
 
         $course->status = $data['status'];
-        // ⚠️ სტატუსსა და პროგრესს ერთი მეთოდი ათანხმებს — იხ. `Course::syncProgress()`
-        $course->syncProgress();
-        $course->save();
-
-        return new CourseResource($course->load('category')->loadCount('files'));
-    }
-
-    /** გავლილი გაკვეთილები — წიგნის `progress`-ის ანალოგი */
-    public function setProgress(Request $request, Course $course)
-    {
-        $data = $request->validate([
-            'lessons_done' => ['required', 'integer', 'min:0', 'max:9999'],
-        ]);
-
-        $course->lessons_done = $data['lessons_done'];
-        $course->syncProgress();
+        // ⚠️ სტატუსსა და მის თარიღებს ერთი მეთოდი ათანხმებს — იხ. `Course::syncStatusDates()`
+        $course->syncStatusDates();
         $course->save();
 
         return new CourseResource($course->load('category')->loadCount('files'));
@@ -164,7 +147,6 @@ class CourseController extends Controller
             'title' => [$course ? 'sometimes' : 'required', 'string', 'max:255'],
             // ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსსაც მისამართი არ აქვს
             'url' => ['nullable', 'string', 'max:1000', 'url'],
-            'instructor' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'category_id' => [
                 ...$must,
@@ -173,12 +155,7 @@ class CourseController extends Controller
             ],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
-            'lessons_total' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'lessons_done' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            // ⚠️ **წუთები და არა საათები** (§2.5-ის ერთეული) — 400 საათი = 24000 წთ
-            'minutes' => ['nullable', 'integer', 'min:0', 'max:600000'],
             'status' => [...$must, Rule::in(Course::STATUSES)],
-            'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'image_url' => ['nullable', 'string', 'max:1000', 'url'],
@@ -191,15 +168,13 @@ class CourseController extends Controller
 
     private function apply(Course $course, Request $request, array $data): void
     {
-        foreach (['title', 'instructor', 'description', 'image_url'] as $field) {
+        foreach (['title', 'description', 'image_url'] as $field) {
             if (array_key_exists($field, $data)) {
                 $course->{$field} = $data[$field] ?: null;
             }
         }
-        foreach (['lessons_total', 'minutes', 'rating', 'started_at'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $course->{$field} = $data[$field] !== '' ? $data[$field] : null;
-            }
+        if (array_key_exists('started_at', $data)) {
+            $course->started_at = $data['started_at'] ?: null;
         }
         if (array_key_exists('category_id', $data)) {
             $course->category_id = $data['category_id'] ?: null;
@@ -212,9 +187,6 @@ class CourseController extends Controller
         }
         if (array_key_exists('tags', $data)) {
             $course->tags = Course::normalizeTags($data['tags'] ?? []);
-        }
-        if (array_key_exists('lessons_done', $data)) {
-            $course->lessons_done = (int) ($data['lessons_done'] ?? 0);
         }
         if ($request->has('is_favorite')) {
             $course->is_favorite = $request->boolean('is_favorite');
@@ -242,14 +214,13 @@ class CourseController extends Controller
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::COURSE_THUMBNAILS);
         }
 
-        /* ⚠️ **ბოლოს** — `finished_at`/`started_at` და გაკვეთილების ჭერი
-           ერთმანეთზეა დამოკიდებული, ე.ი. შეთანხმება ყველა ველის ჩაწერის
-           შემდეგ უნდა მოხდეს. */
+        /* ⚠️ **ბოლოს** — ცხადად გამოგზავნილი `finished_at` ჯერ იწერება და
+           სტატუსთან შეთანხმება მის შემდეგ ხდება. */
         if (array_key_exists('finished_at', $data)) {
             $course->finished_at = $data['finished_at'] ?: null;
         }
 
-        $course->syncProgress();
+        $course->syncStatusDates();
     }
 
     /**

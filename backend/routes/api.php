@@ -745,7 +745,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
         Route::patch('/courses/{course}/favorite', [CourseController::class, 'toggleFavorite']);
         Route::patch('/courses/{course}/status', [CourseController::class, 'setStatus']);
-        Route::patch('/courses/{course}/progress', [CourseController::class, 'setProgress']);
 
         /* ფაილები — სერტიფიკატი, ეკრანის ასლი, კონსპექტი */
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);

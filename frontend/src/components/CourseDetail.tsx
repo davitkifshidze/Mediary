@@ -157,27 +157,10 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-secondary">{t(`courses.statuses.${course.status}`)}</Badge>
             {course.platform && <Badge className="bg-secondary">{course.platform}</Badge>}
-            {course.instructor && (
-              <span className="text-sm text-muted-foreground">{course.instructor}</span>
-            )}
           </div>
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={course.visibility} />
         </div>
-
-        {course.percent != null && (
-          <div>
-            <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{t('courses.progress')}</span>
-              <span className="tabular-nums">
-                {course.lessons_done} / {course.lessons_total} · {course.percent}%
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-md bg-secondary">
-              <div className="h-full rounded-md bg-primary" style={{ width: `${course.percent}%` }} />
-            </div>
-          </div>
-        )}
 
         {course.description && (
           <p className="whitespace-pre-line text-sm text-muted-foreground">{course.description}</p>

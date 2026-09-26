@@ -1144,10 +1144,6 @@
         "url": "Link",
         "status": "Status",
         "category": "Category",
-        "instructor": "Instructor",
-        "lessons": "Lessons",
-        "minutes": "Length (minutes)",
-        "rating": "My rating",
         "thumbnail": "Main photo",
         "description": "Description",
         "tags": "Tags"
@@ -1226,8 +1222,7 @@
         "url": "The link is the bookmark's identity — that is what a match compares."
       },
       "course": {
-        "url": "The link is optional — an offline course has none.",
-        "lessons": "Done and total; the percentage is computed from these and is never stored."
+        "url": "The link is optional — an offline course has none."
       },
       "place": {
         "coords": "The source search fills these in; you can also type them.",
@@ -3189,11 +3184,6 @@
     "emptyFilteredHint": "Change the filter or the search term.",
     "status": "Status",
     "categories": "Categories",
-    "progress": "Progress",
-    "lessonsDone": "Lessons done",
-    "lessonsTotal": "Lessons in total",
-    "lessonsHint": "Done / total. Leave the total empty if you do not know it — then no percentage is computed.",
-    "minutesHint": "Length in minutes — one unit across the whole app.",
     "urlHint": "The link is optional: an offline course has none. When given, we try to read the title and the image from the page.",
     "open": "Open the course",
     "files": "Files",
@@ -3214,8 +3204,6 @@
     "sort_newest": "Newest",
     "sort_oldest": "Oldest",
     "sort_title": "By name",
-    "sort_rating": "By rating",
-    "sort_progress": "By progress",
     "sort_finished": "By finish date"
   },
   "places": {

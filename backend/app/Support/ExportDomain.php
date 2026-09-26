@@ -173,9 +173,8 @@ final class ExportDomain
             'model' => Course::class,
             'with' => ['category'],
             'fields' => [
-                'id', 'title', 'url', 'platform', 'instructor', 'category', 'status',
-                'status_name', 'tags', 'lessons_total', 'lessons_done', 'minutes',
-                'rating', 'description', 'is_favorite', 'started_at', 'finished_at',
+                'id', 'title', 'url', 'platform', 'category', 'status',
+                'status_name', 'tags', 'description', 'is_favorite', 'started_at', 'finished_at',
                 'thumbnail_path', 'image_url', 'visibility', 'created_at',
             ],
         ],

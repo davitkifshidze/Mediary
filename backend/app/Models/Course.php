@@ -22,9 +22,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * როლები სამია (`todo`/`doing`/`done`), ხოლო „მივატოვე" მეოთხე ფაქტია და
  * არცერთს არ უდრის. წიგნის/თამაშის/სამაგიდოს იგივე რიგი.
  *
- * ⚠️ **პროგრესს და სტატუსს ერთი მეთოდი ათანხმებს** (`syncProgress()`) —
- * `Book::syncProgress()`-ის ზუსტი მიზეზი: ორი წყარო ერთი ფაქტისთვის
- * ერთმანეთს დაშორდებოდა („დასრულებული", რომელსაც გაკვეთილები აკლია).
+ * ⚠️ **სტატუსსა და მის თარიღებს ერთი მეთოდი ათანხმებს** (`syncStatusDates()`).
+ * გაკვეთილები, ხანგრძლივობა, ლექტორი და შეფასება Tasks §14-მა ამოიღო —
+ * ე.ი. პროგრესი აღარ არსებობს და სტატუსი მხოლოდ ხელით იცვლება.
  */
 class Course extends Model
 {
@@ -49,10 +49,6 @@ class Course extends Model
 
     protected $casts = [
         'tags' => 'array',
-        'lessons_total' => 'integer',
-        'lessons_done' => 'integer',
-        'minutes' => 'integer',
-        'rating' => 'decimal:1',
         'is_favorite' => 'boolean',
         'started_at' => 'date',
         'finished_at' => 'date',
@@ -108,50 +104,16 @@ class Course extends Model
     }
 
     /**
-     * **პროგრესისა და სტატუსის შეთანხმება — ერთადერთი ადგილი.**
-     *
-     * ⚠️ `Book::syncProgress()`-ის ზუსტი მიზეზი: „დასრულებული, რომელსაც
-     * გაკვეთილები აკლია" და „ყველა გაკვეთილი გავიარე, სტატუსი კი
-     * *გასავლელია*" ორივე ის მდგომარეობაა, რომელსაც ორი დამოუკიდებელი
-     * მწერალი ერთ დღეს შექმნის.
+     * **სტატუსისა და მისი თარიღების შეთანხმება — ერთადერთი ადგილი.**
      *
      * ⚠️ **`finished_at` მხოლოდ აქ იწერება** — FEAT-08/FEAT-21 სწორედ ამ
-     * თარიღით ითვლის „წელს რამდენი დავასრულე"-ს.
+     * თარიღით ითვლის „წელს რამდენი დავასრულე"-ს. `??=`: უკვე ჩაწერილი თარიღი
+     * არ გადაიწერება, თორემ ყოველი რედაქტირება მას მიმდინარე წელში გადაათრევდა.
      */
-    public function syncProgress(): void
+    public function syncStatusDates(): void
     {
-        $total = (int) $this->lessons_total;
-        $done = max(0, (int) $this->lessons_done);
-
-        if ($total > 0) {
-            $done = min($done, $total);
-
-            /* ⚠️ **ავტომატური დაწინაურება მხოლოდ მაშინ, როცა *პროგრესი*
-               შეიცვალა.** უამისოდ „გავიარე"-დან „გავდივარ"-ზე ცხადი დაბრუნება
-               მყისვე უკან ბრუნდებოდა (ყველა გაკვეთილი ხომ გავლილია) —
-               ე.ი. მომხმარებლის ცხადი არჩევანი ვერ სრულდებოდა.
-               `isDirty()` ზუსტად ამას ამბობს: `setStatus()` `lessons_done`-ს
-               არ ეხება, `setProgress()` — ეხება. */
-            if ($this->isDirty('lessons_done') || $this->wasRecentlyCreated || ! $this->exists) {
-                if ($done === $total && $this->status === 'taking') {
-                    $this->status = 'done';
-                }
-
-                // დაწყებულია, მაგრამ ჯერ „გასავლელად" ითვლება
-                if ($done > 0 && $done < $total && $this->status === 'to_take') {
-                    $this->status = 'taking';
-                }
-            }
-        }
-
-        $this->lessons_done = $done;
-
         if ($this->status === 'done') {
             $this->finished_at ??= now()->toDateString();
-
-            if ($total > 0) {
-                $this->lessons_done = $total;
-            }
         } else {
             // ⚠️ უკან დაბრუნებაზე თარიღი უნდა წავიდეს, თორემ სტატისტიკა
             // დაუსრულებელ კურსს სამუდამოდ ჩათვლიდა
@@ -161,14 +123,6 @@ class Course extends Model
         if ($this->status !== 'to_take') {
             $this->started_at ??= now()->toDateString();
         }
-    }
-
-    /** პროგრესი პროცენტებში — **გამოთვლადია და არ ინახება** (ორი ერთეული ერთ ფაქტზე) */
-    public function percent(): ?int
-    {
-        $total = (int) $this->lessons_total;
-
-        return $total > 0 ? min(100, (int) round($this->lessons_done / $total * 100)) : null;
     }
 
     public function deleteThumbnail(): void

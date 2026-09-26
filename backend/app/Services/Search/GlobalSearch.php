@@ -276,7 +276,6 @@ class GlobalSearch
                 'columns' => [
                     'title' => ['title'],
                     'description' => ['description'],
-                    'instructor' => ['instructor'],
                     'url' => ['url'],
                 ],
                 'json' => ['tags' => 'tags'],

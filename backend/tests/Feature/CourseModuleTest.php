@@ -86,56 +86,48 @@ class CourseModuleTest extends TestCase
     }
 
     /**
-     * **პროგრესი და სტატუსი ერთმა მეთოდმა უნდა შეათანხმოს.**
+     * **სტატუსი და მისი თარიღები ერთმა მეთოდმა უნდა შეათანხმოს**
+     * (`Course::syncStatusDates()`).
      *
-     * ⚠️ ეს ტესტის მთავარი აზრია (`Book::syncProgress()`-ის მიზეზი):
-     * „დასრულებული, რომელსაც გაკვეთილები აკლია" ორი დამოუკიდებელი
-     * მწერლის გარდაუვალი შედეგია.
+     * ⚠️ უკან დაბრუნებაზე თარიღი უნდა წავიდეს — თორემ სტატისტიკა
+     * დაუსრულებელ კურსს სამუდამოდ ჩათვლიდა (FEAT-08/FEAT-21).
      */
-    public function test_progress_and_status_stay_in_step(): void
+    public function test_the_status_sets_and_clears_its_dates(): void
     {
-        $id = $this->postJson('/api/courses', $this->payload([
-            'lessons_total' => 10,
-            'status' => 'taking',
-        ]))->json('data.id');
+        $id = $this->postJson('/api/courses', $this->payload(['status' => 'taking']))
+            ->assertStatus(201)
+            ->assertJsonPath('data.finished_at', null)
+            ->json('data.id');
 
-        // ნახევარი — სტატუსი უცვლელი, პროცენტი გამოთვლილი
-        $this->patchJson("/api/courses/{$id}/progress", ['lessons_done' => 5])
+        $this->assertNotNull(Course::findOrFail($id)->started_at);
+
+        $done = $this->patchJson("/api/courses/{$id}/status", ['status' => 'done'])
             ->assertOk()
-            ->assertJsonPath('data.percent', 50)
-            ->assertJsonPath('data.status', 'taking');
-
-        // ყველა გაკვეთილი — სტატუსი თვითონ გახდა „გავიარე" და თარიღიც დაეწერა
-        $done = $this->patchJson("/api/courses/{$id}/progress", ['lessons_done' => 10])
-            ->assertOk()
-            ->assertJsonPath('data.status', 'done')
-            ->assertJsonPath('data.percent', 100);
-
+            ->assertJsonPath('data.status', 'done');
         $this->assertNotNull($done->json('data.finished_at'));
 
-        /* ⚠️ უკან დაბრუნებაზე თარიღი უნდა წავიდეს — თორემ სტატისტიკა
-           დაუსრულებელ კურსს სამუდამოდ ჩათვლიდა (FEAT-08/FEAT-21). */
         $this->patchJson("/api/courses/{$id}/status", ['status' => 'taking'])
             ->assertOk()
             ->assertJsonPath('data.finished_at', null);
     }
 
-    /** ⚠️ გავლილი ვერასდროს აღემატება სულ რაოდენობას */
-    public function test_progress_is_capped_at_the_total(): void
+    /**
+     * Tasks §14 — ლექტორი, შეფასება, გაკვეთილები და ხანგრძლივობა ამოვიდა:
+     * პასუხში აღარ ჩანს, გამოგზავნილი მნიშვნელობა ჩუმად იგნორირდება და
+     * პროგრესის endpoint აღარ არსებობს.
+     */
+    public function test_the_removed_fields_are_gone(): void
     {
-        $id = $this->postJson('/api/courses', $this->payload(['lessons_total' => 4]))->json('data.id');
+        $res = $this->postJson('/api/courses', $this->payload([
+            'instructor' => 'Jeffrey', 'rating' => 9, 'lessons_total' => 10, 'minutes' => 60,
+        ]))->assertStatus(201);
 
-        $this->patchJson("/api/courses/{$id}/progress", ['lessons_done' => 99])
-            ->assertOk()
-            ->assertJsonPath('data.lessons_done', 4);
-    }
+        foreach (['instructor', 'rating', 'lessons_total', 'lessons_done', 'percent', 'minutes'] as $key) {
+            $this->assertArrayNotHasKey($key, $res->json('data'));
+        }
 
-    /** გაკვეთილების რაოდენობის გარეშე პროცენტი არ არსებობს და არ იგონება */
-    public function test_without_a_total_there_is_no_percentage(): void
-    {
-        $this->postJson('/api/courses', $this->payload(['lessons_done' => 3]))
-            ->assertStatus(201)
-            ->assertJsonPath('data.percent', null);
+        $this->patchJson("/api/courses/{$res->json('data.id')}/progress", ['lessons_done' => 1])
+            ->assertNotFound();
     }
 
     public function test_the_filters_narrow_the_list(): void

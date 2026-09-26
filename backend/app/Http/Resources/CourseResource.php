@@ -21,22 +21,12 @@ class CourseResource extends JsonResource
             'title' => $this->title,
             'url' => $this->url,
             'platform' => $this->platform,
-            'instructor' => $this->instructor,
             'description' => $this->description,
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => new CourseCategoryResource($this->category)),
             'tags' => $this->tags ?? [],
-            'lessons_total' => $this->lessons_total,
-            'lessons_done' => $this->lessons_done,
-            /* ⚠️ პროცენტი **გამოთვლადია და არ ინახება** — ორი ერთეული ერთი
-               ფაქტისთვის ზუსტად ის ხაფანგია, რომელსაც `Book::syncProgress()`
-               ებრძვის. `null` ნიშნავს, რომ გაკვეთილების რაოდენობა უცნობია. */
-            'percent' => $this->percent(),
-            // ხანგრძლივობა **წუთებში** (§2.5-ის ერთეული მთელ პროექტში)
-            'minutes' => $this->minutes,
             // ⚠️ enum და არა ლექსიკონის რიგი — „მივატოვე" მეოთხე ფაქტია
             'status' => $this->status,
-            'rating' => $this->rating,
             'is_favorite' => $this->is_favorite,
             // ატვირთული ფოტო → /storage/…; თუ არაა — გვერდის og:image
             'image' => $this->thumbnail_path ?: $this->image_url,

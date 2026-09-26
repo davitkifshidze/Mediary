@@ -85,7 +85,7 @@ class LibraryStats
         'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => false],
         /* FEAT-25 — ⚠️ `done_at` **`finished_at`-ია და არა `updated_at`**:
            „წელს რამდენი დავასრულე" სწორედ ამით ითვლება (FEAT-08/FEAT-21). */
-        'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => true],
+        'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => false],
         // ⚠️ `done_at` = `visited_at` — „წელს სად ვიყავი“ სწორედ ეს კითხვაა
         'place' => ['model' => Place::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'place_categories'], 'rating' => true],
     ];
