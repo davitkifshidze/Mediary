@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { enumStatusKey } from '@/lib/statuses'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChartColumn, Heart } from 'lucide-react'
@@ -129,8 +130,8 @@ function ModuleStats({ module: m, lang, year }: { module: StatModule; lang: stri
   /* ⚠️ `t`-ს ტიპი პარამეტრად ვერ გადაეცემა (i18next-ის ოვერლოადები),
      ამიტომ დამხმარე აქვეა — იქ, სადაც `t` სქოუპშია. */
   const enumStatus = (key: string | null) => {
-    const ns = ENUM_STATUS_NS[m.key]
-    return ns && key ? t(`${ns}.${key}`, { defaultValue: key }) : (key ?? '—')
+    const k = key ? enumStatusKey(m.key, key) : null
+    return k ? t(k, { defaultValue: key ?? undefined }) : (key ?? '—')
   }
 
   const statusRows: Row[] = m.status.map((s) => ({
@@ -204,18 +205,6 @@ function ModuleStats({ module: m, lang, year }: { module: StatModule; lang: stri
       </div>
     </section>
   )
-}
-
-/**
- * ⚠️ **სამ მოდულს სტატუსი ლექსიკონი არ აქვს** (§6.4) — წიგნს, თამაშსა და
- * ბორდგეიმს enum უწერიათ, ე.ი. მათ სახელს `ka.json` ინახავს. სივრცეები
- * ისტორიულია და არა გამოთვლადი (`board_game` → `boardGames`), ამიტომ
- * რუკაა და არა შეწებება.
- */
-const ENUM_STATUS_NS: Record<string, string> = {
-  book: 'books.statuses',
-  game: 'games.statuses',
-  board_game: 'boardGames.statuses',
 }
 
 /**

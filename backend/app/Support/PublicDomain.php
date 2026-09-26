@@ -327,6 +327,24 @@ final class PublicDomain
                 // ბმული საჯაროა — ბუკმარკი სწორედ იმისთვისაა გაზიარებული, რომ გაიხსნას
                 'url' => $record->url,
             ],
+            /* Tasks §2 — კურსი და ადგილი ამ `match`-ს აკლდა და `default` არ
+               ჰქონდა, ე.ი. პირველი საჯარო კურსი ოთხ ადგილას 500-ს დააბრუნებდა.
+               ⚠️ კურსს შეფასება განზრახ არ მიჰყვება — §14 ამ ველს შლის.
+               სტატუსი enum-ის გასაღებია (წიგნის/თამაშის ფორმა). */
+            'course' => [
+                'title_en' => $record->title,
+                'subtitle' => $record->platform,
+                'image' => $record->thumbnail_path ?: $record->image_url,
+                'status' => $record->status,
+                'url' => $record->url,
+            ],
+            'place' => [
+                'title_en' => $record->name,
+                'subtitle' => implode(', ', array_filter([$record->city, $record->country])) ?: null,
+                'image' => $record->photo_path,
+                'status' => $record->status,
+                'rating' => $record->rating,
+            ],
         };
 
         /* ⚠️ **`id`/`domain` არასდროს იმალება** — ბარათი მათ გარეშე ვერ

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
-import { statusName } from '@/lib/statuses'
+import { ENUM_STATUS_NS, statusName } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Trash2 } from 'lucide-react'
@@ -112,13 +112,7 @@ const DICTIONARIES: Record<PurgeTargetWithType, { key: string; load: () => Promi
 const STATUS_NAMESPACE: Record<
   Exclude<PurgeTargetWithStatus, StatusDomain | 'gallery'>,
   string
-> = {
-  book: 'books.statuses',
-  board_game: 'boardGames.statuses',
-  game: 'games.statuses',
-  course: 'courses.statuses',
-  place: 'places.statuses',
-}
+> = ENUM_STATUS_NS
 
 const statusKey = (domain: PurgeDomain, status: string) =>
   `${STATUS_NAMESPACE[domain as keyof typeof STATUS_NAMESPACE] ?? 'status'}.${status}`

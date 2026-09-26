@@ -29,6 +29,10 @@ export const PUBLIC_DOMAINS = [
   'playlist',
   // §18 — ბუკმარკები; იდენტობა თვითონ ბმულია (`PublicDomain::MATCH`)
   'bookmark',
+  // Tasks §2 — ორივე აკლდა და „რომელი ჩანაწერი ჩანს"-ში მათი ჩანართი არ იხატებოდა.
+  // ⚠️ სია `RegistryConsistencyTest`-ით `PublicDomain::DOMAINS`-ს ედარება.
+  'course',
+  'place',
   /* §7.5 — გალერეის **ალბომი**. ⚠️ ეს „ჩანაწერი" არ არის: ფოტო მშობლის
      ხილვადობას იმემკვიდრებს, ე.ი. ფილმის კადრს ცალკე გადამრთველი არ
      სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით არაფერი მოსდის და
@@ -54,6 +58,8 @@ export const DOMAIN_MODULE: Record<PublicDomainKey, string> = {
   song: 'song',
   playlist: 'song',
   bookmark: 'bookmark',
+  course: 'course',
+  place: 'place',
   gallery_album: 'gallery',
 }
 

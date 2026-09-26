@@ -113,3 +113,25 @@ export function statusTone(status: Status | null | undefined): string {
 }
 
 
+
+/**
+ * **enum-სტატუსიანი მოდულების i18n სივრცე** (§6.4-ის მეორე მექანიზმი).
+ *
+ * ⚠️ ეს რუკა სამ ფაილში ცალ-ცალკე ეწერა (`MatchPanel`, `StatsPage`,
+ * `PurgePage`) და კურსი და ადგილი (Tasks §2) ორ მათგანს დააკლდა — ეკრანზე
+ * ნედლი გასაღები იხატებოდა. სივრცეები ისტორიულია (`board_game` →
+ * `boardGames`), ამიტომ რუკაა და არა შეწებება.
+ */
+export const ENUM_STATUS_NS = {
+  book: 'books.statuses',
+  board_game: 'boardGames.statuses',
+  game: 'games.statuses',
+  course: 'courses.statuses',
+  place: 'places.statuses',
+} as const satisfies Record<string, string>
+
+/** enum-სტატუსის i18n გასაღები; უცნობ დომენზე — `null` */
+export function enumStatusKey(domain: string, status: string): string | null {
+  const ns = (ENUM_STATUS_NS as Record<string, string>)[domain]
+  return ns ? `${ns}.${status}` : null
+}

@@ -283,6 +283,54 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
+     * ⚠️ **ყოველ საჯარო დომენს `card()`-ში შტო უნდა ჰქონდეს** (Tasks §2).
+     *
+     * `match`-ს `default` არ აქვს და ეს განზრახაა — უცნობი დომენისთვის
+     * „ცარიელი ბარათი" ჩუმად გაჟონავდა. სამაგიეროდ გამორჩენა **500**-ია
+     * ოთხ ადგილას (ხილვადობის სია, საჯარო პროფილი, დამთხვევები, ჩატის
+     * გაზიარება) — და ის მხოლოდ მაშინ ჩანს, როცა პირველი საჯარო ჩანაწერი
+     * გაჩნდება. კურსი და ადგილი ზუსტად ასე იდგა, სანამ ეს ტესტი დაიწერებოდა.
+     */
+    public function test_every_public_domain_has_a_card(): void
+    {
+        $missing = [];
+
+        foreach (PublicDomain::DOMAINS as $domain => $meta) {
+            try {
+                PublicDomain::card($domain, new $meta['model']);
+            } catch (\UnhandledMatchError) {
+                $missing[] = $domain;
+            }
+        }
+
+        $this->assertSame([], $missing, 'PublicDomain::card()-ს შტო აკლია: '.implode(', ', $missing));
+    }
+
+    /**
+     * ⚠️ **SPA-ის `PUBLIC_DOMAINS` `PublicDomain::DOMAINS`-ის სარკეა** (Tasks §2).
+     *
+     * ტიპისთვის სია ფრონტში უნდა ეწეროს (`PublicDomainKey` ათეულ ადგილას
+     * იკითხება), მაგრამ ხელით დაწერილმა სარკემ კურსი და ადგილი ჩამოიტოვა —
+     * „რომელი ჩანაწერი ჩანს"-ში მათი ჩანართი უბრალოდ არ იხატებოდა. ეს
+     * ტესტი სარკეს წყაროდან კითხულობს და თანმიმდევრობასაც ადარებს
+     * (ის ტაბების რიგია).
+     */
+    public function test_the_spa_public_domain_list_mirrors_the_backend(): void
+    {
+        $source = (string) file_get_contents(base_path('../frontend/src/api/publicProfile.ts'));
+
+        $this->assertSame(1, preg_match('/export const PUBLIC_DOMAINS = \[(.*?)\] as const/s', $source, $m));
+        // კომენტარები ამოვიღოთ — მათში ბრჭყალებიანი სიტყვები ცრუ დომენად წაიკითხებოდა
+        $body = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], '', $m[1]);
+        preg_match_all("/'([a-z_]+)'/", $body, $keys);
+
+        // ⚠️ ყალბი სიმწვანის წინააღმდეგ: ცარიელი ამონაკითხი „ორივე ცარიელია"-ს ჰგავს
+        $this->assertContains('movie', $keys[1]);
+
+        $this->assertSame(PublicDomain::keys(), $keys[1]);
+    }
+
+    /**
      * ⚠️ **დეშბორდის მთვლელი ყოველ ჩანაწერიან მოდულს უნდა ჰქონდეს.**
      *
      * `DashboardController::COUNTERS`-ის გამორჩენა **ჩუმია**: ბარათი ჩვეულებრივ

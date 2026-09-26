@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { statusName } from '@/lib/statuses'
+import { enumStatusKey, statusName } from '@/lib/statuses'
 import type { Status } from '@/api/types'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -202,16 +202,11 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
  *
  * ლექსიკონიან დომენებზე სტატუსი **ობიექტია** და სახელი მასშივე მოდის:
  * ის მფლობელის ლექსიკონშია და მნახველი მას სხვაგან ვერსად წაიკითხავდა.
- * `enum`-იან სამზე (წიგნი · თამაში · ბორდგეიმი) კი i18n-ის სივრცე
+ * `enum`-იან დომენებზე (წიგნი · თამაში · ბორდგეიმი · კურსი · ადგილი) კი
+ * i18n-ის სივრცე (`ENUM_STATUS_NS`)
  * დომენზეა დამოკიდებული, ზუსტად ისე, როგორც `PurgePage`-ში.
  * სტატუსის გარეშე დომენზე მხოლოდ ქულა რჩება.
  */
-const STATUS_NAMESPACE: Record<string, string> = {
-  game: 'games.statuses',
-  book: 'books.statuses',
-  board_game: 'boardGames.statuses',
-}
-
 function statusLabel(
   t: (key: string) => string,
   lang: string,
@@ -224,8 +219,8 @@ function statusLabel(
   if (status && typeof status === 'object') {
     parts.push(statusName(status, lang))
   } else if (status) {
-    const ns = STATUS_NAMESPACE[domain]
-    if (ns) parts.push(t(`${ns}.${status}`))
+    const key = enumStatusKey(domain, status)
+    if (key) parts.push(t(key))
   }
 
   if (rating != null) parts.push(`★ ${rating}`)

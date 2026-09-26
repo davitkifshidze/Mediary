@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Course;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Place;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -294,6 +296,39 @@ class PublicProfileTest extends TestCase
 
         $this->assertSame(1, $res->json('meta.total'));
         $this->assertSame('Dune', $res->json('data.0.title_en'));
+    }
+
+    /**
+     * **Tasks §2 — კურსი და ადგილი საჯარო ბარათს იღებს.**
+     *
+     * `card()`-ის `match`-ს ორივე შტო აკლდა და `default` არ ჰქონდა, ე.ი.
+     * პირველი საჯარო კურსი ხილვადობის სიას და საჯარო პროფილს 500-ით
+     * ამტვრევდა. დღემდე არ ჩანდა მხოლოდ იმიტომ, რომ ასეთი ჩანაწერი არ იყო.
+     */
+    public function test_course_and_place_render_a_public_card(): void
+    {
+        $ids = Module::whereIn('key', ['course', 'place'])->pluck('id')
+            ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now(), 'is_public' => true]])
+            ->all();
+        $this->alice->modules()->syncWithoutDetaching($ids);
+        $this->alice->forceFill(['profile_visibility' => 'public'])->save();
+
+        Course::create(['user_id' => $this->alice->id, 'title' => 'Laravel', 'platform' => 'udemy.com', 'status' => 'taking', 'visibility' => 'public']);
+        Place::create(['user_id' => $this->alice->id, 'name' => 'ნარიყალა', 'city' => 'თბილისი', 'country' => 'საქართველო', 'status' => 'visited', 'visibility' => 'public']);
+
+        $this->actingAs($this->alice)->getJson('/api/visibility/course')
+            ->assertOk()->assertJsonPath('data.0.title_en', 'Laravel');
+        $this->actingAs($this->alice)->getJson('/api/visibility/place')
+            ->assertOk()->assertJsonPath('data.0.subtitle', 'თბილისი, საქართველო');
+
+        $this->getJson('/api/public/profiles/alice/course')
+            ->assertOk()
+            ->assertJsonPath('data.0.subtitle', 'udemy.com')
+            ->assertJsonPath('data.0.status', 'taking');
+        $this->getJson('/api/public/profiles/alice/place')
+            ->assertOk()
+            ->assertJsonPath('data.0.title_en', 'ნარიყალა')
+            ->assertJsonPath('data.0.status', 'visited');
     }
 
     /**
