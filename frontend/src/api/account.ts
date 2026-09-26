@@ -673,7 +673,7 @@ export async function fetchUsers(): Promise<User[]> {
  * ლეიბლი და წაშლის გზა ჩუმად ამოვარდება (ასე გამოჩნდა `field` 2026-09-06-ზე).
  */
 export interface UploadedFile {
-  kind: 'avatar' | 'poster' | 'cover' | 'thumbnail' | 'image' | 'video' | 'doc' | 'field'
+  kind: 'avatar' | 'poster' | 'primary' | 'image' | 'video' | 'doc' | 'field'
   /** მოდულის `key` (ან `account` ავატარზე, `chat` მიმაგრებაზე) */
   module: string
   /** ჩანაწერი, რომელსაც ფაილი ჰკიდია — წაშლა ამით მიდის სწორ გზაზე */

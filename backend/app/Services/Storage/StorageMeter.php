@@ -211,6 +211,11 @@ class StorageMeter
             }
         }
 
+        // ⚠️ ჩანაწერის მთავარი ფოტო **ყველა მოდულში ერთი `kind`-ია — `primary`** (Tasks §9.4).
+        // ინტერფეისში მას ერთი სახელი ჰქვია — „მთავარი ფოტო“ — და `thumbnail` (ვიდეო, სიმღერა,
+        // ბუკმარკი, კურსი, ადგილი) + `cover` (წიგნი, თამაში) ფაილების ბიბლიოთეკის ჭრილში ერთი და
+        // იმავე სახელის ორ ბარათს დახატავდა; სამაგიდოს სურათი კი `image`-ად მიმაგრებულ ფოტოებში
+        // ერეოდა. `poster` ცალკე რჩება — ის ფილმის, სერიალისა და ანიმეს ტერმინია.
         // `thumbnail_url` პლატფორმის ბმულია (ჩვენთან არ ინახება) — მხოლოდ `thumbnail_path`
         $videos = $skip('video') ? collect() : $user->videos()
             ->withoutGlobalScope('owner')
@@ -219,7 +224,7 @@ class StorageMeter
 
         foreach ($videos as $video) {
             $add([
-                'kind' => 'thumbnail',
+                'kind' => 'primary',
                 'module' => 'video',
                 'owner_type' => 'video',
                 'owner_id' => (int) $video->id,
@@ -261,7 +266,7 @@ class StorageMeter
 
         foreach ($songs as $song) {
             $add([
-                'kind' => 'thumbnail',
+                'kind' => 'primary',
                 'module' => 'song',
                 'owner_type' => 'song',
                 'owner_id' => (int) $song->id,
@@ -280,7 +285,7 @@ class StorageMeter
 
         foreach ($bookmarks as $bookmark) {
             $add([
-                'kind' => 'thumbnail',
+                'kind' => 'primary',
                 'module' => 'bookmark',
                 'owner_type' => 'bookmark',
                 'owner_id' => (int) $bookmark->id,
@@ -298,7 +303,7 @@ class StorageMeter
 
         foreach ($courses as $course) {
             $add([
-                'kind' => 'thumbnail',
+                'kind' => 'primary',
                 'module' => 'course',
                 'owner_type' => 'course',
                 'owner_id' => (int) $course->id,
@@ -335,7 +340,7 @@ class StorageMeter
 
         foreach ($places as $place) {
             $add([
-                'kind' => 'thumbnail',
+                'kind' => 'primary',
                 'module' => 'place',
                 'owner_type' => 'place',
                 'owner_id' => (int) $place->id,
@@ -373,7 +378,7 @@ class StorageMeter
 
         foreach ($books as $book) {
             $add([
-                'kind' => 'cover',
+                'kind' => 'primary',
                 'module' => 'book',
                 'owner_type' => 'book',
                 'owner_id' => (int) $book->id,
@@ -411,7 +416,7 @@ class StorageMeter
 
         foreach ($boardGames as $game) {
             $add([
-                'kind' => 'image',
+                'kind' => 'primary',
                 'module' => 'board_game',
                 'owner_type' => 'board_game',
                 'owner_id' => (int) $game->id,
@@ -449,7 +454,7 @@ class StorageMeter
 
         foreach ($games as $game) {
             $add([
-                'kind' => 'cover',
+                'kind' => 'primary',
                 'module' => 'game',
                 'owner_type' => 'game',
                 'owner_id' => (int) $game->id,

@@ -124,7 +124,7 @@ class StorageManagementTest extends TestCase
         $this->assertSame(2, $body['total']);
         $this->assertSame('doc', $body['files'][0]['kind']);
         $this->assertSame(102400, $body['files'][0]['size']);
-        $this->assertSame('thumbnail', $body['files'][1]['kind']);
+        $this->assertSame('primary', $body['files'][1]['kind']);
         $this->assertSame(20480, $body['files'][1]['size']);
         // სიის ჯამი და დაქეშილი მრიცხველი ერთი და იგივეა
         $this->assertSame($used, $body['bytes']);
@@ -784,6 +784,34 @@ class StorageManagementTest extends TestCase
 
         // მოდული, რომელსაც ფაილი არ აქვს, ორივე გზით ნულია
         $this->assertSame(0, (int) $meter->files($user, 'playlist')->where('module', 'playlist')->sum('size'));
+    }
+
+    /**
+     * **ჩანაწერის მთავარი ფოტო ყველა მოდულში ერთი `kind`-ია** (Tasks §9.4).
+     *
+     * ⚠️ ინტერფეისი მას ერთ სახელს უწოდებს — „მთავარი ფოტო“. ცალ-ცალკე `thumbnail`
+     * და `cover` ფაილების ბიბლიოთეკის ჭრილში ერთი და იმავე სახელის ორ ბარათს
+     * დახატავდა, სამაგიდოს სურათი კი `image`-ად მიმაგრებულ ფოტოებში ერეოდა.
+     * პოსტერი ცალკე რჩება (ფილმი, სერიალი, ანიმე), მიმაგრებული და გალერეის ფოტო — `image`.
+     */
+    public function test_every_modules_main_photo_is_one_kind(): void
+    {
+        $files = app(StorageMeter::class)->files($this->inventory());
+        $kindOf = fn (string $path) => $files->firstWhere('path', $path)['kind'] ?? null;
+
+        foreach ([
+            'videos/thumbnails/v.jpg', 'songs/thumbnails/s.jpg', 'bookmarks/thumbnails/b.jpg',
+            'books/covers/b.jpg', 'boardgames/images/bg.jpg', 'games/covers/g.jpg',
+            'courses/thumbnails/c.jpg', 'places/photos/p.jpg',
+        ] as $path) {
+            $this->assertSame('primary', $kindOf($path), $path);
+        }
+
+        $this->assertSame('poster', $kindOf('movies/posters/m.jpg'));
+        $this->assertSame('image', $kindOf('places/files/images/p.jpg'));
+        $this->assertSame('image', $kindOf('gallery/images/g.jpg'));
+        // ძველი ორი სახელი აღარსად ჩნდება — თორემ ჭრილში ორი „მთავარი ფოტო“ დაიხატება
+        $this->assertSame([], $files->whereIn('kind', ['thumbnail', 'cover'])->values()->all());
     }
 
     /**

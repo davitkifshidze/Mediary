@@ -28,7 +28,7 @@ class PruneTrashCommand extends Command
     protected $signature = 'trash:prune {--days= : რამდენ დღეზე ძველი იშლება (ნაგულისხმევი — TrashDomain::KEEP_DAYS)}
                             {--dry-run : მხოლოდ დათვლა}';
 
-    protected $description = 'კალათაში ვადაგასული ჩანაწერების საბოლოო წაშლა';
+    protected $description = 'ურნაში ვადაგასული ჩანაწერების საბოლოო წაშლა';
 
     public function handle(): int
     {

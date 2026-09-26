@@ -42,7 +42,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 type Sort = 'size' | 'date' | 'name'
 type View = 'grid' | 'list'
 
-const KINDS = ['avatar', 'poster', 'cover', 'thumbnail', 'image', 'video', 'doc', 'field'] as const
+/** ⚠️ `primary` — ჩანაწერის მთავარი ფოტო **ყველა** მოდულში (Tasks §9.4). ადრე ის
+ *  `cover`-ად და `thumbnail`-ად ცალ-ცალკე მოდიოდა, ე.ი. „მთავარი ფოტოს“ ორი ბარათი
+ *  დაიხატებოდა; `poster` ცალკე რჩება — ფილმის, სერიალისა და ანიმეს ტერმინია. */
+const KINDS = ['avatar', 'poster', 'primary', 'image', 'video', 'doc', 'field'] as const
 
 /** მასობრივი მოქმედების სკოუპი — `'all'` = **მთელი ბიბლიოთეკა**, ჭრილი არა */
 export type BulkScope = { paths: string[] } | 'all'

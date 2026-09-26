@@ -474,7 +474,7 @@
     "content": "Content",
     "seasons": "{{count}} seasons",
     "episodes": "{{count}} episodes",
-    "sync": "Sync from TMDB",
+    "sync": "Sync",
     "syncing": "Syncing…",
     "noDescription": "No description.",
     "trailer": "Trailer",
@@ -577,7 +577,7 @@
     "discoverMaxPagesHint": "How deep paging can go (1–{{max}}).",
     "discoverPerPage": "Records per page",
     "discoverPerPageHint": "A multiple of 20 — several TMDB pages are merged into one.",
-    "syncHint": "Bulk operations over the whole collection.",
+    "syncHint": "The data comes from TMDB. Bulk operations over the whole collection.",
     "syncDesc": "Pick a scope, see how many records it touches, then watch the progress in the queue — it can be stopped at any time.",
     "syncDelay": "Pause between records",
     "syncDelayHint": "Gives TMDB some air on long runs.",
@@ -616,7 +616,7 @@
     "autoResyncHint": "Downloads media as soon as a TMDB-sourced record is saved. Turning it off makes adding faster — media then comes later from `/sync`."
   },
   "sync": {
-    "title": "Sync from TMDB",
+    "title": "Sync",
     "open": "Sync…",
     "domains": "Domains",
     "scope": "What should it run on?",
@@ -833,7 +833,7 @@
   },
   "storage": {
     "title": "Storage",
-    "hint": "Only your own uploads count — avatar, manually uploaded covers, thumbnails and attached files. Posters downloaded from TMDB don't use your quota.",
+    "hint": "Only your own uploads count — avatar, manually uploaded posters, main photos and attached files. Posters downloaded from TMDB don't use your quota.",
     "used": "Used",
     "quota": "Quota",
     "quotaHint": "The total limit for this account.",
@@ -884,8 +884,7 @@
       "all": "All",
       "avatar": "Avatar",
       "poster": "Poster",
-      "cover": "Cover",
-      "thumbnail": "Thumbnail",
+      "primary": "Main photo",
       "image": "Image",
       "video": "Video",
       "doc": "Document",
@@ -905,7 +904,7 @@
     "filesDeleted": "Deleted {{count}} file(s) · {{size}} freed",
     "filesDeleteTitle": "Delete files",
     "filesDeleteSelectedHint": "The {{count}} selected file(s) will be deleted for good. The records stay — only the upload goes.",
-    "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted for good: avatar, posters, thumbnails, photos and documents. The records stay.",
+    "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted for good: avatar, posters, main photos, other photos and documents. The records stay.",
     "orphansWhy": "Where they come from: a record or attachment was deleted straight from the database (a script, a migration) and the copy stayed on disk · an upload was interrupted — the file landed, the row never did · the database was restored from a backup that is older than the files on disk.",
     "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only.",
     "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block."
@@ -984,7 +983,7 @@
     "file_not_found": "The file was not found — it may already be deleted.",
     "nothing_to_move": "Choose where to move them — to a record, an actor or an album.",
     "cannot_move_into_itself": "The photos can't be moved into the album you are deleting — pick another album.",
-    "primary_not_supported": "This record has no main image.",
+    "primary_not_supported": "This record has no main photo.",
     "primary_not_supported_for_cast": "An actor's photo can't be made the main photo — actors are shared by every account.",
     "too_many_videos": "This record has reached its video limit.",
     "invalid_url": "The address must start with http:// or https://.",
@@ -1010,7 +1009,7 @@
     "network": "Couldn't reach the server — check your connection and try again.",
     "csrf_token_mismatch": "Your session expired — please sign in again.",
     "unauthenticated": "Your session has ended — please sign in again.",
-    "move_target_required": "Choose what happens to these records: move them to another entry, leave them without one, or delete them.",
+    "move_target_required": "Choose what happens to these records: move them to another entry, leave them empty, or delete them.",
     "move_target_is_self": "The move target is the entry being deleted — pick another one.",
     "album_temporarily_locked": "Too many wrong attempts — this album is blocked for a while. Try again later.",
     "import_source_unknown": "The file format was not recognised — pick the source by hand",
@@ -1032,7 +1031,7 @@
         "url": "Link",
         "title": "Title",
         "type_id": "Type",
-        "thumbnail": "Thumbnail",
+        "thumbnail": "Main photo",
         "status": "Status"
       },
       "movie": {
@@ -1073,7 +1072,7 @@
         "year": "Year",
         "duration": "Duration",
         "genres": "Genres",
-        "thumbnail": "Image",
+        "thumbnail": "Main photo",
         "playlists": "Playlists"
       },
       "game": {
@@ -1092,7 +1091,7 @@
         "links": "Links",
         "dlcs": "DLC and add-ons",
         "languages": "Languages",
-        "cover": "Cover",
+        "cover": "Main photo",
         "description": "Description"
       },
       "book": {
@@ -1108,7 +1107,7 @@
         "format": "Format",
         "status": "Status",
         "genre": "Genre",
-        "cover": "Cover",
+        "cover": "Main photo",
         "description": "Description"
       },
       "board_game": {
@@ -1124,7 +1123,7 @@
         "status": "Status",
         "genre": "Genre",
         "links": "Shops",
-        "image": "Image",
+        "image": "Main photo",
         "description": "Description"
       },
       "note": {
@@ -1143,7 +1142,7 @@
         "title": "Title",
         "status": "Status",
         "category": "Category",
-        "thumbnail": "Image"
+        "thumbnail": "Main photo"
       },
       "anime": {
         "tags": "Tags"
@@ -1157,7 +1156,7 @@
         "lessons": "Lessons",
         "minutes": "Length (minutes)",
         "rating": "My rating",
-        "thumbnail": "Thumbnail",
+        "thumbnail": "Main photo",
         "description": "Description",
         "tags": "Tags"
       },
@@ -1171,7 +1170,7 @@
         "coords": "Coordinates",
         "rating": "My rating",
         "visited_at": "Visit date",
-        "photo": "Photo",
+        "photo": "Main photo",
         "description": "Description",
         "tags": "Tags"
       }
@@ -1309,7 +1308,7 @@
     "nothing": "Nothing matches these settings.",
     "attachments": "Attached files",
     "notes": "Notes",
-    "warning": "These records are gone for good. There is no trash bin.",
+    "warning": "These records are gone for good — they do not go to the trash.",
     "confirmLabel": "Type DELETE to confirm",
     "run": "Delete",
     "started": "Deletion started — {{count}} record(s)",
@@ -1452,8 +1451,8 @@
     "sourceNever": "⚠️ A description empty in *both* languages is a sync problem, not a translation one.",
     "pending": "{{count}} to translate",
     "genresPending": "Genres: {{count}}",
-    "withGenres": "The genre dictionary too",
-    "withGenresHint": "One request for the whole dictionary.",
+    "withGenres": "The genre classifier too",
+    "withGenresHint": "One request for the whole classifier.",
     "allDone": "Everything is translated.",
     "nothingToDo": "Nothing to translate.",
     "started": "{{count}} record(s) queued",
@@ -1534,7 +1533,7 @@
     "tabImages": "Photos",
     "tabNotes": "Notes",
     "tabDocs": "Documents",
-    "imagesInfo": "Covers, stills, photos — uploads count against your quota.",
+    "imagesInfo": "Stills and photos — uploads count against your quota.",
     "notesInfo": "Chords, a memory, where you heard it — whatever you like.",
     "docsInfo": "Lyrics, sheet music, booklet. ⚠️ Audio files are not uploaded — the song’s source is its link.",
     "uploadImages": "Upload photos",
@@ -1647,7 +1646,7 @@
     "castStacks": "Cast photos",
     "castStacksCount": "{{actors}} actor(s) · {{photos}} photo(s)",
     "actorPage": "Actor page",
-    "deletePrimaryWarn": "One of the selected photos is the record’s main image — after deleting it the record will have no main photo.",
+    "deletePrimaryWarn": "One of the selected photos is the record’s main photo — after deleting it the record will have no main photo.",
     "tab": {
       "record": "Record photos",
       "cast": "Cast photos"
@@ -1698,7 +1697,7 @@
       "source": "Which domain"
     },
     "byProviderHint": "A group is a source — TMDB, Wikimedia or a web-search engine.",
-    "byModuleHint": "Each module's own images: covers, thumbnails and uploaded photos. Read-only here — deleting belongs to the record.",
+    "byModuleHint": "Each module's own images: main photos and attached photos. Read-only here — deleting belongs to the record.",
     "groupCount": "{{count}} groups",
     "emptyHint": "Download from TMDB or search the web — photos will show up here.",
     "emptyFiltered": "The search found nothing. Try another word.",
@@ -1707,7 +1706,7 @@
     "recordPhotos": "Record's photos",
     "moduleTruncated": "list truncated",
     "noModulePhotos": "This module has no images yet",
-    "noModulePhotosHint": "A cover, thumbnail or attached photo will show up here.",
+    "noModulePhotosHint": "A main photo or an attached photo will show up here.",
     "noVideos": "No video links yet",
     "noVideosHint": "Search for a video on a record or an actor — the link and thumbnail are saved here.",
     "videosTitle": "Videos",
@@ -2663,10 +2662,10 @@
     "addHint": "Nothing here yet — add the first record."
   },
   "dictionaries": {
-    "title": "Dictionaries",
+    "title": "Classifiers",
     "subtitle": "Add, reorder, edit and delete.",
     "backToRecords": "Back to the module",
-    "noModules": "No enabled module has a dictionary.",
+    "noModules": "No enabled module has a classifier.",
     "add": "Add",
     "empty": "Nothing here yet — add the first one.",
     "deleted": "Deleted",
@@ -2678,7 +2677,7 @@
     "movePick": "Pick where they go",
     "moveNone": "Leave them empty",
     "subtitleStatuses": "Statuses and sidebar sections — order, visibility, deletion.",
-    "backToIndex": "All dictionaries",
+    "backToIndex": "All classifiers",
     "groupStatuses": "Statuses",
     "groupStatusesHint": "They are also sidebar sections — inside you also decide where “All” and “Favourites” sit and what is shown.",
     "groupOther": "Genres, types and categories",
@@ -2856,7 +2855,7 @@
       "igdb": "Fallback source for games, used when RAWG finds nothing. Both fields are required.",
       "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
-      "youtube": "Video duration and tags. Without a key the title and thumbnail still arrive.",
+      "youtube": "Video duration and tags. Without a key the title and main photo still arrive.",
       "telegram": "Sending reminders to Telegram (the notes module). The bot is personal — there is no shared key here."
     },
     "error": {
@@ -2885,7 +2884,7 @@
       "igdb": "Free, but both values are required — OAuth does not work with only one.",
       "serpapi": "The free plan is 250 searches a month and the budget belongs to the whole account.",
       "serper": "You get 2500 free credits on signup; every requested page costs one credit.",
-      "youtube": "Free (10,000 units a day). Without it the video title and thumbnail still arrive.",
+      "youtube": "Free (10,000 units a day). Without it the video title and main photo still arrive.",
       "telegram": "Completely free. The token is full access to the bot — do not share it."
     },
     "installation": "Installation settings",
