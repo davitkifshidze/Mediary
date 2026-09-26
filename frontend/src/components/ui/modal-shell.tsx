@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ArrowLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AutoHeight } from '@/components/ui/auto-height'
 
 /**
  * კომპაქტური მოდალი (ჟანრები, ვიდეოს ფორმა …).
@@ -105,6 +106,7 @@ export function ModalShell({
   destructive,
   wide,
   size,
+  fixedHeight,
   children,
 }: {
   title: string
@@ -122,6 +124,12 @@ export function ModalShell({
   wide?: boolean
   /** `default` (max-w-xl) · `wide` (5xl) · `full` (7xl) */
   size?: ModalSize
+  /**
+   * Tasks §7.2 — **ფიქსირებული სიმაღლე** (`h-[88vh]`) იმ მოდალებისთვის,
+   * რომელთა შიგთავსი იტვირთება ან იფილტრება: სხვაგვარად ფანჯარა ყოველ
+   * ჩატვირთვაზე ხტება. დანარჩენები სიმაღლეს **რბილად** იცვლიან (`AutoHeight`).
+   */
+  fixedHeight?: boolean
   children: ReactNode
 }) {
   const { t } = useTranslation()
@@ -148,14 +156,19 @@ export function ModalShell({
         <DialogPrimitive.Overlay
           className={cn('fb-overlay fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm', hidden && 'hidden')}
         />
+        {/* Tasks §7.1 — სათაურის ზოლი მიმაგრებულია, შუა ნაწილი გადაიხვევა,
+            ქვედა ზოლი (`ModalFooter`) კი `sticky`-ით ბოლოში რჩება. ⚠️ სწორედ ეს
+            უშვებს ფიქსირებულ სიმაღლეს: ადრე მთელი ფანჯარა ერთად იხვეოდა და
+            ღილაკები გადახვევაში იმალებოდა. */}
         <DialogPrimitive.Content
           className={cn(
-            'fb-content fixed left-1/2 top-1/2 z-[61] max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none',
+            'fb-content fixed left-1/2 top-1/2 z-[61] flex max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl focus:outline-none',
             SIZES[size ?? (wide ? 'wide' : 'default')],
+            fixedHeight && 'h-[88vh]',
             hidden && 'hidden',
           )}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-6">
             {back && (
               <button
                 type="button"
@@ -186,9 +199,39 @@ export function ModalShell({
             </DialogPrimitive.Close>
           </div>
 
-          {children}
+          {fixedHeight ? (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">{children}</div>
+          ) : (
+            <AutoHeight scroll innerClassName="px-6 pb-6">
+              {children}
+            </AutoHeight>
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  )
+}
+
+/* ============================================================
+   მოდალის ქვედა ზოლი (Tasks §7.1) — `sticky` და არა გადახვევის გარეთ.
+
+   ⚠️ **რატომ `sticky`.** 71 მოდალიდან უმეტესობას ღილაკები `<form>`-ის
+   შიგნით აქვს (`type="submit"`); ზოლის ფორმიდან გამოტანა ყოველ მათგანში
+   `form="<id>"`-ს მოითხოვდა. `sticky bottom-0` მიმაგრებულია იმავე
+   ადგილიდან — ფორმა ბოლომდე გრძელდება, ამიტომ ზოლი ხილვის ბოლოში რჩება.
+
+   ⚠️ `-mx-6 -mb-6` ზოლს სხეულის პადინგამდე ჭიმავს — ის **ბოლო** ელემენტი
+   უნდა იყოს, თორემ ქვედა კიდეს ვერ მიეკვრება.
+   ============================================================ */
+export function ModalFooter({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-6 py-4',
+        className,
+      )}
+    >
+      {children}
+    </div>
   )
 }

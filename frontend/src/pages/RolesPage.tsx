@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -276,14 +276,14 @@ function AddRoleDialog({ onClose }: { onClose: () => void }) {
 
         <p className="text-xs text-muted-foreground">{t('roles.addHint')}</p>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending || !form.name_ka.trim() || !form.name_en.trim()}>
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </ModalShell>
   )

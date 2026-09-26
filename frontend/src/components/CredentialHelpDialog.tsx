@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ExternalLink, HelpCircle } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 
 /* ============================================================
    **„საიდან მოვიტანო ეს გასაღები"** (შენი მითითება, 2026-09-15).
@@ -65,7 +65,7 @@ export function CredentialHelpDialog({
           </p>
         )}
 
-        <div className="flex flex-wrap justify-end gap-2">
+        <ModalFooter>
           {/* ⚠️ `<a>` + `buttonVariants()` და არა `<Button asChild>`:
               ამ პროექტის `Button` Radix-ის `Slot`-ს არ იყენებს, ე.ი.
               `asChild` მას საერთოდ არ აქვს. */}
@@ -81,7 +81,7 @@ export function CredentialHelpDialog({
             </a>
           )}
           <Button onClick={onClose}>{t('actions.close')}</Button>
-        </div>
+        </ModalFooter>
       </div>
     </ModalShell>
   )

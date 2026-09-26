@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/secret-input'
 import { InfoHint } from '@/components/ui/info-hint'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 
@@ -291,12 +291,12 @@ export function TwoFactorCard() {
               {t('twoFactor.recoveryWarn')}
             </p>
 
-            <div className="flex justify-between gap-2">
+            <ModalFooter className="justify-between">
               <CopyButton text={codes.join('\n')} label={t('twoFactor.copy')} />
               <Button type="button" onClick={close}>
                 {t('actions.close')}
               </Button>
-            </div>
+            </ModalFooter>
           </div>
         </ModalShell>
       )}

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { useToast } from '@/components/ui/feedback'
 import { WebSourcePicker } from '@/components/WebSourcePicker'
@@ -144,17 +144,17 @@ export function WebVideoDialog({
     return (
       <ModalShell title={title} onClose={onClose} wide>
         <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
-        <div className="mt-6 flex justify-end border-t border-border pt-4">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
-        </div>
+        </ModalFooter>
       </ModalShell>
     )
   }
 
   return (
-    <ModalShell title={title} onClose={onClose} wide>
+    <ModalShell title={title} onClose={onClose} wide fixedHeight>
       <div className="mt-5 space-y-3">
         {/* რა ინახება — ერთი წინადადება ზემოთ, რომ „შენახვა" ღილაკს ახსნა ჰქონდეს */}
         <p className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
@@ -314,11 +314,11 @@ export function WebVideoDialog({
         </StepSection>
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.close')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

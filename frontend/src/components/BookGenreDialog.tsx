@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -99,14 +99,14 @@ export function BookGenreDialog({
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending}>
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </ModalShell>
   )

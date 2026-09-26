@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { SecretInput } from '@/components/ui/secret-input'
 import { CredentialHelpDialog } from '@/components/CredentialHelpDialog'
 import { useToast } from '@/components/ui/feedback'
@@ -159,14 +159,14 @@ export function NoteChannelsDialog({ onClose }: { onClose: () => void }) {
           />
         )}
 
-        <div className="flex justify-end gap-2">
+        <ModalFooter>
           <Button variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </ModalShell>
   )

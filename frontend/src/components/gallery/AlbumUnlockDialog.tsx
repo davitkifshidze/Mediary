@@ -6,7 +6,7 @@ import { unlockGalleryAlbum, type GalleryAlbum } from '@/api/gallery'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PasswordInput } from '@/components/ui/secret-input'
 
 /* ============================================================
@@ -92,14 +92,14 @@ export function AlbumUnlockDialog({
           )}
         </div>
 
-        <div className="flex justify-end gap-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!password || unlock.isPending}>
             {t('gallery.albumUnlock')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </ModalShell>
   )

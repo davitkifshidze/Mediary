@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { AutoHeight } from '@/components/ui/auto-height'
 
 /* ============================================================
    მარჯვენა ფილტრების პანელი (Tasks 2.2 — ვარიანტი A).
@@ -142,7 +143,9 @@ export function FilterGroup({
         </ChipRow>
       )}
 
-      {open && <div className="mt-2 space-y-0.5">{children}</div>}
+      {/* Tasks §7.4 — გაშლა/აკეცვა რბილად; `pt-2` და არა `mt-2`, რომ დაშორებაც
+          გაზომვაში შევიდეს და აკეცილ ჯგუფს ზედმეტი ადგილი არ დარჩეს */}
+      <AutoHeight>{open && <div className="space-y-0.5 pt-2">{children}</div>}</AutoHeight>
     </div>
   )
 }

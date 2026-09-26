@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { Label } from '@/components/ui/label'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -282,17 +282,17 @@ export function WebImageDialog({
     return (
       <ModalShell title={title} onClose={onClose} wide>
         <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
-        <div className="mt-6 flex justify-end border-t border-border pt-4">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
-        </div>
+        </ModalFooter>
       </ModalShell>
     )
   }
 
   return (
-    <ModalShell title={title} onClose={onClose} wide>
+    <ModalShell title={title} onClose={onClose} wide fixedHeight>
       <div className="mt-5 space-y-3">
         {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები, §5.2) ---------- */}
         <StepSection step={STEP.query} title={t('web.stepQuery')}>
@@ -635,7 +635,7 @@ export function WebImageDialog({
         </StepSection>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+      <ModalFooter>
         {context?.attachesTo && (
           // ⚠️ „ვის მიება" ჩამოტვირთვის ღილაკის გვერდითაა — იმ წამს, როცა
           // ეს ფაქტი მნიშვნელობას იძენს
@@ -656,7 +656,7 @@ export function WebImageDialog({
             ? t('web.importProgress', { done: progress.done, total: progress.total })
             : t('web.download', { count: picked.size })}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

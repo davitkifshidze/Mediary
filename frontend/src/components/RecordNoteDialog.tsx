@@ -7,7 +7,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm } from '@/components/ui/feedback'
 import type { RecordNote, RecordNoteInput } from '@/components/RecordNotes'
@@ -155,7 +155,7 @@ export function RecordNoteDialog({
         )}
 
         {/* ---------- მოქმედებები ---------- */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <ModalFooter className="justify-start">
           <Button
             variant="ghost"
             className="text-destructive"
@@ -197,7 +197,7 @@ export function RecordNoteDialog({
               </Button>
             )}
           </div>
-        </div>
+        </ModalFooter>
       </div>
     </ModalShell>
   )

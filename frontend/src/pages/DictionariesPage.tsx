@@ -39,7 +39,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -692,7 +692,7 @@ function DeleteDictionaryEntry({
         </div>
       )}
 
-      <div className="mt-6 flex justify-end gap-2">
+      <ModalFooter>
         <Button variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
@@ -700,7 +700,7 @@ function DeleteDictionaryEntry({
           <Trash2 className="size-4" />
           {t('actions.delete')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

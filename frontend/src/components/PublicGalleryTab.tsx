@@ -12,7 +12,7 @@ import { isPortraitCategory } from '@/lib/galleryPhoto'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { useToast } from '@/components/ui/feedback'
 
@@ -177,14 +177,14 @@ export function PublicGalleryTab({ username }: { username: string }) {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <ModalFooter>
               <Button type="button" variant="ghost" onClick={() => setUnlocking(null)}>
                 {t('actions.cancel')}
               </Button>
               <Button type="submit" disabled={!password || unlock.isPending}>
                 {t('gallery.albumUnlock')}
               </Button>
-            </div>
+            </ModalFooter>
           </form>
         </ModalShell>
       )}

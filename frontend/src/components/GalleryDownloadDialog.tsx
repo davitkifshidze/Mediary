@@ -347,7 +347,8 @@ export function GalleryDownloadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      {/* Tasks §7.2 — შიგთავსი იტვირთება/იფილტრება, ამიტომ სიმაღლე ფიქსირებულია */}
+      <DialogContent className="h-[88vh]">
         <DialogTitle>
           {pin?.actor
             ? t('gallery.fetchForActor', { name: pin.actor.name })

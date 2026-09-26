@@ -29,7 +29,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BackupViewer } from '@/components/backups/BackupViewer'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
@@ -312,7 +312,7 @@ export function BackupsPage() {
               <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="RESTORE" autoFocus />
             </label>
 
-            <div className="flex justify-end gap-2">
+            <ModalFooter>
               <Button variant="outline" onClick={() => setRestoring(null)}>
                 {t('actions.cancel')}
               </Button>
@@ -324,7 +324,7 @@ export function BackupsPage() {
                 {runRestore.isPending && <Loader2 className="size-4 animate-spin" />}
                 {t('backups.restore')}
               </Button>
-            </div>
+            </ModalFooter>
           </div>
         </ModalShell>
       )}

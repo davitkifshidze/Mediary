@@ -1,6 +1,7 @@
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
 export const Dialog = DialogPrimitive.Root
@@ -9,7 +10,9 @@ export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => {
+  const { t } = useTranslation()
+  return (
   <DialogPrimitive.Portal>
     {/* z-60/61 — იგივე ფენა, რაც `ModalShell`-ს (იხ. `lib/layers.ts`).
         ადრე z-50 იყო, ე.ი. რიგის ტოსტსა და უჯრებზე ქვევით ხატულობდა. */}
@@ -23,12 +26,18 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground">
+      {/* Tasks §7.5 — სახელი (`aria-label`) და `ModalShell`-ის წითელი ჰოვერი;
+          ფონი ჰოვერზე არ ეხატება (§5.2) */}
+      <DialogPrimitive.Close
+        aria-label={t('actions.close')}
+        className="absolute right-4 top-4 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+      >
         <X className="size-4" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-))
+  )
+})
 DialogContent.displayName = 'DialogContent'
 
 export const DialogTitle = React.forwardRef<

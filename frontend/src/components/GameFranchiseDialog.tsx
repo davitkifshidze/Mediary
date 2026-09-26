@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -386,7 +386,7 @@ export function GameFranchiseDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
@@ -399,7 +399,7 @@ export function GameFranchiseDialog({
           >
             {t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </ModalShell>
   )

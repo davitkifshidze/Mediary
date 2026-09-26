@@ -15,7 +15,7 @@ import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -135,7 +135,7 @@ export function CastMemberDialog({
   const remote = items.filter((i) => i.source === 'tmdb')
 
   return (
-    <ModalShell title={t('cast.addTitle')} onClose={onClose} wide>
+    <ModalShell title={t('cast.addTitle')} onClose={onClose} wide fixedHeight>
       <div className="mt-5 space-y-3">
         {/* ---------- 1. ვის ვეძებთ ---------- */}
         <StepSection step={1} title={t('cast.stepSearch')} hint={t('cast.stepSearchHint')}>
@@ -297,7 +297,7 @@ export function CastMemberDialog({
         )}
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
@@ -305,7 +305,7 @@ export function CastMemberDialog({
           {add.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
           {t('cast.add')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

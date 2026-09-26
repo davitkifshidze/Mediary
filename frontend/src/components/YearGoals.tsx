@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -139,12 +139,12 @@ export function YearGoals() {
           })}
         </div>
 
-        <div className="flex justify-end">
+        <ModalFooter>
           <Button type="button" onClick={() => void commit()} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
             {t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </div>
     </ModalShell>
   )

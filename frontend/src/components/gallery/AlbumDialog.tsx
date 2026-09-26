@@ -11,7 +11,7 @@ import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PasswordInput } from '@/components/ui/secret-input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -230,14 +230,14 @@ export function AlbumDialog({
 
       {/* ⚠️ მოქმედებების რიგი `</form>`-ის შემდეგაა და `form=`-ით უკავშირდება —
           პროექტის არსებული წესი: ღილაკები ბოლოში დგანან და არა შუაში */}
-      <div className="mt-5 flex justify-end gap-2">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form="album-form" disabled={!ready || save.isPending}>
           {t('actions.save')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

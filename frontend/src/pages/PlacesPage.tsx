@@ -62,7 +62,7 @@ import { FieldLabel } from '@/components/ui/field-label'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -883,7 +883,7 @@ function PlaceForm({
           />
         </div>
 
-        <div className="flex justify-end gap-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
@@ -891,7 +891,7 @@ function PlaceForm({
             {save.isPending && <Loader2 className="size-4 animate-spin" />}
             {t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
 
       {/* §6 ფაზა 3 — მორგებული ველები საკუთარ თავს ინახავს (ფორმის გარეთ) */}

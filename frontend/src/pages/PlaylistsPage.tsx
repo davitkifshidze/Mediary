@@ -33,7 +33,7 @@ import { DragHandle } from '@/components/ui/drag-handle'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
@@ -238,14 +238,14 @@ function PlaylistDialog({ playlist, onClose }: { playlist: Playlist | null; onCl
           autoFocus
         />
 
-        <div className="mt-6 flex justify-end gap-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!name.trim() || save.isPending}>
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </ModalShell>
   )
@@ -276,7 +276,7 @@ function DeleteDialog({ playlist, onClose }: { playlist: Playlist; onClose: () =
         })}
       </p>
 
-      <div className="mt-6 flex justify-end gap-2">
+      <ModalFooter>
         <Button variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
@@ -284,7 +284,7 @@ function DeleteDialog({ playlist, onClose }: { playlist: Playlist; onClose: () =
           <Trash2 className="size-4" />
           {t('actions.delete')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

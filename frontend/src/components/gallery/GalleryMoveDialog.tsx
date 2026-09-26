@@ -15,7 +15,7 @@ import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlbumPicker } from '@/components/gallery/AlbumPicker'
@@ -210,7 +210,7 @@ export function GalleryMoveDialog({
         <AlbumPicker value={album} onChange={setAlbum} />
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+      <ModalFooter>
         <Button variant="outline" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
@@ -218,7 +218,7 @@ export function GalleryMoveDialog({
           <MoveRight className="size-4" />
           {t('gallery.move')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

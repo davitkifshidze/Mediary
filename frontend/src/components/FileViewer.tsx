@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, FileQuestion, Loader2, Trash2 } from 'lucide-react'
 import { usePrivateFileUrl } from '@/components/PrivateFile'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Button } from '@/components/ui/button'
 import { formatBytes } from '@/lib/utils'
 
@@ -142,7 +142,7 @@ export function FileViewer({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+      <ModalFooter className="justify-between">
         {onDelete ? (
           <Button
             variant="ghost"
@@ -169,7 +169,7 @@ export function FileViewer({
           <Download className="size-4" />
           {t('books.fileDownload')}
         </a>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

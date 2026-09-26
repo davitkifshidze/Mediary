@@ -276,6 +276,8 @@
   .fb-header { animation: fb-header-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
   .fb-header-icon { animation: fb-header-icon-in 340ms cubic-bezier(0.16, 1, 0.3, 1) 80ms backwards; }
   .fb-card { animation: fb-card-in 300ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  /* Tasks §7.3 — `AutoHeight`-ის რბილი სიმაღლე; შემცირებული მოძრაობისას — გარეშე */
+  .fb-autoheight { transition: height 200ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
 
 .fb-overlay { animation: fb-fade-in 150ms ease-out; }

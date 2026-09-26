@@ -9,7 +9,7 @@ import type { MediaType } from '@/lib/media'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -86,7 +86,7 @@ export function CastRoleDialog({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+      <ModalFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
@@ -94,7 +94,7 @@ export function CastRoleDialog({
           {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
           {t('actions.save')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

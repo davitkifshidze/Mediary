@@ -18,7 +18,7 @@ import { DataTable, type DataColumn } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
 
@@ -294,7 +294,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
               <span className="mb-1 block font-medium">{t('backups.typeTableName', { table: restoring })}</span>
               <Input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} />
             </label>
-            <div className="flex justify-end gap-2">
+            <ModalFooter>
               <Button variant="ghost" onClick={() => setRestoring(null)}>
                 {t('actions.cancel')}
               </Button>
@@ -306,7 +306,7 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
                 {restoreTable.isPending && <Loader2 className="size-4 animate-spin" />}
                 {t('backups.restoreTable')}
               </Button>
-            </div>
+            </ModalFooter>
           </div>
         </ModalShell>
       )}

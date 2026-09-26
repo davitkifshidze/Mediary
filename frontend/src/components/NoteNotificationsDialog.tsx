@@ -5,7 +5,7 @@ import { fetchNotificationLog, markNotificationRead, type NoteNotification } fro
 import { useDateFormat } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 
 /* ============================================================
    შეხსენებების ჟურნალი (Tasks §8.2).
@@ -59,11 +59,11 @@ export function NoteNotificationsDialog({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      <div className="mt-6 flex justify-end">
+      <ModalFooter>
         <Button variant="ghost" onClick={onClose}>
           {t('actions.cancel')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }

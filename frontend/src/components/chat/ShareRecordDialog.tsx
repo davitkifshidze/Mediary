@@ -58,7 +58,7 @@ export function ShareRecordDialog({
   }
 
   return (
-    <ModalShell title={t('chat.shareTitle')} onClose={onClose}>
+    <ModalShell title={t('chat.shareTitle')} onClose={onClose} fixedHeight>
       <p className="mb-3 text-sm text-muted-foreground">{t('chat.shareHint', { name: title })}</p>
 
       <label className="mb-4 block">

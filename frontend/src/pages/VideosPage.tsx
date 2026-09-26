@@ -82,7 +82,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
@@ -1102,14 +1102,14 @@ function VideoForm({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending}>
             {save.isPending ? t('actions.saving') : t('actions.save')}
           </Button>
-        </div>
+        </ModalFooter>
       </form>
 
       {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}

@@ -11,7 +11,7 @@ import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ModalShell } from '@/components/ui/modal-shell'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { GenreSingleSelect } from '@/components/GenreSelect'
@@ -211,7 +211,7 @@ function GenreFormDialog({
         {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
       </div>
 
-      <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+      <ModalFooter>
         <Button variant="outline" onClick={onClose}>
           {t('confirm.cancel')}
         </Button>
@@ -229,7 +229,7 @@ function GenreFormDialog({
             {t('genres.saveNamesHint')}
           </TooltipContent>
         </Tooltip>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }
@@ -332,14 +332,14 @@ function GenreDeleteDialog({
         </div>
       )}
 
-      <div className="mt-6 flex justify-end gap-2">
+      <ModalFooter>
         <Button variant="outline" onClick={onClose}>
           {t('confirm.cancel')}
         </Button>
         <Button variant="destructive" onClick={() => mut.mutate()} disabled={confirmDisabled}>
           {t('confirm.delete')}
         </Button>
-      </div>
+      </ModalFooter>
     </ModalShell>
   )
 }
