@@ -204,7 +204,7 @@ export const SERP_IMPORT_TARGETS = [
   'movie',
   'series',
   'anime',
-  'song',
+  // Tasks §11 — `song` გავიდა (Q9)
   'book',
   'game',
   // Tasks §4.10 — ადგილი `GalleryParent`-ში FEAT-26-იდან დგას

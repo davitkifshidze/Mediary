@@ -1381,30 +1381,27 @@ class GalleryTest extends TestCase
      */
     public function test_record_groups_include_non_media_parents(): void
     {
-        $this->user->modules()->syncWithoutDetaching(Module::where('key', 'song')->pluck('id')->all());
+        // Tasks §11 — სიმღერა გალერეიდან გავიდა, ე.ი. „არამედია მშობელი" ახლა წიგნია
+        $this->user->modules()->syncWithoutDetaching(Module::where('key', 'book')->pluck('id')->all());
         $this->user = $this->user->refresh();
 
-        $song = Song::create([
-            'user_id' => $this->user->id,
-            'title' => 'Bohemian Rhapsody',
-            'url' => 'https://youtu.be/fJ9rUzIMcZQ',
-        ]);
-        $this->image($song, 'backdrop');
+        $book = Book::create(['user_id' => $this->user->id, 'title_en' => 'Dune']);
+        $this->image($book, 'backdrop');
 
         $groups = $this->actingAs($this->user)
             ->getJson('/api/gallery/groups?by=record')
             ->assertOk()
             ->json('groups');
 
-        $this->assertSame('song', $groups[0]['kind']);
-        $this->assertSame('Bohemian Rhapsody', $groups[0]['title']);
+        $this->assertSame('book', $groups[0]['kind']);
+        $this->assertSame('Dune', $groups[0]['title']);
 
         // და შიგნითაც შედის — `owner` რეგექსი ყველა მშობელს იცნობს
         $this->actingAs($this->user)
-            ->getJson('/api/gallery/photos?owner=song:'.$song->id)
+            ->getJson('/api/gallery/photos?owner=book:'.$book->id)
             ->assertOk()
             ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('data.0.owner.kind', 'song');
+            ->assertJsonPath('data.0.owner.kind', 'book');
     }
 
     /**
@@ -1620,31 +1617,6 @@ class GalleryTest extends TestCase
             ->postJson('/api/gallery/movie/'.Movie::first()->id, [])
             ->assertStatus(403)
             ->assertJsonPath('message', 'forbidden_permission');
-    }
-
-    /**
-     * **„მთავარად დაყენება" სიმღერაზე 200-ია და არა 500** (Tasks BUG-20).
-     *
-     * ⚠️ `setPrimary()` ყველა მშობელს `poster_path`/`poster_source`-ს წერდა,
-     * რომელიც `songs`-ს, `books`-სა და `games`-ს **არ აქვს** — `save()`
-     * `Column not found`-ით ვარდებოდა, ინტერფეისი კი ღილაკს ხატავდა, რადგან
-     * მხოლოდ `category === 'actor'`-ს გამორიცხავდა.
-     */
-    public function test_setting_a_song_photo_as_primary_writes_the_thumbnail(): void
-    {
-        $this->user->modules()->syncWithoutDetaching(
-            Module::where('key', 'song')->pluck('id')->all()
-        );
-
-        $song = Song::create(['user_id' => $this->user->id, 'title' => 'Bohemian Rhapsody', 'url' => 'https://youtu.be/fJ9rUzIMcZQ']);
-        $image = $this->image($song, 'backdrop');
-
-        $this->actingAs($this->user->refresh())
-            ->postJson("/api/gallery/images/{$image->id}/primary")
-            ->assertOk()
-            ->assertJsonPath('poster_path', $image->path);
-
-        $this->assertSame($image->path, $song->refresh()->thumbnail_path);
     }
 
     /** წიგნის ყდა — სხვა სვეტი და **პატიოსანი** წყარო (`gallery`, არა `openlibrary`) */

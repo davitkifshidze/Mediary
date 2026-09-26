@@ -4,13 +4,11 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
-use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * სიმღერა — **საკუთარი მოდული** (`song`, გადაწყვეტილება 2026-09-03).
@@ -20,8 +18,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * მუსიკალური ველების ნაკრები (შემსრულებელი · ალბომი · წელი · ჟანრი ·
  * ხანგრძლივობა · ტეგები · ჩემი ქულა).
  *
- * გალერეა სიმღერასაც ეკიდება (`HasGallery` → `gallery_images`), ე.ი. ალბომის
- * ყდები/ფოტოები იმავე მექანიზმზე გადის, რაც ფილმებზე.
+ * ⚠️ **გალერეა და „მასალა" (ფაილები, ჩანიშვნები) ამოღებულია** (Tasks §11,
+ * 2026-09-27 — „სიმღერას მსგავსი ფუნქციონალი საერთოდ არ სჭირდება"). სიმღერას
+ * მხოლოდ მთავარი ფოტო (`thumbnail_path`) რჩება — ის ბარათის სურათია.
  *
  * ⚠️ **მრავალჟანრიანია** (pivot `song_genre_song`) — `DECISIONS.md` §5-ის
  * პასუხი 2026-09-06-ს. ერთი `genre_id` აღარ არსებობს, ე.ი. ფილტრი `whereHas`-ია
@@ -29,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Song extends Model
 {
-    use BelongsToUser, HasGallery;
+    use BelongsToUser;
 
     /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
@@ -60,29 +59,14 @@ class Song extends Model
     ];
 
     /**
-     * `morphs()` cascade-ს არ ქმნის — გალერეის ფოტოები ხელით იშლება.
-     *
-     * ⚠️ **თამბნეილიც აქ იშლება და არა კონტროლერში**: `PurgeService` (Tasks 20)
-     * პირდაპირ `$record->delete()`-ს აკეთებს, ე.ი. მასობრივი წაშლა თამბნეილს
+     * ⚠️ **მთავარი ფოტო აქ იშლება და არა კონტროლერში**: `PurgeService` (Tasks 20)
+     * პირდაპირ `$record->delete()`-ს აკეთებს, ე.ი. მასობრივი წაშლა ფოტოს
      * დისკზე ტოვებდა და კვოტას არ ათავისუფლებდა.
      */
     protected static function booted(): void
     {
         static::deleting(function (Song $song) {
-            $song->deleteGalleryMedia();
             $song->deleteThumbnail();
-            /* §7.4 — ⚠️ **ფაილები სათითაოდ, cascade-ის მიუხედავად.** SQL-ის
-               cascade რიგებს წაიღებს, ფაილს დისკზე კი არავინ: კასკადი
-               მოდელის ივენთს არ ისვრის, ე.ი. `StoredFile`-ის `deleting`
-               არასდროს გაისროლებოდა და კვოტაც სამუდამოდ დაკავებული
-               დარჩებოდა (`Video::booted()`-ის ზუსტი პრეცედენტი). */
-            /* ⚠️ **`withoutGlobalScope('owner')` სავალდებულოა** (Tasks BUG-21):
-               `<module>_files` `BelongsToUser`-ს იყენებს, ე.ი. `files()`
-               მიმდინარე **ავტორიზებულ** მომხმარებელზე იჭრება. `/admin/purge`
-               და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
-               სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
-               თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
-            $song->files()->withoutGlobalScope('owner')->get()->each->delete();
         });
     }
 
@@ -106,30 +90,6 @@ class Song extends Model
     public function playlists(): BelongsToMany
     {
         return $this->belongsToMany(Playlist::class)->orderBy('playlists.sort_order');
-    }
-
-    /** მიმაგრებული ფაილები — ფოტოები და დოკუმენტები (§7.4) */
-    public function files(): HasMany
-    {
-        return $this->hasMany(SongFile::class)->orderBy('sort_order')->orderBy('id');
-    }
-
-    /** ფოტოები — იგივე ცხრილი, `kind = 'image'` (ვიდეოს წესი) */
-    public function images(): HasMany
-    {
-        return $this->files()->where('kind', 'image');
-    }
-
-    /** დოკუმენტები — ტექსტი, ნოტები, ბუკლეტი */
-    public function documents(): HasMany
-    {
-        return $this->files()->where('kind', 'doc');
-    }
-
-    /** ჩანიშვნები — უახლესი ზემოთ (§7.4) */
-    public function notes(): HasMany
-    {
-        return $this->hasMany(SongNote::class)->orderByDesc('id');
     }
 
     /* ---------- helpers ---------- */

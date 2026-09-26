@@ -48,9 +48,6 @@ export interface Song {
    */
   playlists?: { id: number; name: string }[]
   /** §7.4 — მიმაგრებული ფაილები/ჩანიშვნები (`undefined` = არ დაგვითვლია) */
-  images_count?: number
-  documents_count?: number
-  notes_count?: number
   created_at: string | null
 }
 
@@ -199,66 +196,3 @@ export async function reorderSongGenres(ids: number[]): Promise<SongGenre[]> {
   return data.data
 }
 
-/* ---------- §7.4 — მიმაგრებული ფაილები და ჩანიშვნები ----------
-   ცხრილები **სექციისაა** (`song_files`/`song_notes`) — 2026-09-03-ის წესი,
-   უნივერსალური `attachments` აღარ არსებობს. ფორმა ვიდეოსი ზუსტად იგივეა.
-
-   ⚠️ **აუდიოფაილი აქ არ იტვირთება** — სიმღერის წყარო `songs.url`-ია. */
-
-export interface SongFile {
-  id: number
-  kind: 'image' | 'doc'
-  /** storage-ის გზა (ფრონტი `storageUrl()`-ით აწყობს) */
-  url: string
-  original_name: string | null
-  mime: string | null
-  size: number
-  created_at: string | null
-}
-
-export interface SongNote {
-  id: number
-  body: string
-  created_at: string | null
-  updated_at: string | null
-}
-
-export async function fetchSongFiles(songId: number): Promise<SongFile[]> {
-  const { data } = await api.get(`/songs/${songId}/files`)
-  return data.data
-}
-
-export async function uploadSongFiles(
-  songId: number,
-  kind: SongFile['kind'],
-  files: File[],
-): Promise<SongFile[]> {
-  const fd = new FormData()
-  fd.append('kind', kind)
-  files.forEach((f) => fd.append('files[]', f))
-  const { data } = await api.post(`/songs/${songId}/files`, fd)
-  return data.data
-}
-
-export async function deleteSongFile(id: number): Promise<void> {
-  await api.delete(`/song-files/${id}`)
-}
-
-export async function fetchSongNotes(songId: number): Promise<SongNote[]> {
-  const { data } = await api.get(`/songs/${songId}/notes`)
-  return data.data
-}
-
-export async function createSongNote(songId: number, body: string): Promise<SongNote> {
-  const { data } = await api.post(`/songs/${songId}/notes`, { body })
-  return data.data
-}
-
-export async function updateSongNote(id: number, body: string): Promise<SongNote> {
-  const { data } = await api.patch(`/song-notes/${id}`, { body })
-  return data.data
-}
-
-export async function deleteSongNote(id: number): Promise<void> {
-  await api.delete(`/song-notes/${id}`)
-}

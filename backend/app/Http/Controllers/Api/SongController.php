@@ -33,10 +33,8 @@ class SongController extends Controller
 
     public function index(Request $request)
     {
-        // §7.4 — ბარათზე „რამდენი ფაილი/ჩანიშვნაა" ერთი რექვესთით ჩანს
         $query = Song::query()
-            ->with(['genres', 'playlists:id,name'])
-            ->withCount(['images', 'documents', 'notes']);
+            ->with(['genres', 'playlists:id,name']);
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);
@@ -81,8 +79,7 @@ class SongController extends Controller
     public function show(Song $song)
     {
         return new SongResource(
-            $song->load(['genres', 'playlists:id,name'])
-                ->loadCount(['images', 'documents', 'notes']),
+            $song->load(['genres', 'playlists:id,name']),
         );
     }
 

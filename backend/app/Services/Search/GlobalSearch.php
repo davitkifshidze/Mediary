@@ -184,10 +184,6 @@ class GlobalSearch
                 'title_rank' => ['columns' => ['title', 'artist']],
                 'columns' => ['title' => ['title'], 'artist' => ['artist'], 'album' => ['album'], 'url' => ['url']],
                 'json' => ['tags' => 'tags'],
-                'relations' => [
-                    ['relation' => 'notes', 'fields' => ['note' => ['body']]],
-                    ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
-                ],
                 'image' => 'thumbnail_path',
             ],
 

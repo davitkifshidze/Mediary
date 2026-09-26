@@ -19,7 +19,6 @@ namespace App\Support;
  *   videos/files/images    — `video_files` (kind = image)
  *   videos/files/docs      — `video_files` (kind = doc)
  *   songs/thumbnails       — სიმღერის ფოტო
- *   songs/files/*          — სიმღერაზე მიმაგრებული ფაილები (§7.4)
  *   books/covers           — წიგნის ყდა
  *   books/files/{ebooks,images,docs} — `book_files` (pdf/epub და თანმხლები)
  *   boardgames/images      — ბორდგეიმის ფოტო
@@ -66,11 +65,6 @@ final class StorageFolder
     public const VIDEO_DOWNLOADS = 'videos/downloads';
 
     public const SONG_THUMBNAILS = 'songs/thumbnails';
-
-    /** §7.4 — სიმღერაზე მიმაგრებული ფაილები (ტექსტი, ნოტები, ფოტოები) */
-    public const SONG_IMAGES = 'songs/files/images';
-
-    public const SONG_DOCS = 'songs/files/docs';
 
     public const BOOK_COVERS = 'books/covers';
 
@@ -275,12 +269,6 @@ final class StorageFolder
     public static function videoFiles(string $kind): string
     {
         return $kind === 'doc' ? self::VIDEO_DOCS : self::VIDEO_IMAGES;
-    }
-
-    /** `song_files.kind` → საქაღალდე (Tasks §7.4) */
-    public static function songFiles(string $kind): string
-    {
-        return $kind === 'doc' ? self::SONG_DOCS : self::SONG_IMAGES;
     }
 
     /** `book_files.kind` → საქაღალდე */

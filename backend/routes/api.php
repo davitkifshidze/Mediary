@@ -75,9 +75,7 @@ use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
 use App\Http\Controllers\Api\SeriesSyncController;
 use App\Http\Controllers\Api\SongController;
-use App\Http\Controllers\Api\SongFileController;
 use App\Http\Controllers\Api\SongGenreController;
-use App\Http\Controllers\Api\SongNoteController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\StatusController;
 use App\Http\Controllers\Api\StorageController;
@@ -687,17 +685,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/songs/{song}', [SongController::class, 'destroy']);
         Route::patch('/songs/{song}/favorite', [SongController::class, 'toggleFavorite']);
         Route::post('/songs/{song}/played', [SongController::class, 'markPlayed']);
-
-        /* §7.4 — ტექსტი, ნოტები, ფოტოები და ჩანიშვნები. სექციის ცხრილები
-           (`song_files`/`song_notes`), ზუსტად ვიდეოს ფორმაზე. */
-        Route::get('/songs/{song}/files', [SongFileController::class, 'index']);
-        Route::post('/songs/{song}/files', [SongFileController::class, 'store']);
-        Route::delete('/song-files/{songFile}', [SongFileController::class, 'destroy']);
-
-        Route::get('/songs/{song}/notes', [SongNoteController::class, 'index']);
-        Route::post('/songs/{song}/notes', [SongNoteController::class, 'store']);
-        Route::match(['put', 'patch'], '/song-notes/{songNote}', [SongNoteController::class, 'update']);
-        Route::delete('/song-notes/{songNote}', [SongNoteController::class, 'destroy']);
 
         /* პლეილისტები — მუსიკის ერთეულია, ე.ი. `song` მოდულში ცხოვრობს */
         Route::get('/playlists', [PlaylistController::class, 'index']);

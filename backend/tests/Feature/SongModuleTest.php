@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Models\GalleryImage;
 use App\Models\Module;
 use App\Models\Song;
-use App\Models\SongFile;
 use App\Models\SongGenre;
 use App\Models\User;
+use App\Support\GalleryParent;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -244,122 +244,36 @@ class SongModuleTest extends TestCase
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
-    /** გალერეა სიმღერასაც ეკიდება — morph alias `song` (სქემის მზადყოფნა) */
-    public function test_gallery_images_can_hang_on_a_song(): void
-    {
-        Storage::fake('public');
-
-        $song = Song::create([
-            'user_id' => $this->user->id,
-            'title' => 'X',
-            'url' => 'https://youtu.be/aaaaaaaaaaa',
-        ]);
-
-        Storage::disk('public')->put('gallery/images/cover.jpg', str_repeat('x', 128));
-        $song->galleryImages()->create([
-            'user_id' => $this->user->id,
-            'source' => 'upload',
-            'path' => 'gallery/images/cover.jpg',
-            'size' => 128,
-        ]);
-
-        $this->assertSame('song', GalleryImage::withoutGlobalScope('owner')->firstOrFail()->imageable_type);
-
-        // სიმღერის წაშლა ფოტოსაც შლის (morphs cascade-ს არ ქმნის)
-        $song->delete();
-
-        $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
-        Storage::disk('public')->assertMissing('gallery/images/cover.jpg');
-    }
-
-    /* ---------- §7.4 — მიმაგრებული ფაილები და ჩანიშვნები ---------- */
-
     /**
-     * ატვირთვა კვოტაზე გადის, საქაღალდე მოდულისაა და **წაშლა ორივეს
-     * აბრუნებს** — დისკსაც და მრიცხველსაც (`StoredFile`-ის გარანტია).
+     * Tasks §11 (Q9) — **სიმღერა გალერეიდან გავიდა**: მშობლების სიაში აღარაა,
+     * ე.ი. ვებიდან ფოტოს მიბმა 422-ია და გალერეის „ბიბლიოთეკაში" ჩანართი აღარ აქვს.
      */
-    public function test_song_files_are_metered_and_released(): void
+    public function test_a_song_is_no_longer_a_gallery_parent(): void
     {
-        Storage::fake('public');
-        $song = Song::create(['user_id' => $this->user->id, 'title' => 'მზე', 'url' => 'https://youtu.be/abc123']);
+        $this->assertNotContains('song', GalleryParent::keys());
 
-        $ids = $this->actingAs($this->user)
-            ->post("/api/songs/{$song->id}/files", [
-                'kind' => 'doc',
-                'files' => [UploadedFile::fake()->create('lyrics.pdf', 120)],
+        $song = Song::create(['user_id' => $this->user->id, 'title' => 'X', 'url' => 'https://youtu.be/aaaaaaaaaaa']);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/web/import', [
+                'target' => 'song',
+                'target_id' => $song->id,
+                'images' => [['original' => 'https://203.0.113.10/a.jpg']],
             ])
-            ->assertCreated()
-            ->json('data.*.id');
-
-        $file = SongFile::findOrFail($ids[0]);
-        // ⚠️ ფესვი მოდულისაა (`songs/`), თორემ §17.2-ის ლიმიტი სხვას დაეთვლებოდა
-        $this->assertStringStartsWith('songs/files/docs/', $file->path);
-        Storage::disk('public')->assertExists($file->path);
-
-        $used = (int) $this->user->fresh()->storage_used_bytes;
-        $this->assertSame((int) $file->size, $used);
-        $this->actingAs($this->user)->getJson('/api/storage')
-            ->assertOk()
-            ->assertJsonPath('modules.song', $used);
-
-        $this->actingAs($this->user)
-            ->deleteJson("/api/song-files/{$file->id}")
-            ->assertNoContent();
-
-        Storage::disk('public')->assertMissing($file->path);
-        $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
+            ->assertStatus(422);
     }
 
     /**
-     * ⚠️ **სიმღერის წაშლა ფაილსაც იღებს და კვოტასაც ათავისუფლებს.** SQL-ის
-     * cascade რიგებს წაიღებდა, დისკზე კი ფაილი დარჩებოდა — ივენთი არ ისვრება.
-     * ტესტი **მოდელით** შლის (და არა endpoint-ით), რომ `PurgeService`-ის
-     * გზაც დაიფაროს (17.1-ის წესი).
+     * Tasks §11 — „მასალა" (ფაილები და ჩანიშვნები) ამოღებულია: მარშრუტები აღარ
+     * არსებობს, ე.ი. 404 და არა ჩუმად მიღებული ატვირთვა; ცხრილებიც წაიშალა.
      */
-    public function test_deleting_the_song_removes_its_files_at_model_level(): void
-    {
-        Storage::fake('public');
-        $song = Song::create(['user_id' => $this->user->id, 'title' => 'მზე', 'url' => 'https://youtu.be/abc123']);
-
-        $this->actingAs($this->user)->post("/api/songs/{$song->id}/files", [
-            'kind' => 'image',
-            'files' => [UploadedFile::fake()->image('cover.jpg')],
-        ])->assertCreated();
-
-        $path = SongFile::firstOrFail()->path;
-        $this->assertGreaterThan(0, (int) $this->user->fresh()->storage_used_bytes);
-
-        $song->delete();
-
-        Storage::disk('public')->assertMissing($path);
-        $this->assertSame(0, SongFile::count());
-        $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
-    }
-
-    /** ჩანიშვნები — შექმნა, რედაქტირება, წაშლა და სხვისი ჩანიშვნის 404 */
-    public function test_song_notes_are_per_user(): void
+    public function test_song_files_and_notes_are_gone(): void
     {
         $song = Song::create(['user_id' => $this->user->id, 'title' => 'მზე', 'url' => 'https://youtu.be/abc123']);
 
-        $id = $this->actingAs($this->user)
-            ->postJson("/api/songs/{$song->id}/notes", ['body' => 'გიტარის აკორდები'])
-            ->assertCreated()
-            ->json('data.id');
-
-        $this->actingAs($this->user)
-            ->patchJson("/api/song-notes/{$id}", ['body' => 'აკორდები: Am F C G'])
-            ->assertOk()
-            ->assertJsonPath('data.body', 'აკორდები: Am F C G');
-
-        $this->actingAs($this->user)
-            ->getJson("/api/songs/{$song->id}/notes")
-            ->assertOk()
-            ->assertJsonCount(1, 'data');
-
-        // სხვისი ჩანიშვნა 404-ია (`BelongsToUser`-ის global scope)
-        $other = $this->makeUser('otto', ['song']);
-        $this->actingAs($other)->deleteJson("/api/song-notes/{$id}")->assertStatus(404);
-
-        $this->actingAs($this->user)->deleteJson("/api/song-notes/{$id}")->assertNoContent();
+        $this->actingAs($this->user)->getJson("/api/songs/{$song->id}/files")->assertNotFound();
+        $this->actingAs($this->user)->getJson("/api/songs/{$song->id}/notes")->assertNotFound();
+        $this->assertFalse(Schema::hasTable('song_files'));
+        $this->assertFalse(Schema::hasTable('song_notes'));
     }
 }

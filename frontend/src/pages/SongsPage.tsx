@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
-import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, Paperclip, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
+import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
 import {
   SONG_MAX_RATING,
   createSong,
@@ -37,7 +37,6 @@ import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { PosterUploader } from '@/components/PosterUploader'
 import { SongGenreDialog } from '@/components/SongGenreDialog'
 import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
-import { SongDetail } from '@/components/SongDetail'
 import { TagSelect } from '@/components/TagSelect'
 import {
   FilterGroup,
@@ -71,16 +70,6 @@ import { Badge } from '@/components/ui/badge'
    ============================================================ */
 
 const SORTS = ['newest', 'oldest', 'title', 'artist', 'album', 'year', 'rating', 'played'] as const
-
-/**
- * რამდენი მასალა ჰკიდია სიმღერას (§7.4).
- *
- * ⚠️ `undefined` = **არ დაგვითვლია** და არა ნული — ამიტომ `?? 0`, და ღილაკზე
- * რიცხვი მხოლოდ მაშინ ჩანს, როცა მართლა არის რაღაც.
- */
-function materialCount(song: Song): number {
-  return (song.images_count ?? 0) + (song.documents_count ?? 0) + (song.notes_count ?? 0)
-}
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { genres: [] as string[], tags: [] as string[] }
@@ -136,7 +125,6 @@ export function SongsPage() {
   }
   // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.
-  const [material, setMaterial] = useState<Song | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -410,13 +398,6 @@ export function SongsPage() {
                       </Badge>
                     )}
                     <IconAction icon={ExternalLink} href={song.url} label={t('songs.source')} />
-                    {/* §7.4 — ტექსტი, ნოტები, ფოტოები, ჩანიშვნები */}
-                    <IconAction
-                      icon={Paperclip}
-                      label={t('songs.material')}
-                      count={materialCount(song)}
-                      onClick={() => setMaterial(song)}
-                    />
                     <IconAction
                       icon={Star}
                       tone="favorite"
@@ -491,7 +472,6 @@ export function SongsPage() {
         </FilterPanel>
       </div>
 
-      {material && <SongDetail song={material} onClose={() => setMaterial(null)} />}
 
       {editing && (
         <SongForm
@@ -509,9 +489,8 @@ export function SongsPage() {
              და არა ჩატვირთული სიიდან: დუბლი შეიძლება მიმდინარე ფილტრს
              მიღმა იყოს. */
           onOpenExisting={async (existingId) => {
-            const found = await fetchSong(existingId)
-            setEditing(null)
-            setMaterial(found)
+            // Tasks §11 — სიმღერას დეტალის ფანჯარა აღარ აქვს: დუბლი ფორმაში იხსნება
+            setEditing(await fetchSong(existingId))
           }}
         />
       )}

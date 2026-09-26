@@ -1520,23 +1520,7 @@
       "played": "Last played"
     },
     "edit": "Edit song",
-    "noPlaylist": "In no playlist",
-    "material": "Material",
-    "tabImages": "Photos",
-    "tabNotes": "Notes",
-    "tabDocs": "Documents",
-    "imagesInfo": "Stills and photos — uploads count against your quota.",
-    "notesInfo": "Chords, a memory, where you heard it — whatever you like.",
-    "docsInfo": "Lyrics, sheet music, booklet. ⚠️ Audio files are not uploaded — the song’s source is its link.",
-    "uploadImages": "Upload photos",
-    "uploadDocs": "Upload documents",
-    "noImages": "No photos yet.",
-    "noNotes": "No notes yet.",
-    "noDocs": "No documents yet.",
-    "notePlaceholder": "Note…",
-    "addNote": "Add a note",
-    "deleteSongFile": "Delete this file?",
-    "download": "Download"
+    "noPlaylist": "In no playlist"
   },
   "playlists": {
     "title": "Playlists",
@@ -2539,8 +2523,6 @@
       "video_file": "video file",
       "video_note": "video note",
       "song_genre": "song genre",
-      "song_file": "song file",
-      "song_note": "song note",
       "playlist": "playlist",
       "book_genre": "book genre",
       "book_file": "book file",

@@ -13,7 +13,6 @@ use App\Models\Message;
 use App\Models\NoteEntryFile;
 use App\Models\Place;
 use App\Models\PlaceFile;
-use App\Models\SongFile;
 use App\Models\User;
 use App\Models\VideoFile;
 use App\Services\Notify\Notifier;
@@ -521,25 +520,6 @@ class StorageMeter
             ]);
         }
 
-        // §7.4 — სიმღერაზე მიმაგრებული ფაილები; ზომა ცხრილშივეა (დისკს არ ვეკითხებით)
-        $songFiles = $skip('song') ? collect() : SongFile::withoutGlobalScope('owner')
-            ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
-
-        foreach ($songFiles as $f) {
-            $add([
-                'kind' => $f->kind === 'doc' ? 'doc' : 'image',
-                'module' => 'song',
-                'owner_type' => 'song_file',
-                'owner_id' => (int) $f->id,
-                'path' => $f->path,
-                'name' => $f->original_name,
-                'size' => $f->size,
-                'mime' => $f->mime,
-                'created_at' => $f->created_at,
-            ]);
-        }
-
         // Tasks 10 — გალერეის ფოტო **გალერეის** მოდულს ეკუთვნის და არა მშობელს:
         // მსახიობის ფოტოზე `imageable_type` = `cast_member`, რაც მოდული არ არის
         $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScope('owner')
@@ -769,7 +749,6 @@ class StorageMeter
         // (`StoredFile` trait), ე.ი. აქ დელტას ხელით არ ვცვლით
         $fileModel = match ($file['owner_type']) {
             'video_file' => VideoFile::class,
-            'song_file' => SongFile::class,
             'book_file' => BookFile::class,
             'board_game_file' => BoardGameFile::class,
             'game_file' => GameFile::class,
@@ -1134,7 +1113,6 @@ class StorageMeter
             'board_games.image_path',
             'games.cover_path',
             'video_files.path',
-            'song_files.path',
             'book_files.path',
             'board_game_files.path',
             'game_files.path',

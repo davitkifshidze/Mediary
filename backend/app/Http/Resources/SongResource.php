@@ -34,10 +34,6 @@ class SongResource extends JsonResource
             'rating' => $this->rating,
             'is_favorite' => $this->is_favorite,
             'play_count' => $this->play_count,
-            // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები (`whenCounted`: მხოლოდ თუ დათვლილია)
-            'images_count' => $this->whenCounted('images'),
-            'documents_count' => $this->whenCounted('documents'),
-            'notes_count' => $this->whenCounted('notes'),
             'played_at' => $this->played_at?->toIso8601String(),
             // 16.5 — საჯარო პროფილის წინაპირობა; default `private`
             'visibility' => $this->visibility,

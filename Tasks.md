@@ -68,7 +68,7 @@
 | §9 | სახელები: „სინქრონიზაცია“, „კლასიფიკატორები“, „ურნა“, „მთავარი ფოტო“ | 🌐 | S | — | — | ✅ |
 | | **ფაზა 3 — ამოღებები** | | | | | |
 | §10 | ფილმის, სერიალისა და ანიმეს ტეგები | 🗑 | M | — | 0 | ✅ |
-| §11 | სიმღერის „მასალა“ და გალერეა | 🗑 | M–L | — | 0 | ⬜ |
+| §11 | სიმღერის „მასალა“ და გალერეა | 🗑 | M–L | — | 0 | ✅ |
 | §12 | სამაგიდო თამაშის სტატუსი და შეძენის თარიღი | 🗑 | M | — | 0 | ⬜ |
 | §13 | თამაშები — სამი სტატუსი, HLTB, ენები, DLC-ის ბლოკი, Metacritic | 🗑 | M–L | — | 0 | ⬜ |
 | §14 | კურსები — ლექტორი, შეფასება, გაკვეთილები, ხანგრძლივობა | 🗑 | M | — | 0 | ⬜ |
@@ -800,20 +800,20 @@ i18n; `PurgeTest` ისევ ამტკიცებს, რომ `tag` მ�
 ტექსტით, რაც ციტირე (`songs.imagesInfo`, `songs.notesInfo`, `songs.docsInfo`). **ცოცხალ ბაზაში:
 `song_files` — 0, `song_notes` — 0.**
 
-- [ ] **11.1** ფრონტენდი: `SongDetail.tsx`, 📎 ღილაკი და `materialCount`, ფანჯრის გახსნა დუბლიკატის
+- [x] **11.1** ფრონტენდი: `SongDetail.tsx`, 📎 ღილაკი და `materialCount`, ფანჯრის გახსნა დუბლიკატის
       შეტყობინებიდან (`SongsPage.tsx:511, 528-532`), `api/songs.ts`-ის შვიდი ფუნქცია და რიცხვების
       ველები, i18n.
-- [ ] **11.2** backend: `SongFile`/`SongNote` მოდელები, `SongFileController`/`SongNoteController`,
+- [x] **11.2** backend: `SongFile`/`SongNote` მოდელები, `SongFileController`/`SongNoteController`,
       მარშრუტები (`routes/api.php:694-701`), `Song`-ის `files`/`images`/`documents`/`notes` კავშირები და
       `booted()`-ის ფაილების წაშლის ციკლი, `withCount` (`SongController.php:39, 85`), `SongResource`-ის
       რიცხვები. რეესტრები: `StorageFolder` (`songs/files/*`), `StorageMeter` (`files()`-ის ბლოკი,
       `referencedPaths()`, `deleteResolved()`-ის `song_file`), `PurgeService::SECTION_TABLES`,
       `AuditRegistry`, `ModuleImages::FILE_SOURCES`, `GlobalSearch`-ის `notes.body`/`files.original_name`.
       ტესტები: `SongModuleTest.php:281, 319, 340`, `StorageManagementTest.php:688-689`.
-- [ ] **11.3** მიგრაცია: `song_files` და `song_notes` ცხრილები ქრება. ⚠️ **თუ წაშლამდე ფაილი
+- [x] **11.3** მიგრაცია: `song_files` და `song_notes` ცხრილები ქრება. ⚠️ **თუ წაშლამდე ფაილი
       გაჩნდება, ის მოდელით უნდა წაიშალოს** (`StoredFile` დისკს ათავისუფლებს და კვოტას აბრუნებს) —
       `drop table` ფაილს დისკზე დატოვებდა და კვოტას სამუდამოდ დაიკავებდა.
-- [ ] **11.4** ⚠️ **რჩება** სიმღერის მთავარი ფოტო (`thumbnail_path`) — ის „მასალა“ კი არა, სიმღერის
+- [x] **11.4** ⚠️ **რჩება** სიმღერის მთავარი ფოტო (`thumbnail_path`) — ის „მასალა“ კი არა, სიმღერის
       ბარათის სურათია.
 
 **გადაწყვეტილება (Q9):** სიმღერის გალერეაც ქრება — სიმღერა გალერეიდან გადის: მას ვებიდან ფოტოს
@@ -822,7 +822,7 @@ i18n; `PurgeTest` ისევ ამტკიცებს, რომ `tag` მ�
 **გადაწყვეტილება (Q40):** სიმღერის **მთავარი ფოტო** გალერეის „მოდულების“ ჭრილში რჩება — ის გალერეა
 კი არა, ჩანაწერის ბარათის სურათია (11.8).
 
-- [ ] **11.5** backend: `song` ქრება `GalleryParent::PARENTS`-იდან (`backend/app/Support/GalleryParent.php:81-84`) —
+- [x] **11.5** backend: `song` ქრება `GalleryParent::PARENTS`-იდან (`backend/app/Support/GalleryParent.php:81-84`) —
       იქიდან თავისით მიჰყვება „ბიბლიოთეკის“ ჩანართები (`recordKeys()`), `recordRule()`-ის ვალიდაცია,
       ვებიდან შემოტანის სამიზნე (`WebSearchController.php:203` — `Rule::in(GalleryParent::keys())`),
       საჯარო გალერეა (`PublicGallery.php:64`) და „მთავარად დაყენება“. `Song`-იდან `HasGallery` და `booted()`-ის
@@ -830,22 +830,31 @@ i18n; `PurgeTest` ისევ ამტკიცებს, რომ `tag` მ�
       (`ModuleImages.php:94`) §11.2-თან ერთად წავა. morph alias `song` (`AppServiceProvider.php:56`)
       **რჩება** — მას აუდიტის ლოგი კითხულობს (`AuditRegistry.php:312` — სიმღერის ჩანაწერების
       `subject_type`, ძველებისაც).
-- [ ] **11.6** მიგრაცია: ყოველი `gallery_images`/`gallery_videos` რიგი `imageable_type`/`videoable_type =
+- [x] **11.6** მიგრაცია: ყოველი `gallery_images`/`gallery_videos` რიგი `imageable_type`/`videoable_type =
       'song'`-ით **მოდელით** იშლება (`StoredFile` ფაილს დისკიდან შლის და კვოტას აბრუნებს; `drop`/`delete()`
       query-ით ფაილს ობლად დატოვებდა). ცოცხალში 0 და 0, მაგრამ მიგრაცია სხვა ბაზაზეც გაეშვება.
-- [ ] **11.7** ფრონტენდი: `GALLERY_PARENTS`-იდან `song` (§4.10 იმავე სიას ადგილს ამატებს — თუ სია იქ
+- [x] **11.7** ფრონტენდი: `GALLERY_PARENTS`-იდან `song` (§4.10 იმავე სიას ადგილს ამატებს — თუ სია იქ
       უკვე სერვერიდან მოდის, აქ ფრონტენდის ცვლილება აღარ სჭირდება); გალერეის ტექსტები, რომლებიც
       სიმღერას ასახელებს. ტესტები: `GalleryTest::test_record_groups_include_non_media_parents`
       (`:1382` — „არამედია მშობლად“ სიმღერის ნაცვლად წიგნი ან თამაში) და
       `SongModuleTest.php:248` (`test_gallery_images_can_hang_on_a_song`) — ახალ ქცევაზე გადაიწეროს
       (სიმღერაზე ფოტო აღარ ეკიდება, `target=song` → 422). `test_module_photos_list_covers_other_modules`
       (`:1413`) Q40-ით უცვლელი რჩება.
-- [ ] **11.8** ⚠️ გალერეის **„მოდულების“** ჭრილი (ყველა მოდულის საკუთარი სურათი, მხოლოდ სანახავად)
+- [x] **11.8** ⚠️ გალერეის **„მოდულების“** ჭრილი (ყველა მოდულის საკუთარი სურათი, მხოლოდ სანახავად)
       სიმღერის მთავარ ფოტოს **ინარჩუნებს** (Q40, `ModuleImages.php:77` — `RECORD_SOURCES`-ის `song` რიგი
       რჩება, `FILE_SOURCES`-ისა კი §11.2-თან ერთად მიდის) — ეს სიმღერის გალერეა კი არა, მისი მთავარი
       ფოტოა, როგორც წიგნისა და თამაშისა.
 
-**ზომა:** M–L · **დამოკიდებულება:** 0.2 · **სტატუსი:** ⬜ ღია
+**ზომა:** M–L · **დამოკიდებულება:** 0.2 · **სტატუსი:** ✅ შესრულებულია (2026-09-27). მიგრაცია
+`2026_09_27_000002_drop_song_material_and_gallery` ცოცხალ ბაზაზეც გაეშვა (მანამდე: `song_files` 0,
+`song_notes` 0, სიმღერის გალერეის ფოტო 0, ვიდეო 0). ის ჯერ ფაილს დისკიდან შლის და კვოტას აბრუნებს,
+ცხრილს — მერე; გალერეის რიგებს ცოცხალი მოდელი შლის. წაიშალა `SongFile`/`SongNote`, ორი კონტროლერი,
+ორი რესურსი, მარშრუტები, `SongDetail.tsx`, 📎 ღილაკი, `api/songs.ts`-ის შვიდი ფუნქცია და 18 i18n
+გასაღები; რეესტრებიდან — `StorageFolder`, `StorageMeter` (სამი ადგილი), `PurgeService`, `AuditRegistry`,
+`ModuleImages::FILE_SOURCES`, `GlobalSearch`. `song` გავიდა `GalleryParent`-იდან და ორი SPA-ასლიდან
+(`GALLERY_PARENTS`, `SERP_IMPORT_TARGETS`). დუბლიკატის შეტყობინება ახლა სიმღერის **ფორმას** ხსნის.
+რჩება: მთავარი ფოტო, მისი ადგილი „მოდულების“ ჭრილში (Q40) და morph alias `song`. ტესტები ახალ ქცევაზეა
+გადაწერილი: `target=song` → 422, `/songs/{id}/files|notes` → 404, „არამედია მშობელი“ ახლა წიგნია.
 
 ---
 

@@ -9,7 +9,6 @@ use App\Models\Game;
 use App\Models\Movie;
 use App\Models\Place;
 use App\Models\Series;
-use App\Models\Song;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -78,10 +77,7 @@ final class GalleryParent
             'model' => Anime::class, 'module' => 'anime', 'category' => 'backdrop',
             'primary' => ['path' => 'poster_path', 'source' => 'poster_source', 'value' => 'tmdb'],
         ],
-        'song' => [
-            'model' => Song::class, 'module' => 'song', 'category' => 'backdrop',
-            'primary' => ['path' => 'thumbnail_path', 'source' => null, 'value' => null],
-        ],
+        // Tasks §11 — სიმღერა გალერეიდან გავიდა (Q9); მისი მთავარი ფოტო „მოდულების“ ჭრილში რჩება
         'book' => [
             'model' => Book::class, 'module' => 'book', 'category' => 'backdrop',
             'primary' => ['path' => 'cover_path', 'source' => 'cover_source', 'value' => self::FROM_GALLERY],

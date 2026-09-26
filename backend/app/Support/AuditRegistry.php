@@ -58,9 +58,7 @@ use App\Models\Series;
 use App\Models\SeriesTranslation;
 use App\Models\SerpSearch;
 use App\Models\Song;
-use App\Models\SongFile;
 use App\Models\SongGenre;
-use App\Models\SongNote;
 use App\Models\Status;
 use App\Models\TranslationUsage;
 use App\Models\TvEpisode;
@@ -122,8 +120,6 @@ class AuditRegistry
         Song::class => 'song',
         SongGenre::class => 'song',
         // §7.4 — სიმღერის სექციის ცხრილები
-        SongFile::class => 'song',
-        SongNote::class => 'song',
         Playlist::class => 'song',
 
         // ---- წიგნები

@@ -685,8 +685,8 @@ class StorageManagementTest extends TestCase
         ]);
         $this->attach($video, $u, 'videos/files/docs/v.pdf', 512);
 
-        $song = Song::create(['user_id' => $u->id, 'title' => 's', 'url' => 'https://youtu.be/dQw4w9WgXcQ', 'thumbnail_path' => 'songs/thumbnails/s.jpg']);
-        $song->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'songs/files/docs/s.pdf', 'size' => 64]);
+        // Tasks §11 — სიმღერას „მასალა“ აღარ აქვს; მხოლოდ მთავარი ფოტო
+        Song::create(['user_id' => $u->id, 'title' => 's', 'url' => 'https://youtu.be/dQw4w9WgXcQ', 'thumbnail_path' => 'songs/thumbnails/s.jpg']);
 
         Bookmark::create([
             'user_id' => $u->id, 'title' => 'b', 'url' => 'https://example.com',

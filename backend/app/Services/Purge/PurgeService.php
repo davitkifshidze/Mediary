@@ -23,8 +23,6 @@ use App\Models\Place;
 use App\Models\PlaceFile;
 use App\Models\Series;
 use App\Models\Song;
-use App\Models\SongFile;
-use App\Models\SongNote;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
@@ -177,7 +175,6 @@ class PurgeService
      */
     private const SECTION_TABLES = [
         'video' => [VideoFile::class, VideoNote::class, 'video_id'],
-        'song' => [SongFile::class, SongNote::class, 'song_id'],
         'book' => [BookFile::class, BookNote::class, 'book_id'],
         'board_game' => [BoardGameFile::class, BoardGameNote::class, 'board_game_id'],
         'game' => [GameFile::class, GameNote::class, 'game_id'],

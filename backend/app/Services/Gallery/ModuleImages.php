@@ -19,7 +19,6 @@ use App\Models\Place;
 use App\Models\PlaceFile;
 use App\Models\Series;
 use App\Models\Song;
-use App\Models\SongFile;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
@@ -91,7 +90,6 @@ class ModuleImages
      */
     public const FILE_SOURCES = [
         'video' => [VideoFile::class, 'video_id', Video::class, null],
-        'song' => [SongFile::class, 'song_id', Song::class, null],
         'book' => [BookFile::class, 'book_id', Book::class, null],
         'board_game' => [BoardGameFile::class, 'board_game_id', BoardGame::class, null],
         'game' => [GameFile::class, 'game_id', Game::class, null],
