@@ -161,7 +161,7 @@ export function ModalShell({
                 type="button"
                 onClick={back}
                 aria-label={t('actions.back')}
-                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -180,7 +180,7 @@ export function ModalShell({
                 „გასუფთავება" ლაპარაკობს: ეს ერთადერთი ღილაკია, რომელიც ეკრანს ხურავს. */}
             <DialogPrimitive.Close
               aria-label={t('actions.close')}
-              className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
             >
               <X className="size-4" />
             </DialogPrimitive.Close>

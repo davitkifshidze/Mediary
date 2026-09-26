@@ -1125,7 +1125,7 @@ export function Sidebar({
               </DialogPrimitive.Title>
               <DialogPrimitive.Close
                 aria-label="close"
-                className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground"
               >
                 <X className="size-4" />
               </DialogPrimitive.Close>

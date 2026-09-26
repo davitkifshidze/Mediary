@@ -146,7 +146,7 @@ export function GlobalSearch() {
           type="button"
           onClick={close}
           aria-label={t('search.clear')}
-          className="absolute right-2 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="absolute right-2 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-destructive"
         >
           <X className="size-3.5" />
         </button>

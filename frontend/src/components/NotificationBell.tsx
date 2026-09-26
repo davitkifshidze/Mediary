@@ -164,7 +164,7 @@ export function NotificationBell() {
       <PopoverPrimitive.Trigger
         title={t('notifications.title')}
         aria-label={t('notifications.title')}
-        className="relative grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="relative grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bell className="size-5" />
         {unread > 0 && (

@@ -33,7 +33,7 @@ export function ActionMenu({
         className={
           trigger
             ? undefined
-            : 'grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+            : 'grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground'
         }
       >
         {trigger ?? <MoreHorizontal className="size-4" />}

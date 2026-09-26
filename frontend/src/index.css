@@ -351,6 +351,21 @@
   65%  { transform: translate(-1px, 1px) rotate(7deg); }
   100% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
 }
+/* Tasks §5.2 — ინფო-აიქონს ფონი აღარ ეფერება, ამიტომ თვითონ „ამოხტება";
+   ⚠️ ბოლო კადრი ზოგადი ჰოვერის `scale(1.12)`-ს ემთხვევა, თორემ ბოლოს ხტება. */
+@keyframes fb-icon-hop {
+  0%   { transform: translateY(0) scale(1); }
+  40%  { transform: translateY(-3px) scale(1.12); }
+  100% { transform: translateY(0) scale(1.12); }
+}
+/* კრიტიკული სამკუთხედი — მოკლე კანკალი, იმავე `scale(1.12)`-ზე დამთავრებით */
+@keyframes fb-icon-tremble {
+  0%   { transform: rotate(0deg) scale(1); }
+  20%  { transform: rotate(-12deg) scale(1.12); }
+  45%  { transform: rotate(10deg) scale(1.12); }
+  70%  { transform: rotate(-6deg) scale(1.12); }
+  100% { transform: rotate(0deg) scale(1.12); }
+}
 @keyframes fb-icon-swing {
   0%, 100% { transform: rotate(0deg); }
   20% { transform: rotate(-14deg); }
@@ -468,6 +483,11 @@
   :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-upload:not(.transition-transform),
   :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-cloud-upload:not(.transition-transform),
   :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-hard-drive-upload:not(.transition-transform) { transform: translateY(-2px); }
+
+  /* Tasks §5.2 — ინფორმაცია ამოხტება, გაფრთხილება კანკალებს (ფონის ნაცვლად) */
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-info:not(.transition-transform) { animation: fb-icon-hop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-triangle-alert:not(.transition-transform),
+  :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-circle-alert:not(.transition-transform) { animation: fb-icon-tremble 480ms ease-in-out; }
 
   /* წინ — მარჯვნივ */
   :where(button, a, label, summary, [role='button'], [role='menuitem'], [role='option']):hover .lucide-arrow-right:not(.transition-transform),
@@ -632,6 +652,17 @@
 @layer base {
   * {
     border-color: var(--border);
+  }
+  /* Tasks §5 (Q1) — ⚠️ **ფოკუსის ნიშანი არსად, კლავიატურითაც.** ეს წესი
+     ბრაუზერის ნაგულისხმევ ჩარჩოს აქრობს იქ, სადაც კლასი საერთოდ არ წერია
+     (`tabs`, `scope-card`, `chip`, ნედლი `<a>`/`<button>`); კომპონენტებიდან
+     ფოკუსის რგოლის კლასები ცალკე მოიხსნა. ფასი შეგნებულადაა მიღებული: `Tab`-ით
+     მოძრაობისას აღარ ჩანს, რომელ ველზე დგახარ. ⚠️ ღია სიის შიგნით
+     მონიშნული ვარიანტის ფონი (`focus:bg-muted`) რჩება — ის არჩევის
+     კურსორია და არა ჩარჩო. */
+  :focus,
+  :focus-visible {
+    outline: none;
   }
   body {
     background-color: var(--background);

@@ -27,13 +27,15 @@ export function reactSelectStyles<IsMulti extends boolean>(): StylesConfig<Optio
   return {
     // react-select-ის შიდა ელემენტები default-ად `cursor: default`-ს იყენებს —
     // ყველა დასაჭერს ცალკე ვუწესებთ pointer-ს
-    control: (base, state) => ({
+    control: (base) => ({
       ...base,
       minHeight: 40,
       backgroundColor: 'var(--card)',
-      borderColor: state.isFocused ? 'var(--ring)' : 'var(--border)',
+      /* Tasks §5.1 — ფოკუსის ნიშანი არსად: ჩარჩოს ფერი ფოკუსზე არ იცვლება და
+         2px რგოლიც მოიხსნა (ღია მენიუს დროს ველს სქელი შავი ჩარჩო ეკრა). */
+      borderColor: 'var(--border)',
       borderRadius: 5,
-      boxShadow: state.isFocused ? '0 0 0 2px var(--ring)' : 'none',
+      boxShadow: 'none',
       cursor: 'pointer',
       ':hover': { borderColor: 'var(--ring)' },
     }),

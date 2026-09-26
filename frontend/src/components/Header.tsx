@@ -64,7 +64,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         <button
           onClick={onMenu}
           aria-label="menu"
-          className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+          className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground lg:hidden"
         >
           <Menu className="size-5" />
         </button>
@@ -140,7 +140,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
             to="/translations"
             title={t('translate.pending', { count: pending })}
             aria-label={t('translate.pending', { count: pending })}
-            className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
           >
             <Languages className="size-5" />
             <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-[18px] text-primary-foreground">

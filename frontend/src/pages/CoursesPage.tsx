@@ -394,7 +394,7 @@ export function CoursesPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={t('courses.open')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
                         >
                           <ExternalLink className="size-4" />
                         </a>

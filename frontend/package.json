@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint && node scripts/unused-exports.mjs && node scripts/error-codes.mjs",
+    "lint": "oxlint && node scripts/unused-exports.mjs && node scripts/error-codes.mjs && node scripts/no-focus-ring.mjs",
     "lint:exports": "node scripts/unused-exports.mjs --all",
     "preview": "vite preview",
     "test": "vitest run",

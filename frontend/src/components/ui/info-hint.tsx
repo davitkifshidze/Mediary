@@ -80,8 +80,8 @@ function Hint({
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         className={cn(
-          'inline-grid size-4 shrink-0 cursor-help place-items-center rounded-md align-text-bottom transition-colors',
-          critical ? 'hover:bg-destructive/15' : 'hover:bg-muted',
+          // Tasks §5.2 — ჰოვერზე ფონი აღარ ეფერება: მხოლოდ აიქონი ინძრევა (`index.css`)
+          'inline-grid size-4 shrink-0 cursor-help place-items-center rounded-md align-text-bottom',
           className,
         )}
       >
@@ -97,6 +97,9 @@ function Hint({
           side={side}
           sideOffset={6}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          /* Tasks §5.3 — დახურვისას Radix ფოკუსს ტრიგერს უბრუნებდა, ე.ი. ჰოვერით
+             გახსნილი ახსნა კურსორს იმ ველიდან იტაცებდა, სადაც წერდი. */
+          onCloseAutoFocus={(e) => e.preventDefault()}
           /* ⚠️ კურსორი შიგთავსშიც უნდა შევიდეს — გრძელი ახსნა იკითხება
              და ზოგჯერ კოპირდება; `onMouseLeave` მხოლოდ ტრიგერზე რომ
              ყოფილიყო, ტექსტამდე მისვლისას დაიხურებოდა. */

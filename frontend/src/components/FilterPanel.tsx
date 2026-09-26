@@ -109,7 +109,7 @@ export function FilterGroup({
             onClick={() => selected.forEach((option) => option.props.onChange(false))}
             title={t('filter.clearGroup')}
             aria-label={t('filter.clearGroup')}
-            className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
           >
             <X className="size-3.5" />
           </button>
@@ -309,7 +309,7 @@ export function FilterRange({
             }}
             title={t('filter.clearGroup')}
             aria-label={t('filter.clearGroup')}
-            className="grid size-5 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="grid size-5 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
           >
             <X className="size-3" />
           </button>
@@ -331,7 +331,7 @@ export function FilterRange({
           value={from}
           onChange={(e) => onFrom(e.target.value)}
           placeholder={fromPlaceholder ?? t('filter.from')}
-          className="h-9 border-0 bg-transparent text-center shadow-none focus-visible:ring-0"
+          className="h-9 border-0 bg-transparent text-center shadow-none"
         />
         <span className="h-5 w-px shrink-0 bg-border" />
         <Input
@@ -343,7 +343,7 @@ export function FilterRange({
           value={to}
           onChange={(e) => onTo(e.target.value)}
           placeholder={toPlaceholder ?? t('filter.to')}
-          className="h-9 border-0 bg-transparent text-center shadow-none focus-visible:ring-0"
+          className="h-9 border-0 bg-transparent text-center shadow-none"
         />
       </div>
     </div>
@@ -472,7 +472,7 @@ export function FilterPanel({
             <DialogPrimitive.Title className="sr-only">{t('filter.more')}</DialogPrimitive.Title>
             <DialogPrimitive.Close
               aria-label="close"
-              className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground"
             >
               <X className="size-4" />
             </DialogPrimitive.Close>

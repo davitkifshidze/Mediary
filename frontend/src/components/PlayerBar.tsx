@@ -164,7 +164,7 @@ export function PlayerBar() {
               rel="noopener noreferrer"
               aria-label={t('playback.openSource')}
               title={t('playback.openSource')}
-              className="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="grid size-10 place-items-center rounded-md text-muted-foreground hover:text-foreground"
             >
               <ExternalLink className="size-4" />
             </a>

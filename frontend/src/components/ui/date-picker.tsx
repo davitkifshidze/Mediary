@@ -82,7 +82,7 @@ function CalendarPopover({
           <button
             id={id}
             type="button"
-            className="flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm shadow-sm focus:outline-none"
           >
             <span className={cn('truncate', !text && 'text-muted-foreground')}>
               {text ?? placeholder}
@@ -94,7 +94,7 @@ function CalendarPopover({
           <button
             type="button"
             onClick={onClear}
-            className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground"
             aria-label="×"
           >
             <X className="size-4" />

@@ -382,7 +382,7 @@ export function PlacesPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={t('places.openMap')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
                         >
                           <MapIcon className="size-4" />
                         </a>

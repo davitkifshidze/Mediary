@@ -75,7 +75,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                 type="button"
                 aria-label={t('missing.label')}
                 onClick={(e) => e.preventDefault()}
-                className="absolute left-2 top-2 z-10 grid size-6 cursor-help place-items-center rounded-md bg-destructive/15 text-destructive shadow ring-1 ring-destructive/30 transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                className="absolute left-2 top-2 z-10 grid size-6 cursor-help place-items-center rounded-md bg-destructive/15 text-destructive shadow ring-1 ring-destructive/30 transition-colors"
               >
                 <AlertTriangle className="size-3.5" />
               </button>

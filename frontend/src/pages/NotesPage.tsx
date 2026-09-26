@@ -389,7 +389,7 @@ export function NotesPage() {
                   <button
                     onClick={() => favorite.mutate(note.id)}
                     aria-label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-gold"
+                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
                   >
                     <Star className={cn('size-4', note.is_favorite && 'fill-gold text-gold')} />
                   </button>
@@ -400,7 +400,7 @@ export function NotesPage() {
                       rel="noopener noreferrer"
                       aria-label={t('books.openLink')}
                       title={note.links[0].label || note.links[0].url}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
                     >
                       <ExternalLink className="size-4" />
                     </a>

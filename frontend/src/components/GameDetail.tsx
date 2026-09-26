@@ -448,7 +448,7 @@ function Files({ game }: { game: Game }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t('books.fileDownload')}
-              className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
             >
               <Download className="size-4" />
             </a>

@@ -625,7 +625,7 @@ function Thread({ id }: { id: number }) {
                   type="button"
                   onClick={() => setFile(null)}
                   aria-label={t('actions.cancel')}
-                  className="grid size-5 shrink-0 cursor-pointer place-items-center rounded hover:bg-muted"
+                  className="grid size-5 shrink-0 cursor-pointer place-items-center rounded"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -712,7 +712,7 @@ function MessageTools({
   const { t } = useTranslation()
 
   const iconClass =
-    'grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover:opacity-100'
+    'grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100'
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">

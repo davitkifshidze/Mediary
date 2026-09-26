@@ -816,7 +816,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   setServerItems([])
                 }}
                 aria-label="dismiss"
-                className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground"
               >
                 <X className="size-3.5" />
               </button>
@@ -868,7 +868,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                       onClick={() => cancelOne(it.id)}
                       aria-label={t('queue.cancelOne')}
                       title={t('queue.cancelOne')}
-                      className="grid size-5 shrink-0 cursor-pointer place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="grid size-5 shrink-0 cursor-pointer place-items-center rounded text-muted-foreground hover:text-destructive"
                     >
                       <X className="size-3.5" />
                     </button>

@@ -79,14 +79,14 @@ export function GenresPage() {
               <button
                 onClick={() => setEditing(g)}
                 aria-label={t('genres.edit')}
-                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-foreground"
               >
                 <SquarePen className="size-4" />
               </button>
               <button
                 onClick={() => setDeleting(g)}
                 aria-label={t('confirm.delete')}
-                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-4" />
               </button>

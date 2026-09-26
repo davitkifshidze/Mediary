@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,opacity] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -23,6 +23,13 @@ const buttonVariants = cva(
         icon: 'h-10 w-10',
       },
     },
+    /* Tasks §5.2 — ⚠️ აიქონ-ღილაკის ჰოვერი **მხოლოდ აიქონზე** ჩანს (ანიმაცია და
+       ფერი `index.css`-იდან) — ფონის კვადრატი მოიხსნა. ტექსტიან ღილაკს ფონი
+       რჩება: იქ ის ღილაკის საზღვარია და არა აიქონის მორთულობა. */
+    compoundVariants: [
+      { size: 'icon', variant: ['ghost', 'outline'], class: 'hover:bg-transparent' },
+      { size: 'icon', variant: 'destructiveOutline', class: 'hover:bg-transparent' },
+    ],
     defaultVariants: { variant: 'default', size: 'default' },
   },
 )

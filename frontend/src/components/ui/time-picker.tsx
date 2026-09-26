@@ -93,7 +93,7 @@ export function TimePicker({
 
   return (
     <div className={cn('inline-flex flex-col gap-2', className)}>
-      <div className="inline-flex items-center gap-1 rounded-md border border-input bg-transparent px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring/40">
+      <div className="inline-flex items-center gap-1 rounded-md border border-input bg-transparent px-2 py-1.5">
         <TimeField
           id={id}
           aria-label={ariaLabel ?? t('dates.time')}
@@ -138,7 +138,7 @@ export function TimePicker({
             aria-expanded={open}
             aria-label={t('dates.pickTime')}
             className={cn(
-              'grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              'grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
               open && 'bg-muted text-foreground',
             )}
           >

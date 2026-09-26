@@ -219,7 +219,7 @@ function DictionaryCard({
   return (
     <Link
       to={`/dictionaries/${def.key}`}
-      className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary focus-visible:border-primary focus-visible:outline-none"
+      className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary focus-visible:outline-none"
     >
       <div className="flex items-center gap-3">
         <span

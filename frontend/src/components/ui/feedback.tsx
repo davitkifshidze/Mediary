@@ -228,7 +228,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
         <button
           onClick={() => onDismiss(id)}
           aria-label="dismiss"
-          className="-mr-1 -mt-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted"
+          className="-mr-1 -mt-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground"
         >
           <X className="size-3.5" />
         </button>

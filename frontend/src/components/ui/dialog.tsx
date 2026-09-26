@@ -23,7 +23,7 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted">
+      <DialogPrimitive.Close className="absolute right-4 top-4 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground">
         <X className="size-4" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

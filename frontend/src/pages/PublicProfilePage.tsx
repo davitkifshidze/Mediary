@@ -331,7 +331,7 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
         href={card.url}
         target="_blank"
         rel="noreferrer noopener"
-        className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group block focus:outline-none"
       >
         {body}
         <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-foreground">
