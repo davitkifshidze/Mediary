@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -191,8 +192,13 @@ class RateLimitTest extends TestCase
 
         $alice->forceFill(['role_id' => $this->roleWith(['view', 'update'])->id])->save();
 
-        // TMDB-ის გასაღები ტესტში არაა, ე.ი. სინქრონი ვერაფერს მოიტანს —
-        // მნიშვნელოვანი ისაა, რომ **უფლების** კარიბჭე გაიარა (403 არაა).
+        // ⚠️ გასაღები **ცხადად** იწერება: მის გარეშე მარშრუტი უფლებამდე
+        // საერთოდ ვერ აღწევს — `MediaSyncController::item()` ჯერ
+        // `configured()`-ს კითხულობს და 503-ს აბრუნებს. ჩანაწერს `tmdb_id`
+        // არ აქვს, ე.ი. სინქრონი ისედაც ვერაფერს მოიტანს; მნიშვნელოვანი
+        // ისაა, რომ **უფლების** კარიბჭე გაიარა (403 არაა).
+        $this->fakeTmdb();
+
         $this->actingAs($alice->refresh())
             ->postJson("/api/media/sync/movie/{$movie->id}", ['fields' => ['title']])
             ->assertStatus(200);
@@ -208,8 +214,28 @@ class RateLimitTest extends TestCase
         $alice = $this->makeUser('alice');
         $alice->forceFill(['role_id' => $this->roleWith(['view'])->id])->save();
 
+        $this->fakeTmdb();
+
         $this->actingAs($alice->refresh())
             ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'matrix'])
             ->assertStatus(200);
+    }
+
+    /**
+     * TMDB — გასაღები და ცარიელი პასუხი.
+     *
+     * ⚠️ **ორივე ნაწილი აუცილებელია და ორივე ხარვეზი აქ იყო.** გასაღების
+     * გარეშე ორივე მარშრუტი 503-ს აბრუნებს, ე.ი. ტესტი უფლებას კი არა,
+     * კონფიგურაციას ამოწმებდა; `Http::fake()`-ის გარეშე კი გასაღებიან
+     * მანქანაზე ტესტი ნამდვილ ქსელურ ზარს აკეთებდა (`?query=matrix`).
+     * პასუხი შეგნებულად ცარიელია — შიგთავსი ამ ფაილს არ ეხება.
+     */
+    private function fakeTmdb(): void
+    {
+        config()->set('services.tmdb.key', 'test-key');
+
+        Http::fake([
+            'api.themoviedb.org/*' => Http::response(['results' => [], 'cast' => []]),
+        ]);
     }
 }
