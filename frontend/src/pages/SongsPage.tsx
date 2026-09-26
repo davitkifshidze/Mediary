@@ -398,9 +398,9 @@ export function SongsPage() {
                     <button
                       onClick={() => favorite.mutate(song.id)}
                       aria-label={t(song.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
+                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
                     >
-                      <Star className={cn('size-4', song.is_favorite && 'fill-gold text-gold')} />
+                      <Star className={cn('size-4', song.is_favorite && 'fill-current text-[var(--favorite)]')} />
                     </button>
                     <a
                       href={song.url}
@@ -412,7 +412,7 @@ export function SongsPage() {
                     >
                       <ExternalLink className="size-4" />
                     </a>
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(song)}>
+                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(song)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>

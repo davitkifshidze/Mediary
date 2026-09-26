@@ -389,9 +389,9 @@ export function NotesPage() {
                   <button
                     onClick={() => favorite.mutate(note.id)}
                     aria-label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
+                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
                   >
-                    <Star className={cn('size-4', note.is_favorite && 'fill-gold text-gold')} />
+                    <Star className={cn('size-4', note.is_favorite && 'fill-current text-[var(--favorite)]')} />
                   </button>
                   {note.links[0]?.url && (
                     <a
@@ -428,7 +428,7 @@ export function NotesPage() {
                       {(note.reminders_count ?? 0) > 0 ? note.reminders_count : ''}
                     </span>
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(note)}>
+                  <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(note)}>
                     <SquarePen className="size-3.5" />
                     {t('actions.edit')}
                   </Button>

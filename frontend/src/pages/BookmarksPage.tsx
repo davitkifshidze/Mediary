@@ -400,12 +400,13 @@ export function BookmarksPage() {
                       <Star
                         className={cn(
                           'size-4',
-                          bookmark.is_favorite && 'fill-gold text-gold',
+                          bookmark.is_favorite && 'fill-current text-[var(--favorite)]',
                         )}
                       />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(bookmark)}>
-                      <SquarePen className="size-4" />
+                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(bookmark)}>
+                      <SquarePen className="size-3.5" />
+                      {t('actions.edit')}
                     </Button>
                     <Button
                       variant="ghost"

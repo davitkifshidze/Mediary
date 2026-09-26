@@ -473,9 +473,9 @@ export function VideosPage() {
                       <button
                         onClick={() => favorite.mutate(v.id)}
                         aria-label={t(v.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                        className="cursor-pointer text-muted-foreground hover:text-gold"
+                        className="cursor-pointer text-muted-foreground hover:text-[var(--favorite)]"
                       >
-                        <Star className={cn('size-4', v.is_favorite && 'fill-gold text-gold')} />
+                        <Star className={cn('size-4', v.is_favorite && 'fill-current text-[var(--favorite)]')} />
                       </button>
                     </div>
 
@@ -606,7 +606,7 @@ export function VideosPage() {
                           )}
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(v)}>
+                      <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(v)}>
                         <SquarePen className="size-3.5" />
                         {t('actions.edit')}
                       </Button>

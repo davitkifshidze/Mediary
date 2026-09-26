@@ -368,9 +368,9 @@ export function BoardGamesPage() {
                     <button
                       onClick={() => favorite.mutate(game.id)}
                       aria-label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
+                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
                     >
-                      <Star className={cn('size-4', game.is_favorite && 'fill-gold text-gold')} />
+                      <Star className={cn('size-4', game.is_favorite && 'fill-current text-[var(--favorite)]')} />
                     </button>
                     {(game.links[0]?.url || game.bgg_url) && (
                       <a
@@ -384,7 +384,7 @@ export function BoardGamesPage() {
                         <ExternalLink className="size-4" />
                       </a>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(game)}>
+                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(game)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>

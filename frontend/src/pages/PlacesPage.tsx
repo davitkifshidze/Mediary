@@ -410,15 +410,17 @@ export function PlacesPage() {
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
+                        className="text-[var(--icon-info)] hover:text-[var(--icon-info)]"
                         onClick={() => setEditing(place)}
-                        aria-label={t('actions.edit')}
                       >
-                        <SquarePen className="size-4" />
+                        <SquarePen className="size-3.5" />
+                        {t('actions.edit')}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="text-destructive"
                         onClick={async () => {
                           if (
                             await confirm({

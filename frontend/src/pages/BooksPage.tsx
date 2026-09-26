@@ -389,9 +389,9 @@ export function BooksPage() {
                     <button
                       onClick={() => favorite.mutate(book.id)}
                       aria-label={t(book.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-gold"
+                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
                     >
-                      <Star className={cn('size-4', book.is_favorite && 'fill-gold text-gold')} />
+                      <Star className={cn('size-4', book.is_favorite && 'fill-current text-[var(--favorite)]')} />
                     </button>
                     {/* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი
                         ჩანაწერებისთვის რჩება (მიგრაციამ პირველი ბმული გადმოიტანა,
@@ -408,7 +408,7 @@ export function BooksPage() {
                         <ExternalLink className="size-4" />
                       </a>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(book)}>
+                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(book)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>
