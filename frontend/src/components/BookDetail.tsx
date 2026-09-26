@@ -26,7 +26,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { IconAction } from '@/components/ui/icon-action'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { formatBytes } from '@/lib/utils'
 
@@ -280,11 +279,20 @@ function FilesCard({ book }: { book: Book }) {
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {formatBytes(file.size)}
             </span>
-            <IconAction icon={Download} href={storageUrl(file.url) ?? '#'} download label={t('books.fileDownload')} />
-            <IconAction
-              icon={Trash2}
-              tone="danger"
-              label={t('actions.delete')}
+            <a
+              href={storageUrl(file.url) ?? '#'}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('books.fileDownload')}
+              className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+            >
+              <Download className="size-4" />
+            </a>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-destructive"
               onClick={async () => {
                 const ok = await confirm({
                   title: t('books.fileDeleteTitle'),
@@ -293,7 +301,10 @@ function FilesCard({ book }: { book: Book }) {
                 })
                 if (ok) remove.mutate(file.id)
               }}
-            />
+              aria-label={t('actions.delete')}
+            >
+              <Trash2 className="size-4" />
+            </Button>
           </li>
         ))}
       </ul>

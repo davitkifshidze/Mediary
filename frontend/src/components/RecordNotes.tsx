@@ -7,7 +7,6 @@ import { highlightParts } from '@/lib/searchResults'
 import { RecordNoteDialog } from '@/components/RecordNoteDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { IconAction } from '@/components/ui/icon-action'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -280,10 +279,10 @@ export function RecordNotes({
                 HTML-ია) და **დადასტურებას გადის** (Tasks §6.4) — ადრე ის
                 პირდაპირ იძახებდა მუტაციას, მაშინ როცა ფაილის წაშლა უკვე
                 კითხულობდა. */}
-            <IconAction
-              icon={Trash2}
-              tone="danger"
-              label={t('actions.delete')}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-destructive"
               onClick={async () => {
                 const ok = await confirm({
                   title: t('recordNotes.deleteTitle'),
@@ -292,7 +291,11 @@ export function RecordNotes({
                 })
                 if (ok) remove.mutate(note.id)
               }}
-            />
+              aria-label={t('actions.delete')}
+              title={t('actions.delete')}
+            >
+              <Trash2 className="size-4" />
+            </Button>
           </li>
         ))}
       </ul>

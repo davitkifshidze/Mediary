@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Globe } from 'lucide-react'
 import type { Visibility } from '@/api/publicProfile'
-import { IconMark, type IconActionSize } from '@/components/ui/icon-action'
 
 /* ============================================================
    ჩანაწერის ხილვადობის **ბეჯი** (Tasks §16.1 → §6.1).
@@ -19,21 +18,19 @@ import { IconMark, type IconActionSize } from '@/components/ui/icon-action'
    ერთადერთი ექსპორტი `VisibilityBadge`-ია.
    ============================================================ */
 
-/** მხოლოდ ნიშანი — საჯარო ჩანაწერზე; პირადზე არაფერი იხატება.
-
-    ⚠️ Tasks §6.3 — ტექსტიანი ~20px პილული `Globe` აიქონად იქცა, მოქმედებების
-    ზომით (`IconMark`) და თულთიპით. ⚠️ „საჯარო" სიტყვა თულთიპის პირველი
-    სიტყვაა, რომ მნიშვნელობა არ დაიკარგოს. */
-export function VisibilityBadge({
-  value,
-  size = 'sm',
-}: {
-  value: Visibility | null | undefined
-  size?: IconActionSize
-}) {
+/** მხოლოდ ბეჯი — საჯარო ჩანაწერზე; პირადზე არაფერი იხატება */
+export function VisibilityBadge({ value }: { value: Visibility | null | undefined }) {
   const { t } = useTranslation()
 
   if (value !== 'public') return null
 
-  return <IconMark icon={Globe} text={t('visibility.public')} label={t('visibility.publicMark')} size={size} className="bg-primary/10 text-primary" />
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+      title={t('visibility.publicHint')}
+    >
+      <Globe className="size-3" />
+      {t('visibility.public')}
+    </span>
+  )
 }

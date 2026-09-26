@@ -18,7 +18,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import type { NoteReminder, ReminderChannel, ReminderMode } from '@/api/notes'
-import { IconAction } from '@/components/ui/icon-action'
+import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useDateFormat } from '@/lib/dates'
 import { cutStyle } from '@/lib/cutStyle'
@@ -246,8 +246,18 @@ export function ReminderCard({
             onCheckedChange={onToggle}
             aria-label={t('notes.reminderActive')}
           />
-          <IconAction icon={SquarePen} label={t('actions.edit')} onClick={onEdit} />
-          <IconAction icon={Trash2} tone="danger" label={t('actions.delete')} onClick={onDelete} />
+          <Button variant="ghost" size="icon" onClick={onEdit} aria-label={t('actions.edit')}>
+            <SquarePen className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive"
+            onClick={onDelete}
+            aria-label={t('actions.delete')}
+          >
+            <Trash2 className="size-4" />
+          </Button>
         </span>
       </div>
     </li>

@@ -21,10 +21,9 @@ import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PhotoGrid } from '@/components/ui/photo-grid'
-import { IconAction } from '@/components/ui/icon-action'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
-import { useConfirm, useToast } from '@/components/ui/feedback'
+import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
    ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · ჩანიშვნები · დოკუმენტები.
@@ -53,7 +52,6 @@ export function VideoDetail({
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
-  const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('video')
 
   const filesQ = useQuery({
@@ -208,21 +206,23 @@ export function VideoDetail({
                       {a.original_name}
                     </button>
                     <span className="shrink-0 text-xs text-muted-foreground">{bytes(a.size)}</span>
-                    <IconAction icon={Download} href={storageUrl(a.url) ?? '#'} download label={t('videos.download')} />
-                    <IconAction
-                      icon={Trash2}
-                      tone="danger"
-                      label={t('actions.delete')}
-                      onClick={async () => {
-                        // §6.7 — წითელი აიქონი დადასტურებას გადის
-                        const ok = await confirm({
-                          title: t('books.fileDeleteTitle'),
-                          description: t('books.fileDeleteHint', { name: a.original_name }),
-                          variant: 'destructive',
-                        })
-                        if (ok) removeFile.mutate(a.id)
-                      }}
-                    />
+                    <a
+                      href={storageUrl(a.url) ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                      aria-label={t('videos.download')}
+                    >
+                      <Download className="size-4" />
+                    </a>
+                    <button
+                      onClick={() => removeFile.mutate(a.id)}
+                      aria-label={t('actions.delete')}
+                      className="shrink-0 cursor-pointer text-destructive hover:opacity-80"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </li>
                 ))}
               </ul>

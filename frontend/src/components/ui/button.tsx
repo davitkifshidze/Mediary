@@ -21,16 +21,14 @@ const buttonVariants = cva(
         sm: 'h-9 px-3.5',
         lg: 'h-11 px-6',
         icon: 'h-10 w-10',
-        // Tasks §6.2 — ბარათისა და რიგის აიქონი; `IconAction`-ის `sm`-ს ემთხვევა
-        'icon-sm': 'h-8 w-8',
       },
     },
     /* Tasks §5.2 — ⚠️ აიქონ-ღილაკის ჰოვერი **მხოლოდ აიქონზე** ჩანს (ანიმაცია და
        ფერი `index.css`-იდან) — ფონის კვადრატი მოიხსნა. ტექსტიან ღილაკს ფონი
        რჩება: იქ ის ღილაკის საზღვარია და არა აიქონის მორთულობა. */
     compoundVariants: [
-      { size: ['icon', 'icon-sm'], variant: ['ghost', 'outline'], class: 'hover:bg-transparent' },
-      { size: ['icon', 'icon-sm'], variant: 'destructiveOutline', class: 'hover:bg-transparent' },
+      { size: 'icon', variant: ['ghost', 'outline'], class: 'hover:bg-transparent' },
+      { size: 'icon', variant: 'destructiveOutline', class: 'hover:bg-transparent' },
     ],
     defaultVariants: { variant: 'default', size: 'default' },
   },

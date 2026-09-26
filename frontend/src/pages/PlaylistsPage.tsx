@@ -26,8 +26,6 @@ import { errorMessage } from '@/lib/errors'
 import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { cn } from '@/lib/utils'
-import { IconAction } from '@/components/ui/icon-action'
-import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -120,38 +118,44 @@ export function PlaylistsPage() {
               <span className="block truncate font-medium hover:text-primary">{playlist.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {t('playlists.songCount', { count: playlist.songs_count ?? 0 })}
+                {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
               </span>
             </Link>
 
-            {/* Tasks §6.3/§6.4 — „საჯარო" ნიშნად (ქვესათაურიდან წავიდა); არჩევითი
-                (ნიშანი, დაკვრა) მარცხნივ, მუდმივი მოქმედებები მარჯვნივ */}
             <span className="flex shrink-0 items-center gap-1">
-              <VisibilityBadge value={playlist.visibility} />
               {/* §7.2 — სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
                   ღილაკი ჯერ პლეილისტს ჩამოტვირთავს და მერე უშვებს */}
               <PlayPlaylistButton playlist={playlist} />
-              <IconAction
-                icon={ChevronUp}
-                iconOnly
+              <Button
+                variant="ghost"
+                size="icon"
                 disabled={i === 0 || reorder.isPending}
                 onClick={() => drag.moveBy(playlist.id, -1)}
-                label={t('videoTypes.moveUp')}
-              />
-              <IconAction
-                icon={ChevronDown}
-                iconOnly
+                aria-label={t('videoTypes.moveUp')}
+              >
+                <ChevronUp className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 disabled={i === playlists.length - 1 || reorder.isPending}
                 onClick={() => drag.moveBy(playlist.id, 1)}
-                label={t('videoTypes.moveDown')}
-              />
-              <IconAction icon={SquarePen} label={t('actions.edit')} onClick={() => setEditing(playlist)} />
-              {/* §6.7 — დადასტურება `DeleteDialog`-შია */}
-              <IconAction
-                icon={Trash2}
-                tone="danger"
-                label={t('actions.delete')}
+                aria-label={t('videoTypes.moveDown')}
+              >
+                <ChevronDown className="size-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(playlist)}>
+                <SquarePen className="size-3.5" />
+                {t('actions.edit')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive"
                 onClick={() => setDeleting(playlist)}
-              />
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
             </span>
           </li>
         ))}
@@ -194,13 +198,16 @@ function PlayPlaylistButton({ playlist }: { playlist: Playlist }) {
   if (!playlist.songs_count) return null
 
   return (
-    <IconAction
-      icon={start.isPending ? Loader2 : Play}
-      iconClassName={start.isPending ? 'animate-spin' : undefined}
+    <Button
+      variant="ghost"
+      size="icon"
       disabled={start.isPending}
       onClick={() => start.mutate()}
-      label={t('playback.playAll')}
-    />
+      aria-label={t('playback.playAll')}
+      title={t('playback.playAll')}
+    >
+      {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+    </Button>
   )
 }
 

@@ -186,8 +186,7 @@
       "removeHint": "The downloaded file for “{{name}}” will be deleted and {{size}} freed. The record and its link stay.",
       "unavailable": "Downloading is off on this server — yt-dlp is not installed.",
       "noFfmpeg": "no ffmpeg — quality is limited",
-      "stalled": "Stopped — try again",
-      "removeShort": "Remove copy"
+      "stalled": "Stopped — try again"
     }
   },
   "requests": {
@@ -782,8 +781,7 @@
     "bulkPrivate": "Make records private",
     "bulkSelectedHint": "The {{count}} selected record(s) will change visibility.",
     "bulkAllHint": "Every record in “{{name}}” ({{count}}) will change visibility.",
-    "bulkDone": "{{count}} record(s) changed",
-    "publicMark": "Public — shown on your public profile"
+    "bulkDone": "{{count}} record(s) changed"
   },
   "publicProfile": {
     "title": "Public profile",
@@ -1541,6 +1539,7 @@
     "pickForSong": "Which playlists it belongs to",
     "removeSong": "Remove",
     "openSource": "Open the source",
+    "public": "Public",
     "deleted": "Playlist deleted",
     "deleteTitle": "Delete this playlist?",
     "deleteHint": "“{{name}}” will be deleted. The songs stay in your library."
