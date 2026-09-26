@@ -395,6 +395,7 @@ export function BookmarksPage() {
                     <IconAction
                       icon={Star}
                       tone="favorite"
+                      text={t('filter.favorite')}
                       active={bookmark.is_favorite}
                       pressed={bookmark.is_favorite}
                       label={t(bookmark.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

@@ -5,7 +5,14 @@ import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /* ============================================================
-   აიქონური მოქმედება — აიქონი, სახელი თულთიპად და ერთი ზომა (Tasks §6).
+   მოქმედება — აიქონი **და სახელი**, ერთი ზომით (Tasks §6).
+
+   ⚠️ **სახელი ღილაკზე წერია და აიქონის გვერდით დგას** (შენი შესწორება,
+   2026-09-27: „ჯობს აიქონებთან ერთად იყოს რედაქტირება, წაშლა და რაც არის").
+   პირველ ვერსიაში ღილაკი მხოლოდ აიქონი იყო და სახელი თულთიპში იმალებოდა —
+   ეს უარყოფილია. `iconOnly` მხოლოდ იქ რჩება, სადაც სახელი რიგს გადატვირთავდა
+   და აიქონი თავისთავად ცხადია (ზემოთ/ქვემოთ გადაადგილება). თულთიპი ჩნდება
+   მხოლოდ მაშინ, როცა ის ღილაკზე დაწერილზე **მეტს** ამბობს.
 
    ⚠️ **რატომ ცალკე კომპონენტი და არა `Button size="icon"`.** რიგის
    მოქმედებები ხელით ეწერა ყოველ გვერდზე (`grid size-8 …`), სახელი
@@ -36,8 +43,12 @@ export type IconActionSize = 'sm' | 'md'
 
 export interface IconActionProps {
   icon: LucideIcon
-  /** თულთიპიც და `aria-label`-იც */
+  /** `aria-label` და (თუ `text` განსხვავდება) თულთიპი */
   label: string
+  /** ღილაკზე დაწერილი სახელი — ნაგულისხმევად `label` */
+  text?: string
+  /** მხოლოდ აიქონი (სახელი თულთიპში) — ზემოთ/ქვემოთ ისრები და მისთანები */
+  iconOnly?: boolean
   onClick?: (e: React.MouseEvent<HTMLElement>) => void
   /** ბმული — ყოველთვის ახალ ჩანართში (რიგის ბმულები გარე მისამართია) */
   href?: string
@@ -60,8 +71,8 @@ export interface IconActionProps {
 }
 
 const BOX: Record<IconActionSize, string> = {
-  sm: 'h-8 min-w-8',
-  md: 'h-10 min-w-10',
+  sm: 'h-8 min-w-8 text-xs',
+  md: 'h-10 min-w-10 text-sm',
 }
 
 const TONE: Record<IconActionTone, string> = {
@@ -71,11 +82,12 @@ const TONE: Record<IconActionTone, string> = {
 }
 
 export const IconAction = React.forwardRef<HTMLElement, IconActionProps>(function IconAction(
-  { icon: Icon, label, onClick, href, download, to, tone = 'default', active, size = 'sm', count, disabled, className, iconClassName, pressed },
+  { icon: Icon, label, text, iconOnly, onClick, href, download, to, tone = 'default', active, size = 'sm', count, disabled, className, iconClassName, pressed },
   ref,
 ) {
   const cls = cn(
-    'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md px-1.5 transition-colors disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+    iconOnly ? 'px-1.5' : 'px-2',
     BOX[size],
     TONE[tone],
     active && tone === 'default' && 'text-foreground',
@@ -90,9 +102,11 @@ export const IconAction = React.forwardRef<HTMLElement, IconActionProps>(functio
       )}
     />
   )
+  const shown = text ?? label
   const inner = (
     <>
       {glyph}
+      {!iconOnly && <span>{shown}</span>}
       {count !== undefined && (
         <span className="w-3 text-left text-xs tabular-nums">{count > 0 ? count : ''}</span>
       )}
@@ -136,6 +150,9 @@ export const IconAction = React.forwardRef<HTMLElement, IconActionProps>(functio
     </button>
   )
 
+  // თულთიპი მხოლოდ მაშინ, როცა ღილაკზე დაწერილს რამეს ამატებს
+  if (!iconOnly && shown === label) return trigger
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>{trigger}</TooltipTrigger>
@@ -152,11 +169,15 @@ export const IconAction = React.forwardRef<HTMLElement, IconActionProps>(functio
 export function IconMark({
   icon: Icon,
   label,
+  text,
   size = 'sm',
   className,
 }: {
   icon: LucideIcon
+  /** თულთიპი — სრული ახსნა */
   label: string
+  /** ნიშანზე დაწერილი მოკლე სახელი („საჯარო") */
+  text?: string
   size?: IconActionSize
   className?: string
 }) {
@@ -167,9 +188,15 @@ export function IconMark({
           role="img"
           aria-label={label}
           tabIndex={0}
-          className={cn('inline-flex shrink-0 items-center justify-center rounded-md', BOX[size], className)}
+          className={cn(
+            'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium',
+            text ? 'px-2' : 'px-1.5',
+            BOX[size],
+            className,
+          )}
         >
           <Icon className={size === 'md' ? 'size-[18px]' : 'size-4'} />
+          {text && <span>{text}</span>}
         </span>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

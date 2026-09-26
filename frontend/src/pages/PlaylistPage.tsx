@@ -237,12 +237,14 @@ export function PlaylistPage() {
                 <IconAction icon={ExternalLink} href={song.url} label={t('playlists.openSource')} />
                 <IconAction
                   icon={ChevronUp}
+                  iconOnly
                   disabled={i === 0 || save.isPending}
                   onClick={() => drag.moveBy(song.id, -1)}
                   label={t('videoTypes.moveUp')}
                 />
                 <IconAction
                   icon={ChevronDown}
+                  iconOnly
                   disabled={i === songs.length - 1 || save.isPending}
                   onClick={() => drag.moveBy(song.id, 1)}
                   label={t('videoTypes.moveDown')}

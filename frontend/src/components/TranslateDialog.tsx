@@ -126,8 +126,7 @@ export function TranslateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Tasks §7.2 — შიგთავსი იტვირთება/იფილტრება, ამიტომ სიმაღლე ფიქსირებულია */}
-      <DialogContent className="h-[88vh]">
+      <DialogContent>
         <DialogTitle className="flex items-center gap-1.5">
           {t('translate.title')}
           <InfoHint info={t('translate.howItWorks')} />

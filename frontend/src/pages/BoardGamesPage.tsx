@@ -376,6 +376,7 @@ export function BoardGamesPage() {
                     <IconAction
                       icon={Star}
                       tone="favorite"
+                      text={t('filter.favorite')}
                       active={game.is_favorite}
                       pressed={game.is_favorite}
                       label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

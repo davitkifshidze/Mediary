@@ -108,8 +108,7 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Tasks §7.2 — შიგთავსი იტვირთება/იფილტრება, ამიტომ სიმაღლე ფიქსირებულია */}
-      <DialogContent className="h-[88vh]">
+      <DialogContent>
         <DialogTitle>{t('sync.title')}</DialogTitle>
 
         <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">

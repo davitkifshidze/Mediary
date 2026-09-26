@@ -135,7 +135,7 @@ export function CastMemberDialog({
   const remote = items.filter((i) => i.source === 'tmdb')
 
   return (
-    <ModalShell title={t('cast.addTitle')} onClose={onClose} wide fixedHeight>
+    <ModalShell title={t('cast.addTitle')} onClose={onClose} wide>
       <div className="mt-5 space-y-3">
         {/* ---------- 1. ვის ვეძებთ ---------- */}
         <StepSection step={1} title={t('cast.stepSearch')} hint={t('cast.stepSearchHint')}>

@@ -385,6 +385,7 @@ export function PlacesPage() {
                       <IconAction
                         icon={Star}
                         tone="favorite"
+                        text={t('filter.favorite')}
                         active={place.is_favorite}
                         pressed={place.is_favorite}
                         label={t(place.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

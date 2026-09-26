@@ -273,6 +273,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   size="md"
                   icon={Star}
                   tone="favorite"
+                  text={t('filter.favorite')}
                   active={m.is_favorite}
                   pressed={m.is_favorite}
                   label={t(m.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

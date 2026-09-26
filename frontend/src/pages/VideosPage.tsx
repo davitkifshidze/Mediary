@@ -474,6 +474,7 @@ export function VideosPage() {
                       <IconAction
                         icon={Star}
                         tone="favorite"
+                        text={t('filter.favorite')}
                         active={v.is_favorite}
                         pressed={v.is_favorite}
                         label={t(v.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
@@ -518,7 +519,7 @@ export function VideosPage() {
 
                     {/* Tasks §6.4 — არჩევითი (ლოკალური ასლი) მარცხნივ, მუდმივი
                         რედაქტირება/წაშლა — მარჯვნივ, ფიქსირებულ ადგილას */}
-                    <div className="mt-3 flex items-center gap-1 border-t border-border pt-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border pt-2">
                       <IconAction icon={ExternalLink} href={v.url} label={t('videos.source')} />
                       {/* §7.2 — რიგში ჩართვა: აქედან **გაფილტრული სია** უკრავს
                           რიგრიგობით. ⚠️ სურათზე დაჭერა კვლავ დეტალებს ხსნის. */}
@@ -531,12 +532,14 @@ export function VideosPage() {
                           <IconAction
                             icon={HardDriveDownload}
                             href={videoDownloadUrl(v.id)}
+                            text={t('actions.open')}
                             label={`${t('videos.local.open')} · ${formatBytes(v.download_size)}${v.download_format ? ` · ${v.download_format}` : ''}`}
                           />
                           <IconAction
                             icon={FileX}
                             tone="danger"
                             disabled={dropDownload.isPending}
+                            text={t('videos.local.removeShort')}
                             label={t('videos.local.remove')}
                             onClick={async () => {
                               const ok = await confirm({
@@ -569,6 +572,7 @@ export function VideosPage() {
                             (v.download_status === 'running' && !v.download_stale) ||
                             download.isPending
                           }
+                          text={t('actions.download')}
                           label={
                             ytdlpQ.data && !ytdlpQ.data.available
                               ? t('videos.local.unavailable')

@@ -154,7 +154,7 @@ export function WebVideoDialog({
   }
 
   return (
-    <ModalShell title={title} onClose={onClose} wide fixedHeight hint={t('web.videosHint')}>
+    <ModalShell title={title} onClose={onClose} wide hint={t('web.videosHint')}>
       <div className="mt-5 space-y-3">
 
         {/* ---------- 1. რას ვეძებთ ---------- */}

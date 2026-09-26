@@ -132,12 +132,14 @@ export function PlaylistsPage() {
               <PlayPlaylistButton playlist={playlist} />
               <IconAction
                 icon={ChevronUp}
+                iconOnly
                 disabled={i === 0 || reorder.isPending}
                 onClick={() => drag.moveBy(playlist.id, -1)}
                 label={t('videoTypes.moveUp')}
               />
               <IconAction
                 icon={ChevronDown}
+                iconOnly
                 disabled={i === playlists.length - 1 || reorder.isPending}
                 onClick={() => drag.moveBy(playlist.id, 1)}
                 label={t('videoTypes.moveDown')}

@@ -396,6 +396,7 @@ export function CoursesPage() {
                       <IconAction
                         icon={Star}
                         tone="favorite"
+                        text={t('filter.favorite')}
                         active={course.is_favorite}
                         pressed={course.is_favorite}
                         label={t(course.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

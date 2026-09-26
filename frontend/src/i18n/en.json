@@ -186,7 +186,8 @@
       "removeHint": "The downloaded file for “{{name}}” will be deleted and {{size}} freed. The record and its link stay.",
       "unavailable": "Downloading is off on this server — yt-dlp is not installed.",
       "noFfmpeg": "no ffmpeg — quality is limited",
-      "stalled": "Stopped — try again"
+      "stalled": "Stopped — try again",
+      "removeShort": "Remove copy"
     }
   },
   "requests": {

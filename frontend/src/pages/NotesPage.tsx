@@ -407,6 +407,7 @@ export function NotesPage() {
                   <IconAction
                     icon={Star}
                     tone="favorite"
+                    text={t('filter.favorite')}
                     active={note.is_favorite}
                     pressed={note.is_favorite}
                     label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

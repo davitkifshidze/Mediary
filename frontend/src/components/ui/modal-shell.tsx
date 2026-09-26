@@ -107,7 +107,6 @@ export function ModalShell({
   destructive,
   wide,
   size,
-  fixedHeight,
   hint,
   children,
 }: {
@@ -126,12 +125,6 @@ export function ModalShell({
   wide?: boolean
   /** `default` (max-w-xl) · `wide` (5xl) · `full` (7xl) */
   size?: ModalSize
-  /**
-   * Tasks §7.2 — **ფიქსირებული სიმაღლე** (`h-[88vh]`) იმ მოდალებისთვის,
-   * რომელთა შიგთავსი იტვირთება ან იფილტრება: სხვაგვარად ფანჯარა ყოველ
-   * ჩატვირთვაზე ხტება. დანარჩენები სიმაღლეს **რბილად** იცვლიან (`AutoHeight`).
-   */
-  fixedHeight?: boolean
   /** Tasks §8.3 — მოდალის შესავალი ახსნა: i სათაურის გვერდით და არა აბზაცი */
   hint?: string
   children: ReactNode
@@ -168,7 +161,6 @@ export function ModalShell({
           className={cn(
             'fb-content fixed left-1/2 top-1/2 z-[61] flex max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl focus:outline-none',
             SIZES[size ?? (wide ? 'wide' : 'default')],
-            fixedHeight && 'h-[88vh]',
             hidden && 'hidden',
           )}
         >
@@ -204,13 +196,12 @@ export function ModalShell({
             </DialogPrimitive.Close>
           </div>
 
-          {fixedHeight ? (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">{children}</div>
-          ) : (
-            <AutoHeight scroll innerClassName="px-6 pb-6">
-              {children}
-            </AutoHeight>
-          )}
+          {/* ⚠️ **ფიქსირებული სიმაღლე უარყოფილია** (შენი შესწორება, 2026-09-27:
+              „ყველგან შესაბამისი სიმაღლის უნდა იყოს") — ფანჯარა შიგთავსს მიჰყვება
+              და ცვლილებისას რბილად იზრდება ან პატარავდება. */}
+          <AutoHeight scroll innerClassName="px-6 pb-6">
+            {children}
+          </AutoHeight>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

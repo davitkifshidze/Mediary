@@ -399,6 +399,7 @@ export function BooksPage() {
                     <IconAction
                       icon={Star}
                       tone="favorite"
+                      text={t('filter.favorite')}
                       active={book.is_favorite}
                       pressed={book.is_favorite}
                       label={t(book.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}

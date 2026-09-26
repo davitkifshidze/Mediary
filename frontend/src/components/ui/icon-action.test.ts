@@ -9,9 +9,9 @@ import { IconAction, type IconActionProps } from '@/components/ui/icon-action'
 /* ============================================================
    `IconAction`-ის კონტრაქტი (Tasks §6).
 
-   ⚠️ ტექსტი ღილაკიდან წავიდა, ე.ი. **სახელი მხოლოდ აქ ცოცხლობს** —
-   `aria-label`-ში და თულთიპში. თუ რომელიმე გაქრება, ეკრანის წამკითხველი
-   ცარიელ ღილაკს წაიკითხავს და `tsc` ამას ვერ დაინახავს.
+   ⚠️ სახელი ღილაკზე აიქონის გვერდით წერია (შენი შესწორება) და
+   `aria-label`-შიც დგას; `iconOnly`-ზე — მხოლოდ `aria-label`-ში და
+   თულთიპში. რომელიმე რომ გაქრეს, `tsc` ამას ვერ დაინახავს.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -37,16 +37,28 @@ function mount(props: IconActionProps) {
 }
 
 describe('IconAction', () => {
-  it('names the action for screen readers and has no visible text', () => {
+  it('writes the action name next to the icon (the user asked for icon + name)', () => {
     const el = mount({ icon: SquarePen, label: 'რედაქტირება', onClick: () => {} })
     expect(el.tagName).toBe('BUTTON')
     expect(el.getAttribute('aria-label')).toBe('რედაქტირება')
+    expect(el.textContent).toBe('რედაქტირება')
+  })
+
+  it('keeps a short visible name and the full one for screen readers', () => {
+    const el = mount({ icon: Star, label: 'რჩეულში დამატება', text: 'რჩეული' })
+    expect(el.textContent).toBe('რჩეული')
+    expect(el.getAttribute('aria-label')).toBe('რჩეულში დამატება')
+  })
+
+  it('draws only the icon when asked to (reorder arrows)', () => {
+    const el = mount({ icon: SquarePen, label: 'ზემოთ', iconOnly: true })
     expect(el.textContent).toBe('')
+    expect(el.getAttribute('aria-label')).toBe('ზემოთ')
   })
 
   it('keeps the count slot even at zero, so rows line up', () => {
     const el = mount({ icon: SquarePen, label: 'x', count: 0 })
-    const slot = el.querySelector('span')
+    const slot = el.querySelector('span.tabular-nums')
     expect(slot).not.toBeNull()
     expect(slot!.textContent).toBe('')
   })

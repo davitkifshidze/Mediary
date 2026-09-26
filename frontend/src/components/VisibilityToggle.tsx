@@ -35,5 +35,5 @@ export function VisibilityBadge({
 
   if (value !== 'public') return null
 
-  return <IconMark icon={Globe} label={t('visibility.publicMark')} size={size} className="text-primary" />
+  return <IconMark icon={Globe} text={t('visibility.public')} label={t('visibility.publicMark')} size={size} className="bg-primary/10 text-primary" />
 }

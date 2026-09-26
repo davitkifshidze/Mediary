@@ -58,7 +58,7 @@ export function ShareRecordDialog({
   }
 
   return (
-    <ModalShell title={t('chat.shareTitle')} onClose={onClose} fixedHeight hint={t('chat.shareHint', { name: title })}>
+    <ModalShell title={t('chat.shareTitle')} onClose={onClose} hint={t('chat.shareHint', { name: title })}>
       <label className="mb-4 mt-3 block">
         <span className="mb-1 block text-sm font-medium">{t('chat.shareNote')}</span>
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('chat.shareNotePlaceholder')} />

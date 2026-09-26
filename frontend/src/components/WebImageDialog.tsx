@@ -292,7 +292,7 @@ export function WebImageDialog({
   }
 
   return (
-    <ModalShell title={title} onClose={onClose} wide fixedHeight>
+    <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-5 space-y-3">
         {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები, §5.2) ---------- */}
         <StepSection step={STEP.query} title={t('web.stepQuery')}>

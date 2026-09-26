@@ -401,6 +401,7 @@ export function SongsPage() {
                     <IconAction
                       icon={Star}
                       tone="favorite"
+                      text={t('filter.favorite')}
                       active={song.is_favorite}
                       pressed={song.is_favorite}
                       label={t(song.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
