@@ -47,6 +47,17 @@ type View = 'grid' | 'list'
  *  დაიხატებოდა; `poster` ცალკე რჩება — ფილმის, სერიალისა და ანიმეს ტერმინია. */
 const KINDS = ['avatar', 'poster', 'primary', 'image', 'video', 'doc', 'field'] as const
 
+/**
+ * **Tasks §3 — ჩეკბოქსის დაჭერა მწკრივამდე არ უნდა ავიდეს.**
+ *
+ * მონიშვნის რეჟიმში ერთსა და იმავე `toggle`-ს ორი ადგილი იძახებს: `li`-ის
+ * `onClick` (მთელ მწკრივზე დაჭერა ნიშნავს) და ჩეკბოქსის `onCheckedChange`.
+ * Radix დაწკაპუნების გავრცელებას არ აჩერებს, ამიტომ თვითონ ჩეკბოქსზე დაჭერა
+ * მდგომარეობას **ორჯერ** ცვლიდა — ე.ი. ბოლოს არაფერი იცვლებოდა.
+ * ⚠️ `onCheckedChange` რჩება: კლავიატურით (Space) მონიშვნას სწორედ ის ემსახურება.
+ */
+const stopRowClick = (e: { stopPropagation: () => void }) => e.stopPropagation()
+
 /** მასობრივი მოქმედების სკოუპი — `'all'` = **მთელი ბიბლიოთეკა**, ჭრილი არა */
 export type BulkScope = { paths: string[] } | 'all'
 
@@ -343,6 +354,7 @@ export function StorageLibrary({
                     <Checkbox
                       checked={pickedSet.has(f.path)}
                       onCheckedChange={() => toggle(f.path)}
+                      onClick={stopRowClick}
                       aria-label={f.name ?? f.path}
                     />
                   )}
@@ -377,10 +389,14 @@ export function StorageLibrary({
                   <span className="relative block">
                     <Preview file={f} className="aspect-video w-full" />
                     {bulk && (
-                      <span className="absolute left-1.5 top-1.5 rounded bg-background/90 p-0.5">
+                      /* Tasks §3 — ⚠️ `flex` აუცილებელია: ჩეკბოქსი `<button>`-ია, ე.ი.
+                         inline და ტექსტის საბაზისო ხაზზე ჯდება — ბლოკ-გარსში ქვემოთ
+                         ხაზის სიმაღლის ნარჩენი რჩებოდა (ზემოთ 2px, ქვემოთ ~8px). */
+                      <span className="absolute left-1.5 top-1.5 flex rounded bg-background/90 p-0.5">
                         <Checkbox
                           checked={pickedSet.has(f.path)}
                           onCheckedChange={() => toggle(f.path)}
+                          onClick={stopRowClick}
                           aria-label={f.name ?? f.path}
                         />
                       </span>
