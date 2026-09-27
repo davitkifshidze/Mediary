@@ -4,6 +4,8 @@ import {
   BellRing,
   BookOpen,
   Boxes,
+  CalendarClock,
+  ChartColumn,
   CheckCheck,
   CircleCheck,
   CircleSlash,
@@ -116,6 +118,10 @@ const CUT_STYLE: Record<string, CutStyle> = {
   account: { icon: UserCog, color: 'var(--tool-users)' },
   chat: { icon: MessageSquare, color: 'var(--tool-chat)' },
   backup: { icon: DatabaseBackup, color: 'var(--tool-backups)' },
+
+  /* ---- სტატისტიკის ჩანართები (Tasks §27.4 → §28.1) ---- */
+  calendar: { icon: CalendarClock, color: 'var(--tool-sync)' },
+  stats: { icon: ChartColumn, color: 'var(--tool-stats)' },
 
   /* ---- საცავის ფაილის სახეობა ---- */
   image: { icon: Image, color: 'var(--tool-sync)' },

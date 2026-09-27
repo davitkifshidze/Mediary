@@ -6,14 +6,19 @@ import { fetchUpcoming, type UpcomingEvent } from '@/api/upcoming'
 import { useDateFormat } from '@/lib/dates'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   „მალე" — დეშბორდის ბლოკი (FEAT-10).
+   „მალე" — სტატისტიკის „კალენდრის" ჩანართი (FEAT-10 → Tasks §27.4).
 
-   ⚠️ **ცარიელზე საერთოდ არ ჩანს.** ეს დამხმარე ბლოკია და არა სექცია:
-   „მომდევნო 30 დღეში არაფერია" დეშბორდზე ყოველდღიური ხმაური იქნებოდა,
-   მაშინ როცა თვითონ ბარათებს არაფერს ეუბნება.
+   ⚠️ **დეშბორდიდან აქ გადმოვიდა** (Q18): მთავარზე მხოლოდ მიზნების ზოლი და
+   მოდულების ბარათები რჩება. ⚠️ ფასი: თარიღიან ამბავს (ეპიზოდი, გამოსვლა,
+   ჩანაწერის ვადა) მხოლოდ მაშინ დაინახავ, როცა სტატისტიკას გახსნი.
+
+   ⚠️ **ცარიელზე ახლა `EmptyState` ჩანს** — დეშბორდზე ბლოკი ქრებოდა, რადგან
+   ყოველდღიური „არაფერია" ხმაური იქნებოდა; ჩანართში კი ცარიელი ეკრანი
+   „არ მუშაობს"-ად წაიკითხებოდა.
 
    ⚠️ **თარიღი `useDateFormat()`-ით იხატება** და არა `toLocaleDateString()`-ით —
    პროექტის წესი (`lib/dates.ts`): ფორმატი პარამეტრია და შვიდი ადგილი
@@ -28,7 +33,7 @@ export function UpcomingCard() {
   const { date } = useDateFormat()
   const { enabled } = useModules()
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['upcoming'],
     queryFn: () => fetchUpcoming(),
     staleTime: 5 * 60_000,
@@ -36,12 +41,18 @@ export function UpcomingCard() {
 
   const events = data?.data ?? []
 
-  if (events.length === 0) return null
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+
+  if (events.length === 0) {
+    return (
+      <EmptyState icon={<CalendarClock className="size-6" />} title={t('upcoming.empty')} hint={t('upcoming.hint')} />
+    )
+  }
 
   const info = (key: string) => enabled.find((m) => m.key === key)
 
   return (
-    <section className="mb-6 rounded-xl border border-border bg-card p-5">
+    <section className="rounded-xl border border-border bg-card p-5">
       <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">
         <CalendarClock className="size-5 text-muted-foreground" />
         {t('upcoming.title')}

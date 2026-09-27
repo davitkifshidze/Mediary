@@ -21,6 +21,8 @@ import {
 import { fetchStats, type StatModule, type StatNamed } from '@/api/stats'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { UpcomingCard } from '@/components/UpcomingCard'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -59,13 +61,30 @@ import {
 
    ⚠️ **წელი URL-შია** (`?year=`), და არა `useState`-ში — ისევე როგორც
    ფილტრები: გვერდის გაზიარება და ბრაუზერის „უკან" უნდა მუშაობდეს.
+
+   ⚠️ **ჩანართები (Tasks §27.4 → §28.1)**: პირველი „კალენდარია" — დეშბორდის
+   „მალე" (Q18) აქ გადმოვიდა; ჩანართი URL-შია (`?tab=`), წლის ამრჩევი კი
+   მხოლოდ სტატისტიკის ჩანართზე ჩანს (კალენდარი მომავალ 30 დღეს აჩვენებს).
    ============================================================ */
+
+/** ჩანართები — ⚠️ პირველი ნაგულისხმევია (`?tab=`-ის გარეშე) */
+const TABS = ['calendar', 'stats'] as const
+type Tab = (typeof TABS)[number]
 
 export function StatsPage() {
   const { t, i18n } = useTranslation()
   const [params, setParams] = useSearchParams()
 
   const year = Number(params.get('year')) || undefined
+  const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : TABS[0]
+
+  // ⚠️ ერთი პარამეტრის შეცვლა მეორეს არ შლის (წელი ჩანართზე გადასვლისას რჩება)
+  const setParam = (key: string, value: string) =>
+    setParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set(key, value)
+      return next
+    })
 
   const { data, isLoading } = useQuery({
     queryKey: ['stats', year ?? 'auto'],
@@ -83,10 +102,11 @@ export function StatsPage() {
         title={t('stats.title')}
         hint={t('stats.hint')}
         actions={
+          tab === 'stats' &&
           (data?.years.length ?? 0) > 0 && (
             <Select
               value={String(data?.year ?? '')}
-              onValueChange={(v) => setParams({ year: v })}
+              onValueChange={(v) => setParam('year', v)}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -103,7 +123,18 @@ export function StatsPage() {
         }
       />
 
-      {isLoading ? (
+      <div className="mb-6">
+        <CutTabs
+          layout="inline"
+          value={tab}
+          onChange={(key) => setParam('tab', key)}
+          options={TABS.map((key) => ({ key, label: t(`stats.tabs.${key}`) }))}
+        />
+      </div>
+
+      {tab === 'calendar' ? (
+        <UpcomingCard />
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
       ) : !anything ? (
         <EmptyState
