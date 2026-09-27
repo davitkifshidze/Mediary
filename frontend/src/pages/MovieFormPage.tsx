@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Loader2, RefreshCw, Wand2 } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
 import {
   fetchGenres,
   lookupCandidates,
@@ -19,11 +19,17 @@ import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { FieldLabel } from '@/components/ui/field-label'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import {
+  QuickFill,
+  QuickFillCandidate,
+  QuickFillMessage,
+  QuickFillResults,
+  QuickFillSearch,
+} from '@/components/ui/quick-fill'
 import { Switch } from '@/components/ui/switch'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
-import { PosterImage } from '@/components/PosterImage'
 import { PosterUploader } from '@/components/PosterUploader'
 import { PageContainer } from '@/components/ui/page'
 import { GenreSelect } from '@/components/GenreSelect'
@@ -32,6 +38,10 @@ import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { hiddenPicks, missingPicks } from '@/lib/requiredPicks'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
+import { useRecordExtras } from '@/lib/customFieldDraft'
+
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'media-form'
 
 const EMPTY = {
   title_ka: '',
@@ -78,6 +88,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   // §6 — რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
   const fields = useModuleFields(type)
+  /* §26.5 — დამატებითი ველები ახალ ჩანაწერზეც. ⚠️ ჩავარდნისას გვერდი ღია
+     რჩება და შექმნილს ანახლებს (`extras.current`) — მეორე „შენახვა" დუბლს
+     აღარ ქმნის. */
+  const extras = useRecordExtras(type, editing ? { id: Number(id) } : null)
 
   // დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს
   /* დომენზე მიბმული ტექსტი — სერიალის ფორმაზე „ფილმი" აღარ ეწეროს.
@@ -218,8 +232,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
 
   const mut = useMutation({
     mutationFn: async () => {
-      const saved = editing
-        ? await api.update(Number(id), buildFormData())
+      const saved = extras.current
+        ? await api.update(extras.current.id, buildFormData())
         : await api.create(buildFormData())
       // 18 — ავტომატური resync გამორთვადია: მედიის ჩამოტვირთვა შენახვას
       // აყოვნებს, ხოლო `/sync` იმავეს მოგვიანებით და მასობრივად აკეთებს.
@@ -232,9 +246,17 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       }
       return saved
     },
-    onSuccess: (m) => {
+    onSuccess: async (m) => {
       qc.invalidateQueries({ queryKey: [type] })
       qc.invalidateQueries({ queryKey: ['genres'] })
+
+      const done = await extras.afterSave(m)
+      if (!done.ok) {
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       // 19.3 — ტექსტი დომენს მიჰყვება: სერიალზე „ფილმი დაემატა" ეწერა
       if (!editing) {
         toast({ title: t(type === 'series' ? 'toast.addedSeries' : 'toast.added'), variant: 'success' })
@@ -273,9 +295,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     },
   })
 
-  const err = (field: string) =>
-    errors[field] ? <p className="mt-1 text-xs text-destructive">{errors[field][0]}</p> : null
-
   return (
     <PageContainer width="narrow">
       <Link
@@ -297,6 +316,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       </div>
 
       <form
+        id={FORM_ID}
         onSubmit={(e) => {
           e.preventDefault()
 
@@ -317,335 +337,227 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         }}
         className="space-y-6"
       >
-        {/* --- სწრაფი შევსება (lookup) --- */}
-        <div className="rounded-2xl border border-dashed border-primary/50 bg-secondary/40 p-4 sm:p-5">
-          <Label className="flex items-center gap-1.5">
-            <Wand2 className="size-3.5 text-primary" />
-            {t('form.lookup')}
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              value={lookupInput}
-              onChange={(e) => setLookupInput(e.target.value)}
-              placeholder={tm('lookupPlaceholder')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  if (lookupInput.trim()) candidatesMut.mutate()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              onClick={() => candidatesMut.mutate()}
-              disabled={!lookupInput.trim() || lookupBusy}
-            >
-              {lookupBusy ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
-              {t('form.lookupBtn')}
-            </Button>
-          </div>
-          <p className="mt-1.5 text-xs text-muted-foreground">{t('form.lookupHint')}</p>
-          {lookupErr && <p className="mt-1 text-xs text-destructive">{lookupErr}</p>}
+        {/* --- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) --- */}
+        <QuickFill title={t('form.lookup')} hint={t('form.lookupHint')} htmlFor="m-lookup">
+          <QuickFillSearch
+            id="m-lookup"
+            value={lookupInput}
+            onChange={setLookupInput}
+            onSearch={() => candidatesMut.mutate()}
+            busy={lookupBusy}
+            placeholder={tm('lookupPlaceholder')}
+            buttonLabel={t('form.lookupBtn')}
+          />
+          {lookupErr && <QuickFillMessage tone="error">{lookupErr}</QuickFillMessage>}
 
           {candidates.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-2 text-xs text-muted-foreground">{tm('lookupPick')}</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {candidates.map((c) => (
-                  <button
-                    key={c.tmdb_id}
-                    type="button"
-                    onClick={() => pickMut.mutate(c.tmdb_id)}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card p-2 text-left transition-colors hover:border-primary"
-                  >
-                    <PosterImage
-                      src={c.poster}
-                      alt={c.title_en}
-                      className="h-16 w-11 shrink-0 rounded object-cover"
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{c.title_en}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.year ?? '—'}
-                        {c.rating ? ` · ★ ${c.rating}` : ''}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <QuickFillResults label={tm('lookupPick')}>
+              {candidates.map((c) => (
+                <QuickFillCandidate
+                  key={c.tmdb_id}
+                  image={c.poster}
+                  title={c.title_en}
+                  meta={`${c.year ?? '—'}${c.rating ? ` · ★ ${c.rating}` : ''}`}
+                  disabled={pickMut.isPending}
+                  onPick={() => pickMut.mutate(c.tmdb_id)}
+                />
+              ))}
+            </QuickFillResults>
           )}
-        </div>
+        </QuickFill>
 
-        {/* --- თარგმანადი შიგთავსი (ka / en გვერდიგვერდ) --- */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-          <div className="mb-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            {t('detail.content')} · {t(`lang.${i18n.language === 'en' ? 'en' : 'ka'}`)}
-          </div>
+        {/* --- §26 — პოსტერი ზემოთაა, სათაურთან და აღწერასთან ერთად --- */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('poster') && (
+              <>
+                <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
+                  {fields.label('poster')}
+                </FieldLabel>
+                <PosterUploader
+                  preview={preview}
+                  onSelect={(f) => {
+                    setPoster(f)
+                    setPreview(URL.createObjectURL(f))
+                    setRemovePoster(false)
+                  }}
+                  onClear={() => {
+                    setPoster(null)
+                    setPreview(null)
+                    setRemovePoster(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
           {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა.
               ⚠️ **`shows()` მაინც ისმის (Tasks §4.5)** — ჩაკეტვა ახლა
               სუპერ-ადმინს ცხადად ეხსნება, ე.ი. „აზრი არ აქვს" აღარ მართლდება:
               ჩამრთველი, რომელიც ფორმაზე არაფერს ცვლის, ღილაკის არარსებობაზე
-              უარესია. ⚠️ ერთი პირობა ორივე ენას ფარავს — თარგმანადი ბლოკი
-              ერთია და ენა მხოლოდ იმას წყვეტს, რომელი `Input` დაიხატება. */}
-          {!fields.shows('title') ? null : i18n.language === 'ka' ? (
-            <>
-              <FieldLabel required hint={t('form.requiredEitherLang')}>
-                {fields.label('title')}
-              </FieldLabel>
-              <Input
-                value={form.title_ka}
-                placeholder={fields.placeholder('title')}
-                onChange={(e) => set('title_ka', e.target.value)}
-              />
-              {fields.shows('description') && (
-                <>
-                  <FieldLabel
-                    className="mt-4"
-                    required={fields.required('description')}
-                    hint={fields.hint('description')}
-                  >
-                    {fields.label('description')}
-                  </FieldLabel>
-                  <Textarea
-                    value={form.description_ka}
-                    placeholder={fields.placeholder('description')}
-                    onChange={(e) => set('description_ka', e.target.value)}
-                  />
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <FieldLabel required hint={t('form.requiredEitherLang')}>
-                {fields.label('title')}
-              </FieldLabel>
-              <Input
-                value={form.title_en}
-                placeholder={fields.placeholder('title')}
-                onChange={(e) => set('title_en', e.target.value)}
-              />
-              {err('title_en')}
-              {fields.shows('description') && (
-                <>
-                  <FieldLabel
-                    className="mt-4"
-                    required={fields.required('description')}
-                    hint={fields.hint('description')}
-                  >
-                    {fields.label('description')}
-                  </FieldLabel>
-                  <Textarea
-                    value={form.description_en}
-                    placeholder={fields.placeholder('description')}
-                    onChange={(e) => set('description_en', e.target.value)}
-                  />
-                </>
-              )}
-            </>
-          )}
-        </div>
+              უარესია. ⚠️ ენა მხოლოდ იმას წყვეტს, რომელი `Input` დაიხატება —
+              თარგმანადი შიგთავსი ინტერფეისის ენაზეა. */}
+          <FormField
+            show={fields.shows('title')}
+            label={fields.label('title')}
+            htmlFor="m-title"
+            required
+            hint={t('form.requiredEitherLang')}
+            error={(i18n.language === 'ka' ? errors.title_ka : errors.title_en)?.[0]}
+          >
+            <Input
+              id="m-title"
+              value={i18n.language === 'ka' ? form.title_ka : form.title_en}
+              placeholder={fields.placeholder('title')}
+              onChange={(e) => set(i18n.language === 'ka' ? 'title_ka' : 'title_en', e.target.value)}
+            />
+          </FormField>
 
-        {/* --- სტატიკური ველები --- */}
-        <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-          <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            {t('form.details')}
-          </div>
-          <div className="flex flex-col gap-5 sm:flex-row">
-            <div className={fields.shows('poster') ? 'shrink-0' : 'hidden'}>
-              <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
-                {fields.label('poster')}
-              </FieldLabel>
-              <PosterUploader
-                preview={preview}
-                onSelect={(f) => {
-                  setPoster(f)
-                  setPreview(URL.createObjectURL(f))
-                  setRemovePoster(false)
-                }}
-                onClear={() => {
-                  setPoster(null)
-                  setPreview(null)
-                  setRemovePoster(true)
-                }}
-              />
-            </div>
+          <FormField {...fields.field('description')} htmlFor="m-desc">
+            <Textarea
+              id="m-desc"
+              rows={FORM_TEXT_ROWS}
+              value={i18n.language === 'ka' ? form.description_ka : form.description_en}
+              placeholder={fields.placeholder('description')}
+              onChange={(e) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', e.target.value)}
+            />
+          </FormField>
 
-            <div className="grid flex-1 grid-cols-2 gap-4">
-              {fields.shows('year') && (
-                <div>
-                  <FieldLabel required={fields.required('year')} hint={fields.hint('year')}>
-                    {fields.label('year')}
-                  </FieldLabel>
-                  <Input
-                    type="number"
-                    value={form.year}
-                    placeholder={fields.placeholder('year')}
-                    onChange={(e) => set('year', e.target.value)}
-                  />
-                  {err('year')}
-                </div>
-              )}
-              {fields.shows('rating') && (
-                <div>
-                  <FieldLabel required={fields.required('rating')} hint={fields.hint('rating')}>
-                    {fields.label('rating')}
-                  </FieldLabel>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="10"
-                    placeholder={fields.placeholder('rating')}
-                    value={form.rating}
-                    onChange={(e) => set('rating', e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          <FormField size="half" {...fields.field('year')} htmlFor="m-year" error={errors.year?.[0]}>
+            <Input
+              id="m-year"
+              type="number"
+              value={form.year}
+              placeholder={fields.placeholder('year')}
+              onChange={(e) => set('year', e.target.value)}
+            />
+          </FormField>
 
-          {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
-          {fields.shows('runtime') && (
-            <div>
-              <FieldLabel required={fields.required('runtime')} hint={fields.hint('runtime')}>
-                {fields.label('runtime')}
-              </FieldLabel>
-              <DurationInput
-                unit="minutes"
-                value={form.runtime ? Number(form.runtime) : null}
-                onChange={(v) => set('runtime', v == null ? '' : String(v))}
-              />
-              {err('runtime')}
-            </div>
-          )}
+          <FormField size="half" {...fields.field('rating')} htmlFor="m-rating" error={errors.rating?.[0]}>
+            <Input
+              id="m-rating"
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              placeholder={fields.placeholder('rating')}
+              value={form.rating}
+              onChange={(e) => set('rating', e.target.value)}
+            />
+          </FormField>
+        </FormSection>
 
-          {fields.shows('ge_url') && (
-            <div>
-              <FieldLabel required={fields.required('ge_url')} hint={fields.hint('ge_url')}>
-                {fields.label('ge_url')}
-              </FieldLabel>
-              <Input
-                value={form.ge_url}
-                onChange={(e) => set('ge_url', e.target.value)}
-                placeholder={fields.placeholder('ge_url') ?? 'https://…'}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">{t('form.ge_urlHint')}</p>
-              {err('ge_url')}
-            </div>
-          )}
-
-          {/* ტრეილერი (Tasks 9) — ცარიელზე სინქრონი TMDB-დან თვითონ მოიტანს */}
-          {fields.shows('trailer_url') && (
-            <div>
-              <FieldLabel required={fields.required('trailer_url')} hint={fields.hint('trailer_url')}>
-                {fields.label('trailer_url')}
-              </FieldLabel>
-              <Input
-                value={form.trailer_url}
-                onChange={(e) => set('trailer_url', e.target.value)}
-                placeholder={fields.placeholder('trailer_url') ?? 'https://www.youtube.com/watch?v=…'}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">{t('form.trailer_urlHint')}</p>
-              {err('trailer_url')}
-            </div>
-          )}
-
-          <div className={fields.shows('genres') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('genres')} hint={fields.hint('genres')}>
-              {fields.label('genres')}
-            </FieldLabel>
-            {/* ⚠️ `GenreSelect` react-select-ია — ჩარჩოს მას თავისი სტილები ხატავს,
-                ამიტომ წითელდება მისი გარსა ედება და არა `className`-ით */}
-            <div
-              className={cn(
-                errors.genres && 'rounded-md ring-1 ring-destructive',
-              )}
-            >
+        {/* --- კლასიფიკაცია: ჟანრები, სტატუსი, რჩეული --- */}
+        <FormSection title={t('form.sections.classification')}>
+          {/* ⚠️ `GenreSelect` react-select-ია — ჩარჩოს მას თავისი სტილები ხატავს,
+              ამიტომ წითელდება მისი გარსა ედება და არა `className`-ით */}
+          <FormField {...fields.field('genres')} error={errors.genres?.[0]}>
+            <div className={cn(errors.genres && 'rounded-md ring-1 ring-destructive')}>
               <GenreSelect
                 genres={genresQ.data ?? []}
                 value={form.genres}
                 onChange={(v) => setForm((f) => ({ ...f, genres: v }))}
               />
             </div>
-            {errors.genres && (
-              <p className="mt-1 text-xs text-destructive">{errors.genres[0]}</p>
-            )}
-          </div>
+          </FormField>
 
-          <div className="flex flex-wrap items-center gap-6">
-            <div className={fields.shows('status') ? undefined : 'hidden'}>
-              <FieldLabel required={fields.required('status')} hint={fields.hint('status')}>
-                {fields.label('status')}
-              </FieldLabel>
-              <div
-                className={cn(
-                  'flex flex-wrap gap-1.5',
-                  errors.status && 'rounded-md border border-destructive p-1.5',
-                )}
-              >
-                {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
-                {statuses.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => set('status', s.key)}
-                    className={cn(
-                      'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                      form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
-                    )}
-                  >
-                    {statusName(s, lang)}
-                  </button>
-                ))}
-              </div>
-              {errors.status && (
-                <p className="mt-1 text-xs text-destructive">{errors.status[0]}</p>
-              )}
-            </div>
-            {fields.shows('is_favorite') && (
-              <div className="flex items-center gap-2 pt-6">
-                <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
-                <Label htmlFor="fav" className="mb-0 cursor-pointer text-sm">
-                  {fields.label('is_favorite')}
-                </Label>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* §6 ფაზა 3 — მორგებული ველები. ⚠️ ბარათი **თვითონ ინახავს თავს**
-            (მნიშვნელობები ცალკე ცხრილშია), ამიტომ მისი ღილაკი `type="button"`-ია
-            და ამ ფორმის submit-ს არ უშვებს. */}
-        <CustomFieldsCard module={type} recordId={editing ? Number(id) : null} />
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={mut.isPending}>
-            {mut.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-          {editing && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => resyncMut.mutate()}
-              disabled={resyncMut.isPending}
+          <FormField size="half" {...fields.field('status')} error={errors.status?.[0]}>
+            <div
+              className={cn('flex flex-wrap gap-1.5', errors.status && 'rounded-md border border-destructive p-1.5')}
             >
-              {resyncMut.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              {t('detail.sync')}
-            </Button>
-          )}
-          <Link
-            to={backTo}
-            className="inline-flex h-10 cursor-pointer items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-muted"
+              {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
+              {statuses.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => set('status', s.key)}
+                  className={cn(
+                    'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                    form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
+                  )}
+                >
+                  {statusName(s, lang)}
+                </button>
+              ))}
+            </div>
+          </FormField>
+
+          <FormField size="half" {...fields.field('is_favorite')} htmlFor="fav">
+            <div className="flex h-10 items-center">
+              <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
+            </div>
+          </FormField>
+        </FormSection>
+
+        {/* --- დეტალები: ხანგრძლივობა, ბმულები --- */}
+        <FormSection title={t('form.sections.details')}>
+          {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
+          <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
+            <DurationInput
+              id="m-runtime"
+              unit="minutes"
+              value={form.runtime ? Number(form.runtime) : null}
+              onChange={(v) => set('runtime', v == null ? '' : String(v))}
+            />
+          </FormField>
+
+          {/* ⚠️ §8 — ველის ინსტრუქცია `i`-ია და არა ქვეწარწერა */}
+          <FormField
+            {...fields.field('ge_url')}
+            hint={joinHints(fields.hint('ge_url'), t('form.ge_urlHint'))}
+            htmlFor="m-ge-url"
+            error={errors.ge_url?.[0]}
           >
-            {t('actions.cancel')}
-          </Link>
-        </div>
+            <Input
+              id="m-ge-url"
+              value={form.ge_url}
+              onChange={(e) => set('ge_url', e.target.value)}
+              placeholder={fields.placeholder('ge_url') ?? 'https://…'}
+            />
+          </FormField>
+
+          {/* ტრეილერი (Tasks 9) — ცარიელზე სინქრონი TMDB-დან თვითონ მოიტანს */}
+          <FormField
+            {...fields.field('trailer_url')}
+            hint={joinHints(fields.hint('trailer_url'), t('form.trailer_urlHint'))}
+            htmlFor="m-trailer"
+            error={errors.trailer_url?.[0]}
+          >
+            <Input
+              id="m-trailer"
+              value={form.trailer_url}
+              onChange={(e) => set('trailer_url', e.target.value)}
+              placeholder={fields.placeholder('trailer_url') ?? 'https://www.youtube.com/watch?v=…'}
+            />
+          </FormField>
+        </FormSection>
       </form>
+
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები. ⚠️ `<form>`-ის **გარეთაა**:
+          არსებულ ჩანაწერზე ბარათი თვითონ ინახავს თავს (მნიშვნელობები ცალკე
+          ცხრილშია), ახალზე — მონახაზია და ჩანაწერთან ერთად ინახება. */}
+      <CustomFieldsCard
+        module={type}
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      {/* ⚠️ §26.1 — მიმაგრებული ზოლი გვერდზეც: ფანჯრის ქვედა კიდეზე */}
+      <FormFooter page formId={FORM_ID} onCancel={() => nav(backTo)} saving={mut.isPending}>
+        {editing && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => resyncMut.mutate()}
+            disabled={resyncMut.isPending}
+          >
+            {resyncMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            {t('detail.sync')}
+          </Button>
+        )}
+      </FormFooter>
     </PageContainer>
   )
 }
