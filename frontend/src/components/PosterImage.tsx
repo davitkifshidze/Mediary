@@ -5,10 +5,17 @@ export function PosterImage({
   src,
   alt,
   className,
+  draggable,
 }: {
   src: string | null
   alt: string
   className?: string
+  /**
+   * Tasks §16 — `false` გადასათრევ ბარათში: `<img>` თავისით გადაითრევა
+   * (ბრაუზერი თვითონ ფოტოს „ატანს") და ბარათის drag & drop-ს ჩაანაცვლებდა.
+   * მითითების გარეშე ატრიბუტი არ იწერება — ქცევა სხვაგან უცვლელია.
+   */
+  draggable?: boolean
 }) {
   if (!src) {
     return (
@@ -17,5 +24,5 @@ export function PosterImage({
       </div>
     )
   }
-  return <img src={src} alt={alt} loading="lazy" className={cn('object-cover', className)} />
+  return <img src={src} alt={alt} loading="lazy" draggable={draggable} className={cn('object-cover', className)} />
 }

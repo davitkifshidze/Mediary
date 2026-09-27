@@ -483,6 +483,42 @@ class PublicGalleryTest extends TestCase
     }
 
     /**
+     * **ფილმიდან წაშლილი მსახიობი საჯაროდაც აღარ ითვლება მის მონაწილედ (Tasks §16).**
+     *
+     * ⚠️ `publicCastIds()` `castables`-ს **პირდაპირ** კითხულობს (PERF-02), ე.ი.
+     * `HasCastMembers::cast()`-ის ფილტრი მას ვერ იცავს — წაშლილი რიგი რჩება
+     * („საფლავის ქვა") და მის გარეშე ადამიანის ფოტოები საჯარო პროფილზე ისევ
+     * ჩანდებოდა, მიუხედავად იმისა, რომ ფილმის გვერდზე ის აღარსად იყო.
+     */
+    public function test_an_actor_removed_from_a_public_film_leaves_the_public_gallery(): void
+    {
+        $movie = $this->movie('public');
+        $actor = CastMember::create(['name' => 'Somebody', 'tmdb_person_id' => 42]);
+        $movie->cast()->attach($actor->id, ['billing_order' => 0]);
+
+        GalleryImage::create([
+            'user_id' => $this->alice->id,
+            'imageable_type' => 'cast_member',
+            'imageable_id' => $actor->id,
+            'path' => 'gallery/images/actor.jpg',
+            'size' => 10,
+            'width' => 100,
+            'height' => 50,
+        ]);
+
+        $this->getJson('/api/public/profiles/alice/gallery-photos')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+
+        // ზუსტად ის, რასაც `DELETE /media/cast/…` TMDB-ის მსახიობზე წერს
+        $movie->castLinks()->updateExistingPivot($actor->id, ['is_removed' => true]);
+
+        $this->getJson('/api/public/profiles/alice/gallery-photos')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 0);
+    }
+
+    /**
      * **საჯარო გალერეა ჩანაწერების რიცხვზე არ არის დამოკიდებული** (Tasks PERF-02).
      *
      * ⚠️ `publicCastIds()` ყოველ საჯარო ჩანაწერზე ცალკე `$record->cast()->pluck()`-ს

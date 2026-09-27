@@ -931,10 +931,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware(['module:@type', 'permission:@type,update'])->group(function () {
         Route::post('/media/cast/{type}/{id}', [RecordCastController::class, 'store'])
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+        /* Tasks §16 — მთელი დალაგებული სია ერთად. ⚠️ **`{castMember}`-ზე ზემოთ
+           და `whereNumber`-ით**: `PUT` ქვემოთა `match(['put', 'patch'])`-საც
+           ემთხვევა, ე.ი. სხვაგვარად „order" მსახიობის id-ად წაიკითხებოდა
+           (`/cast/search`-ის იგივე წესი). */
+        Route::put('/media/cast/{type}/{id}/order', [RecordCastController::class, 'order'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
         Route::match(['put', 'patch'], '/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'update'])
-            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')->whereNumber('castMember');
         Route::delete('/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'destroy'])
-            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')->whereNumber('castMember');
     });
 
     // sync-ის გეგმა ორივე დომენს ერთდროულად ეხება — ფილტრი თავად ითვალისწინებს

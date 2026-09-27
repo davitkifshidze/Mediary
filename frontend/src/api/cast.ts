@@ -64,7 +64,7 @@ export async function updateRecordCast(
   type: MediaType,
   id: number,
   castId: number,
-  input: { character?: string | null; billing_order?: number },
+  input: { character?: string | null; billing_order?: number; is_hidden?: boolean },
 ): Promise<CastMember> {
   const { data } = await api.patch<{ data: CastMember }>(
     `/media/cast/${type}/${id}/${castId}`,
@@ -73,6 +73,24 @@ export async function updateRecordCast(
   return data.data
 }
 
+/**
+ * Tasks §16 — **მთელი დალაგებული სია ერთად** (ფლეილისტის `PUT …/songs`-ის წესი).
+ *
+ * ⚠️ `ids` ჩანაწერის **ყველა** მსახიობია — დამალულებიც (ბოლოში). ნაწილობრივი
+ * სია 422-ია (`cast_order_mismatch`): ზედმეტი id ამ endpoint-ით მიბმა
+ * იქნებოდა, აკლებული — ჩუმი მოხსნა. ⚠️ `PUT` და არა `POST` — POST
+ * `create`-ად წაიკითხებოდა.
+ */
+export async function reorderRecordCast(type: MediaType, id: number, ids: number[]): Promise<CastMember[]> {
+  const { data } = await api.put<{ data: CastMember[] }>(`/media/cast/${type}/${id}/order`, { ids })
+  return data.data
+}
+
+/**
+ * წაშლა **ამ ჩანაწერიდან** (Tasks §16). ⚠️ TMDB-ის მსახიობის რიგი სერვერზე
+ * „საფლავის ქვად" რჩება, რომ სინქრონიზაციამ ის ვეღარ დააბრუნოს; ლექსიკონის
+ * რიგი, ფოტოები და სხვა ჩანაწერები ხელუხლებელია.
+ */
 export async function detachCastMember(type: MediaType, id: number, castId: number) {
   await api.delete(`/media/cast/${type}/${id}/${castId}`)
 }

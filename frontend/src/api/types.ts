@@ -55,6 +55,14 @@ export interface CastMember {
   has_tmdb?: boolean
   /** ეტაპი 1 — ეს ბმული ხელით გაკეთდა და `/sync` მას აღარ შლის */
   is_manual?: boolean
+  /**
+   * Tasks §16 — ჩანაწერის სიიდან დამალული: გვერდზე „დამალულის" დაკეცილ
+   * ჯგუფში იხატება. ⚠️ ჩანაწერზე რჩება — ძებნაში, მსახიობის გვერდსა და
+   * გალერეაში ჩანს. წაშლილი (`is_removed`) API-ში საერთოდ არ მოდის.
+   */
+  is_hidden?: boolean
+  /** Tasks §16 — როლი ან რიგი ხელით შეიცვალა; სინქრონიზაცია მას აღარ ეხება */
+  is_edited?: boolean
 }
 
 export interface MovieListItem {

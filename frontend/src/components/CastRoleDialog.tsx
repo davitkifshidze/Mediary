@@ -11,10 +11,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useToast } from '@/components/ui/feedback'
-import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   როლის და რიგის შესწორება (ეტაპი 1, 2026-09-13).
+   როლის შესწორება (ეტაპი 1, 2026-09-13 → Tasks §16).
 
    ⚠️ **ეს pivot-ის რედაქტირებაა და არა მსახიობისა.** როლი („ვის თამაშობს")
    ჩანაწერსა და ადამიანს **შორისაა** (`castables.character`), ე.ი. იგივე
@@ -22,9 +21,14 @@ import { InfoHint } from '@/components/ui/info-hint'
    `cast_members` გლობალური ლექსიკონია და მისი გადარქმევა ყველა ანგარიშს
    შეეხებოდა.
 
-   ⚠️ **რიგიც აქვეა**: TMDB-ის `billing_order` კრედიტების თანმიმდევრობაა
-   და ხელით დამატებული ბოლოში ჯდება — თუ ის მთავარი მსახიობია, რიცხვის
-   შეცვლა ერთადერთი გზაა, რომ სიის თავში აღმოჩნდეს.
+   ⚠️ **შენახული როლი შენია**: სერვერი მას `is_edited`-ით ინიშნავს და
+   სინქრონიზაცია მას TMDB-ის როლს აღარ აწერს.
+
+   ⚠️ **რიგის რიცხვითი ველი აქ აღარ არის (Tasks §16).** ის ერთადერთი გზა
+   იყო, რომ ხელით დამატებული სიის თავში აღმოჩენილიყო; ახლა ამას drag & drop
+   და „ერთით წინ/უკან" აკეთებს, რომლებიც მთელ სიას ერთად წერენ (`0..n-1`).
+   რიცხვის ველი ორ ადამიანს ერთსა და იმავე ნომერს მისცემდა და „ვინ დგას
+   წინ" შემთხვევითი გახდებოდა — ორი მექანიზმი ერთ ფაქტზე.
    ============================================================ */
 
 export function CastRoleDialog({
@@ -44,14 +48,9 @@ export function CastRoleDialog({
   const { toast } = useToast()
 
   const [character, setCharacter] = useState(member.character ?? '')
-  const [order, setOrder] = useState(String(member.billing_order ?? 0))
 
   const save = useMutation({
-    mutationFn: () =>
-      updateRecordCast(type, recordId, member.id, {
-        character: character.trim() || null,
-        billing_order: Number(order) || 0,
-      }),
+    mutationFn: () => updateRecordCast(type, recordId, member.id, { character: character.trim() || null }),
     onSuccess: () => {
       toast({ title: t('toast.saved'), variant: 'success' })
       onSaved?.()
@@ -71,17 +70,6 @@ export function CastRoleDialog({
             value={character}
             onChange={(e) => setCharacter(e.target.value)}
             placeholder={t('cast.characterPlaceholder')}
-          />
-        </div>
-        <div>
-          <Label htmlFor="cast-order" className="flex items-center gap-1.5">{t('cast.billingOrder')} <InfoHint info={t('cast.billingOrderHint')} /></Label>
-          <Input
-            id="cast-order"
-            type="number"
-            min={0}
-            max={999}
-            value={order}
-            onChange={(e) => setOrder(e.target.value)}
           />
         </div>
       </div>

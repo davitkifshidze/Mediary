@@ -259,6 +259,11 @@ class PublicGallery
             foreach (DB::table('castables')
                 ->where('castable_type', $domain)
                 ->whereIn('castable_id', $recordIds)
+                /* ⚠️ Tasks §16 — წაშლილი ბმული „საფლავის ქვაა" და არა მონაწილეობა:
+                   pivot აქ პირდაპირ იკითხება, ე.ი. `HasCastMembers::cast()`-ის
+                   ფილტრი ვერ დაიცავდა — ფილმიდან წაშლილი ადამიანის ფოტოები
+                   საჯარო პროფილზე ისევ გამოჩნდებოდა. */
+                ->where('is_removed', false)
                 ->distinct()
                 ->pluck('cast_member_id') as $castId) {
                 $ids[(int) $castId] = true;

@@ -115,8 +115,14 @@ export function useDragReorder<T extends DragId>(
  *
  * ⚠️ `border`-ის კლასი აქ არის და არა გამომძახებელთან, თორემ Tailwind-ის
  * ბოლო კლასი მოიგებდა და მონიშვნა ხან ჩანდებოდა, ხან არა.
+ *
+ * ⚠️ **`idle` — ჩარჩო, როცა ელემენტი სამიზნე არ არის** (Tasks §16). სიის რიგს
+ * ჩარჩო ყოველთვის აქვს; მსახიობების ბადის ბარათს კი არა — იქ ჩარჩო მხოლოდ
+ * ჰოვერზე ჩნდება (`border-transparent hover:border-border`). ⚠️ ეს
+ * **ჩანაცვლებაა** და არა დამატება: ორი `border-*` ერთად რომ დამჯდარიყო,
+ * ზემოთა ხაფანგი დაბრუნდებოდა.
  */
-export function dragRowClass<T extends DragId>(drag: DragReorder<T>, id: T): string {
+export function dragRowClass<T extends DragId>(drag: DragReorder<T>, id: T, idle = 'border-border'): string {
   return [
     'transition-colors',
     // ⚠️ **„ხელის" კურსორი მთელ ზოლზეა და არა მხოლოდ სახელურზე** (Tasks §1.3):
@@ -125,7 +131,7 @@ export function dragRowClass<T extends DragId>(drag: DragReorder<T>, id: T): str
     // შიგნითა ღილაკებს თავისი `cursor-pointer` აქვთ და ისინი იგებენ.
     'cursor-grab active:cursor-grabbing',
     drag.draggingId === id ? 'opacity-40' : '',
-    drag.overId === id && drag.draggingId !== id ? 'border-primary' : 'border-border',
+    drag.overId === id && drag.draggingId !== id ? 'border-primary' : idle,
   ]
     .filter(Boolean)
     .join(' ')

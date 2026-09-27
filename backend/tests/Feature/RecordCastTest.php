@@ -165,7 +165,13 @@ class RecordCastTest extends TestCase
         $this->assertNotContains($fromSource->id, $ids);
     }
 
-    /** ⚠️ ორივეგან მყოფი ხელით დამატებული ისევ ხელითად რჩება */
+    /**
+     * ⚠️ ორივეგან მყოფი ხელით დამატებული ისევ ხელითად რჩება.
+     *
+     * როლი აქ **ცარიელი იყო**, ამიტომ TMDB-ის როლს სამართლიანად იღებს. Tasks §16-მდე
+     * ეს ტესტი იმასაც „სწორად" აფიქსირებდა, რომ TMDB **ნებისმიერ** როლს ზედ აწერდა —
+     * შენ მიერ დაწერილსაც; ახლა დაწერილი რჩება (ქვემოთა ტესტი და `CastCurationTest`).
+     */
     public function test_a_manual_member_stays_manual_when_the_source_also_knows_them(): void
     {
         $id = $this->actingAs($this->user)
@@ -180,6 +186,23 @@ class RecordCastTest extends TestCase
         $pivot = $this->movie->cast()->whereKey($id)->first()->pivot;
         $this->assertTrue((bool) $pivot->is_manual);
         $this->assertSame('Lead', $pivot->character);
+    }
+
+    /** Tasks §16 — დამატებისას დაწერილი როლი შენია: TMDB მას შემდეგ სინქრონიზაციაზე აღარ აწერს */
+    public function test_a_role_typed_when_adding_survives_a_source_sync(): void
+    {
+        $id = $this->actingAs($this->user)
+            ->postJson("/api/media/cast/movie/{$this->movie->id}", [
+                'name' => 'Shared Person',
+                'character' => 'დედა',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.is_edited', true)
+            ->json('data.id');
+
+        CastSync::fromSource($this->movie, [$id => ['character' => 'Mother', 'billing_order' => 0]]);
+
+        $this->assertSame('დედა', $this->movie->cast()->whereKey($id)->first()->pivot->character);
     }
 
     /** სხვისი ჩანაწერი — 404 (და არა 403) */

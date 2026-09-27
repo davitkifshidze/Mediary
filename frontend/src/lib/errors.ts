@@ -85,6 +85,8 @@ export const CODES = [
   'cast_already_attached',
   'cast_limit_reached',
   'cast_member_not_found',
+  // Tasks §16 — გადალაგებული სია ჩანაწერის მსახიობებს არ ემთხვევა (სხვა ტაბმა შეცვალა)
+  'cast_order_mismatch',
   'not_youtube',
   // §7.1 — ვიდეოს ლოკალური ჩამოწერა. ⚠️ **ორი სხვადასხვა ფაქტია**: `yt-dlp`
   // ამ მანქანაზე არ არის (503) და ჩამოწერა უკვე მიმდინარეობს (409).

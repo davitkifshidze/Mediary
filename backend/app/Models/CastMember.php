@@ -21,6 +21,9 @@ class CastMember extends Model
 
     public const GENDER_MALE = 2;
 
+    /** `castables`-ის სვეტები ჩანაწერის მხრიდან (`HasCastMembers`-ის იგივე ნაკრები) */
+    private const MEDIA_PIVOT = ['character', 'billing_order', 'is_manual', 'is_hidden', 'is_removed', 'is_edited'];
+
     protected $guarded = ['id'];
 
     protected $with = ['translations'];
@@ -56,23 +59,35 @@ class CastMember extends Model
         return $this->hasMany(CastMemberTranslation::class);
     }
 
+    /*
+     * ⚠️ **სამივე უკუ-რელაცია წაშლილ ბმულს (`is_removed`) ფილტრავს** (Tasks §16)
+     * — ზუსტად ისე, როგორც `HasCastMembers::cast()`. ამ რელაციებზე დგას
+     * მსახიობის ფილმოგრაფია, `CastMember::whereHas('movies')` (გალერეის
+     * ჭრილები, ძებნის „ჩემი მსახიობები", ჩამოტვირთვის აუზი) — ე.ი. ფილმიდან
+     * წაშლილი ადამიანი იქ აღარ ჩანს. დამალული (`is_hidden`) ჩანს: ის მხოლოდ
+     * ჩანაწერის სიიდან იმალება.
+     */
+
     public function movies(): MorphToMany
     {
         return $this->morphedByMany(Movie::class, 'castable')
-            ->withPivot('character', 'billing_order', 'is_manual');
+            ->withPivot(self::MEDIA_PIVOT)
+            ->wherePivot('is_removed', false);
     }
 
     public function series(): MorphToMany
     {
         return $this->morphedByMany(Series::class, 'castable')
-            ->withPivot('character', 'billing_order', 'is_manual');
+            ->withPivot(self::MEDIA_PIVOT)
+            ->wherePivot('is_removed', false);
     }
 
     /** §7.1 — მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება */
     public function animes(): MorphToMany
     {
         return $this->morphedByMany(Anime::class, 'castable')
-            ->withPivot('character', 'billing_order', 'is_manual');
+            ->withPivot(self::MEDIA_PIVOT)
+            ->wherePivot('is_removed', false);
     }
 
     /* ---------- translation accessor (name = canonical column) ---------- */

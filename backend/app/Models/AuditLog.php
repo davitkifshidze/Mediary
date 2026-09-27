@@ -58,6 +58,17 @@ class AuditLog extends Model
     public const ACTION_CAST_DETACH = 'cast_detach';
 
     /**
+     * მსახიობის **შეცვლა** ჩანაწერზე — როლი, რიგი, დამალვა, მთელი სიის
+     * გადალაგება (Tasks §16).
+     *
+     * ⚠️ **`update` არ გამოდგებოდა** იმავე მიზეზით, რაც ზემოთ წერია: `castables`
+     * მოდელი არაა, `AuditObserver` მას ვერ ხედავს, ხოლო `update`-ად ჩაწერილი
+     * რიგი ჩანაწერის **საკუთარ** ველებად წაიკითხებოდა. აქამდე როლის შესწორება
+     * ლოგში **საერთოდ არ ჩანდა** — ძველი/ახალი მნიშვნელობა ახლა ორივე მხარეს იწერება.
+     */
+    public const ACTION_CAST_UPDATE = 'cast_update';
+
+    /**
      * ჩანაწერის თარგმნა (შენი მითითება, 2026-09-14: „რა რითი ითარგმნა ჩანდეს
      * ლოგებშიც").
      *
@@ -113,6 +124,7 @@ class AuditLog extends Model
         self::ACTION_CHAT_DELETE,
         self::ACTION_CAST_ATTACH,
         self::ACTION_CAST_DETACH,
+        self::ACTION_CAST_UPDATE,
         self::ACTION_TRANSLATE,
         self::ACTION_EXPORT,
         self::ACTION_IMPORT,

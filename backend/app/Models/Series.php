@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasCastMembers;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
@@ -18,6 +19,12 @@ class Series extends Model
 {
     /** per-user მფლობელობა: global scope + user_id-ის ავტო-შევსება (I1) */
     use BelongsToUser;
+
+    /**
+     * ⚠️ **მსახიობები (Tasks §16)** — `cast()` წაშლილს (`is_removed`) თვითონ
+     * ფილტრავს, `castLinks()` კი ყველა რიგს ხედავს. იხ. `HasCastMembers`.
+     */
+    use HasCastMembers;
 
     /** §6 ფაზა 4b — მორგებულ ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
@@ -63,12 +70,14 @@ class Series extends Model
         'sort_order' => 'integer',
     ];
 
-    /** morphs() FK-cascade-ს არ ქმნის — polymorphic pivot-ები ხელით უნდა მოიხსნას წაშლისას */
+    /**
+     * morphs() FK-cascade-ს არ ქმნის — polymorphic pivot-ები ხელით უნდა მოიხსნას წაშლისას.
+     * ⚠️ მსახიობების ბმულებს (საფლავის ქვების ჩათვლით) `HasCastMembers` თვითონ ხსნის.
+     */
     protected static function booted(): void
     {
         static::deleting(function (Series $series) {
             $series->genres()->detach();
-            $series->cast()->detach();
             // Tasks 10 — გალერეის ფოტოებიც (ფაილიც და კვოტაც `GalleryImage`-ზეა)
             $series->deleteGalleryMedia();
             $series->deletePoster();
@@ -98,13 +107,6 @@ class Series extends Model
     public function genres(): MorphToMany
     {
         return $this->morphToMany(Genre::class, 'genreable');
-    }
-
-    public function cast(): MorphToMany
-    {
-        return $this->morphToMany(CastMember::class, 'castable')
-            ->withPivot('character', 'billing_order', 'is_manual')
-            ->orderByPivot('billing_order');
     }
 
     /* ---------- translation accessors (API-ს ფორმა movies-ის იდენტური) ---------- */

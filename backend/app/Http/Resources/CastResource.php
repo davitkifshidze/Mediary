@@ -18,10 +18,15 @@ class CastResource extends JsonResource
             'has_tmdb' => (bool) $this->tmdb_person_id,
             'character' => $this->whenPivotLoaded('castables', fn () => $this->pivot->character),
             'billing_order' => $this->whenPivotLoaded('castables', fn () => $this->pivot->billing_order),
-            /* ეტაპი 1 — „ეს ბმული ხელით გაკეთდა". ⚠️ ფრონტს ეს უნდა აცდეს,
-               თორემ TMDB-იდან მოსული და ხელით დამატებული ერთნაირად გამოიყურებოდა,
-               მაშინ როცა წაშლა მხოლოდ ხელით დამატებულს აქვს აზრი (სხვა `/sync`-ით დაბრუნდება). */
+            /* ეტაპი 1 — „ეს ბმული ხელით გაკეთდა" (`/sync` მას აღარ ხსნის). */
             'is_manual' => $this->whenPivotLoaded('castables', fn () => (bool) $this->pivot->is_manual),
+            /* Tasks §16 — `is_hidden`: ჩანაწერის სიაში „დამალულის" დაკეცილ ჯგუფში
+               იხატება; `is_edited`: როლი ან რიგი ხელით შეიცვალა. ⚠️ `is_removed` აქ
+               **არ არის** — `cast()` წაშლილს საერთოდ არ აბრუნებს, ე.ი. ველი
+               ყოველთვის `false` იქნებოდა. ⚠️ წაშლას **ორივე** სახის მსახიობზე
+               აქვს აზრი: TMDB-იდან მოსულიც აღარ ბრუნდება (საფლავის ქვა). */
+            'is_hidden' => $this->whenPivotLoaded('castables', fn () => (bool) $this->pivot->is_hidden),
+            'is_edited' => $this->whenPivotLoaded('castables', fn () => (bool) $this->pivot->is_edited),
         ];
     }
 }

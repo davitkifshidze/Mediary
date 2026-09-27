@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -184,29 +185,53 @@ class RecordCastController extends Controller
             return response()->json(['message' => 'cast_member_not_found'], 404);
         }
 
-        if ($record->cast()->whereKey($member->id)->exists()) {
+        /* ⚠️ **`castLinks()` და არა `cast()`** (Tasks §16): წაშლილი მსახიობის
+           რიგი ცხრილში რჩება („საფლავის ქვა"), ე.ი. ფილტრიანი რელაცია მას ვერ
+           დაინახავდა და `attach()` პირველად გასაღებზე (`castables_primary`)
+           დაეჯახებოდა — 500 ჩვეულებრივ „დაბრუნებაზე". ხელახლა დამატება
+           **აღდგენაა**. */
+        $link = $record->castLinks()->whereKey($member->id)->first();
+
+        if ($link && ! $link->pivot->is_removed) {
             return response()->json(['message' => 'cast_already_attached'], 409);
         }
 
         /* ⚠️ **რიგი ბოლოში** — TMDB-ის `billing_order` კრედიტების რიგია და
            ხელით დამატებულის მის შუაში ჩაჭედვა სხვის ადგილს გადაანაცვლებდა. */
         $order = $data['billing_order'] ?? ((int) $record->cast()->max('billing_order') + 1);
+        $character = trim((string) ($data['character'] ?? '')) ?: null;
 
-        $record->cast()->attach($member->id, [
-            'character' => $data['character'] ?? null,
+        $pivot = [
+            'character' => $character ?? $link?->pivot->character,
             'billing_order' => $order,
             // ⚠️ ეს ნიშანია, რომელიც მას `/sync`-ისგან იცავს (იხ. `CastSync`)
             'is_manual' => true,
-        ]);
+            'is_hidden' => false,
+            'is_removed' => false,
+            /* ⚠️ **შენი დაწერილი როლი ან რიგი TMDB-ს აღარ გადაეწერება** —
+               ორივეგან მყოფ ადამიანს სინქრონიზაცია სხვაგვარად TMDB-ის როლს
+               დაუწერდა. აღდგენილი რიგი ძველ ნიშანსაც ინარჩუნებს. */
+            'is_edited' => $character !== null
+                || isset($data['billing_order'])
+                || (bool) $link?->pivot->is_edited,
+        ];
+
+        if ($link) {
+            $record->castLinks()->updateExistingPivot($member->id, $pivot);
+        } else {
+            $record->castLinks()->attach($member->id, $pivot);
+        }
 
         $source = ($data['tmdb_person_id'] ?? null)
             ? 'tmdb'
             : (($data['cast_member_id'] ?? null) ? 'library' : 'manual');
 
         $this->logCast($record, $member, AuditLog::ACTION_CAST_ATTACH, [
-            'character' => $data['character'] ?? null,
+            'character' => $pivot['character'],
             'billing_order' => $order,
             'source' => $source,
+            // ⚠️ წაშლილის დაბრუნება — „ვინ აღადგინა" ისტორიაში ცალკე უნდა იკითხებოდეს
+            ...($link ? ['restored' => true] : []),
         ]);
 
         return response()->json([
@@ -214,28 +239,59 @@ class RecordCastController extends Controller
         ], 201);
     }
 
-    /** `PATCH /api/media/cast/{type}/{id}/{castMember}` — როლი და რიგი */
+    /**
+     * `PATCH /api/media/cast/{type}/{id}/{castMember}` — როლი, რიგი და დამალვა.
+     *
+     * ⚠️ **როლის ან რიგის შეცვლა `is_edited`-ს აყენებს** (Tasks §16): აქამდე
+     * `PATCH` ამას არ აკეთებდა და შემდეგი სინქრონიზაცია შენს ჩაწერილს TMDB-ის
+     * მნიშვნელობას ზედ აწერდა — ჩუმად.
+     *
+     * ⚠️ **დამალვა `is_edited`-ს არ ეხება** — ის ცალკე ფაქტია და თვითონაც
+     * „შეხებულად" ითვლება (`CastSync`), ე.ი. სინქრონიზაცია მას არც ხსნის
+     * და არც აჩენს.
+     */
     public function update(Request $request, string $type, int $id, CastMember $castMember): JsonResponse
     {
         $record = $this->record($type, $id);
 
-        abort_unless($record->cast()->whereKey($castMember->id)->exists(), 404);
+        $current = $record->cast()->whereKey($castMember->id)->first();
+        abort_unless($current, 404);
 
         $data = $request->validate([
             'character' => ['nullable', 'string', 'max:255'],
             'billing_order' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'is_hidden' => ['sometimes', 'boolean'],
         ]);
 
         $pivot = [];
         if ($request->has('character')) {
-            $pivot['character'] = $data['character'] ?? null;
+            $pivot['character'] = trim((string) ($data['character'] ?? '')) ?: null;
         }
         if (isset($data['billing_order'])) {
-            $pivot['billing_order'] = $data['billing_order'];
+            $pivot['billing_order'] = (int) $data['billing_order'];
+        }
+        if (array_key_exists('is_hidden', $data)) {
+            $pivot['is_hidden'] = (bool) $data['is_hidden'];
         }
 
-        if ($pivot) {
-            $record->cast()->updateExistingPivot($castMember->id, $pivot);
+        // მხოლოდ ის, რაც მართლა იცვლება — იგივე მნიშვნელობის ხელახლა გაგზავნა ცვლილება არაა
+        $was = [
+            // TMDB ცარიელ როლს `''`-ად წერს — ის და `null` ერთი და იგივე „როლი არ არის"-ა
+            'character' => $current->pivot->character === '' ? null : $current->pivot->character,
+            'billing_order' => (int) $current->pivot->billing_order,
+            'is_hidden' => (bool) $current->pivot->is_hidden,
+        ];
+        $changed = array_filter($pivot, fn ($value, string $key) => $was[$key] !== $value, ARRAY_FILTER_USE_BOTH);
+
+        if ($changed) {
+            $write = $changed;
+            if (array_key_exists('character', $changed) || array_key_exists('billing_order', $changed)) {
+                $write['is_edited'] = true;
+            }
+
+            $record->cast()->updateExistingPivot($castMember->id, $write);
+
+            $this->logCast($record, $castMember, AuditLog::ACTION_CAST_UPDATE, [], array_intersect_key($was, $changed), $changed);
         }
 
         return response()->json([
@@ -244,9 +300,82 @@ class RecordCastController extends Controller
     }
 
     /**
-     * `DELETE /api/media/cast/{type}/{id}/{castMember}` — მხოლოდ ბმის მოხსნა.
+     * `PUT /api/media/cast/{type}/{id}/order` — **მთელი დალაგებული სია ერთად** (Tasks §16).
+     *
+     * ⚠️ **სია სრულია და არა ნაწილი** — ფლეილისტის `PUT …/songs`-ის წესი: რიგები
+     * `0..n-1`-ად იწერება, ე.ი. ორი ერთნაირი ნომერი (და „ვინ დგას წინ" შემთხვევითი
+     * პასუხი) ვეღარ გაჩნდება. დამალულებიც სიაშია (ბოლოში) — სხვაგვარად მათი ძველი
+     * ნომრები ახალ დალაგებას შუაში გადაკვეთდა და გამოჩენისას ადამიანი უცნაურ
+     * ადგილას დაჯდებოდა.
+     *
+     * ⚠️ **სიმრავლე ზუსტად უნდა ემთხვეოდეს** (წაშლილის გარეშე): ზედმეტი id ამ
+     * endpoint-ით მიბმა იქნებოდა, აკლებული — ჩუმი მოხსნა. ორივე 422-ია
+     * (`cast_order_mismatch`) — ფრონტი სიას თავიდან ჩამოტვირთავს.
+     *
+     * ⚠️ **გადალაგებული სია მთლიანად „შენია"**: ყველა რიგი `is_edited`-ს იღებს,
+     * ე.ი. სინქრონიზაცია შემდეგ ახალ TMDB-მსახიობს მხოლოდ ბოლოში დაამატებს და
+     * დალაგებულიდან არავის ამოიღებს.
+     *
+     * ⚠️ **`PUT` და არა `POST`** — `EnsureModulePermission` POST-ს `create`-ად
+     * წაიკითხავდა; უფლება აქ ისედაც ცხადად `update`-ია (მარშრუტზე).
+     */
+    public function order(Request $request, string $type, int $id): JsonResponse
+    {
+        $record = $this->record($type, $id);
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PER_RECORD],
+            'ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $ids = array_map('intval', $data['ids']);
+        $current = $record->cast()->get();
+        $currentIds = $current->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        $sorted = $ids;
+        sort($sorted);
+        $expected = $currentIds;
+        sort($expected);
+
+        if ($sorted !== $expected) {
+            return response()->json(['message' => 'cast_order_mismatch'], 422);
+        }
+
+        // იგივე რიგის ხელახლა გაგზავნა ცვლილება არაა — არც `is_edited`, არც ლოგი
+        if ($ids !== $currentIds) {
+            DB::transaction(function () use ($record, $ids) {
+                foreach ($ids as $index => $memberId) {
+                    $record->cast()->updateExistingPivot($memberId, [
+                        'billing_order' => $index,
+                        'is_edited' => true,
+                    ]);
+                }
+            });
+
+            $names = $current->keyBy('id');
+            $label = fn (array $list) => implode(' · ', array_map(fn (int $x) => $names[$x]->name, $list));
+
+            $this->logCast($record, null, AuditLog::ACTION_CAST_UPDATE, [], ['order' => $label($currentIds)], ['order' => $label($ids)]);
+        }
+
+        return response()->json([
+            'data' => CastResource::collection($record->cast()->get())->resolve(),
+        ]);
+    }
+
+    /**
+     * `DELETE /api/media/cast/{type}/{id}/{castMember}` — წაშლა **ამ ჩანაწერიდან**.
      *
      * ⚠️ **ლექსიკონის რიგი რჩება.** იხ. კლასის შენიშვნა.
+     *
+     * ⚠️ **ორი გზა და ერთი კითხვა: შეუძლია თუ არა წყაროს მისი დაბრუნება?**
+     * (Tasks §16). ვისაც `tmdb_person_id` აქვს, მას TMDB-ის კრედიტები ოდესმე
+     * ისევ ჩამოიტანს — ამიტომ რიგი რჩება „საფლავის ქვად" (`is_removed`) და
+     * `cast()`-ში აღარსად ჩანს. ვისაც არ აქვს, მას სინქრონიზაცია ვერასდროს
+     * იპოვის (enricher-ები მსახიობს მხოლოდ `tmdb_person_id`-ით ეძებენ) — იქ
+     * ნამდვილი მოხსნა სუფთაა. ⚠️ `is_manual` აქ **არ** წყვეტს: ხელით
+     * დამატებული, რომელსაც TMDB-იც იცნობს, ჩვეულებრივ მოხსნაზე შემდეგივე
+     * სინქრონიზაციით დაბრუნდებოდა — ზუსტად ის ხარვეზი, რაც აქ ასწორდება.
      */
     public function destroy(string $type, int $id, CastMember $castMember): JsonResponse
     {
@@ -254,8 +383,15 @@ class RecordCastController extends Controller
 
         abort_unless($record->cast()->whereKey($castMember->id)->exists(), 404);
 
-        $record->cast()->detach($castMember->id);
-        $this->logCast($record, $castMember, AuditLog::ACTION_CAST_DETACH);
+        $tombstone = (bool) $castMember->tmdb_person_id;
+
+        if ($tombstone) {
+            $record->castLinks()->updateExistingPivot($castMember->id, ['is_removed' => true]);
+        } else {
+            $record->castLinks()->detach($castMember->id);
+        }
+
+        $this->logCast($record, $castMember, AuditLog::ACTION_CAST_DETACH, ['sync_blocked' => $tombstone]);
 
         return response()->json(['ok' => true]);
     }
@@ -382,18 +518,25 @@ class RecordCastController extends Controller
      * მსახიობი**: „ვინ დაამატა ეს მსახიობი ამ ფილმს" ფილმის ისტორიის
      * ნაწილია, ლექსიკონი კი გლობალურია და მასზე „ვისი" კითხვა არ დგას.
      *
+     * ⚠️ **`cast_update`-ს ძველი და ახალი მნიშვნელობები ახლავს** (Tasks §16) —
+     * ზუსტად ის, რასაც ლოგის diff-ის ფანჯარა კითხულობს. `$member` ცარიელია
+     * მთელი სიის გადალაგებაზე: იქ ერთი ადამიანი კი არა, რიგი შეიცვალა.
+     *
      * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>|null  $old
+     * @param  array<string, mixed>|null  $new
      */
-    private function logCast(Model $record, CastMember $member, string $action, array $context = []): void
+    private function logCast(Model $record, ?CastMember $member, string $action, array $context = [], ?array $old = null, ?array $new = null): void
     {
         $this->audit->log($action, [
             'module' => MediaDomain::typeOf($record),
             'subject_type' => $record->getMorphClass(),
             'subject_id' => $record->getKey(),
             'subject_label' => $record->title_en ?: $record->title_ka,
+            'old_values' => $old,
+            'new_values' => $new,
             'context' => [
-                'cast_member_id' => $member->id,
-                'cast_member' => $member->name,
+                ...($member ? ['cast_member_id' => $member->id, 'cast_member' => $member->name] : []),
                 ...$context,
             ],
         ]);

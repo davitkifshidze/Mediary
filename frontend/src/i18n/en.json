@@ -1019,7 +1019,8 @@
     "two_factor_already_enabled": "Two-factor sign-in is already on.",
     "two_factor_not_started": "Start turning it on first — there is no secret yet.",
     "two_factor_not_enabled": "Two-factor sign-in is not on.",
-    "reset_link_expired": "The link no longer works — it either expired or has already been used."
+    "reset_link_expired": "The link no longer works — it either expired or has already been used.",
+    "cast_order_mismatch": "The cast list changed elsewhere — the page was refreshed, try again."
   },
   "fields": {
     "title": "Fields",
@@ -2456,7 +2457,9 @@
       "cast_detach": "Cast member removed",
       "translate": "Translation",
       "export": "Export",
-      "import": "Import"
+      "import": "Import",
+      "cast_update": "Cast member edited",
+      "restore": "Restored from trash"
     },
     "modules": {
       "account": "Account",
@@ -2681,16 +2684,14 @@
     "addTitle": "Add a cast member to this record",
     "added": "{{name}} added",
     "alreadyAttached": "already here",
-    "billingOrder": "Order in the list",
-    "billingOrderHint": "A smaller number comes first. A hand-added person goes last.",
     "character": "Role",
     "characterPlaceholder": "Who they play",
-    "detach": "Remove from this record",
-    "detachHint": "{{name}} will be removed from this record. The person, their photos and other records stay.",
-    "detachTitle": "Remove the cast member",
-    "detached": "Cast member removed",
+    "detach": "Delete from this record",
+    "detachHint": "{{name}} will be removed from this record and a sync will not bring them back. The person, their photos and other records stay. To only take them out of the list, choose “Hide”.",
+    "detachTitle": "Delete the cast member from this record",
+    "detached": "Removed from this record",
     "editRole": "Edit the role",
-    "editRoleTitle": "{{name}} — role and order",
+    "editRoleTitle": "{{name}} — role",
     "empty": "No cast yet. Add someone by hand or run a sync.",
     "gender": "Gender",
     "genderUnknown": "Unspecified",
@@ -2714,7 +2715,17 @@
     "tmdbMissingKey": "No TMDB key is configured — the search covers the library only.",
     "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works.",
     "namePlaceholderKa": "ნინო ქასრაძე",
-    "namePlaceholderEn": "Nino Kasradze"
+    "namePlaceholderEn": "Nino Kasradze",
+    "hide": "Hide",
+    "unhide": "Show again",
+    "hiddenToast": "{{name}} is hidden",
+    "shown": "{{name}} is visible again",
+    "hiddenGroup": "Hidden ({{count}})",
+    "hiddenGroupHint": "A hidden cast member stays on the record — search, the actor page and the gallery still show them; only this list hides them. A sync will not bring them back into view.",
+    "allHidden": "Every cast member is hidden — open “Hidden” below.",
+    "arrangeHint": "Drag a card to change the order; right-click or “⋯” for other actions. A sync no longer reorders a list you arranged — new cast members are added at the end.",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later"
   },
   "boundary": {
     "title": "This page failed to load",
