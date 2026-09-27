@@ -1029,6 +1029,8 @@
       "video": {
         "duration": "Duration — manual entry",
         "description": "Description",
+        "channel": "Channel",
+        "published_at": "Published",
         "tags": "Tags",
         "url": "Link",
         "title": "Title",
@@ -1168,6 +1170,8 @@
       "video": {
         "duration": "Duration is normally detected automatically. Enable this if detection doesn't work and you need to type it in.",
         "description": "Free-form text about the video.",
+        "channel": "Who uploaded the video. Filled in automatically when you paste a link.",
+        "published_at": "When the video was published at its source. Filled in automatically when added from the web search.",
         "tags": "Your own labels, used for filtering.",
         "url": "YouTube · Vimeo · Dailymotion or a direct file."
       },

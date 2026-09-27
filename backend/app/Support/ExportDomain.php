@@ -103,8 +103,8 @@ final class ExportDomain
             'with' => ['status', 'type'],
             'fields' => [
                 'id', 'title', 'type', 'status', 'status_name', 'tags', 'url', 'platform',
-                'external_id', 'duration', 'is_favorite', 'watch_count', 'watched_at',
-                'description', 'thumbnail_path', 'download_name', 'visibility', 'created_at',
+                'external_id', 'channel', 'published_at', 'duration', 'is_favorite', 'watch_count',
+                'watched_at', 'description', 'thumbnail_path', 'download_name', 'visibility', 'created_at',
             ],
         ],
         'song' => [

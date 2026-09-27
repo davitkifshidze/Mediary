@@ -110,7 +110,7 @@ class VideoSearch
 
             $where->orWhere(function (Builder $w) use ($like) {
                 // `tags` json-ია, LIKE ტექსტად კითხულობს — MySQL-ზეც და sqlite-ზეც მუშაობს
-                foreach (['title', 'description', 'tags', 'platform', 'url'] as $column) {
+                foreach (['title', 'description', 'channel', 'tags', 'platform', 'url'] as $column) {
                     $w->orWhere($column, 'like', $like);
                 }
                 $w->orWhereHas('notes', fn ($n) => $n->where('body', 'like', $like));
@@ -152,6 +152,7 @@ class VideoSearch
         $text = implode(' ', [
             (string) $video->title,
             implode(' ', $video->tags ?? []),
+            (string) $video->channel,
             (string) $video->platform,
             mb_substr((string) $video->description, 0, 600),
             $video->relationLoaded('notes')
@@ -248,6 +249,10 @@ class VideoSearch
 
         if ($this->contains($this->normalize((string) $video->description), $needle)) {
             $score += 50;
+        }
+        // Q52 — არხი აღწერის ქვემოთ, ჩანიშვნის ზემოთ: „ვისია" სათაურზე სუსტია, წყაროზე ძლიერი
+        if ($this->contains($this->normalize((string) $video->channel), $needle)) {
+            $score += 45;
         }
         if ($video->relationLoaded('notes')) {
             foreach ($video->notes as $note) {

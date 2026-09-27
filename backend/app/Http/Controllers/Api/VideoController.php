@@ -187,6 +187,9 @@ class VideoController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
             'url' => [$video ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
             'description' => ['nullable', 'string', 'max:5000'],
+            // Q52 — არხი და გამოქვეყნების თარიღი (ვებძებნიდან, oEmbed-იდან ან ხელით)
+            'channel' => ['nullable', 'string', 'max:255'],
+            'published_at' => ['nullable', 'date'],
             // ტიპი მხოლოდ **საკუთარი** ლექსიკონიდან (5.1)
             'type_id' => [
                 ...$must,
@@ -207,7 +210,7 @@ class VideoController extends Controller
 
     private function apply(Video $video, Request $request, array $data): void
     {
-        foreach (['title', 'description', 'duration'] as $field) {
+        foreach (['title', 'description', 'duration', 'channel', 'published_at'] as $field) {
             if (array_key_exists($field, $data)) {
                 $video->{$field} = $data[$field] ?: null;
             }
@@ -274,7 +277,8 @@ class VideoController extends Controller
         }
 
         $needsTitle = ! $video->title;
-        $needsRest = ! $video->description || ! $video->duration || ! $video->tags || ! $video->thumbnail_url;
+        $needsRest = ! $video->description || ! $video->duration || ! $video->tags || ! $video->thumbnail_url
+            || ! $video->channel;
         if (! $needsTitle && ! $needsRest) {
             return;
         }
@@ -292,6 +296,11 @@ class VideoController extends Controller
         }
         if (! $video->tags && $meta['tags']) {
             $video->tags = $meta['tags'];
+        }
+        /* Q52 — არხი oEmbed-ის `author_name`-ია (YouTube-ის API-ით `channelTitle`).
+           ⚠️ თარიღს oEmbed არ აბრუნებს, ე.ი. ის მხოლოდ ვებძებნიდან ან ხელით მოდის. */
+        if (! $video->channel && $meta['author']) {
+            $video->channel = mb_substr((string) $meta['author'], 0, 255);
         }
         if (! $video->thumbnail_path && ! $video->thumbnail_url && $meta['thumbnail_url']) {
             $video->thumbnail_url = $meta['thumbnail_url'];

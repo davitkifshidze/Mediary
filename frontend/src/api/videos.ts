@@ -13,6 +13,10 @@ export interface Video {
   id: number
   title: string
   description: string | null
+  /** Q52 — ვინ ატვირთა (ვებძებნიდან ან oEmbed-ის `author_name`-იდან) */
+  channel: string | null
+  /** Q52 — წყაროზე გამოქვეყნების დღე, `YYYY-MM-DD` (დრო არ აქვს) */
+  published_at: string | null
   /** მართვადი ტიპი (Tasks 5.1) — `kind` enum-ი აღარ არსებობს */
   type_id: number | null
   type?: VideoType | null
@@ -195,6 +199,9 @@ export interface VideoInput {
   status?: string
   visibility?: 'private' | 'public'
   description?: string
+  /** Q52 — `undefined` = არ შეცვალო, `null`/`''` = გაასუფთავე */
+  channel?: string | null
+  published_at?: string | null
   duration?: number | null
   tags?: string[]
   /** ატვირთული thumbnail; მითითების შემთხვევაში multipart-ად იგზავნება */
@@ -207,6 +214,12 @@ function toFormData(input: VideoInput): FormData {
   fd.append('title', input.title)
   fd.append('url', input.url)
   fd.append('description', input.description ?? '')
+  /* ⚠️ `undefined` გამოტოვებულია, `null` ცარიელად მიდის (Tasks §4.8-ის წესი):
+     backend-ი ველს `array_key_exists`-ით წერს, ე.ი. გამოტოვებული ველი ძველს
+     ტოვებს, ცარიელი კი ასუფთავებს — გასუფთავებული არხი შენახვის შემდეგ
+     უკან არ უნდა დაბრუნდეს. */
+  if (input.channel !== undefined) fd.append('channel', input.channel ?? '')
+  if (input.published_at !== undefined) fd.append('published_at', input.published_at ?? '')
   if (input.type_id != null) fd.append('type_id', String(input.type_id))
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)

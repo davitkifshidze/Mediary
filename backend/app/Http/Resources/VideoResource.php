@@ -13,6 +13,9 @@ class VideoResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
+            // Q52 — არხი და გამოქვეყნების დღე (`Y-m-d`, დრო არ აქვს)
+            'channel' => $this->channel,
+            'published_at' => $this->published_at?->toDateString(),
             // მართვადი ტიპი (5.1) — `kind` enum-ი აღარ არსებობს
             'type_id' => $this->type_id,
             'type' => $this->whenLoaded('type', fn () => new VideoTypeResource($this->type)),

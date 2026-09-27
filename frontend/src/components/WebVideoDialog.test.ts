@@ -100,7 +100,7 @@ beforeEach(() => {
     items: [
       {
         engine: 'youtube', source: 'serpapi:youtube', title: 'Trailer', link: NEW_LINK, channel: 'Studio',
-        duration: 145, views: null, published: null, thumbnail: null, description: 'About it', engines: ['youtube'],
+        duration: 145, views: null, published: '2024-02-15', thumbnail: null, description: 'About it', engines: ['youtube'],
         existing: null,
       },
       {
@@ -195,6 +195,9 @@ describe('WebVideoDialog — ვიდეოებში დამატებ�
         // ⚠️ ლექსიკონის ნაგულისხმევი და არა პირველი რიგი
         status: 'undecided',
         duration: 145,
+        // Q52 — არხი და გამოქვეყნების დღე შედეგიდან მიდის
+        channel: 'Studio',
+        published_at: '2024-02-15',
       }),
     )
 

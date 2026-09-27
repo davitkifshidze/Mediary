@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Play, Plus, Trash2, Upload } from 'lucide-react'
+import { CalendarDays, Download, FileText, Play, Plus, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoFile,
@@ -16,6 +16,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
+import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
@@ -50,6 +51,7 @@ export function VideoDetail({
   onOpen?: (video: Video) => void
 }) {
   const { t } = useTranslation()
+  const { date } = useDateFormat()
   const qc = useQueryClient()
   const { toast } = useToast()
   const [tab, setTab] = useState<Tab>('video')
@@ -124,6 +126,23 @@ export function VideoDetail({
         {tab === 'video' && (
           <>
             <VideoEmbed video={video} />
+            {/* Q52 — ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
+            {(video.channel || video.published_at) && (
+              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {video.channel && (
+                  <span className="inline-flex items-center gap-1.5" title={t('fields.name.video.channel')}>
+                    <Tv className="size-3.5" />
+                    {video.channel}
+                  </span>
+                )}
+                {video.published_at && (
+                  <span className="inline-flex items-center gap-1.5" title={t('fields.name.video.published_at')}>
+                    <CalendarDays className="size-3.5" />
+                    {date(video.published_at)}
+                  </span>
+                )}
+              </p>
+            )}
             {video.description && (
               <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{video.description}</p>
             )}

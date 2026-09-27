@@ -90,6 +90,9 @@ final class FieldCatalog
                 'sort_order' => 40,
             ],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 50],
+            // Q52 — ვებძებნა და ბმულის ჩასმა ორივეს ავსებს; ფორმაც აჩვენებს
+            ['key' => 'channel', 'type' => 'text', 'sort_order' => 54],
+            ['key' => 'published_at', 'type' => 'date', 'sort_order' => 56],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 60],
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 70],
         ],

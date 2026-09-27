@@ -168,7 +168,10 @@ class GlobalSearch
                 'model' => Video::class,
                 'custom' => 'video',
                 'title_rank' => ['columns' => ['title']],
-                'columns' => ['title' => ['title'], 'description' => ['description'], 'url' => ['url']],
+                // Q52 — არხიც იძებნება („Warner Bros." → მისი ყველა ტრეილერი)
+                'columns' => [
+                    'title' => ['title'], 'description' => ['description'], 'channel' => ['channel'], 'url' => ['url'],
+                ],
                 'json' => ['tags' => 'tags'],
                 'relations' => [
                     ['relation' => 'notes', 'fields' => ['note' => ['body']]],

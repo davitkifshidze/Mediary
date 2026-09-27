@@ -7,6 +7,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import {
+  CalendarDays,
   Clock,
   Download,
   ExternalLink,
@@ -74,6 +75,7 @@ import {
 import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { DurationInput } from '@/components/ui/duration-input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -506,6 +508,18 @@ export function VideosPage() {
                       {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
                       <StatusBadge status={v.status} />
                       <span className="capitalize">{v.platform}</span>
+                      {/* Q52 — „ვისია" — ხშირად სწორედ ეს ამოგაცნობინებს ვიდეოს */}
+                      {v.channel && (
+                        <span className="max-w-40 truncate" title={v.channel}>
+                          {v.channel}
+                        </span>
+                      )}
+                      {v.published_at && (
+                        <span className="inline-flex items-center gap-1" title={t('fields.name.video.published_at')}>
+                          <CalendarDays className="size-3" />
+                          {fmt.date(v.published_at)}
+                        </span>
+                      )}
                       {v.watch_count > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Eye className="size-3" />
@@ -761,6 +775,9 @@ function VideoForm({
     title: video?.title ?? '',
     url: video?.url ?? '',
     description: video?.description ?? '',
+    // Q52 — არხი და გამოქვეყნების დღე
+    channel: video?.channel ?? '',
+    publishedAt: video?.published_at ?? '',
     // ახალ ვიდეოს პირველი ტიპი ენიჭება — select ცარიელი არ რჩება
     // ⚠️ აღარ იყენებს პირველ ტიპს ნაგულისხმევად: არჩევანი მომხმარებლისაა
     typeId: video?.type_id ? String(video.type_id) : '',
@@ -803,6 +820,8 @@ function VideoForm({
         ...f,
         title: f.title || (m.title ?? ''),
         description: f.description || (m.description ?? ''),
+        // Q52 — oEmbed-ის `author_name` არხია; თარიღს oEmbed არ აბრუნებს
+        channel: f.channel || (m.author ?? ''),
         tags: f.tags.length ? f.tags : m.tags,
       }))
     } catch {
@@ -840,6 +859,8 @@ function VideoForm({
         ...f,
         title: f.title || (found.title ?? ''),
         description: f.description || (found.description ?? ''),
+        channel: f.channel || (found.channel ?? ''),
+        publishedAt: f.publishedAt || (found.published ?? ''),
       }))
       toast({ title: t('videos.metaFromWeb'), variant: 'success' })
     } catch (e) {
@@ -910,6 +931,9 @@ function VideoForm({
       type_id: form.typeId ? Number(form.typeId) : null,
       status: form.status || undefined,
       description: form.description || undefined,
+      // ⚠️ ცარიელი `null`-ად მიდის და არა `undefined`-ად — გასუფთავება ასე ინახება
+      channel: form.channel.trim() || null,
+      published_at: form.publishedAt || null,
       duration,
       tags,
       thumbnail,
@@ -1105,6 +1129,33 @@ function VideoForm({
             />
           </div>
         )}
+
+        {/* Q52 — არხი და გამოქვეყნების დღე: ბმულის ჩასმა არხს ავსებს, ვებძებნა — ორივეს */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className={fields.shows('channel') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="v-channel" required={fields.required('channel')} hint={fields.hint('channel')}>
+              {fields.label('channel')}
+            </FieldLabel>
+            <Input
+              id="v-channel"
+              maxLength={255}
+              placeholder={fields.placeholder('channel')}
+              value={form.channel}
+              onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
+            />
+          </div>
+
+          <div className={fields.shows('published_at') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="v-published" required={fields.required('published_at')} hint={fields.hint('published_at')}>
+              {fields.label('published_at')}
+            </FieldLabel>
+            <DatePicker
+              id="v-published"
+              value={form.publishedAt || null}
+              onChange={(value) => setForm((f) => ({ ...f, publishedAt: value ?? '' }))}
+            />
+          </div>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className={fields.shows('tags') ? undefined : 'hidden'}>

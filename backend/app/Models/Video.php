@@ -49,6 +49,8 @@ class Video extends Model
         'is_favorite' => 'boolean',
         'watch_count' => 'integer',
         'watched_at' => 'datetime',
+        // Q52 — კალენდარული დღე და არა მომენტი (მიგრაციის docblock-ი)
+        'published_at' => 'date',
         'sort_order' => 'integer',
         'download_size' => 'integer',
         'downloaded_at' => 'datetime',

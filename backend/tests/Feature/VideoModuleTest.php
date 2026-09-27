@@ -942,4 +942,104 @@ class VideoModuleTest extends TestCase
         $this->assertContains('ჩემი', Video::find($mine['id'])->tags);
         $this->assertNotContains('ჩემი', Video::withoutGlobalScope('owner')->find($theirs['id'])->tags ?? []);
     }
+
+    /* ============================================================
+       Tasks §19.6 / Q52 — არხი და გამოქვეყნების დღე
+       ============================================================ */
+
+    /**
+     * ინახება, ბრუნდება და **ცარიელით სუფთავდება** — გამოტოვებული ველი კი
+     * ხელუხლებელია (ნაწილობრივი `PATCH` არ უნდა შლიდეს იმას, რაც არ უხსენებია).
+     */
+    public function test_channel_and_published_date_are_stored_and_cleared(): void
+    {
+        Http::fake(['*' => Http::response([], 404)]);
+
+        $id = $this->actingAs($this->user)
+            ->postJson('/api/videos', [
+                'title' => 'Dune: Part Two | Official Trailer',
+                'url' => 'https://www.youtube.com/watch?v=Way9Dexny3w',
+                'channel' => 'Warner Bros.',
+                'published_at' => '2023-12-21',
+            ] + $this->videoDefaults())
+            ->assertStatus(201)
+            ->assertJsonPath('data.channel', 'Warner Bros.')
+            // ⚠️ დღე და არა მომენტი — `APP_TIMEZONE`-ის +4 მას ვერ გადაწევს
+            ->assertJsonPath('data.published_at', '2023-12-21')
+            ->json('data.id');
+
+        $this->actingAs($this->user)
+            ->patchJson("/api/videos/{$id}", ['title' => 'სხვა სათაური'])
+            ->assertOk()
+            ->assertJsonPath('data.channel', 'Warner Bros.')
+            ->assertJsonPath('data.published_at', '2023-12-21');
+
+        $this->actingAs($this->user)
+            ->patchJson("/api/videos/{$id}", ['channel' => '', 'published_at' => ''])
+            ->assertOk()
+            ->assertJsonPath('data.channel', null)
+            ->assertJsonPath('data.published_at', null);
+
+        $this->actingAs($this->user)
+            ->patchJson("/api/videos/{$id}", ['published_at' => 'გუშინ'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('published_at');
+    }
+
+    /**
+     * **ბმულის ჩასმა არხს ავსებს** (oEmbed-ის `author_name`) — ზუსტად ისე,
+     * როგორც სათაურს; ⚠️ ხელით ჩაწერილს კი არასდროს გადააწერს.
+     */
+    public function test_pasting_a_link_fills_the_channel_but_never_overwrites_it(): void
+    {
+        Http::fake([
+            'www.youtube.com/oembed*' => Http::response([
+                'title' => 'Dune: Part Two | Official Trailer',
+                'author_name' => 'Warner Bros.',
+            ]),
+            '*' => Http::response([], 404),
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos', ['title' => '', 'url' => 'https://www.youtube.com/watch?v=Way9Dexny3w'] + $this->videoDefaults())
+            ->assertStatus(201)
+            ->assertJsonPath('data.title', 'Dune: Part Two | Official Trailer')
+            ->assertJsonPath('data.channel', 'Warner Bros.');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/videos', [
+                'title' => 'ჩემი სათაური',
+                'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                'channel' => 'ჩემი არხი',
+            ] + $this->videoDefaults())
+            ->assertStatus(201)
+            ->assertJsonPath('data.channel', 'ჩემი არხი');
+    }
+
+    /** არხზე ეძებს როგორც სექციის ძებნა, ისე გლობალური — და ამბობს, რაზე იპოვა */
+    public function test_the_channel_is_searchable(): void
+    {
+        Http::fake(['*' => Http::response([], 404)]);
+
+        foreach ([['Trailer', 'Way9Dexny3w', 'Warner Bros.'], ['Other clip', 'dQw4w9WgXcQ', 'Rick Astley']] as [$title, $id, $channel]) {
+            $this->actingAs($this->user)->postJson('/api/videos', [
+                'title' => $title,
+                'url' => "https://www.youtube.com/watch?v={$id}",
+                'channel' => $channel,
+            ] + $this->videoDefaults())->assertStatus(201);
+        }
+
+        $this->actingAs($this->user)
+            ->getJson('/api/videos?q=Warner')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.channel', 'Warner Bros.');
+
+        $res = $this->actingAs($this->user)->getJson('/api/search?q=Warner')->assertOk();
+        $group = collect($res->json('groups'))->firstWhere('key', 'video');
+
+        $this->assertNotNull($group, 'ვიდეოს ჯგუფი უნდა იყოს');
+        $this->assertSame('Trailer', $group['items'][0]['title']);
+        $this->assertContains('channel', array_column($group['items'][0]['matches'], 'field'));
+    }
 }

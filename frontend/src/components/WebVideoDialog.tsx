@@ -71,9 +71,9 @@ import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
    ამრჩევი ცარიელდება — ძველი id-ით გაგზავნა 422 იქნებოდა.
 
    ⚠️ **სტატუსი ლექსიკონის ნაგულისხმევია** („გადაუწყვეტელი") და ფანჯარა მას
-   სახელით ამბობს. ⚠️ **არხი და გამოქვეყნების თარიღი არ ინახება** — ვიდეოს
-   ჩანაწერს ასეთი ველი არ აქვს; სახელი, აღწერა, ხანგრძლივობა და მთავარი
-   ფოტო კი `POST /videos`-ის ავტოშევსებით მოდის (`metadata`-ს ლოგიკა).
+   სახელით ამბობს. სათაური, აღწერა, ხანგრძლივობა, **არხი და გამოქვეყნების
+   თარიღი** (Q52) შედეგიდან მიდის; ცარიელს (მთავარი ფოტო, არხი, თუ შედეგს
+   არ ჰქონდა) `POST /videos`-ის ავტოშევსება ავსებს (`metadata`-ს ლოგიკა).
 
    ⚠️ **„უკვე ვიდეოებშია" სერვერი ამბობს** — ძებნის პასუხში (`existing`,
    FEAT-17-ის `DuplicateLink`), ე.ი. ღილაკი ჯერ „დამატებად" და მერე „უკვე
@@ -232,6 +232,9 @@ export function WebVideoDialog({
         status: defaultStatus?.key,
         description: video.description ?? undefined,
         duration: video.duration,
+        // Q52 — ცარიელი არ იგზავნება: სერვერმა არხი oEmbed-იდან შეავსოს
+        channel: video.channel ?? undefined,
+        published_at: video.published ?? undefined,
       }),
     onSuccess: (created, video) => {
       setInVideos((cur) => ({ ...cur, [video.link]: { id: created.id, title: created.title } }))
