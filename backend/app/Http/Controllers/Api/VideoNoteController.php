@@ -39,7 +39,8 @@ class VideoNoteController extends Controller
 
     public function destroy(VideoNote $videoNote)
     {
-        $videoNote->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        $videoNote->moveToTrash();
 
         return response()->noContent();
     }

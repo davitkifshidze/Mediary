@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -19,7 +20,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class MediaWatch extends Model
 {
-    use BelongsToUser;
+    /**
+     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
+     */
+    use BelongsToUser, HasTrash;
 
     protected $guarded = ['id'];
 
@@ -30,5 +35,16 @@ class MediaWatch extends Model
     public function watchable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * ⚠️ **„ბოლო ნახვა" ურნასთან ერთად გადაითვლება** (Tasks §29.3) —
+     * `syncWatchedAt()` ჟურნალს `trash` scope-ით კითხულობს, ე.ი. ურნაში
+     * გადატანილი ნახვა თავისით ქრება, აღდგენილი კი ბრუნდება. უამისოდ
+     * ჩანაწერი „ბოლოს ვნახე"-ს იმ დღეს იტყოდა, რომელიც ურნაშია.
+     */
+    protected function afterTrashChange(bool $trashed): void
+    {
+        $this->watchable()->first()?->syncWatchedAt();
     }
 }

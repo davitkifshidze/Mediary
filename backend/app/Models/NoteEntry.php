@@ -105,6 +105,23 @@ class NoteEntry extends Model
         return $this->hasMany(NoteEntryFile::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    /**
+     * ⚠️ **ჩანაწერის აღდგენა მის შეხსენებებსაც ახლიდან ითვლის** (Tasks §29.3):
+     * ურნაში ყოფნისას `ReminderDispatcher` მათ არ ისვრის (`whereHas('noteEntry')`),
+     * ე.ი. `next_at` წარსულში რჩება და აღდგენისთანავე ყველა ერთად ამოვარდებოდა.
+     */
+    protected function afterTrashChange(bool $trashed): void
+    {
+        if ($trashed) {
+            return;
+        }
+
+        foreach ($this->reminders()->where('is_active', true)->get() as $reminder) {
+            $reminder->next_at = $reminder->computeNextAt();
+            $reminder->saveQuietly();
+        }
+    }
+
     public function reminders(): HasMany
     {
         return $this->hasMany(NoteReminder::class)->orderBy('next_at')->orderBy('id');

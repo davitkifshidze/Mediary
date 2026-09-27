@@ -3,16 +3,22 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArchiveRestore,
+  BellRing,
   DatabaseBackup,
+  Eye,
+  Folder,
   FormInput,
   HardDrive,
   ImageIcon,
+  ListMusic,
   Lock,
   MessageSquare,
   Paperclip,
   SquarePlay,
+  StickyNote,
   Trash2,
   Undo2,
+  UserRound,
 } from 'lucide-react'
 import {
   deleteFromTrash,
@@ -68,10 +74,16 @@ const CONFIRM_WORD = 'DELETE'
  */
 function kindIcon(kind: string): ReactNode {
   if (kind === 'gallery_image') return <ImageIcon />
-  if (kind === 'gallery_video') return <SquarePlay />
+  if (kind === 'gallery_video' || kind === 'game_video') return <SquarePlay />
   if (kind === 'database_backup') return <DatabaseBackup />
   if (kind === 'chat_file') return <MessageSquare />
   if (kind === 'field_file') return <FormInput />
+  if (kind.endsWith('_note')) return <StickyNote />
+  if (kind === 'playlist') return <ListMusic />
+  if (kind === 'note_reminder') return <BellRing />
+  if (kind === 'media_watch') return <Eye />
+  if (kind === 'gallery_album') return <Folder />
+  if (kind === 'cast_link') return <UserRound />
   return <Paperclip />
 }
 
@@ -154,6 +166,8 @@ export function TrashPage() {
     if (ok) remove.mutate({ group, item })
   }
 
+  const { dateTime } = useDateFormat()
+
   const groupName = (group: TrashGroup) =>
     group.category === 'record'
       ? ((i18n.language === 'ka' ? group.name_ka : group.name_en) ?? group.kind)
@@ -216,6 +230,16 @@ export function TrashPage() {
                         <span className="block truncate text-sm font-medium">{item.title}</span>
                         {item.subtitle && (
                           <span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span>
+                        )}
+                        {item.when && (
+                          <span className="block text-xs text-muted-foreground">
+                            {t(`trash.when.${group.kind}`, { date: dateTime(item.when) })}
+                          </span>
+                        )}
+                        {item.count !== null && (
+                          <span className="block text-xs text-muted-foreground">
+                            {t('trash.albumPhotos', { count: item.count })}
+                          </span>
                         )}
                         <Expiry item={item} />
                         {item.parent?.trashed && (

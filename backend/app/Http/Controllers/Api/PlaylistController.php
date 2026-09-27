@@ -62,8 +62,10 @@ class PlaylistController extends Controller
 
     public function destroy(Playlist $playlist)
     {
-        // pivot-ს FK-ის cascade შლის — სიმღერები ხელუხლებელი რჩება
-        $playlist->delete();
+        /* ⚠️ ურნა (Tasks §29, ეტაპი 2) — pivot ადგილზე რჩება, ე.ი. აღდგენა
+           სიმღერებს იმავე რიგით აბრუნებს; საბოლოო წაშლისას მას FK-ის cascade
+           შლის — სიმღერები ხელუხლებელი რჩება. */
+        $playlist->moveToTrash();
 
         return response()->noContent();
     }
@@ -75,7 +77,8 @@ class PlaylistController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('playlists', 'id')->where('user_id', $request->user()->id),
+                // ⚠️ ურნაში მყოფი ფლეილისტი არ არსებობს (Tasks §29)
+                Rule::exists('playlists', 'id')->where('user_id', $request->user()->id)->whereNull('trashed_at'),
             ],
         ]);
 

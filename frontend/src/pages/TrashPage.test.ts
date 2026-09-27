@@ -41,7 +41,7 @@ const payload: TrashPayload = {
         {
           id: 1, title: 'Inception', subtitle: null, trashed_at: '2026-09-20T10:00:00+04:00',
           expires_in_days: 22, size: 1_048_576, preview: { src: 'movies/posters/i.jpg', private: false },
-          locked: false, parent: null, restorable: true, blocked: null,
+          locked: false, when: null, count: null, parent: null, restorable: true, blocked: null,
         },
       ],
     },
@@ -57,8 +57,8 @@ const payload: TrashPayload = {
       bytes: 300,
       items: [
         {
-          id: 7, title: 'secret.jpg', subtitle: 'პირადი', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 300, preview: null, locked: true, parent: null, restorable: true, blocked: null,
+          id: 7, title: 'private-shot.jpg', subtitle: 'პირადი', trashed_at: '2026-09-21T10:00:00+04:00',
+          expires_in_days: 23, size: 300, preview: null, locked: true, when: null, count: null, parent: null, restorable: true, blocked: null,
         },
       ],
     },
@@ -75,7 +75,7 @@ const payload: TrashPayload = {
       items: [
         {
           id: 9, title: 'paper.pdf', subtitle: 'Talk', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 100, preview: null, locked: false,
+          expires_in_days: 23, size: 100, preview: null, locked: false, when: null, count: null,
           parent: { kind: 'video', id: 3, title: 'Talk', trashed: true }, restorable: true, blocked: null,
         },
       ],
@@ -93,7 +93,7 @@ const payload: TrashPayload = {
       items: [
         {
           id: 11, title: 'ebook.epub', subtitle: 'Dune', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 50, preview: null, locked: false,
+          expires_in_days: 23, size: 50, preview: null, locked: false, when: null, count: null,
           parent: { kind: 'book', id: 4, title: 'Dune', trashed: false }, restorable: false, blocked: 'module_disabled',
         },
       ],
@@ -170,7 +170,7 @@ describe('TrashPage', () => {
   it('draws a locked photo as the placeholder, never as its file', async () => {
     await mount()
 
-    const img = row('secret.jpg').querySelector('img')
+    const img = row('private-shot.jpg').querySelector('img')
     expect(img?.getAttribute('src')).toBe(LOCKED_PHOTO_PLACEHOLDER)
   })
 

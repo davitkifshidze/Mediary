@@ -1047,7 +1047,8 @@
     "parent_missing": "What this belonged to no longer exists.",
     "slot_taken": "Another file already sits in that place.",
     "field_missing": "The field no longer exists or is no longer a file field — bring the field back first.",
-    "field_full": "The field is full — remove a file first."
+    "field_full": "The field is full — remove a file first.",
+    "already_present": "Already in place — nothing to restore."
   },
   "fields": {
     "title": "Fields",
@@ -1559,7 +1560,7 @@
     "public": "Public",
     "deleted": "Playlist deleted",
     "deleteTitle": "Delete this playlist?",
-    "deleteHint": "“{{name}}” will be deleted. The songs stay in your library."
+    "deleteHint": "“{{name}}” moves to the trash — it comes back from there with its songs. The songs stay in your library."
   },
   "gallery": {
     "title": "Gallery",
@@ -1801,7 +1802,7 @@
     "albumEmpty": "Nothing in this album yet.",
     "albumDeleted": "Album deleted",
     "albumDeleteTitle": "Delete the album",
-    "albumDeleteHint": "“{{name}}” goes, the photos stay — they are simply left without an album.",
+    "albumDeleteHint": "“{{name}}” moves to the trash; the photos stay, without an album. Restoring it from the trash puts them back into the album.",
     "albumsHint": "Sort photos into albums here. An album does not change a photo’s parent — a film still can sit in one too.",
     "albumEdit": "Edit album",
     "albumSaved": "Album saved",
@@ -2770,7 +2771,7 @@
     "character": "Role",
     "characterPlaceholder": "Who they play",
     "detach": "Delete from this record",
-    "detachHint": "{{name}} will be removed from this record and a sync will not bring them back. The person, their photos and other records stay. To only take them out of the list, choose “Hide”.",
+    "detachHint": "{{name}} will be removed from this record and moved to the trash — it comes back from there with the same role; a sync will not bring them back by itself. The person, their photos and other records stay. To only take them out of the list, choose “Hide”.",
     "detachTitle": "Delete the cast member from this record",
     "detached": "Removed from this record",
     "editRole": "Edit the role",
@@ -3025,7 +3026,7 @@
     "addedAt": "Added",
     "editedAt": "Edited",
     "deleteTitle": "Delete the note",
-    "deleteHint": "This note will be deleted for good."
+    "deleteHint": "The note moves to the trash — it can be restored from there."
   },
   "lang": {
     "ka": "ქართული",
@@ -3189,7 +3190,8 @@
       "parent_blocked": "Its record is in the trash too, and that record's module is off",
       "parent_missing": "What it belonged to no longer exists",
       "slot_taken": "Another file already sits in that place",
-      "field_missing": "This field no longer exists or is no longer a file field"
+      "field_missing": "This field no longer exists or is no longer a file field",
+      "already_present": "Already in place — nothing to restore"
     },
     "kinds": {
       "gallery_image": "Gallery photos",
@@ -3203,8 +3205,23 @@
       "place_file": "Place files",
       "database_backup": "Database backups",
       "chat_file": "Chat files",
-      "field_file": "Custom field files"
-    }
+      "field_file": "Custom field files",
+      "video_note": "Video notes",
+      "book_note": "Book notes and quotes",
+      "game_note": "Game notes",
+      "board_game_note": "Board game notes",
+      "game_video": "Game videos",
+      "playlist": "Playlists",
+      "note_reminder": "Reminders",
+      "media_watch": "Watch log",
+      "gallery_album": "Albums",
+      "cast_link": "Cast members removed from a record"
+    },
+    "when": {
+      "media_watch": "Watched: {{date}}",
+      "note_reminder": "Next send: {{date}}"
+    },
+    "albumPhotos": "Restoring puts {{count}} photos back into the album"
   },
   "watchLog": {
     "title": "Watches",
@@ -3215,7 +3232,7 @@
     "show": "Show the list",
     "hide": "Hide",
     "deleteTitle": "Delete this watch?",
-    "deleteHint": "This one date is removed. If it was the latest, the record’s “last watched” moves back to the previous one."
+    "deleteHint": "This date moves to the trash. If it was the latest, the record’s “last watched” moves back to the previous one — restoring it from the trash brings it back."
   },
   "install": {
     "title": "Install the app",

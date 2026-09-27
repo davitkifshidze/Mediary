@@ -12,11 +12,21 @@ import { api } from '@/lib/api'
    (`video_file`, `gallery_image`…).
    ============================================================ */
 
-/** `record` — მოდულის ჩანაწერი · `item` — რიგიანი ფაილი/ბმული · `file` — `trashed_files` */
-export type TrashCategory = 'record' | 'item' | 'file'
+/**
+ * `record` — მოდულის ჩანაწერი · `item` — რიგიანი ელემენტი (ფაილი, ბმული,
+ * ჩანიშვნა, შეხსენება…) · `file` — `trashed_files` · `entry` — `trash_entries`
+ * (მსახიობის ბმული)
+ */
+export type TrashCategory = 'record' | 'item' | 'file' | 'entry'
 
 /** რატომ ვერ ბრუნდება — სერვერის მანქანური კოდი (`TrashBin::blocked()`) */
-export type TrashBlocked = 'module_disabled' | 'parent_blocked' | 'parent_missing' | 'slot_taken' | 'field_missing'
+export type TrashBlocked =
+  | 'module_disabled'
+  | 'parent_blocked'
+  | 'parent_missing'
+  | 'slot_taken'
+  | 'field_missing'
+  | 'already_present'
 
 export interface TrashParent {
   kind: string
@@ -43,6 +53,10 @@ export interface TrashItem {
   preview: { src: string; private: boolean } | null
   /** ჩაკეტილი ალბომის ფოტო — ესკიზი არ იგზავნება (29.5) */
   locked: boolean
+  /** მომენტი, რომელიც თვითონ ელემენტია — ნახვის დრო, შეხსენების შემდეგი გაგზავნა */
+  when: string | null
+  /** ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა */
+  count: number | null
   parent: TrashParent | null
   restorable: boolean
   blocked: TrashBlocked | null

@@ -39,7 +39,8 @@ class GameNoteController extends Controller
 
     public function destroy(GameNote $gameNote)
     {
-        $gameNote->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        $gameNote->moveToTrash();
 
         return response()->noContent();
     }

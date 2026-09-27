@@ -41,7 +41,8 @@ class BookNoteController extends Controller
 
     public function destroy(BookNote $bookNote)
     {
-        $bookNote->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        $bookNote->moveToTrash();
 
         return response()->noContent();
     }

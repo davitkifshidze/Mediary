@@ -81,6 +81,7 @@ trait HasTrash
 
         if ($saved) {
             app(AuditLogger::class)->model($this, AuditLog::ACTION_DELETE, $this->attributesToArray(), ['trashed' => true]);
+            $this->afterTrashChange(true);
         }
 
         return $saved;
@@ -106,10 +107,22 @@ trait HasTrash
 
         if ($saved) {
             app(AuditLogger::class)->model($this, AuditLog::ACTION_RESTORE, null, ['trashed' => false]);
+            $this->afterTrashChange(false);
         }
 
         return $saved;
     }
+
+    /**
+     * **ცხადი კაკვი ურნაში გადატანისა და აღდგენის შემდეგ** (Tasks §29, ეტაპი 2).
+     *
+     * ⚠️ `saveQuietly()` მოვლენებს არ ისვრის (ეს განზრახაა — იხ. ზემოთ),
+     * ე.ი. ის, რაც წაშლილის მდგომარეობაზეა დამოკიდებული, თვითონ უნდა
+     * გადაითვალოს: ყურების ჟურნალზე „ბოლო ნახვა" (`syncWatchedAt()`),
+     * შეხსენებაზე — `next_at` (ვადა ამასობაში შეიძლება გავიდა). ცარიელი
+     * ნაგულისხმევი, რომ ყველა მოდელს არ დასჭირდეს.
+     */
+    protected function afterTrashChange(bool $trashed): void {}
 
     /** კალათაში მყოფი ჩანაწერები — scope-ის გარეშე */
     public static function onlyTrashed(): Builder

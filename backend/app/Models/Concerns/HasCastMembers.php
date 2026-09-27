@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\CastMember;
+use App\Models\TrashEntry;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 /**
@@ -42,6 +43,14 @@ trait HasCastMembers
     {
         static::deleting(function ($record) {
             $record->castLinks()->detach();
+
+            /* ⚠️ Tasks §29 — ამ ჩანაწერის ურნაში მყოფი მსახიობის ბმულებიც:
+               ჩანაწერი აღარ არსებობს, ე.ი. მათი აღდგენა ვეღარსად მოხდება. */
+            TrashEntry::withoutGlobalScope('owner')
+                ->where('kind', 'cast_link')
+                ->where('record_type', $record->getMorphClass())
+                ->where('record_id', $record->getKey())
+                ->delete();
         });
     }
 

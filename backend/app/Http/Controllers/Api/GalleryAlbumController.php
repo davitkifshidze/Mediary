@@ -224,7 +224,8 @@ class GalleryAlbumController extends Controller
             'move_to' => [
                 'nullable',
                 'integer',
-                Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id),
+                // ⚠️ ურნაში მყოფ ალბომში გადატანა ფოტოს უხილავს გახდიდა (Tasks §29)
+                Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)->whereNull('trashed_at'),
             ],
         ]);
 
@@ -255,10 +256,20 @@ class GalleryAlbumController extends Controller
            სწორი**: ფაილი `gallery/locked`-ში დარჩა, მაგრამ `path` მასზე
            მიუთითებს და `GalleryImage::servedUrl()` პირად დისკს API-ის
            მარშრუტით ემსახურება — ფოტო ჩანს, უბრალოდ `/storage/*`-ის გარეთ. */
-        DB::transaction(function () use ($galleryAlbum, $data) {
+        /* ⚠️ **ალბომი ურნაში გადადის და თავის ფოტოებს იმახსოვრებს** (Tasks §29,
+           ეტაპი 2): ფოტოები ისევ ალბომის გარეშე (ან `move_to`-ში) რჩება —
+           ალბომის წაშლა ფოტოებს არ შლის —, მათი id-ები კი ალბომს ახლავს, რომ
+           აღდგენამ ისინი უკან დააბრუნოს (`GalleryAlbum::afterTrashChange()`).
+           პაროლი ალბომზე რჩება: აღდგენილი ჩაკეტილი ალბომი ისევ ჩაკეტილია. */
+        DB::transaction(function () use ($galleryAlbum, $data, $images) {
             $galleryAlbum->images()->withoutGlobalScopes(['album_lock', 'trash'])
                 ->update(['album_id' => $data['move_to'] ?? null]);
-            $galleryAlbum->delete();
+
+            $galleryAlbum->trashed_photo_ids = [
+                'ids' => $images->modelKeys(),
+                'from' => $data['move_to'] ?? null,
+            ];
+            $galleryAlbum->moveToTrash();
         });
 
         // ⚠️ რიცხვი **ხილულ** ფოტოებს ითვლის — ურნაში მყოფი ისედაც არსად ჩანს

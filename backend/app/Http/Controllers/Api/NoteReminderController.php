@@ -80,7 +80,8 @@ class NoteReminderController extends Controller
 
     public function destroy(NoteReminder $noteReminder)
     {
-        $noteReminder->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        $noteReminder->moveToTrash();
 
         return response()->noContent();
     }

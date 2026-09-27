@@ -64,7 +64,8 @@ class GameVideoController extends Controller
 
     public function destroy(GameVideo $gameVideo)
     {
-        $gameVideo->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 2) — რიგი ადგილზე რჩება და ურნიდან ბრუნდება
+        $gameVideo->moveToTrash();
 
         return response()->noContent();
     }

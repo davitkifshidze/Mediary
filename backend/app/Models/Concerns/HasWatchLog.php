@@ -38,6 +38,14 @@ trait HasWatchLog
      */
     protected static function bootHasWatchLog(): void
     {
+        /* ⚠️ **ჩანაწერის საბოლოო წაშლა მის ჟურნალსაც შლის** (Tasks §29) —
+           `watchable` polymorphic-ია და FK-ის კასკადი არ აქვს, ე.ი. რიგები
+           ობლად რჩებოდა (და სტატისტიკის ნედლი მოთხოვნები მათ ისევ ითვლიდნენ).
+           ⚠️ `trash` scope-ის გარეშე — ურნაში მყოფი ნახვაც ამ ჩანაწერისაა. */
+        static::deleting(function ($record) {
+            $record->watches()->withoutGlobalScopes(['owner', 'trash'])->delete();
+        });
+
         static::saved(function ($record) {
             if (! $record->watched_at || ! ($record->wasChanged('watched_at') || $record->wasRecentlyCreated)) {
                 return;

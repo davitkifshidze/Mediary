@@ -213,6 +213,7 @@ class LibraryStats
         $watches = fn (int $y) => DB::table('media_watches')
             ->where('user_id', $user->getKey())
             ->whereIn('watchable_type', $domains)
+            ->whereNull('trashed_at')
             ->whereYear('watched_at', $y)
             ->count();
 
@@ -329,6 +330,7 @@ class LibraryStats
             return DB::table('media_watches')
                 ->where('user_id', $user->getKey())
                 ->where('watchable_type', $map['watch_log'])
+                ->whereNull('trashed_at')
                 ->whereYear('watched_at', $year)
                 ->count();
         }
@@ -779,6 +781,8 @@ class LibraryStats
         $counts = DB::table('media_watches')
             ->where('user_id', $user->getKey())
             ->where('watchable_type', $alias)
+            // ⚠️ Tasks §29 — ურნაში მყოფი ნახვა აღარ ითვლება (ნედლ ცხრილს scope არ აქვს)
+            ->whereNull('trashed_at')
             ->whereYear('watched_at', $year)
             ->groupByRaw($expr)
             ->selectRaw($expr.' as bucket, count(*) as total')

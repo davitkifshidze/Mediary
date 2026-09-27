@@ -680,8 +680,9 @@ class GalleryAlbumTest extends TestCase
      * ალბომს კი `password_hash` ისევ ედო. ე.ი. ჩავარდნილი წაშლა §7.9-ის
      * ლოკს ერთ ნაბიჯში ხსნიდა.
      *
-     * ⚠️ ჩავარდნა `DB::listen`-ით კეთდება: `delete()` მოდელისაა და მისი
-     * გატეხვა ერთადერთი გზაა, რომელიც ტესტს მოდელის გადაფარვას არ ათხოვებს.
+     * ⚠️ ჩავარდნა `DB::listen`-ით კეთდება: ალბომის ურნაში გადატანა
+     * (Tasks §29 — `trashed_at`-ის `update`) მოდელისაა და მისი გატეხვა
+     * ერთადერთი გზაა, რომელიც ტესტს მოდელის გადაფარვას არ ათხოვებს.
      */
     public function test_a_failed_delete_leaves_the_files_locked(): void
     {
@@ -692,7 +693,9 @@ class GalleryAlbumTest extends TestCase
         $image = $this->lockedPhoto($album, 'gallery/locked/secret.jpg');
 
         DB::listen(function ($query) {
-            if (str_starts_with(strtolower(trim($query->sql)), 'delete') && str_contains($query->sql, 'gallery_albums')) {
+            $sql = strtolower(trim($query->sql));
+
+            if (str_starts_with($sql, 'update') && str_contains($sql, 'gallery_albums') && str_contains($sql, 'trashed_at')) {
                 throw new RuntimeException('boom');
             }
         });
@@ -709,7 +712,7 @@ class GalleryAlbumTest extends TestCase
         Storage::disk('public')->assertMissing('gallery/images/secret.jpg');
 
         // ⚠️ ალბომიც და კავშირიც ადგილზეა: ტრანზაქციის გარეშე წაშლილი
-        // ალბომი 500-ის მიუხედავად ნამდვილად ქრებოდა
+        // ალბომი 500-ის მიუხედავად ნამდვილად ქრებოდა (ახლა — ურნაში გადადიოდა)
         $this->assertNotNull(GalleryAlbum::withoutGlobalScope('owner')->find($album->id));
         $this->assertSame($album->id, $image->album_id);
     }

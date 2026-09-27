@@ -74,6 +74,12 @@ class ReminderDispatcher
 
         $due = NoteReminder::withoutGlobalScope('owner')
             ->with(['noteEntry', 'user'])
+            /* ⚠️ **ურნაში მყოფი ჩანაწერის შეხსენება არ ისვრის და არც ითიშება**
+               (Tasks §29.3). უამისოდ `noteEntry` ცარიელი მოვიდოდა და ქვემოთა
+               „ჩანაწერი წაშლილია" შტო შეხსენებას **სამუდამოდ** გამორთავდა —
+               ე.ი. ჩანაწერის აღდგენა მას ჩუმად დაკარგულს დატოვებდა. აღდგენა
+               `next_at`-ს თავიდან ითვლის (`NoteEntry::afterTrashChange()`). */
+            ->whereHas('noteEntry')
             ->where('is_active', true)
             ->whereNotNull('next_at')
             ->where('next_at', '<=', $now)

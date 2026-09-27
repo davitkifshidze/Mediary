@@ -2,6 +2,7 @@
 
 namespace App\Services\Trash;
 
+use App\Http\Controllers\Api\RecordCastController;
 use App\Models\AuditLog;
 use App\Models\CastMember;
 use App\Models\GalleryAlbum;
@@ -9,17 +10,20 @@ use App\Models\GalleryImage;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\TrashedFile;
+use App\Models\TrashEntry;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
+use App\Support\MediaDomain;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,18 +37,19 @@ use Symfony\Component\HttpFoundation\Response;
  * ფილმი, სერიალი, გალერეიდან თუ საიდანაც იქნება — და 30 დღე აღდგენის
  * შესაძლებლობა იყოს".
  *
- * ⚠️ **სამი სახის ელემენტი, ერთი გზა** (`TrashDomain::kinds()`): ჩანაწერი
- * და რიგიანი ფაილი თავის `trashed_at`-ს ატარებს (`HasTrash`), ჩატისა და
- * ველის ფაილი კი `trashed_files`-შია. კონტროლერი და გასუფთავების ბრძანება
- * მხოლოდ ამ სერვისს იძახებენ — ორი ადგილი, რომელიც „რა არის ურნაში"-ს
- * ცალ-ცალკე დაწერდა, პირველივე ახალ სახეზე დაშორდებოდა.
+ * ⚠️ **ოთხი სახის ელემენტი, ერთი გზა** (`TrashDomain::kinds()`): ჩანაწერი
+ * და რიგიანი ელემენტი თავის `trashed_at`-ს ატარებს (`HasTrash`), ჩატისა და
+ * ველის ფაილი `trashed_files`-შია, მსახიობის ბმული კი `trash_entries`-ში.
+ * კონტროლერი და გასუფთავების ბრძანება მხოლოდ ამ სერვისს იძახებენ — ორი
+ * ადგილი, რომელიც „რა არის ურნაში"-ს ცალ-ცალკე დაწერდა, პირველივე ახალ
+ * სახეზე დაშორდებოდა.
  *
  * ⚠️ **ფაილი ურნაში ადგილს იკავებს** (29.4) — კვოტა მხოლოდ საბოლოო წაშლისას
  * თავისუფლდება, ამიტომ სია თითო ელემენტის და მთელი ურნის მოცულობას ამბობს.
  * ჩანაწერის მოცულობაში მისი ფაილებიც ითვლება (პოსტერი, ფოტოები, ველის
  * ფაილები) — საბოლოო წაშლა სწორედ მათ ათავისუფლებს.
  *
- * ⚠️ **აღდგენის წესები (29.5)**: ფაილი, რომლის ჩანაწერიც თვითონ ურნაშია,
+ * ⚠️ **აღდგენის წესები (29.5)**: ელემენტი, რომლის ჩანაწერიც თვითონ ურნაშია,
  * ჩანაწერთან ერთად ბრუნდება (სხვაგვარად ის უხილავ ჩანაწერს მიებმებოდა);
  * გამორთული მოდულის ელემენტი ჩანს, მაგრამ აღდგენას მოდულის ჩართვა
  * სჭირდება; ჩაკეტილი ალბომის ფოტო ურნაშიც ჩაკეტილია (ესკიზი არ იგზავნება).
@@ -53,6 +58,9 @@ final class TrashBin
 {
     /** თითო ჯგუფზე რამდენი რიგი ჩანს */
     public const PER_GROUP = 50;
+
+    /** ჩანიშვნის სათაურის სიგრძე — ტექსტი თვითონ სათაურია */
+    private const EXCERPT = 80;
 
     /**
      * ჩანაწერის ესკიზის სვეტი — დისკის გზა და, თუ ის ცარიელია, დაშორებული ბმული.
@@ -72,6 +80,12 @@ final class TrashBin
         'game' => ['cover_path'],
         'board_game' => ['image_path'],
     ];
+
+    /**
+     * სახეები, რომელთა სათაური **მშობლისაა** — თვითონ მომენტია (ნახვა,
+     * შეხსენება), რომელსაც გვერდი `when`-იდან ხატავს.
+     */
+    private const TITLED_BY_PARENT = ['media_watch', 'note_reminder'];
 
     public function __construct(
         private StorageMeter $meter,
@@ -108,12 +122,14 @@ final class TrashBin
             }
 
             $category = TrashDomain::category($kind);
-            $groupBytes = $category === 'record'
-                ? array_sum(array_map(
+            $groupBytes = match (true) {
+                $category === 'record' => array_sum(array_map(
                     fn (int $id) => $recordSizes["{$kind}:{$id}"] ?? 0,
                     (clone $query)->pluck('id')->map(fn ($id) => (int) $id)->all(),
-                ))
-                : ($kind === 'gallery_video' ? 0 : (int) (clone $query)->sum('size'));
+                )),
+                $this->sized($kind) => (int) (clone $query)->sum('size'),
+                default => 0,
+            };
 
             $rows = (clone $query)->orderByDesc('trashed_at')->orderByDesc('id')->limit(self::PER_GROUP)->get();
             $parents = $this->parents($kind, $rows);
@@ -123,7 +139,11 @@ final class TrashBin
             $groups[] = [
                 'kind' => $kind,
                 'category' => $category,
-                'module' => $moduleKey ?? ($kind === 'database_backup' ? 'backup' : ($kind === 'chat_file' ? 'chat' : null)),
+                'module' => $moduleKey ?? match ($kind) {
+                    'database_backup' => 'backup',
+                    'chat_file' => 'chat',
+                    default => null,
+                },
                 'name_ka' => $category === 'record' ? $module?->name_ka : null,
                 'name_en' => $category === 'record' ? $module?->name_en : null,
                 'icon' => $module?->icon,
@@ -156,11 +176,12 @@ final class TrashBin
         $category = TrashDomain::category($kind);
         $isLocked = $row instanceof GalleryImage && $row->album_id && isset($locked[(int) $row->album_id]);
         $blocked = $this->blocked($user, $kind, $row, $parent, strict: false);
+        $byParent = in_array($kind, self::TITLED_BY_PARENT, true) && $parent;
 
         return [
             'id' => (int) $row->getKey(),
-            'title' => $this->titleOf($kind, $row),
-            'subtitle' => $parent['title'] ?? $this->albumName($row),
+            'title' => $byParent ? $parent['title'] : $this->titleOf($kind, $row),
+            'subtitle' => $byParent ? null : ($parent['title'] ?? $this->albumName($row)),
             'trashed_at' => $row->trashed_at?->toIso8601String(),
             /* ⚠️ რჩება თუ არა დრო — სერვერი ითვლის, რადგან ვადა
                `TrashDomain::KEEP_DAYS`-შია და კლიენტში მისი ასლი
@@ -168,11 +189,19 @@ final class TrashBin
             'expires_in_days' => max(0, TrashDomain::KEEP_DAYS - (int) $row->trashed_at?->diffInDays(now())),
             'size' => match (true) {
                 $category === 'record' => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
-                $kind === 'gallery_video' => 0,
-                default => (int) $row->getAttribute('size'),
+                $this->sized($kind) => (int) $row->getAttribute('size'),
+                default => 0,
             },
             'preview' => $isLocked ? null : $this->preview($kind, $row),
             'locked' => $isLocked,
+            // მომენტი, რომელიც თვითონ ელემენტია — ნახვის დრო, შეხსენების შემდეგი გაგზავნა
+            'when' => match ($kind) {
+                'media_watch' => $row->watched_at?->toIso8601String(),
+                'note_reminder' => ($row->next_at ?? $row->remind_at)?->toIso8601String(),
+                default => null,
+            },
+            // ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა
+            'count' => $kind === 'gallery_album' ? count($row->trashed_photo_ids['ids'] ?? []) : null,
             'parent' => $parent,
             'restorable' => $blocked === null,
             'blocked' => $blocked,
@@ -182,8 +211,9 @@ final class TrashBin
     /**
      * ურნის ელემენტების query ერთ სახეზე.
      *
-     * ⚠️ **ველის ფაილზე მხოლოდ ის მოდულები**, რომლებზეც წაშლის უფლება მაქვს —
-     * ერთი `kind` თერთმეტ მოდულს ემსახურება და უფლება მოდულისაა.
+     * ⚠️ **მრავალმოდულიან სახეზე მხოლოდ ნებადართული მოდულები** — ველის
+     * ფაილი, ყურების ჟურნალი და მსახიობის ბმული რამდენიმე მოდულს ემსახურება
+     * და უფლება მოდულისაა.
      */
     private function query(User $user, string $kind): Builder
     {
@@ -191,15 +221,32 @@ final class TrashBin
 
         return match (TrashDomain::category($kind)) {
             'record' => TrashDomain::model($kind)::trashOf($userId),
-            'item' => TrashDomain::ITEMS[$kind]['model']::trashOf($userId),
-            default => TrashedFile::withoutGlobalScope('owner')
+            'item' => TrashDomain::ITEMS[$kind]['model']::trashOf($userId)
+                ->when(TrashDomain::ITEMS[$kind]['module'] === '@morph', fn (Builder $q) => $q->whereIn(
+                    'watchable_type',
+                    $this->permitted($user, MediaDomain::TYPES, 'delete'),
+                )),
+            'file' => TrashedFile::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
                 ->when($kind === 'field_file', fn (Builder $q) => $q->whereIn(
                     'record_type',
-                    array_values(array_filter(TrashDomain::domains(), fn (string $m) => $user->hasPermission($m, 'delete'))),
+                    $this->permitted($user, TrashDomain::domains(), 'delete'),
                 )),
+            default => TrashEntry::withoutGlobalScope('owner')
+                ->where('user_id', $userId)
+                ->where('kind', $kind)
+                ->whereIn('record_type', $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission'])),
         };
+    }
+
+    /**
+     * @param  list<string>  $modules
+     * @return list<string>
+     */
+    private function permitted(User $user, array $modules, string $action): array
+    {
+        return array_values(array_filter($modules, fn (string $m) => $user->hasPermission($m, $action)));
     }
 
     /* ============================================================
@@ -232,6 +279,12 @@ final class TrashBin
                 $withParent = true;
             }
 
+            if ($row instanceof TrashEntry) {
+                $this->restoreCastLink($row);
+
+                return;
+            }
+
             if ($row instanceof TrashedFile) {
                 $reason = $row->kind === 'chat_file'
                     ? $this->chat->restoreAttachment($row)
@@ -252,7 +305,7 @@ final class TrashBin
                 return;
             }
 
-            // ⚠️ ჟურნალს `HasTrash` წერს — ყველა დომენი, ერთი ადგილი
+            // ⚠️ ჟურნალს `HasTrash` წერს; გვერდითი ეფექტები `afterTrashChange()`-შია
             $row->restoreFromTrash();
         });
 
@@ -264,7 +317,9 @@ final class TrashBin
      *
      * ⚠️ **აქ `delete()`-ია და არა `moveToTrash()`** — ელემენტი უკვე ურნაშია,
      * ე.ი. მოვლენები უნდა გაისროლოს: ფაილი დისკიდან, კვოტა, გალერეა და
-     * pivot-ები სწორედ ახლა თავისუფლდება.
+     * pivot-ები სწორედ ახლა თავისუფლდება. ⚠️ მსახიობის ბმულზე მხოლოდ ურნის
+     * ჩანაწერი იშლება — TMDB-ის საფლავის ქვა რჩება, თორემ სინქრონიზაცია მას
+     * დააბრუნებდა.
      */
     public function destroy(User $user, string $kind, int $id): void
     {
@@ -320,13 +375,13 @@ final class TrashBin
     {
         $row = $this->find($user, $kind, $id);
 
+        // ⚠️ მხოლოდ ფაილის მქონე სახეები
+        abort_unless($this->hasFile($kind), 404);
+
         if ($row instanceof GalleryImage && $row->album_id) {
-            $album = GalleryAlbum::withoutGlobalScope('owner')->find($row->album_id);
+            $album = GalleryAlbum::withoutGlobalScopes(['owner', 'trash'])->find($row->album_id);
             abort_if($album && ! AlbumLock::isUnlocked($album), 404);
         }
-
-        // ⚠️ მხოლოდ ფაილის მქონე სახეები — ჩანაწერს, ბმულს და ბაზის ასლს ესკიზი არ აქვს
-        abort_if(TrashDomain::category($kind) === 'record' || in_array($kind, ['gallery_video', 'database_backup'], true), 404);
 
         $path = (string) $row->getAttribute('path');
         abort_if($path === '', 404);
@@ -343,21 +398,21 @@ final class TrashBin
      *
      * ⚠️ **წაშლა მოდელით** (`PurgeService`-ის წესი) — სწორედ მოვლენები
      * ათავისუფლებს ფაილს დისკიდან და კვოტას. ⚠️ ჩანაწერები პირველია: მათ
-     * ფაილებს მშობლის `deleting` თვითონ შლის.
+     * ნაწილებს მშობლის `deleting` თვითონ შლის.
      *
      * @return array<string, int> სახე → რამდენი წაიშალა (ან იწაშლებოდა `$dry`-ზე)
      */
     public static function prune(int $days, bool $dry = false): array
     {
         $counts = [];
+        $before = now()->subDays($days);
 
         foreach (TrashDomain::kinds() as $kind) {
             $query = match (TrashDomain::category($kind)) {
                 'record' => TrashDomain::model($kind)::expiredTrash($days),
                 'item' => TrashDomain::ITEMS[$kind]['model']::expiredTrash($days),
-                default => TrashedFile::withoutGlobalScope('owner')
-                    ->where('kind', $kind)
-                    ->where('trashed_at', '<=', now()->subDays($days)),
+                'file' => TrashedFile::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
+                default => TrashEntry::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
             };
 
             $count = (clone $query)->count();
@@ -386,27 +441,62 @@ final class TrashBin
      * ხილვადობა — ვის რა ეკუთვნის ურნაში.
      *
      * ⚠️ **უფლება `delete`-ია და არა `view`** (FEAT-11): ურნა წაშლის
-     * გაგრძელებაა. ⚠️ **მოდულის ჩართულობა აქ არ მოწმდება** (29.5) —
+     * გაგრძელებაა (მსახიობის ბმულზე — `update`, რადგან მისი მოხსნა ჩანაწერის
+     * რედაქტირებაა). ⚠️ **მოდულის ჩართულობა აქ არ მოწმდება** (29.5) —
      * გამორთული მოდულის ელემენტი ჩანს, მაგრამ აღდგენა მას ითხოვს
      * (`blocked()`). ბაზის ასლი მხოლოდ `super_admin`-ს ეკუთვნის.
      */
     private function visible(User $user, string $kind): bool
     {
+        $category = TrashDomain::category($kind);
+
         return match (true) {
             $kind === 'database_backup' => $user->isSuperAdmin(),
-            TrashDomain::category($kind) === 'file' => true,
+            $category === 'file' => true,
+            $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission']) !== [],
+            $category === 'item' && TrashDomain::ITEMS[$kind]['module'] === '@morph' => $this->permitted($user, MediaDomain::TYPES, 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
         };
     }
 
-    /** სახის მოდული — ჩანაწერზე თვითონ, რიგიან ფაილზე `ITEMS`-იდან */
+    /** სახის მოდული — ჩანაწერზე თვითონ, რიგიან ელემენტზე `ITEMS`-იდან; მრავალმოდულიანზე `null` */
     private function moduleOf(string $kind): ?string
     {
-        return match (TrashDomain::category($kind)) {
+        $module = match (TrashDomain::category($kind)) {
             'record' => $kind,
             'item' => TrashDomain::ITEMS[$kind]['module'],
             default => null,
         };
+
+        return $module === '@morph' ? null : $module;
+    }
+
+    /** ერთი რიგის მოდული — მრავალმოდულიან სახეზე რიგიდან იკითხება */
+    private function rowModule(string $kind, Model $row): ?string
+    {
+        return match (true) {
+            $row instanceof TrashEntry => $row->record_type,
+            $row instanceof TrashedFile => $row->kind === 'field_file' ? $row->record_type : null,
+            $kind === 'media_watch' => (string) $row->getAttribute('watchable_type'),
+            default => $this->moduleOf($kind),
+        };
+    }
+
+    /** აქვს თუ არა სახეს `size` სვეტი */
+    private function sized(string $kind): bool
+    {
+        return match (TrashDomain::category($kind)) {
+            'item' => TrashDomain::ITEMS[$kind]['size'],
+            'file' => true,
+            default => false,
+        };
+    }
+
+    /** ფაილის მქონე სახე — ესკიზის მარშრუტისთვის */
+    private function hasFile(string $kind): bool
+    {
+        return TrashDomain::category($kind) === 'file'
+            || ($this->sized($kind) && $kind !== 'database_backup');
     }
 
     /**
@@ -415,13 +505,14 @@ final class TrashBin
      * `$strict = false` სიისთვისაა და მხოლოდ იაფ შემოწმებებს აკეთებს;
      * `true` — აღდგენისას, სადაც ველის სისავსეც მოწმდება.
      *
+     * ⚠️ **კოდები `lib/errors.ts`-ის `CODES`-შია ხელით** — აქ ისინი ცვლადიდან
+     * ბრუნდება და `scripts/error-codes.mjs` მათ ვერ ხედავს.
+     *
      * @param  array{kind: string, id: int, title: string, trashed: bool}|null  $parent
      */
     private function blocked(User $user, string $kind, Model $row, ?array $parent, bool $strict): ?string
     {
-        $module = $row instanceof TrashedFile
-            ? ($row->kind === 'field_file' ? $row->record_type : null)
-            : $this->moduleOf($kind);
+        $module = $this->rowModule($kind, $row);
 
         if ($module && ! $user->hasModule($module)) {
             return 'module_disabled';
@@ -452,7 +543,68 @@ final class TrashBin
             }
         }
 
+        if ($row instanceof TrashEntry) {
+            if (! $parent) {
+                return 'parent_missing';
+            }
+
+            if ($this->castLinked($row)) {
+                return 'already_present';
+            }
+        }
+
         return null;
+    }
+
+    /** მსახიობი ჩანაწერს უკვე ისევ ახლავს (და არა როგორც საფლავის ქვა) */
+    private function castLinked(TrashEntry $entry): bool
+    {
+        $record = TrashDomain::model($entry->record_type)::withoutGlobalScopes()->find($entry->record_id);
+
+        return $record !== null && $record->cast()->whereKey((int) $entry->slot)->exists();
+    }
+
+    /**
+     * **მსახიობის ბმულის აღდგენა** — საფლავის ქვის მოხსნა ან ბმულის თავიდან
+     * დასმა, იმავე როლით, რიგით და ნიშნებით.
+     *
+     * ⚠️ `is_manual = true` თავიდან დასმულზე — `CastSync` სხვაგვარად TMDB-ის
+     * სიაში არმყოფ ადამიანს შემდეგივე სინქრონიზაციით მოხსნიდა.
+     */
+    private function restoreCastLink(TrashEntry $entry): void
+    {
+        $record = TrashDomain::model($entry->record_type)::withoutGlobalScopes()->findOrFail($entry->record_id);
+        $member = CastMember::find((int) $entry->slot);
+
+        if (! $member) {
+            $this->fail('parent_missing', 409);
+        }
+
+        $payload = $entry->payload ?? [];
+        $pivot = [
+            'character' => $payload['character'] ?? null,
+            'billing_order' => (int) ($payload['billing_order'] ?? 0),
+            'is_manual' => ($payload['is_manual'] ?? false) || ! ($payload['tombstone'] ?? false),
+            'is_hidden' => (bool) ($payload['is_hidden'] ?? false),
+            'is_edited' => (bool) ($payload['is_edited'] ?? false),
+            'is_removed' => false,
+        ];
+
+        if ($record->castLinks()->whereKey($member->id)->exists()) {
+            $record->castLinks()->updateExistingPivot($member->id, $pivot);
+        } else {
+            $record->castLinks()->attach($member->id, $pivot);
+        }
+
+        RecordCastController::forgetTrashed($record, $member->id);
+
+        $this->audit->log(AuditLog::ACTION_CAST_ATTACH, [
+            'module' => $entry->record_type,
+            'subject_type' => $entry->record_type,
+            'subject_id' => $entry->record_id,
+            'subject_label' => $member->name,
+            'new_values' => ['cast_member_id' => $member->id, 'restored' => true],
+        ]);
     }
 
     /**
@@ -535,21 +687,12 @@ final class TrashBin
     /** @return array{0: string, 1: int}|null */
     private function parentRef(string $kind, Model $row): ?array
     {
-        if ($row instanceof TrashedFile) {
-            return $row->kind === 'field_file' && $row->record_type && TrashDomain::category($row->record_type) === 'record'
+        if ($row instanceof TrashedFile || $row instanceof TrashEntry) {
+            $applies = $row instanceof TrashEntry || $row->kind === 'field_file';
+
+            return $applies && $row->record_type && TrashDomain::category($row->record_type) === 'record'
                 ? [$row->record_type, (int) $row->record_id]
                 : null;
-        }
-
-        if ($kind === 'gallery_image' || $kind === 'gallery_video') {
-            $prefix = $kind === 'gallery_image' ? 'imageable' : 'videoable';
-            $type = (string) $row->getAttribute("{$prefix}_type");
-
-            if ($type === '' || ! ($type === 'cast_member' || TrashDomain::category($type) === 'record')) {
-                return null;
-            }
-
-            return [$type, (int) $row->getAttribute("{$prefix}_id")];
         }
 
         $relation = TrashDomain::ITEMS[$kind]['parent'] ?? null;
@@ -558,26 +701,45 @@ final class TrashBin
             return null;
         }
 
-        $foreignKey = $row->{$relation}()->getForeignKeyName();
+        $link = $row->{$relation}();
 
-        return [TrashDomain::ITEMS[$kind]['module'], (int) $row->getAttribute($foreignKey)];
+        // polymorphic მშობელი — ფოტო, ვიდეო-ბმული, ნახვა
+        if ($link instanceof MorphTo) {
+            $type = (string) $row->getAttribute($link->getMorphType());
+
+            if ($type === '' || ! ($type === 'cast_member' || TrashDomain::category($type) === 'record')) {
+                return null;
+            }
+
+            return [$type, (int) $row->getAttribute($link->getForeignKeyName())];
+        }
+
+        return [TrashDomain::ITEMS[$kind]['module'], (int) $row->getAttribute($link->getForeignKeyName())];
     }
 
     /**
      * სათაური — სხვადასხვა სქემა, სერვერი წყვეტს.
      *
      * ⚠️ **სერვერი და არა კლიენტი** — ნაწილს `title` აქვს, ნაწილს
-     * `title_ka`/`title_en` აქსესორები, ფაილს `original_name`; ორივე მხარეს
-     * ჩაწერილი რუკა პირველივე ახალ სახეზე დაშორდებოდა.
+     * `title_ka`/`title_en` აქსესორები, ფაილს `original_name`, მსახიობის
+     * ბმულს `label`, ჩანიშვნას კი ტექსტი (`body`); ორივე მხარეს ჩაწერილი
+     * რუკა პირველივე ახალ სახეზე დაშორდებოდა.
      */
     private function titleOf(string $kind, Model $row): string
     {
-        foreach (['title_ka', 'title_en', 'title', 'name', 'original_name'] as $field) {
+        foreach (['title_ka', 'title_en', 'title', 'name', 'label', 'original_name'] as $field) {
             $value = $row->getAttribute($field);
 
             if (is_string($value) && $value !== '') {
                 return $value;
             }
+        }
+
+        $body = $row->getAttribute('body');
+        if (is_string($body) && trim($body) !== '') {
+            $body = trim(preg_replace('/\s+/u', ' ', $body));
+
+            return mb_strlen($body) > self::EXCERPT ? mb_substr($body, 0, self::EXCERPT).'…' : $body;
         }
 
         if ($kind === 'gallery_video' && is_string($row->getAttribute('url'))) {
@@ -596,7 +758,7 @@ final class TrashBin
             return null;
         }
 
-        return GalleryAlbum::withoutGlobalScope('owner')->whereKey($row->album_id)->value('name');
+        return GalleryAlbum::withoutGlobalScopes(['owner', 'trash'])->whereKey($row->album_id)->value('name');
     }
 
     /**
@@ -610,7 +772,9 @@ final class TrashBin
      */
     private function preview(string $kind, Model $row): ?array
     {
-        if (TrashDomain::category($kind) === 'record') {
+        $category = TrashDomain::category($kind);
+
+        if ($category === 'record') {
             // ⚠️ ჩანაწერს (`note`) მთავარი ფოტო შეიძლება საერთოდ არ ჰქონდეს
             if (! isset(self::RECORD_PREVIEW[$kind])) {
                 return null;
@@ -628,10 +792,21 @@ final class TrashBin
             return is_string($url) && str_starts_with($url, 'http') ? ['src' => $url, 'private' => false] : null;
         }
 
-        if ($kind === 'gallery_video') {
+        // მსახიობის ფოტო — გლობალური ლექსიკონისაა და საჯარო დისკზეა
+        if ($row instanceof TrashEntry) {
+            $photo = $row->payload['photo_path'] ?? null;
+
+            return is_string($photo) && $photo !== '' ? ['src' => $photo, 'private' => false] : null;
+        }
+
+        if ($kind === 'gallery_video' || $kind === 'game_video') {
             $url = $row->getAttribute('thumbnail_url');
 
             return is_string($url) && str_starts_with($url, 'http') ? ['src' => $url, 'private' => false] : null;
+        }
+
+        if (! $this->hasFile($kind)) {
+            return null;
         }
 
         $path = (string) $row->getAttribute('path');

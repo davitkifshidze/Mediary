@@ -471,7 +471,7 @@ class PurgeService
                 + $this->ownUploadBytes($user, $target, $ids)
                 + $this->customFieldBytes($user, $target, $ids),
             'notes' => $noteModel
-                ? $noteModel::withoutGlobalScope('owner')->whereIn($foreignKey, $ids)->count()
+                ? $noteModel::withoutGlobalScopes(['owner', 'trash'])->whereIn($foreignKey, $ids)->count()
                 : 0,
         ];
     }

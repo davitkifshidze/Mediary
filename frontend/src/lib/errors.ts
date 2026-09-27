@@ -218,6 +218,7 @@ export const CODES = [
   'slot_taken',
   'field_missing',
   'field_full',
+  'already_present',
 ] as const
 
 /**

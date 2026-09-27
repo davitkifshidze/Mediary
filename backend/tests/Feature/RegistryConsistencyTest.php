@@ -491,17 +491,6 @@ class RegistryConsistencyTest extends TestCase
         'course_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
-        // §29.10 ეტაპი 2 — ჩანაწერის ნაწილები
-        'video_notes' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'book_notes' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'game_notes' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'board_game_notes' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'game_videos' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'playlists' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'note_reminders' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'media_watches' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-        'gallery_albums' => 'ეტაპი 2 (§29.10) — ჩანაწერის ნაწილები',
-
         // §29.10 ეტაპი 3 — კლასიფიკატორის რიგი
         'statuses' => 'ეტაპი 3 (§29.10) — კლასიფიკატორის რიგი',
         'video_types' => 'ეტაპი 3 (§29.10) — კლასიფიკატორის რიგი',
@@ -563,7 +552,7 @@ class RegistryConsistencyTest extends TestCase
         $this->assertContains('movies', $withUser);
         $this->assertContains('gallery_images', $withUser);
 
-        $covered = [...TrashDomain::tables(), ...TrashDomain::itemTables(), 'trashed_files'];
+        $covered = [...TrashDomain::tables(), ...TrashDomain::itemTables(), 'trashed_files', 'trash_entries'];
 
         $missing = array_values(array_diff($withUser, $covered, array_keys(self::NOT_TRASHED)));
         $this->assertSame([], $missing, implode(PHP_EOL, [

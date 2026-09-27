@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
+use App\Services\Gallery\AlbumVault;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -21,7 +23,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class GalleryAlbum extends Model
 {
-    use BelongsToUser;
+    /**
+     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
+     */
+    use BelongsToUser, HasTrash;
 
     protected $guarded = ['id'];
 
@@ -41,7 +47,50 @@ class GalleryAlbum extends Model
         'sort_order' => 'integer',
         'failed_unlocks' => 'integer',
         'unlock_blocked_until' => 'datetime',
+        // Tasks §29 — წაშლისას ალბომიდან გამოსული ფოტოები; აღდგენა მათ აბრუნებს
+        'trashed_photo_ids' => 'array',
     ];
+
+    /**
+     * **აღდგენა ფოტოებს ალბომში აბრუნებს და ჩაკეტილს თავიდან კეტავს**
+     * (Tasks §29.3).
+     *
+     * ⚠️ **მხოლოდ ის ფოტო ბრუნდება, რომელიც მას შემდეგ არ შეცვლილა** —
+     * ე.ი. ისევ იქ დევს, სადაც წაშლამ დატოვა (`album_id` = ალბომის გარეშე ან
+     * `move_to`-ს სამიზნე). სხვა ალბომში გადატანილს ან ურნაში მყოფს აღდგენა
+     * ხელს არ ახლებს — ეს უკვე შენი ახალი გადაწყვეტილებაა.
+     *
+     * ⚠️ ფაილი `AlbumVault::placeMany()`-ით გადადის: ჩაკეტილ ალბომზე
+     * `gallery/locked`-ში (და მთავარი ფოტოს ბმული იხსნება), სხვაზე — საჯაროში.
+     */
+    protected function afterTrashChange(bool $trashed): void
+    {
+        if ($trashed) {
+            return;
+        }
+
+        $ids = array_map('intval', $this->trashed_photo_ids['ids'] ?? []);
+        $from = $this->trashed_photo_ids['from'] ?? null;
+
+        $photos = $ids
+            ? GalleryImage::withoutGlobalScopes(['owner', 'album_lock', 'trash'])
+                ->where('user_id', $this->user_id)
+                ->whereIn('id', $ids)
+                ->when($from, fn ($q) => $q->where('album_id', $from), fn ($q) => $q->whereNull('album_id'))
+                ->get()
+            : collect();
+
+        if ($photos->isNotEmpty()) {
+            GalleryImage::withoutGlobalScopes(['owner', 'album_lock', 'trash'])
+                ->whereIn('id', $photos->modelKeys())
+                ->update(['album_id' => $this->id]);
+
+            AlbumVault::placeMany($photos, $this);
+        }
+
+        $this->trashed_photo_ids = null;
+        $this->saveQuietly();
+    }
 
     /**
      * ⚠️ hash **არასდროს ტოვებს სერვერს** — `row()` მას ისედაც არ წერს,

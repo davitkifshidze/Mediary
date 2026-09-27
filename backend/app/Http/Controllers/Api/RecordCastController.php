@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CastResource;
 use App\Models\AuditLog;
 use App\Models\CastMember;
+use App\Models\TrashEntry;
 use App\Services\Audit\AuditLogger;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
@@ -222,6 +223,9 @@ class RecordCastController extends Controller
             $record->castLinks()->attach($member->id, $pivot);
         }
 
+        // ⚠️ ხელით დაბრუნებული მსახიობი ურნაში აღარ უნდა ეწეროს — აღდგენა იქ „უკვე ადგილზეა"-ს იტყოდა
+        self::forgetTrashed($record, $member->id);
+
         $source = ($data['tmdb_person_id'] ?? null)
             ? 'tmdb'
             : (($data['cast_member_id'] ?? null) ? 'library' : 'manual');
@@ -381,15 +385,46 @@ class RecordCastController extends Controller
     {
         $record = $this->record($type, $id);
 
-        abort_unless($record->cast()->whereKey($castMember->id)->exists(), 404);
+        $link = $record->cast()->whereKey($castMember->id)->first();
+        abort_unless($link !== null, 404);
 
         $tombstone = (bool) $castMember->tmdb_person_id;
 
-        if ($tombstone) {
-            $record->castLinks()->updateExistingPivot($castMember->id, ['is_removed' => true]);
-        } else {
-            $record->castLinks()->detach($castMember->id);
-        }
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — მოხსნა ურნაში ჩაიწერება
+           (`trash_entries`): `castables`-ს `id` არ აქვს, ე.ი. რიგი ურნაში
+           საკუთარი `trashed_at`-ით ვერ გადავა. აღდგენა TMDB-ის მსახიობზე
+           საფლავის ქვას ხსნის, დანარჩენზე ბმულს ამავე როლით თავიდან სვამს.
+           ⚠️ საფლავის ქვა ურნის საბოლოო წაშლის შემდეგაც რჩება — სწორედ ის
+           უშლის TMDB-ს მის დაბრუნებას. */
+        DB::transaction(function () use ($record, $castMember, $link, $tombstone) {
+            if ($tombstone) {
+                $record->castLinks()->updateExistingPivot($castMember->id, ['is_removed' => true]);
+            } else {
+                $record->castLinks()->detach($castMember->id);
+            }
+
+            self::forgetTrashed($record, $castMember->id);
+
+            TrashEntry::withoutGlobalScope('owner')->create([
+                'user_id' => $record->user_id,
+                'kind' => 'cast_link',
+                'record_type' => $record->getMorphClass(),
+                'record_id' => $record->getKey(),
+                'slot' => (string) $castMember->id,
+                'label' => $castMember->name,
+                'payload' => [
+                    'cast_member_id' => (int) $castMember->id,
+                    'character' => $link->pivot->character,
+                    'billing_order' => (int) $link->pivot->billing_order,
+                    'is_manual' => (bool) $link->pivot->is_manual,
+                    'is_hidden' => (bool) $link->pivot->is_hidden,
+                    'is_edited' => (bool) $link->pivot->is_edited,
+                    'tombstone' => $tombstone,
+                    'photo_path' => $castMember->photo_path,
+                ],
+                'trashed_at' => now(),
+            ]);
+        });
 
         $this->logCast($record, $castMember, AuditLog::ACTION_CAST_DETACH, ['sync_blocked' => $tombstone]);
 
@@ -397,6 +432,17 @@ class RecordCastController extends Controller
     }
 
     /* ---------------------------------------------------------------- */
+
+    /** ამ ჩანაწერზე ამ მსახიობის ძველი ურნის ჩანაწერი — ერთ ბმულზე ურნაში ერთი ელემენტია */
+    public static function forgetTrashed(Model $record, int $castMemberId): void
+    {
+        TrashEntry::withoutGlobalScope('owner')
+            ->where('kind', 'cast_link')
+            ->where('record_type', $record->getMorphClass())
+            ->where('record_id', $record->getKey())
+            ->where('slot', (string) $castMemberId)
+            ->delete();
+    }
 
     private function record(string $type, int $id): Model
     {

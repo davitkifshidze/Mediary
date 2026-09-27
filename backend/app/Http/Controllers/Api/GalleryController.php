@@ -796,7 +796,7 @@ class GalleryController extends Controller
             /* `none` = უკატეგორიოში; `movie:12`/`actor:5` = მშობელზე */
             'target' => ['nullable', 'string', 'regex:/^(none|('.$parents.'):\d+)$/'],
             'album_id' => ['nullable', 'integer',
-                Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)],
+                Rule::exists('gallery_albums', 'id')->where('user_id', $request->user()->id)->whereNull('trashed_at')],
         ]);
 
         $changes = [];

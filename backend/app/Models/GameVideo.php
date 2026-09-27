@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +21,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class GameVideo extends Model
 {
-    use BelongsToUser;
+    /**
+     * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
+     * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
+     */
+    use BelongsToUser, HasTrash;
 
     /** 11.2 — „სრული დახურვა/გეიმფლეი" მთავარია, ამიტომ ის არის default */
     public const KINDS = ['walkthrough', 'trailer', 'review', 'guide', 'other'];

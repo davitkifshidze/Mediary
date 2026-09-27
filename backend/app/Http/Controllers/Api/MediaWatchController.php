@@ -73,10 +73,9 @@ class MediaWatchController extends Controller
         // აქ იაფია და კონტროლერს თვითმყოფადს ტოვებს
         abort_unless((int) $mediaWatch->user_id === (int) $request->user()->getKey(), 404);
 
-        $record = $mediaWatch->watchable;
-        $mediaWatch->delete();
-
-        $record?->syncWatchedAt();
+        /* ⚠️ ურნა (Tasks §29, ეტაპი 2) — „ბოლო ნახვას" `MediaWatch::afterTrashChange()`
+           თვითონ გადაითვლის: ურნაში მყოფი ჟურნალში აღარ ითვლება. */
+        $mediaWatch->moveToTrash();
 
         return response()->noContent();
     }
