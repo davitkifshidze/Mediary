@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
 import {
   BOOK_FORMATS,
   BOOK_LANGUAGES,
@@ -28,15 +28,22 @@ import { BookGenreDialog } from '@/components/BookGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { FieldLabel } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import {
+  QuickFill,
+  QuickFillCandidate,
+  QuickFillMessage,
+  QuickFillResults,
+  QuickFillSearch,
+} from '@/components/ui/quick-fill'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
-import { InfoHint } from '@/components/ui/info-hint'
 import { RatingSelect } from '@/components/ui/rating-select'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
    წიგნის ფორმა (Tasks §12).
@@ -46,6 +53,9 @@ import { RatingSelect } from '@/components/ui/rating-select'
    ⚠️ ავტომატურად არაფერი ემთხვევა და დრაფტი **მხოლოდ ცარიელ ველებს** ავსებს —
    ხელით შეყვანილი მონაცემი არასდროს იკარგება.
    ============================================================ */
+
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'book-form'
 
 export function BookForm({
   book,
@@ -98,6 +108,9 @@ export function BookForm({
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ წიგნზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('book', book)
 
   /* ---------- სწრაფი შევსება Open Library-დან ---------- */
 
@@ -169,8 +182,16 @@ export function BookForm({
   /* ---------- შენახვა ---------- */
 
   const save = useMutation({
-    mutationFn: (input: BookInput) => (book ? updateBook(book.id, input) : createBook(input)),
-    onSuccess: () => {
+    mutationFn: (input: BookInput) => (extras.current ? updateBook(extras.current.id, input) : createBook(input)),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['books'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('books.saved'), variant: 'success' })
       onSaved()
     },
@@ -257,250 +278,146 @@ export function BookForm({
 
   return (
     <ModalShell title={t(book ? 'books.edit' : 'books.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ---------- სწრაფი შევსება ---------- */}
-        <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="b-lookup" className="flex items-center gap-1.5">{t('books.lookup')} <InfoHint info={t('books.lookupHint')} /></Label>
-          <div className="mt-1.5 flex gap-2">
-            <Input
-              id="b-lookup"
-              placeholder={t('books.lookupPlaceholder')}
-              value={lookupQuery}
-              onChange={(e) => setLookupQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  // ⚠️ ფორმის submit-ს ვაჩერებთ — Enter აქ „ძებნას" ნიშნავს
-                  e.preventDefault()
-                  if (lookupQuery.trim()) lookup.mutate()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!lookupQuery.trim() || lookup.isPending}
-              onClick={() => lookup.mutate()}
-            >
-              {lookup.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              {t('books.lookupSearch')}
-            </Button>
-          </div>
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* ---------- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
+        <QuickFill title={t('books.lookup')} hint={t('books.lookupHint')} htmlFor="b-lookup">
+          <QuickFillSearch
+            id="b-lookup"
+            value={lookupQuery}
+            onChange={setLookupQuery}
+            onSearch={() => lookup.mutate()}
+            busy={lookup.isPending}
+            placeholder={t('books.lookupPlaceholder')}
+            buttonLabel={t('books.lookupSearch')}
+          />
 
-          {candidates && (
-            <div className="mt-3 space-y-1.5">
-              {!candidates.length && (
-                <p className="text-xs text-muted-foreground">
-                  {lookupNotice === 'manual_only' ? t('books.lookupManualOnly') : t('books.lookupEmpty')}
-                </p>
-              )}
-              {candidates.map((candidate) => (
-                <button
-                  key={candidate.key || candidate.isbn}
-                  type="button"
-                  disabled={pick.isPending}
-                  onClick={() => pick.mutate(candidate)}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-md border border-border px-2 py-1.5 text-left hover:bg-muted"
-                >
-                  {candidate.cover_id ? (
-                    <img
-                      src={`https://covers.openlibrary.org/b/id/${candidate.cover_id}-S.jpg`}
-                      alt=""
-                      className="h-12 w-8 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <span className="h-12 w-8 shrink-0 rounded bg-muted" />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm">{candidate.title ?? '—'}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[candidate.author, candidate.year, candidate.publisher]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
+          {/* ⚠️ „ქართული → ხელით" ცალკე მდგომარეობაა და არა ცარიელი სია (§5.7) */}
+          {candidates && !candidates.length && (
+            <QuickFillMessage>
+              {lookupNotice === 'manual_only' ? t('books.lookupManualOnly') : t('books.lookupEmpty')}
+            </QuickFillMessage>
           )}
-        </div>
 
-        {/* ---------- სათაური ორ ენაზე ---------- */}
-        <div className={fields.shows('title') ? 'grid gap-4 sm:grid-cols-2' : 'hidden'}>
-          <div>
-            {/* ⚠️ სათაური `locked`-ია (§6.5) — ერთი ენა მაინც სავალდებულოა.
-                ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის.
-                ლეიბლი მაინც რედაქტორიდან მოდის, ენის მინიშნება კი ემატება,
-                თორემ ორივე ველი ერთნაირად დაიწერებოდა. */}
-            <FieldLabel htmlFor="b-title-ka" required hint={t('form.requiredEitherLang')}>
-              {fields.label('title')} · {t('fields.langKa')}
-            </FieldLabel>
+          {candidates && candidates.length > 0 && (
+            <QuickFillResults>
+              {candidates.map((candidate) => (
+                <QuickFillCandidate
+                  key={candidate.key || candidate.isbn}
+                  image={
+                    candidate.cover_id ? `https://covers.openlibrary.org/b/id/${candidate.cover_id}-S.jpg` : null
+                  }
+                  title={candidate.title ?? '—'}
+                  meta={[candidate.author, candidate.year, candidate.publisher].filter(Boolean).join(' · ')}
+                  disabled={pick.isPending}
+                  onPick={() => pick.mutate(candidate)}
+                />
+              ))}
+            </QuickFillResults>
+          )}
+        </QuickFill>
+
+        {/* ---------- §26 — ყდა ზემოთაა, სახელთან, ავტორთან და აღწერასთან ერთად ---------- */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('cover') && (
+              <>
+                <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
+                  {fields.label('cover')}
+                </FieldLabel>
+                <PosterUploader
+                  hint={t('books.coverHint')}
+                  preview={coverPreview}
+                  onSelect={(file) => {
+                    setCover(file)
+                    setCoverId(null)
+                    setRemoveCover(false)
+                    setCoverPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setCover(null)
+                    setCoverId(null)
+                    setCoverPreview(null)
+                    setRemoveCover(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          {/* ⚠️ სათაური `locked`-ია (§6.5) — ერთი ენა მაინც სავალდებულოა.
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის.
+              ლეიბლი მაინც რედაქტორიდან მოდის, ენის მინიშნება კი ემატება,
+              თორემ ორივე ველი ერთნაირად დაიწერებოდა. */}
+          <FormField
+            size="half"
+            show={fields.shows('title')}
+            label={`${fields.label('title')} · ${t('fields.langKa')}`}
+            htmlFor="b-title-ka"
+            required
+            hint={t('form.requiredEitherLang')}
+            error={errors.title_ka}
+          >
             <Input
               id="b-title-ka"
               value={form.title_ka}
               onChange={(e) => setForm((f) => ({ ...f, title_ka: e.target.value }))}
             />
-            {errors.title_ka && <p className="mt-1 text-xs text-destructive">{errors.title_ka}</p>}
-          </div>
-          <div>
-            <FieldLabel htmlFor="b-title-en" required hint={t('form.requiredEitherLang')}>
-              {fields.label('title')} · {t('fields.langEn')}
-            </FieldLabel>
+          </FormField>
+          <FormField
+            size="half"
+            show={fields.shows('title')}
+            label={`${fields.label('title')} · ${t('fields.langEn')}`}
+            htmlFor="b-title-en"
+            required
+            hint={t('form.requiredEitherLang')}
+            error={errors.title_en}
+          >
             <Input
               id="b-title-en"
               value={form.title_en}
               onChange={(e) => setForm((f) => ({ ...f, title_en: e.target.value }))}
             />
-            {errors.title_en && <p className="mt-1 text-xs text-destructive">{errors.title_en}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className={fields.shows('author') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-author" required={fields.required('author')} hint={fields.hint('author')}>
-              {fields.label('author')}
-            </FieldLabel>
+          <FormField size="half" {...fields.field('author')} htmlFor="b-author">
             <Input
               id="b-author"
               value={form.author}
               onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))}
             />
-          </div>
-          {fields.shows('publisher') && (
-            <div>
-              <FieldLabel htmlFor="b-publisher" required={fields.required('publisher')} hint={fields.hint('publisher')}>
-                {fields.label('publisher')}
-              </FieldLabel>
-              <Input
-                id="b-publisher"
-                placeholder={fields.placeholder('publisher')}
-                value={form.publisher}
-                onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
-              />
-            </div>
-          )}
+          </FormField>
+          <FormField size="half" {...fields.field('publisher')} htmlFor="b-publisher">
+            <Input
+              id="b-publisher"
+              placeholder={fields.placeholder('publisher')}
+              value={form.publisher}
+              onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
+            />
+          </FormField>
           {/* §5.7 — ISBN ფორმიდან მოხსნილია (Open Library-დან მაინც ივსება) */}
-        </div>
 
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className={fields.shows('year') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-year" required={fields.required('year')} hint={fields.hint('year')}>
-              {fields.label('year')}
-            </FieldLabel>
-            <Input
-              id="b-year"
-              type="number"
-              inputMode="numeric"
-              value={form.year}
-              onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+          {/* §5.7 — **მხოლოდ ქართული აღწერა** რჩება ფორმაზე. ინგლისური სვეტი
+              არსად წასულა: Open Library სწორედ მას ავსებს და ჩანაწერზე ჩანს. */}
+          <FormField
+            {...fields.field('description')}
+            label={`${fields.label('description')} · ${t('fields.langKa')}`}
+            htmlFor="b-desc-ka"
+          >
+            <Textarea
+              id="b-desc-ka"
+              rows={FORM_TEXT_ROWS}
+              value={form.description_ka}
+              onChange={(e) => setForm((f) => ({ ...f, description_ka: e.target.value }))}
             />
-          </div>
-          <div className={fields.shows('pages') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-pages" required={fields.required('pages')} hint={fields.hint('pages')}>
-              {fields.label('pages')}
-            </FieldLabel>
-            <Input
-              id="b-pages"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={form.pages}
-              onChange={(e) => setForm((f) => ({ ...f, pages: e.target.value }))}
-            />
-          </div>
-          <div className={fields.shows('language') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-language" required={fields.required('language')} hint={fields.hint('language')}>
-              {fields.label('language')}
-            </FieldLabel>
-            <Select
-              value={form.language}
-              onValueChange={(v) => setForm((f) => ({ ...f, language: v }))}
-            >
-              <SelectTrigger id="b-language">
-                <SelectValue placeholder={t('validation.choose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {BOOK_LANGUAGES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {t(`books.languages.${value}`)}
-                  </SelectItem>
-                ))}
-                {/* ⚠️ **ჩანაწერის საკუთარი მნიშვნელობა, თუ ის სიაში არაა.**
-                    ჩვენივე `OpenLibraryClient` აბრუნებს `de`/`fr`-საც და
-                    დანარჩენზე ნედლ MARC კოდს (`spa`, `ita`, `jpn`…). ასეთი
-                    მნიშვნელობა მკაცრ სიაში **ცარიელ სელექტად** დაიხატებოდა
-                    და პირველივე შენახვა `language`-ს `null`-ად გადააწერდა —
-                    ე.ი. მონაცემს დაკარგავდა. */}
-                {form.language && !(BOOK_LANGUAGES as readonly string[]).includes(form.language) && (
-                  <SelectItem value={form.language}>{form.language}</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Tasks §25.4 — „ჩემი ქულა" ბრუნდება ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-              {fields.label('rating')}
-            </FieldLabel>
-            <RatingSelect
-              id="b-rating"
-              max={BOOK_MAX_RATING}
-              value={form.rating}
-              invalid={!!errors.rating}
-              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
-            />
-            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
-          </div>
-        </div>
+          </FormField>
+        </FormSection>
 
-        {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
-            ebook ფაილს არ ცვლის — ეს გარე ბმულია (მაღაზია, ბიბლიოთეკა). */}
-        <div className={fields.shows('source_url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="b-source-url" required={fields.required('source_url')} hint={fields.hint('source_url')}>
-            {fields.label('source_url')}
-          </FieldLabel>
-          <Input
-            id="b-source-url"
-            type="url"
-            placeholder="https://…"
-            value={form.source_url}
-            onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
-          />
-          {errors.source_url && <p className="mt-1 text-xs text-destructive">{errors.source_url}</p>}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className={fields.shows('format') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-format" required={fields.required('format')} hint={fields.hint('format')}>
-              {fields.label('format')}
-            </FieldLabel>
-            <Select
-              value={form.format}
-              onValueChange={(v) => setForm((f) => ({ ...f, format: v as typeof f.format }))}
-            >
-              <SelectTrigger id="b-format">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BOOK_FORMATS.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {t(`books.formats.${value}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
-            >
-              <SelectTrigger
-                id="b-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
+        {/* ---------- კლასიფიკაცია: სტატუსი · ჟანრი · ქულა ---------- */}
+        <FormSection title={t('form.sections.classification')}>
+          <FormField size="third" {...fields.field('status')} htmlFor="b-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}>
+              <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -511,27 +428,13 @@ export function BookForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
-          {/* §5.7 — სერია/ნომერი ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება
-              და სიაში ისევ ჩანს; დალაგებაც მუშაობს) */}
-        </div>
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('genre') ? undefined : 'hidden'}>
-            {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
-            <FieldLabel htmlFor="b-genre" required={fields.required('genre')} hint={fields.hint('genre')}>
-              {fields.label('genre')}
-            </FieldLabel>
+          {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
+          <FormField size="third" {...fields.field('genre')} htmlFor="b-genre" error={errors.genre_id}>
             <div className="flex gap-1">
-              <Select
-                value={form.genreId}
-                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
-              >
-                <SelectTrigger
-                  id="b-genre"
-                  className={errors.genre_id ? 'border-destructive' : undefined}
-                >
+              <Select value={form.genreId} onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}>
+                <SelectTrigger id="b-genre" className={errors.genre_id ? 'border-destructive' : undefined}>
                   <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -554,66 +457,108 @@ export function BookForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {errors.genre_id && <p className="mt-1 text-xs text-destructive">{errors.genre_id}</p>}
-
             {/* §5.7 — ტეგები და მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ახლა
                 ერთი „წყაროს ლინკი" ცვლის, ტეგებს კი Open Library ავსებს
                 (ფილტრების პანელი მათზე ისევ მუშაობს). */}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('cover') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
-              {fields.label('cover')}
-            </FieldLabel>
-            <PosterUploader
-              hint={t('books.coverHint')}
-              preview={coverPreview}
-              onSelect={(file) => {
-                setCover(file)
-                setCoverId(null)
-                setRemoveCover(false)
-                setCoverPreview(URL.createObjectURL(file))
-              }}
-              onClear={() => {
-                setCover(null)
-                setCoverId(null)
-                setCoverPreview(null)
-                setRemoveCover(true)
-              }}
+          {/* Tasks §25.4 — „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
+          <FormField size="third" {...fields.field('rating')} htmlFor="b-rating" error={errors.rating}>
+            <RatingSelect
+              id="b-rating"
+              max={BOOK_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
             />
-          </div>
-        </div>
+          </FormField>
+        </FormSection>
 
-        {/* §5.7 — **მხოლოდ ქართული აღწერა** რჩება ფორმაზე. ინგლისური სვეტი
-            არსად წასულა: Open Library სწორედ მას ავსებს და ჩანაწერზე ჩანს. */}
-        <div className={fields.shows('description') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="b-desc-ka" required={fields.required('description')} hint={fields.hint('description')}>
-            {fields.label('description')} · {t('fields.langKa')}
-          </FieldLabel>
-          <Textarea
-            id="b-desc-ka"
-            rows={4}
-            value={form.description_ka}
-            onChange={(e) => setForm((f) => ({ ...f, description_ka: e.target.value }))}
-          />
-        </div>
+        {/* ---------- დეტალები: წელი · გვერდები · ენა · ფორმატი + წყაროს ბმული ---------- */}
+        <FormSection title={t('form.sections.details')}>
+          <FormField size="quarter" {...fields.field('year')} htmlFor="b-year">
+            <Input
+              id="b-year"
+              type="number"
+              inputMode="numeric"
+              value={form.year}
+              onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+            />
+          </FormField>
+          <FormField size="quarter" {...fields.field('pages')} htmlFor="b-pages">
+            <Input
+              id="b-pages"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={form.pages}
+              onChange={(e) => setForm((f) => ({ ...f, pages: e.target.value }))}
+            />
+          </FormField>
+          <FormField size="quarter" {...fields.field('language')} htmlFor="b-language">
+            <Select value={form.language} onValueChange={(v) => setForm((f) => ({ ...f, language: v }))}>
+              <SelectTrigger id="b-language">
+                <SelectValue placeholder={t('validation.choose')} />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_LANGUAGES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`books.languages.${value}`)}
+                  </SelectItem>
+                ))}
+                {/* ⚠️ **ჩანაწერის საკუთარი მნიშვნელობა, თუ ის სიაში არაა.**
+                    ჩვენივე `OpenLibraryClient` აბრუნებს `de`/`fr`-საც და
+                    დანარჩენზე ნედლ MARC კოდს (`spa`, `ita`, `jpn`…). ასეთი
+                    მნიშვნელობა მკაცრ სიაში **ცარიელ სელექტად** დაიხატებოდა
+                    და პირველივე შენახვა `language`-ს `null`-ად გადააწერდა —
+                    ე.ი. მონაცემს დაკარგავდა. */}
+                {form.language && !(BOOK_LANGUAGES as readonly string[]).includes(form.language) && (
+                  <SelectItem value={form.language}>{form.language}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField size="quarter" {...fields.field('format')} htmlFor="b-format">
+            <Select value={form.format} onValueChange={(v) => setForm((f) => ({ ...f, format: v as typeof f.format }))}>
+              <SelectTrigger id="b-format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOK_FORMATS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`books.formats.${value}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          {/* §5.7 — სერია/ნომერი ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება
+              და სიაში ისევ ჩანს; დალაგებაც მუშაობს) */}
 
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
+              ebook ფაილს არ ცვლის — ეს გარე ბმულია (მაღაზია, ბიბლიოთეკა). */}
+          <FormField {...fields.field('source_url')} htmlFor="b-source-url" error={errors.source_url}>
+            <Input
+              id="b-source-url"
+              type="url"
+              placeholder="https://…"
+              value={form.source_url}
+              onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები. ⚠️ `<form>`-ის **გარეთაა**: ბარათი
-          თვითონ ინახავს თავს (მნიშვნელობები ცალკე ცხრილშია) და ჩადგმული
-          ღილაკი მშობელი ფორმის submit-ს გაუშვებდა. */}
-      <div className="mt-4">
-        <CustomFieldsCard module="book" recordId={book?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები. ⚠️ `<form>`-ის **გარეთაა**:
+          არსებულ წიგნზე ბარათი თვითონ ინახავს თავს, ახალზე — მონახაზია */}
+      <CustomFieldsCard
+        module="book"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
       {newGenre && (
