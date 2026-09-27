@@ -105,9 +105,13 @@ function toFormData(input: BoardGameInput): FormData {
     'year', 'genre_id', 'players_min', 'players_max', 'age_min',
     'playtime_min', 'playtime_max', 'complexity', 'bgg_id', 'bgg_rating', 'rating',
   ]
+  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+     იგზავნება და მხოლოდ `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე
+     გასუფთავებული რიცხვი (ქულა, წელი…) საერთოდ არ იგზავნებოდა და შენახვის
+     შემდეგ ძველი უკან ბრუნდებოდა. */
   numbers.forEach((key) => {
     const value = input[key]
-    if (value != null) fd.append(key, String(value))
+    if (value !== undefined) fd.append(key, value == null ? '' : String(value))
   })
 
   if (input.visibility) fd.append('visibility', input.visibility)

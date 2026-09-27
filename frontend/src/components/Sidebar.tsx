@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -35,7 +35,7 @@ import { toolAccent } from '@/lib/toolSections'
 import { fetchChatUnread } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
-import { fetchPendingCount } from '@/api/account'
+import { fetchPendingCount, type ModuleInfo } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
 import { GALLERY_CUTS } from '@/lib/galleryCuts'
@@ -170,6 +170,17 @@ const TOOL_ROW_IDLE =
    სექციას საიდბარი ფერავდა და სათაური — არა; ორი ასლი კი პირველივე
    ცვლილებაზე დაშორდებოდა. */
 
+/**
+ * **„ყველა · რჩეული · დამატება" — სტატუსის სექციების გარეშე** (Tasks §6.1 → §25.1).
+ *
+ * ⚠️ წიგნზე, სამაგიდოსა და თამაშზე ეს **შეგნებული გადახრაა საერთო წესიდან**
+ * (§6.1, შენი მითითებით): სტატუსით ჭრა ფილტრების პანელშია. კურსი და ადგილი
+ * §25-ში შემოვიდა — აქამდე მენიუში ჩვეულებრივი ბმული იყო, ე.ი. „რჩეული" და
+ * „დამატება" მხოლოდ გვერდიდან იყო მისაწვდომი, თუმცა ორივე გვერდი
+ * `?view=favorite`-სა და `?new=1`-ს უკვე კითხულობდა.
+ */
+const FAVORITE_ONLY_MODULES: ReadonlySet<string> = new Set(['book', 'board_game', 'game', 'course', 'place'])
+
 /** `<nav>`-ის ნაგულისხმევი აქცენტი — `lib/modules.tsx`-იდან, ერთი წყარო */
 const NAV_DEFAULT_ACCENT = MODULE_ACCENT_FALLBACK
 
@@ -197,7 +208,6 @@ export function Sidebar({
   const statusMap = useStatusMap(enabled.map((m) => m.key))
   const { isAdmin, canAdmin } = useAuth()
   const setDrawerOpen = onDrawerChange
-  const videoView = params.get('view') ?? 'all'
   // პირველ შესვლაზე ყველა სექცია ჩაკეცილია
   const [open, setOpen] = useState<Record<string, boolean>>({})
 
@@ -345,6 +355,77 @@ export function Sidebar({
   const toolLink = (path: string) =>
     cn(TOOL_ROW, onPath(path) ? TOOL_ROW_ACTIVE : TOOL_ROW_IDLE)
 
+  /** „ყველა" · „რჩეული" — ფსევდო-განყოფილებები სტატუსის ლექსიკონის გარეშე */
+  const favoriteSections: VideoSection[] = [
+    { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
+    { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
+  ]
+
+  /**
+   * **მოდულის ჩამოშლადი განყოფილება — ერთი განსაზღვრება** (Tasks §25.1).
+   *
+   * ⚠️ ეს ბლოკი რვაჯერ იყო ხელით დაწერილი: წიგნი, სამაგიდო და თამაში
+   * სიტყვასიტყვით ერთნაირი იყო, სიმღერა, ჩანაწერი, ბუკმარკი და ვიდეო კი
+   * მხოლოდ სექციების წყაროთი და ერთი დამატებითი რიგით განსხვავდებოდა —
+   * ე.ი. კურსისა და ადგილის დამატება მეცხრე და მეათე ასლი იქნებოდა.
+   *
+   * ⚠️ ქვე-პუნქტი მხოლოდ მოდულის **ზუსტ** მისამართზე ინთება (`route_base`);
+   * მოდულის რიგის მონიშვნას `active` ცვლის (სიმღერა პლეილისტებზეც აქტიურია).
+   * `extra` სექციებსა და „დამატებას" შორის დგება (პლეილისტები, შეხსენებები).
+   */
+  const moduleSection = (
+    m: ModuleInfo,
+    sections: VideoSection[],
+    { active, extra }: { active?: boolean; extra?: ReactNode } = {},
+  ) => {
+    const onModule = location.pathname === m.route_base
+    const sectionOpen = !!open[m.key]
+    const activeSection = onModule ? (params.get('view') ?? 'all') : null
+
+    return (
+      <div key={m.key} style={modAccent(m.color)}>
+        <button
+          onClick={() => setOpen((o) => ({ ...o, [m.key]: !o[m.key] }))}
+          aria-expanded={sectionOpen}
+          className={cn(MODULE_ROW, (active ?? onModule) ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
+        >
+          <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
+          <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
+          <ChevronDown
+            className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
+          />
+        </button>
+
+        {sectionOpen && (
+          <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
+            {sections.map((sec) => (
+              <button
+                key={sec.id}
+                onClick={() => {
+                  navigate({ pathname: m.route_base, search: sec.search })
+                  setDrawerOpen(false)
+                }}
+                className={subRow(activeSection === sec.id)}
+              >
+                <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">{sec.label}</span>
+              </button>
+            ))}
+            {extra}
+            <Link
+              to={`${m.route_base}?new=1`}
+              onClick={() => setDrawerOpen(false)}
+              className={SUB_ADD}
+            >
+              <Plus className="size-4 shrink-0" />
+              {t('actions.addShort')}
+            </Link>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const nav = (
     <>
       <nav className="flex-1 space-y-1 overflow-y-auto" style={NAV_DEFAULT_ACCENT}>
@@ -415,387 +496,54 @@ export function Sidebar({
 
         {/* არა-მედია მოდულები — ვიდეოებსა და სიმღერებს თავისი სექციები აქვს (K7) */}
         {pageModules.map((m) => {
-          /* ---------- სიმღერები: „ყველა" · ჟანრები · „რჩეული" ---------- */
+          /* ---------- წიგნი · სამაგიდო · თამაში · კურსი · ადგილი (§6.1 → §25.1) ---------- */
+          if (FAVORITE_ONLY_MODULES.has(m.key)) return moduleSection(m, favoriteSections)
+
+          /* ---------- სიმღერები: „ყველა" · „რჩეული" · პლეილისტები (§2.7 → §5.3) ----------
+             ⚠️ ჟანრების სია აქ აღარაა — ფილტრების პანელშია; პლეილისტები
+             სიმღერების ქვე-სექციაა (2026-09-03), ე.ი. მოდულის რიგი მათზეც ინთება. */
           if (m.key === 'song') {
-            const onSongs = location.pathname === m.route_base
-            const sectionOpen = !!open.song
-
-            /* „ყველა" · „რჩეული" (Tasks §2.7 → §5.3).
-               ⚠️ **ჟანრების სია აქ აღარაა** — ფილტრების პანელშია; საიდბარში
-               მხოლოდ „ჟანრის მართვა" და პლეილისტები რჩება. */
-            const sections: VideoSection[] = [
-              { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-              { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
-            ]
-
-            const activeSection = !onSongs ? null : videoView === 'favorite' ? 'favorite' : 'all'
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, song: !o.song }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onSongs || location.pathname.startsWith('/playlists')
-                      ? MODULE_ROW_ACTIVE
-                      : MODULE_ROW_IDLE,
-                  )}
+            return moduleSection(m, favoriteSections, {
+              active: location.pathname === m.route_base || location.pathname.startsWith('/playlists'),
+              extra: (
+                <Link
+                  to="/playlists"
+                  onClick={() => setDrawerOpen(false)}
+                  className={subRow(location.pathname.startsWith('/playlists'))}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    {/* პლეილისტები სიმღერების ქვე-სექციაა (2026-09-03) */}
-                    <Link
-                      to="/playlists"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname.startsWith('/playlists'))}
-                    >
-                      <ListMusic className="size-4 shrink-0" />
-                      {t('playlists.title')}
-                    </Link>
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
+                  <ListMusic className="size-4 shrink-0" />
+                  {t('playlists.title')}
+                </Link>
+              ),
+            })
           }
 
-          /* ---------- წიგნები: „ყველა" · სტატუსები · „რჩეული" (Tasks §12) ----------
-             ⚠️ ჟანრები აქ **განზრახ არაა**: წიგნის მთავარი ღერძი კითხვის
-             სტატუსია (როგორც ფილმებზე), ჟანრი კი ფილტრების პანელშია. */
-          if (m.key === 'book') {
-            const onBooks = location.pathname === m.route_base
-            const sectionOpen = !!open.book
-
-            /* ⚠️ **სტატუსები აქ განზრახ არ არის** (Tasks §6.1): წიგნზე,
-               ბორდგეიმზე და თამაშზე გვერდითი მენიუ მხოლოდ „ყველა · რჩეული ·
-               დამატებაა" — შეგნებული გადახრა საერთო წესიდან, user-ის
-               მითითებით. სტატუსით ჭრა ფილტრების პანელში რჩება. */
-            const sections: VideoSection[] = [
-              { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-              { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
-            ]
-
-            const activeSection = !onBooks ? null : (params.get('view') ?? 'all')
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, book: !o.book }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onBooks ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                  )}
-                >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          /* ---------- ბორდგეიმები: „ყველა" · სტატუსები · „რჩეული" (Tasks §14) ----------
-             იგივე წესი, რაც წიგნებზე: ჟანრი ფილტრების პანელშია, სექციები კი
-             სტატუსებია („მაქვს" ყველაზე ხშირად საჭირო ხედია). */
-          if (m.key === 'board_game') {
-            const onGames = location.pathname === m.route_base
-            const sectionOpen = !!open.board_game
-
-            const sections: VideoSection[] = [
-              { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-              { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
-            ]
-
-            const activeSection = !onGames ? null : (params.get('view') ?? 'all')
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, board_game: !o.board_game }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onGames ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                  )}
-                >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          /* ---------- თამაშები: „ყველა" · სტატუსები · „რჩეული" (Tasks §11) ----------
-             იგივე წესი, რაც წიგნებსა და ბორდგეიმებზე: ჟანრი ფილტრების პანელშია,
-             სექციები კი სტატუსებია („ვთამაშობ" ყველაზე ხშირად საჭირო ხედია). */
-          if (m.key === 'game') {
-            const onGames = location.pathname === m.route_base
-            const sectionOpen = !!open.game
-
-            const sections: VideoSection[] = [
-              { id: 'all', label: t('filter.all'), icon: 'LayoutGrid', search: '' },
-              { id: 'favorite', label: t('filter.favorite'), icon: 'Star', search: 'view=favorite' },
-            ]
-
-            const activeSection = !onGames ? null : (params.get('view') ?? 'all')
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, game: !o.game }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onGames ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                  )}
-                >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          /* ---------- ჩანაწერები: „ყველა" · სტატუსები · „რჩეული" (Tasks §13) ----------
-             იგივე წესი, რაც წიგნებზე: კატეგორია ფილტრების პანელშია, სექციები
-             კი სტატუსებია („ღია" ყველაზე ხშირად საჭირო ხედია). */
+          /* ---------- ჩანაწერები: სექციები ლექსიკონიდან + შეხსენებები (§13 → §6.4) ----------
+             ეტაპი 11.2 — შეხსენებებს თავისი სექცია აქვს (ჩანაწერის ფორმიდან ის
+             მთლიანად მოიხსნა; პლეილისტების პრეცედენტი). */
           if (m.key === 'note') {
-            const onNotes = location.pathname === m.route_base
-            const sectionOpen = !!open.note
-
-            // §6.4 — სექციები ლექსიკონიდან და აღარ `NOTE_STATUSES`-იდან
-            const sections = sectionsFor('note')
-
-            const activeSection = !onNotes ? null : (params.get('view') ?? 'all')
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, note: !o.note }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onNotes ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                  )}
+            return moduleSection(m, sectionsFor('note'), {
+              extra: (
+                <Link
+                  to="/notes/reminders"
+                  onClick={() => setDrawerOpen(false)}
+                  className={subRow(location.pathname === '/notes/reminders')}
                 >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    {/* ეტაპი 11.2 — შეხსენებებს თავისი სექცია აქვს (ჩანაწერის
-                        ფორმიდან ის მთლიანად მოიხსნა; პლეილისტების პრეცედენტი) */}
-                    <Link
-                      to="/notes/reminders"
-                      onClick={() => setDrawerOpen(false)}
-                      className={subRow(location.pathname === '/notes/reminders')}
-                    >
-                      <BellRing className="size-4 shrink-0" />
-                      {t('notes.remindersTitle')}
-                    </Link>
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
+                  <BellRing className="size-4 shrink-0" />
+                  {t('notes.remindersTitle')}
+                </Link>
+              ),
+            })
           }
 
-          /* ---------- ბუკმარკები: „ყველა" · სტატუსები · „რჩეული" (Tasks §18) ----------
-             იგივე წესი, რაც ჩანაწერებზე: კატეგორია ფილტრების პანელშია, სექციები
-             კი სტატუსებია („წასაკითხი" ყველაზე ხშირად საჭირო ხედია). */
-          if (m.key === 'bookmark') {
-            const onBookmarks = location.pathname === m.route_base
-            const sectionOpen = !!open.bookmark
+          /* ---------- ბუკმარკები: სექციები ლექსიკონიდან (§18 → §6.4) ---------- */
+          if (m.key === 'bookmark') return moduleSection(m, sectionsFor('bookmark'))
 
-            // §6.4 — სექციები ლექსიკონიდან და აღარ `BOOKMARK_STATUSES`-იდან
-            const sections = sectionsFor('bookmark')
-
-            const activeSection = !onBookmarks ? null : (params.get('view') ?? 'all')
-
-            return (
-              <div key={m.key} style={modAccent(m.color)}>
-                <button
-                  onClick={() => setOpen((o) => ({ ...o, bookmark: !o.bookmark }))}
-                  aria-expanded={sectionOpen}
-                  className={cn(
-                    MODULE_ROW,
-                    onBookmarks ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                  )}
-                >
-                  <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                  <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                  />
-                </button>
-
-                {sectionOpen && (
-                  <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                    {sections.map((sec) => (
-                      <button
-                        key={sec.id}
-                        onClick={() => {
-                          navigate({ pathname: m.route_base, search: sec.search })
-                          setDrawerOpen(false)
-                        }}
-                        className={subRow(activeSection === sec.id)}
-                      >
-                        <ModuleIcon name={sec.icon} className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate">{sec.label}</span>
-                      </button>
-                    ))}
-                    <Link
-                      to={`${m.route_base}?new=1`}
-                      onClick={() => setDrawerOpen(false)}
-                      className={SUB_ADD}
-                    >
-                      <Plus className="size-4 shrink-0" />
-                      {t('actions.addShort')}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
-          }
+          /* ---------- ვიდეოები: სექციები ლექსიკონიდან (§2.7 → §6.4 → ეტაპი 8) ----------
+             ⚠️ ტიპების სია და „ტიპების მართვა" აქ აღარაა (ლექსიკონი `/dictionaries`-შია);
+             „ჩამოტვირთულები" ფსევდო-განყოფილებაა (`PSEUDO_SECTIONS.video`) და
+             „რჩეულის" მსგავსად დამალვადი და გადასატანია. */
+          if (m.key === 'video') return moduleSection(m, sectionsFor('video'))
 
           /* ---------- გალერეა: ქვე-მენიუ (Tasks §8.5) ----------
              ⚠️ **§4.5-ში ქვე-პუნქტი მართლაც აღარ იყო** (ერთადერთი „თემების
@@ -853,89 +601,25 @@ export function Sidebar({
             )
           }
 
-          if (m.key !== 'video') {
-            return (
-              <Link
-                key={m.key}
-                to={m.route_base}
-                style={modAccent(m.color)}
-                onClick={() => setDrawerOpen(false)}
-                className={cn(
-                  MODULE_ROW,
-                  // ქვე-გვერდზეც აქტიური რჩება (მაგ. `/gallery/movie/12` — Tasks 10)
-                  location.pathname === m.route_base ||
-                    location.pathname.startsWith(`${m.route_base}/`)
-                    ? MODULE_ROW_ACTIVE
-                    : MODULE_ROW_IDLE,
-                )}
-              >
-                <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                {moduleName(m, i18n.language)}
-              </Link>
-            )
-          }
-
-          const onVideos = location.pathname === m.route_base
-          const sectionOpen = !!open.video
-
-          /* „ყველა" · „რჩეული" (Tasks §2.7 → §5.4).
-             ⚠️ **ტიპების სრული სია აქ აღარაა** — ის ლექსიკონია და ფილტრების
-             პანელს ეკუთვნის; **„ტიპების მართვაც" აღარაა** (2026-09-15) —
-             ლექსიკონი `/dictionaries`-შია. ერთი წესი ყველა მოდულზე:
-             ყველა → სტატუსები → რჩეული → დამატება. */
-          /* §6.4 — ვიდეოსაც სტატუსები აქვს; „ჩამოწერილები" მათ შორის ჯდება.
-             §7.1 — ჩამოწერილები **ცალკე სექციაცაა და საერთო სიაშიც რჩება**
-             (თასქის პირობა): აქ მხოლოდ ისინი ჩანს, „ყველაში" კი ხატულით
-             გამოირჩევა, ე.ი. ერთი შეხედვით ჩანს, რომელია ლოკალური. */
-          // ეტაპი 8 — „ჩამოწერილები" ფსევდო-განყოფილებაა (`PSEUDO_SECTIONS.video`):
-          // „რჩეულის" მსგავსად დამალვადი და გადასატანი
-          const sections = sectionsFor('video')
-
-          const activeSection = !onVideos ? null : (params.get('view') ?? 'all')
-
+          /* ---------- სხვა მოდული — ჩვეულებრივი ბმული ---------- */
           return (
-            <div key={m.key} style={modAccent(m.color)}>
-              <button
-                onClick={() => setOpen((o) => ({ ...o, video: !o.video }))}
-                aria-expanded={sectionOpen}
-                className={cn(
-                  MODULE_ROW,
-                  onVideos ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE,
-                )}
-              >
-                <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
-                <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
-                <ChevronDown
-                  className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')}
-                />
-              </button>
-
-              {sectionOpen && (
-                <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
-                  {sections.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        navigate({ pathname: m.route_base, search: s.search })
-                        setDrawerOpen(false)
-                      }}
-                      className={subRow(activeSection === s.id)}
-                    >
-                      <ModuleIcon name={s.icon} className="size-4 shrink-0" />
-                      <span className="min-w-0 truncate">{s.label}</span>
-                    </button>
-                  ))}
-                  <Link
-                    to={`${m.route_base}?new=1`}
-                    onClick={() => setDrawerOpen(false)}
-                    className={SUB_ADD}
-                  >
-                    <Plus className="size-4 shrink-0" />
-                    {t('actions.addShort')}
-                  </Link>
-                </div>
+            <Link
+              key={m.key}
+              to={m.route_base}
+              style={modAccent(m.color)}
+              onClick={() => setDrawerOpen(false)}
+              className={cn(
+                MODULE_ROW,
+                // ქვე-გვერდზეც აქტიური რჩება (მაგ. `/gallery/movie/12` — Tasks 10)
+                location.pathname === m.route_base ||
+                  location.pathname.startsWith(`${m.route_base}/`)
+                  ? MODULE_ROW_ACTIVE
+                  : MODULE_ROW_IDLE,
               )}
-            </div>
+            >
+              <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
+              {moduleName(m, i18n.language)}
+            </Link>
           )
         })}
 

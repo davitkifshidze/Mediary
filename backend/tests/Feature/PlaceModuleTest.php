@@ -13,6 +13,7 @@ use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -126,6 +127,71 @@ class PlaceModuleTest extends TestCase
         $this->assertNotNull($res->json('data.lat'));
         $this->assertSame(0.0, (float) $res->json('data.lat'));
         $this->assertSame(0.0, (float) $res->json('data.lng'));
+    }
+
+    /**
+     * **„ჩემი შეფასება" — მთელი რიცხვი 1-დან 10-მდე** (Tasks §25.2).
+     *
+     * ⚠️ ფორმა ახლა ამრჩევია (`RatingSelect`), ე.ი. 7.5 ან 0 მხოლოდ ხელით
+     * დაწერილ რექვესთს შეუძლია — და ის დანარჩენი ოთხი მოდულის წესით 422-ია.
+     */
+    public function test_the_rating_is_a_whole_number_from_one_to_ten(): void
+    {
+        $this->postJson('/api/places', $this->payload(['rating' => 7]))
+            ->assertStatus(201)
+            // ⚠️ რიცხვად — `decimal:1` cast-ი "7.0"-ს აბრუნებდა
+            ->assertJsonPath('data.rating', 7);
+
+        foreach ([7.5, 0, 11] as $bad) {
+            $this->postJson('/api/places', $this->payload(['rating' => $bad]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['rating']);
+        }
+    }
+
+    /** ⚡ §4.8 — გასუფთავება სერვერამდე მიდის: ცარიელი მნიშვნელობა ქულას შლის */
+    public function test_clearing_the_rating_reaches_the_server(): void
+    {
+        $id = $this->postJson('/api/places', $this->payload(['rating' => 9]))->json('data.id');
+
+        // SPA-ის გზა: multipart + `_method=PUT`, „შეფასების გარეშე" ცარიელ სტრიქონად
+        $this->post("/api/places/{$id}", $this->payload(['_method' => 'PUT', 'rating' => '']))
+            ->assertOk()
+            ->assertJsonPath('data.rating', null);
+
+        $this->assertNull(Place::findOrFail($id)->rating);
+    }
+
+    /**
+     * **მიგრაცია წილადს ამრგვალებს, 1-ზე ნაკლებს კი 1-ად აქცევს** (§25.2).
+     *
+     * ⚠️ 0 ძველ შკალაზე „ყველაზე ცუდი" იყო და არა „შეუფასებელი" — `null`
+     * მომხმარებლის განაჩენს წაშლიდა.
+     */
+    public function test_the_migration_rounds_old_fractional_ratings(): void
+    {
+        $category = $this->category()->id;
+
+        $ids = [];
+        foreach (['a' => 7.5, 'b' => 7.4, 'c' => 0.3, 'd' => null, 'e' => 10.0] as $name => $rating) {
+            $ids[$name] = Place::create([
+                'user_id' => $this->user->id,
+                'name' => $name,
+                'status' => 'to_visit',
+                'category_id' => $category,
+            ])->id;
+            // ⚠️ ცხრილში პირდაპირ — მოდელის `integer` cast-ი წილადს ჩაწერამდე მოჭრიდა
+            DB::table('places')->where('id', $ids[$name])->update(['rating' => $rating]);
+        }
+
+        (require database_path('migrations/2026_09_27_000010_make_place_rating_integer.php'))->up();
+
+        $after = fn (string $name) => DB::table('places')->where('id', $ids[$name])->value('rating');
+        $this->assertSame(8, (int) $after('a'));
+        $this->assertSame(7, (int) $after('b'));
+        $this->assertSame(1, (int) $after('c'));
+        $this->assertNull($after('d'));
+        $this->assertSame(10, (int) $after('e'));
     }
 
     /**

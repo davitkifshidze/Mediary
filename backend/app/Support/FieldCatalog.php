@@ -96,10 +96,10 @@ final class FieldCatalog
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 60],
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 70],
         ],
-        /* ⚠️ §5.3 — „ჩემი ქულა" (`rating`) კატალოგიდან **მოხსნილია** 2026-09-10-ს:
-           ველი ფორმიდან წავიდა, ე.ი. მისი ჩამრთველი აღარაფერს აკეთებდა
-           („toggle, რომელიც არაფერს ცვლის, უარესია, ვიდრე მისი არქონა").
-           სვეტი და ძველი მნიშვნელობები რჩება — სიაში ისინი ისევ ჩანს. */
+        /* ⚠️ §5.3 → Tasks §25.4 — „ჩემი ქულა" (`rating`) 2026-09-10-ს კატალოგიდან
+           მოიხსნა, რადგან ველი ფორმიდან წავიდა (ჩამრთველი აღარაფერს აკეთებდა).
+           2026-09-27-ს ის **დაბრუნდა** — ერთი ამრჩევით (`RatingSelect`) ხუთივე
+           ფორმაში (Q17): ადგილი, წიგნი, თამაში, სამაგიდო და სიმღერა. */
         'song' => [
             ['key' => 'url', 'type' => 'link', 'locked' => true, 'sort_order' => 10],
             ['key' => 'title', 'type' => 'text', 'sort_order' => 20],
@@ -108,6 +108,8 @@ final class FieldCatalog
             ['key' => 'year', 'type' => 'number', 'sort_order' => 50],
             ['key' => 'duration', 'type' => 'number', 'sort_order' => 60],
             ['key' => 'genres', 'type' => 'list', 'sort_order' => 70],
+            // Tasks §25.4 — „ჩემი ქულა" 1–10 (`RatingSelect`)
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 75],
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 80],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 90],
             ['key' => 'playlists', 'type' => 'list', 'sort_order' => 100],
@@ -126,15 +128,19 @@ final class FieldCatalog
             // ⚠️ ტექსტის ნაცვლად მოდალის ღილაკია (§5.1) — ველი მაინც ველია
             ['key' => 'franchise', 'type' => 'text', 'sort_order' => 70],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 90],
+            /* Tasks §25.4 — „ჩემი ქულა" ბრუნდება (§5.1-მა ქულების ბლოკთან ერთად
+               მოხსნა); OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება */
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 95],
             ['key' => 'rawg_id', 'type' => 'number', 'sort_order' => 100],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 110],
             // ინტერფეისი / ხმა / სუბტიტრები — ერთი ველი სამივე სიისთვის
             ['key' => 'cover', 'type' => 'file', 'sort_order' => 130],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 140],
         ],
-        /* ⚠️ §5.7 — `isbn` და `rating` კატალოგიდან **მოხსნილია** 2026-09-10-ს:
-           ორივე ველი ფორმიდან წავიდა („ველების სია მკაცრად შემოკლდეს"), ე.ი.
-           მათი ჩამრთველი აღარაფერს აკეთებდა. სვეტები და მონაცემი რჩება. */
+        /* ⚠️ §5.7 — `isbn` კატალოგიდან **მოხსნილია** 2026-09-10-ს: ველი ფორმიდან
+           წავიდა („ველების სია მკაცრად შემოკლდეს"), ე.ი. მისი ჩამრთველი
+           აღარაფერს აკეთებდა. სვეტი და მონაცემი რჩება. `rating` მაშინ იმავე
+           მიზეზით წავიდა და Tasks §25.4-ით (Q17) დაბრუნდა. */
         'book' => [
             ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
             ['key' => 'author', 'type' => 'text', 'sort_order' => 20],
@@ -144,6 +150,8 @@ final class FieldCatalog
             // ⚠️ `key` **არ იცვლება** (Tasks §6.1) — გასაღების ცვლილება ყველა
             // მომხმარებლის `module_user.settings.fields` overrides-ს ობოლს ტოვებს
             ['key' => 'language', 'type' => 'select', 'sort_order' => 60],
+            // Tasks §25.4 — „ჩემი ქულა" 1–10 (`RatingSelect`)
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 65],
             ['key' => 'source_url', 'type' => 'link', 'sort_order' => 70],
             // ⚠️ **ფორმატი პროგრესის ერთეულს წყვეტს** (`Book::syncProgress()`:
             // აუდიოწიგნზე მხოლოდ პროცენტია), ე.ი. მისი დამალვა გააზრებული
@@ -163,6 +171,8 @@ final class FieldCatalog
             ['key' => 'playtime', 'type' => 'number', 'sort_order' => 60],
             ['key' => 'age', 'type' => 'number', 'sort_order' => 70],
             ['key' => 'complexity', 'type' => 'number', 'sort_order' => 80],
+            // Tasks §25.4 — „ჩემი ქულა" 1–10; BGG-ის ქულა (`bgg_rating`) ცალკეა
+            ['key' => 'rating', 'type' => 'number', 'sort_order' => 85],
             ['key' => 'bgg_id', 'type' => 'number', 'sort_order' => 90],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 110],
             ['key' => 'links', 'type' => 'list', 'sort_order' => 130],

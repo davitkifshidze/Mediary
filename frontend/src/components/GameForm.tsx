@@ -8,6 +8,7 @@ import {
   fetchRawgDraft,
   GAME_LINK_KINDS,
   GAME_LINK_STORES,
+  GAME_MAX_RATING,
   GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
@@ -45,6 +46,7 @@ import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
+import { RatingSelect } from '@/components/ui/rating-select'
 
 /* ============================================================
    თამაშის ფორმა (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -54,7 +56,8 @@ import { InfoHint } from '@/components/ui/info-hint'
    ზომა · ქართული აღწერა · **ქულების ბლოკი** (OpenCritic, მოთამაშეების
    ქულა, ჩემი ქულა). ⚠️ **Tasks §13 (2026-09-27)** — Metacritic, HLTB, ენები
    და DLC-ის ბლოკი **მთლიანად** ამოვიდა (სვეტიც), ე.ი. ქვემოთი „state-ში
-   განზრახ რჩება" მათ აღარ ეხება.
+   განზრახ რჩება" მათ აღარ ეხება. **Tasks §25.4 (Q17)** — „ჩემი ქულა"
+   ფორმაზე ბრუნდება (`RatingSelect`, ხუთივე ფორმის ერთი ამრჩევი).
 
    ⚠️ **მონაცემი არსად წაშლილა**: ამოღებული ველები `state`-ში და payload-ში
    **განზრახ** რჩება (წიგნების §5.7-ის ზუსტი პრეცედენტი) — თორემ ძველი
@@ -133,7 +136,8 @@ export function GameForm({
     my_platform: game?.my_platform ?? '',
     opencritic: game?.opencritic != null ? String(game.opencritic) : '',
     users_score: game?.users_score != null ? String(game.users_score) : '',
-    rating: game?.rating != null ? String(game.rating) : '',
+    // Tasks §25.4 — რიცხვი ან `null` (`RatingSelect`)
+    rating: game?.rating ?? null,
     age_rating: game?.age_rating ?? '',
     size_gb: game?.size_gb != null ? String(game.size_gb) : '',
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
@@ -319,7 +323,7 @@ export function GameForm({
       genre_ids: genreIds,
       opencritic: num(form.opencritic),
       users_score: num(form.users_score),
-      rating: num(form.rating),
+      rating: form.rating,
       age_rating: form.age_rating || null,
       size_gb: num(form.size_gb),
       links: unkeyRows(links.filter((l) => l.url.trim())),
@@ -562,12 +566,12 @@ export function GameForm({
           </div>
         </div>
 
-        {/* ⚠️ §5.1 — ქულების ბლოკი (OpenCritic · მოთამაშეების ქულა · ჩემი ქულა)
-            ფორმიდან მოიხსნა; RAWG-ის ქულები payload-ში ისევ მიდის. Metacritic
-            Tasks §13-ით მთლიანად ამოვიდა. */}
+        {/* ⚠️ §5.1 — ქულების ბლოკი (OpenCritic · მოთამაშეების ქულა) ფორმიდან
+            მოიხსნა; RAWG-ის ქულები payload-ში ისევ მიდის. Metacritic Tasks §13-ით
+            მთლიანად ამოვიდა. „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით. */}
 
-        {/* ---------- სტატუსი / დამატებითი ---------- */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        {/* ---------- სტატუსი / ქულა / დამატებითი ---------- */}
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className={fields.shows('status') ? undefined : 'hidden'}>
             <FieldLabel htmlFor="g-status" required={fields.required('status')} hint={fields.hint('status')}>
               {fields.label('status')}
@@ -591,6 +595,19 @@ export function GameForm({
               </SelectContent>
             </Select>
             {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
+          </div>
+          <div className={fields.shows('rating') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="g-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+              {fields.label('rating')}
+            </FieldLabel>
+            <RatingSelect
+              id="g-rating"
+              max={GAME_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
+            />
+            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
           </div>
           <div className={fields.shows('rawg_id') ? undefined : 'hidden'}>
             <FieldLabel htmlFor="g-rawg" required={fields.required('rawg_id')} hint={fields.hint('rawg_id')}>

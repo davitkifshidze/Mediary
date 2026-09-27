@@ -49,6 +49,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
@@ -540,6 +541,8 @@ function SongForm({
     year: song?.year ? String(song.year) : '',
     url: song?.url ?? '',
     tags: song?.tags ?? [],
+    // Tasks §25.4 — „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
+    rating: song?.rating ?? null,
   })
   // ჟანრები **მრავალია** (`DECISIONS.md` §5) — ჩიპებით ირჩევა, თამაშის ნიმუშით
   const [genreIds, setGenreIds] = useState<number[]>(song?.genre_ids ?? [])
@@ -668,8 +671,8 @@ function SongForm({
       album: form.album || null,
       year: form.year ? Number(form.year) : null,
       genre_ids: genreIds,
-      // ⚠️ §5.3 — „ჩემი ქულა" ფორმიდან მოიხსნა და **აღარ იგზავნება**: ცარიელი
-      // მნიშვნელობა არსებულ ქულას ჩუმად წაშლიდა (ძველი ჩანაწერები ისევ ჩანს)
+      // Tasks §25.4 — ქულა ისევ ფორმაზეა, ე.ი. `null` („გარეშე") მას ასუფთავებს
+      rating: form.rating,
       duration,
       tags,
       thumbnail,
@@ -794,6 +797,19 @@ function SongForm({
               onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
             />
             {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year}</p>}
+          </div>
+          <div className={fields.shows('rating') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="s-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+              {fields.label('rating')}
+            </FieldLabel>
+            <RatingSelect
+              id="s-rating"
+              max={SONG_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
+            />
+            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
           </div>
         </div>
 

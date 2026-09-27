@@ -465,7 +465,8 @@
     "lookupPlaceholderAnime": "Paste a ge.movie/IMDb link or an anime title",
     "lookupPickAnime": "Pick the right anime:",
     "lookupNotFoundAnime": "Anime not found",
-    "alreadyAddedAnime": "This anime is already in your collection"
+    "alreadyAddedAnime": "This anime is already in your collection",
+    "ratingNone": "No rating"
   },
   "detail": {
     "watch": "Watch",
@@ -1100,7 +1101,8 @@
         "rawg_id": "RAWG id",
         "links": "Links",
         "cover": "Main photo",
-        "description": "Description"
+        "description": "Description",
+        "rating": "My rating"
       },
       "book": {
         "publisher": "Publisher",
@@ -1131,7 +1133,8 @@
         "genre": "Genre",
         "links": "Shops",
         "image": "Main photo",
-        "description": "Description"
+        "description": "Description",
+        "rating": "My rating"
       },
       "note": {
         "due_at": "Needed by",
@@ -1202,7 +1205,6 @@
       },
       "song": {
         "album": "Which album it's from.",
-        "rating": "From 1 to 10.",
         "tags": "Your own labels, used for filtering.",
         "url": "YouTube · Vimeo · Dailymotion or a direct file."
       },
@@ -1210,12 +1212,12 @@
         "franchise": "The series it belongs to.",
         "age_rating": "e.g. PEGI 18.",
         "size_gb": "How much space it takes on disk.",
-        "rawg_id": "The source's id. Quick fill sets it for you."
+        "rawg_id": "The source's id. Quick fill sets it for you.",
+        "rating": "OpenCritic's and the players' scores are stored separately and aren't touched."
       },
       "book": {
         "publisher": "Who published it.",
         "isbn": "The international number — Open Library provides it too.",
-        "rating": "From 1 to 10.",
         "format": "This decides the unit of reading progress: an audiobook counts only percent, print counts pages too.",
         "source_url": "An external link (a shop, a library). It does not replace the uploaded file."
       },
@@ -1224,7 +1226,8 @@
         "publisher": "Who published it.",
         "complexity": "BGG's scale, 1 to 5.",
         "bgg_id": "BoardGameGeek's id. Quick fill sets it for you.",
-        "links": "A shop link and its price. ⚠️ The price belongs to the link, not to the record."
+        "links": "A shop link and its price. ⚠️ The price belongs to the link, not to the record.",
+        "rating": "BGG's own score is stored separately and isn't touched."
       },
       "note": {
         "due_at": "The deadline notes are sorted by.",

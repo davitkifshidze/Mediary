@@ -217,7 +217,8 @@ class PlaceController extends Controller
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
             'status' => [...$must, Rule::in(Place::STATUSES)],
-            'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            // Tasks §25.2 — მთელი 1–10, დანარჩენი ოთხი მოდულის ზუსტი წესი
+            'rating' => ['nullable', 'integer', 'min:1', 'max:'.Place::MAX_RATING],
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'visited_at' => ['nullable', 'date'],

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Check, Loader2, Plus, Search, Store, X } from 'lucide-react'
 import {
+  BOARD_GAME_MAX_RATING,
   createBoardGame,
   fetchBggCandidates,
   fetchBggDraft,
@@ -36,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { InfoHint } from '@/components/ui/info-hint'
+import { RatingSelect } from '@/components/ui/rating-select'
 
 /* ============================================================
    ბორდგეიმის ფორმა (Tasks §14).
@@ -81,6 +83,8 @@ export function BoardGameForm({
     complexity: game?.complexity ? String(game.complexity) : '',
     bggId: game?.bgg_id ? String(game.bgg_id) : '',
     bggRating: game?.bgg_rating ? String(game.bgg_rating) : '',
+    // Tasks §25.4 — „ჩემი ქულა" ბრუნდება: რიცხვი ან `null` (`RatingSelect`)
+    rating: game?.rating ?? null,
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
   })
   /* ⚠️ სტრიქონს **საკუთარი გასაღები** აქვს და არა ინდექსი (Tasks BUG-11):
@@ -282,8 +286,8 @@ export function BoardGameForm({
       complexity: num(form.complexity),
       bgg_id: num(form.bggId),
       bgg_rating: num(form.bggRating),
-      // ⚠️ §5.2 — „ჩემი ქულა" ფორმიდან მოიხსნა და **საერთოდ აღარ იგზავნება**:
-      // ცარიელი მნიშვნელობის გაგზავნა არსებულ ქულას ჩუმად წაშლიდა
+      // Tasks §25.4 — ფორმაზე ისევ ჩანს, ე.ი. `null` („გარეშე") ქულას ასუფთავებს
+      rating: form.rating,
       links: unkeyRows(links.filter((l) => l.url.trim())),
       bgg_image_url: bggImageUrl,
       image,
@@ -607,6 +611,20 @@ export function BoardGameForm({
               onChange={(e) => setForm((f) => ({ ...f, bggId: e.target.value }))}
             />
             {errors.bgg_id && <p className="mt-1 text-xs text-destructive">{errors.bgg_id}</p>}
+          </div>
+          {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
+          <div className={fields.shows('rating') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="bg-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+              {fields.label('rating')}
+            </FieldLabel>
+            <RatingSelect
+              id="bg-rating"
+              max={BOARD_GAME_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
+            />
+            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
           </div>
         </div>
 

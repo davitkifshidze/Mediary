@@ -131,9 +131,13 @@ function toFormData(input: BookInput): FormData {
   })
 
   const numbers: (keyof BookInput)[] = ['year', 'pages', 'genre_id', 'series_number', 'rating']
+  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+     იგზავნება და მხოლოდ `undefined` („არ შეეხო“) რჩება გამოტოვებული; ადრე
+     გასუფთავებული რიცხვი (ქულა, წელი…) საერთოდ არ იგზავნებოდა და შენახვის
+     შემდეგ ძველი უკან ბრუნდებოდა. */
   numbers.forEach((key) => {
     const value = input[key]
-    if (value != null) fd.append(key, String(value))
+    if (value !== undefined) fd.append(key, value == null ? '' : String(value))
   })
 
   if (input.format) fd.append('format', input.format)

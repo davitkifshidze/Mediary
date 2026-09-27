@@ -16,6 +16,9 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 
 export const PLACE_STATUSES = ['to_visit', 'visited'] as const
 
+/** „ჩემი შეფასების" ჭერი — იგივე რიცხვი `Place::MAX_RATING`-შია (Tasks §25.2) */
+export const PLACE_MAX_RATING = 10
+
 export type PlaceStatus = (typeof PLACE_STATUSES)[number]
 
 export const PLACE_FILE_KINDS = ['image', 'doc'] as const
@@ -50,7 +53,8 @@ export interface Place {
   category?: PlaceCategory | null
   tags: string[]
   status: PlaceStatus
-  rating: string | null
+  /** Tasks §25.2 — მთელი რიცხვი 1–10 (ადრე `decimal(3,1)` სტრიქონად) */
+  rating: number | null
   is_favorite: boolean
   visited_at: string | null
   photo: string | null

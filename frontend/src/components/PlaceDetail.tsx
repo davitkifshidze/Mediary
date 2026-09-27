@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Image as ImageIcon, Loader2, Map as MapIcon, MapPin, Upload } from 'lucide-react'
 import {
   PLACE_FILE_KINDS,
+  PLACE_MAX_RATING,
   deletePlaceFile,
   fetchPlaceFiles,
   uploadPlaceFiles,
@@ -159,7 +160,11 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <EnumStatusBadge domain="place" status={place.status} />
-            {place.rating && <Badge className="bg-secondary">★ {place.rating}</Badge>}
+            {place.rating != null && (
+              <Badge className="bg-secondary tabular-nums">
+                {place.rating}/{PLACE_MAX_RATING}
+              </Badge>
+            )}
             {place.visited_at && (
               <span className="text-sm text-muted-foreground">
                 {t('places.visitedOn', { date: formatDate(place.visited_at) })}

@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import {
+  PLACE_MAX_RATING,
   PLACE_STATUSES,
   createPlace,
   deletePlace,
@@ -61,6 +62,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel } from '@/components/ui/field-label'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
@@ -324,7 +326,11 @@ export function PlacesPage() {
                           {place.name}
                         </button>
                         <EnumStatusBadge domain="place" status={place.status} />
-                        {place.rating && <Badge className="bg-secondary">★ {place.rating}</Badge>}
+                        {place.rating != null && (
+                          <Badge className="bg-secondary tabular-nums">
+                            {place.rating}/{PLACE_MAX_RATING}
+                          </Badge>
+                        )}
                         <VisibilityBadge value={place.visibility} />
                       </div>
 
@@ -566,7 +572,8 @@ function PlaceForm({
     // პასუხი არჩევანი არაა (2026-09-16-ის წესი)
     categoryId: place?.category_id ? String(place.category_id) : '',
     status: (place?.status ?? '') as PlaceStatus | '',
-    rating: place?.rating ?? '',
+    // Tasks §25.2 — რიცხვი ან `null` (`RatingSelect`)
+    rating: place?.rating ?? null,
     visitedAt: place?.visited_at ?? '',
     tags: place?.tags ?? [],
   })
@@ -669,7 +676,8 @@ function PlaceForm({
       description: form.description || null,
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status as PlaceStatus,
-      rating: form.rating ? Number(form.rating) : null,
+      // §25.3 — `null` („გარეშე") სერვერამდე ცარიელ სტრიქონად მიდის და ქულას შლის
+      rating: form.rating,
       visited_at: form.visitedAt || null,
       tags,
       photo,
@@ -805,16 +813,18 @@ function PlaceForm({
           </div>
 
           <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="p-rating">{fields.label('rating')}</FieldLabel>
-            <Input
+            <FieldLabel htmlFor="p-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+              {fields.label('rating')}
+            </FieldLabel>
+            {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
+            <RatingSelect
               id="p-rating"
-              type="number"
-              min={0}
-              max={10}
-              step="0.1"
+              max={PLACE_MAX_RATING}
               value={form.rating}
-              onChange={(e) => setForm((f) => ({ ...f, rating: e.target.value }))}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
             />
+            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
           </div>
 
           <div className={fields.shows('visited_at') ? undefined : 'hidden'}>

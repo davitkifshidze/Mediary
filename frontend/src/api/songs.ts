@@ -85,15 +85,22 @@ function toFormData(input: SongInput): FormData {
   fd.append('url', input.url)
   fd.append('artist', input.artist ?? '')
   fd.append('album', input.album ?? '')
-  if (input.year != null) fd.append('year', String(input.year))
+  /* Tasks §25.3 (§4.8-ის წესი) — `null` („გაასუფთავე“) ცარიელ სტრიქონად
+     იგზავნება, `undefined` („არ შეეხო“) — არა; ადრე გასუფთავებული წელი,
+     ხანგრძლივობა და ქულა შენახვის შემდეგ უკან ბრუნდებოდა. */
+  const number = (key: 'year' | 'duration' | 'rating') => {
+    const value = input[key]
+    if (value !== undefined) fd.append(key, value == null ? '' : String(value))
+  }
+  number('year')
   // ⚠️ ცარიელ მასივსაც ვგზავნით (`genre_ids` გასაღებით), თორემ ყველა ჟანრის
   // მოხსნა backend-ზე „ველი არ მოვიდა"-დ იკითხებოდა და ძველი რჩებოდა
   if (input.genre_ids) {
     if (input.genre_ids.length === 0) fd.append('genre_ids', '')
     input.genre_ids.forEach((id) => fd.append('genre_ids[]', String(id)))
   }
-  if (input.duration != null) fd.append('duration', String(input.duration))
-  if (input.rating != null) fd.append('rating', String(input.rating))
+  number('duration')
+  number('rating')
   if (input.visibility) fd.append('visibility', input.visibility)
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)

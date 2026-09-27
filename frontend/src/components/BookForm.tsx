@@ -5,6 +5,7 @@ import { Loader2, Plus, Search } from 'lucide-react'
 import {
   BOOK_FORMATS,
   BOOK_LANGUAGES,
+  BOOK_MAX_RATING,
   BOOK_STATUSES,
   createBook,
   fetchBookCandidates,
@@ -35,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
+import { RatingSelect } from '@/components/ui/rating-select'
 
 /* ============================================================
    წიგნის ფორმა (Tasks §12).
@@ -79,7 +81,8 @@ export function BookForm({
     format: book?.format ?? 'print',
     // ⚠️ ცარიელით იწყება — არჩევანი მომხმარებლისაა, ნაგულისხმები აღარ იწერება
     status: book?.status ?? '',
-    rating: book?.rating ? String(book.rating) : '',
+    // Tasks §25.4 — რიცხვი ან `null` (`RatingSelect`), სტრიქონი აღარ
+    rating: book?.rating ?? null,
     tags: book?.tags ?? [],
     // §5.7 — ერთი „წყაროს / წასაკითხი ლინკი" (ადრე მხოლოდ ატვირთული ebook იყო)
     source_url: book?.source_url ?? '',
@@ -236,12 +239,13 @@ export function BookForm({
       // ⚠️ ზემოთი დაცვა უკვე დაადგინა, რომ ცარიელი არ არის — ეს მხოლოდ ტიპის დავიწროებაა
       status: form.status as (typeof BOOK_STATUSES)[number],
       source_url: form.source_url || null,
-      /* ⚠️ §5.7 — ეს სამი ველი **ფორმაზე აღარ ჩანს**, მაგრამ payload-ში რჩება
-         განზრახ: `rating`/`series_*` არსებულ ჩანაწერს რომ არ წაეშალოს
-         რედაქტირებაზე, `tags`/`isbn`/`description_en` კი Open Library-დან
+      /* ⚠️ §5.7 — `series_*`, `tags`, `isbn` და `description_en` **ფორმაზე
+         აღარ ჩანს**, მაგრამ payload-ში რჩება განზრახ: სერია არსებულ ჩანაწერს
+         რომ არ წაეშალოს რედაქტირებაზე, დანარჩენი კი Open Library-დან
          ივსება (ტეგების ფილტრი სწორედ ამით სუნთქავს). ცარიელი მნიშვნელობის
-         გაგზავნა ჩუმად წაშლიდა იმას, რაც წყარომ მოიტანა. */
-      rating: form.rating ? Number(form.rating) : null,
+         გაგზავნა ჩუმად წაშლიდა იმას, რაც წყარომ მოიტანა.
+         Tasks §25.4 — ქულა ისევ ფორმაზეა; `null` („გარეშე") ქულას ასუფთავებს. */
+      rating: form.rating,
       tags,
       links: links.filter((l) => l.url.trim()),
       openlibrary_id: openLibraryId || null,
@@ -432,7 +436,20 @@ export function BookForm({
               </SelectContent>
             </Select>
           </div>
-          {/* §5.7 — „ჩემი ქულა" ფორმიდან მოხსნილია (ძველი მნიშვნელობა რჩება) */}
+          {/* Tasks §25.4 — „ჩემი ქულა" ბრუნდება ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
+          <div className={fields.shows('rating') ? undefined : 'hidden'}>
+            <FieldLabel htmlFor="b-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+              {fields.label('rating')}
+            </FieldLabel>
+            <RatingSelect
+              id="b-rating"
+              max={BOOK_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
+            />
+            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
+          </div>
         </div>
 
         {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
