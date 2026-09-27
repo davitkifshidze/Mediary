@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Image as ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react'
+import { BookOpen, Download, ExternalLink, FileText, Paperclip, Trash2, Upload } from 'lucide-react'
 import {
+  BOOK_MAX_RATING,
   createBookNote,
   deleteBookFile,
   deleteBookNote,
@@ -18,15 +19,20 @@ import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { RecordNotes } from '@/components/RecordNotes'
+import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { EnumStatusBadge } from '@/components/StatusBadge'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
-import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { videoTypeName as dictionaryName } from '@/lib/display'
+import { useContentLang } from '@/lib/settings'
 import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
@@ -34,40 +40,155 @@ import { formatBytes } from '@/lib/utils'
 
    ცალკე გვერდის ნაცვლად მოდალია: სია ბიბლიოთეკის მთავარი ხედია და
    ჩანაწერზე დაბრუნება ერთი Esc-ია.
+
+   ⚠️ **რიგი §26.4-ით (თამაშის §22.2-ის წესი)**: თავში ყდა, სტატუსი, ჟანრი
+   და მოკლე ცნობები — აქამდე ფანჯარა მათ **საერთოდ არ აჩვენებდა**; მერე
+   კითხვის პროგრესი, ფოტოები, აღწერა, ბმულები, ფაილები და ციტატები.
+   ⚠️ ფოტოები ფაილების სიიდან ამოვიდა და ზემოთ ვიტრინად დგას — ერთი ფოტო
+   ორ ადგილას აღარ ჩანს.
    ============================================================ */
 
 export function BookDetail({ book, onClose }: { book: Book; onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+
+  const title = book.title_en || book.title_ka || '—'
+  const description =
+    lang === 'ka' ? book.description_ka || book.description_en : book.description_en || book.description_ka
+  // §5.7 — წყაროს ბმული + ძველი ჩანაწერის `links` (ფორმიდან მოხსნილი, მაგრამ შენახული)
+  const links = [
+    ...(book.source_url ? [{ label: t('fields.name.book.source_url'), url: book.source_url }] : []),
+    ...book.links,
+  ]
 
   return (
-    <ModalShell title={book.title_en || book.title_ka || '—'} onClose={onClose} wide>
+    <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
-            `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-        <div className="flex justify-end">
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-          <VisibilityBadge value={book.visibility} />
-        </div>
+        {/* ---------- თავი: ყდა, სტატუსი, ჟანრი, მოკლე ცნობები (§26.4) ---------- */}
+        <DetailHero
+          image={storageUrl(book.cover)}
+          alt={title}
+          fallback={<BookOpen className="size-8 text-muted-foreground" />}
+          badges={
+            <>
+              <EnumStatusBadge domain="book" status={book.status} />
+              {book.rating != null && (
+                <Badge className="bg-secondary tabular-nums">
+                  {book.rating}/{BOOK_MAX_RATING}
+                </Badge>
+              )}
+              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              <VisibilityBadge value={book.visibility} />
+            </>
+          }
+        >
+          {book.genre && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs">
+                <ModuleIcon name={book.genre.icon} className="size-3" />
+                {dictionaryName(book.genre, lang)}
+              </span>
+            </div>
+          )}
+          <DetailFacts>
+            {book.author && <span className="text-foreground">{book.author}</span>}
+            {book.publisher && <span>{book.publisher}</span>}
+            {book.year ? <span>{book.year}</span> : null}
+            {book.pages ? <span>{t('books.pagesShort', { count: book.pages })}</span> : null}
+            {book.language && (
+              <span>{t(`books.languages.${book.language}`, { defaultValue: book.language })}</span>
+            )}
+            <span>{t(`books.formats.${book.format}`)}</span>
+          </DetailFacts>
+        </DetailHero>
 
         <ProgressCard book={book} />
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            {t('books.filesTitle')}
-            <InfoHint info={t('books.filesHint')} />
-          </h3>
-          <FilesCard book={book} />
-        </section>
+        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        <Photos book={book} />
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            {t('books.notesTitle')}
-            <InfoHint info={t('books.notesHint')} />
-          </h3>
+        {description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>}
+
+        {links.length > 0 && (
+          <DetailSection title={t('books.linksTitle')}>
+            <ul className="space-y-1.5 text-sm">
+              {links.map((link, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate text-primary hover:text-primary/70"
+                  >
+                    {link.label || link.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        )}
+
+        <DetailSection title={t('books.filesTitle')} hint={t('books.filesHint')}>
+          <FilesCard book={book} />
+        </DetailSection>
+
+        <DetailSection title={t('books.notesTitle')} hint={t('books.notesHint')}>
           <NotesCard book={book} />
-        </section>
+        </DetailSection>
       </div>
     </ModalShell>
+  )
+}
+
+/* ---------- ფოტოები (§26.4) ---------- */
+
+/** ფაილების ატვირთვის/წაშლის შემდეგ — სია, კვოტა და ჰედერის ინდიკატორი (17.1) */
+function useBookFilesRefresh(book: Book) {
+  const qc = useQueryClient()
+
+  return () => {
+    qc.invalidateQueries({ queryKey: ['book-files', book.id] })
+    qc.invalidateQueries({ queryKey: ['books'] })
+    qc.invalidateQueries({ queryKey: ['storage'] })
+    qc.invalidateQueries({ queryKey: ['me'] })
+  }
+}
+
+function Photos({ book }: { book: Book }) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const done = useBookFilesRefresh(book)
+  const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
+
+  // ⚠️ იგივე query, რაც ფაილების სიას — ქეში ერთია, მოთხოვნა ერთხელ მიდის
+  const { data: files = [], isLoading } = useQuery({
+    queryKey: ['book-files', book.id],
+    queryFn: () => fetchBookFiles(book.id),
+  })
+
+  const upload = useMutation({
+    mutationFn: (picked: File[]) => uploadBookFiles(book.id, 'image', picked),
+    onSuccess: done,
+    onError: fail,
+  })
+  const remove = useMutation({ mutationFn: deleteBookFile, onSuccess: done, onError: fail })
+
+  return (
+    <DetailPhotos
+      title={t('books.photosTitle')}
+      hint={t('books.photosHint')}
+      items={files
+        .filter((file) => file.kind === 'image')
+        .map((file) => ({ id: file.id, src: file.url, title: file.original_name }))}
+      loading={isLoading}
+      uploading={upload.isPending}
+      onUpload={(picked) => upload.mutate(picked)}
+      onDelete={(id) => remove.mutate(id)}
+      uploadLabel={t('books.addPhotos')}
+      emptyTitle={t('books.photosEmpty')}
+      deleteTitle={t('books.photoDeleteTitle')}
+    />
   )
 }
 
@@ -163,29 +284,25 @@ function ProgressCard({ book }: { book: Book }) {
 
 /* ---------- ფაილები ---------- */
 
-const FILE_KINDS: BookFile['kind'][] = ['book', 'image', 'doc']
+/** ⚠️ ფოტოები აქ აღარაა — ზემოთ ვიტრინად დგას (§26.4) */
+const FILE_KINDS: BookFile['kind'][] = ['book', 'doc']
 
 function FilesCard({ book }: { book: Book }) {
   const { t } = useTranslation()
-  const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
 
   const [kind, setKind] = useState<BookFile['kind']>('book')
   const input = useRef<HTMLInputElement>(null)
 
-  const { data: files = [], isLoading } = useQuery({
+  const { data: all = [], isLoading } = useQuery({
     queryKey: ['book-files', book.id],
     queryFn: () => fetchBookFiles(book.id),
   })
+  const files = all.filter((file) => file.kind !== 'image')
 
-  const done = () => {
-    qc.invalidateQueries({ queryKey: ['book-files', book.id] })
-    qc.invalidateQueries({ queryKey: ['books'] })
-    // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
-    qc.invalidateQueries({ queryKey: ['storage'] })
-    qc.invalidateQueries({ queryKey: ['me'] })
-  }
+  // 17.1 — ატვირთვა/წაშლა კვოტას ცვლის, ჰედერის ინდიკატორიც უნდა განახლდეს
+  const done = useBookFilesRefresh(book)
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const upload = useMutation({
@@ -230,7 +347,6 @@ function FilesCard({ book }: { book: Book }) {
           type="file"
           multiple
           hidden
-          accept={kind === 'image' ? 'image/*' : undefined}
           onChange={(e) => {
             const picked = Array.from(e.target.files ?? [])
             if (picked.length) upload.mutate(picked)
@@ -262,11 +378,7 @@ function FilesCard({ book }: { book: Book }) {
             key={file.id}
             className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm"
           >
-            {file.kind === 'image' ? (
-              <ImageIcon className="size-4 shrink-0 text-muted-foreground" />
-            ) : (
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
-            )}
+            <FileText className="size-4 shrink-0 text-muted-foreground" />
             {/* ⚠️ სახელი **ღილაკია** — ონლაინ მნახველი (2026-09-14) */}
             <button
               type="button"

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Gamepad2, ImageIcon, Plus, Trash2, Upload } from 'lucide-react'
+import { Download, FileText, Gamepad2, Plus, Trash2, Upload } from 'lucide-react'
 import {
   createGameNote,
   createGameVideo,
@@ -27,12 +27,10 @@ import { useContentLang } from '@/lib/settings'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { PhotoShowcase } from '@/components/ui/photo-showcase'
 import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/ui/empty-state'
+import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -73,18 +71,13 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, ჟანრები, პლატფორმები (§22.2) ---------- */}
-        <section className="flex flex-col gap-4 sm:flex-row">
-          <div className="mx-auto grid aspect-[3/4] w-32 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted ring-1 ring-border sm:mx-0">
-            {cover ? (
-              <img src={cover} alt={title} className="size-full object-cover" />
-            ) : (
-              <Gamepad2 className="size-8 text-muted-foreground" />
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-2.5">
-            <div className="flex flex-wrap items-center gap-2">
+        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, ჟანრები, პლატფორმები (§22.2 → §26.4) ---------- */}
+        <DetailHero
+          image={cover}
+          alt={title}
+          fallback={<Gamepad2 className="size-8 text-muted-foreground" />}
+          badges={
+            <>
               <EnumStatusBadge domain="game" status={game.status} />
               {game.rating != null && (
                 <Badge className="bg-secondary tabular-nums">
@@ -93,7 +86,9 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               )}
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
-            </div>
+            </>
+          }
+        >
 
             {(game.genres ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -129,7 +124,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
             )}
 
             {/* ---------- მოკლე ცნობები ---------- */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <DetailFacts>
               {game.developer && <span className="text-foreground">{game.developer}</span>}
               {game.publisher && game.publisher !== game.developer && <span>{game.publisher}</span>}
               {game.release_date && <span>{game.release_date}</span>}
@@ -146,9 +141,8 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               )}
               {game.age_rating && <span>{game.age_rating}</span>}
               {game.size_gb != null && <span>{game.size_gb} GB</span>}
-            </div>
-          </div>
-        </section>
+            </DetailFacts>
+        </DetailHero>
 
         {/* ---------- სქრინშოტები — ზემოთ და დიდად (§22.2, Q35) ---------- */}
         <Screenshots game={game} />
@@ -183,26 +177,17 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           </section>
         )}
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            {t('games.videosTitle')}
-            <InfoHint info={t('games.videosHint')} />
-          </h3>
+        <DetailSection title={t('games.videosTitle')} hint={t('games.videosHint')}>
           <Videos game={game} />
-        </section>
+        </DetailSection>
 
-        <section>
-          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            {t('games.docsTitle')}
-            <InfoHint info={t('games.docsHint')} />
-          </h3>
+        <DetailSection title={t('games.docsTitle')} hint={t('games.docsHint')}>
           <Files game={game} />
-        </section>
+        </DetailSection>
 
-        <section>
-          <h3 className="mb-1 text-sm font-semibold">{t('games.notesTitle')}</h3>
+        <DetailSection title={t('games.notesTitle')}>
           <Notes game={game} />
-        </section>
+        </DetailSection>
       </div>
     </ModalShell>
   )
@@ -349,52 +334,21 @@ function useFiles(game: Game, kind: GameFile['kind']) {
  */
 function Screenshots({ game }: { game: Game }) {
   const { t } = useTranslation()
-  const confirm = useConfirm()
-  const input = useRef<HTMLInputElement>(null)
   const { query, upload, remove } = useFiles(game, 'image')
-  const images = query.data ?? []
 
   return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          {t('games.galleryTitle')}
-          <InfoHint info={t('games.galleryHint')} />
-        </h3>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={upload.isPending}
-          onClick={() => input.current?.click()}
-        >
-          <Upload className="size-3.5" />
-          {upload.isPending ? t('actions.saving') : t('games.addPhotos')}
-        </Button>
-      </div>
-      <input
-        ref={input}
-        type="file"
-        multiple
-        hidden
-        accept="image/*"
-        onChange={(e) => {
-          const picked = Array.from(e.target.files ?? [])
-          if (picked.length) upload.mutate(picked)
-          e.target.value = ''
-        }}
-      />
-
-      <PhotoShowcase
-        items={images.map((file) => ({ id: file.id, src: file.url, title: file.original_name }))}
-        empty={
-          query.isLoading ? null : <EmptyState icon={<ImageIcon className="size-6" />} title={t('games.galleryEmpty')} />
-        }
-        onDelete={async (id) => {
-          const ok = await confirm({ title: t('games.photoDeleteTitle'), variant: 'destructive' })
-          if (ok) remove.mutate(id)
-        }}
-      />
-    </section>
+    <DetailPhotos
+      title={t('games.galleryTitle')}
+      hint={t('games.galleryHint')}
+      items={(query.data ?? []).map((file) => ({ id: file.id, src: file.url, title: file.original_name }))}
+      loading={query.isLoading}
+      uploading={upload.isPending}
+      onUpload={(picked) => upload.mutate(picked)}
+      onDelete={(id) => remove.mutate(id)}
+      uploadLabel={t('games.addPhotos')}
+      emptyTitle={t('games.galleryEmpty')}
+      deleteTitle={t('games.photoDeleteTitle')}
+    />
   )
 }
 

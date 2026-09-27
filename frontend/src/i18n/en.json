@@ -1902,7 +1902,7 @@
     "noResults": "No books found.",
     "searchPlaceholder": "Search by title or author…",
     "searchHint": "Searches the title, author and series.",
-    "pagesShort": "pp.",
+    "pagesShort": "{{count}} pp.",
     "pageShort": "p. {{page}}",
     "noTags": "No tags",
     "coverHint": "Without an upload it's fetched from Open Library.",
@@ -1919,7 +1919,7 @@
     "progressPercent": "Percent",
     "progressSaved": "Progress saved",
     "filesTitle": "Files",
-    "filesHint": "The book itself (pdf/epub), photos and documents.",
+    "filesHint": "The book itself (pdf/epub) and documents; photos are above.",
     "filesEmpty": "No files yet.",
     "fileUpload": "Upload file",
     "fileUploaded": "File uploaded",
@@ -1968,7 +1968,13 @@
       "ka": "Georgian",
       "en": "English",
       "ru": "Russian"
-    }
+    },
+    "photosTitle": "Photos",
+    "photosHint": "Photos you uploaded.",
+    "addPhotos": "Upload photos",
+    "photosEmpty": "No photos yet.",
+    "photoDeleteTitle": "Delete the photo?",
+    "linksTitle": "Links"
   },
   "games": {
     "title": "Games",

@@ -1902,7 +1902,7 @@
     "noResults": "წიგნი ვერ მოიძებნა.",
     "searchPlaceholder": "ძებნა სათაურით ან ავტორით…",
     "searchHint": "ვეძებთ სათაურში, ავტორსა და სერიაში.",
-    "pagesShort": "გვ.",
+    "pagesShort": "{{count}} გვ.",
     "pageShort": "გვ. {{page}}",
     "noTags": "ტეგები არ არის",
     "coverHint": "თუ არ ატვირთე, Open Library-დან ჩამოვა.",
@@ -1919,7 +1919,7 @@
     "progressPercent": "პროცენტი",
     "progressSaved": "პროგრესი შენახულია",
     "filesTitle": "ფაილები",
-    "filesHint": "თვითონ წიგნი (pdf/epub), ფოტოები და დოკუმენტები.",
+    "filesHint": "თვითონ წიგნი (pdf/epub) და დოკუმენტები; ფოტოები ზემოთაა.",
     "filesEmpty": "ფაილი ჯერ არ არის.",
     "fileUpload": "ფაილის ატვირთვა",
     "fileUploaded": "ფაილი აიტვირთა",
@@ -1968,7 +1968,13 @@
       "ka": "ქართული",
       "en": "ინგლისური",
       "ru": "რუსული"
-    }
+    },
+    "photosTitle": "ფოტოები",
+    "photosHint": "შენი ატვირთული ფოტოები.",
+    "addPhotos": "ფოტოების ატვირთვა",
+    "photosEmpty": "ფოტო ჯერ არ არის.",
+    "photoDeleteTitle": "ფოტო წაიშალოს?",
+    "linksTitle": "ბმულები"
   },
   "games": {
     "title": "თამაშები",
