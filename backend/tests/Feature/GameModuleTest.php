@@ -13,6 +13,7 @@ use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -143,13 +144,114 @@ class GameModuleTest extends TestCase
             // ⚠️ `year` სვეტი არაა — `release_date`-ის აქსესორია
             ->assertJsonPath('data.year', 2022)
             ->assertJsonPath('data.size_gb', 60.5)
-            ->assertJsonPath('data.links.0.kind', 'steam')
+            // §22.3 — ⚠️ ძველი ერთღერძიანი `steam` ისევ მიიღება და ორ ღერძად ითარგმნება
+            ->assertJsonPath('data.links.0.kind', 'store')
+            ->assertJsonPath('data.links.0.store', 'steam')
             ->assertJsonPath('data.status', 'finished')
             // 16.5 — ხილვადობა default-ად პრივატულია
             ->assertJsonPath('data.visibility', 'private');
 
         // ჟანრები pivot-შია და **ორივე** შენახულია
         $this->assertEqualsCanonicalizing($genres, $response->json('data.genre_ids'));
+    }
+
+    /**
+     * **ბმულის ტიპი ორ ღერძად** (Tasks §22.3) — „რა" (`kind`) და „სად"
+     * (`store`, მხოლოდ მაღაზიისთვის, ჰოსტიდან ამოცნობადი).
+     */
+    public function test_links_have_a_kind_and_a_store(): void
+    {
+        $id = $this->makeGame(['links' => [
+            ['url' => 'https://store.steampowered.com/app/1', 'kind' => 'store'],
+            ['url' => 'https://www.gog.com/game/x', 'kind' => 'store', 'label' => '  GOG edition  '],
+            ['url' => 'https://example.com/patch-1.2', 'kind' => 'patch', 'store' => 'steam'],
+            ['url' => 'https://example.com/dlc', 'kind' => 'dlc', 'label' => 'Season pass'],
+        ]]);
+
+        $links = $this->actingAs($this->user)->getJson("/api/games/{$id}")->json('data.links');
+
+        $this->assertSame(
+            [
+                ['label' => null, 'url' => 'https://store.steampowered.com/app/1', 'kind' => 'store', 'store' => 'steam'],
+                ['label' => 'GOG edition', 'url' => 'https://www.gog.com/game/x', 'kind' => 'store', 'store' => 'gog'],
+                // ⚠️ „სად" მხოლოდ მაღაზიას აქვს — პატჩს მიწერილი `store` იკარგება
+                ['label' => null, 'url' => 'https://example.com/patch-1.2', 'kind' => 'patch', 'store' => null],
+                ['label' => 'Season pass', 'url' => 'https://example.com/dlc', 'kind' => 'dlc', 'store' => null],
+            ],
+            $links,
+        );
+
+        $this->actingAs($this->user)
+            ->postJson('/api/games', ['links' => [['url' => 'https://x.com', 'kind' => 'nonsense']]] + $this->gameDefaults() + ['title_en' => 'X'])
+            ->assertStatus(422);
+    }
+
+    /** ⚠️ ქვედომენი ითვლება, მსგავსი სახელი — არა */
+    public function test_the_store_is_read_from_the_host(): void
+    {
+        $this->assertSame('steam', Game::storeFromUrl('https://store.steampowered.com/app/1'));
+        $this->assertSame('epic', Game::storeFromUrl('https://store.epicgames.com/en-US/p/x'));
+        $this->assertSame('psn', Game::storeFromUrl('https://store.playstation.com/x'));
+        $this->assertSame('xbox', Game::storeFromUrl('https://www.xbox.com/en-US/games/store/x'));
+        $this->assertNull(Game::storeFromUrl('https://notsteampowered.com/app/1'));
+        $this->assertNull(Game::storeFromUrl('https://example.com'));
+    }
+
+    /**
+     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში** (Tasks §22.4, Q15).
+     *
+     * ⚠️ YouTube-ის ტრეილერი ბმულად აღარ რჩება — ფლეერით დასაკრავ ვიდეოდ
+     * იქცევა; იგივე ვიდეო მეორედ არ ემატება (სხვა მისამართითაც); მაღაზიის
+     * გვერდზე მდებარე „ტრეილერი" კი ბმულად რჩება.
+     */
+    public function test_trailer_and_guide_links_become_game_videos(): void
+    {
+        $id = $this->makeGame(['links' => [
+            ['url' => 'https://www.youtube.com/watch?v=abc123XYZ00', 'kind' => 'trailer', 'label' => 'Launch trailer'],
+            ['url' => 'https://vimeo.com/123456', 'kind' => 'guide'],
+            ['url' => 'https://store.steampowered.com/app/1/trailer', 'kind' => 'trailer'],
+        ]]);
+
+        $game = $this->actingAs($this->user)->getJson("/api/games/{$id}")->json('data');
+
+        $this->assertSame(['https://store.steampowered.com/app/1/trailer'], array_column($game['links'], 'url'));
+
+        $videos = GameVideo::where('game_id', $id)->orderBy('sort_order')->get();
+        $this->assertSame(['trailer', 'walkthrough'], $videos->pluck('kind')->all());
+        $this->assertSame(['youtube', 'vimeo'], $videos->pluck('platform')->all());
+        $this->assertSame('Launch trailer', $videos[0]->title);
+
+        // ⚠️ იგივე ვიდეო სხვა მისამართით (`youtu.be`, `?t=`) — მეორედ არ ემატება
+        $this->actingAs($this->user)
+            ->putJson("/api/games/{$id}", ['title_en' => 'Hades', 'links' => [
+                ['url' => 'https://youtu.be/abc123XYZ00?t=42', 'kind' => 'trailer'],
+            ]])
+            ->assertOk();
+
+        $this->assertSame(2, GameVideo::where('game_id', $id)->count());
+    }
+
+    /** §22.3 — არსებული ბმულები ორ ღერძად გადაითარგმნება (მიგრაცია) */
+    public function test_the_migration_translates_old_link_kinds(): void
+    {
+        $id = $this->makeGame();
+        DB::table('games')->where('id', $id)->update(['links' => json_encode([
+            ['label' => 'Official', 'url' => 'https://example.com', 'kind' => 'official'],
+            ['label' => 'Steam', 'url' => 'https://store.steampowered.com/app/1', 'kind' => 'steam'],
+            ['label' => null, 'url' => 'https://example.org', 'kind' => 'other'],
+            ['label' => null, 'url' => 'https://example.net'],
+        ])]);
+
+        $migration = require database_path('migrations/2026_09_27_000009_split_game_link_kinds.php');
+        $migration->up();
+
+        $links = Game::withoutGlobalScopes()->find($id)->links;
+        $this->assertSame(['official', 'store', 'other', 'other'], array_column($links, 'kind'));
+        $this->assertSame([null, 'steam', null, null], array_column($links, 'store'));
+
+        // ⚠️ უკუქცევა — ძველ ერთღერძიან მნიშვნელობამდე
+        $migration->down();
+        $this->assertSame(['official', 'steam', 'other', 'other'], array_column(Game::withoutGlobalScopes()->find($id)->links, 'kind'));
     }
 
     /**

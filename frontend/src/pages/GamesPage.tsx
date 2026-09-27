@@ -281,7 +281,11 @@ export function GamesPage() {
           <ul className="space-y-2">
             {games.map((game) => {
               const cover = storageUrl(game.cover)
-              const store = game.links.find((l) => l.kind !== 'official') ?? game.links[0]
+              // §22.3 — რიგის ბმული: ჯერ მაღაზია, მერე სხვა ბმული, ბოლოს ოფიციალური საიტი
+              const store =
+                game.links.find((l) => l.kind === 'store') ??
+                game.links.find((l) => l.kind !== 'official') ??
+                game.links[0]
               return (
                 <li
                   key={game.id}
@@ -351,21 +355,13 @@ export function GamesPage() {
                     </p>
                   </div>
 
+                  {/* Tasks §22.1 — ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
+                      შენი სიტყვები: „რამდენიმეს MC და რიცხვი აქვს და მერე „გადაუწყვეტელი“ —
+                      სიმეტრია დაირღვა; რჩეულის გვერდით ჯერ საერთო ზომის სტატუსის ნიშანი
+                      იყოს". ბმული და ქულა ზოგს აქვს, ზოგს არა — მათ მარჯვნივ დგომისას
+                      სტატუსი და ღილაკები რიგიდან რიგში ინაცვლებდა. სტატუსს ერთი მინიმალური
+                      სიგანეც აქვს, რომ რჩეული ყველა რიგში ერთ სვეტში იდგეს. */}
                   <span className="flex shrink-0 items-center gap-1">
-                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
-                    <EnumStatusBadge domain="game" status={game.status} size="row" className="mr-1" />
-                    {game.rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        {game.rating}/{GAME_MAX_RATING}
-                      </Badge>
-                    )}
-                    <button
-                      onClick={() => favorite.mutate(game.id)}
-                      aria-label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                    >
-                      <Star className={cn('size-4', game.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                    </button>
                     {store && (
                       <a
                         href={store.url}
@@ -378,6 +374,25 @@ export function GamesPage() {
                         <ExternalLink className="size-4" />
                       </a>
                     )}
+                    {game.rating != null && (
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
+                        {game.rating}/{GAME_MAX_RATING}
+                      </Badge>
+                    )}
+                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
+                    <EnumStatusBadge
+                      domain="game"
+                      status={game.status}
+                      size="row"
+                      className="min-w-28 justify-center"
+                    />
+                    <button
+                      onClick={() => favorite.mutate(game.id)}
+                      aria-label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
+                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
+                    >
+                      <Star className={cn('size-4', game.is_favorite && 'fill-current text-[var(--favorite)]')} />
+                    </button>
                     <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(game)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}

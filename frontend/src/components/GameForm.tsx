@@ -7,6 +7,7 @@ import {
   fetchRawgCandidates,
   fetchRawgDraft,
   GAME_LINK_KINDS,
+  GAME_LINK_STORES,
   GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
@@ -16,6 +17,7 @@ import {
   type GameInput,
   type GameLink,
   type GameLinkKind,
+  type GameLinkStore,
   type GameMode,
   type GamePlatform,
   type RawgCandidate,
@@ -40,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
+import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
 
@@ -613,46 +616,83 @@ export function GameForm({
               </FieldLabel>
             </span>
             <div className={fields.shows('links') ? 'mt-1.5 space-y-1.5' : 'hidden'}>
-              {links.map((link, i) => (
-                <div key={link._key} className="flex gap-1.5">
-                  <Select
-                    value={link.kind ?? 'other'}
-                    onValueChange={(v) =>
-                      setLinks((all) =>
-                        all.map((x, j) => (j === i ? { ...x, kind: v as GameLinkKind } : x)),
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-28 shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GAME_LINK_KINDS.map((kind) => (
-                        <SelectItem key={kind} value={kind}>
-                          {t(`games.linkKinds.${kind}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="https://…"
-                    value={link.url}
-                    onChange={(e) =>
-                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
-                    aria-label={t('actions.delete')}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              ))}
+              {/* Tasks §22.3 — ორი ღერძი: „რა არის" (ტიპი) და „სად" (მხოლოდ მაღაზიას —
+                  ჰოსტიდან ამოიცნობა), + არჩევითი წარწერა */}
+              {links.map((link, i) => {
+                const kind = link.kind ?? 'other'
+                const set = (patch: Partial<GameLink>) =>
+                  setLinks((all) => all.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+
+                return (
+                  <div key={link._key} className="space-y-1.5 rounded-md border border-border p-2">
+                    <div className="flex gap-1.5">
+                      <Select
+                        value={kind}
+                        onValueChange={(v) =>
+                          set({
+                            kind: v as GameLinkKind,
+                            // „სად" მხოლოდ მაღაზიას აქვს; გადართვისას ჰოსტიდან ივსება
+                            store: v === 'store' ? (link.store ?? storeFromUrl(link.url)) : null,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="w-40 shrink-0" aria-label={t('games.linkKind')}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GAME_LINK_KINDS.map((k) => (
+                            <SelectItem key={k} value={k}>
+                              {t(`games.linkKinds.${k}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {kind === 'store' && (
+                        <Select value={link.store ?? ''} onValueChange={(v) => set({ store: v as GameLinkStore })}>
+                          <SelectTrigger className="w-36 shrink-0" aria-label={t('games.linkStore')}>
+                            <SelectValue placeholder={t('games.linkStorePick')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GAME_LINK_STORES.map((store) => (
+                              <SelectItem key={store} value={store}>
+                                {t(`games.linkStores.${store}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Input
+                        className="min-w-0 flex-1"
+                        placeholder={t('games.linkLabelPlaceholder')}
+                        aria-label={t('games.linkLabel')}
+                        value={link.label ?? ''}
+                        onChange={(e) => set({ label: e.target.value })}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
+                        aria-label={t('actions.delete')}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      placeholder="https://…"
+                      value={link.url}
+                      onChange={(e) =>
+                        setLinks((all) => all.map((x, j) => (j === i ? withUrl(x, e.target.value) : x)))
+                      }
+                    />
+                    {/* §22.4 — ⚠️ ასეთი ბმული ბმულად არ ინახება: სერვერი თამაშის ვიდეოდ აქცევს */}
+                    {becomesVideo(link) && (
+                      <p className="text-xs text-muted-foreground">{t('games.linkBecomesVideo')}</p>
+                    )}
+                  </div>
+                )
+              })}
               <Button
                 type="button"
                 variant="outline"

@@ -8,6 +8,7 @@ use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\TracksCompletion;
 use App\Services\Storage\StorageMeter;
+use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -52,8 +53,50 @@ class Game extends Model
     /** 11.1 — სინგლი · მრავალმოთამაშიანი · კოოპი (ლოკალური/ონლაინ) · PvP */
     public const MODES = ['single', 'multiplayer', 'coop_local', 'coop_online', 'pvp'];
 
-    /** მაღაზიები/საიტი — `links[].kind` */
-    public const LINK_KINDS = ['official', 'steam', 'epic', 'gog', 'psn', 'xbox', 'other'];
+    /**
+     * **ბმულის „რა არის"** — `links[].kind` (Tasks §22.3).
+     *
+     * შენი სიტყვები: „ბმულის დამატებისას იყოს, რა სახის ბმულია — ვიდეო
+     * (YouTube), პატჩი, DLC…: Trailer, DLC, Patch, Download, Info".
+     *
+     * ⚠️ **ორი ღერძი და არა ერთი სია.** აქამდე `kind` მაღაზიების სია იყო
+     * (`official · steam · epic · gog · psn · xbox · other`), ე.ი. „DLC Steam-ზე"
+     * გამოუთქმელი იყო — ან DLC, ან Steam. ახლა „რა" აქ წერია, „სად" კი
+     * `links[].store`-ში, და მხოლოდ მაღაზიისთვის (`LINK_STORES`).
+     */
+    public const LINK_KINDS = ['trailer', 'dlc', 'patch', 'download', 'info', 'official', 'store', 'guide', 'mod', 'soundtrack', 'other'];
+
+    /** **ბმულის „სად"** — მხოლოდ `kind = store`-ისთვის; ჰოსტიდან ამოიცნობა (`storeFromUrl`) */
+    public const LINK_STORES = ['steam', 'epic', 'gog', 'psn', 'xbox'];
+
+    /**
+     * ⚠️ **ძველი ერთღერძიანი მნიშვნელობები ისევ მიიღება** — ძველი SPA-სა
+     * და სკრიპტისთვის. `normalizeLink()` მათ `store` + მაღაზიად თარგმნის,
+     * ზუსტად ისე, როგორც მიგრაციამ არსებული რიგები გადათარგმნა.
+     */
+    public const LEGACY_LINK_KINDS = ['steam', 'epic', 'gog', 'psn', 'xbox'];
+
+    /**
+     * ჰოსტი → მაღაზია. ⚠️ ქვედომენიც ითვლება (`store.steampowered.com`),
+     * მაგრამ **სუფიქსით და წერტილით** — `notsteampowered.com` Steam არ არის.
+     */
+    private const STORE_HOSTS = [
+        'steampowered.com' => 'steam',
+        'steamcommunity.com' => 'steam',
+        'epicgames.com' => 'epic',
+        'gog.com' => 'gog',
+        'playstation.com' => 'psn',
+        'xbox.com' => 'xbox',
+    ];
+
+    /**
+     * **თამაშის ვიდეოდ ქცეული ბმულის ტიპები** (Tasks §22.4, Q15).
+     *
+     * ⚠️ YouTube/Vimeo/Dailymotion-ის ტრეილერი ან გზამკვლევი **ბმულად არ
+     * ინახება** — ის `game_videos`-ში ჯდება და ფლეერით უკრავს. სხვა ჰოსტის
+     * ტრეილერი (მაგ. მაღაზიის გვერდი) ბმულად რჩება.
+     */
+    public const VIDEO_LINK_KINDS = ['trailer' => 'trailer', 'guide' => 'walkthrough'];
 
     protected $guarded = ['id'];
 
@@ -180,5 +223,84 @@ class Game extends Model
             fn ($v) => strtolower(trim((string) $v)),
             $values,
         ))));
+    }
+
+    /** მაღაზია ბმულის ჰოსტიდან (§22.3); უცნობ ჰოსტზე — `null` */
+    public static function storeFromUrl(string $url): ?string
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $host = (string) preg_replace('/^www\./', '', $host);
+
+        foreach (self::STORE_HOSTS as $domain => $store) {
+            if ($host === $domain || str_ends_with($host, '.'.$domain)) {
+                return $store;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * **ერთი ბმულის ნორმალიზაცია — ერთადერთი ადგილი** (§22.3).
+     *
+     * ⚠️ ფორმაც, RAWG/IGDB-ის დრაფტიც და მიგრაციაც ამ ფორმას წერს: ძველი
+     * მნიშვნელობა (`steam`) → `store` + `steam`; უცნობი → `other`;
+     * `store` მხოლოდ მაღაზიას აქვს და ცარიელზე ჰოსტიდან ამოიცნობა.
+     *
+     * @param  array{label?: ?string, url: string, kind?: ?string, store?: ?string}  $link
+     * @return array{label: ?string, url: string, kind: string, store: ?string}
+     */
+    public static function normalizeLink(array $link): array
+    {
+        $url = (string) $link['url'];
+        $kind = $link['kind'] ?? null;
+        $store = $link['store'] ?? null;
+
+        if (in_array($kind, self::LEGACY_LINK_KINDS, true)) {
+            $store = $kind;
+            $kind = 'store';
+        }
+
+        if (! in_array($kind, self::LINK_KINDS, true)) {
+            $kind = 'other';
+        }
+
+        $store = $kind === 'store'
+            ? (in_array($store, self::LINK_STORES, true) ? $store : self::storeFromUrl($url))
+            : null;
+
+        $label = isset($link['label']) ? trim((string) $link['label']) : '';
+
+        return ['label' => $label !== '' ? $label : null, 'url' => $url, 'kind' => $kind, 'store' => $store];
+    }
+
+    /**
+     * **ბმულები ↔ თამაშის ვიდეოები** (Tasks §22.4, Q15).
+     *
+     * ⚠️ ვიდეოდ იქცევა მხოლოდ `VIDEO_LINK_KINDS`-ის ტიპი **და** ჩაშენებადი
+     * ჰოსტი (`VideoUrl::parse()`-ის `embed_url` — YouTube, Vimeo, Dailymotion):
+     * მაღაზიის გვერდზე მდებარე „ტრეილერი" ფლეერში ვერ დაუკრავს და ბმულად რჩება.
+     *
+     * @param  list<array{label: ?string, url: string, kind: string, store: ?string}>  $links
+     * @return array{0: list<array{label: ?string, url: string, kind: string, store: ?string}>, 1: list<array{label: ?string, url: string, kind: string, store: ?string}>}
+     *                                                                                                                                                                     [დარჩენილი ბმულები, ვიდეოდ ქცეულები]
+     */
+    public static function splitVideoLinks(array $links): array
+    {
+        $keep = [];
+        $videos = [];
+
+        foreach ($links as $link) {
+            $embeddable = isset(self::VIDEO_LINK_KINDS[$link['kind']])
+                && VideoUrl::parse($link['url'])['embed_url'] !== null;
+
+            if ($embeddable) {
+                $videos[] = $link;
+            } else {
+                $keep[] = $link;
+            }
+        }
+
+        return [$keep, $videos];
     }
 }

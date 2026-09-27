@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
+use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteCategory;
@@ -330,6 +331,30 @@ class RegistryConsistencyTest extends TestCase
     {
         $this->assertSame(GalleryParent::recordKeys(), $this->tsConstList('api/gallery.ts', 'GALLERY_PARENTS'));
         $this->assertSame(GalleryParent::keys(), $this->tsConstList('api/web.ts', 'SERP_IMPORT_TARGETS'));
+    }
+
+    /**
+     * ⚠️ **თამაშის ბმულის ორი ღერძი და ჰოსტების რუკა SPA-შიც წერია** (Tasks §22.3).
+     *
+     * ფორმა ტიპს სიიდან ხატავს და Steam-ის ბმულს ჰოსტით ცნობს — backend-ის
+     * ახალი ტიპი SPA-ში რომ არ იყოს, ის ფორმაში უბრალოდ არ გამოჩნდებოდა, ხოლო
+     * ჰოსტების რუკის სხვაობა ერთ მხარეს „მაღაზიას" დაწერდა და მეორეს — „სხვას".
+     */
+    public function test_the_spa_game_link_lists_mirror_the_backend(): void
+    {
+        $this->assertSame(Game::LINK_KINDS, $this->tsConstList('api/games.ts', 'GAME_LINK_KINDS'));
+        $this->assertSame(Game::LINK_STORES, $this->tsConstList('api/games.ts', 'GAME_LINK_STORES'));
+
+        $source = (string) file_get_contents(base_path('../frontend/src/lib/gameLinks.ts'));
+        $this->assertSame(1, preg_match('/const STORE_HOSTS: Record<string, GameLinkStore> = \{(.*?)\}/s', $source, $m), 'STORE_HOSTS ვერ მოიძებნა');
+        preg_match_all("/'([a-z0-9.\\-]+)':\\s*'([a-z]+)'/", $m[1], $pairs, PREG_SET_ORDER);
+        $spa = array_column($pairs, 2, 1);
+
+        $this->assertNotEmpty($spa, 'STORE_HOSTS ცარიელად წაიკითხა');
+        $this->assertSame(
+            (new \ReflectionClassConstant(Game::class, 'STORE_HOSTS'))->getValue(),
+            $spa,
+        );
     }
 
     /**

@@ -220,13 +220,19 @@ class RawgClient
         return array_values(array_unique($out));
     }
 
-    /** @return array<int, array{label: string, url: string, kind: string}> */
+    /**
+     * ⚠️ §22.3 — ორი ღერძი: ოფიციალური საიტი `official`-ია, ყოველი მაღაზია კი
+     * `store` + მაღაზია (`STORE_MAP`); უცნობი მაღაზია (App Store, Nintendo…)
+     * მაინც `store`-ია, ოღონდ `store: null` — სახელი `label`-შია.
+     *
+     * @return array<int, array{label: string, url: string, kind: string, store: ?string}>
+     */
     private function links(array $data): array
     {
         $out = [];
 
         if (! empty($data['website'])) {
-            $out[] = ['label' => 'Official', 'url' => (string) $data['website'], 'kind' => 'official'];
+            $out[] = ['label' => 'Official', 'url' => (string) $data['website'], 'kind' => 'official', 'store' => null];
         }
 
         foreach ($data['stores'] ?? [] as $entry) {
@@ -240,7 +246,8 @@ class RawgClient
             $out[] = [
                 'label' => (string) ($entry['store']['name'] ?? $slug),
                 'url' => str_starts_with((string) $url, 'http') ? (string) $url : 'https://'.$url,
-                'kind' => self::STORE_MAP[$slug] ?? 'other',
+                'kind' => 'store',
+                'store' => self::STORE_MAP[$slug] ?? null,
             ];
         }
 

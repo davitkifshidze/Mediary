@@ -2024,12 +2024,16 @@
       "pvp": "PvP"
     },
     "linkKinds": {
+      "trailer": "ტრეილერი",
+      "dlc": "DLC",
+      "patch": "პატჩი",
+      "download": "ჩამოტვირთვა",
+      "info": "ინფორმაცია",
       "official": "ოფიციალური საიტი",
-      "steam": "Steam",
-      "epic": "Epic Games",
-      "gog": "GOG",
-      "psn": "PlayStation Store",
-      "xbox": "Xbox",
+      "store": "მაღაზია",
+      "guide": "გზამკვლევი / ვიკი",
+      "mod": "მოდი",
+      "soundtrack": "საუნდტრეკი",
       "other": "სხვა"
     },
     "videoKinds": {
@@ -2060,7 +2064,20 @@
     "notesEmpty": "ჩანიშვნა ჯერ არ არის.",
     "franchiseGenre": "ახალი ნაწილის ჟანრი",
     "franchiseGenreAuto": "RAWG-ის ჟანრი, თუ ის შენს კლასიფიკატორშია",
-    "franchisePickGenre": "აირჩიე ჟანრი — RAWG-ის ჟანრი შენს კლასიფიკატორში არ არის"
+    "franchisePickGenre": "აირჩიე ჟანრი — RAWG-ის ჟანრი შენს კლასიფიკატორში არ არის",
+    "linkStores": {
+      "steam": "Steam",
+      "epic": "Epic Games",
+      "gog": "GOG",
+      "psn": "PlayStation Store",
+      "xbox": "Xbox"
+    },
+    "linkKind": "ბმულის ტიპი",
+    "linkStore": "მაღაზია",
+    "linkStorePick": "რომელი მაღაზია",
+    "linkLabel": "წარწერა",
+    "linkLabelPlaceholder": "წარწერა (არჩევითი)",
+    "linkBecomesVideo": "შენახვისას თამაშის ვიდეოებში გადავა და ფლეერით დაუკრავს."
   },
   "notes": {
     "title": "ჩანაწერები",

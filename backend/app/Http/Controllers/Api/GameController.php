@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GameResource;
 use App\Models\Game;
+use App\Models\GameVideo;
 use App\Services\Games\IgdbClient;
 use App\Services\Games\RawgClient;
 use App\Services\Storage\StorageMeter;
 use App\Support\Like;
 use App\Support\StorageFolder;
+use App\Support\VideoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -126,10 +128,11 @@ class GameController extends Controller
     {
         $game = new Game;
         $data = $this->validated($request);
-        $this->apply($game, $request, $data);
+        $videos = $this->apply($game, $request, $data);
         $game->save();
 
         $this->syncGenres($game, $data);
+        $this->addVideos($game, $videos, (int) $request->user()->id);
         $this->fetchCover($game, $request);
 
         return (new GameResource($game->refresh()->load('genres')))
@@ -139,10 +142,11 @@ class GameController extends Controller
     public function update(Request $request, Game $game)
     {
         $data = $this->validated($request, $game);
-        $this->apply($game, $request, $data);
+        $videos = $this->apply($game, $request, $data);
         $game->save();
 
         $this->syncGenres($game, $data);
+        $this->addVideos($game, $videos, (int) $request->user()->id);
 
         return new GameResource(
             $game->load(['genres', 'videos'])
@@ -309,7 +313,9 @@ class GameController extends Controller
             'links' => ['nullable', 'array', 'max:10'],
             'links.*.label' => ['nullable', 'string', 'max:60'],
             'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url'],
-            'links.*.kind' => ['nullable', Rule::in(Game::LINK_KINDS)],
+            // §22.3 — ⚠️ ძველი ერთღერძიანი მნიშვნელობაც მიიღება (`Game::normalizeLink()` თარგმნის)
+            'links.*.kind' => ['nullable', Rule::in([...Game::LINK_KINDS, ...Game::LEGACY_LINK_KINDS])],
+            'links.*.store' => ['nullable', Rule::in(Game::LINK_STORES)],
 
             'status' => [...$must, Rule::in(Game::STATUSES)],
             'is_favorite' => ['nullable', 'boolean'],
@@ -338,7 +344,11 @@ class GameController extends Controller
         ]);
     }
 
-    private function apply(Game $game, Request $request, array $data): void
+    /**
+     * @return list<array{label: ?string, url: string, kind: string, store: ?string}>
+     *                                                                                ბმულები, რომლებიც თამაშის ვიდეოდ უნდა იქცეს (§22.4) — შენახვის შემდეგ
+     */
+    private function apply(Game $game, Request $request, array $data): array
     {
         $plain = [
             'title_ka', 'title_en', 'description_ka', 'description_en',
@@ -367,12 +377,22 @@ class GameController extends Controller
         if (array_key_exists('modes', $data)) {
             $game->modes = Game::normalizeKeys($data['modes'] ?? [], Game::MODES);
         }
+        $videos = [];
+
         if (array_key_exists('links', $data)) {
-            $game->links = array_values(array_map(fn (array $link) => [
-                'label' => $link['label'] ?? null,
-                'url' => $link['url'],
-                'kind' => $link['kind'] ?? 'other',
-            ], $data['links'] ?? []));
+            /* §22.3/§22.4 — ორი ღერძი (`Game::normalizeLink()`), ხოლო
+               YouTube/Vimeo-ს ტრეილერი და გზამკვლევი ბმულად აღარ რჩება —
+               შენახვის შემდეგ თამაშის ვიდეოდ ჯდება (`addVideos()`). */
+            /* ⚠️ **`ksort` აუცილებელია**: `validate()` wildcard-ის მასივს **წესების**
+               რიგით აგებს (`links.*.label` → `links.*.url` → …), ე.ი. როცა ბმულებს
+               სხვადასხვა ველი აქვს (ერთს წარწერა აქვს, მეორეს — არა), გასაღებები
+               1, 3, 0, 2-ად მოდის და `array_values` ბმულებს ჩუმად აურევდა. */
+            $raw = $data['links'] ?? [];
+            ksort($raw);
+
+            [$game->links, $videos] = Game::splitVideoLinks(
+                array_values(array_map(fn (array $link) => Game::normalizeLink($link), $raw)),
+            );
         }
 
         // „ჩემი პლატფორმა" სიაშივე უნდა იყოს, თორემ ბარათი ისეთს აჩვენებდა,
@@ -402,6 +422,52 @@ class GameController extends Controller
                 ->storeUpload($request->user(), $request->file('cover'), StorageFolder::GAME_COVERS);
             $game->cover_source = 'upload';
             $game->cover_url = null;
+        }
+
+        return $videos;
+    }
+
+    /**
+     * **ტრეილერი და გზამკვლევი — თამაშის ვიდეოებში** (Tasks §22.4, Q15).
+     *
+     * ⚠️ **შენახვის შემდეგ**: ახალ თამაშს `id` მხოლოდ ახლა აქვს.
+     * ⚠️ **ერთი ვიდეო ორჯერ არ ემატება** — `platform` + `external_id`-ით
+     * (FEAT-17-ის წესი: ერთ ვიდეოს ათი მისამართი აქვს, `?t=42`-იანიც).
+     * ⚠️ ბმული **`GameVideo::applyUrl()`-ს** გადის — `VideoUrl`-ის allowlist და
+     * embed სერვერზე იგება, ნედლი HTML არასდროს ინახება.
+     *
+     * @param  list<array{label: ?string, url: string, kind: string, store: ?string}>  $links
+     */
+    private function addVideos(Game $game, array $links, int $userId): void
+    {
+        if (! $links) {
+            return;
+        }
+
+        $taken = $game->videos()->get(['platform', 'external_id'])
+            ->map(fn (GameVideo $v) => $v->platform.':'.$v->external_id)
+            ->all();
+        $order = (int) $game->videos()->max('sort_order');
+
+        foreach ($links as $link) {
+            $meta = VideoUrl::parse($link['url']);
+            $key = $meta['platform'].':'.$meta['external_id'];
+
+            if (in_array($key, $taken, true)) {
+                continue;
+            }
+
+            $video = new GameVideo([
+                'user_id' => $userId,
+                'game_id' => $game->id,
+                'kind' => Game::VIDEO_LINK_KINDS[$link['kind']] ?? 'other',
+                'title' => $link['label'],
+                'sort_order' => ++$order,
+            ]);
+            $video->applyUrl($link['url']);
+            $video->save();
+
+            $taken[] = $key;
         }
     }
 

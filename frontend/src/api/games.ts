@@ -26,13 +26,37 @@ export type GamePlatform = (typeof GAME_PLATFORMS)[number]
 export const GAME_MODES = ['single', 'multiplayer', 'coop_local', 'coop_online', 'pvp'] as const
 export type GameMode = (typeof GAME_MODES)[number]
 
-export const GAME_LINK_KINDS = ['official', 'steam', 'epic', 'gog', 'psn', 'xbox', 'other'] as const
+/**
+ * **ბმულის „რა არის"** (Tasks §22.3) — `Game::LINK_KINDS`-ის სარკე.
+ *
+ * ⚠️ ორი ღერძი: „რა" აქ, „სად" (მაღაზია) — `GAME_LINK_STORES`-ში და მხოლოდ
+ * `store`-ისთვის. აქამდე ეს ერთი სია იყო და „DLC Steam-ზე" გამოუთქმელი იყო.
+ */
+export const GAME_LINK_KINDS = [
+  'trailer',
+  'dlc',
+  'patch',
+  'download',
+  'info',
+  'official',
+  'store',
+  'guide',
+  'mod',
+  'soundtrack',
+  'other',
+] as const
 export type GameLinkKind = (typeof GAME_LINK_KINDS)[number]
+
+/** **ბმულის „სად"** — `Game::LINK_STORES`-ის სარკე; ჰოსტიდან ამოიცნობა */
+export const GAME_LINK_STORES = ['steam', 'epic', 'gog', 'psn', 'xbox'] as const
+export type GameLinkStore = (typeof GAME_LINK_STORES)[number]
 
 export interface GameLink {
   label?: string | null
   url: string
   kind?: GameLinkKind
+  /** მხოლოდ `kind === 'store'`-ზე; სხვა ტიპზე სერვერი `null`-ს წერს */
+  store?: GameLinkStore | null
 }
 
 export interface Game {
@@ -168,6 +192,8 @@ function toFormData(input: GameInput): FormData {
     fd.append(`links[${i}][url]`, link.url)
     fd.append(`links[${i}][label]`, link.label ?? '')
     fd.append(`links[${i}][kind]`, link.kind ?? 'other')
+    // ⚠️ ყოველთვის იგზავნება (ცარიელიც) — ბმულებს ერთნაირი ველები უნდა ჰქონდეთ
+    fd.append(`links[${i}][store]`, link.kind === 'store' ? (link.store ?? '') : '')
   })
 
   if (input.rawg_cover_url) fd.append('rawg_cover_url', input.rawg_cover_url)

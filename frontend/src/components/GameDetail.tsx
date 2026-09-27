@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileText, Plus, Trash2, Upload } from 'lucide-react'
+import { Download, FileText, Gamepad2, ImageIcon, Plus, Trash2, Upload } from 'lucide-react'
 import {
   createGameNote,
   createGameVideo,
@@ -12,6 +12,7 @@ import {
   fetchGameNotes,
   updateGameNote,
   fetchGameVideos,
+  GAME_MAX_RATING,
   GAME_VIDEO_KINDS,
   uploadGameFiles,
   type Game,
@@ -23,11 +24,17 @@ import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
+import { videoTypeName as dictionaryName } from '@/lib/display'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { PhotoGrid } from '@/components/ui/photo-grid'
+import { PhotoShowcase } from '@/components/ui/photo-showcase'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VideoEmbed } from '@/components/VideoEmbed'
@@ -37,6 +44,14 @@ import { formatBytes } from '@/lib/utils'
 /* ============================================================
    თამაშის დეტალები — ვიდეოები (§11.2), სქრინშოტები (§11.3),
    დოკუმენტები და ჩანიშვნები (Tasks §11).
+
+   ⚠️ **რიგი §22.2-ით შეიცვალა** (შენი სიტყვები: „ფოტოები ბოლოშია — ზემოთ
+   გააკეთე, კარგი ზომით"): თავში მთავარი ფოტო, სტატუსი, ჟანრები,
+   პლატფორმები და მოკლე ცნობები; მერე **სქრინშოტები — Steam-ის მაღაზიის
+   გვერდივით** (`PhotoShowcase`: პირველი დიდად, დანარჩენი ზოლად); მერე
+   აღწერა, ბმულები, ვიდეოები, დოკუმენტები და ჩანიშვნები. აქამდე მთავარი
+   ფოტო, სტატუსი, ჟანრები და პლატფორმები ფანჯარაში საერთოდ არ ჩანდა, ხოლო
+   სქრინშოტები 11-დან მე-9 იყო.
 
    ⚠️ **ატვირთული სქრინშოტები `game_files.kind = 'image'`-შია** და არა
    `gallery_images`-ში: ის ცხრილი წყაროდან **ჩამოტვირთულ** ფოტოებს ინახავს
@@ -49,6 +64,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
   const lang = useContentLang(i18n.language)
 
   const title = (lang === 'ka' ? game.title_ka || game.title_en : game.title_en || game.title_ka) ?? ''
+  const cover = storageUrl(game.cover)
   const description =
     lang === 'ka'
       ? game.description_ka || game.description_en
@@ -57,34 +73,85 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
-            `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-        <div className="flex justify-end">
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-          <VisibilityBadge value={game.visibility} />
-        </div>
+        {/* ---------- თავი: მთავარი ფოტო, სტატუსი, ჟანრები, პლატფორმები (§22.2) ---------- */}
+        <section className="flex flex-col gap-4 sm:flex-row">
+          <div className="mx-auto grid aspect-[3/4] w-32 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted ring-1 ring-border sm:mx-0">
+            {cover ? (
+              <img src={cover} alt={title} className="size-full object-cover" />
+            ) : (
+              <Gamepad2 className="size-8 text-muted-foreground" />
+            )}
+          </div>
 
-        {/* ---------- მოკლე ცნობები ---------- */}
-        <section className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-border p-3 text-sm">
-          {game.developer && <span>{game.developer}</span>}
-          {game.publisher && game.publisher !== game.developer && (
-            <span className="text-muted-foreground">{game.publisher}</span>
-          )}
-          {game.release_date && <span className="text-muted-foreground">{game.release_date}</span>}
-          {game.franchise && (
-            <span className="text-muted-foreground">
-              {t('games.franchise')}: {game.franchise}
-            </span>
-          )}
-          {/* ⚠️ RAWG-ის შკალა 0–5-ია და არა 0–100 — ისე ვწერთ, როგორც მოდის */}
-          {game.users_score != null && (
-            <span className="text-muted-foreground">
-              {t('games.usersScore')} {game.users_score}/5
-            </span>
-          )}
-          {game.age_rating && <span className="text-muted-foreground">{game.age_rating}</span>}
-          {game.size_gb != null && <span className="text-muted-foreground">{game.size_gb} GB</span>}
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <EnumStatusBadge domain="game" status={game.status} />
+              {game.rating != null && (
+                <Badge className="bg-secondary tabular-nums">
+                  {game.rating}/{GAME_MAX_RATING}
+                </Badge>
+              )}
+              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              <VisibilityBadge value={game.visibility} />
+            </div>
+
+            {(game.genres ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {(game.genres ?? []).map((genre) => (
+                  <span
+                    key={genre.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs"
+                  >
+                    <ModuleIcon name={genre.icon} className="size-3" />
+                    {dictionaryName(genre, lang)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {game.platforms.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {game.platforms.map((p) => (
+                  <span
+                    key={p}
+                    className={cn(
+                      'rounded-md px-2 py-0.5 text-xs',
+                      // „ჩემი" პლატფორმა გამორჩეულია — სიის ბარათის იგივე წესი
+                      p === game.my_platform
+                        ? 'bg-primary/15 font-medium text-primary'
+                        : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    {t(`games.platforms.${p}`)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* ---------- მოკლე ცნობები ---------- */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {game.developer && <span className="text-foreground">{game.developer}</span>}
+              {game.publisher && game.publisher !== game.developer && <span>{game.publisher}</span>}
+              {game.release_date && <span>{game.release_date}</span>}
+              {game.franchise && (
+                <span>
+                  {t('games.franchise')}: {game.franchise}
+                </span>
+              )}
+              {/* ⚠️ RAWG-ის შკალა 0–5-ია და არა 0–100 — ისე ვწერთ, როგორც მოდის */}
+              {game.users_score != null && (
+                <span>
+                  {t('games.usersScore')} {game.users_score}/5
+                </span>
+              )}
+              {game.age_rating && <span>{game.age_rating}</span>}
+              {game.size_gb != null && <span>{game.size_gb} GB</span>}
+            </div>
+          </div>
         </section>
+
+        {/* ---------- სქრინშოტები — ზემოთ და დიდად (§22.2, Q35) ---------- */}
+        <Screenshots game={game} />
 
         {description && (
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>
@@ -97,8 +164,10 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
             <ul className="space-y-1.5 text-sm">
               {game.links.map((link, i) => (
                 <li key={i} className="flex items-center gap-2">
+                  {/* §22.3 — „რა არის" + (მაღაზიას) „სად" */}
                   <span className="shrink-0 rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
                     {t(`games.linkKinds.${link.kind ?? 'other'}`)}
+                    {link.kind === 'store' && link.store && ` · ${t(`games.linkStores.${link.store}`)}`}
                   </span>
                   <a
                     href={link.url}
@@ -120,14 +189,6 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
             <InfoHint info={t('games.videosHint')} />
           </h3>
           <Videos game={game} />
-        </section>
-
-        <section>
-          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            {t('games.galleryTitle')}
-            <InfoHint info={t('games.galleryHint')} />
-          </h3>
-          <Gallery game={game} />
         </section>
 
         <section>
@@ -281,7 +342,12 @@ function useFiles(game: Game, kind: GameFile['kind']) {
   return { query, upload, remove }
 }
 
-function Gallery({ game }: { game: Game }) {
+/**
+ * **სქრინშოტები — ვიტრინა** (§22.2, Q35): პირველი დიდად, დანარჩენი ზოლად,
+ * დაჭერით — სრულ ეკრანზე. ⚠️ ატვირთვაც და წაშლაც აქვეა — ცალკე ბადე
+ * იმავე ფოტოებს მეორედ დახატავდა.
+ */
+function Screenshots({ game }: { game: Game }) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const input = useRef<HTMLInputElement>(null)
@@ -289,17 +355,22 @@ function Gallery({ game }: { game: Game }) {
   const images = query.data ?? []
 
   return (
-    <div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="mb-3"
-        disabled={upload.isPending}
-        onClick={() => input.current?.click()}
-      >
-        <Upload className="size-3.5" />
-        {upload.isPending ? t('actions.saving') : t('games.addPhotos')}
-      </Button>
+    <section>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          {t('games.galleryTitle')}
+          <InfoHint info={t('games.galleryHint')} />
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={upload.isPending}
+          onClick={() => input.current?.click()}
+        >
+          <Upload className="size-3.5" />
+          {upload.isPending ? t('actions.saving') : t('games.addPhotos')}
+        </Button>
+      </div>
       <input
         ref={input}
         type="file"
@@ -313,21 +384,17 @@ function Gallery({ game }: { game: Game }) {
         }}
       />
 
-      {/* საერთო `PhotoGrid` (§2.9) — lightbox, მონიშვნები და „რამდენი გამოჩნდეს" */}
-      <PhotoGrid
-        items={images.map((file) => ({
-          id: file.id,
-          src: file.url,
-          title: file.original_name,
-          size: file.size,
-        }))}
-        emptyText={query.isLoading ? '' : t('games.galleryEmpty')}
-        onDelete={async (ids) => {
+      <PhotoShowcase
+        items={images.map((file) => ({ id: file.id, src: file.url, title: file.original_name }))}
+        empty={
+          query.isLoading ? null : <EmptyState icon={<ImageIcon className="size-6" />} title={t('games.galleryEmpty')} />
+        }
+        onDelete={async (id) => {
           const ok = await confirm({ title: t('games.photoDeleteTitle'), variant: 'destructive' })
-          if (ok) ids.forEach((id) => remove.mutate(id))
+          if (ok) remove.mutate(id)
         }}
       />
-    </div>
+    </section>
   )
 }
 

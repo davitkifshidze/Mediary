@@ -2024,12 +2024,16 @@
       "pvp": "PvP"
     },
     "linkKinds": {
+      "trailer": "Trailer",
+      "dlc": "DLC",
+      "patch": "Patch",
+      "download": "Download",
+      "info": "Info",
       "official": "Official site",
-      "steam": "Steam",
-      "epic": "Epic Games",
-      "gog": "GOG",
-      "psn": "PlayStation Store",
-      "xbox": "Xbox",
+      "store": "Store",
+      "guide": "Guide / wiki",
+      "mod": "Mod",
+      "soundtrack": "Soundtrack",
       "other": "Other"
     },
     "videoKinds": {
@@ -2060,7 +2064,20 @@
     "notesEmpty": "No notes yet.",
     "franchiseGenre": "Genre of the new part",
     "franchiseGenreAuto": "RAWG’s genre, if it is in your list",
-    "franchisePickGenre": "Pick a genre — RAWG’s genre is not in your list"
+    "franchisePickGenre": "Pick a genre — RAWG’s genre is not in your list",
+    "linkStores": {
+      "steam": "Steam",
+      "epic": "Epic Games",
+      "gog": "GOG",
+      "psn": "PlayStation Store",
+      "xbox": "Xbox"
+    },
+    "linkKind": "Link type",
+    "linkStore": "Store",
+    "linkStorePick": "Which store",
+    "linkLabel": "Label",
+    "linkLabelPlaceholder": "Label (optional)",
+    "linkBecomesVideo": "On save it moves into the game's videos and plays in the player."
   },
   "notes": {
     "title": "Notes",

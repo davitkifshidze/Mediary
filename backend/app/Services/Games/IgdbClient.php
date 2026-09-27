@@ -334,11 +334,14 @@ class IgdbClient
      * ოფიციალური საიტი და მაღაზიები.
      * IGDB-ის `websites.category`: 1 = official, 13 = Steam, 16 = Epic, 17 = GOG.
      *
-     * @return array<int, array{label: string, url: string, kind: string}>
+     * ⚠️ §22.3 — ორი ღერძი: 1 → `official`, მაღაზიები → `store` + მაღაზია.
+     *
+     * @return array<int, array{label: string, url: string, kind: string, store: ?string}>
      */
     private function links(array $row): array
     {
-        $kinds = [1 => 'official', 13 => 'steam', 16 => 'epic', 17 => 'gog'];
+        $kinds = [1 => 'official', 13 => 'store', 16 => 'store', 17 => 'store'];
+        $stores = [13 => 'steam', 16 => 'epic', 17 => 'gog'];
         $labels = [1 => 'Official', 13 => 'Steam', 16 => 'Epic Games', 17 => 'GOG'];
 
         $out = [];
@@ -355,6 +358,7 @@ class IgdbClient
                 'label' => $labels[$category],
                 'url' => (string) $url,
                 'kind' => $kinds[$category],
+                'store' => $stores[$category] ?? null,
             ];
         }
 
