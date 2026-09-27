@@ -53,13 +53,14 @@ use Illuminate\Database\Eloquent\Model;
  * ერთსა და იმავეს კითხულობენ. `MediaDomain`-ის იგივე წესი: `['movie',
  * 'series']` თოთხმეტ ადგილას ეწერა და ერთის გამორჩენა ჩუმი იყო.
  *
- * ⚠️ **სამი სახის ელემენტი, სამი რუკა** (Tasks §29): `MODELS` — მოდულის
+ * ⚠️ **ხუთი სახის ელემენტი, ხუთი რუკა** (Tasks §29): `MODELS` — მოდულის
  * ჩანაწერი (FEAT-11); `ITEMS` — რიგიანი ფაილი ან ბმული, რომელსაც თავისი
  * `trashed_at` აქვს (გალერეის ფოტო, ვიდეო-ბმული, მოდულების ფაილები, ბაზის
  * ასლი); `FILES` — `trashed_files`-ის რიგი, ე.ი. ფაილი, რომლის წყაროს რიგი
  * წაშლისას ქრება ან ცარიელდება (ჩატის მიმაგრება, დამატებითი ველის ფაილი).
- * სამივე ერთ სახელთა სივრცეშია (`kinds()`), რადგან ურნის მარშრუტი ერთია —
- * `/trash/{kind}/{id}`.
+ * `ENTRIES` — `trash_entries` (მსახიობის ბმული), `MESSAGES` — `trashed_messages`
+ * (ჩატის წერილი). ყველა ერთ სახელთა სივრცეშია (`kinds()`), რადგან ურნის
+ * მარშრუტი ერთია — `/trash/{kind}/{id}`.
  *
  * ⚠️ **ჩანაწერის ურნაში გადატანა მის ფაილებს არ ეხება** — ისინი ადგილზე
  * რჩება და ჩანაწერთან ერთად ბრუნდება; ცალკე წაშლილი ფაილი კი ურნაში
@@ -171,6 +172,18 @@ final class TrashDomain
         'cast_link' => ['permission' => 'update'],
     ];
 
+    /**
+     * **ჩატის წერილი (Tasks §29, ეტაპი 5)** — `trashed_messages`-ის რიგი.
+     *
+     * ⚠️ **წერილი ისედაც რჩება** (`removed_at` · `message_hides`), ე.ი. ეს სახე
+     * მხოლოდ „ჯერ კიდევ აღდგება"-ს ამბობს: საბოლოო წაშლა და ვადის გასვლა
+     * ურნის რიგს შლის და წერილს დამალულს ტოვებს. მოდული არ აქვს (ჩატი
+     * `modules`-ში არ არის), ამიტომ ყველას ეკუთვნის თავისი.
+     *
+     * @var list<string>
+     */
+    public const MESSAGES = ['chat_message'];
+
     /** რამდენ დღეს ინახება წაშლილი ჩანაწერი */
     public const KEEP_DAYS = 30;
 
@@ -192,10 +205,11 @@ final class TrashDomain
             ...array_keys(self::ITEMS),
             ...array_keys(self::FILES),
             ...array_keys(self::ENTRIES),
+            ...self::MESSAGES,
         ];
     }
 
-    /** `record` · `item` · `file` · `entry` */
+    /** `record` · `item` · `file` · `entry` · `message` */
     public static function category(string $kind): ?string
     {
         return match (true) {
@@ -203,6 +217,7 @@ final class TrashDomain
             isset(self::ITEMS[$kind]) => 'item',
             isset(self::FILES[$kind]) => 'file',
             isset(self::ENTRIES[$kind]) => 'entry',
+            in_array($kind, self::MESSAGES, true) => 'message',
             default => null,
         };
     }

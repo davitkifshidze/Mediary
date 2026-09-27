@@ -2287,7 +2287,7 @@
       "record": "Record"
     },
     "deleteTitle": "Delete message",
-    "deleteHint": "The message stays in the database (for recovery) — pick who should stop seeing it.",
+    "deleteHint": "The message goes to your trash and can be restored from there — choose who should stop seeing it.",
     "deleteForMe": "Only for me",
     "deleteForBoth": "For both",
     "messageDeleted": "Message deleted",
@@ -3163,10 +3163,10 @@
   },
   "trash": {
     "title": "Trash",
-    "hint": "Anything deleted is kept here for {{days}} days — a record with its files and links, a photo, a file, a link or a database backup. After that it is deleted for good, and only then is the space freed.",
+    "hint": "Anything deleted is kept here for {{days}} days — a record with its files and links, a photo, a file, a link, a chat message or a database backup. After that it is deleted for good, and only then is the space freed.",
     "count": "{{count}} items",
     "empty": "The trash is empty",
-    "emptyHint": "Everything you delete lands here — records, photos, files and links — so an accidental deletion can be undone.",
+    "emptyHint": "Everything you delete lands here — records, photos, files, links and chat messages — so an accidental delete can be undone.",
     "restore": "Restore",
     "restored": "Restored",
     "deleteNow": "Delete for good",
@@ -3227,18 +3227,25 @@
       "course_category": "Course categories",
       "place_category": "Place categories",
       "record_photo": "Main photos of records",
-      "avatar": "Avatar"
+      "avatar": "Avatar",
+      "chat_message": "Chat messages"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
-      "note_reminder": "Next send: {{date}}"
+      "note_reminder": "Next send: {{date}}",
+      "chat_message": "Sent: {{date}}"
     },
     "albumPhotos": "Restoring puts {{count}} photos back into the album",
     "recordsMoved": "Deleting it moved {{count}} records — you can bring them back too",
     "withRecords": "With the records ({{count}})",
     "restoredWithRecords": "Restored — together with {{count}} records",
     "replace": "Replace",
-    "replaceHint": "The current photo moves to the trash and this one takes its place"
+    "replaceHint": "The current photo moves to the trash and this one takes its place",
+    "scope": {
+      "self": "Hidden for me only",
+      "both": "Deleted for both"
+    },
+    "deleteMessageHint": "“{{name}}” leaves the trash and can no longer be restored. The message stays out of the chat but remains in the database, like every deleted chat message."
   },
   "watchLog": {
     "title": "Watches",

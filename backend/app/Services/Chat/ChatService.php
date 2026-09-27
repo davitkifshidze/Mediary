@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\MessageHide;
 use App\Models\MessageReaction;
 use App\Models\TrashedFile;
+use App\Models\TrashedMessage;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\Storage\StorageMeter;
@@ -213,6 +214,11 @@ class ChatService
      * `removed_at`/`removed_by` — ორივე რომ ეწერა, **მეორე მონაწილის
      * დამალვა პირველისას აუქმებდა**: B მალავდა, მერე A მალავდა, `removed_by`
      * გადაეწერებოდა და წერილი B-სთან ისევ ჩნდებოდა.
+     *
+     * ⚠️ **ორივე სკოუპი წამშლელის ურნაში ჩნდება** (Tasks §29, ეტაპი 5 —
+     * `trashed_messages`), და მხოლოდ **ახალი** წაშლა: უკვე წაშლილის
+     * ხელახლა „წაშლა" დროს არ გადაწერს და ურნიდან საბოლოოდ წაშლილს ისევ
+     * აღდგენადს არ გახდის.
      */
     public function deleteMessage(Message $message, User $me, string $scope): Message
     {
@@ -221,22 +227,93 @@ class ChatService
                 $this->fail('not_the_author', 403);
             }
 
-            $message->forceFill([
-                'removed_at' => now(),
-                'removed_by' => $me->id,
-            ])->save();
+            if ($message->removed_at === null) {
+                DB::transaction(function () use ($message, $me) {
+                    $message->forceFill([
+                        'removed_at' => now(),
+                        'removed_by' => $me->id,
+                    ])->save();
+
+                    TrashedMessage::remember((int) $me->id, (int) $message->getKey(), 'both');
+                });
+            }
 
             return $message;
         }
 
-        /* ⚠️ `firstOrCreate` და არა `create`: ორჯერ დამალვა ერთი და იგივე
-           ქმედებაა და უნიკალურ ინდექსზე 500-ით არ უნდა დასრულდეს. */
-        MessageHide::firstOrCreate(
-            ['message_id' => $message->getKey(), 'user_id' => $me->id],
-            ['hidden_at' => now()],
-        );
+        DB::transaction(function () use ($message, $me) {
+            /* ⚠️ `firstOrCreate` და არა `create`: ორჯერ დამალვა ერთი და იგივე
+               ქმედებაა და უნიკალურ ინდექსზე 500-ით არ უნდა დასრულდეს. */
+            $hide = MessageHide::firstOrCreate(
+                ['message_id' => $message->getKey(), 'user_id' => $me->id],
+                ['hidden_at' => now()],
+            );
+
+            if ($hide->wasRecentlyCreated) {
+                TrashedMessage::remember((int) $me->id, (int) $message->getKey(), 'self');
+            }
+        });
 
         return $message->load('hides');
+    }
+
+    /**
+     * **წერილის აღდგენა ურნიდან** (Tasks §29, ეტაპი 5) — `self`-ზე დამალვის
+     * მოხსნა, `both`-ზე `removed_at`-ის გასუფთავება; ურნის რიგი მერე ქრება.
+     *
+     * @return string|null უარის მიზეზი (`restoreBlocked()`) ან `null` — აღდგა
+     */
+    public function restoreMessage(TrashedMessage $entry): ?string
+    {
+        $reason = $this->restoreBlocked($entry);
+
+        if ($reason) {
+            return $reason;
+        }
+
+        DB::transaction(function () use ($entry) {
+            if ($entry->scope === 'both') {
+                $entry->message->forceFill(['removed_at' => null, 'removed_by' => null])->save();
+            } else {
+                MessageHide::where('message_id', $entry->message_id)->where('user_id', $entry->user_id)->delete();
+            }
+
+            $entry->delete();
+        });
+
+        return null;
+    }
+
+    /**
+     * რატომ ვერ ბრუნდება ურნის წერილი (ან `null`).
+     *
+     * ⚠️ **ეს დაცვაა და არა ჩვეულებრივი გზა** — FK-ის კასკადი ელემენტს
+     * წერილთან ერთად შლის, აღდგენა კი რიგს თვითონ აშორებს; მაგრამ ბაზის
+     * ასლის აღდგენის ან ხელით ჩარევის შემდეგ ორი ფაქტი შეიძლება დაშორდეს,
+     * და აღდგენა მაშინ „აღარაფერია"-ს უნდა ამბობდეს და არა 500-ს.
+     * ⚠️ ჩატვირთულ კავშირებს იყენებს — ურნის სია თითო რიგზე მოთხოვნას არ ხარჯავს.
+     */
+    public function restoreBlocked(TrashedMessage $entry): ?string
+    {
+        $message = $entry->message;
+
+        if (! $message) {
+            return 'parent_missing';
+        }
+
+        if ($entry->scope === 'both') {
+            if ((int) $message->user_id !== (int) $entry->user_id) {
+                return 'parent_missing';
+            }
+
+            return $message->removed_at === null ? 'already_present' : null;
+        }
+
+        $hidden = $message->relationLoaded('hides')
+            ? $message->hides->contains(fn (MessageHide $hide) => (int) $hide->user_id === (int) $entry->user_id)
+            : $message->hides()->where('user_id', $entry->user_id)->exists();
+
+        return $hidden ? null : 'already_present';
     }
 
     /** წაკითხულად ნიშვნა — მრიცხველი ამაზე დგას */

@@ -15,9 +15,9 @@ import { api } from '@/lib/api'
 /**
  * `record` — მოდულის ჩანაწერი · `item` — რიგიანი ელემენტი (ფაილი, ბმული,
  * ჩანიშვნა, შეხსენება…) · `file` — `trashed_files` · `entry` — `trash_entries`
- * (მსახიობის ბმული)
+ * (მსახიობის ბმული) · `message` — `trashed_messages` (ჩატის წერილი)
  */
-export type TrashCategory = 'record' | 'item' | 'file' | 'entry'
+export type TrashCategory = 'record' | 'item' | 'file' | 'entry' | 'message'
 
 /** რატომ ვერ ბრუნდება — სერვერის მანქანური კოდი (`TrashBin::blocked()`) */
 export type TrashBlocked =
@@ -66,6 +66,12 @@ export interface TrashItem {
    * ჩაანაცვლებს — ის თვითონ გადავა ურნაში (29.2 — „ჯერ იკითხავს")
    */
   replaceable: boolean
+  /**
+   * ჩატის წერილი (ეტაპი 5): `self` — მხოლოდ ჩემთან დამალული, `both` —
+   * ორივესთან წაშლილი. ⚠️ საბოლოო წაშლა მას მხოლოდ ურნიდან აშორებს —
+   * წერილი დამალული რჩება.
+   */
+  scope: 'self' | 'both' | null
   parent: TrashParent | null
   restorable: boolean
   blocked: TrashBlocked | null

@@ -10,6 +10,7 @@ use App\Models\GalleryImage;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\TrashedFile;
+use App\Models\TrashedMessage;
 use App\Models\TrashEntry;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
@@ -40,9 +41,12 @@ use Symfony\Component\HttpFoundation\Response;
  * ფილმი, სერიალი, გალერეიდან თუ საიდანაც იქნება — და 30 დღე აღდგენის
  * შესაძლებლობა იყოს".
  *
- * ⚠️ **ოთხი სახის ელემენტი, ერთი გზა** (`TrashDomain::kinds()`): ჩანაწერი
+ * ⚠️ **ხუთი სახის ელემენტი, ერთი გზა** (`TrashDomain::kinds()`): ჩანაწერი
  * და რიგიანი ელემენტი თავის `trashed_at`-ს ატარებს (`HasTrash`), ჩატისა და
- * ველის ფაილი `trashed_files`-შია, მსახიობის ბმული კი `trash_entries`-ში.
+ * ველის ფაილი, მთავარი ფოტო და ავატარი `trashed_files`-შია, მსახიობის
+ * ბმული `trash_entries`-ში, ჩატის წერილი კი `trashed_messages`-ში — ⚠️ ეს
+ * უკანასკნელი მხოლოდ „ჯერ კიდევ აღდგება"-ს ამბობს: წერილი ისედაც რჩება და
+ * მისი ურნის რიგის წაშლა მას დამალულს ტოვებს.
  * კონტროლერი და გასუფთავების ბრძანება მხოლოდ ამ სერვისს იძახებენ — ორი
  * ადგილი, რომელიც „რა არის ურნაში"-ს ცალ-ცალკე დაწერდა, პირველივე ახალ
  * სახეზე დაშორდებოდა.
@@ -135,6 +139,12 @@ final class TrashBin
             };
 
             $rows = (clone $query)->orderByDesc('trashed_at')->orderByDesc('id')->limit(self::PER_GROUP)->get();
+
+            // ⚠️ ეტაპი 5 — სათაური, თანამოსაუბრე და „აღდგება?" ერთი ჩატვირთვით, თითო რიგზე მოთხოვნის გარეშე
+            if ($category === 'message') {
+                $rows->load(['message.hides', 'message.conversation.participants']);
+            }
+
             $parents = $this->parents($kind, $rows);
             $moduleKey = $this->moduleOf($kind);
             $module = $moduleKey ? $modules->get($moduleKey) : null;
@@ -144,7 +154,7 @@ final class TrashBin
                 'category' => $category,
                 'module' => $moduleKey ?? match ($kind) {
                     'database_backup' => 'backup',
-                    'chat_file' => 'chat',
+                    'chat_file', 'chat_message' => 'chat',
                     default => null,
                 },
                 'name_ka' => $category === 'record' ? $module?->name_ka : null,
@@ -180,11 +190,21 @@ final class TrashBin
         $isLocked = $row instanceof GalleryImage && $row->album_id && isset($locked[(int) $row->album_id]);
         $blocked = $this->blocked($user, $kind, $row, $parent, strict: false);
         $byParent = in_array($kind, self::TITLED_BY_PARENT, true) && $parent;
+        $chat = $row instanceof TrashedMessage;
 
         return [
             'id' => (int) $row->getKey(),
-            'title' => $byParent ? $parent['title'] : $this->titleOf($kind, $row),
-            'subtitle' => $byParent ? null : ($parent['title'] ?? $this->albumName($row)),
+            'title' => match (true) {
+                $chat => $this->messageTitle($row->message),
+                $byParent => $parent['title'],
+                default => $this->titleOf($kind, $row),
+            },
+            // ⚠️ ჩატის წერილზე — ვისთან იყო მიმოწერა (ის სერვერმა იცის, ენას არ ეკითხება)
+            'subtitle' => match (true) {
+                $chat => $this->messagePartner($user, $row->message),
+                $byParent => null,
+                default => $parent['title'] ?? $this->albumName($row),
+            },
             'trashed_at' => $row->trashed_at?->toIso8601String(),
             /* ⚠️ რჩება თუ არა დრო — სერვერი ითვლის, რადგან ვადა
                `TrashDomain::KEEP_DAYS`-შია და კლიენტში მისი ასლი
@@ -201,8 +221,12 @@ final class TrashBin
             'when' => match ($kind) {
                 'media_watch' => $row->watched_at?->toIso8601String(),
                 'note_reminder' => ($row->next_at ?? $row->remind_at)?->toIso8601String(),
+                // ჩატის წერილი — როდის გაიგზავნა (ურნაში როდის მოხვდა, `trashed_at` ამბობს)
+                'chat_message' => $row->message?->created_at?->toIso8601String(),
                 default => null,
             },
+            // ⚠️ ეტაპი 5 — „მხოლოდ ჩემთან" თუ „ორივესთან"; ტექსტი კლიენტისაა (ენა)
+            'scope' => $chat ? $row->scope : null,
             // ალბომზე — რამდენ ფოტოს დააბრუნებს; კლასიფიკატორზე — რამდენ ჩანაწერს შემოგთავაზებს
             'count' => match (true) {
                 $kind === 'gallery_album' => count($row->trashed_photo_ids['ids'] ?? []),
@@ -251,6 +275,8 @@ final class TrashBin
                     'record_type',
                     $this->permitted($user, TrashDomain::domains(), 'update'),
                 )),
+            // ეტაპი 5 — ჩატის წერილი; მოდული და უფლება არ აქვს, ყველას თავისი ეკუთვნის
+            'message' => TrashedMessage::withoutGlobalScope('owner')->where('user_id', $userId),
             default => TrashEntry::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
@@ -321,6 +347,26 @@ final class TrashBin
                 return;
             }
 
+            // ეტაპი 5 — დამალვის მოხსნა ან `removed_at`-ის გასუფთავება; ურნის რიგი ქრება
+            if ($row instanceof TrashedMessage) {
+                $label = $this->messageTitle($row->message);
+                $reason = $this->chat->restoreMessage($row);
+
+                if ($reason) {
+                    $this->fail($reason, 409);
+                }
+
+                $this->audit->log(AuditLog::ACTION_RESTORE, [
+                    'module' => 'chat',
+                    'subject_type' => 'message',
+                    'subject_id' => $row->message_id,
+                    'subject_label' => $label,
+                    'new_values' => ['scope' => $row->scope, 'trashed' => false],
+                ]);
+
+                return;
+            }
+
             if ($row instanceof TrashedFile) {
                 $reason = match ($row->kind) {
                     'chat_file' => $this->chat->restoreAttachment($row),
@@ -374,7 +420,8 @@ final class TrashBin
      * ე.ი. მოვლენები უნდა გაისროლოს: ფაილი დისკიდან, კვოტა, გალერეა და
      * pivot-ები სწორედ ახლა თავისუფლდება. ⚠️ მსახიობის ბმულზე მხოლოდ ურნის
      * ჩანაწერი იშლება — TMDB-ის საფლავის ქვა რჩება, თორემ სინქრონიზაცია მას
-     * დააბრუნებდა.
+     * დააბრუნებდა. ⚠️ ჩატის წერილზეც მხოლოდ ურნის რიგი იშლება (ეტაპი 5) —
+     * წერილი §4.6-ის წესით ბაზაში რჩება, უბრალოდ აღარ აღდგება.
      */
     public function destroy(User $user, string $kind, int $id): void
     {
@@ -467,6 +514,8 @@ final class TrashBin
                 'record' => TrashDomain::model($kind)::expiredTrash($days),
                 'item' => TrashDomain::ITEMS[$kind]['model']::expiredTrash($days),
                 'file' => TrashedFile::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
+                // ⚠️ მხოლოდ ურნის რიგი იშლება — წერილი დამალული რჩება
+                'message' => TrashedMessage::withoutGlobalScope('owner')->where('trashed_at', '<=', $before),
                 default => TrashEntry::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
             };
 
@@ -507,7 +556,7 @@ final class TrashBin
 
         return match (true) {
             $kind === 'database_backup' => $user->isSuperAdmin(),
-            $category === 'file' => true,
+            $category === 'file', $category === 'message' => true,
             $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission']) !== [],
             $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
@@ -574,6 +623,10 @@ final class TrashBin
         if ($parent && $parent['trashed']
             && (! $user->hasModule($parent['kind']) || ! $user->hasPermission($parent['kind'], 'delete'))) {
             return 'parent_blocked';
+        }
+
+        if ($row instanceof TrashedMessage) {
+            return $this->chat->restoreBlocked($row);
         }
 
         if ($row instanceof TrashedFile && $row->kind === 'chat_file') {
@@ -815,6 +868,38 @@ final class TrashBin
         $path = $row->getAttribute('path');
 
         return is_string($path) && $path !== '' ? basename($path) : '#'.$row->getKey();
+    }
+
+    /**
+     * ჩატის წერილის სათაური — ტექსტი, ფაილის სახელი ან გაზიარებული ჩანაწერი.
+     *
+     * ⚠️ მედიის წერილს ტექსტი ხშირად საერთოდ არ აქვს (ძებნის იგივე მიზეზი —
+     * `attachment_name`-საც ეძებს), GIF-ის ტექსტი კი ბმულია და სათაურად
+     * არაფერს ამბობს.
+     */
+    private function messageTitle(?Message $message): string
+    {
+        if (! $message) {
+            return '#';
+        }
+
+        $body = trim(preg_replace('/\s+/u', ' ', (string) $message->body));
+
+        return match (true) {
+            $message->type === 'gif' => 'GIF',
+            $body !== '' => mb_strlen($body) > self::EXCERPT ? mb_substr($body, 0, self::EXCERPT).'…' : $body,
+            filled($message->attachment_name) => (string) $message->attachment_name,
+            $message->type === Message::TYPE_RECORD && filled($message->record['title'] ?? null) => (string) $message->record['title'],
+            default => '#'.$message->getKey(),
+        };
+    }
+
+    /** ვისთან იყო მიმოწერა — სახელი, ან `null`, თუ მეორე მხარე აღარ არსებობს */
+    private function messagePartner(User $user, ?Message $message): ?string
+    {
+        $other = $message?->conversation?->otherThan((int) $user->getKey());
+
+        return $other ? ($other->name ?: $other->username) : null;
     }
 
     /** მშობლის გარეშე ფოტოს ქვესათაური — ალბომის სახელი */

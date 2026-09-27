@@ -491,8 +491,8 @@ class RegistryConsistencyTest extends TestCase
         'course_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
-        // §29.10 ეტაპი 5 — ჩატი (მიმაგრების ფაილი უკვე `trashed_files`-შია)
-        'messages' => 'ეტაპი 5 (§29.10) — შეტყობინების წაშლა; მიმაგრება უკვე ურნაშია',
+        // §29.10 ეტაპი 5 — წერილი არასდროს იშლება (§4.6); ურნა მის წაშლას `trashed_messages`-ით აჩვენებს
+        'messages' => 'წერილი ბაზაში რჩება (§4.6) — მისი წაშლა ურნაში `trashed_messages`-ითაა, მიმაგრება `trashed_files`-ით',
 
         // §29.10 ეტაპი 7 — აუდიტის ლოგის გასუფთავება ერთ ელემენტად
         'audit_logs' => 'ეტაპი 7 (§29.10) — გასუფთავება ერთ ელემენტად',
@@ -504,7 +504,7 @@ class RegistryConsistencyTest extends TestCase
         'module_user' => 'მოდულზე წვდომა — პარამეტრი და არა შიგთავსი',
         'conversation_user' => 'საუბრის მონაწილეობა — სტრუქტურა',
         'conversation_nicknames' => 'საუბრის პარამეტრი',
-        'message_hides' => '„ჩემთვის დამალვა" თვითონ რიგია — ეტაპი 5 მას აჩვენებს',
+        'message_hides' => '„ჩემთვის დამალვა" თვითონ რიგია — ურნა მას `trashed_messages`-ით აჩვენებს (ეტაპი 5)',
         'message_reactions' => 'რეაქცია გადართვაა (ხელახლა დაჭერა ხსნის)',
         'user_blocks' => 'პარამეტრი — ბლოკის მოხსნა ცალკე მოქმედებაა',
         'cast_member_tags' => 'ძებნის ტეგები — ველის რედაქტირება',
@@ -540,7 +540,7 @@ class RegistryConsistencyTest extends TestCase
         $this->assertContains('movies', $withUser);
         $this->assertContains('gallery_images', $withUser);
 
-        $covered = [...TrashDomain::tables(), ...TrashDomain::itemTables(), 'trashed_files', 'trash_entries'];
+        $covered = [...TrashDomain::tables(), ...TrashDomain::itemTables(), 'trashed_files', 'trash_entries', 'trashed_messages'];
 
         $missing = array_values(array_diff($withUser, $covered, array_keys(self::NOT_TRASHED)));
         $this->assertSame([], $missing, implode(PHP_EOL, [

@@ -62,6 +62,7 @@ use App\Models\SongGenre;
 use App\Models\Status;
 use App\Models\TranslationUsage;
 use App\Models\TrashedFile;
+use App\Models\TrashedMessage;
 use App\Models\TrashEntry;
 use App\Models\TvEpisode;
 use App\Models\User;
@@ -242,6 +243,7 @@ class AuditRegistry
         DatabaseBackup::class => 'DatabaseBackupController წერს; აღდგენა რიგებს `DB::table()`-ით სვამს, რომ ცრუ „შეიქმნა" არ გაჩნდეს',
         TrashedFile::class => 'ურნის ტექნიკური რიგი (Tasks §29); წაშლას/აღდგენას წყარო (ჩატი, ველი) და `TrashBin` ცხადად წერს',
         TrashEntry::class => 'ურნის ტექნიკური რიგი (Tasks §29, ეტაპი 2); მსახიობის მოხსნას/აღდგენას `RecordCastController` და `TrashBin` ცხადად წერს',
+        TrashedMessage::class => 'ურნის ტექნიკური რიგი (Tasks §29, ეტაპი 5); წაშლა `chat_delete`-ად, აღდგენა `TrashBin`-ში ცხადად იწერება',
     ];
 
     /** მოდულის რიგის გარეშე არსებული ჭრილები — ფილტრში მოდულების გვერდით ჩანს */

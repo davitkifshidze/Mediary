@@ -13,6 +13,7 @@ import {
   ListMusic,
   Lock,
   MessageSquare,
+  MessageSquareText,
   Paperclip,
   SquarePlay,
   StickyNote,
@@ -59,7 +60,8 @@ import { PageHeader } from '@/components/ui/page-header'
 
    ⚠️ **ჯგუფი ურნის სახეა** (`kind`) — ჩანაწერები მოდულებად, ფაილები
    თავ-თავიანთ ჯგუფად (გალერეის ფოტო, ვიდეო-ბმული, მოდულის ფაილი, ველის
-   ფაილი, ჩატის ფაილი, ბაზის ასლი). ფოტოს ესკიზი აქვს.
+   ფაილი, ჩატის ფაილი, ბაზის ასლი), ჩატის წერილები — ერთ ჯგუფად, სკოუპით
+   („მხოლოდ ჩემთან" / „ორივესთან"). ფოტოს ესკიზი აქვს.
 
    ⚠️ **ურნა ადგილს იკავებს** (29.4) — გვერდი თავში ამბობს, რამდენს, და
    „ადგილის გათავისუფლება" = საბოლოო წაშლა.
@@ -82,6 +84,7 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'gallery_video' || kind === 'game_video') return <SquarePlay />
   if (kind === 'database_backup') return <DatabaseBackup />
   if (kind === 'chat_file') return <MessageSquare />
+  if (kind === 'chat_message') return <MessageSquareText />
   if (kind === 'field_file') return <FormInput />
   if (kind.endsWith('_note')) return <StickyNote />
   if (kind === 'playlist') return <ListMusic />
@@ -174,10 +177,14 @@ export function TrashPage() {
   const removeOne = async (group: TrashGroup, item: TrashItem) => {
     const ok = await confirm({
       title: t('trash.deleteTitle'),
+      /* ⚠️ ჩატის წერილი საბოლოოდ არ იშლება (§4.6 — ბაზაში რჩება) — ურნიდან
+         მხოლოდ აღდგენის შესაძლებლობა ქრება, და ტექსტი ზუსტად ამას ამბობს */
       description:
         group.category === 'record'
           ? t('trash.deleteHint', { name: item.title })
-          : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
+          : group.category === 'message'
+            ? t('trash.deleteMessageHint', { name: item.title })
+            : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
     })
@@ -261,6 +268,9 @@ export function TrashPage() {
                           <span className="block truncate text-xs text-muted-foreground">
                             {item.subtitle ?? itemModule(group, item)}
                           </span>
+                        )}
+                        {item.scope && (
+                          <span className="block text-xs text-muted-foreground">{t(`trash.scope.${item.scope}`)}</span>
                         )}
                         {item.when && (
                           <span className="block text-xs text-muted-foreground">

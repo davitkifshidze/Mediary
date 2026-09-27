@@ -41,7 +41,7 @@ const payload: TrashPayload = {
         {
           id: 1, title: 'Inception', subtitle: null, trashed_at: '2026-09-20T10:00:00+04:00',
           expires_in_days: 22, size: 1_048_576, preview: { src: 'movies/posters/i.jpg', private: false },
-          locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false, parent: null, restorable: true, blocked: null,
+          locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false, scope: null, parent: null, restorable: true, blocked: null,
         },
       ],
     },
@@ -58,7 +58,7 @@ const payload: TrashPayload = {
       items: [
         {
           id: 7, title: 'private-shot.jpg', subtitle: 'პირადი', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 300, preview: null, locked: true, when: null, count: null, module: null, offers_records: false, replaceable: false, parent: null, restorable: true, blocked: null,
+          expires_in_days: 23, size: 300, preview: null, locked: true, when: null, count: null, module: null, offers_records: false, replaceable: false, scope: null, parent: null, restorable: true, blocked: null,
         },
       ],
     },
@@ -75,7 +75,7 @@ const payload: TrashPayload = {
       items: [
         {
           id: 9, title: 'paper.pdf', subtitle: 'Talk', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 100, preview: null, locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false,
+          expires_in_days: 23, size: 100, preview: null, locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false, scope: null,
           parent: { kind: 'video', id: 3, title: 'Talk', trashed: true }, restorable: true, blocked: null,
         },
       ],
@@ -93,8 +93,26 @@ const payload: TrashPayload = {
       items: [
         {
           id: 11, title: 'ebook.epub', subtitle: 'Dune', trashed_at: '2026-09-21T10:00:00+04:00',
-          expires_in_days: 23, size: 50, preview: null, locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false,
+          expires_in_days: 23, size: 50, preview: null, locked: false, when: null, count: null, module: null, offers_records: false, replaceable: false, scope: null,
           parent: { kind: 'book', id: 4, title: 'Dune', trashed: false }, restorable: false, blocked: 'module_disabled',
+        },
+      ],
+    },
+    {
+      kind: 'chat_message',
+      category: 'message',
+      module: 'chat',
+      name_ka: null,
+      name_en: null,
+      icon: null,
+      color: null,
+      total: 1,
+      bytes: 0,
+      items: [
+        {
+          id: 13, title: 'გამარჯობა', subtitle: 'alice', trashed_at: '2026-09-21T10:00:00+04:00',
+          expires_in_days: 23, size: 0, preview: null, locked: false, when: '2026-09-20T09:00:00+04:00', count: null, module: null,
+          offers_records: false, replaceable: false, scope: 'both', parent: null, restorable: true, blocked: null,
         },
       ],
     },
@@ -186,6 +204,22 @@ describe('TrashPage', () => {
     const li = row('ebook.epub')
     expect(restoreButton(li).disabled).toBe(true)
     expect(li.textContent).toContain(i18n.t('trash.blocked.module_disabled'))
+  })
+
+  /* ⚠️ ეტაპი 5 — წერილი საბოლოოდ არ იშლება (§4.6), ამიტომ დადასტურება
+     ფაილის „N MB გათავისუფლდება"-ს კი არა, „აღარ აღდგება"-ს ამბობს */
+  it('shows a chat message with its scope and says deleting it only forgets it', async () => {
+    await mount()
+
+    const li = row('გამარჯობა')
+    expect(li.textContent).toContain('alice')
+    expect(li.textContent).toContain(i18n.t('trash.scope.both'))
+
+    const remove = [...li.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('trash.deleteNow'))) as HTMLButtonElement
+    await act(async () => remove.click())
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('trash.deleteMessageHint', { name: 'გამარჯობა' }))
   })
 
   it('restores by kind and id', async () => {
