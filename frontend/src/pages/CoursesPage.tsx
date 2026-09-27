@@ -5,6 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   ExternalLink,
   GraduationCap,
+  Link2,
   Loader2,
   Paperclip,
   Plus,
@@ -55,8 +56,10 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { ModalShell } from '@/components/ui/modal-shell'
+import { QuickFill } from '@/components/ui/quick-fill'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -491,6 +494,9 @@ export function CoursesPage() {
 
 /* ---------- ფორმა ---------- */
 
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'course-form'
+
 function CourseForm({
   course,
   allTags,
@@ -526,6 +532,9 @@ function CourseForm({
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [probing, setProbing] = useState(false)
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ კურსზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
+  const extras = useRecordExtras('course', course)
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის წამოღებას.
@@ -555,8 +564,16 @@ function CourseForm({
 
   const save = useMutation({
     mutationFn: (input: CourseInput) =>
-      course ? updateCourse(course.id, input) : createCourse(input),
-    onSuccess: () => {
+      extras.current ? updateCourse(extras.current.id, input) : createCourse(input),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['courses'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('courses.saved'), variant: 'success' })
       onSaved()
     },
@@ -614,49 +631,86 @@ function CourseForm({
 
   return (
     <ModalShell title={t(course ? 'courses.edit' : 'courses.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="space-y-4">
-        <div className={fields.shows('title') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="c-title" required hint={fields.hint('title')}>
-            {fields.label('title')}
-          </FieldLabel>
-          <Input
-            id="c-title"
-            autoFocus
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-        </div>
-
-        {/* ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსსაც მისამართი არ აქვს */}
-        <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="c-url" hint={joinHints(fields.hint('url'), t('courses.urlHint'))}>
-            {fields.label('url')}
-          </FieldLabel>
-          <Input
-            id="c-url"
-            placeholder="https://www.udemy.com/course/…"
-            value={form.url}
-            onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-            onBlur={(e) => void loadMeta(e.target.value)}
-          />
-          {probing && (
-            <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
-              {t('videos.metaLoading')}
-            </p>
-          )}
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსს მისამართი არ აქვს */}
+        <QuickFill
+          show={fields.shows('url')}
+          title={fields.label('url')}
+          htmlFor="c-url"
+          required={fields.required('url')}
+          hint={joinHints(fields.hint('url'), t('courses.urlHint'))}
+          icon={<Link2 className="size-3.5 text-primary" />}
+        >
+          <div className="relative">
+            <Input
+              id="c-url"
+              placeholder="https://www.udemy.com/course/…"
+              value={form.url}
+              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+              onBlur={(e) => void loadMeta(e.target.value)}
+            />
+            {probing && (
+              <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+          </div>
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
-        </div>
+        </QuickFill>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel required hint={fields.hint('status')}>{fields.label('status')}</FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v as CourseStatus }))}
-            >
-              <SelectTrigger>
+        {/* §26 — მთავარი ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('thumbnail') && (
+              <>
+                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+                  {fields.label('thumbnail')}
+                </FieldLabel>
+                <PosterUploader
+                  preview={preview}
+                  variant="wide"
+                  onSelect={(file) => {
+                    setThumbnail(file)
+                    setRemoveThumb(false)
+                    setPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setThumbnail(null)
+                    setRemoveThumb(true)
+                    setPreview(null)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          {/* ⚠️ სახელი `locked`-ია (§6.5) — ყოველთვის სავალდებულო */}
+          <FormField {...fields.field('title')} required htmlFor="c-title" error={errors.title}>
+            <Input
+              id="c-title"
+              autoFocus
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField {...fields.field('description')} htmlFor="c-description">
+            <Textarea
+              id="c-description"
+              rows={FORM_TEXT_ROWS}
+              placeholder={fields.placeholder('description')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
+
+        {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
+            მოდის, როგორც დანარჩენ ფორმებში (სავალდებულობას `pickErrors` ამოწმებს) */}
+        <FormSection title={t('form.sections.classification')}>
+          <FormField size="half" {...fields.field('status')} htmlFor="c-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as CourseStatus }))}>
+              <SelectTrigger id="c-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -667,16 +721,11 @@ function CourseForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('category') ? undefined : 'hidden'}>
-            <FieldLabel required hint={fields.hint('category')}>{fields.label('category')}</FieldLabel>
-            <Select
-              value={form.categoryId}
-              onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
-            >
-              <SelectTrigger>
+          <FormField size="half" {...fields.field('category')} htmlFor="c-category" error={errors.category_id}>
+            <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+              <SelectTrigger id="c-category" className={errors.category_id ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -687,62 +736,30 @@ function CourseForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.category_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
-            )}
-          </div>
-        </div>
+          </FormField>
 
-        <div className={fields.shows('thumbnail') ? undefined : 'hidden'}>
-          <Label>{fields.label('thumbnail')}</Label>
-          <PosterUploader
-            preview={preview}
-            variant="wide"
-            onSelect={(file) => {
-              setThumbnail(file)
-              setRemoveThumb(false)
-              setPreview(URL.createObjectURL(file))
-            }}
-            onClear={() => {
-              setThumbnail(null)
-              setRemoveThumb(true)
-              setPreview(null)
-            }}
-          />
-        </div>
-
-        <div className={fields.shows('description') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="c-description">{fields.label('description')}</FieldLabel>
-          <Textarea
-            id="c-description"
-            rows={3}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </div>
-
-        <div className={fields.shows('tags') ? undefined : 'hidden'}>
-          <FieldLabel>{fields.label('tags')}</FieldLabel>
-          <TagSelect
-            value={form.tags}
-            onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
-            options={allTags}
-          />
-        </div>
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending && <Loader2 className="size-4 animate-spin" />}
-            {t('actions.save')}
-          </Button>
-        </ModalFooter>
+          <FormField {...fields.field('tags')} htmlFor="c-tags">
+            <TagSelect
+              inputId="c-tags"
+              value={form.tags}
+              onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
+              options={allTags}
+            />
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები საკუთარ თავს ინახავს (ფორმის გარეთ) */}
-      {course && <CustomFieldsCard module="course" recordId={course.id} />}
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ კურსზეც** (აქამდე მხოლოდ
+          რედაქტირებისას ჩანდა); ახალზე მონახაზია და კურსთან ერთად ინახება */}
+      <CustomFieldsCard
+        module="course"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      {/* ⚠️ „ინახება…" შენახვისას — აქამდე „შენახვა" ეწერა და ღილაკი უმოქმედოს ჰგავდა */}
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
     </ModalShell>
   )
 }
