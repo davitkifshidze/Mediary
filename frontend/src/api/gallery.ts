@@ -718,6 +718,13 @@ export async function fetchGalleryAlbums(): Promise<GalleryAlbum[]> {
   return data
 }
 
+/**
+ * ალბომის პაროლის მინიმალური სიგრძე — `GalleryAlbumController`-ის `min:4`-ის
+ * ასლი. ⚠️ **საზღვარს სერვერი იცავს**; აქ ის მხოლოდ იმისთვისაა, რომ ღილაკი
+ * წინასწარ გაითიშოს და მიზეზი ველთან ეწეროს, და არა შენახვის შემდეგ toast-ში.
+ */
+export const ALBUM_PASSWORD_MIN = 4
+
 export async function createGalleryAlbum(body: {
   name: string
   description?: string | null

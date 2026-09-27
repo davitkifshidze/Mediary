@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Trash2, User } from 'lucide-react'
 import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
+import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { castName } from '@/lib/display'
 import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
@@ -30,6 +31,12 @@ import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutTog
    ⚠️ **ფოტოები მსახიობზეა მიბმული და არა ჩანაწერზე** (`gallery_images`
    `cast_member`-ით) — ე.ი. ერთი მსახიობის ფოტო ორ ფილმზე არ დუბლირდება და
    მისივე გვერდზეც იგივე დასტა ჩანს.
+
+   ⚠️ **გადატანაც აქაა** (Tasks §17, Q34): ფილმის გვერდზე მსახიობის ფოტოს
+   მარჯვენა კლიკი იგივე „გადატანას" უნდა სთავაზობდეს, რასაც მსახიობის
+   გვერდი — ერთი გვერდის ორ ბადეში ორი ქცევა არ უნდა იყოს. `keep`-ით
+   იხსნება: ფოტო მსახიობზე რჩება და მხოლოდ ალბომი იცვლება, სანამ სხვას
+   ცხადად არ აირჩევ.
    ============================================================ */
 
 /** ⚠️ ტიპიც გაზიარებულია (§28) — ლოკალური ასლი ერთ დღეს გაშორდებოდა */
@@ -52,6 +59,8 @@ export function CastPhotoStacks({
   const [layout, setLayout] = useState<Layout>('grouped')
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
+  /** §17 — რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
+  const [moving, setMoving] = useState<number[] | null>(null)
 
   /**
    * ჯგუფები — **ჩანაწერის შემადგენლობის რიგით** (billing order), რომ მთავარი
@@ -132,6 +141,12 @@ export function CastPhotoStacks({
       .map((id) => pool.find((i) => i.id === id))
       .filter((i): i is GalleryCastImage & GalleryImage => Boolean(i) && !i!.locked)
 
+  /** §17 — გადატანაც იმავე ფილტრზე დგას: ჩაკეტილს სერვერი ისედაც არ გადაიტანდა */
+  const move = (ids: number[], pool: GalleryCastImage[]) => {
+    const open = pick(ids, pool).map((image) => image.id)
+    if (open.length) setMoving(open)
+  }
+
   return (
     <section className="mt-6 border-t border-border pt-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -162,6 +177,7 @@ export function CastPhotoStacks({
           )}
           emptyText={t('gallery.emptyActor')}
           onDelete={onDelete && ((ids) => onDelete(pick(ids, images)))}
+          onMove={(ids) => move(ids, images)}
           onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
         />
       ) : (
@@ -232,6 +248,7 @@ export function CastPhotoStacks({
                 items={group.photos.map((image) => toItem(image, nameOf(group.member)))}
                 emptyText={t('gallery.emptyActor')}
                 onDelete={onDelete && ((ids) => onDelete(pick(ids, group.photos)))}
+                onMove={(ids) => move(ids, group.photos)}
                 onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
               />
             </div>
@@ -242,6 +259,9 @@ export function CastPhotoStacks({
           და JSX-იც ერთ კომპონენტშია, `GroupsCut`-ის ცოცხალი ხარვეზის წესი. */}
       {unlocking != null && (
         <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
+      )}
+      {moving && (
+        <GalleryMoveDialog ids={moving} initialTarget="keep" onClose={() => setMoving(null)} />
       )}
     </section>
   )

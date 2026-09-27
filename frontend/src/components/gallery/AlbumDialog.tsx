@@ -8,6 +8,7 @@ import {
   type GalleryAlbum,
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
+import { albumPasswordProblem } from '@/lib/albumPassword'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +18,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
+import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
 
 /* ============================================================
    **ალბომის დამატება/რედაქტირება — მოდალი (შენი მითითება, 2026-09-16).**
@@ -102,10 +104,11 @@ export function AlbumDialog({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const mismatch = !!password && password !== repeat
+  /* §17.2 — მოკლე და არაემთხვევი პაროლი ერთი ფუნქციით მოწმდება, რომელსაც
+     ალბომის ამრჩევიც კითხულობს (`AlbumPasswordFields`) */
   const ready =
     !!name.trim() &&
-    !mismatch &&
+    !albumPasswordProblem(password, repeat) &&
     (!needsCurrent || !(removing || password) || !!current)
 
   return (
@@ -196,27 +199,14 @@ export function AlbumDialog({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="album-password">
-                    {t(locked ? 'gallery.albumNewPassword' : 'gallery.albumPassword')}
-                  </Label>
-                  <PasswordInput
-                    id="album-password"
-                    value={password}
-                    onChange={setPassword}
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="album-repeat">{t('gallery.albumRepeatPassword')}</Label>
-                  <PasswordInput id="album-repeat" value={repeat} onChange={setRepeat} />
-                </div>
-              </div>
-
-              {mismatch && (
-                <p className="text-xs text-destructive">{t('gallery.albumPasswordMismatch')}</p>
-              )}
+              <AlbumPasswordFields
+                idPrefix="album"
+                password={password}
+                repeat={repeat}
+                onPassword={setPassword}
+                onRepeat={setRepeat}
+                replacing={locked}
+              />
 
               {locked && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setRemoving(true)}>

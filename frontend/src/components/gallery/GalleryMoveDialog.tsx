@@ -42,19 +42,30 @@ import { useToast } from '@/components/ui/feedback'
    ⚠️ **მსახიობი ძებნით მოდის და არა სიით** — `cast_members` გლობალური
    ლექსიკონია, ე.ი. სრული სია ათასობით რიგია; `GET /cast/search` უკვე
    არსებობს და ორივე ენაზე ეძებს.
+
+   ⚠️ **მსახიობისა და ჩანაწერის გვერდი ფანჯარას `keep`-ით ხსნის** (Tasks
+   §17): იქ ფოტოს მშობელი სწორედ ის გვერდია, რომელსაც უყურებ. ნაგულისხმევი
+   „მშობლის გარეშე" ერთი დაჭერით „ალბომში დამატებას" ამ გვერდიდან ფოტოს
+   მოშორებად აქცევდა — ფოტო ალბომში ჩავარდებოდა და მსახიობს ჩუმად
+   მოსცილდებოდა. `keep`-ზე ღილაკი მანამდე გამორთულია, სანამ ალბომს არ
+   აირჩევ (`ready`), ე.ი. ცხადი არჩევანის გარეშე არაფერი იცვლება.
    ============================================================ */
 
-type Target = 'keep' | 'none' | 'record' | 'actor'
+/** სად ეკიდოს: `keep` — მშობელი ხელუხლებელია · `none` — მშობლის გარეშე */
+export type MoveTarget = 'keep' | 'none' | 'record' | 'actor'
 
 export function GalleryMoveDialog({
   ids,
   onClose,
   onMoved,
+  initialTarget = 'none',
 }: {
   /** რომელი ფოტოები გადადის */
   ids: number[]
   onClose: () => void
   onMoved?: () => void
+  /** რომელი ვარიანტი იყოს თავიდან არჩეული (§17 — მშობლის გვერდზე `keep`) */
+  initialTarget?: MoveTarget
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -62,7 +73,7 @@ export function GalleryMoveDialog({
   const { toast } = useToast()
   const { enabled } = useModules()
 
-  const [target, setTarget] = useState<Target>('none')
+  const [target, setTarget] = useState<MoveTarget>(initialTarget)
   const [domain, setDomain] = useState<GalleryParentKind>('movie')
   const [recordId, setRecordId] = useState<number[]>([])
   const [actorQuery, setActorQuery] = useState('')
@@ -133,7 +144,7 @@ export function GalleryMoveDialog({
 
       {/* ---------- 1. სად ეკიდოს ---------- */}
       <Label className="mb-2 block">{t('gallery.moveTarget')}</Label>
-      <RadioGroup value={target} onValueChange={(v) => setTarget(v as Target)} className="gap-2">
+      <RadioGroup value={target} onValueChange={(v) => setTarget(v as MoveTarget)} className="gap-2">
         <Row value="keep" active={target === 'keep'} label={t('gallery.moveKeepParent')} />
         <Row
           value="none"

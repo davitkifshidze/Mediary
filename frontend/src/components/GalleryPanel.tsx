@@ -5,6 +5,7 @@ import { formatBytes } from '@/lib/utils'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
+import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
 import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 
 /* ============================================================
@@ -21,6 +22,14 @@ import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 
    ⚠️ **თემები აღარ არსებობს** (§4.5): ხელით მინიჭებული „რა არის სურათზე"
    მთლიანად მოიხსნა — ცხრილი, სვეტი, გვერდი და ეს ჩიპების რიგიც.
+
+   ⚠️ **გადატანა (ალბომში და სხვაგან) აქ ცხოვრობს** (Tasks §17, Q34 —
+   „ორივეგან, ერთი პანელი, ერთი ქცევა"): ჩანაწერის გვერდიც და მსახიობის
+   გვერდიც ამ პანელს ხატავს, ე.ი. ერთხელ დაწერილი მოქმედება ორივეგან
+   ჩნდება. მდგომარეობაც და დიალოგის JSX-იც ამავე კომპონენტშია —
+   `GalleryPhotoGrid`-ის წესი (`GroupsCut`-ის ცოცხალი ხარვეზის გაკვეთილი).
+   ⚠️ ფანჯარა `keep`-ით იხსნება: ფოტოს მშობელი სწორედ ეს გვერდია, და
+   „მშობლის გარეშე" ნაგულისხმევად ალბომში ჩაგდებას აქედან მოშორებად აქცევდა.
    ============================================================ */
 
 /**
@@ -62,6 +71,8 @@ export function GalleryPanel({
   const [cut, setCut] = useState<CategoryCut>('all')
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
+  /** §17 — რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
+  const [moving, setMoving] = useState<number[] | null>(null)
 
   /**
    * ⚠️ **ჩაკეტილს კატეგორია არ მოსდევს და ეს განზრახულია.** პასუხში მხოლოდ
@@ -198,12 +209,29 @@ export function GalleryPanel({
                 .filter((i): i is GalleryImage => Boolean(i) && !i!.locked),
             ))
         }
+        /* §17 — ⚠️ **ჩაკეტილი გამოირიცხება, `onDelete`-ის წესით**: `PhotoGrid`
+           მას მონიშვნაში ისედაც არ უშვებს, ეს მეორე ფენაა. სერვერიც არ
+           გადაიტანდა (`album_lock` scope მას მალავს), ე.ი. მისი id მხოლოდ
+           ფანჯრის სათაურს მოატყუებდა („3 ფოტოს გადატანა" ორ ფოტოზე). */
+        onMove={(ids) => {
+          const open = ids.filter((id) => {
+            const image = shown.find((i) => i.id === id)
+            return !!image && !image.locked
+          })
+          if (open.length) setMoving(open)
+        }}
       />
 
       {/* ⚠️ მდგომარეობაც და პორტალის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
           ცოცხალი ხარვეზის წესი (ღილაკი ერთ შტოში, დიალოგი მეორეში). */}
       {unlocking != null && (
         <AlbumUnlockById albumId={unlocking} onClose={() => setUnlocking(null)} />
+      )}
+
+      {/* §17 — სიებს დიალოგი თვითონ აახლებს (`['gallery']`-ის პრეფიქსი ამ
+          გვერდის ქეშსაც ფარავს), ე.ი. გამომძახებელს დამატებითი არაფერი სჭირდება */}
+      {moving && (
+        <GalleryMoveDialog ids={moving} initialTarget="keep" onClose={() => setMoving(null)} />
       )}
     </>
   )

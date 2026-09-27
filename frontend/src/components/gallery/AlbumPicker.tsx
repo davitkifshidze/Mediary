@@ -1,13 +1,23 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Folder, FolderPlus, Inbox, Lock, Minus } from 'lucide-react'
-import { createGalleryAlbum, fetchGalleryAlbums } from '@/api/gallery'
+import { Check, Folder, FolderPlus, Inbox, Lock, LockOpen, Minus, SquarePen } from 'lucide-react'
+import {
+  createGalleryAlbum,
+  fetchGalleryAlbums,
+  lockGalleryAlbum,
+  type GalleryAlbum,
+} from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
+import { albumPasswordProblem } from '@/lib/albumPassword'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
+import { AlbumDialog } from '@/components/gallery/AlbumDialog'
+import { AlbumPasswordFields } from '@/components/gallery/AlbumPasswordFields'
 
 /* ============================================================
    **ალბომის ამრჩევი — „ფაილ-მენეჯერივით" (შენი მითითება, 2026-09-16).**
@@ -31,8 +41,22 @@ import { useToast } from '@/components/ui/feedback'
    პირველი ორი ფსევდო-რიგია — მათ არც სახელი აქვთ და არც წაშლა.
 
    ⚠️ **ჩაკეტილ ალბომში გადატანა ნებადართულია და ეს ცხადად წერია**: ფოტო
-   მაშინვე ქრება ხედვიდან (სწორედ ამიტომ შეიძლება იყოს სასურველი), ე.ი.
-   გაფრთხილების გარეშე ეს „ფოტო დავკარგე"-დ წაიკითხებოდა.
+   მაშინვე იმალება — ბადეში დაბლარულ ფილად რჩება (სწორედ ამიტომ შეიძლება
+   იყოს სასურველი), ე.ი. გაფრთხილების გარეშე ეს „ფოტო დავკარგე"-დ
+   წაიკითხებოდა.
+
+   ## ლოკი იქვე (Tasks §17.2 — „ალბომის ჩაკეტვაც, სრული ფუნქციონალი")
+   ⚠️ **ადგილზე შექმნილ ალბომს პაროლიც შეიძლება დაედოს** — `AlbumDialog`-ის
+   ჩაკეტვის ნაწილი, იგივე `AlbumPasswordFields`-ით. ⚠️ **ასეთი ალბომი ამ
+   სესიაში მაშინვე ღიაა** (სერვერის `store()` — „შენ ახლა დაადე"), ე.ი.
+   მასში გადატანილი ფოტო ჯერ **ჩანს**. ძველი გაფრთხილება („მაშინვე
+   დაიმალება") აქ ტყუილი იქნებოდა და ლოკი გატეხილად მოგეჩვენებოდა — ამიტომ
+   ღია ალბომს თავისი ტექსტი და „ჩაკეტვის" ღილაკი აქვს.
+   ⚠️ **არჩეული ალბომის პარამეტრები (სახელი, აღწერა, ხილვადობა, ლოკი) აქედანვე
+   იხსნება** — `AlbumDialog` ამ ფანჯრის თავზე ჯდება და `ModalShell`-ის დასტა
+   ქვედას დამალავს და უკან დააბრუნებს, არჩევანიც და შევსებული ველებიც
+   შენახული რჩება. მსახიობის გვერდიდან `/gallery/albums`-ზე გადასვლა კი
+   გადატანას შუაზე გაწყვეტდა.
    ============================================================ */
 
 export function AlbumPicker({
@@ -51,22 +75,74 @@ export function AlbumPicker({
 
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  /** §17.2 — ახალ ალბომს პაროლიც დაედოს */
+  const [withLock, setWithLock] = useState(false)
+  const [password, setPassword] = useState('')
+  const [repeat, setRepeat] = useState('')
+  /** §17.2 — რომელი ალბომის პარამეტრები ღიაა (`null` — არცერთის) */
+  const [editing, setEditing] = useState<GalleryAlbum | null>(null)
 
   const albumsQ = useQuery({ queryKey: ['gallery-albums'], queryFn: fetchGalleryAlbums })
   const albums = albumsQ.data ?? []
 
+  /** ⚠️ ყოველი გახსნა სუფთაა — წინა ცდის პაროლი ახალ ალბომზე არ უნდა გადავიდეს */
+  const resetDraft = () => {
+    setAdding(false)
+    setName('')
+    setWithLock(false)
+    setPassword('')
+    setRepeat('')
+  }
+
   const create = useMutation({
-    mutationFn: () => createGalleryAlbum({ name: name.trim() }),
+    mutationFn: () =>
+      createGalleryAlbum({ name: name.trim(), ...(withLock ? { password } : {}) }),
     onSuccess: (album) => {
       qc.invalidateQueries({ queryKey: ['gallery-albums'] })
       qc.invalidateQueries({ queryKey: ['gallery-groups'] })
       // ⚠️ ახლად შექმნილი მაშინვე არჩეულია — სწორედ ამიტომ შექმენი
       onChange(String(album.id))
-      setAdding(false)
-      setName('')
+      resetDraft()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
+
+  /**
+   * „ისევ ჩაკეტე" — პაროლი რჩება, უბრალოდ ამ სესიის გახსნა იხურება
+   * (`AlbumsCut`-ის იგივე მოქმედება). ლოკი ფოტოების ხილვადობას ცვლის, ე.ი.
+   * გალერეის ყველა სია ძველდება — ამ გვერდისაც.
+   */
+  const relock = useMutation({
+    mutationFn: (id: number) => lockGalleryAlbum(id),
+    onSuccess: () => {
+      ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums'].forEach(
+        (key) => qc.invalidateQueries({ queryKey: [key] }),
+      )
+      toast({ title: t('gallery.albumRelocked'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /** ⚠️ ჩართული ლოკი ცარიელ პაროლს არ იღებს — უპაროლო „ჩაკეტილი" ალბომი ტყუილი იქნებოდა */
+  const lockReady = !withLock || (!!password && !albumPasswordProblem(password, repeat))
+  const canCreate = !!name.trim() && lockReady && !create.isPending
+
+  /**
+   * Enter ქმნის, Esc აუქმებს — **ერთ ადგილას ყველა ველისთვის**.
+   * ⚠️ `preventDefault` — ამრჩევი შეიძლება ფორმის შიგნით იდგეს და Enter
+   * მას გაგზავნიდა (`TagSelect`-ის იგივე წესი). ⚠️ `PasswordInput` თავის
+   * `onKeyDown`-ს არ ატარებს, ამიტომ მოვლენა გარე ბლოკზე იჭირება.
+   * ⚠️ **Enter მხოლოდ ველიდან ქმნის**: ბლოკში ღილაკებიცაა („გაუქმება",
+   * პაროლის თვალი) და მათზე Enter მათივე მოქმედებაა — „გაუქმებაზე" Enter-ით
+   * ალბომი რომ იქმნებოდეს, ეს სწორედ საპირისპირო იქნებოდა.
+   */
+  const onDraftKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+      e.preventDefault()
+      if (canCreate) create.mutate()
+    }
+    if (e.key === 'Escape') resetDraft()
+  }
 
   const picked = albums.find((a) => String(a.id) === value)
 
@@ -94,7 +170,15 @@ export function AlbumPicker({
             key={album.id}
             active={String(album.id) === value}
             onClick={() => onChange(String(album.id))}
-            icon={album.locked ? <Lock className="size-4" /> : <Folder className="size-4" />}
+            /* ⚠️ ღია ბოქლომი — პაროლი ადევს, მაგრამ ამ სესიაში გახსნილია
+               (`AlbumsCut`-ის „გახსნილი" ნიშნის იგივე ფაქტი) */
+            icon={
+              album.locked ? (
+                album.unlocked ? <LockOpen className="size-4" /> : <Lock className="size-4" />
+              ) : (
+                <Folder className="size-4" />
+              )
+            }
             label={album.name}
             meta={t('gallery.photos', { count: album.photos })}
           />
@@ -109,56 +193,101 @@ export function AlbumPicker({
 
       {/* ---------- ახალი საქაღალდე ---------- */}
       {adding ? (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 space-y-3 rounded-md border border-border p-3" onKeyDown={onDraftKey}>
           <Input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('gallery.albumName')}
+            aria-label={t('gallery.albumName')}
+            maxLength={120}
             className="h-9"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                // ⚠️ `preventDefault` — ეს ველი გადატანის ფორმის შიგნითაა
-                e.preventDefault()
-                if (name.trim()) create.mutate()
-              }
-              if (e.key === 'Escape') {
-                setAdding(false)
-                setName('')
-              }
-            }}
           />
-          <Button
-            type="button"
-            size="sm"
-            disabled={!name.trim() || create.isPending}
-            onClick={() => create.mutate()}
-          >
-            {t('gallery.albumCreate')}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>
-            {t('actions.cancel')}
-          </Button>
+
+          {/* ⚠️ i ლეიბლის **გარეთაა**: ღილაკი `<label>`-ში მეორე „მართვის
+              ელემენტი" იქნებოდა და ლეიბლი ვეღარ მიხვდებოდა, რომელს ეკუთვნის */}
+          <div className="flex items-center gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox checked={withLock} onCheckedChange={(v) => setWithLock(v === true)} />
+              <Lock className="size-4 text-muted-foreground" />
+              {t('gallery.albumLockTitle')}
+            </label>
+            <InfoHint info={t('gallery.albumLockHint')} />
+          </div>
+
+          {withLock && (
+            <AlbumPasswordFields
+              idPrefix="album-picker"
+              password={password}
+              repeat={repeat}
+              onPassword={setPassword}
+              onRepeat={setRepeat}
+            />
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={resetDraft}>
+              {t('actions.cancel')}
+            </Button>
+            <Button type="button" size="sm" disabled={!canCreate} onClick={() => create.mutate()}>
+              {withLock ? <Lock className="size-4" /> : <FolderPlus className="size-4" />}
+              {t('gallery.albumCreate')}
+            </Button>
+          </div>
         </div>
       ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-2"
-          onClick={() => {
-            setAdding(true)
-            setName('')
-          }}
-        >
-          <FolderPlus className="size-4" />
-          {t('gallery.albumNew')}
-        </Button>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              resetDraft()
+              setAdding(true)
+            }}
+          >
+            <FolderPlus className="size-4" />
+            {t('gallery.albumNew')}
+          </Button>
+
+          {/* §17.2 — არჩეული ალბომის პარამეტრები აქვე, გადატანის შუაგულში */}
+          {picked && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(picked)}>
+              <SquarePen className="size-4" />
+              {t('gallery.albumEdit')}
+            </Button>
+          )}
+        </div>
       )}
 
-      {picked?.locked && (
-        <p className="mt-2 text-xs text-muted-foreground">{t('gallery.albumLockedMoveHint')}</p>
-      )}
+      {/* ⚠️ **ლოკის ორი მდგომარეობა — ორი ტექსტი.** ჩაკეტილში ფოტო მაშინვე
+          იმალება; ამ სესიაში გახსნილში კი ჯერ ჩანს — და ეს ხშირია, რადგან
+          პაროლით ახლად შექმნილი ალბომი სწორედ ასეთია. ერთი ტექსტი ერთ-ერთ
+          შემთხვევაში იტყუებოდა. */}
+      {picked?.locked &&
+        (picked.unlocked ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+              {t('gallery.albumOpenMoveHint')}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={relock.isPending}
+              onClick={() => relock.mutate(picked.id)}
+            >
+              <Lock className="size-4" />
+              {t('gallery.albumRelock')}
+            </Button>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">{t('gallery.albumLockedMoveHint')}</p>
+        ))}
+
+      {/* ⚠️ მდგომარეობაც და ფანჯრის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
+          ცოცხალი ხარვეზის წესი */}
+      {editing && <AlbumDialog album={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
