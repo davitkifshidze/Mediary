@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ExternalLink,
   Globe,
+  Link2,
   Loader2,
   SquarePen,
   Plus,
@@ -72,11 +73,15 @@ import {
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { QuickFill } from '@/components/ui/quick-fill'
+import { Textarea } from '@/components/ui/textarea'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -586,6 +591,9 @@ export function BookmarksPage() {
    ფორმა — ბმული + მეტამონაცემის ავტომატური შევსება.
    ============================================================ */
 
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'bookmark-form'
+
 function BookmarkForm({
   bookmark,
   allTags,
@@ -628,6 +636,9 @@ function BookmarkForm({
   const [metaLoading, setMetaLoading] = useState(false)
   const [newCategory, setNewCategory] = useState(false)
   const lastFetched = useRef<string>(bookmark?.url ?? '')
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('bookmark', bookmark)
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/აღწერის/ფოტოს წამოღებას.
@@ -657,8 +668,16 @@ function BookmarkForm({
 
   const save = useMutation({
     mutationFn: (input: BookmarkInput) =>
-      bookmark ? updateBookmark(bookmark.id, input) : createBookmark(input),
-    onSuccess: () => {
+      extras.current ? updateBookmark(extras.current.id, input) : createBookmark(input),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['bookmarks'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('bookmarks.saved'), variant: 'success' })
       onSaved()
     },
@@ -722,13 +741,18 @@ function BookmarkForm({
 
   return (
     <ModalShell title={t(bookmark ? 'bookmarks.edit' : 'bookmarks.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
             ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
-        <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="b-url" required>
-            {fields.label('url')}
-          </FieldLabel>
+        <QuickFill
+          show={fields.shows('url')}
+          title={fields.label('url')}
+          htmlFor="b-url"
+          required
+          hint={fields.hint('url')}
+          icon={<Link2 className="size-3.5 text-primary" />}
+        >
           <div className="relative">
             <Input
               id="b-url"
@@ -743,52 +767,63 @@ function BookmarkForm({
             )}
           </div>
           {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
-          {meta?.site_name && (
-            <p className="mt-1 text-xs text-muted-foreground">{meta.site_name}</p>
-          )}
-        </div>
+          {meta?.site_name && <p className="mt-1 text-xs text-muted-foreground">{meta.site_name}</p>}
+        </QuickFill>
 
-        <div className={fields.shows('title') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="b-title" required={fields.required('title')} hint={fields.hint('title')}>
-            {fields.label('title')}
-          </FieldLabel>
-          <Input
-            id="b-title"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-        </div>
+        {/* §26 — მთავარი ფოტო ზემოთაა, ძირითად ველებთან ერთად */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('thumbnail') && (
+              <>
+                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+                  {fields.label('thumbnail')}
+                </FieldLabel>
+                <PosterUploader
+                  variant="wide"
+                  preview={thumbPreview ?? imageUrl}
+                  hint={t('bookmarks.thumbnailHint')}
+                  onSelect={(file) => {
+                    setThumbnail(file)
+                    setThumbPreview(URL.createObjectURL(file))
+                    setRemoveThumb(false)
+                  }}
+                  onClear={() => {
+                    setThumbnail(null)
+                    setThumbPreview(null)
+                    setRemoveThumb(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          <FormField {...fields.field('title')} htmlFor="b-title" error={errors.title}>
+            <Input
+              id="b-title"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </FormField>
 
-        <div className={fields.shows('description') ? '' : 'hidden'}>
-          <FieldLabel htmlFor="b-desc" required={fields.required('description')} hint={fields.hint('description')}>
-            {fields.label('description')}
-          </FieldLabel>
-          <textarea
-            id="b-desc"
-            rows={3}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            placeholder={fields.placeholder('description') ?? ''}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </div>
+          {/* ⚠️ §26 — საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
+          <FormField {...fields.field('description')} htmlFor="b-desc">
+            <Textarea
+              id="b-desc"
+              rows={FORM_TEXT_ROWS}
+              placeholder={fields.placeholder('description')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('category') ? undefined : 'hidden'}>
-            {/* კატეგორია — per-user ლექსიკონიდან, გვერდით „ახალი" */}
-            <FieldLabel htmlFor="b-category" required={fields.required('category')} hint={fields.hint('category')}>
-              {fields.label('category')}
-            </FieldLabel>
+        <FormSection title={t('form.sections.classification')}>
+          {/* კატეგორია — per-user ლექსიკონიდან, გვერდით „ახალი" */}
+          <FormField size="half" {...fields.field('category')} htmlFor="b-category" error={errors.category_id}>
             <div className="flex gap-1">
-              <Select
-                value={form.categoryId}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
-              >
-                <SelectTrigger
-                  id="b-category"
-                  className={errors.category_id ? 'border-destructive' : undefined}
-                >
+              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+                <SelectTrigger id="b-category" className={errors.category_id ? 'border-destructive' : undefined}>
                   <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -811,23 +846,11 @@ function BookmarkForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {errors.category_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
-            )}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="b-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
-            >
-              <SelectTrigger
-                id="b-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
+          <FormField size="half" {...fields.field('status')} htmlFor="b-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+              <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -838,55 +861,32 @@ function BookmarkForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        <div className={fields.shows('tags') ? '' : 'hidden'}>
-          <FieldLabel htmlFor="b-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
-            {fields.label('tags')}
-          </FieldLabel>
-          <TagSelect
-            inputId="b-tags"
-            value={form.tags}
-            options={allTags}
-            onChange={(next) => setForm((f) => ({ ...f, tags: next }))}
-          />
-        </div>
-
-        <div className={fields.shows('thumbnail') ? undefined : 'hidden'}>
-          <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-            {fields.label('thumbnail')}
-          </FieldLabel>
-          <PosterUploader
-            variant="wide"
-            preview={thumbPreview ?? imageUrl}
-            hint={t('bookmarks.thumbnailHint')}
-            onSelect={(file) => {
-              setThumbnail(file)
-              setThumbPreview(URL.createObjectURL(file))
-              setRemoveThumb(false)
-            }}
-            onClear={() => {
-              setThumbnail(null)
-              setThumbPreview(null)
-              setRemoveThumb(true)
-            }}
-          />
-        </div>
-
-        {/* §6 ფაზა 3 — მორგებული ველები; საკუთარი შენახვა აქვს */}
-        <CustomFieldsCard module="bookmark" recordId={bookmark?.id ?? null} />
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          <FormField
+            {...fields.field('tags')}
+            hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
+            htmlFor="b-tags"
+          >
+            <TagSelect
+              inputId="b-tags"
+              value={form.tags}
+              options={allTags}
+              onChange={(next) => setForm((f) => ({ ...f, tags: next }))}
+            />
+          </FormField>
+        </FormSection>
       </form>
+
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
+      <CustomFieldsCard
+        module="bookmark"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* სწრაფი „ახალი კატეგორია" — შენახვისთანავე select-ში ირჩევა */}
       {newCategory && (

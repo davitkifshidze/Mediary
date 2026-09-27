@@ -83,3 +83,34 @@ export function useCustomFieldDraft(module: string) {
 }
 
 export type CustomFieldDraft = ReturnType<typeof useCustomFieldDraft>
+
+/**
+ * **ფორმის მხარე — ერთ ადგილას** (Tasks §26.5): მონახაზი, „შექმნილი"
+ * ჩანაწერი და შენახვის შემდეგი ნაბიჯი.
+ *
+ * ⚠️ `current` — რომელ ჩანაწერს ეხება შემდეგი „შენახვა". ჩავარდნის შემდეგ
+ * ფანჯარა ღია რჩება და ჩანაწერი **უკვე შექმნილია**: `current` მაშინ
+ * შექმნილს აბრუნებს, ე.ი. მეორე „შენახვა" მას ანახლებს და **დუბლს აღარ
+ * ქმნის** (§23.4-ის წესი, რომელიც ჩანაწერების ფორმამ დაადგინა).
+ *
+ * ⚠️ `draft` მხოლოდ ახალ ჩანაწერზე ბრუნდება — არსებულზე ბარათი თვითონ
+ * ინახავს თავს და მონახაზი არ სჭირდება.
+ */
+export function useRecordExtras<T extends { id: number }>(module: string, record: T | null) {
+  const draft = useCustomFieldDraft(module)
+  const [created, setCreated] = useState<T | null>(null)
+
+  /** ჩანაწერის შენახვის შემდეგ; `ok: false` = ფანჯარა ღია უნდა დარჩეს */
+  const afterSave = async (saved: T): Promise<{ ok: true } | { ok: false; message: string }> => {
+    if (record || draft.done) return { ok: true }
+
+    const result = await draft.flush(saved.id)
+    if (result.ok) return { ok: true }
+
+    setCreated(saved)
+
+    return { ok: false, message: result.message }
+  }
+
+  return { draft: record ? undefined : draft, current: record ?? created, afterSave }
+}
