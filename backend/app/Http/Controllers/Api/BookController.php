@@ -273,7 +273,7 @@ class BookController extends Controller
 
             'genre_id' => [
                 ...$must, 'integer',
-                Rule::exists('book_genres', 'id')->where('user_id', $userId),
+                Rule::exists('book_genres', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
             'series_name' => ['nullable', 'string', 'max:255'],
             'series_number' => ['nullable', 'integer', 'min:0', 'max:9999'],

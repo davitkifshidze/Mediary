@@ -7,6 +7,7 @@ use App\Http\Resources\NoteCategoryResource;
 use App\Models\NoteCategory;
 use App\Models\NoteEntry;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -59,7 +60,7 @@ class NoteCategoryController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('note_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('note_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $noteCategory->id,
             ),
             DictionaryRecords::messages(),
@@ -68,19 +69,22 @@ class NoteCategoryController extends Controller
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(NoteEntry::where('category_id', $noteCategory->id));
-            $noteCategory->delete();
+            DictionaryTrash::trash($noteCategory, 'note_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            NoteEntry::where('category_id', $noteCategory->id),
-            fn ($note) => $note->category_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = NoteEntry::where('category_id', $noteCategory->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $noteCategory->delete();
+        $moved = DictionaryRecords::move($records, fn ($note) => $note->category_id = $moveTo);
+
+        DictionaryTrash::trash($noteCategory, 'note_category', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -92,7 +96,7 @@ class NoteCategoryController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('note_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('note_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

@@ -16,9 +16,11 @@ import {
   Paperclip,
   SquarePlay,
   StickyNote,
+  Tags,
   Trash2,
   Undo2,
   UserRound,
+  CircleDashed,
 } from 'lucide-react'
 import {
   deleteFromTrash,
@@ -32,7 +34,7 @@ import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
-import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
+import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { toolAccent } from '@/lib/toolSections'
 import { formatBytes } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -84,6 +86,8 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'media_watch') return <Eye />
   if (kind === 'gallery_album') return <Folder />
   if (kind === 'cast_link') return <UserRound />
+  if (kind === 'status') return <CircleDashed />
+  if (/_(genre|type|category)$/.test(kind)) return <Tags />
   return <Paperclip />
 }
 
@@ -119,13 +123,16 @@ export function TrashPage() {
   const refresh = () => queryClient.invalidateQueries()
 
   const restore = useMutation({
-    mutationFn: ({ group, item }: { group: TrashGroup; item: TrashItem }) => restoreFromTrash(group.kind, item.id),
+    mutationFn: ({ group, item, records = false }: { group: TrashGroup; item: TrashItem; records?: boolean }) =>
+      restoreFromTrash(group.kind, item.id, records),
     onSuccess: (res, { item }) => {
       toast({
         title:
-          res.with_parent && item.parent
-            ? t('trash.restoredWithParent', { name: item.parent.title })
-            : t('trash.restored'),
+          res.records > 0
+            ? t('trash.restoredWithRecords', { count: res.records })
+            : res.with_parent && item.parent
+              ? t('trash.restoredWithParent', { name: item.parent.title })
+              : t('trash.restored'),
         variant: 'success',
       })
       refresh()
@@ -167,6 +174,16 @@ export function TrashPage() {
   }
 
   const { dateTime } = useDateFormat()
+  const { all: allModules } = useModules()
+
+  /* ⚠️ მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) ქვესათაური
+     მოდულის სახელია — თორემ „სტატუსები"-ში ორი „ნანახი" ერთმანეთისგან
+     ვერ გაირჩეოდა. სახელი `useModules()`-იდან, ენის მიხედვით. */
+  const itemModule = (group: TrashGroup, item: TrashItem) => {
+    if (!item.module || group.module) return null
+    const found = allModules.find((m) => m.key === item.module)
+    return found ? moduleName(found, i18n.language) : null
+  }
 
   const groupName = (group: TrashGroup) =>
     group.category === 'record'
@@ -228,17 +245,21 @@ export function TrashPage() {
 
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{item.title}</span>
-                        {item.subtitle && (
-                          <span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span>
+                        {(item.subtitle ?? itemModule(group, item)) && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {item.subtitle ?? itemModule(group, item)}
+                          </span>
                         )}
                         {item.when && (
                           <span className="block text-xs text-muted-foreground">
                             {t(`trash.when.${group.kind}`, { date: dateTime(item.when) })}
                           </span>
                         )}
-                        {item.count !== null && (
+                        {item.count !== null && item.count > 0 && (
                           <span className="block text-xs text-muted-foreground">
-                            {t('trash.albumPhotos', { count: item.count })}
+                            {group.kind === 'gallery_album'
+                              ? t('trash.albumPhotos', { count: item.count })
+                              : t('trash.recordsMoved', { count: item.count })}
                           </span>
                         )}
                         <Expiry item={item} />
@@ -262,6 +283,21 @@ export function TrashPage() {
                         <Undo2 className="size-4" />
                         {t('trash.restore')}
                       </Button>
+
+                      {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია (Q21), ჩანაწერების
+                          დაბრუნება — ცალკე, ცხადი არჩევანი */}
+                      {item.offers_records && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={restore.isPending || !item.restorable}
+                          onClick={() => restore.mutate({ group, item, records: true })}
+                        >
+                          <Undo2 className="size-4" />
+                          {t('trash.withRecords', { count: item.count ?? 0 })}
+                        </Button>
+                      )}
 
                       <Button
                         type="button"

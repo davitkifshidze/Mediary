@@ -8,6 +8,7 @@ use App\Models\Module;
 use App\Models\Status;
 use App\Models\User;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use App\Support\ModuleSettings;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
@@ -127,7 +128,7 @@ class StatusController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('statuses', 'id')
+                Rule::exists('statuses', 'id')->whereNull('trashed_at')
                     ->where('user_id', $request->user()->id)
                     ->where('module', $domain),
                 $status->id,
@@ -137,12 +138,16 @@ class StatusController extends Controller
 
         $model = StatusDomain::model($domain);
         $records = $model::query()->where('status_id', $status->id);
+        // Tasks §29, ეტაპი 3 — ვინ გადავა, **გადატანამდე**: აღდგენა მათ დაბრუნებას შემოგთავაზებს
+        $ids = [];
+        $targetId = null;
 
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete($records);
             $moved = 0;
         } else {
             $deleted = 0;
+            $ids = (clone $records)->pluck('id')->all();
 
             /* ⚠️ **`applyStatus()` და არა `update(['status_id' => …])`**
                (Tasks BUG-05): `watched_at`-ს მხოლოდ ის წერს, ე.ი. `done`
@@ -163,7 +168,8 @@ class StatusController extends Controller
             ->last()?->key;
 
         $wasDefault = $status->is_default;
-        $status->delete();
+        // ⚠️ ურნა (Tasks §29, ეტაპი 3) — `DictionaryTrash` ნაგულისხმევის ნიშანსაც ხსნის
+        DictionaryTrash::trash($status, 'status', $ids, $targetId);
 
         // ნაგულისხმევი წაიშალა → პირველივე დარჩენილი იკავებს მის ადგილს,
         // თორემ ახალი ჩანაწერი ჩუმად სტატუსის გარეშე დარჩებოდა
@@ -227,7 +233,7 @@ class StatusController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('statuses', 'id')
+                Rule::exists('statuses', 'id')->whereNull('trashed_at')
                     ->where('user_id', $request->user()->id)
                     ->where('module', $domain),
             ],

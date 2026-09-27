@@ -7,6 +7,7 @@ use App\Http\Resources\GameGenreResource;
 use App\Models\Game;
 use App\Models\GameGenre;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -67,7 +68,7 @@ class GameGenreController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('game_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('game_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $gameGenre->id,
             ),
             DictionaryRecords::messages(),
@@ -77,7 +78,7 @@ class GameGenreController extends Controller
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Game::whereKey($gameGenre->games()->pluck('games.id')->all()));
-            $gameGenre->delete();
+            DictionaryTrash::trash($gameGenre, 'game_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
@@ -92,7 +93,10 @@ class GameGenreController extends Controller
             $moved = count($gameIds);
         }
 
-        $gameGenre->delete();
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). pivot-ს `trash()` ცხადად ხსნის — FK-ის კასკადი აღარ ეშვება. */
+        DictionaryTrash::trash($gameGenre, 'game_genre', $gameIds, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -104,7 +108,7 @@ class GameGenreController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('game_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('game_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

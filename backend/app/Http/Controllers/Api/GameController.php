@@ -303,7 +303,7 @@ class GameController extends Controller
             'genre_ids' => [...$must, 'array', 'min:1', 'max:10'],
             'genre_ids.*' => [
                 'integer',
-                Rule::exists('game_genres', 'id')->where('user_id', $userId),
+                Rule::exists('game_genres', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
 
             'opencritic' => ['nullable', 'integer', 'min:0', 'max:100'],

@@ -7,6 +7,7 @@ use App\Http\Resources\VideoTypeResource;
 use App\Models\Video;
 use App\Models\VideoType;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -64,7 +65,7 @@ class VideoTypeController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $videoType->id,
             ),
             DictionaryRecords::messages(),
@@ -73,19 +74,22 @@ class VideoTypeController extends Controller
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Video::where('type_id', $videoType->id));
-            $videoType->delete();
+            DictionaryTrash::trash($videoType, 'video_type');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            Video::where('type_id', $videoType->id),
-            fn ($video) => $video->type_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = Video::where('type_id', $videoType->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $videoType->delete();
+        $moved = DictionaryRecords::move($records, fn ($video) => $video->type_id = $moveTo);
+
+        DictionaryTrash::trash($videoType, 'video_type', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -97,7 +101,7 @@ class VideoTypeController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

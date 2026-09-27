@@ -32,7 +32,8 @@ trait HasDictionaryKey
     {
         return DictionaryKey::make(
             $name,
-            fn (string $key) => static::withoutGlobalScope('owner')
+            // ⚠️ ურნაში მყოფი რიგიც (Tasks §29) — ის თავის გასაღებს უნიკალურ ინდექსში ინარჩუნებს
+            fn (string $key) => static::withoutGlobalScopes(['owner', 'trash'])
                 ->where('user_id', $userId)
                 ->where('key', $key)
                 ->exists(),

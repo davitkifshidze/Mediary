@@ -2698,7 +2698,7 @@
     "deleted": "Deleted",
     "moved": "{{count}} record(s) moved",
     "deleteTitle": "Delete",
-    "deleteSimple": "“{{name}}” will be deleted. No record points at it.",
+    "deleteSimple": "“{{name}}” moves to the trash — it can be restored from there. No record points at it.",
     "inUse": "“{{name}}” is used by {{count}} record(s). What should happen to them?",
     "moveTo": "Move them to another entry",
     "movePick": "Pick where they go",
@@ -3215,13 +3215,26 @@
       "note_reminder": "Reminders",
       "media_watch": "Watch log",
       "gallery_album": "Albums",
-      "cast_link": "Cast members removed from a record"
+      "cast_link": "Cast members removed from a record",
+      "status": "Statuses",
+      "video_type": "Video types",
+      "song_genre": "Song genres",
+      "book_genre": "Book genres",
+      "board_game_genre": "Board game genres",
+      "game_genre": "Game genres",
+      "note_category": "Note categories",
+      "bookmark_category": "Bookmark categories",
+      "course_category": "Course categories",
+      "place_category": "Place categories"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
       "note_reminder": "Next send: {{date}}"
     },
-    "albumPhotos": "Restoring puts {{count}} photos back into the album"
+    "albumPhotos": "Restoring puts {{count}} photos back into the album",
+    "recordsMoved": "Deleting it moved {{count}} records — you can bring them back too",
+    "withRecords": "With the records ({{count}})",
+    "restoredWithRecords": "Restored — together with {{count}} records"
   },
   "watchLog": {
     "title": "Watches",

@@ -7,6 +7,7 @@ use App\Http\Resources\SongGenreResource;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +70,7 @@ class SongGenreController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('song_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $songGenre->id,
             ),
             DictionaryRecords::messages(),
@@ -79,7 +80,7 @@ class SongGenreController extends Controller
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Song::whereKey($songGenre->songs()->pluck('songs.id')->all()));
-            $songGenre->delete();
+            DictionaryTrash::trash($songGenre, 'song_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
@@ -94,7 +95,10 @@ class SongGenreController extends Controller
             $moved = count($songIds);
         }
 
-        $songGenre->delete();
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). pivot-ს `trash()` ცხადად ხსნის — FK-ის კასკადი აღარ ეშვება. */
+        DictionaryTrash::trash($songGenre, 'song_genre', $songIds, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -106,7 +110,7 @@ class SongGenreController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('song_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

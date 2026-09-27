@@ -5,12 +5,16 @@ namespace App\Support;
 use App\Models\Anime;
 use App\Models\BoardGame;
 use App\Models\BoardGameFile;
+use App\Models\BoardGameGenre;
 use App\Models\BoardGameNote;
 use App\Models\Book;
 use App\Models\BookFile;
+use App\Models\BookGenre;
 use App\Models\Bookmark;
+use App\Models\BookmarkCategory;
 use App\Models\BookNote;
 use App\Models\Course;
+use App\Models\CourseCategory;
 use App\Models\CourseFile;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryAlbum;
@@ -18,21 +22,27 @@ use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\GameFile;
+use App\Models\GameGenre;
 use App\Models\GameNote;
 use App\Models\GameVideo;
 use App\Models\MediaWatch;
 use App\Models\Movie;
+use App\Models\NoteCategory;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Models\NoteReminder;
 use App\Models\Place;
+use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
 use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
+use App\Models\SongGenre;
+use App\Models\Status;
 use App\Models\Video;
 use App\Models\VideoFile;
 use App\Models\VideoNote;
+use App\Models\VideoType;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -88,12 +98,13 @@ final class TrashDomain
      *
      * ⚠️ `module = null` — `modules` ცხრილში რიგი არ აქვს (ბაზის ასლი
      * `super_admin`-ისაა, ე.ი. ხილვადობას ის წყვეტს და არა მოდულის უფლება).
-     * `@morph` — მოდული რიგისაა (ყურების ჟურნალი სამ მედია-დომენს ემსახურება).
+     * `module_column` — მოდული **რიგისაა** და ამ სვეტიდან იკითხება (ყურების
+     * ჟურნალი სამ მედია-დომენს ემსახურება, სტატუსი — ექვსს).
      *
      * ⚠️ `size` — აქვს თუ არა ცხრილს `size` სვეტი: ჯგუფის მოცულობა SQL-ის
      * `sum()`-ით ითვლება და ფაილის გარეშე ცხრილზე ის შეცდომა იქნებოდა.
      *
-     * @var array<string, array{model: class-string<Model>, module: ?string, parent: ?string, size: bool}>
+     * @var array<string, array{model: class-string<Model>, module: ?string, module_column?: string, parent: ?string, size: bool}>
      */
     public const ITEMS = [
         'gallery_image' => ['model' => GalleryImage::class, 'module' => 'gallery', 'parent' => 'imageable', 'size' => true],
@@ -115,8 +126,20 @@ final class TrashDomain
         'game_video' => ['model' => GameVideo::class, 'module' => 'game', 'parent' => 'game', 'size' => false],
         'playlist' => ['model' => Playlist::class, 'module' => 'song', 'parent' => null, 'size' => false],
         'note_reminder' => ['model' => NoteReminder::class, 'module' => 'note', 'parent' => 'noteEntry', 'size' => false],
-        'media_watch' => ['model' => MediaWatch::class, 'module' => '@morph', 'parent' => 'watchable', 'size' => false],
+        'media_watch' => ['model' => MediaWatch::class, 'module' => null, 'module_column' => 'watchable_type', 'parent' => 'watchable', 'size' => false],
         'gallery_album' => ['model' => GalleryAlbum::class, 'module' => 'gallery', 'parent' => null, 'size' => false],
+
+        // Tasks §29, ეტაპი 3 — კლასიფიკატორის რიგი (`DictionaryTrash`)
+        'status' => ['model' => Status::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],
+        'video_type' => ['model' => VideoType::class, 'module' => 'video', 'parent' => null, 'size' => false],
+        'song_genre' => ['model' => SongGenre::class, 'module' => 'song', 'parent' => null, 'size' => false],
+        'book_genre' => ['model' => BookGenre::class, 'module' => 'book', 'parent' => null, 'size' => false],
+        'board_game_genre' => ['model' => BoardGameGenre::class, 'module' => 'board_game', 'parent' => null, 'size' => false],
+        'game_genre' => ['model' => GameGenre::class, 'module' => 'game', 'parent' => null, 'size' => false],
+        'note_category' => ['model' => NoteCategory::class, 'module' => 'note', 'parent' => null, 'size' => false],
+        'bookmark_category' => ['model' => BookmarkCategory::class, 'module' => 'bookmark', 'parent' => null, 'size' => false],
+        'course_category' => ['model' => CourseCategory::class, 'module' => 'course', 'parent' => null, 'size' => false],
+        'place_category' => ['model' => PlaceCategory::class, 'module' => 'place', 'parent' => null, 'size' => false],
     ];
 
     /**

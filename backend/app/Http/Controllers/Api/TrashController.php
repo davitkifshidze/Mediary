@@ -35,10 +35,17 @@ class TrashController extends Controller
         return response()->json($this->bin->listing($request->user()));
     }
 
-    /** აღდგენა — საჭიროებისას მშობელ ჩანაწერთან ერთად (29.5) */
+    /**
+     * აღდგენა — საჭიროებისას მშობელ ჩანაწერთან ერთად (29.5).
+     *
+     * `records: true` — კლასიფიკატორის რიგზე წაშლამ გადატანილი ჩანაწერებიც
+     * ბრუნდება (Tasks §29, ეტაპი 3).
+     */
     public function restore(Request $request, string $domain, int $id)
     {
-        return response()->json($this->bin->restore($request->user(), $domain, $id));
+        $data = $request->validate(['records' => ['nullable', 'boolean']]);
+
+        return response()->json($this->bin->restore($request->user(), $domain, $id, (bool) ($data['records'] ?? false)));
     }
 
     /** ახლავე წაშლა — ნამდვილად */

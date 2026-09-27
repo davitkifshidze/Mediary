@@ -194,7 +194,7 @@ class VideoController extends Controller
             'type_id' => [
                 ...$must,
                 'integer',
-                Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
             // §6.4 — სტატუსი **საკუთარი** ლექსიკონიდან, ტიპის ზუსტი ანალოგი
             'status' => [...$must, 'string', Status::rule('video')],

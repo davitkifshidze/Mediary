@@ -144,7 +144,7 @@ class NoteEntryController extends Controller
             'description' => ['nullable', 'string', 'max:20000'],
             'category_id' => [
                 ...$must, 'integer',
-                Rule::exists('note_categories', 'id')->where('user_id', $userId),
+                Rule::exists('note_categories', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:60'],

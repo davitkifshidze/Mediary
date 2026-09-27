@@ -7,6 +7,7 @@ use App\Http\Resources\BookmarkCategoryResource;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -63,7 +64,7 @@ class BookmarkCategoryController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('bookmark_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $bookmarkCategory->id,
             ),
             DictionaryRecords::messages(),
@@ -72,19 +73,22 @@ class BookmarkCategoryController extends Controller
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Bookmark::where('category_id', $bookmarkCategory->id));
-            $bookmarkCategory->delete();
+            DictionaryTrash::trash($bookmarkCategory, 'bookmark_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            Bookmark::where('category_id', $bookmarkCategory->id),
-            fn ($bookmark) => $bookmark->category_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = Bookmark::where('category_id', $bookmarkCategory->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $bookmarkCategory->delete();
+        $moved = DictionaryRecords::move($records, fn ($bookmark) => $bookmark->category_id = $moveTo);
+
+        DictionaryTrash::trash($bookmarkCategory, 'bookmark_category', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -96,7 +100,7 @@ class BookmarkCategoryController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('bookmark_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('bookmark_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

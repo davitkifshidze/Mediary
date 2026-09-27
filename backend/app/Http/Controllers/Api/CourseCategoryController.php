@@ -7,6 +7,7 @@ use App\Http\Resources\CourseCategoryResource;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -64,7 +65,7 @@ class CourseCategoryController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('course_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('course_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $courseCategory->id,
             ),
             DictionaryRecords::messages(),
@@ -73,19 +74,22 @@ class CourseCategoryController extends Controller
         // ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Course::where('category_id', $courseCategory->id));
-            $courseCategory->delete();
+            DictionaryTrash::trash($courseCategory, 'course_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            Course::where('category_id', $courseCategory->id),
-            fn ($course) => $course->category_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = Course::where('category_id', $courseCategory->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $courseCategory->delete();
+        $moved = DictionaryRecords::move($records, fn ($course) => $course->category_id = $moveTo);
+
+        DictionaryTrash::trash($courseCategory, 'course_category', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -97,7 +101,7 @@ class CourseCategoryController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('course_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('course_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

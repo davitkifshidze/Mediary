@@ -151,7 +151,7 @@ class CourseController extends Controller
             'category_id' => [
                 ...$must,
                 'integer',
-                Rule::exists('course_categories', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('course_categories', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],

@@ -55,8 +55,12 @@ export interface TrashItem {
   locked: boolean
   /** მომენტი, რომელიც თვითონ ელემენტია — ნახვის დრო, შეხსენების შემდეგი გაგზავნა */
   when: string | null
-  /** ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა */
+  /** ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა; კლასიფიკატორზე — რამდენი ჩანაწერი გადაიტანა წაშლამ */
   count: number | null
+  /** რომელ მოდულს ეკუთვნის — მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) */
+  module: string | null
+  /** კლასიფიკატორის რიგი: აღდგენას შეუძლია გადატანილი ჩანაწერებიც დააბრუნოს (Tasks §29, ეტაპი 3) */
+  offers_records: boolean
   parent: TrashParent | null
   restorable: boolean
   blocked: TrashBlocked | null
@@ -89,8 +93,16 @@ export async function fetchTrash(): Promise<TrashPayload> {
   return res.data
 }
 
-export async function restoreFromTrash(kind: string, id: number): Promise<{ restored: true; with_parent: boolean }> {
-  const res = await api.post(`/trash/${kind}/${id}/restore`)
+/**
+ * აღდგენა. `records` — კლასიფიკატორის რიგზე წაშლამ გადატანილი ჩანაწერებიც
+ * ბრუნდება (მხოლოდ ის, ვინც მას შემდეგ არ შეცვლილა).
+ */
+export async function restoreFromTrash(
+  kind: string,
+  id: number,
+  records = false,
+): Promise<{ restored: true; with_parent: boolean; records: number }> {
+  const res = await api.post(`/trash/${kind}/${id}/restore`, records ? { records: true } : {})
   return res.data
 }
 

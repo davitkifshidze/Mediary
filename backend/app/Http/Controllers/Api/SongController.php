@@ -181,7 +181,7 @@ class SongController extends Controller
             'genre_ids' => [...$must, 'array', 'min:1', 'max:10'],
             'genre_ids.*' => [
                 'integer',
-                Rule::exists('song_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('song_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
             'duration' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'tags' => ['nullable', 'array', 'max:20'],

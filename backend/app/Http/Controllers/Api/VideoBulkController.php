@@ -139,7 +139,7 @@ class VideoBulkController extends Controller
                 'type_id' => [
                     Rule::requiredIf(fn () => $request->input('action') === 'type'),
                     'integer',
-                    Rule::exists('video_types', 'id')->where('user_id', $request->user()->id),
+                    Rule::exists('video_types', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 ],
                 'status' => [
                     Rule::requiredIf(fn () => $request->input('action') === 'status'),

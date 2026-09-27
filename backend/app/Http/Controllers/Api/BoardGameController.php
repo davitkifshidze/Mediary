@@ -226,7 +226,7 @@ class BoardGameController extends Controller
             'publisher' => ['nullable', 'string', 'max:255'],
             'genre_id' => [
                 ...$must, 'integer',
-                Rule::exists('board_game_genres', 'id')->where('user_id', $userId),
+                Rule::exists('board_game_genres', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
 
             'players_min' => ['nullable', 'integer', 'min:1', 'max:999'],

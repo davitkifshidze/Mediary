@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasDictionaryKey;
+use App\Models\Concerns\HasTrash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -15,7 +16,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class BoardGameGenre extends Model
 {
-    use BelongsToUser;
+    /**
+     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
+     * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
+     */
+    use BelongsToUser, HasTrash;
 
     /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
@@ -36,6 +42,7 @@ class BoardGameGenre extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'trash_meta' => 'array',
         'sort_order' => 'integer',
     ];
 
@@ -57,7 +64,8 @@ class BoardGameGenre extends Model
      */
     public static function ensureDefaults(int $userId): void
     {
-        if (static::withoutGlobalScope('owner')->where('user_id', $userId)->exists()) {
+        // ⚠️ ურნაში მყოფიც (Tasks §29) — სხვაგვარად ნაგულისხმევები იმავე გასაღებით ჩაიწერებოდა და ინდექსი დაიძვრებოდა
+        if (static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->exists()) {
             return;
         }
 

@@ -17,8 +17,10 @@ use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
+use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
 use App\Support\SafeMime;
+use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
 use Illuminate\Database\Eloquent\Builder;
@@ -200,8 +202,16 @@ final class TrashBin
                 'note_reminder' => ($row->next_at ?? $row->remind_at)?->toIso8601String(),
                 default => null,
             },
-            // ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა
-            'count' => $kind === 'gallery_album' ? count($row->trashed_photo_ids['ids'] ?? []) : null,
+            // ალბომზე — რამდენ ფოტოს დააბრუნებს; კლასიფიკატორზე — რამდენ ჩანაწერს შემოგთავაზებს
+            'count' => match (true) {
+                $kind === 'gallery_album' => count($row->trashed_photo_ids['ids'] ?? []),
+                DictionaryTrash::has($kind) => DictionaryTrash::remembered($row),
+                default => null,
+            },
+            // მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) — რომელ მოდულს ეკუთვნის
+            'module' => $this->rowModule($kind, $row),
+            // ⚠️ კლასიფიკატორზე — შეიძლება თუ არა „ჩანაწერებთან ერთად" აღდგენა (ეტაპი 3)
+            'offers_records' => DictionaryTrash::has($kind) && DictionaryTrash::remembered($row) > 0,
             'parent' => $parent,
             'restorable' => $blocked === null,
             'blocked' => $blocked,
@@ -222,9 +232,9 @@ final class TrashBin
         return match (TrashDomain::category($kind)) {
             'record' => TrashDomain::model($kind)::trashOf($userId),
             'item' => TrashDomain::ITEMS[$kind]['model']::trashOf($userId)
-                ->when(TrashDomain::ITEMS[$kind]['module'] === '@morph', fn (Builder $q) => $q->whereIn(
-                    'watchable_type',
-                    $this->permitted($user, MediaDomain::TYPES, 'delete'),
+                ->when(isset(TrashDomain::ITEMS[$kind]['module_column']), fn (Builder $q) => $q->whereIn(
+                    TrashDomain::ITEMS[$kind]['module_column'],
+                    $this->permitted($user, $this->columnModules($kind), 'delete'),
                 )),
             'file' => TrashedFile::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
@@ -238,6 +248,16 @@ final class TrashBin
                 ->where('kind', $kind)
                 ->whereIn('record_type', $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission'])),
         };
+    }
+
+    /**
+     * სვეტიდან მოდულიან სახეზე — რომელი მოდულები შეიძლება იყოს იქ.
+     *
+     * @return list<string>
+     */
+    private function columnModules(string $kind): array
+    {
+        return $kind === 'status' ? array_keys(StatusDomain::DOMAINS) : MediaDomain::TYPES;
     }
 
     /**
@@ -260,9 +280,13 @@ final class TrashBin
      * მშობლის აღდგენის **შემდეგ** რომ გაირკვეს, ჩანაწერი დაბრუნდებოდა,
      * ფაილი კი არა, და პასუხი მაინც შეცდომა იქნებოდა.
      *
-     * @return array{restored: true, with_parent: bool}
+     * ⚠️ **`$withRecords` მხოლოდ კლასიფიკატორზე მოქმედებს** (Tasks §29, ეტაპი 3):
+     * წაშლამ გადატანილი ჩანაწერები ბრუნდება — ის, ვინც მას შემდეგ არ შეცვლილა.
+     * ნაგულისხმევი — მხოლოდ რიგი (Q21-ის „დ"-ს მიღებული შეზღუდვა).
+     *
+     * @return array{restored: true, with_parent: bool, records: int}
      */
-    public function restore(User $user, string $kind, int $id): array
+    public function restore(User $user, string $kind, int $id, bool $withRecords = false): array
     {
         $row = $this->find($user, $kind, $id);
         $parent = $this->parents($kind, collect([$row]))[$row->getKey()] ?? null;
@@ -272,8 +296,9 @@ final class TrashBin
         }
 
         $withParent = false;
+        $records = 0;
 
-        DB::transaction(function () use ($user, $row, $parent, &$withParent) {
+        DB::transaction(function () use ($user, $kind, $row, $parent, $withRecords, &$withParent, &$records) {
             if ($parent && $parent['trashed']) {
                 TrashDomain::model($parent['kind'])::trashOf((int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
                 $withParent = true;
@@ -307,9 +332,17 @@ final class TrashBin
 
             // ⚠️ ჟურნალს `HasTrash` წერს; გვერდითი ეფექტები `afterTrashChange()`-შია
             $row->restoreFromTrash();
+
+            if (DictionaryTrash::has($kind)) {
+                if ($withRecords) {
+                    $records = DictionaryTrash::restoreRecords($row, $kind);
+                } else {
+                    DictionaryTrash::forget($row);
+                }
+            }
         });
 
-        return ['restored' => true, 'with_parent' => $withParent];
+        return ['restored' => true, 'with_parent' => $withParent, 'records' => $records];
     }
 
     /**
@@ -454,7 +487,7 @@ final class TrashBin
             $kind === 'database_backup' => $user->isSuperAdmin(),
             $category === 'file' => true,
             $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission']) !== [],
-            $category === 'item' && TrashDomain::ITEMS[$kind]['module'] === '@morph' => $this->permitted($user, MediaDomain::TYPES, 'delete') !== [],
+            $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
         };
     }
@@ -462,13 +495,11 @@ final class TrashBin
     /** სახის მოდული — ჩანაწერზე თვითონ, რიგიან ელემენტზე `ITEMS`-იდან; მრავალმოდულიანზე `null` */
     private function moduleOf(string $kind): ?string
     {
-        $module = match (TrashDomain::category($kind)) {
+        return match (TrashDomain::category($kind)) {
             'record' => $kind,
             'item' => TrashDomain::ITEMS[$kind]['module'],
             default => null,
         };
-
-        return $module === '@morph' ? null : $module;
     }
 
     /** ერთი რიგის მოდული — მრავალმოდულიან სახეზე რიგიდან იკითხება */
@@ -477,7 +508,7 @@ final class TrashBin
         return match (true) {
             $row instanceof TrashEntry => $row->record_type,
             $row instanceof TrashedFile => $row->kind === 'field_file' ? $row->record_type : null,
-            $kind === 'media_watch' => (string) $row->getAttribute('watchable_type'),
+            isset(TrashDomain::ITEMS[$kind]['module_column']) => (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column']),
             default => $this->moduleOf($kind),
         };
     }
@@ -727,7 +758,7 @@ final class TrashBin
      */
     private function titleOf(string $kind, Model $row): string
     {
-        foreach (['title_ka', 'title_en', 'title', 'name', 'label', 'original_name'] as $field) {
+        foreach (['title_ka', 'title_en', 'title', 'name', 'name_ka', 'name_en', 'label', 'original_name'] as $field) {
             $value = $row->getAttribute($field);
 
             if (is_string($value) && $value !== '') {

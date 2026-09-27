@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
 use App\Support\DictionaryKey;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,11 +31,17 @@ use Illuminate\Validation\Rules\Exists;
  */
 class Status extends Model
 {
-    use BelongsToUser;
+    /**
+     * ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — წაშლა რიგს ურნაში აგზავნის
+     * (`DictionaryTrash::trash()`); `trash_meta` იმახსოვრებს გადატანილ
+     * ჩანაწერებს, რომ აღდგენამ მათი დაბრუნება შემოგთავაზოს.
+     */
+    use BelongsToUser, HasTrash;
 
     protected $guarded = ['id'];
 
     protected $casts = [
+        'trash_meta' => 'array',
         'sort_order' => 'integer',
         'is_default' => 'boolean',
     ];
@@ -79,7 +86,10 @@ class Status extends Model
             return;
         }
 
-        $query = static::withoutGlobalScope('owner')->where('user_id', $userId)->where('module', $domain);
+        /* ⚠️ ურნაში მყოფიც ითვლება (Tasks §29) — ყველა სტატუსის ურნაში გადატანის
+           შემდეგ ნაგულისხმევები იმავე გასაღებებით თავიდან ჩაიწერებოდა და
+           `unique(user_id, module, key)` 500-ს დააბრუნებდა. */
+        $query = static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->where('module', $domain);
 
         if ((clone $query)->exists()) {
             return;
@@ -136,9 +146,11 @@ class Status extends Model
         $userId ??= (int) Auth::id();
         static::ensureDefaults($userId, $domain);
 
+        // ⚠️ ურნაში მყოფი სტატუსი ჩანაწერს ვერ მიენიჭება (Tasks §29)
         return Rule::exists('statuses', 'key')
             ->where('user_id', $userId)
-            ->where('module', $domain);
+            ->where('module', $domain)
+            ->whereNull('trashed_at');
     }
 
     /** ამ ანგარიშის გასაღებები ამ დომენზე (რიგის დაცვით) */
@@ -173,7 +185,8 @@ class Status extends Model
         return DictionaryKey::make(
             $name,
             fn (string $key) => in_array($key, StatusDomain::RESERVED_KEYS, true)
-                || static::withoutGlobalScope('owner')
+                // ⚠️ ურნაში მყოფი რიგი გასაღებს ინარჩუნებს (Tasks §29)
+                || static::withoutGlobalScopes(['owner', 'trash'])
                     ->where('user_id', $userId)
                     ->where('module', $domain)
                     ->where('key', $key)

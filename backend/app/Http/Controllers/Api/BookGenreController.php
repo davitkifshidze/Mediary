@@ -7,6 +7,7 @@ use App\Http\Resources\BookGenreResource;
 use App\Models\Book;
 use App\Models\BookGenre;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -59,7 +60,7 @@ class BookGenreController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('book_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $bookGenre->id,
             ),
             DictionaryRecords::messages(),
@@ -68,19 +69,22 @@ class BookGenreController extends Controller
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(Book::where('genre_id', $bookGenre->id));
-            $bookGenre->delete();
+            DictionaryTrash::trash($bookGenre, 'book_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            Book::where('genre_id', $bookGenre->id),
-            fn ($book) => $book->genre_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = Book::where('genre_id', $bookGenre->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $bookGenre->delete();
+        $moved = DictionaryRecords::move($records, fn ($book) => $book->genre_id = $moveTo);
+
+        DictionaryTrash::trash($bookGenre, 'book_genre', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -92,7 +96,7 @@ class BookGenreController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('book_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('book_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 

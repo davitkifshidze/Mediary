@@ -7,6 +7,7 @@ use App\Http\Resources\BoardGameGenreResource;
 use App\Models\BoardGame;
 use App\Models\BoardGameGenre;
 use App\Support\DictionaryRecords;
+use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -59,7 +60,7 @@ class BoardGameGenreController extends Controller
         $data = $request->validate(
             DictionaryRecords::rules(
                 $request,
-                Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('board_game_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
                 $boardGameGenre->id,
             ),
             DictionaryRecords::messages(),
@@ -68,19 +69,22 @@ class BoardGameGenreController extends Controller
         // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
             $deleted = DictionaryRecords::delete(BoardGame::where('genre_id', $boardGameGenre->id));
-            $boardGameGenre->delete();
+            DictionaryTrash::trash($boardGameGenre, 'board_game_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);
         }
 
         $moveTo = DictionaryRecords::moveTarget($data);
 
-        $moved = DictionaryRecords::move(
-            BoardGame::where('genre_id', $boardGameGenre->id),
-            fn ($game) => $game->genre_id = $moveTo,
-        );
+        /* ⚠️ **ურნა (Tasks §29, ეტაპი 3)** — რიგი ურნაში გადადის და იმახსოვრებს,
+           რომელი ჩანაწერები გადაიტანა ამ წაშლამ: აღდგენა მათ დაბრუნებას
+           შემოგთავაზებს (`DictionaryTrash`). ids **გადატანამდე** იკითხება. */
+        $records = BoardGame::where('genre_id', $boardGameGenre->id);
+        $ids = (clone $records)->pluck('id')->all();
 
-        $boardGameGenre->delete();
+        $moved = DictionaryRecords::move($records, fn ($game) => $game->genre_id = $moveTo);
+
+        DictionaryTrash::trash($boardGameGenre, 'board_game_genre', $ids, $moveTo);
 
         return response()->json(['moved' => $moved, 'deleted' => 0]);
     }
@@ -92,7 +96,7 @@ class BoardGameGenreController extends Controller
             'ids' => ['present', 'array'],
             'ids.*' => [
                 'integer',
-                Rule::exists('board_game_genres', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('board_game_genres', 'id')->whereNull('trashed_at')->where('user_id', $request->user()->id),
             ],
         ]);
 
