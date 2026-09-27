@@ -32,7 +32,7 @@ import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NumberPick } from '@/components/ui/number-pick'
@@ -69,6 +69,18 @@ import { InfoHint } from '@/components/ui/info-hint'
    ⚠️ **„ყველა ქალის მონიშვნა" ღილაკია** და არა ხელით ძებნა-მონიშვნა.
    ⚠️ **რიცხვი და ზომა თითო სახეობას თავისი აქვს** — ერთი საერთო `limit`
    პოსტერებს საერთოდ არ უშვებდა (სია ჯერ იკვრებოდა და მერე იჭრებოდა).
+
+   ## Tasks §18 (2026-09-27)
+   ⚠️ **მონიშვნისას ფანჯარა აღარ იკეცება.** გეგმის გასაღები მთელი ფილტრია —
+   მონიშნული მსახიობებისა და ძებნის ჩათვლით — ე.ი. ყოველ დაჭერაზე გეგმა
+   `undefined` ხდებოდა, „კონკრეტულის" მთელი ბლოკი (ღილაკები, ძებნა, სია)
+   ქრებოდა და პასუხზე ბრუნდებოდა: ფანჯარა იკეცებოდა და იშლებოდა, სია ზემოთ
+   ხტებოდა, ძებნის ველი ფოკუსს კარგავდა, ცარიელი ძებნა კი თვით ველსაც
+   აქრობდა. ახლა წინა პასუხი ახლის მოსვლამდე ჩანს, სია კი ფიქსირებული
+   სიმაღლისაა.
+   ⚠️ **`ModalShell`-ზეა და აღარ `Dialog`-ზე** — სიმაღლე შიგთავსს მიჰყვება და
+   რბილად იცვლება (§7: ფიქსირებული სიმაღლე შენ უარყავი), ქვედა ზოლი
+   მიმაგრებულია, ტაბის ახსნა კი სათაურის i-შია.
    ============================================================ */
 
 /** ტაბი = ნაკადი */
@@ -269,10 +281,29 @@ export function GalleryDownloadDialog({
     [castFlow, scopeFilters, canSkipWithPhotos, pin, skipWithPhotos, castQuery, options],
   )
 
+  /**
+   * **რომელ „კონტექსტშია" გეგმა** — ტაბი და მიბმული ჩანაწერი/მსახიობი.
+   *
+   * ⚠️ Tasks §18.1: წინა პასუხი ახლის მოსვლამდე **მხოლოდ იმავე კონტექსტში**
+   * ჩანს. სხვა ტაბის (ჩანაწერის ჯამი მსახიობების ტაბზე) ან სხვა მსახიობის
+   * გეგმა — გახსნისას, წინა გახსნიდან — ერთი წამითაც ტყუილი იქნებოდა.
+   */
+  const planContext = [
+    castFlow ? 'actor' : 'record',
+    pin?.record ? `${pin.record.type}:${pin.record.id}` : '',
+    pin?.actor?.id ?? '',
+  ].join('|')
+
   const planQ = useQuery({
-    queryKey: ['gallery-plan', filters],
+    queryKey: ['gallery-plan', planContext, filters],
     queryFn: () => fetchGalleryPlan(filters),
     enabled: open,
+    /* ⚠️ **ხტომის ნამდვილი მიზეზი** (Tasks §18.1): გასაღები მთელი ფილტრია,
+       ე.ი. ყოველი მონიშვნა და ძებნის ყოველი პაუზა ახალი მოთხოვნაა. ამის
+       გარეშე `plan` ყოველ ჯერზე `undefined` ხდებოდა და სია პასუხის
+       მოსვლამდე ქრებოდა. */
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === planContext ? previous : undefined,
   })
 
   const plan = planQ.data
@@ -332,457 +363,515 @@ export function GalleryDownloadDialog({
       per_actor: perActor,
       actors,
     })
-    toast({ title: t('gallery.started', { count: plan.items.length }), variant: 'success' })
+    // Tasks §18.5 — მსახიობების ტაბზე რიგში **მსახიობები** დგება და არა ჩანაწერები
+    toast({
+      title: t(castFlow ? 'gallery.startedActors' : 'gallery.started', { count: plan.items.length }),
+      variant: 'success',
+    })
     onOpenChange(false)
   }
 
   /**
-   * მსახიობების არჩევანი. „კონკრეტული" მაშინ ჩანს, როცა ავზში ერთი მსახიობი მაინცაა.
+   * მსახიობების არჩევანი. „კონკრეტული" იმალება მხოლოდ მაშინ, როცა
+   * **ცნობილია**, რომ ავზი ცარიელია.
+   *
+   * ⚠️ Tasks §18.1 — ადრე პირობა `castOptions.length` იყო, ე.ი. გეგმის
+   * ყოველ ჩატვირთვაზე და ძებნის ცარიელ შედეგზე მთელი რიგი — ძებნის
+   * ველიანად — ქრებოდა: „მსახიობი ვერ მოიძებნა" ეკრანზე არასდროს ჩანდა და
+   * ძებნის გასასუფთავებელი ველიც აღარ იყო.
    */
+  const poolEmpty = !!plan && !castOptions.length && !castQuery && castMode !== 'selected'
   const castModes: GalleryCastMode[] = [
     'all',
     'female',
     'male',
-    ...(castOptions.length ? (['selected'] as GalleryCastMode[]) : []),
+    ...(poolEmpty ? [] : (['selected'] as GalleryCastMode[])),
   ]
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogTitle>
-          {pin?.actor
-            ? t('gallery.fetchForActor', { name: pin.actor.name })
-            : pin?.record
-              ? t('gallery.fetchForRecord', { name: pin.record.title ?? '' })
-              : t('gallery.fetchTitle')}
-        </DialogTitle>
+  /**
+   * **„თითო მსახიობზე" თუ „მონიშნულ მსახიობზე"** (Tasks §18.3 — შენი
+   * სიტყვები). ერთ მსახიობზე მიბმულ ფანჯარაში ან ერთ მონიშნულზე „თითო"
+   * შეუსაბამოა; ჯგუფურ არჩევანზე (ყველა · ქალები · კაცები) კი ზუსტია.
+   */
+  const pickedCount = pin?.actor ? 1 : castMode === 'selected' ? castIds.length : null
+  const perActorLabel =
+    pickedCount === null
+      ? t('gallery.perActor')
+      : pickedCount === 1
+        ? t('gallery.perActorOne')
+        : t('gallery.perActorSelected')
 
+  /**
+   * ტაბის ახსნა — სათაურის i-ში (Tasks §18.4).
+   *
+   * ⚠️ §18.5: „ამ ჩანაწერების მსახიობები" ერთ მსახიობზე მიბმულ ფანჯარაში და
+   * გამორთულ სკოუპზე ტყუილია — იქ ჩანაწერები საერთოდ არ მონაწილეობს.
+   */
+  const tabHint = castFlow
+    ? pin?.actor || (!pinned && scope === 'off')
+      ? t('gallery.tabHint.actor')
+      : t('gallery.tabHint.cast')
+    : t('gallery.tabHint.record')
+
+  // ⚠️ კომპონენტი მონტირებული რჩება (state გახსნებს შორის ცოცხლობს) — მხოლოდ
+  // ფანჯარა იხატება გახსნისას; `ModalShell`-ის დასტაც ამ მომენტს მიჰყვება
+  if (!open) return null
+
+  return (
+    <ModalShell
+      wide
+      title={
+        pin?.actor
+          ? t('gallery.fetchForActor', { name: pin.actor.name })
+          : pin?.record
+            ? t('gallery.fetchForRecord', { name: pin.record.title ?? '' })
+            : t('gallery.fetchTitle')
+      }
+      hint={tabHint}
+      onClose={() => onOpenChange(false)}
+    >
+      {/* Tasks §18.2 — დაშორებები გაიზარდა (`space-y-6`, რიგები `p-3.5`) */}
+      <div className="space-y-6 pt-2">
         {/* ---------- ორი ნაკადი — ორი ტაბი ---------- */}
         {/* ⚠️ **ორი სკოუპია და არა ერთის ორი ხედი** — „ჩანაწერის კადრები" და
             „მსახიობების ფოტოები" სხვადასხვა რამეს ჩამოტვირთავს, ამიტომ
             ჭრილის ბარათებია და არა ქვედახაზული ტაბები. */}
         {!pin?.actor && (
-          <div className="mt-3">
-            <CutTabs
-              options={[
-                { key: 'record', label: t('gallery.tab.record') },
-                { key: 'cast', label: t('gallery.tab.cast') },
-              ]}
-              value={flow}
-              onChange={(key) => setFlow(key as 'record' | 'cast')}
-              layout="inline"
-            />
-          </div>
+          <CutTabs
+            options={[
+              { key: 'record', label: t('gallery.tab.record') },
+              { key: 'cast', label: t('gallery.tab.cast') },
+            ]}
+            value={flow}
+            onChange={(key) => setFlow(key as 'record' | 'cast')}
+            layout="inline"
+          />
         )}
 
-        <div className="fb-scroll mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
-          <p className="text-xs text-muted-foreground">{t(`gallery.tabHint.${flow}`)}</p>
+        {/* ---------- დომენები + სკოუპი ---------- */}
+        {!pinned && (
+          <>
+            {domains.length > 1 && (
+              <div>
+                <Label className="mb-2.5 block">{t('gallery.domains')}</Label>
+                <ChipRow>
+                  {domains.map((type) => (
+                    <Chip key={type} active={types.includes(type)} onClick={() => toggleType(type)}>
+                      {t(MEDIA_NAV_KEY[type])}
+                    </Chip>
+                  ))}
+                </ChipRow>
+                {/* ⚠️ ცარიელი არჩევანი ცხადად ითქვას — გეგმა 403-ს დააბრუნებს */}
+                {!types.length && (
+                  <p className="mt-1.5 text-xs text-destructive">{t('gallery.pickDomain')}</p>
+                )}
+              </div>
+            )}
 
-          {/* ---------- დომენები + სკოუპი ---------- */}
-          {!pinned && (
-            <>
-              {domains.length > 1 && (
-                <div>
-                  <Label className="mb-2 block">{t('gallery.domains')}</Label>
-                  <ChipRow>
-                    {domains.map((type) => (
-                      <Chip key={type} active={types.includes(type)} onClick={() => toggleType(type)}>
-                        {t(MEDIA_NAV_KEY[type])}
+            <div>
+              <Label className="mb-2.5 block">
+                {t(castFlow ? 'gallery.castRecordScope' : 'sync.scope')}
+              </Label>
+              <RadioGroup
+                value={scope}
+                onValueChange={(v) => setScope(v as GalleryScope)}
+                className="gap-2.5"
+              >
+                <ScopeRow value="all" active={scope} label={t('sync.scopeAll')} />
+
+                <ScopeRow value="status" active={scope} label={t('gallery.scopeStatuses')}>
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* §6.4 — ჩიპები არჩეული დომენების ლექსიკონებიდან */}
+                    {statusOptions.map((s) => (
+                      <Chip
+                        key={s.key}
+                        active={statuses.includes(s.key)}
+                        onClick={() => toggleStatus(s.key)}
+                      >
+                        {statusName(s, lang)}
+                      </Chip>
+                    ))}
+                  </div>
+                </ScopeRow>
+
+                <ScopeRow value="favorite" active={scope} label={t('sync.scopeFavorite')} />
+
+                <ScopeRow value="genre" active={scope} label={t('sync.scopeGenre')}>
+                  <GenreSelect genres={genresQ.data ?? []} value={genres} onChange={setGenres} />
+                  {/* ⚠️ „ყველა ერთდროულად" სამ ჟანრზე ხშირად ცარიელ სკოუპს იძლევა */}
+                  <ChipRow className="mt-2">
+                    {(['any', 'all'] as const).map((mode) => (
+                      <Chip key={mode} active={genreMode === mode} onClick={() => setGenreMode(mode)}>
+                        {t(`gallery.genreMode.${mode}`)}
                       </Chip>
                     ))}
                   </ChipRow>
-                  {/* ⚠️ ცარიელი არჩევანი ცხადად ითქვას — გეგმა 403-ს დააბრუნებს */}
-                  {!types.length && (
-                    <p className="mt-1.5 text-xs text-destructive">{t('gallery.pickDomain')}</p>
+                </ScopeRow>
+
+                <ScopeRow value="ids" active={scope} label={t('sync.scopeSpecific')}>
+                  <MediaRecordPicker
+                    types={types}
+                    ids={ids}
+                    onChange={(type, next) => setIds((cur) => ({ ...cur, [type]: next }))}
+                    enabled={scope === 'ids'}
+                  />
+                </ScopeRow>
+
+                {/* ⚠️ მხოლოდ მსახიობების ტაბზე — „ან ჩათიშო" */}
+                {castFlow && (
+                  <ScopeRow value="off" active={scope} label={t('gallery.scopeOff')}>
+                    <p className="text-xs text-muted-foreground">{t('gallery.scopeOffHint')}</p>
+                  </ScopeRow>
+                )}
+              </RadioGroup>
+            </div>
+          </>
+        )}
+
+        {canSkipWithPhotos && (
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <Checkbox checked={skipWithPhotos} onCheckedChange={() => setSkipWithPhotos((v) => !v)} />
+            <span>
+              {t(castFlow ? 'gallery.skipActorsWithPhotos' : 'gallery.skipWithPhotos')}
+              <span className="block text-xs text-muted-foreground">
+                {t('gallery.skipWithPhotosHint')}
+              </span>
+            </span>
+          </label>
+        )}
+
+        {/* ============ ტაბი 1 — ჩანაწერის ფოტოები ============ */}
+        {!castFlow && (
+          <div className="space-y-2.5">
+            <Label className="block">{t('gallery.what')}</Label>
+            {GALLERY_SUBJECTS.map((subject) => {
+              const on = subjects.includes(subject)
+
+              return (
+                <div
+                  key={subject}
+                  className={cn(
+                    'rounded-lg border p-3.5 transition-colors',
+                    on ? 'border-primary bg-secondary/40' : 'border-border',
+                  )}
+                >
+                  <label className="flex cursor-pointer items-start gap-2 text-sm">
+                    <Checkbox checked={on} onCheckedChange={() => toggleSubject(subject)} />
+                    <span className="min-w-0">
+                      {t(`gallery.subject.${subject}`)}
+                      <span className="block text-xs text-muted-foreground">
+                        {t(`gallery.subjectHint.${subject}`)}
+                      </span>
+                    </span>
+                  </label>
+
+                  {/* ⚠️ **რიცხვი და ზომა თითოს თავისი აქვს** (§8.2) */}
+                  {on && (
+                    <div className="mt-3.5 grid gap-4 pl-7 sm:grid-cols-2">
+                      <div>
+                        <Label className="mb-1.5 block text-xs">{t('gallery.limit')}</Label>
+                        <NumberPick
+                          allowNone
+                          value={limits[subject] ?? 0}
+                          onChange={(n) => setLimits((cur) => ({ ...cur, [subject]: n }))}
+                          options={LIMIT_OPTIONS}
+                          max={GALLERY_MAX_LIMIT}
+                        />
+                      </div>
+                      <div>
+                        <Label className="mb-1.5 block text-xs">{t('gallery.size')}</Label>
+                        <Select
+                          value={sizes[subject]}
+                          onValueChange={(v) => setSizes((cur) => ({ ...cur, [subject]: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GALLERY_SUBJECT_SIZES[subject].map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {t(`gallery.sizeOption.${s}`, s)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   )}
                 </div>
-              )}
+              )
+            })}
 
+            {nothingPicked && <p className="text-xs text-destructive">{t('gallery.pickSubject')}</p>}
+          </div>
+        )}
+
+        {/* ============ ტაბი 2 — მსახიობების ფოტოები ============ */}
+        {castFlow && (
+          <>
+            {/* წყარო — პორტრეტები თუ კადრები ფილმებიდან (§8.2).
+
+                ⚠️ **ბარათებია და აღარ ჩიპები** (შენი მითითება, 2026-09-14).
+                სამ ჩიპს ქვემოთ ერთი განმარტება ჰქონდა — **მხოლოდ არჩეულის**,
+                ე.ი. დანარჩენი ორის მნიშვნელობა დაფარული იყო და არჩევანის
+                გასაკეთებლად ჯერ უნდა გადაგერთო, რომ წაგეკითხა, რას ირჩევდი.
+                ახლა სამივე თავის განმარტებას თვითონ ამბობს. */}
+            <div>
+              <Label className="mb-2.5 block">{t('gallery.castSourceTitle')}</Label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {GALLERY_CAST_SOURCES.map((source) => {
+                  const on = castSource === source
+                  const Icon = CAST_SOURCE_ICON[source]
+
+                  return (
+                    <button
+                      key={source}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setCastSource(source)}
+                      className={cn(
+                        'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3.5 text-left transition-colors',
+                        on
+                          ? 'border-primary bg-secondary/60'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50',
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                          {t(`gallery.castSource.${source}`)}
+                        </span>
+                        {on && <Check className="size-4 shrink-0 text-primary" />}
+                      </span>
+                      <span className="text-xs leading-snug text-muted-foreground">
+                        {t(`gallery.castSourceHint.${source}`)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {!pin?.actor && (
               <div>
-                <Label className="mb-2 block">
-                  {t(castFlow ? 'gallery.castScope' : 'sync.scope')}
-                </Label>
+                <Label className="mb-2.5 block">{t('gallery.castTargetTitle')}</Label>
                 <RadioGroup
-                  value={scope}
-                  onValueChange={(v) => setScope(v as GalleryScope)}
+                  value={castMode}
+                  onValueChange={(v) => setCastMode(v as GalleryCastMode)}
                   className="gap-2"
                 >
-                  <ScopeRow value="all" active={scope} label={t('sync.scopeAll')} />
+                  {castModes.map((mode) => (
+                    <div
+                      key={mode}
+                      className={cn(
+                        'rounded-lg border p-3 transition-colors',
+                        castMode === mode ? 'border-primary bg-secondary/50' : 'border-border',
+                      )}
+                    >
+                      <label className="flex cursor-pointer items-center gap-3">
+                        <RadioGroupItem value={mode} />
+                        <span className="text-sm font-medium">{t(`gallery.cast.${mode}`)}</span>
+                      </label>
 
-                  <ScopeRow value="status" active={scope} label={t('gallery.scopeStatuses')}>
-                    <div className="flex flex-wrap gap-1.5">
-                      {/* §6.4 — ჩიპები არჩეული დომენების ლექსიკონებიდან */}
-                      {statusOptions.map((s) => (
-                        <Chip
-                          key={s.key}
-                          active={statuses.includes(s.key)}
-                          onClick={() => toggleStatus(s.key)}
-                        >
-                          {statusName(s, lang)}
-                        </Chip>
-                      ))}
-                    </div>
-                  </ScopeRow>
+                      {mode === 'selected' && castMode === 'selected' && (
+                        <div className="mt-3 space-y-2.5 pl-8">
+                          {/* ⚠️ **„ყველა ქალი" ღილაკი** — მოთხოვნის პირდაპირი პუნქტი */}
+                          <div className="flex flex-wrap gap-1.5">
+                            <Button type="button" size="sm" variant="outline" onClick={() => pickByGender(1)}>
+                              <Users className="size-3.5" />
+                              {t('gallery.pickAllFemale')}
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => pickByGender(2)}>
+                              <Users className="size-3.5" />
+                              {t('gallery.pickAllMale')}
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => pickByGender(null)}>
+                              <Square className="size-3.5" />
+                              {t('photos.clear')}
+                            </Button>
+                            <span className="ml-auto self-center text-xs text-muted-foreground">
+                              {t('gallery.castPicked', { count: castIds.length })}
+                            </span>
+                          </div>
 
-                  <ScopeRow value="favorite" active={scope} label={t('sync.scopeFavorite')} />
+                          <div className="relative">
+                            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={castQ}
+                              onChange={(e) => setCastQ(e.target.value)}
+                              placeholder={t('gallery.castSearch')}
+                              className="pl-8"
+                            />
+                          </div>
 
-                  <ScopeRow value="genre" active={scope} label={t('sync.scopeGenre')}>
-                    <GenreSelect genres={genresQ.data ?? []} value={genres} onChange={setGenres} />
-                    {/* ⚠️ „ყველა ერთდროულად" სამ ჟანრზე ხშირად ცარიელ სკოუპს იძლევა */}
-                    <ChipRow className="mt-2">
-                      {(['any', 'all'] as const).map((mode) => (
-                        <Chip key={mode} active={genreMode === mode} onClick={() => setGenreMode(mode)}>
-                          {t(`gallery.genreMode.${mode}`)}
-                        </Chip>
-                      ))}
-                    </ChipRow>
-                  </ScopeRow>
-
-                  <ScopeRow value="ids" active={scope} label={t('sync.scopeSpecific')}>
-                    <MediaRecordPicker
-                      types={types}
-                      ids={ids}
-                      onChange={(type, next) => setIds((cur) => ({ ...cur, [type]: next }))}
-                      enabled={scope === 'ids'}
-                    />
-                  </ScopeRow>
-
-                  {/* ⚠️ მხოლოდ მსახიობების ტაბზე — „ან ჩათიშო" */}
-                  {castFlow && (
-                    <ScopeRow value="off" active={scope} label={t('gallery.scopeOff')}>
-                      <p className="text-xs text-muted-foreground">{t('gallery.scopeOffHint')}</p>
-                    </ScopeRow>
-                  )}
-                </RadioGroup>
-              </div>
-            </>
-          )}
-
-          {canSkipWithPhotos && (
-            <label className="flex cursor-pointer items-start gap-2 text-sm">
-              <Checkbox checked={skipWithPhotos} onCheckedChange={() => setSkipWithPhotos((v) => !v)} />
-              <span>
-                {t(castFlow ? 'gallery.skipActorsWithPhotos' : 'gallery.skipWithPhotos')}
-                <span className="block text-xs text-muted-foreground">
-                  {t('gallery.skipWithPhotosHint')}
-                </span>
-              </span>
-            </label>
-          )}
-
-          {/* ============ ტაბი 1 — ჩანაწერის ფოტოები ============ */}
-          {!castFlow && (
-            <div className="space-y-2">
-              <Label className="block">{t('gallery.what')}</Label>
-              {GALLERY_SUBJECTS.map((subject) => {
-                const on = subjects.includes(subject)
-
-                return (
-                  <div
-                    key={subject}
-                    className={cn(
-                      'rounded-lg border p-3 transition-colors',
-                      on ? 'border-primary bg-secondary/40' : 'border-border',
-                    )}
-                  >
-                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                      <Checkbox checked={on} onCheckedChange={() => toggleSubject(subject)} />
-                      <span className="min-w-0">
-                        {t(`gallery.subject.${subject}`)}
-                        <span className="block text-xs text-muted-foreground">
-                          {t(`gallery.subjectHint.${subject}`)}
-                        </span>
-                      </span>
-                    </label>
-
-                    {/* ⚠️ **რიცხვი და ზომა თითოს თავისი აქვს** (§8.2) */}
-                    {on && (
-                      <div className="mt-3 grid gap-3 pl-7 sm:grid-cols-2">
-                        <div>
-                          <Label className="mb-1.5 block text-xs">{t('gallery.limit')}</Label>
-                          <NumberPick
-                            allowNone
-                            value={limits[subject] ?? 0}
-                            onChange={(n) => setLimits((cur) => ({ ...cur, [subject]: n }))}
-                            options={LIMIT_OPTIONS}
-                            max={GALLERY_MAX_LIMIT}
-                          />
-                        </div>
-                        <div>
-                          <Label className="mb-1.5 block text-xs">{t('gallery.size')}</Label>
-                          <Select
-                            value={sizes[subject]}
-                            onValueChange={(v) => setSizes((cur) => ({ ...cur, [subject]: v }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {GALLERY_SUBJECT_SIZES[subject].map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  {t(`gallery.sizeOption.${s}`, s)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-
-              {nothingPicked && <p className="text-xs text-destructive">{t('gallery.pickSubject')}</p>}
-            </div>
-          )}
-
-          {/* ============ ტაბი 2 — მსახიობების ფოტოები ============ */}
-          {castFlow && (
-            <>
-              {/* წყარო — პორტრეტები თუ კადრები ფილმებიდან (§8.2).
-
-                  ⚠️ **ბარათებია და აღარ ჩიპები** (შენი მითითება, 2026-09-14).
-                  სამ ჩიპს ქვემოთ ერთი განმარტება ჰქონდა — **მხოლოდ არჩეულის**,
-                  ე.ი. დანარჩენი ორის მნიშვნელობა დაფარული იყო და არჩევანის
-                  გასაკეთებლად ჯერ უნდა გადაგერთო, რომ წაგეკითხა, რას ირჩევდი.
-                  ახლა სამივე თავის განმარტებას თვითონ ამბობს. */}
-              <div>
-                <Label className="mb-2 block">{t('gallery.castSourceTitle')}</Label>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {GALLERY_CAST_SOURCES.map((source) => {
-                    const on = castSource === source
-                    const Icon = CAST_SOURCE_ICON[source]
-
-                    return (
-                      <button
-                        key={source}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => setCastSource(source)}
-                        className={cn(
-                          'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3 text-left transition-colors',
-                          on
-                            ? 'border-primary bg-secondary/60'
-                            : 'border-border hover:border-primary/40 hover:bg-muted/50',
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                            {t(`gallery.castSource.${source}`)}
-                          </span>
-                          {on && <Check className="size-4 shrink-0 text-primary" />}
-                        </span>
-                        <span className="text-xs leading-snug text-muted-foreground">
-                          {t(`gallery.castSourceHint.${source}`)}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {!pin?.actor && (
-                <div>
-                  <Label className="mb-2 block">{t('gallery.castTargetTitle')}</Label>
-                  <RadioGroup
-                    value={castMode}
-                    onValueChange={(v) => setCastMode(v as GalleryCastMode)}
-                    className="gap-1.5"
-                  >
-                    {castModes.map((mode) => (
-                      <div
-                        key={mode}
-                        className={cn(
-                          'rounded-lg border p-2.5 transition-colors',
-                          castMode === mode ? 'border-primary bg-secondary/50' : 'border-border',
-                        )}
-                      >
-                        <label className="flex cursor-pointer items-center gap-3">
-                          <RadioGroupItem value={mode} />
-                          <span className="text-sm font-medium">{t(`gallery.cast.${mode}`)}</span>
-                        </label>
-
-                        {mode === 'selected' && castMode === 'selected' && (
-                          <div className="mt-2 space-y-2 pl-8">
-                            {/* ⚠️ **„ყველა ქალი" ღილაკი** — მოთხოვნის პირდაპირი პუნქტი */}
-                            <div className="flex flex-wrap gap-1.5">
-                              <Button type="button" size="sm" variant="outline" onClick={() => pickByGender(1)}>
-                                <Users className="size-3.5" />
-                                {t('gallery.pickAllFemale')}
-                              </Button>
-                              <Button type="button" size="sm" variant="outline" onClick={() => pickByGender(2)}>
-                                <Users className="size-3.5" />
-                                {t('gallery.pickAllMale')}
-                              </Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => pickByGender(null)}>
-                                <Square className="size-3.5" />
-                                {t('photos.clear')}
-                              </Button>
-                              <span className="ml-auto self-center text-xs text-muted-foreground">
-                                {t('gallery.castPicked', { count: castIds.length })}
-                              </span>
-                            </div>
-
-                            <div className="relative">
-                              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                              <Input
-                                value={castQ}
-                                onChange={(e) => setCastQ(e.target.value)}
-                                placeholder={t('gallery.castSearch')}
-                                className="pl-8"
-                              />
-                            </div>
-
-                            <div className="fb-scroll max-h-44 space-y-1 overflow-y-auto">
-                              {castOptions.map((member) => (
-                                <label
-                                  key={member.id}
-                                  className={cn(
-                                    'flex cursor-pointer items-center gap-2 text-sm',
-                                    !member.has_tmdb && 'opacity-50',
+                          {/* ⚠️ Tasks §18.2 — **ფიქსირებული სიმაღლე** (`h-56`, ადრე
+                              `max-h-44`): მონიშვნამ და ძებნამ ფანჯრის ზომა არ უნდა
+                              შეცვალოს — სწორედ ეს იკითხებოდა „იკლებს და იზრდება"-დ. */}
+                          <div className="fb-scroll h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+                            {castOptions.map((member) => (
+                              <label
+                                key={member.id}
+                                className={cn(
+                                  'flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm',
+                                  !member.has_tmdb && 'opacity-50',
+                                )}
+                              >
+                                <Checkbox
+                                  checked={castIds.includes(member.id)}
+                                  disabled={!member.has_tmdb}
+                                  onCheckedChange={() => toggleCastId(member.id)}
+                                />
+                                <span className="min-w-0 truncate">
+                                  {member.name_ka || member.name}
+                                  {member.photos > 0 && (
+                                    <span className="ml-1.5 text-xs text-muted-foreground">
+                                      {t('gallery.photos', { count: member.photos })}
+                                    </span>
                                   )}
-                                >
-                                  <Checkbox
-                                    checked={castIds.includes(member.id)}
-                                    disabled={!member.has_tmdb}
-                                    onCheckedChange={() => toggleCastId(member.id)}
-                                  />
-                                  <span className="min-w-0 truncate">
-                                    {member.name_ka || member.name}
-                                    {member.photos > 0 && (
-                                      <span className="ml-1.5 text-xs text-muted-foreground">
-                                        {t('gallery.photos', { count: member.photos })}
-                                      </span>
-                                    )}
-                                  </span>
-                                </label>
-                              ))}
-                              {!castOptions.length && (
-                                <p className="text-xs text-muted-foreground">{t('gallery.castNone')}</p>
-                              )}
-                            </div>
-
-                            {plan?.cast_truncated && (
-                              <p className="text-xs text-muted-foreground">{t('gallery.castTruncated')}</p>
+                                </span>
+                              </label>
+                            ))}
+                            {/* ⚠️ „ვერ მოიძებნა" მხოლოდ **ცნობილ** ცარიელ პასუხზე —
+                                პირველ ჩატვირთვაზე ეს ტყუილი იქნებოდა */}
+                            {!castOptions.length && (
+                              <p className="px-1.5 py-1 text-xs text-muted-foreground">
+                                {plan ? t('gallery.castNone') : t('api.loading')}
+                              </p>
                             )}
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </RadioGroup>
 
-                  {/* სქესით ჭრა მხოლოდ მაშინ მუშაობს, როცა სქესი ცნობილია */}
-                  {(castMode === 'female' || castMode === 'male') && !!plan?.unknown_gender && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {t('gallery.unknownGender', { count: plan.unknown_gender })}
-                    </p>
-                  )}
+                          {plan?.cast_truncated && (
+                            <p className="text-xs text-muted-foreground">{t('gallery.castTruncated')}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </RadioGroup>
 
-                  {castMode !== 'selected' && castQuery && (
-                    <p className="mt-2 text-xs text-muted-foreground">{t('gallery.castSearchNarrows')}</p>
-                  )}
-                </div>
-              )}
+                {/* სქესით ჭრა მხოლოდ მაშინ მუშაობს, როცა სქესი ცნობილია */}
+                {(castMode === 'female' || castMode === 'male') && !!plan?.unknown_gender && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t('gallery.unknownGender', { count: plan.unknown_gender })}
+                  </p>
+                )}
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label className="mb-2 flex items-center gap-1.5">{t('gallery.perActor')} <InfoHint info={t('gallery.perActorHint')} /></Label>
-                  <NumberPick
-                    allowNone
-                    value={perActor}
-                    onChange={setPerActor}
-                    options={PER_ACTOR_OPTIONS}
-                    max={GALLERY_MAX_PER_ACTOR}
-                  />
-                </div>
-                <div>
-                  <Label className="mb-2 flex items-center gap-1.5">{t('gallery.castSize')} <InfoHint info={t('gallery.castSizeHint')} /></Label>
-                  <Select value={castSize} onValueChange={(v) => setCastSize(v as GalleryCastSize)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GALLERY_CAST_SIZES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {t(`gallery.castSizeOption.${s}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* ჭერი მხოლოდ ჯგუფურ არჩევანს ეხება — ხელით მონიშნული სია თვითონაა ჭერი */}
-                {castMode !== 'selected' && !pin?.actor && (
-                  <div>
-                    <Label className="mb-2 block">{t('gallery.actors')}</Label>
-                    <NumberPick
-                      value={actors}
-                      onChange={setActors}
-                      options={ACTORS_OPTIONS}
-                      max={GALLERY_MAX_ACTORS}
-                    />
-                  </div>
+                {castMode !== 'selected' && castQuery && (
+                  <p className="mt-2 text-xs text-muted-foreground">{t('gallery.castSearchNarrows')}</p>
                 )}
               </div>
+            )}
 
-              {nothingPicked && <p className="text-xs text-destructive">{t('gallery.pickPerActor')}</p>}
-            </>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                {/* ⚠️ Tasks §18.3/§18.4 — წარწერა არჩევანს მიჰყვება; „ჩანაწერისგან
+                    დამოუკიდებელია…" წაიშალა: ორი ტაბი ცალ-ცალკე მუშაობს და ის
+                    ძველი ერთფანჯრიანი მოდელის ნარჩენი იყო — დღეს უბრალოდ ცრუ. */}
+                <Label className="mb-2 block">{perActorLabel}</Label>
+                <NumberPick
+                  allowNone
+                  value={perActor}
+                  onChange={setPerActor}
+                  options={PER_ACTOR_OPTIONS}
+                  max={GALLERY_MAX_PER_ACTOR}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 flex items-center gap-1.5">
+                  {t('gallery.castSize')} <InfoHint info={t('gallery.castSizeHint')} />
+                </Label>
+                <Select value={castSize} onValueChange={(v) => setCastSize(v as GalleryCastSize)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GALLERY_CAST_SIZES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {t(`gallery.castSizeOption.${s}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* ჭერი მხოლოდ ჯგუფურ არჩევანს ეხება — ხელით მონიშნული სია თვითონაა ჭერი */}
+              {castMode !== 'selected' && !pin?.actor && (
+                <div>
+                  <Label className="mb-2 block">{t('gallery.actors')}</Label>
+                  <NumberPick
+                    value={actors}
+                    onChange={setActors}
+                    options={ACTORS_OPTIONS}
+                    max={GALLERY_MAX_ACTORS}
+                  />
+                </div>
+              )}
+            </div>
+
+            {nothingPicked && <p className="text-xs text-destructive">{t('gallery.pickPerActor')}</p>}
+          </>
+        )}
+      </div>
+
+      {/* ---------- შეჯამება: **ამ ტაბის** ჯამი, დრო და ადგილი ---------- */}
+      <ModalFooter className="justify-between gap-3">
+        {/* ⚠️ Tasks §18.1 — ახალი გეგმის მოლოდინში **წინა ჯამი ჩანს** (ოდნავ
+            ჩამქრალი) და „იტვირთება…" მხოლოდ პირველ ჩატვირთვაზეა: ზოლი ადრე
+            ყოველ დაჭერაზე ერთ ხაზსა და ხუთს შორის ხტოდა. */}
+        <div
+          className={cn(
+            'min-h-10 min-w-0 flex-1 text-sm transition-opacity',
+            planQ.isPlaceholderData && 'opacity-60',
           )}
-        </div>
-
-        {/* ---------- შეჯამება: **ამ ტაბის** ჯამი, დრო და ადგილი ---------- */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <div className="min-w-0 text-sm">
-            {planQ.isFetching ? (
-              <span className="text-muted-foreground">{t('api.loading')}</span>
-            ) : plan ? (
-              <>
-                <span className="font-medium">
-                  {castFlow
-                    ? t('gallery.castSum', { actors: plan.count, each: perActor, total: castTotal })
-                    : t('gallery.recordSum', { records: plan.count, each: perRecord, total: recordTotal })}
-                </span>
-                {plan.count > 0 && <span className="ml-1.5 text-muted-foreground">≈ {eta(plan.eta_seconds)}</span>}
-                <span className={cn('block text-xs', plan.fits ? 'text-muted-foreground' : 'text-destructive')}>
-                  {t('gallery.estimate', {
-                    size: formatBytes(plan.estimated_bytes),
-                    remaining: formatBytes(plan.storage.remaining),
+        >
+          {plan ? (
+            <>
+              <span className="font-medium">
+                {castFlow
+                  ? t('gallery.castSum', { actors: plan.count, each: perActor, total: castTotal })
+                  : t('gallery.recordSum', { records: plan.count, each: perRecord, total: recordTotal })}
+              </span>
+              {plan.count > 0 && <span className="ml-1.5 text-muted-foreground">≈ {eta(plan.eta_seconds)}</span>}
+              <span className={cn('block text-xs', plan.fits ? 'text-muted-foreground' : 'text-destructive')}>
+                {t('gallery.estimate', {
+                  size: formatBytes(plan.estimated_bytes),
+                  remaining: formatBytes(plan.storage.remaining),
+                })}
+              </span>
+              {!plan.fits && <span className="block text-xs text-destructive">{t('gallery.estimateOver')}</span>}
+              {plan.skipped_without_tmdb > 0 && (
+                <span className="block text-xs text-muted-foreground">
+                  {t(castFlow ? 'gallery.actorsNoTmdb' : 'sync.noTmdb', {
+                    count: plan.skipped_without_tmdb,
                   })}
                 </span>
-                {!plan.fits && <span className="block text-xs text-destructive">{t('gallery.estimateOver')}</span>}
-                {plan.skipped_without_tmdb > 0 && (
-                  <span className="block text-xs text-muted-foreground">
-                    {t(castFlow ? 'gallery.actorsNoTmdb' : 'sync.noTmdb', {
-                      count: plan.skipped_without_tmdb,
-                    })}
-                  </span>
-                )}
-                {/* ⚠️ **ნული თავის მიზეზს ატარებს** — „ყველას ფოტოები უკვე აქვს"
-                    და „სკოუპში არაფერია" ერთნაირად ცარიელი გეგმაა, ტექსტი კი
-                    სხვა უნდა იყოს; სწორედ ამის დუმილი იკითხებოდა ხარვეზად. */}
-                {plan.skipped_with_photos > 0 && (
-                  <span className="block text-xs text-muted-foreground">
-                    {t(castFlow ? 'gallery.actorsHavePhotos' : 'gallery.recordsHavePhotos', {
-                      count: plan.skipped_with_photos,
-                    })}
-                  </span>
-                )}
-              </>
-            ) : null}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('confirm.cancel')}
-            </Button>
-            <Button onClick={run} disabled={!canRun}>
-              {planQ.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-              {isBusy ? t('sync.addToQueue') : t('gallery.run')}
-            </Button>
-          </div>
+              )}
+              {/* ⚠️ **ნული თავის მიზეზს ატარებს** — „ყველას ფოტოები უკვე აქვს"
+                  და „სკოუპში არაფერია" ერთნაირად ცარიელი გეგმაა, ტექსტი კი
+                  სხვა უნდა იყოს; სწორედ ამის დუმილი იკითხებოდა ხარვეზად. */}
+              {plan.skipped_with_photos > 0 && (
+                <span className="block text-xs text-muted-foreground">
+                  {t(castFlow ? 'gallery.actorsHavePhotos' : 'gallery.recordsHavePhotos', {
+                    count: plan.skipped_with_photos,
+                  })}
+                </span>
+              )}
+            </>
+          ) : planQ.isFetching ? (
+            <span className="text-muted-foreground">{t('api.loading')}</span>
+          ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {t('confirm.cancel')}
+          </Button>
+          <Button onClick={run} disabled={!canRun}>
+            {planQ.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+            {isBusy ? t('sync.addToQueue') : t('gallery.run')}
+          </Button>
+        </div>
+      </ModalFooter>
+    </ModalShell>
   )
 }
 
