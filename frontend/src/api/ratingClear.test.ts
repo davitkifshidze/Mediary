@@ -23,7 +23,7 @@ beforeEach(() => {
 })
 
 /** ბოლო გაგზავნილი ფორმის ველი — `null`, თუ საერთოდ არ გაიგზავნა */
-const sent = (key: string) => (post.mock.calls.at(-1)?.[1] as FormData).get(key)
+const sent = (key: string) => (post.mock.calls.at(-1)![1] as FormData).get(key)
 
 describe('clearing a rating', () => {
   it.each([

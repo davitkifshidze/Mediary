@@ -23,7 +23,8 @@ import { TagSelect } from '@/components/TagSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { joinHints } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { NoteRemindersDialog, NoteRemindersLink } from '@/components/NoteRemindersDialog'
 import { NoteUploads } from '@/components/NoteUploads'
@@ -33,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { usePendingUploads } from '@/lib/pendingUploads'
+import { useCustomFieldDraft } from '@/lib/customFieldDraft'
 import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 
 /* ============================================================
@@ -45,6 +47,10 @@ import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
    ბრაუზერშია, შენახვისას კი ჩანაწერის შემდეგ სათითაოდ ადის. ⚠️ **შეხსენება
    კი შექმნის შემდეგ რჩება** (§23.5, შენი სიტყვით) — მას `note_entry_id`
    სჭირდება და ფანჯარა ამას i-ით ამბობს.
+
+   Tasks §26 — ფორმის საერთო ჩონჩხი (`ui/form-layout.tsx`): სექციები
+   სათაურით, 12-სვეტიანი ბადე და მიმაგრებული ქვედა ზოლი; დამატებითი
+   ველებიც ახალ ჩანაწერზე ივსება (§26.5 — იგივე მექანიზმი, რაც ფაილებს).
    ============================================================ */
 
 /** ⚠️ `form="…"`-ს სჭირდება id; ერთი მოდალი ერთ ფორმას შეიცავს, ე.ი. მუდმივია */
@@ -94,6 +100,8 @@ export function NoteForm({
      აუქმებს: ფანჯარა ღია რჩება და **შექმნილის რედაქტირებად** გადადის
      (`created`), ჩავარდნილი ფაილი კი მიზეზით რჩება — „შენახვა" მას ხელახლა ცდის. */
   const pending = usePendingUploads<NoteFile['kind']>()
+  // §26.5 — დამატებითი ველები ახალ ჩანაწერზე (იგივე წესი, რაც ფაილებს)
+  const customDraft = useCustomFieldDraft('note')
   const [created, setCreated] = useState<NoteEntry | null>(null)
   const current = note ?? created
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -101,6 +109,8 @@ export function NoteForm({
   const save = useMutation({
     mutationFn: (input: NoteInput) => (current ? updateNote(current.id, input) : createNote(input)),
     onSuccess: async (saved) => {
+      const problems: string[] = []
+
       if (pending.items.length) {
         const failed = await pending.run(
           (kind, file) => uploadNoteFiles(saved.id, kind, [file]),
@@ -112,15 +122,22 @@ export function NoteForm({
         qc.invalidateQueries({ queryKey: ['me'] })
 
         if (failed.length) {
-          setCreated(saved)
-          qc.invalidateQueries({ queryKey: ['notes'] })
-          toast({
-            title: t('notes.uploadsFailed', { names: failed.map((f) => f.file.name).join(', ') }),
-            variant: 'error',
-          })
-
-          return
+          problems.push(t('notes.uploadsFailed', { names: failed.map((f) => f.file.name).join(', ') }))
         }
+      }
+
+      // ⚠️ `done`-ის შემდეგ აღარ — ბარათი უკვე თვითონ ინახავს თავს
+      if (!note && !customDraft.done) {
+        const extra = await customDraft.flush(saved.id)
+        if (!extra.ok) problems.push(extra.message)
+      }
+
+      if (problems.length) {
+        setCreated(saved)
+        qc.invalidateQueries({ queryKey: ['notes'] })
+        toast({ title: problems.join(' '), variant: 'error' })
+
+        return
       }
 
       toast({ title: t('notes.saved'), variant: 'success' })
@@ -200,40 +217,45 @@ export function NoteForm({
   return (
     <ModalShell title={t(note ? 'notes.edit' : 'notes.add')} onClose={onClose} wide>
       {/* ⚠️ **მოქმედებების რიგი `<form>`-ის გარეთაა და ეკრანის ბოლოშია**
-          (2026-09-14). აქამდე „შენახვა" ფორმის ბოლოში იდგა, ატვირთვები,
-          შეხსენება და მორგებული ველები კი **მის ქვემოთ** — ე.ი. ღილაკი
-          გვერდს შუაზე ჭრიდა და ქვემოთ დარჩენილი ნაწილი „შენახვის შემდეგ
-          მოსულს" ჰგავდა. HTML5-ის `form="…"` სწორედ ამისთვისაა: ღილაკი
-          ფორმის გარეთ დგას და მაინც მას უშვებს. */}
-      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-4">
-        {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
-            ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
-        <div className={fields.shows('title') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="note-title" required>{fields.label('title')}</FieldLabel>
-          <Input
-            id="note-title"
-            autoFocus
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-        </div>
+          (2026-09-14 → §26.1): ატვირთვები, შეხსენება და დამატებითი ველები
+          ღილაკების ზემოთ დგას და არა მათ ქვემოთ. HTML5-ის `form="…"` სწორედ
+          ამისთვისაა: ღილაკი ფორმის გარეთ დგას და მაინც მას უშვებს. */}
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        <FormSection title={t('form.sections.basic')}>
+          {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+          <FormField
+            show={fields.shows('title')}
+            label={fields.label('title')}
+            htmlFor="note-title"
+            required
+            error={errors.title}
+          >
+            <Input
+              id="note-title"
+              autoFocus
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className={fields.shows('category') ? undefined : 'hidden'}>
-            {/* „რას ეხება" — კატეგორია, გვერდით „ახალი" */}
-            <FieldLabel htmlFor="note-category" required={fields.required('category')} hint={fields.hint('category')}>
-              {fields.label('category')}
-            </FieldLabel>
+          <FormField {...fields.field('description')} htmlFor="note-desc">
+            <Textarea
+              id="note-desc"
+              rows={FORM_TEXT_ROWS}
+              placeholder={t('notes.descriptionPlaceholder')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
+
+        <FormSection title={t('form.sections.classification')}>
+          {/* „რას ეხება" — კატეგორია, გვერდით „ახალი" */}
+          <FormField size="third" {...fields.field('category')} htmlFor="note-category" error={errors.category_id}>
             <div className="flex gap-1">
-              <Select
-                value={form.categoryId}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
-              >
-                <SelectTrigger
-                  id="note-category"
-                  className={errors.category_id ? 'border-destructive' : undefined}
-                >
+              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+                <SelectTrigger id="note-category" className={errors.category_id ? 'border-destructive' : undefined}>
                   <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,23 +278,14 @@ export function NoteForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {errors.category_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
-            )}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="note-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
+          <FormField size="third" {...fields.field('status')} htmlFor="note-status" error={errors.status}>
             <Select
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
             >
-              <SelectTrigger
-                id="note-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
+              <SelectTrigger id="note-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -284,137 +297,112 @@ export function NoteForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
+          </FormField>
 
-          {fields.shows('due_at') && (
-            <div>
-              {/* „როდისთვის მჭირდება" (§13.1) */}
-              <FieldLabel htmlFor="note-due" required={fields.required('due_at')} hint={fields.hint('due_at')}>
-                {fields.label('due_at')}
-              </FieldLabel>
-              {/* §2.8 — ნორმალური პიქერი; ფორმატი იგივეა, რაც
-                  `datetime-local`-ს ჰქონდა, ე.ი. `fromDateTimeLocal` უცვლელია */}
-              <DatePicker
-                id="note-due"
-                withTime
-                value={form.dueAt || null}
-                onChange={(v) => setForm((f) => ({ ...f, dueAt: v ?? '' }))}
-              />
-            </div>
-          )}
-        </div>
+          {/* „როდისთვის მჭირდება" (§13.1); §2.8 — ნორმალური პიქერი, ფორმატი
+              იგივეა, რაც `datetime-local`-ს ჰქონდა, ე.ი. `fromDateTimeLocal` უცვლელია */}
+          <FormField size="third" {...fields.field('due_at')} htmlFor="note-due">
+            <DatePicker
+              id="note-due"
+              withTime
+              value={form.dueAt || null}
+              onChange={(v) => setForm((f) => ({ ...f, dueAt: v ?? '' }))}
+            />
+          </FormField>
 
-        {fields.shows('tags') && (
-          <div>
-            <FieldLabel htmlFor="note-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('notes.tagsHint'))}>
-              {fields.label('tags')}
-            </FieldLabel>
+          <FormField
+            {...fields.field('tags')}
+            hint={joinHints(fields.hint('tags'), t('notes.tagsHint'))}
+            htmlFor="note-tags"
+          >
             <TagSelect
               inputId="note-tags"
               options={allTags}
               value={form.tags}
               onChange={(tags) => setForm((f) => ({ ...f, tags }))}
             />
-          </div>
-        )}
-
-        <div className={fields.shows('description') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="note-desc" required={fields.required('description')} hint={fields.hint('description')}>
-            {fields.label('description')}
-          </FieldLabel>
-          <Textarea
-            id="note-desc"
-            rows={5}
-            placeholder={t('notes.descriptionPlaceholder')}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </div>
+          </FormField>
+        </FormSection>
 
         {/* რამდენიმე ბმული (§13.1) */}
-        <div className={fields.shows('links') ? undefined : 'hidden'}>
-          <FieldLabel required={fields.required('links')} hint={fields.hint('links')}>
-            {fields.label('links')}
-          </FieldLabel>
-          <div className="mt-1.5 space-y-1.5">
-            {links.map((link, i) => (
-              <div key={link._key} className="flex gap-1.5">
-                <Input
-                  className="w-32 shrink-0"
-                  placeholder={t('books.linkLabel')}
-                  value={link.label ?? ''}
-                  onChange={(e) =>
-                    setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
-                  }
-                />
-                <Input
-                  placeholder="https://…"
-                  value={link.url}
-                  onChange={(e) =>
-                    setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
-                  aria-label={t('actions.delete')}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setLinks((all) => [...all, keyRow({ label: '', url: '' })])}
-            >
-              <Plus className="size-3.5" />
-              {t('notes.addLink')}
-            </Button>
-          </div>
-        </div>
-
+        <FormSection title={t('form.sections.details')} className={fields.shows('links') ? undefined : 'hidden'}>
+          <FormField {...fields.field('links')}>
+            <div className="space-y-1.5">
+              {links.map((link, i) => (
+                <div key={link._key} className="flex gap-1.5">
+                  <Input
+                    className="w-32 shrink-0"
+                    placeholder={t('books.linkLabel')}
+                    value={link.label ?? ''}
+                    onChange={(e) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
+                    }
+                  />
+                  <Input
+                    placeholder="https://…"
+                    value={link.url}
+                    onChange={(e) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
+                    aria-label={t('actions.delete')}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLinks((all) => [...all, keyRow({ label: '', url: '' })])}
+              >
+                <Plus className="size-3.5" />
+                {t('notes.addLink')}
+              </Button>
+            </div>
+          </FormField>
+        </FormSection>
       </form>
 
       {/* ატვირთვები **დამატებაშიც და რედაქტირებაშიც** (2026-09-14) — იგივე
           კომპონენტი, რაც დეტალებშია. ⚠️ `</form>`-ის გარეთ დგას: ფაილს
           საკუთარი endpoint აქვს და ჩანაწერის `PUT`-ში არ მოგზაურობს. */}
-      <div className="mt-4">
+      <FormSection title={t('form.sections.media')} plain className="mt-6">
         <NoteUploads noteId={current?.id ?? null} pending={pending} />
-      </div>
+      </FormSection>
 
       {/* ⚠️ **შეხსენება ფორმის შიგნით არ დგას — არც ველებს შორის და არც
           „გაუქმება/შენახვის" რიგში** (შენი მითითება, 2026-09-14): ის
           `</form>`-ის **გარეთაა**, ცალკე რიგად, ხატულითა და ტექსტით.
           ე.ი. ჩანაწერის ფორმას ისევ ერთი საქმე აქვს, გვერდზე კი ცხადად
           ჩანს გასასვლელი შეხსენებებზე. იგივე, რასაც სიის ზარი აკეთებს. */}
-      <div className="mt-4">
+      <div className="mt-6">
         <NoteRemindersLink note={current} onOpen={() => setReminders(true)} />
       </div>
 
-      {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
-      <div className="mt-4">
-        <CustomFieldsCard module="note" recordId={current?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
+      <CustomFieldsCard
+        module="note"
+        recordId={current?.id ?? null}
+        draft={note ? undefined : customDraft}
+        className="mt-6"
+      />
 
-      {/* ⚠️ ბოლოში და ზედა ხაზით გამოყოფილი — ყველაფრის შემდეგ, რაც გვერდზეა */}
-      <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
-        <Button type="button" variant="ghost" onClick={onClose}>
-          {t('actions.cancel')}
-        </Button>
-        <Button type="submit" form={FORM_ID} disabled={save.isPending}>
-          {progress
-            ? t('notes.uploadingProgress', { done: progress.done + 1, total: progress.total })
-            : save.isPending
-              ? t('actions.saving')
-              : t('actions.save')}
-        </Button>
-      </div>
+      <FormFooter
+        formId={FORM_ID}
+        onCancel={onClose}
+        saving={save.isPending}
+        savingLabel={
+          progress ? t('notes.uploadingProgress', { done: progress.done + 1, total: progress.total }) : undefined
+        }
+      />
 
       {/* სწრაფი „ახალი კატეგორია" — შენახვისთანავე select-ში ირჩევა */}
       {newCategory && (

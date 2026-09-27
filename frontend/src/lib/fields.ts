@@ -31,6 +31,13 @@ export interface FieldsApi {
   placeholder: (key: string) => string | undefined
   /** სავალდებულო ველი ცარიელია — ფორმამ შენახვა უნდა შეაჩეროს */
   isMissing: (key: string, value: unknown) => boolean
+  /**
+   * Tasks §26 — `FormField`-ის ოთხი prop ერთი გამოძახებით (ჩანს · ლეიბლი ·
+   * სავალდებულო · ახსნა). ⚠️ ოთხი ცალკე გამოძახება ოთხ ადგილას იწერებოდა
+   * და ერთ-ერთის დავიწყება (ხშირად `required`) ჩუმად ხდებოდა — კურსსა და
+   * ადგილს ის სწორედ ასე ჰქონდა ხელით ჩაწერილი.
+   */
+  field: (key: string) => { show: boolean; label: string; required: boolean; hint?: string }
   all: ModuleField[]
 }
 
@@ -44,22 +51,28 @@ export function useModuleFields(moduleKey: string): FieldsApi {
   const ka = i18n.language === 'ka'
   const find = (key: string) => fields.find((f) => f.key === key)
 
+  /* ⚠️ უცნობი ველი **ჩანს**, არ იმალება: კატალოგი ნელა იზრდება და ჯერ
+     ჩაუწერელი ველი ფორმიდან ჩუმად არ უნდა გაქრეს. */
+  const shows = (key: string) => find(key)?.enabled ?? true
+  const required = (key: string) => find(key)?.required ?? false
+  const label = (key: string) => {
+    const field = find(key)
+    const own = ka ? field?.label_ka : field?.label_en
+    return own ?? t(`fields.name.${moduleKey}.${key}`, { defaultValue: key })
+  }
+  const hint = (key: string) => {
+    const text = t(`fields.desc.${moduleKey}.${key}`, { defaultValue: '' })
+    return text || undefined
+  }
+
   return {
     all: fields,
-    /* ⚠️ უცნობი ველი **ჩანს**, არ იმალება: კატალოგი ნელა იზრდება და ჯერ
-       ჩაუწერელი ველი ფორმიდან ჩუმად არ უნდა გაქრეს. */
-    shows: (key) => find(key)?.enabled ?? true,
-    required: (key) => find(key)?.required ?? false,
+    shows,
+    required,
     locked: (key) => find(key)?.locked ?? false,
-    label: (key) => {
-      const field = find(key)
-      const own = ka ? field?.label_ka : field?.label_en
-      return own ?? t(`fields.name.${moduleKey}.${key}`, { defaultValue: key })
-    },
-    hint: (key) => {
-      const text = t(`fields.desc.${moduleKey}.${key}`, { defaultValue: '' })
-      return text || undefined
-    },
+    label,
+    hint,
+    field: (key) => ({ show: shows(key), label: label(key), required: required(key), hint: hint(key) }),
     placeholder: (key) => {
       const field = find(key)
       const own = ka ? field?.placeholder_ka : field?.placeholder_en

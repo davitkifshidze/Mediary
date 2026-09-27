@@ -466,7 +466,13 @@
     "lookupPickAnime": "Pick the right anime:",
     "lookupNotFoundAnime": "Anime not found",
     "alreadyAddedAnime": "This anime is already in your collection",
-    "ratingNone": "No rating"
+    "ratingNone": "No rating",
+    "sections": {
+      "basic": "Basics",
+      "classification": "Classification",
+      "details": "Details",
+      "media": "Media"
+    }
   },
   "detail": {
     "watch": "Watch",
@@ -2330,7 +2336,6 @@
   },
   "customFields": {
     "title": "Extra fields",
-    "saveFirst": "You can fill these in once the record is saved — values need a record id.",
     "saved": "Saved",
     "unsaved": "Unsaved change",
     "listHint": "One value per line",
@@ -2351,7 +2356,9 @@
     },
     "addFiles": "Add a file",
     "fileLimit": "Limit reached — {{max}} files at most",
-    "fileHint": "Up to 25 MB; the space comes out of your quota."
+    "fileHint": "Up to 25 MB; the space comes out of your quota.",
+    "draftHint": "Saved together with the record — files too, one by one after saving.",
+    "flushFailed": "Some extra fields were not saved: {{names}}. The record is saved — “Save” will try them again."
   },
   "bookmarks": {
     "title": "Bookmarks",

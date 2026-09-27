@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, Paperclip, SlidersHorizontal, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, Check, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
 import {
   CUSTOM_FIELD_MAX_FILES,
   deleteCustomFieldFile,
@@ -15,42 +15,50 @@ import {
 } from '@/api/account'
 import { errorMessage } from '@/lib/errors'
 import { formatBytes } from '@/lib/utils'
+import type { CustomFieldDraft } from '@/lib/customFieldDraft'
+import type { PendingUpload } from '@/lib/pendingUploads'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField, FormSection } from '@/components/ui/form-layout'
 import { PrivateFileLink, PrivateImage } from '@/components/PrivateFile'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   მორგებული ველები ჩანაწერზე (Tasks §6, ფაზა 3).
+   მორგებული ველები ჩანაწერზე (Tasks §6, ფაზა 3 → §26).
 
-   ⚠️ **ბარათი თვითონ ინახავს თავს** და მშობელი ფორმის „შენახვას" არ ერევა.
-   მიზეზი: მნიშვნელობები **ცალკე ცხრილშია** (`DECISIONS.md` §2), ე.ი. ისინი
-   ჩანაწერის `PUT`-ში ისედაც არ მიდის; ერთ ღილაკზე გაერთიანება ნიშნავდა,
-   რომ შვიდივე ფორმის შენახვის გზა უნდა გადაწერილიყო.
+   ⚠️ **არსებულ ჩანაწერზე ბარათი თვითონ ინახავს თავს** და მშობელი ფორმის
+   „შენახვას" არ ერევა: მნიშვნელობები **ცალკე ცხრილშია**, ე.ი. ჩანაწერის
+   `PUT`-ში ისედაც არ მიდის.
 
-   ⚠️ **ახალ ჩანაწერზე ბარათი მინიშნებაა და არა ველები** — მნიშვნელობას
-   `record_id` სჭირდება, რომელიც ჯერ არ არსებობს.
+   ⚠️ **ახალ ჩანაწერზე — მონახაზი** (Tasks §26.5): „ჯერ შეინახე" აღარ წერია.
+   ველები მაშინვე ივსება და ფაილიც ემატება, ყველაფერი კი ბრაუზერშია
+   (`useCustomFieldDraft`), სანამ მშობელი ფორმა ჩანაწერს შექმნის და
+   `draft.flush(id)`-ს დაუძახებს. ⚠️ ამ რეჟიმში საკუთარი „შენახვა" არ
+   არის — ორი ღილაკი ერთი ჩანაწერისთვის ორ ცალკე მოქმედებად წაიკითხებოდა.
+
+   ⚠️ **ფორმის სექციაა** (§26.1) და არა ცალკე ბარათი: იგივე სათაური, ბადე
+   და ლეიბლი, რაც დანარჩენ ველებს აქვს — სავალდებულოს ნიშანიც `FieldLabel`-
+   იდან მოდის და ხელით დაწერილი `*` აღარ არის.
 
    ⚠️ **ბარათი ქრება, თუ ველი არ არის** — ცარიელი სექცია ყველა ფორმაზე
    ხმაური იქნებოდა.
-
-   ⚠️ **`ფაილი` ველი მონახაზში არ ჯდება** (ფაზა 4b): ატვირთვას თავისი
-   endpoint აქვს და მაშინვე ხდება, „შენახვის" ღილაკს კი მხოლოდ დანარჩენი
-   ტიპები ეხება. მიზეზი კვოტაა — ბაიტები დისკზე უკვე დაწერილია, ე.ი.
-   „შეუნახავი ფაილი" ისეთ მდგომარეობას ნიშნავდა, რომელიც ადგილს იკავებს,
-   მაგრამ არსად ჩანს.
    ============================================================ */
 
 export function CustomFieldsCard({
   module,
   recordId,
+  draft,
+  className,
 }: {
   module: string
   /** `null` = ჩანაწერი ჯერ არ შენახულა */
   recordId: number | null
+  /** ახალი ჩანაწერის მონახაზი (§26.5) — არსებულ ჩანაწერზე არ გადაეცემა */
+  draft?: CustomFieldDraft
+  /** ⚠️ დაშორება აქ გადაეცემა და არა გარე `div`-ზე — ველების გარეშე ბარათი ქრება და ცარიელი დაშორება დარჩებოდა */
+  className?: string
 }) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
@@ -61,127 +69,67 @@ export function CustomFieldsCard({
     queryKey: ['custom-fields', module],
     queryFn: () => fetchCustomFields(module),
   })
-  const fields = useMemo(
-    () => (defsQ.data ?? []).filter((f) => f.enabled),
-    [defsQ.data],
-  )
+  const fields = useMemo(() => (defsQ.data ?? []).filter((f) => f.enabled), [defsQ.data])
+
+  /* ⚠️ მონახაზის რეჟიმი ჩავარდნის შემდეგაც რჩება (`done` ჯერ არ არის),
+     თორემ ჩანაწერის id-ის გაჩენისთანავე ბარათი სერვერის ცარიელ
+     მნიშვნელობებზე გადავიდოდა და აკრეფილი ჩუმად გაქრებოდა. */
+  const drafting = draft != null && !draft.done
+  const existing = !drafting && recordId != null
 
   const valuesQ = useQuery({
     queryKey: ['custom-field-values', module, recordId],
     queryFn: () => fetchCustomFieldValues(module, recordId!),
-    enabled: recordId != null && fields.length > 0,
+    enabled: existing && fields.length > 0,
   })
 
-  const [draft, setDraft] = useState<CustomFieldValues>({})
+  const [values, setValues] = useState<CustomFieldValues>({})
   const [dirty, setDirty] = useState(false)
 
-  // სერვერიდან მოსული მნიშვნელობები მონახაზში — მხოლოდ სანამ არაფერი შეცვლილა
+  // სერვერიდან მოსული მნიშვნელობები — მხოლოდ სანამ არაფერი შეცვლილა
   useEffect(() => {
-    if (valuesQ.data && !dirty) setDraft(valuesQ.data)
+    if (valuesQ.data && !dirty) setValues(valuesQ.data)
   }, [valuesQ.data, dirty])
 
   const save = useMutation({
-    mutationFn: () => saveCustomFieldValues(module, recordId!, draft),
-    onSuccess: (values) => {
-      setDraft(values)
+    mutationFn: () => saveCustomFieldValues(module, recordId!, values),
+    onSuccess: (saved) => {
+      setValues(saved)
       setDirty(false)
-      qc.setQueryData(['custom-field-values', module, recordId], values)
+      qc.setQueryData(['custom-field-values', module, recordId], saved)
       toast({ title: t('customFields.saved'), variant: 'success' })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   if (!fields.length) return null
+  // ⚠️ არც ახალი და არც არსებული — ჩანაწერი ჯერ არ არის და მონახაზიც არ მოგვცეს
+  if (!drafting && recordId == null) return null
 
+  const current = drafting ? draft.values : values
   const label = (f: CustomFieldDefinition) =>
     (ka ? f.label_ka || f.label_en : f.label_en || f.label_ka) || f.key
-  const placeholder = (f: CustomFieldDefinition) =>
-    (ka ? f.placeholder_ka : f.placeholder_en) ?? undefined
+  const placeholder = (f: CustomFieldDefinition) => (ka ? f.placeholder_ka : f.placeholder_en) ?? undefined
 
   const set = (key: string, value: unknown) => {
+    if (drafting) {
+      draft.set(key, value)
+
+      return
+    }
+
     setDirty(true)
-    setDraft((d) => ({ ...d, [key]: value }))
+    setValues((v) => ({ ...v, [key]: value }))
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-        <SlidersHorizontal className="size-4 text-muted-foreground" />
-        {t('customFields.title')}
-      </h3>
-
-      {recordId == null ? (
-        <p className="text-xs text-muted-foreground">{t('customFields.saveFirst')}</p>
-      ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {fields.map((f) => (
-              <div
-                key={f.key}
-                className={f.type === 'list' || f.type === 'file' ? 'sm:col-span-2' : undefined}
-              >
-                <Label htmlFor={`cf-${f.key}`}>
-                  {label(f)}
-                  {f.required && <span className="ml-0.5 text-destructive">*</span>}
-                </Label>
-
-                {f.type === 'file' ? (
-                  /* ⚠️ ატვირთვა `draft`-ს გვერდს უვლის — იხ. ფაილის შენიშვნა თავში */
-                  <FileField
-                    module={module}
-                    recordId={recordId}
-                    fieldKey={f.key}
-                    /* §7.3 — ⚠️ backend ყოველთვის **სიას** აბრუნებს, ერთ ფაილზეც.
-                       `?? []` მაინც რჩება: ველი შეიძლება საერთოდ არ იყოს შევსებული. */
-                    value={(draft[f.key] as CustomFieldFile[] | undefined) ?? []}
-                    onChange={(next) => {
-                      // ⚠️ ქეშიც ერთდროულად — თორემ მომდევნო refetch ატვირთულს
-                      // ან წაშლილს უკან დააბრუნებდა (`dirty` აქ არ ირთვება)
-                      setDraft((d) => ({ ...d, [f.key]: next }))
-                      qc.setQueryData<CustomFieldValues>(
-                        ['custom-field-values', module, recordId],
-                        (prev) => ({ ...(prev ?? {}), [f.key]: next }),
-                      )
-                    }}
-                  />
-                ) : f.type === 'switch' ? (
-                  <div className="mt-1.5 flex h-9 items-center">
-                    <Switch
-                      id={`cf-${f.key}`}
-                      checked={Boolean(draft[f.key])}
-                      onCheckedChange={(v) => set(f.key, v)}
-                    />
-                  </div>
-                ) : f.type === 'list' ? (
-                  /* სია — თითო ხაზი ერთი ელემენტი. ⚠️ მძიმით გაყოფა განზრახ
-                     არაა: მნიშვნელობაში მძიმე ხშირია („გია, ნინო"). */
-                  <Textarea
-                    id={`cf-${f.key}`}
-                    rows={2}
-                    placeholder={placeholder(f) ?? t('customFields.listHint')}
-                    value={Array.isArray(draft[f.key]) ? (draft[f.key] as string[]).join('\n') : ''}
-                    onChange={(e) =>
-                      set(
-                        f.key,
-                        e.target.value.split('\n').map((v) => v.trim()).filter(Boolean),
-                      )
-                    }
-                  />
-                ) : (
-                  <Input
-                    id={`cf-${f.key}`}
-                    type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-                    inputMode={f.type === 'number' ? 'decimal' : undefined}
-                    placeholder={placeholder(f)}
-                    value={draft[f.key] == null ? '' : String(draft[f.key])}
-                    onChange={(e) => set(f.key, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 flex items-center justify-end gap-2">
+    <FormSection
+      className={className}
+      title={t('customFields.title')}
+      hint={drafting ? t('customFields.draftHint') : undefined}
+      aside={
+        existing && (
+          <>
             {dirty && <span className="text-xs text-muted-foreground">{t('customFields.unsaved')}</span>}
             <Button
               type="button"
@@ -190,18 +138,174 @@ export function CustomFieldsCard({
               disabled={!dirty || save.isPending}
               onClick={() => save.mutate()}
             >
-              <Check className="size-4" />
+              {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               {save.isPending ? t('actions.saving') : t('actions.save')}
             </Button>
-          </div>
-        </>
+          </>
+        )
+      }
+    >
+      {drafting && draft.error && (
+        <p className="col-span-12 flex items-center gap-1.5 text-xs text-destructive">
+          <AlertCircle className="size-3.5 shrink-0" />
+          {draft.error}
+        </p>
       )}
-    </section>
+
+      {fields.map((f) => (
+        <FormField
+          key={f.key}
+          size={f.type === 'list' || f.type === 'file' ? 'full' : 'half'}
+          label={label(f)}
+          htmlFor={`cf-${f.key}`}
+          required={f.required}
+        >
+          {f.type === 'file' ? (
+            drafting ? (
+              <PendingFileField fieldKey={f.key} items={draft.files.of(f.key)} draft={draft} />
+            ) : (
+              /* ⚠️ ატვირთვა `values`-ს გვერდს უვლის — იხ. ფაილის შენიშვნა ქვემოთ */
+              <FileField
+                module={module}
+                recordId={recordId!}
+                fieldKey={f.key}
+                /* §7.3 — ⚠️ backend ყოველთვის **სიას** აბრუნებს, ერთ ფაილზეც.
+                   `?? []` მაინც რჩება: ველი შეიძლება საერთოდ არ იყოს შევსებული. */
+                value={(values[f.key] as CustomFieldFile[] | undefined) ?? []}
+                onChange={(next) => {
+                  // ⚠️ ქეშიც ერთდროულად — თორემ მომდევნო refetch ატვირთულს
+                  // ან წაშლილს უკან დააბრუნებდა (`dirty` აქ არ ირთვება)
+                  setValues((v) => ({ ...v, [f.key]: next }))
+                  qc.setQueryData<CustomFieldValues>(['custom-field-values', module, recordId], (prev) => ({
+                    ...(prev ?? {}),
+                    [f.key]: next,
+                  }))
+                }}
+              />
+            )
+          ) : f.type === 'switch' ? (
+            <div className="flex h-10 items-center">
+              <Switch id={`cf-${f.key}`} checked={Boolean(current[f.key])} onCheckedChange={(v) => set(f.key, v)} />
+            </div>
+          ) : f.type === 'list' ? (
+            /* სია — თითო ხაზი ერთი ელემენტი. ⚠️ მძიმით გაყოფა განზრახ
+               არაა: მნიშვნელობაში მძიმე ხშირია („გია, ნინო"). */
+            <Textarea
+              id={`cf-${f.key}`}
+              rows={2}
+              placeholder={placeholder(f) ?? t('customFields.listHint')}
+              value={Array.isArray(current[f.key]) ? (current[f.key] as string[]).join('\n') : ''}
+              onChange={(e) =>
+                set(
+                  f.key,
+                  e.target.value
+                    .split('\n')
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                )
+              }
+            />
+          ) : (
+            <Input
+              id={`cf-${f.key}`}
+              type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+              inputMode={f.type === 'number' ? 'decimal' : undefined}
+              placeholder={placeholder(f)}
+              value={current[f.key] == null ? '' : String(current[f.key])}
+              onChange={(e) => set(f.key, e.target.value)}
+            />
+          )}
+        </FormField>
+      ))}
+    </FormSection>
   )
 }
 
 /* ============================================================
-   `ფაილი` ტიპის ველი (ფაზა 4b · 🔗 §17).
+   `ფაილი` ტიპის ველი — **ახალ ჩანაწერზე** (Tasks §26.5).
+
+   ⚠️ ფაილი ბრაუზერშია და ჩანაწერის შექმნის შემდეგ ადის სათითაოდ
+   (`draft.flush`). ჩავარდნილი აქვე ჩანს მიზეზით — წაშლა ან ხელახლა
+   „შენახვა" შეიძლება.
+   ============================================================ */
+function PendingFileField({
+  fieldKey,
+  items,
+  draft,
+}: {
+  fieldKey: string
+  items: PendingUpload<string>[]
+  draft: CustomFieldDraft
+}) {
+  const { t } = useTranslation()
+  const input = useRef<HTMLInputElement>(null)
+  const full = items.length >= CUSTOM_FIELD_MAX_FILES
+  const busy = items.some((i) => i.status === 'uploading')
+
+  return (
+    <div className="space-y-1.5">
+      <input
+        ref={input}
+        id={`cf-${fieldKey}`}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          // ჭერზე ზედმეტს ვჭრით — იგივე წესი, რაც არსებულ ჩანაწერზე
+          const files = Array.from(e.target.files ?? []).slice(0, CUSTOM_FIELD_MAX_FILES - items.length)
+          if (files.length) draft.files.add(fieldKey, files)
+          e.target.value = ''
+        }}
+      />
+
+      {items.map((item) => (
+        <div key={item.key} className="flex flex-wrap items-center gap-2">
+          {item.preview && (
+            <img src={item.preview} alt="" className="size-12 rounded-md border border-border object-cover" />
+          )}
+          <span className="inline-flex max-w-[16rem] items-center gap-1.5 truncate text-sm">
+            <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{item.file.name}</span>
+          </span>
+          <span className="text-xs text-muted-foreground">{formatBytes(item.file.size)}</span>
+          {item.status === 'uploading' && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+          {item.status === 'error' && <span className="text-xs text-destructive">{item.error}</span>}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-destructive"
+            disabled={item.status === 'uploading'}
+            onClick={() => draft.files.remove(item.key)}
+            aria-label={t('actions.delete')}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      ))}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy || full}
+          onClick={() => input.current?.click()}
+        >
+          <Upload className="size-4" />
+          {t('customFields.addFiles')}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {full ? t('customFields.fileLimit', { max: CUSTOM_FIELD_MAX_FILES }) : t('customFields.fileHint')}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   `ფაილი` ტიპის ველი — არსებულ ჩანაწერზე (ფაზა 4b · 🔗 §17).
 
    ⚠️ **ატვირთვა/წაშლა მაშინვე ხდება** და მშობლის „შენახვას" არ ელოდება:
    ბაიტები კვოტიდან უკვე იხარჯება, ე.ი. „შეუნახავი ფაილი" ისეთ მდგომარეობას
@@ -245,7 +349,7 @@ function FileField({
   const full = value.length >= CUSTOM_FIELD_MAX_FILES
 
   return (
-    <div className="mt-1.5 space-y-1.5">
+    <div className="space-y-1.5">
       <input
         ref={input}
         id={`cf-${fieldKey}`}
@@ -296,21 +400,13 @@ function FileField({
       ))}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={busy || full}
-          onClick={() => input.current?.click()}
-        >
+        <Button type="button" variant="outline" size="sm" disabled={busy || full} onClick={() => input.current?.click()}>
           {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
           {upload.isPending ? t('actions.saving') : t('customFields.addFiles')}
         </Button>
         {/* ⚠️ ჭერი ცხადად წერია — 422/413 ატვირთვის შემდეგ გვიანია */}
         <span className="text-xs text-muted-foreground">
-          {full
-            ? t('customFields.fileLimit', { max: CUSTOM_FIELD_MAX_FILES })
-            : t('customFields.fileHint')}
+          {full ? t('customFields.fileLimit', { max: CUSTOM_FIELD_MAX_FILES }) : t('customFields.fileHint')}
         </span>
       </div>
     </div>
