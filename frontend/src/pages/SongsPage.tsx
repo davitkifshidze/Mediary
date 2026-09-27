@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
-import { Disc3, ExternalLink, Headphones, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
+import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
 import {
   SONG_MAX_RATING,
   createSong,
@@ -51,11 +51,14 @@ import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FieldAction, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { QuickFill } from '@/components/ui/quick-fill'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -512,6 +515,9 @@ export function SongsPage() {
 
 /* ---------- ფორმა ---------- */
 
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'song-form'
+
 function SongForm({
   song,
   allTags,
@@ -557,6 +563,9 @@ function SongForm({
   const [probing, setProbing] = useState(false)
   const [newGenre, setNewGenre] = useState(false)
   const lastFetched = useRef<string>(song?.url ?? '')
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ სიმღერაზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('song', song)
 
   /** რომელ პლეილისტებში შედის ეს სიმღერა */
   const initialPlaylists = useMemo(() => song?.playlist_ids ?? [], [song])
@@ -606,7 +615,7 @@ function SongForm({
      * შემდეგ აქვს. მეორე რექვესთი მხოლოდ მაშინ მიდის, თუ არჩევანი შეიცვალა.
      */
     mutationFn: async (input: SongInput) => {
-      const saved = song ? await updateSong(song.id, input) : await createSong(input)
+      const saved = extras.current ? await updateSong(extras.current.id, input) : await createSong(input)
 
       const changed =
         playlistIds.length !== initialPlaylists.length ||
@@ -615,7 +624,15 @@ function SongForm({
 
       return saved
     },
-    onSuccess: () => {
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['songs'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('songs.saved'), variant: 'success' })
       onSaved()
     },
@@ -682,12 +699,19 @@ function SongForm({
 
   return (
     <ModalShell title={t(song ? 'songs.edit' : 'songs.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ⚠️ `url` `locked`-ია (§6.5) — ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4),
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია (§6.5) — ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4),
             მაგრამ `shows()`-ს ფორმა მაინც ეკითხება: მოხსნის შემდეგ
             ჩამრთველი რომ მართლა მუშაობდეს. */}
-        <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel hint={t('songs.urlHint')} htmlFor="s-url" required>{fields.label('url')}</FieldLabel>
+        <QuickFill
+          show={fields.shows('url')}
+          title={fields.label('url')}
+          htmlFor="s-url"
+          required
+          hint={t('songs.urlHint')}
+          icon={<Link2 className="size-3.5 text-primary" />}
+        >
           <Input
             id="s-url"
             autoFocus
@@ -710,13 +734,10 @@ function SongForm({
           )}
           {/* FEAT-17 — ბმულის დუბლი (ვიდეოს იგივე კომპონენტი) */}
           {!metaLoading && meta?.existing && (
-            <DuplicateLinkNotice
-              title={meta.existing.title}
-              onOpen={() => onOpenExisting(meta.existing!.id)}
-            />
+            <DuplicateLinkNotice title={meta.existing.title} onOpen={() => onOpenExisting(meta.existing!.id)} />
           )}
           {!metaLoading && meta && (
-            <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card/50 p-2">
+            <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card p-2">
               {meta.thumbnail_url && (
                 <img src={meta.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
               )}
@@ -739,54 +760,64 @@ function SongForm({
               {t('videos.durationProbing')}
             </p>
           )}
-        </div>
+        </QuickFill>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('title') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="s-title" required={fields.required('title')} hint={fields.hint('title')}>
-              {fields.label('title')}
-            </FieldLabel>
+        {/* §26 — ყდა ზემოთაა, ძირითად ველებთან ერთად; ექვსი ველი სამ ტოლ რიგად */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('thumbnail') && (
+              <>
+                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+                  {fields.label('thumbnail')}
+                </FieldLabel>
+                <PosterUploader
+                  variant="wide"
+                  hint={t('songs.coverHint')}
+                  preview={thumbPreview}
+                  onSelect={(file) => {
+                    setThumbnail(file)
+                    setRemoveThumb(false)
+                    setThumbPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setThumbnail(null)
+                    setThumbPreview(null)
+                    setRemoveThumb(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          <FormField size="half" {...fields.field('title')} htmlFor="s-title" error={errors.title}>
             <Input
               id="s-title"
               placeholder={fields.placeholder('title') ?? t('songs.namePlaceholder')}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             />
-            {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('artist') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="s-artist" required={fields.required('artist')} hint={fields.hint('artist')}>
-              {fields.label('artist')}
-            </FieldLabel>
+          <FormField size="half" {...fields.field('artist')} htmlFor="s-artist" error={errors.artist}>
             <Input
               id="s-artist"
               placeholder={fields.placeholder('artist') ?? t('songs.artistPlaceholder')}
               value={form.artist}
               onChange={(e) => setForm((f) => ({ ...f, artist: e.target.value }))}
             />
-            {errors.artist && <p className="mt-1 text-xs text-destructive">{errors.artist}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          {fields.shows('album') && (
-          <div>
-            <FieldLabel htmlFor="s-album" required={fields.required('album')} hint={fields.hint('album')}>
-              {fields.label('album')}
-            </FieldLabel>
+          <FormField size="half" {...fields.field('album')} htmlFor="s-album">
             <Input
               id="s-album"
               value={form.album}
               placeholder={fields.placeholder('album')}
               onChange={(e) => setForm((f) => ({ ...f, album: e.target.value }))}
             />
-          </div>
-          )}
-          <div className={fields.shows('year') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="s-year" required={fields.required('year')} hint={fields.hint('year')}>
-              {fields.label('year')}
-            </FieldLabel>
+          </FormField>
+
+          <FormField size="half" {...fields.field('year')} htmlFor="s-year" error={errors.year}>
             <Input
               id="s-year"
               type="number"
@@ -796,12 +827,9 @@ function SongForm({
               value={form.year}
               onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
             />
-            {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year}</p>}
-          </div>
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="s-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-              {fields.label('rating')}
-            </FieldLabel>
+          </FormField>
+
+          <FormField size="half" {...fields.field('rating')} htmlFor="s-rating" error={errors.rating}>
             <RatingSelect
               id="s-rating"
               max={SONG_MAX_RATING}
@@ -809,44 +837,33 @@ function SongForm({
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}
             />
-            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        {/* §2.5 — ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
-        <div className={fields.shows('duration') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="s-duration" required={fields.required('duration')} hint={fields.hint('duration')}>
-            {fields.label('duration')}
-          </FieldLabel>
-          <div className="flex flex-wrap items-center gap-2">
-            <DurationInput id="s-duration" value={duration} onChange={setDuration} />
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-              {duration ? formatDuration(duration) : '—'}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (`DECISIONS.md` §5) */}
-            <div className={fields.shows('genres') ? 'flex items-center justify-between' : 'hidden'}>
-              <FieldLabel required={fields.required('genres')} hint={fields.hint('genres')}>
-                {fields.label('genres')}
-              </FieldLabel>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setNewGenre(true)}
-                title={t('songGenres.add')}
-              >
-                <Plus className="size-3.5" />
-                {t('songGenres.add')}
-              </Button>
+          {/* §2.5 — ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
+          <FormField size="half" {...fields.field('duration')} htmlFor="s-duration">
+            <div className="flex flex-wrap items-center gap-2">
+              <DurationInput id="s-duration" value={duration} onChange={setDuration} />
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {duration ? formatDuration(duration) : '—'}
+              </span>
             </div>
+          </FormField>
+        </FormSection>
+
+        <FormSection title={t('form.sections.classification')}>
+          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (`DECISIONS.md` §5) */}
+          <FormField
+            {...fields.field('genres')}
+            error={errors.genre_ids}
+            action={
+              <FieldAction onClick={() => setNewGenre(true)} icon={<Plus className="size-3.5" />}>
+                {t('songGenres.add')}
+              </FieldAction>
+            }
+          >
             <div
               className={cn(
-                fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden',
+                'flex flex-wrap gap-1.5',
                 // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
                 errors.genre_ids && 'rounded-md border border-destructive p-1.5',
               )}
@@ -871,69 +888,47 @@ function SongForm({
                 </button>
               ))}
             </div>
-            {errors.genre_ids && <p className="mt-1 text-xs text-destructive">{errors.genre_ids}</p>}
+          </FormField>
 
-            <div className={fields.shows('tags') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="s-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
-                {fields.label('tags')}
-              </FieldLabel>
-              <TagSelect
-                inputId="s-tags"
-                options={allTags}
-                value={form.tags}
-                onChange={(tags) => setForm((f) => ({ ...f, tags }))}
-              />
-            </div>
-
-            <div className={fields.shows('playlists') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="s-playlists" required={fields.required('playlists')} hint={joinHints(fields.hint('playlists'), t('playlists.songHint'))}>
-                {fields.label('playlists')}
-              </FieldLabel>
-              <IdMultiSelect
-                items={(playlistsQ.data ?? []).map((p) => ({ id: p.id, label: p.name }))}
-                value={playlistIds}
-                onChange={setPlaylistIds}
-                placeholder={playlistsQ.isLoading ? t('api.loading') : t('playlists.pickForSong')}
-              />
-            </div>
-          </div>
-
-          <div className={fields.shows('thumbnail') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-              {fields.label('thumbnail')}
-            </FieldLabel>
-            <PosterUploader
-              variant="wide"
-              hint={t('songs.coverHint')}
-              preview={thumbPreview}
-              onSelect={(file) => {
-                setThumbnail(file)
-                setRemoveThumb(false)
-                setThumbPreview(URL.createObjectURL(file))
-              }}
-              onClear={() => {
-                setThumbnail(null)
-                setThumbPreview(null)
-                setRemoveThumb(true)
-              }}
+          <FormField
+            size="half"
+            {...fields.field('tags')}
+            hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
+            htmlFor="s-tags"
+          >
+            <TagSelect
+              inputId="s-tags"
+              options={allTags}
+              value={form.tags}
+              onChange={(tags) => setForm((f) => ({ ...f, tags }))}
             />
-          </div>
-        </div>
+          </FormField>
 
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          <FormField
+            size="half"
+            {...fields.field('playlists')}
+            hint={joinHints(fields.hint('playlists'), t('playlists.songHint'))}
+            htmlFor="s-playlists"
+          >
+            <IdMultiSelect
+              items={(playlistsQ.data ?? []).map((p) => ({ id: p.id, label: p.name }))}
+              value={playlistIds}
+              onChange={setPlaylistIds}
+              placeholder={playlistsQ.isLoading ? t('api.loading') : t('playlists.pickForSong')}
+            />
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
-      <div className="mt-4">
-        <CustomFieldsCard module="song" recordId={song?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ სიმღერაზე მონახაზი */}
+      <CustomFieldsCard
+        module="song"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
       {newGenre && (
