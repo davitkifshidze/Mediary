@@ -24,10 +24,11 @@ import {
   type GallerySubject,
 } from '@/api/gallery'
 import { fetchGenres } from '@/api/media'
-import { emptyMediaIds, MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
+import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { useModules, isMediaKey } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { GenreSelect } from '@/components/GenreSelect'
+import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
@@ -454,17 +455,9 @@ export function GalleryDownloadDialog({
             {domains.length > 1 && (
               <div>
                 <Label className="mb-2.5 block">{t('gallery.domains')}</Label>
-                <ChipRow>
-                  {domains.map((type) => (
-                    <Chip key={type} active={types.includes(type)} onClick={() => toggleType(type)}>
-                      {t(MEDIA_NAV_KEY[type])}
-                    </Chip>
-                  ))}
-                </ChipRow>
-                {/* ⚠️ ცარიელი არჩევანი ცხადად ითქვას — გეგმა 403-ს დააბრუნებს */}
-                {!types.length && (
-                  <p className="mt-1.5 text-xs text-destructive">{t('gallery.pickDomain')}</p>
-                )}
+                {/* Tasks §20.1 — სინქრონიზაციისა და თარგმნის იგივე ბარათები;
+                    ცარიელ არჩევანს (გეგმა 403-ს დააბრუნებდა) კომპონენტი თვითონ ამბობს */}
+                <MediaDomainCards value={types} onToggle={toggleType} enabled={open} />
               </div>
             )}
 

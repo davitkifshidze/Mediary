@@ -1687,7 +1687,6 @@
     "videoDeleteTitle": "Delete this link?",
     "videoDeleteHint": "The video itself is not deleted anywhere — only this link disappears.",
     "domains": "Which domains",
-    "pickDomain": "Pick at least one domain.",
     "scopeStatuses": "By status (several allowed)",
     "scopeOff": "No scope — actors in general",
     "scopeOffHint": "Records no longer limit it: the pool is every actor in your library.",
@@ -3300,5 +3299,8 @@
     "add": "Add a category",
     "edit": "Edit the category",
     "saved": "The category has been saved."
+  },
+  "mediaDomains": {
+    "pickOne": "Pick at least one domain."
   }
 }

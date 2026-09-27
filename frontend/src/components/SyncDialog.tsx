@@ -11,7 +11,7 @@ import {
   type SyncField,
   type SyncPlanFilters,
 } from '@/api/media'
-import { MEDIA_NAV_KEY, emptyMediaIds, type MediaType } from '@/lib/media'
+import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { useModules } from '@/lib/modules'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenreSelect } from '@/components/GenreSelect'
+import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
@@ -112,18 +113,15 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogTitle>{t('sync.title')}</DialogTitle>
 
         <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
-          {/* ---------- დომენი ---------- */}
-          <div>
-            <Label className="mb-2 block">{t('sync.domains')}</Label>
-            <div className="flex flex-wrap gap-4">
-              {domains.map((d) => (
-                <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
-                  <Checkbox checked={types.includes(d)} onCheckedChange={() => toggleType(d)} />
-                  {t(MEDIA_NAV_KEY[d])}
-                </label>
-              ))}
+          {/* ---------- დომენი ----------
+              Tasks §20.1 — ბარათები მოდულის ფერითა და რიცხვით (ჩეკბოქსების
+              ნაცვლად); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
+          {domains.length > 1 && (
+            <div>
+              <Label className="mb-2 block">{t('sync.domains')}</Label>
+              <MediaDomainCards value={types} onToggle={toggleType} enabled={open} />
             </div>
-          </div>
+          )}
 
           {/* ---------- სკოუპი ---------- */}
           <div>

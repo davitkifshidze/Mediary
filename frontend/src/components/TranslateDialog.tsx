@@ -13,7 +13,7 @@ import {
   type TranslationSource,
 } from '@/api/translations'
 import { useModules } from '@/lib/modules'
-import { MEDIA_NAV_KEY, emptyMediaIds, type MediaType } from '@/lib/media'
+import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenreSelect } from '@/components/GenreSelect'
+import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
@@ -219,18 +220,13 @@ export function TranslateDialog({
             )}
           </div>
 
-          {/* ---------- დომენი ---------- */}
-          {available.length > 0 && (
+          {/* ---------- დომენი ----------
+              Tasks §20.1 — იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —
+              ერთი სახე); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
+          {available.length > 1 && (
             <div>
               <Label className="mb-2 block">{t('sync.domains')}</Label>
-              <div className="flex flex-wrap gap-4">
-                {available.map((d) => (
-                  <label key={d} className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox checked={types.includes(d)} onCheckedChange={() => toggleType(d)} />
-                    {t(MEDIA_NAV_KEY[d])}
-                  </label>
-                ))}
-              </div>
+              <MediaDomainCards value={types} onToggle={toggleType} enabled={open} />
             </div>
           )}
 
