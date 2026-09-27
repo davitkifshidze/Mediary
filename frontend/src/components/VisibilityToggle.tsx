@@ -18,18 +18,34 @@ import type { Visibility } from '@/api/publicProfile'
    ერთადერთი ექსპორტი `VisibilityBadge`-ია.
    ============================================================ */
 
-/** მხოლოდ ბეჯი — საჯარო ჩანაწერზე; პირადზე არაფერი იხატება */
-export function VisibilityBadge({ value }: { value: Visibility | null | undefined }) {
+/**
+ * მხოლოდ ბეჯი — საჯარო ჩანაწერზე; პირადზე არაფერი იხატება.
+ *
+ * ⚠️ `size="row"` — სიის რიგის ღილაკების გვერდით (Tasks §24.2 — შენი სიტყვები:
+ * „„საჯარო“ და სხვა ინფო, რომელსაც ღილაკის ვიზუალი აქვს, ზომით ანალოგიური
+ * იყოს"). სიმაღლე `Badge size="row"`-ისაა (ღილაკის `sm`); სხვაგან — პატარა.
+ */
+export function VisibilityBadge({
+  value,
+  size = 'default',
+}: {
+  value: Visibility | null | undefined
+  size?: 'default' | 'row'
+}) {
   const { t } = useTranslation()
 
   if (value !== 'public') return null
 
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+      className={
+        size === 'row'
+          ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-primary/10 px-3.5 text-sm font-medium text-primary'
+          : 'inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary'
+      }
       title={t('visibility.publicHint')}
     >
-      <Globe className="size-3" />
+      <Globe className={size === 'row' ? 'size-3.5' : 'size-3'} />
       {t('visibility.public')}
     </span>
   )

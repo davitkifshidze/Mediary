@@ -2373,7 +2373,10 @@
       "domain": "By domain",
       "visited": "Recently opened",
       "visits": "Most visited"
-    }
+    },
+    "status": "Status",
+    "statusChange": "Change status",
+    "noStatus": "No status"
   },
   "bookmarkCategories": {
     "title": "Bookmark categories",

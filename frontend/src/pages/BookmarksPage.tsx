@@ -5,6 +5,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import {
+  Check,
+  ChevronDown,
   ExternalLink,
   Globe,
   Loader2,
@@ -39,7 +41,8 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
+import { statusByKey, statusName, statusTone, useStatuses } from '@/lib/statuses'
+import { STATUS_BADGE } from '@/lib/statusStyles'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
@@ -55,6 +58,18 @@ import {
 } from '@/components/FilterPanel'
 import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -159,7 +174,13 @@ export function BookmarksPage() {
     onSuccess: invalidate,
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
-  const visited = useMutation({ mutationFn: markBookmarkVisited, onSuccess: invalidate })
+  /* Tasks §24.3 — ⚠️ „ნანახის" მთვლელის ჩავარდნა აქამდე **ჩუმად** იკარგებოდა:
+     ბმული იხსნებოდა, რიცხვი კი არ იზრდებოდა და მიზეზი არსად ჩანდა. */
+  const visited = useMutation({
+    mutationFn: markBookmarkVisited,
+    onSuccess: invalidate,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
   const remove = useMutation({
     mutationFn: deleteBookmark,
     onSuccess: () => {
@@ -169,6 +190,17 @@ export function BookmarksPage() {
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
+
+  /** წაშლა — ერთი დადასტურება რიგის ღილაკისთვისაც და კონტექსტური მენიუსთვისაც */
+  const askDelete = async (bookmark: Bookmark) => {
+    const ok = await confirm({
+      title: t('bookmarks.deleteTitle'),
+      description: t('bookmarks.deleteHint', { name: bookmark.title }),
+      confirmText: t('actions.delete'),
+      variant: 'destructive',
+    })
+    if (ok) remove.mutate(bookmark.id)
+  }
 
   /** ცნობილი ტეგები — არსებულ ჩანაწერებზე დაგროვილი + უკვე გაფილტრული */
   const knownTags = useMemo(() => {
@@ -304,8 +336,11 @@ export function BookmarksPage() {
             {bookmarks.map((bookmark) => {
               const image = storageUrl(bookmark.image)
               return (
+                /* Tasks §24.1 — მარჯვენა კლიკის მენიუ (`MovieCard`-ის ყალიბით): გახსნა ·
+                   სტატუსი · რჩეული · რედაქტირება · წაშლა */
+                <ContextMenu key={bookmark.id}>
+                <ContextMenuTrigger asChild>
                 <li
-                  key={bookmark.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <a
@@ -370,32 +405,53 @@ export function BookmarksPage() {
                     )}
                   </div>
 
+                  {/* Tasks §24.2 — ⚠️ **ერთი სიმაღლე რიგში**: სტატუსი, „საჯარო" და ღილაკები
+                      `sm`-ის ზომისაა (აქამდე 32px სელექთი, 20px ნიშანი და 40px ღილაკები
+                      ერთმანეთის გვერდით). სტატუსი ახლა **ნიშანია**, რომელიც დაჭერით
+                      სტატუსების მენიუს ხსნის — სელექთი ქრება. */}
                   <div className="flex shrink-0 items-center gap-1">
-                    <Select
-                      value={bookmark.status?.key ?? ''}
-                      onValueChange={(v) => status.mutate({ id: bookmark.id, next: v })}
+                    <ActionMenu
+                      label={t('bookmarks.statusChange')}
+                      trigger={
+                        <button type="button" className="cursor-pointer rounded-md">
+                          <Badge
+                            size="row"
+                            className={cn(
+                              'min-w-28 justify-center',
+                              bookmark.status ? STATUS_BADGE[statusTone(bookmark.status)] : 'bg-secondary',
+                            )}
+                          >
+                            {bookmark.status ? statusName(bookmark.status, lang) : t('bookmarks.noStatus')}
+                            <ChevronDown className="size-3.5 opacity-70" />
+                          </Badge>
+                        </button>
+                      }
                     >
-                      <SelectTrigger className="h-8 w-32 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* §6.4 — სია ლექსიკონიდან */}
-                        {statuses.map((s) => (
-                          <SelectItem key={s.id} value={s.key}>
+                      {/* §6.4 — სია ლექსიკონიდან */}
+                      {statuses.map((s) => (
+                        <ActionMenuClose key={s.id} asChild>
+                          <button
+                            type="button"
+                            className={actionItemClass()}
+                            onClick={() => status.mutate({ id: bookmark.id, next: s.key })}
+                          >
+                            <Check
+                              className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
+                            />
                             {statusName(s, lang)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </button>
+                        </ActionMenuClose>
+                      ))}
+                    </ActionMenu>
 
-                    {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი */}
-                    <VisibilityBadge value={bookmark.visibility} />
+                    {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
+                    <VisibilityBadge value={bookmark.visibility} size="row" />
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('filter.favorite')}
+                    <button
+                      type="button"
+                      aria-label={t(bookmark.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
                       onClick={() => favorite.mutate(bookmark.id)}
+                      className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
                     >
                       <Star
                         className={cn(
@@ -403,32 +459,67 @@ export function BookmarksPage() {
                           bookmark.is_favorite && 'fill-current text-[var(--favorite)]',
                         )}
                       />
-                    </Button>
+                    </button>
                     <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(bookmark)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       className="text-destructive"
-                      onClick={async () => {
-                        if (
-                          await confirm({
-                            title: t('bookmarks.deleteTitle'),
-                            description: t('bookmarks.deleteHint', { name: bookmark.title }),
-                            confirmText: t('actions.delete'),
-                            variant: 'destructive',
-                          })
-                        ) {
-                          remove.mutate(bookmark.id)
-                        }
-                      }}
+                      aria-label={t('actions.delete')}
+                      onClick={() => askDelete(bookmark)}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </li>
+                </ContextMenuTrigger>
+
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      window.open(bookmark.url, '_blank', 'noopener,noreferrer')
+                      visited.mutate(bookmark.id)
+                    }}
+                  >
+                    <ExternalLink className="size-3.5" />
+                    {t('bookmarks.open')}
+                  </ContextMenuItem>
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger>{t('bookmarks.status')}</ContextMenuSubTrigger>
+                    <ContextMenuSubContent>
+                      {statuses.map((s) => (
+                        <ContextMenuItem key={s.id} onSelect={() => status.mutate({ id: bookmark.id, next: s.key })}>
+                          <Check
+                            className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
+                          />
+                          {statusName(s, lang)}
+                        </ContextMenuItem>
+                      ))}
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                  <ContextMenuItem onSelect={() => favorite.mutate(bookmark.id)}>
+                    <Star className={cn('size-3.5', bookmark.is_favorite && 'fill-current text-[var(--favorite)]')} />
+                    {bookmark.is_favorite ? t('actions.unfavorite') : t('actions.favorite')}
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  {/* ⚠️ ფანჯარა `setTimeout`-ით — მენიუ ჯერ ბოლომდე უნდა დაიხუროს,
+                      თორემ ფოკუსს დაიჭერს (`MovieCard`-ის წესი) */}
+                  <ContextMenuItem onSelect={() => setTimeout(() => setEditing(bookmark), 0)}>
+                    <SquarePen className="size-3.5" />
+                    {t('actions.edit')}
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => setTimeout(() => askDelete(bookmark), 0)}
+                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                    {t('actions.delete')}
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               )
             })}
           </ul>
