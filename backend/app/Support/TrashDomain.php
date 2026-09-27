@@ -184,8 +184,34 @@ final class TrashDomain
      */
     public const MESSAGES = ['chat_message'];
 
-    /** რამდენ დღეს ინახება წაშლილი ჩანაწერი */
+    /**
+     * რამდენ დღეს ინახება წაშლილი — **ნაგულისხმევი** ვადა.
+     *
+     * ⚠️ Tasks §29.6-ის შემდეგ ვადა თითო ანგარიშისაა (`UserSettings::trashDays()`);
+     * ეს მხოლოდ მისი ნაგულისხმევია და ზედა ზღვრით იკვეცება (`defaultDays()`).
+     */
     public const KEEP_DAYS = 30;
+
+    /** ვადის ქვედა ზღვარი — 0 დღე ურნას საერთოდ გააუქმებდა */
+    public const MIN_DAYS = 1;
+
+    /** ზედა ზღვარი — ინსტალაციისაა (§34.1-მდე `config('mediary.trash.max_days')`) */
+    public static function maxDays(): int
+    {
+        return max(self::MIN_DAYS, (int) config('mediary.trash.max_days', 365));
+    }
+
+    /** ნაგულისხმევი ვადა — `KEEP_DAYS`, ზედა ზღვრით შეკვეცილი */
+    public static function defaultDays(): int
+    {
+        return self::clampDays(self::KEEP_DAYS);
+    }
+
+    /** ვადა დასაშვებ ფარგლებში — `MIN_DAYS`…`maxDays()` */
+    public static function clampDays(int $days): int
+    {
+        return min(max($days, self::MIN_DAYS), self::maxDays());
+    }
 
     /** @return list<string> */
     public static function domains(): array

@@ -382,6 +382,8 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **`DELETE /trash` `/trash/{domain}/{id}`-ზე მაღლა დგას** — თორემ
        დაცლის მისამართს როუტერი ვერ გაარჩევდა ერთი ჩანაწერის წაშლისგან. */
     Route::get('/trash', [TrashController::class, 'index']);
+    // Tasks §29.6 — ვადის შეცვლის გადახედვა („მომდევნო ღამით წაიშლება N")
+    Route::get('/trash/retention', [TrashController::class, 'retention']);
     Route::delete('/trash', [TrashController::class, 'empty']);
     Route::post('/trash/{domain}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id');
     Route::get('/trash/{domain}/{id}/file', [TrashController::class, 'file'])->whereNumber('id');

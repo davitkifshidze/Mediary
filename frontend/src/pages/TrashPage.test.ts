@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 
 const payload: TrashPayload = {
   keep_days: 30,
+  max_days: 365,
   bytes: 2_097_152,
   data: [
     {

@@ -621,7 +621,13 @@
     "posterQuality": "Poster quality",
     "posterQualityHint": "Applies at download time — it does not change posters already downloaded. Run a sync to replace them.",
     "autoResync": "Auto-sync when adding",
-    "autoResyncHint": "Downloads media as soon as a TMDB-sourced record is saved. Turning it off makes adding faster — media then comes later from `/sync`."
+    "autoResyncHint": "Downloads media as soon as a TMDB-sourced record is saved. Turning it off makes adding faster — media then comes later from `/sync`.",
+    "trash": "Trash",
+    "trashHint": "Deleted items go to the trash and can be restored from there. Once their period runs out, the nightly cleanup deletes them for good — and only then is their space freed.",
+    "trashDays": "Days deleted items are kept",
+    "trashDaysHint": "1–{{max}} days. When it runs out, an item is deleted from the trash for good.",
+    "trashDaysCapped": "This installation allows at most {{max}} days — {{max}} applies.",
+    "trashDaysExpiring": "After saving, the next nightly cleanup (at {{time}}) deletes {{count}} items from the trash for good."
   },
   "sync": {
     "title": "Sync",
@@ -3163,7 +3169,7 @@
   },
   "trash": {
     "title": "Trash",
-    "hint": "Anything deleted is kept here for {{days}} days — a record with its files and links, a photo, a file, a link, a chat message or a database backup. After that it is deleted for good, and only then is the space freed.",
+    "hint": "Anything deleted is kept here for {{days}} days — a record with its files and links, a photo, a file, a link, a chat message or a database backup. After that it is deleted for good, and only then is the space freed. You can change the period in Settings (1–{{max}} days).",
     "count": "{{count}} items",
     "empty": "The trash is empty",
     "emptyHint": "Everything you delete lands here — records, photos, files, links and chat messages — so an accidental delete can be undone.",

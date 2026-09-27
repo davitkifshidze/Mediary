@@ -84,7 +84,7 @@ Schedule::command('queue:prune-batches --hours=48')->daily()->withoutOverlapping
 | კალათა ამით მხოლოდ იზრდება — ჩანაწერი ისევ იმალება და ისევ აღდგება,
 | უბრალოდ ადგილს იკავებს. მისი ხელით გაშვება `php artisan trash:prune`-ია.
 */
-Schedule::command('trash:prune')->dailyAt('03:30')->withoutOverlapping(5);
+Schedule::command('trash:prune')->dailyAt((string) config('mediary.trash.prune_at', '03:30'))->withoutOverlapping(5);
 
 /*
 |--------------------------------------------------------------------------

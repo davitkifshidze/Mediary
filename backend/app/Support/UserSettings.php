@@ -42,6 +42,20 @@ class UserSettings
      * გადასაწერად `/sync` სჭირდება. სვეტი ერთია (`poster_path`), ე.ი. ორი
      * ხარისხის ერთდროულად შენახვა არსად იგულისხმება.
      */
+    /**
+     * **ურნის ვადა დღეებში** (Tasks §29.6).
+     *
+     * ⚠️ `PUT /auth/settings` ბლობს მთლიანად იღებს და ტიპს არ ამოწმებს,
+     * ამიტომ მნიშვნელობა აქ იკვეცება — ციფრის გარეშე ნაგულისხმევია,
+     * დიაპაზონის გარეთ კი ზღვარი (`TrashDomain::clampDays()`).
+     */
+    public static function trashDays(?User $user = null): int
+    {
+        $value = self::get('trashDays', null, $user);
+
+        return is_numeric($value) ? TrashDomain::clampDays((int) $value) : TrashDomain::defaultDays();
+    }
+
     public static function posterQuality(?User $user = null): string
     {
         $value = self::get('posterQuality', self::DEFAULT_POSTER_QUALITY, $user);

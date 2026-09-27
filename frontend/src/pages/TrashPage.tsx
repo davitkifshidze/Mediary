@@ -215,7 +215,7 @@ export function TrashPage() {
         tool="trash"
         title={t('trash.title')}
         subtitle={total > 0 ? t('trash.count', { count: total }) : undefined}
-        hint={<InfoHint info={t('trash.hint', { days: data?.keep_days ?? 30 })} />}
+        hint={<InfoHint info={t('trash.hint', { days: data?.keep_days ?? 30, max: data?.max_days ?? 365 })} />}
       />
 
       {isLoading ? (

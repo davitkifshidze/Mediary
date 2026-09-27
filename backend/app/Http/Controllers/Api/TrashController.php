@@ -36,6 +36,25 @@ class TrashController extends Controller
     }
 
     /**
+     * **ვადის გადახედვა** (Tasks §29.6) — `/settings`-ი შენახვამდე ეკითხება,
+     * რამდენი წაიშლება მომდევნო ღამით ამ ვადით.
+     *
+     * ⚠️ `GET` და არა `POST`: ეს წაკითხვაა, და ვადა თვითონ ისევ
+     * `PUT /auth/settings`-ით ინახება — ორი ჩამწერი ერთ ფაქტს დაშორდებოდა.
+     * დიაპაზონის გარეთ რიცხვი 422 კი არა, ზღვარზე იკვეცება (`UserSettings`-ის
+     * იგივე წესი), რომ გაფრთხილება იმ ვადაზე ითქვას, რაც მართლა იმოქმედებს.
+     */
+    public function retention(Request $request)
+    {
+        $data = $request->validate(['days' => ['nullable', 'integer']]);
+
+        return response()->json($this->bin->retention(
+            $request->user(),
+            isset($data['days']) ? (int) $data['days'] : null,
+        ));
+    }
+
+    /**
      * აღდგენა — საჭიროებისას მშობელ ჩანაწერთან ერთად (29.5).
      *
      * `records: true` — კლასიფიკატორის რიგზე წაშლამ გადატანილი ჩანაწერებიც

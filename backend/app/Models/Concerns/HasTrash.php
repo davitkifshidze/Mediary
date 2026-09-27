@@ -5,6 +5,7 @@ namespace App\Models\Concerns;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditLogger;
 use App\Support\TrashDomain;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -157,10 +158,19 @@ trait HasTrash
      */
     public static function expiredTrash(?int $days = null): Builder
     {
+        return static::trashedBefore(now()->subDays($days ?? TrashDomain::KEEP_DAYS));
+    }
+
+    /**
+     * ურნაში მოცემულ მომენტამდე მოხვედრილი — ყველა ანგარიშის (Tasks §29.6:
+     * ვადა თითო ანგარიშისაა, ე.ი. ზღვარს და ანგარიშებს `TrashBin` ირჩევს).
+     */
+    public static function trashedBefore(CarbonInterface $before): Builder
+    {
         $table = (new static)->getTable();
 
         return static::withoutGlobalScopes()
             ->whereNotNull("{$table}.trashed_at")
-            ->where("{$table}.trashed_at", '<=', now()->subDays($days ?? TrashDomain::KEEP_DAYS));
+            ->where("{$table}.trashed_at", '<=', $before);
     }
 }

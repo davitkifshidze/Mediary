@@ -93,7 +93,10 @@ export interface TrashGroup {
 }
 
 export interface TrashPayload {
+  /** ⚠️ ამ ანგარიშის ვადა (Tasks §29.6) და არა კოდის მუდმივა */
   keep_days: number
+  /** ვადის ზედა ზღვარი — ინსტალაციისაა */
+  max_days: number
   /** ⚠️ რამდენ ადგილს იკავებს ურნა — თავისუფლდება მხოლოდ საბოლოო წაშლისას (29.4) */
   bytes: number
   data: TrashGroup[]
@@ -101,6 +104,26 @@ export interface TrashPayload {
 
 export async function fetchTrash(): Promise<TrashPayload> {
   const res = await api.get('/trash')
+  return res.data
+}
+
+/**
+ * **ვადის შეცვლის გადახედვა** (Tasks §29.6) — რამდენი წაიშლება მომდევნო
+ * ღამის გასუფთავებისას, თუ ვადა `days` იქნება.
+ */
+export interface TrashRetention {
+  /** შეკვეცილი ვადა — ის, რაც მართლა იმოქმედებს */
+  days: number
+  saved_days: number
+  default_days: number
+  max_days: number
+  /** გასუფთავების დრო (`HH:mm`) — `config('mediary.trash.prune_at')` */
+  prune_at: string
+  expiring: number
+}
+
+export async function fetchTrashRetention(days: number): Promise<TrashRetention> {
+  const res = await api.get('/trash/retention', { params: { days } })
   return res.data
 }
 

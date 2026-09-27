@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Services\Trash\TrashBin;
-use App\Support\TrashDomain;
 use Illuminate\Console\Command;
 
 /**
@@ -20,9 +19,11 @@ use Illuminate\Console\Command;
  * იგივე წესი: სწორედ `deleting`/`deleted` მოვლენები ათავისუფლებს ფაილს
  * დისკიდან, კვოტის მრიცხველს, გალერეას და pivot-ებს.
  *
- * ⚠️ **`--days` არსებობს ტესტისთვის და არა კონფიგურაციისთვის** — ვადა
- * ერთია (`TrashDomain::KEEP_DAYS`) და ის UI-შიც ჩანს; ორი წყარო
- * „30 დღე წერია, 7-ზე იშლება"-ს გამოიწვევდა.
+ * ⚠️ **ვადა თითო ანგარიშისაა** (Tasks §29.6 — `UserSettings::trashDays()`,
+ * `/settings`-ზე 1–`TrashDomain::maxDays()` დღე) და ბრძანება თითოეულს
+ * თავისით წმენდს. **`--days` ყველას ერთ ვადას აძალებს** — ტესტისა და
+ * ხელით გაშვებისთვის; განრიგი მას არასდროს გადასცემს, თორემ „30 დღე
+ * წერია, 7-ზე იშლება" დაბრუნდებოდა.
  *
  * ⚠️ **ყველა სახე — ჩანაწერი, ფაილი, `trashed_files`** (Tasks §29) — წესები
  * `TrashBin::prune()`-შია, რომ ბრძანება და ურნის გვერდი „რა არის ურნაში"-ზე
@@ -30,14 +31,14 @@ use Illuminate\Console\Command;
  */
 class PruneTrashCommand extends Command
 {
-    protected $signature = 'trash:prune {--days= : რამდენ დღეზე ძველი იშლება (ნაგულისხმევი — TrashDomain::KEEP_DAYS)}
+    protected $signature = 'trash:prune {--days= : ყველასთვის ერთი ვადა (ნაგულისხმევად — თითო ანგარიშის საკუთარი)}
                             {--dry-run : მხოლოდ დათვლა}';
 
     protected $description = 'ურნაში ვადაგასული ჩანაწერების საბოლოო წაშლა';
 
     public function handle(): int
     {
-        $days = $this->option('days') !== null ? (int) $this->option('days') : TrashDomain::KEEP_DAYS;
+        $days = $this->option('days') !== null ? (int) $this->option('days') : null;
         $dry = (bool) $this->option('dry-run');
         $total = 0;
 

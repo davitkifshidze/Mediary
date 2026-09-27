@@ -137,7 +137,7 @@ class SongController extends Controller
            ჩანაწერი სიიდან ქრება, მაგრამ ბაზაში რჩება: ფაილები, ჩანიშვნები,
            გალერეა და კვოტა **არ** თავისუფლდება, ე.ი. აღდგენა უფასოა.
            ნამდვილი წაშლა სამ ადგილას ხდება — კალათიდან, `/purge`-იდან და
-           ვადის (`TrashDomain::KEEP_DAYS`) ამოწურვისას. */
+           ვადის (`UserSettings::trashDays()`) ამოწურვისას. */
         $song->moveToTrash();
 
         return response()->noContent();

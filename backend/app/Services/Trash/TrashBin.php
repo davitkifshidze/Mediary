@@ -25,10 +25,13 @@ use App\Support\SafeMime;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
+use App\Support\UserSettings;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -106,10 +109,12 @@ final class TrashBin
        ============================================================ */
 
     /**
-     * @return array{keep_days: int, bytes: int, data: list<array<string, mixed>>}
+     * @return array{keep_days: int, max_days: int, bytes: int, data: list<array<string, mixed>>}
      */
     public function listing(User $user): array
     {
+        // ⚠️ Tasks §29.6 — ვადა ამ ანგარიშისაა და არა კოდის მუდმივა
+        $days = UserSettings::trashDays($user);
         $modules = Module::all()->keyBy('key');
         $recordSizes = $this->recordSizes($user);
         $locked = array_flip(AlbumLock::hiddenIds());
@@ -163,17 +168,61 @@ final class TrashBin
                 'color' => $module?->color,
                 'total' => $total,
                 'bytes' => $groupBytes,
-                'items' => $rows->map(fn (Model $row) => $this->item($user, $kind, $row, $parents[$row->getKey()] ?? null, $recordSizes, $locked))->all(),
+                'items' => $rows->map(fn (Model $row) => $this->item($user, $kind, $row, $parents[$row->getKey()] ?? null, $recordSizes, $locked, $days))->all(),
             ];
 
             $bytes += $groupBytes;
         }
 
         return [
-            'keep_days' => TrashDomain::KEEP_DAYS,
+            'keep_days' => $days,
+            'max_days' => TrashDomain::maxDays(),
             'bytes' => $bytes,
             'data' => $groups,
         ];
+    }
+
+    /**
+     * **ვადის შეცვლის გადახედვა** (Tasks §29.6) — `/settings`-ის გაფრთხილება.
+     *
+     * ⚠️ ვადის შემოკლება ურნაში **უკვე მყოფზეც** მოქმედებს მომდევნო ღამის
+     * გასუფთავებისას, ამიტომ შენახვამდე უნდა ითქვას, რამდენი წაიშლება.
+     * რიცხვი იმ მომენტზე ითვლება, როცა გასუფთავება ნამდვილად გაეშვება
+     * (`nextPruneAt()`), და არა „ახლაზე".
+     *
+     * ⚠️ **ყველა სახე ითვლება და არა მხოლოდ ხილული** — გასუფთავება ყველაფერს
+     * შლის, რაც ამ ანგარიშისაა (უფლება ჩამორთმეული მოდულის ელემენტსაც), ე.ი.
+     * რიცხვი მეტს იტყვის და არა ნაკლებს.
+     *
+     * @return array{days: int, saved_days: int, default_days: int, max_days: int, prune_at: string, expiring: int}
+     */
+    public function retention(User $user, ?int $days = null): array
+    {
+        $saved = UserSettings::trashDays($user);
+        $days = $days === null ? $saved : TrashDomain::clampDays($days);
+        $before = self::nextPruneAt()->subDays($days);
+        $expiring = 0;
+
+        foreach (TrashDomain::kinds() as $kind) {
+            $expiring += self::expiredQuery($kind, $before)->where('user_id', $user->getKey())->count();
+        }
+
+        return [
+            'days' => $days,
+            'saved_days' => $saved,
+            'default_days' => TrashDomain::defaultDays(),
+            'max_days' => TrashDomain::maxDays(),
+            'prune_at' => (string) config('mediary.trash.prune_at', '03:30'),
+            'expiring' => $expiring,
+        ];
+    }
+
+    /** როდის გაეშვება მომდევნო `trash:prune` — განრიგის (`mediary.trash.prune_at`) მიხედვით */
+    public static function nextPruneAt(): Carbon
+    {
+        $at = now()->setTimeFromTimeString((string) config('mediary.trash.prune_at', '03:30'));
+
+        return $at->lessThanOrEqualTo(now()) ? $at->addDay() : $at;
     }
 
     /**
@@ -184,7 +233,7 @@ final class TrashBin
      * @param  array<int, int>  $locked
      * @return array<string, mixed>
      */
-    private function item(User $user, string $kind, Model $row, ?array $parent, array $recordSizes, array $locked): array
+    private function item(User $user, string $kind, Model $row, ?array $parent, array $recordSizes, array $locked, int $days): array
     {
         $category = TrashDomain::category($kind);
         $isLocked = $row instanceof GalleryImage && $row->album_id && isset($locked[(int) $row->album_id]);
@@ -206,10 +255,10 @@ final class TrashBin
                 default => $parent['title'] ?? $this->albumName($row),
             },
             'trashed_at' => $row->trashed_at?->toIso8601String(),
-            /* ⚠️ რჩება თუ არა დრო — სერვერი ითვლის, რადგან ვადა
-               `TrashDomain::KEEP_DAYS`-შია და კლიენტში მისი ასლი
-               პირველივე შეცვლაზე დაშორდებოდა. */
-            'expires_in_days' => max(0, TrashDomain::KEEP_DAYS - (int) $row->trashed_at?->diffInDays(now())),
+            /* ⚠️ რჩება თუ არა დრო — სერვერი ითვლის, რადგან ვადა ამ ანგარიშის
+               პარამეტრია (`UserSettings::trashDays()`, ზღვრით შეკვეცილი) და
+               კლიენტში მისი ასლი პირველივე შეცვლაზე დაშორდებოდა. */
+            'expires_in_days' => max(0, $days - (int) $row->trashed_at?->diffInDays(now())),
             'size' => match (true) {
                 $category === 'record' => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
                 $this->sized($kind) => (int) $row->getAttribute('size'),
@@ -502,39 +551,90 @@ final class TrashBin
      * ათავისუფლებს ფაილს დისკიდან და კვოტას. ⚠️ ჩანაწერები პირველია: მათ
      * ნაწილებს მშობლის `deleting` თვითონ შლის.
      *
+     * ⚠️ **ვადა თითო ანგარიშისაა** (Tasks §29.6): ანგარიშები ვადის მიხედვით
+     * ჯგუფდება (`retentionGroups()`) და თითო ჯგუფი თავისი ზღვრით იწმინდება.
+     * `$days` ყველას ერთ ვადას აძალებს — ტესტისა და ხელით გაშვებისთვის (`--days`).
+     *
      * @return array<string, int> სახე → რამდენი წაიშალა (ან იწაშლებოდა `$dry`-ზე)
      */
-    public static function prune(int $days, bool $dry = false): array
+    public static function prune(?int $days = null, bool $dry = false): array
     {
         $counts = [];
-        $before = now()->subDays($days);
 
-        foreach (TrashDomain::kinds() as $kind) {
-            $query = match (TrashDomain::category($kind)) {
-                'record' => TrashDomain::model($kind)::expiredTrash($days),
-                'item' => TrashDomain::ITEMS[$kind]['model']::expiredTrash($days),
-                'file' => TrashedFile::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
-                // ⚠️ მხოლოდ ურნის რიგი იშლება — წერილი დამალული რჩება
-                'message' => TrashedMessage::withoutGlobalScope('owner')->where('trashed_at', '<=', $before),
-                default => TrashEntry::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
-            };
+        foreach (self::retentionGroups($days) as [$keep, $scope]) {
+            $before = now()->subDays($keep);
 
-            $count = (clone $query)->count();
+            foreach (TrashDomain::kinds() as $kind) {
+                $query = $scope(self::expiredQuery($kind, $before));
+                $count = (clone $query)->count();
 
-            if ($count === 0) {
-                continue;
-            }
-
-            if (! $dry) {
-                foreach ($query->lazyById() as $row) {
-                    $row->delete();
+                if ($count === 0) {
+                    continue;
                 }
-            }
 
-            $counts[$kind] = $count;
+                if (! $dry) {
+                    foreach ($query->lazyById() as $row) {
+                        $row->delete();
+                    }
+                }
+
+                $counts[$kind] = ($counts[$kind] ?? 0) + $count;
+            }
         }
 
         return $counts;
+    }
+
+    /**
+     * ურნაში `$before`-მდე მოხვედრილი ერთ სახეზე — **ყველა ანგარიშის**
+     * (ანგარიშს გამომძახებელი ირჩევს).
+     */
+    private static function expiredQuery(string $kind, CarbonInterface $before): Builder
+    {
+        return match (TrashDomain::category($kind)) {
+            'record' => TrashDomain::model($kind)::trashedBefore($before),
+            'item' => TrashDomain::ITEMS[$kind]['model']::trashedBefore($before),
+            'file' => TrashedFile::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
+            // ⚠️ მხოლოდ ურნის რიგი იშლება — წერილი დამალული რჩება
+            'message' => TrashedMessage::withoutGlobalScope('owner')->where('trashed_at', '<=', $before),
+            default => TrashEntry::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
+        };
+    }
+
+    /**
+     * ანგარიშები ვადის მიხედვით — `[დღეები, query-ს შემზღუდველი]`.
+     *
+     * ⚠️ **ნაგულისხმევი ჯგუფი `whereNotIn`-ია** და არა ყველა ანგარიშის
+     * ჩამოთვლა: ანგარიშების უმეტესობას ვადა არ შეუცვლია, და `whereIn`
+     * ყველა id-ით ყოველ ღამე ანგარიშების რიცხვზე გაიზრდებოდა.
+     *
+     * @return list<array{0: int, 1: \Closure(Builder): Builder}>
+     */
+    private static function retentionGroups(?int $days): array
+    {
+        if ($days !== null) {
+            return [[$days, fn (Builder $query) => $query]];
+        }
+
+        $default = TrashDomain::defaultDays();
+        $custom = [];
+
+        foreach (User::query()->whereNotNull('settings')->select(['id', 'settings'])->lazyById() as $user) {
+            $own = UserSettings::trashDays($user);
+
+            if ($own !== $default) {
+                $custom[$own][] = (int) $user->getKey();
+            }
+        }
+
+        $others = array_merge([], ...array_values($custom));
+        $groups = [[$default, fn (Builder $query) => $query->whereNotIn('user_id', $others)]];
+
+        foreach ($custom as $own => $ids) {
+            $groups[] = [(int) $own, fn (Builder $query) => $query->whereIn('user_id', $ids)];
+        }
+
+        return $groups;
     }
 
     /* ============================================================

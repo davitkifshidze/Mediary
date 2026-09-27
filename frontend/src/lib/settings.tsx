@@ -80,6 +80,17 @@ export interface Settings {
    * ისტორიაა და ახლის დაყენებამ ის არ უნდა წაშალოს.
    */
   goals: Record<string, Record<string, number>>
+
+  /* ---------- Tasks §29.6 ---------- */
+  /**
+   * **ურნის ვადა დღეებში** — რამდენ ხანს ინახება წაშლილი, სანამ ღამის
+   * გასუფთავება მას საბოლოოდ წაშლის.
+   *
+   * ⚠️ **backend-იც კითხულობს** (`UserSettings::trashDays()`) და ზღვარში
+   * კვეცავს: 1–`max_days` (ინსტალაციისაა), ე.ი. აქ ჩაწერილი 400 მოქმედებს
+   * როგორც 365 — გვერდი ამას ამბობს (`TrashRetentionSetting`).
+   */
+  trashDays: number
 }
 
 /** ბიბლიოთეკის სორტირება — `LibraryPage`-ის ველი + მიმართულება */
@@ -123,6 +134,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoResync: true,
   dateFormat: 'ka-GE',
   goals: {},
+  trashDays: 30,
 }
 
 export const SORT_FIELD_OPTIONS: SortField[] = ['added', 'year', 'rating']

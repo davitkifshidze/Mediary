@@ -33,6 +33,7 @@ import {
 import { NumberSelect, SettingRow as Row } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
 import { StorageAllocations } from '@/components/StorageAllocations'
+import { TrashRetentionSetting } from '@/components/TrashRetentionSetting'
 import { UploadLimitsCard } from '@/components/UploadLimitsCard'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -335,6 +336,9 @@ export function SettingsPage() {
           </div>
         </Row>
       </section>
+
+      {/* ---------- ურნის ვადა (Tasks §29.6) ---------- */}
+      <TrashRetentionSetting />
 
       {/* ---------- საცავის ლიმიტები (Tasks §17.2 → ეტაპი 5) ----------
           ⚠️ **პარამეტრებს მხოლოდ ეს რჩება.** „რამდენი მაქვს", „რა ავტვირთე",
