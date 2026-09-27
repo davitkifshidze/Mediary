@@ -4,9 +4,12 @@ namespace App\Jobs;
 
 use App\Models\Anime;
 use App\Models\BatchItem;
+use App\Models\CastMember;
 use App\Models\Movie;
 use App\Models\Series;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
+use App\Services\Cast\CastEnricher;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
 use App\Services\Translation\ItemTranslator;
@@ -17,6 +20,7 @@ use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -49,8 +53,17 @@ class RunBatchItem implements ShouldQueue
 {
     use Batchable, Queueable;
 
+    /**
+     * მსახიობების მონაცემები (Tasks §39) — ერთეული ჩანაწერი კი არა,
+     * **მსახიობია** (`type: 'actor'`, გლობალური ლექსიკონის რიგი).
+     */
+    public const KIND_CAST = 'cast';
+
+    /** მსახიობის ერთეულის „ტიპი" — მედია-დომენი არ არის */
+    public const ACTOR = 'actor';
+
     /** მხარდაჭერილი ოპერაციები — SPA-ს რიგის იმავე სახელებით */
-    public const KINDS = ['sync', 'gallery', 'translate'];
+    public const KINDS = ['sync', 'gallery', 'translate', self::KIND_CAST];
 
     public int $tries = 1;
 
@@ -65,10 +78,15 @@ class RunBatchItem implements ShouldQueue
         public readonly array $options = [],
     ) {}
 
+    /**
+     * ⚠️ `$enricher` **არჩევითია**: რიგის მანქანერია მას კონტეინერიდან
+     * აწვდის, ტესტები კი `handle()`-ს სამი სერვისით პირდაპირ იძახებს.
+     */
     public function handle(
         ItemSyncer $syncer,
         ItemTranslator $translator,
         GalleryFetcher $gallery,
+        ?CastEnricher $enricher = null,
     ): void {
         if ($this->batch()?->cancelled()) {
             return;
@@ -107,7 +125,11 @@ class RunBatchItem implements ShouldQueue
                გამოტოვებაზე ნორმალურად ბრუნდება, ე.ი. უპირობო `OK` ახლახან
                დაწერილ `skipped`-ს **გადააწერდა** — და სია იტყოდა, რომ
                წაშლილი ჩანაწერი დამუშავდა. */
-            if ($this->run($user, $syncer, $translator, $gallery, $item)) {
+            $done = $this->kind === self::KIND_CAST
+                ? $this->runCast($enricher ?? app(CastEnricher::class), $item)
+                : $this->run($user, $syncer, $translator, $gallery, $item);
+
+            if ($done) {
                 $item?->update(['status' => BatchItem::OK]);
             }
         } catch (Throwable $e) {
@@ -213,6 +235,49 @@ class RunBatchItem implements ShouldQueue
             'gallery' => $gallery->fetch($user, $record, $gallery->options($this->options)),
             default => null,
         };
+
+        return true;
+    }
+
+    /**
+     * **მსახიობის ერთეული** (Tasks §39) — `CastSyncController::item()`-ის
+     * იგივე `CastEnricher::run()`, ოღონდ worker-ში.
+     *
+     * ⚠️ **ჟურნალი ჩახშობილია**: გაშვების ერთი რიგი `plan`-ის `start`-მა
+     * უკვე დაწერა (`AuditLog::ACTION_CAST_SYNC`), თორემ 300 მსახიობი 300
+     * `update`-ად ჩაიწერებოდა.
+     * ⚠️ **„უცვლელი" და „TMDB-ზე არაფერია" გამოტოვებაა** (`skipped` + მიზეზი),
+     * ჩავარდნა კი **გადაისვრის** — პარტიის მრიცხველი სწორედ ამით ითვლის
+     * (Tasks BUG-08).
+     */
+    private function runCast(CastEnricher $enricher, ?BatchItem $item): bool
+    {
+        $member = CastMember::find($this->recordId);
+
+        if (! $member) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'record_not_found']);
+            SourceLog::failed('batch:'.$this->kind, 'record_not_found', ['id' => $this->recordId]);
+
+            return false;
+        }
+
+        $item?->update(['title' => mb_substr($member->name_ka ?: (string) $member->name, 0, 200)]);
+
+        $result = app(AuditLogger::class)->suppress(fn () => $enricher->run(
+            $member,
+            $this->options['fields'] ?? CastEnricher::FIELDS,
+            (bool) ($this->options['overwrite_photo'] ?? false),
+        ));
+
+        if ($result === CastEnricher::FAILED) {
+            throw new RuntimeException($enricher->lastError() ?? 'tmdb_unavailable');
+        }
+
+        if ($result !== CastEnricher::UPDATED) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => $result]);
+
+            return false;
+        }
 
         return true;
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NumberPick } from '@/components/ui/number-pick'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ScopeRow } from '@/components/ui/scope-row'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { useQueue } from '@/components/ui/queue'
@@ -865,35 +866,5 @@ export function GalleryDownloadDialog({
         </div>
       </ModalFooter>
     </ModalShell>
-  )
-}
-
-/** radio + (არჩეულზე) დამატებითი კონტროლი — `SyncDialog`-ის იდენტური ქცევა */
-function ScopeRow({
-  value,
-  active,
-  label,
-  children,
-}: {
-  value: GalleryScope
-  active: GalleryScope
-  label: string
-  children?: ReactNode
-}) {
-  const selected = active === value
-
-  return (
-    <div
-      className={cn(
-        'rounded-lg border p-3 transition-colors',
-        selected ? 'border-primary bg-secondary/50' : 'border-border',
-      )}
-    >
-      <label className="flex cursor-pointer items-center gap-3">
-        <RadioGroupItem value={value} />
-        <span className="text-sm font-medium">{label}</span>
-      </label>
-      {selected && children && <div className="mt-2 pl-8">{children}</div>}
-    </div>
   )
 }

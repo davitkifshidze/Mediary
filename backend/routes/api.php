@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\BookmarkCategoryController;
 use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
+use App\Http\Controllers\Api\CastSyncController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\CourseCategoryController;
 use App\Http\Controllers\Api\CourseController;
@@ -1071,6 +1072,15 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **აუცილებლივ `/cast/{castMember}`-ზე ზემოთ**, თორემ „search"
        იდენტიფიკატორად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აცვავს). */
     Route::get('/cast/search', [RecordCastController::class, 'search']);
+    /* Tasks §39 — მსახიობების მასობრივი სინქრონიზაცია: გეგმა + თითო მსახიობი.
+       ⚠️ **`module:`/`permission:` middleware განზრახ არ დგას** — მსახიობს
+       მოდული არ აქვს; ჩართულ მედია-მოდულს კონტროლერი თვითონ ამოწმებს
+       (`CastPool::typesFor()`). ⚠️ ნაბიჯი `throttle:tmdb-person`-ზეა — TMDB-ის
+       ბიუჯეტი საერთოა (§39.5); გეგმა კი მხოლოდ ჩვენს ბაზას კითხულობს. */
+    Route::post('/cast/sync/plan', [CastSyncController::class, 'plan']);
+    Route::post('/cast/sync/{castMember}', [CastSyncController::class, 'item'])
+        ->whereNumber('castMember')
+        ->middleware('throttle:tmdb-person');
     Route::get('/cast/{castMember}', [CastController::class, 'show'])->whereNumber('castMember');
     /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
@@ -1080,7 +1090,10 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **`resync` და არა `sync`**: `EnsureModulePermission::UPDATE_ENDPOINTS`
        სწორედ ამ სიტყვას იცნობს, ე.ი. მარშრუტის მოდულის ჯგუფში გადატანა
        მომავალში update-ის უფლებით მოსულს 403-ს არ დაუბრუნებს. */
-    Route::post('/cast/{castMember}/resync', [CastController::class, 'resync']);
+    Route::post('/cast/{castMember}/resync', [CastController::class, 'resync'])
+        ->whereNumber('castMember')
+        // §39.5 (ყოფილი 20.4) — ერთი მსახიობი ორ TMDB-მოთხოვნამდე ხარჯავს
+        ->middleware('throttle:tmdb-person');
 
     /* ---------- ადმინის ზონა ----------
        Tasks 1.6 — სამი სექცია (`users`/`roles`/`requests`) **როლის უფლებაზეა**

@@ -10,6 +10,7 @@ use App\Models\CastMember;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
+use App\Services\Cast\CastPool;
 use App\Services\Gallery\AlbumVault;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Gallery\GalleryScope;
@@ -1563,50 +1564,19 @@ class GalleryController extends Controller
     /**
      * არჩეული სკოუპის მსახიობთა ავზი, ძებნით.
      *
-     * ⚠️ `whereHas` მედია-მოდელზე `owner` global scope-ს იმემკვიდრეობს, ე.ი.
-     * ავზი ავტომატურად **ამ user-ის** ბიბლიოთეკაა.
+     * ⚠️ **query თვითონ `CastPool`-შია** (Tasks §39): მსახიობების მასობრივ
+     * სინქრონიზაციასაც იგივე ავზი სჭირდება, ორი ასლი კი ერთ დღეს ერთმანეთს
+     * დაშორდებოდა (ერთხელ უკვე მოხდა — ანიმეს რელაცია ჩუმად `movies` იყო).
      *
      * ⚠️ **`scope=off`-ზე შეზღუდვა მხოლოდ დომენებზეა** — „ყველა მსახიობი,
-     * ვინც ჩემს ბიბლიოთეკაში მონაწილეობს", და არა TMDB-ის მთელი ლექსიკონი
-     * (`cast_members` გლობალურია, ე.ი. უფილტრო სია სხვისი ჩანაწერების
-     * მსახიობებსაც მოიცავდა).
+     * ვინც ჩემს ბიბლიოთეკაში მონაწილეობს", და არა TMDB-ის მთელი ლექსიკონი.
      *
      * @param  list<string>  $types
      * @param  array<string, list<int>>  $recordIds
      */
     private function castPoolQuery(array $types, array $recordIds, ?string $q, bool $scopeOff)
     {
-        $pool = CastMember::query()->where(function ($w) use ($types, $recordIds, $scopeOff) {
-            foreach ($types as $type) {
-                $relation = MediaDomain::relation($type);
-
-                if ($scopeOff) {
-                    $w->orWhereHas($relation);
-
-                    continue;
-                }
-
-                $ids = $recordIds[$type] ?? [];
-
-                if ($ids) {
-                    $w->orWhereHas($relation, fn ($r) => $r->whereIn("{$relation}.id", $ids));
-                }
-            }
-
-            // ⚠️ არცერთი დომენი/ჩანაწერი — ავზი **ცარიელია** და არა „ყველა"
-            $w->orWhereRaw('1 = 0');
-        });
-
-        if ($q) {
-            // ⚠️ `name_ka` სვეტი არ არის (accessor-ია) — ქართული სახელი
-            // `cast_member_translations`-შია, ე.ი. ძებნა ორივეზე უნდა გავიდეს
-            $pool->where(function ($w) use ($q) {
-                $w->where('name', 'like', Like::contains($q))
-                    ->orWhereHas('translations', fn ($t) => $t->where('name', 'like', Like::contains($q)));
-            });
-        }
-
-        return $pool;
+        return CastPool::query($types, $scopeOff ? null : $recordIds, $q);
     }
 
     /** რომელ მსახიობს რამდენი ფოტო აქვს — ერთი აგრეგატი, არა თითოზე count */

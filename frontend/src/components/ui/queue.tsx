@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
 import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
 import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, translateCode } from '@/lib/errors'
 import { useToast } from '@/components/ui/feedback'
 import {
   fetchActorGalleryImages,
@@ -13,7 +13,16 @@ import {
   type GalleryPlanItem,
 } from '@/api/gallery'
 import { importRow, type ImportPlanItem } from '@/api/import'
-import { mediaApi, syncItem, type SyncOptions, type SyncPlanItem } from '@/api/media'
+import {
+  mediaApi,
+  syncActor,
+  syncItem,
+  type CastSyncOptions,
+  type CastSyncPlanItem,
+  type CastSyncResult,
+  type SyncOptions,
+  type SyncPlanItem,
+} from '@/api/media'
 import {
   translateGenres,
   translateItem,
@@ -37,11 +46,13 @@ import { cn } from '@/lib/utils'
        რიგში მხოლოდ `/purge`-ის ცხადი დადასტურების შემდეგ ჯდება.
      • `import`  — გარე სერვისის CSV-ის რიგები (FEAT-07). ერთეული **ჩანაწერი
        ჯერ არ არის**, ე.ი. `itemId` არ აქვს — რიგში ფაილის რიგი ზის.
+     • `cast`    — მსახიობების მონაცემები TMDB-დან (Tasks §39). ერთეული
+       **მსახიობია** (გლობალური ლექსიკონის რიგი) და არა ჩანაწერი.
    ნავიგაცია არ იბლოკება (რიგი გლობალურია); refresh/close კი აფრთხილებს.
    ============================================================ */
 
 type QStatus = 'pending' | 'running' | 'done' | 'error'
-type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import'
+type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import' | 'cast'
 
 /** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
 export interface PurgeQueueOptions {
@@ -107,6 +118,13 @@ interface QItem {
    */
   importRow?: ImportPlanItem
   importSource?: string
+  /** cast — რა განახლდეს (§39.2); ერთეულზეა იმავე მიზეზით, რაც `sources` */
+  castOpts?: CastSyncOptions
+  /**
+   * cast — ნაბიჯის შედეგი. ⚠️ „უცვლელი" და „TMDB-ზე არაფერია" ორივე
+   * `skipped`-ია, მაგრამ მომხმარებლისთვის სხვადასხვა ფაქტია (§39.6).
+   */
+  castResult?: CastSyncResult
   /** ჩავარდნის მიზეზი (J5) ან 'cancelled' */
   error?: string
   /** შესრულების დრო — დარჩენილი დროის შესაფასებლად */
@@ -132,6 +150,8 @@ interface QueueApi {
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
   /** CSV-ის იმპორტი (FEAT-07) — გეგმის რიგები + წყარო */
   enqueueImport: (items: ImportPlanItem[], source: string) => void
+  /** მსახიობების მონაცემები (§39) — გეგმის მსახიობები + ველები */
+  enqueueCast: (items: CastSyncPlanItem[], opts: CastSyncOptions) => void
   isQueued: (tmdbId: number, mediaType?: MediaType) => boolean
   active: number
   isBusy: boolean
@@ -146,6 +166,7 @@ const QueueContext = React.createContext<QueueApi>({
   enqueueTranslate: () => {},
   enqueuePurge: () => {},
   enqueueImport: () => {},
+  enqueueCast: () => {},
   isQueued: () => false,
   active: 0,
   isBusy: false,
@@ -169,6 +190,7 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
   sync: { busy: 'queue.syncing', done: 'queue.syncDone' },
   add: { busy: 'queue.adding', done: 'queue.doneTitle' },
   import: { busy: 'queue.importing', done: 'queue.importDone' },
+  cast: { busy: 'queue.castSyncing', done: 'queue.castSyncDone' },
 }
 
 export function QueueProvider({ children }: { children: React.ReactNode }) {
@@ -184,7 +206,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   /**
    * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
    * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Gemini-ის
-   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`import` — TMDB
+   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`import`/`cast` — TMDB
    * (იმპორტი გარე წყაროს რიგზე ერთხელ ეკითხება, ე.ი. იმავე ტემპს ემორჩილება).
    */
   const paceOf = React.useCallback(
@@ -395,6 +417,37 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  /**
+   * მსახიობების მონაცემები რიგში (Tasks §39).
+   *
+   * ⚠️ **დუბლის გასაღები `actor:{id}`-ია** — მსახიობის id-ს და ფილმის id-ს
+   * ერთი და იგივე რიცხვი შეიძლება ჰქონდეს (`galleryActor`-ის იგივე მიზეზი).
+   */
+  const enqueueCast = React.useCallback((toSync: CastSyncPlanItem[], opts: CastSyncOptions) => {
+    setExpanded(true) // გრძელია — პროგრესი მაშინვე ჩანს
+    setItems((cur) => {
+      const base = freshBase(cur)
+      const busy = new Set(
+        cur
+          .filter((i) => i.kind === 'cast' && (i.status === 'pending' || i.status === 'running'))
+          .map((i) => `actor:${i.itemId}`),
+      )
+      const fresh = toSync
+        .filter((a) => !busy.has(`actor:${a.id}`))
+        .map((a) => ({
+          id: nextId++,
+          kind: 'cast' as QKind,
+          itemId: a.id,
+          title: a.title,
+          // ⚠️ მსახიობი მედია-დომენი არ არის — `mediaType` მხოლოდ ქეშის გასუფთავებაა
+          mediaType: 'movie' as MediaType,
+          status: 'pending' as QStatus,
+          castOpts: opts,
+        }))
+      return fresh.length ? [...base, ...fresh] : base
+    })
+  }, [])
+
   const cancelPending = React.useCallback(() => {
     setItems((cur) => cur.filter((i) => i.status !== 'pending'))
     abortRef.current?.abort()
@@ -427,6 +480,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       ok: boolean
       error?: string
       skipped?: boolean
+      castResult?: CastSyncResult
     }> = next.kind === 'add'
         ? mediaApi(next.mediaType)
             .addFromTmdb(next.tmdbId!)
@@ -474,6 +528,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   error: r.error ?? undefined,
                   skipped: r.skipped,
                 }))
+            /* ⚠️ **ეს შტო `syncItem`-ის ზოგად შტომდე დგას** (§39.3) — თორემ
+               მსახიობის id ჩუმად ფილმის სინქრონად წავიდოდა */
+            : next.kind === 'cast'
+              ? syncActor(next.itemId!, next.castOpts ?? { fields: [] }, ctrl.signal).then((r) => ({
+                  ok: r.ok,
+                  error: r.error ?? undefined,
+                  skipped: r.skipped,
+                  castResult: r.result,
+                }))
               : syncItem(next.mediaType, next.itemId!, next.opts ?? {}, ctrl.signal).then((r) => ({
                   ok: r.ok,
                   error: r.error ?? undefined,
@@ -481,7 +544,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 }))
 
     job
-      .then(({ ok, error, skipped }) => {
+      .then(({ ok, error, skipped, castResult }) => {
         ;[
           next.mediaType,
           'discover',
@@ -499,6 +562,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს,
              ე.ი. სამივე შესაძლო სია და დეშბორდის მრიცხველი ერთად ახლდება */
           ...(next.kind === 'import' ? ['books', 'games', 'dashboard', 'export'] : []),
+          // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
+          ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         setItems((cur) =>
           cur.map((i) =>
@@ -508,6 +573,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   status: ok ? 'done' : 'error',
                   error,
                   skipped,
+                  castResult,
                   ms: performance.now() - started,
                 }
               : i,
@@ -625,7 +691,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const handoffKind =
     handoffKinds.size === 1 &&
     pendingItems.length > 0 &&
-    ['sync', 'gallery', 'translate'].includes(pendingItems[0].kind) &&
+    ['sync', 'gallery', 'translate', 'cast'].includes(pendingItems[0].kind) &&
     // ⚠️ მსახიობის ფოტოებს თავისი endpoint აქვს და ჩანაწერის პარტიაში არ ჯდება
     !pendingItems.some((i) => i.galleryActor)
       ? (pendingItems[0].kind as BatchKind)
@@ -639,14 +705,17 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       const first = pendingItems[0]
       const batch = await startBatch(
         handoffKind,
-        pendingItems.map((i) => ({ type: i.mediaType, id: i.itemId! })),
+        // ⚠️ მსახიობის ერთეულს დომენი არ აქვს — სერვერი `type: 'actor'`-ს ელის (§39.3)
+        pendingItems.map((i) => ({ type: i.kind === 'cast' ? 'actor' : i.mediaType, id: i.itemId! })),
         /* ⚠️ პარამეტრები **პირველი ერთეულიდან** მოდის: რიგი ერთი დიალოგიდან
            იბადება, ე.ი. ისინი მთელ პარტიაზე ერთი და იგივეა. */
         handoffKind === 'sync'
           ? { ...(first.opts ?? {}) }
           : handoffKind === 'gallery'
             ? { ...(first.galleryOpts ?? {}) }
-            : { sources: first.sources, review: first.review },
+            : handoffKind === 'cast'
+              ? { ...(first.castOpts ?? {}) }
+              : { sources: first.sources, review: first.review },
       )
 
       // გადაცემულები კლიენტის რიგიდან ქრება — ორჯერ დამუშავება არ გვინდა
@@ -695,6 +764,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueueTranslate,
       enqueuePurge,
       enqueueImport,
+      enqueueCast,
       isQueued,
       active,
       isBusy,
@@ -707,6 +777,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueueTranslate,
       enqueuePurge,
       enqueueImport,
+      enqueueCast,
       isQueued,
       active,
       isBusy,
@@ -746,7 +817,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const running = items.find((i) => i.status === 'running')
   /** სათაურის სახეობა — შერეულ რიგში ყველაზე „ხმამაღალი" იმარჯვებს */
   const headlineKind: QKind =
-    (['purge', 'gallery', 'translate', 'sync'] as QKind[]).find((k) => items.some((i) => i.kind === k)) ?? 'add'
+    (['purge', 'gallery', 'translate', 'sync', 'cast'] as QKind[]).find((k) => items.some((i) => i.kind === k)) ?? 'add'
 
   /**
    * დარჩენილი დრო — დასრულებულების საშუალო × დარჩენილი + **თითოეულის პაუზა**.
@@ -764,6 +835,46 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [items, active, paceOf])
 
   const fmt = (s: number) => (s < 60 ? `${s}${t('queue.sec')}` : `${Math.round(s / 60)}${t('queue.min')}`)
+
+  /**
+   * მსახიობის ნაბიჯის გამოტოვების მიზეზი (Tasks §39.6).
+   *
+   * ⚠️ **სამი სხვადასხვა „გამოტოვება"** — „უცვლელია", „TMDB-ზე არაფერია",
+   * „TMDB-ის id არ აქვს" — და ერთი საერთო „გამოტოვდა" (`queue.itemSkipped`
+   * „ჩანაწერი ვეღარ მოიძებნა"-ს ამბობს) მათ ერთმანეთში აურევდა.
+   */
+  const castSkipLabel = (code?: string | null) =>
+    code === 'unchanged'
+      ? t('castSync.result.unchanged')
+      : code === 'tmdb_empty'
+        ? t('castSync.result.tmdbEmpty')
+        : code === 'no_tmdb_id'
+          ? t('castSync.result.noTmdbId')
+          : null
+
+  /**
+   * **მსახიობების გაშვების შეჯამება** (Tasks §39.6) — „განახლდა N ·
+   * უცვლელი U · TMDB-ზე არაფერია M". ⚠️ სერვერზე გადაცემულიც ითვლება:
+   * იქ „განახლდა" `ok`-ია, გამოტოვების მიზეზი კი `error`-ში ზის.
+   */
+  const castSummary = React.useMemo(() => {
+    const results = [
+      ...items.filter((i) => i.kind === 'cast' && i.status === 'done').map((i) => i.castResult),
+      ...serverItems
+        .filter((s) => s.type === 'actor' && s.status !== 'running' && s.status !== 'failed')
+        .map((s) => (s.status === 'ok' ? 'updated' : s.error)),
+    ]
+    if (!results.length) return null
+
+    const count = (code: string) => results.filter((r) => r === code).length
+    const parts = [
+      count('updated') > 0 && t('castSync.summary.updated', { count: count('updated') }),
+      count('unchanged') > 0 && t('castSync.summary.unchanged', { count: count('unchanged') }),
+      count('tmdb_empty') > 0 && t('castSync.summary.empty', { count: count('tmdb_empty') }),
+    ].filter(Boolean)
+
+    return parts.length ? parts.join(' · ') : null
+  }, [items, serverItems, t])
 
   return (
     <QueueContext.Provider value={api}>
@@ -801,7 +912,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   </span>
                 </p>
                 {/* მიმდინარე ჩანაწერის სახელი (J3) */}
-                {running && <p className="truncate text-xs text-muted-foreground">{running.title}</p>}
+                {running ? (
+                  <p className="truncate text-xs text-muted-foreground">{running.title}</p>
+                ) : (
+                  headlineKind === 'cast' &&
+                  castSummary && <p className="truncate text-xs text-muted-foreground">{castSummary}</p>
+                )}
               </span>
               <span className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground">
                 {expanded ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
@@ -859,7 +975,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                           ? t('queue.cancelled')
                           : it.error === 'quota'
                             ? t('queue.quotaStopped')
-                            : it.error || t('toast.error')}
+                            : translateCode(it.error) || t('toast.error')}
+                      </span>
+                    )}
+                    {/* §39.6 — მსახიობის გამოტოვებას თავისი მიზეზი აქვს */}
+                    {it.status === 'done' && it.skipped && castSkipLabel(it.castResult) && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {castSkipLabel(it.castResult)}
                       </span>
                     )}
                   </span>
@@ -905,13 +1027,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     </span>
                     {row.status === 'error' && (
                       <span className="block truncate text-xs text-destructive">
-                        {row.error || t('toast.error')}
+                        {translateCode(row.error) || t('toast.error')}
                       </span>
                     )}
                     {/* ⚠️ გამოტოვება **ჩავარდნა არაა** — ხელახლა გაშვება არაფერს შეცვლის */}
                     {row.skipped && (
                       <span className="block truncate text-xs text-muted-foreground">
-                        {t('queue.itemSkipped')}
+                        {castSkipLabel(row.error) ?? t('queue.itemSkipped')}
                       </span>
                     )}
                   </span>

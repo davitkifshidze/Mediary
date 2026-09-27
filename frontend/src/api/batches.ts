@@ -12,7 +12,8 @@ import { api } from '@/lib/api'
    ე.ი. შედეგი იდენტურია; განსხვავება მხოლოდ ისაა, ვინ ატრიალებს ციკლს.
    ============================================================ */
 
-export type BatchKind = 'sync' | 'gallery' | 'translate'
+/** ⚠️ `RunBatchItem::KINDS`-ის სარკე; `cast`-ის ერთეული მსახიობია (`type: 'actor'`) */
+export type BatchKind = 'sync' | 'gallery' | 'translate' | 'cast'
 
 export interface BatchItem {
   type: string

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\RunBatchItem;
 use App\Models\BatchItem;
 use App\Models\User;
+use App\Services\Cast\CastPool;
 use App\Services\Notify\Notifier;
 use App\Support\BackgroundProcess;
 use App\Support\MediaDomain;
@@ -38,8 +39,26 @@ use Illuminate\Validation\Rule;
  */
 class BatchController extends Controller
 {
-    /** ერთ პარტიაში რამდენი ერთეული ეტევა — გეგმის ჭერი ისედაც არსებობს */
-    private const MAX_ITEMS = 1000;
+    /**
+     * ერთ პარტიაში რამდენი ერთეული ეტევა.
+     *
+     * ⚠️ **1000-დან 5000-მდე აიწია მსახიობების გამო** (Tasks §39): ცოცხალ
+     * ბაზაში ერთი ანგარიშის ბიბლიოთეკა 3530 მსახიობია, ე.ი. „ვისაც ჯერ არ
+     * განახლებია" პირველ გაშვებაზე 1000-ზე ბევრად მეტია და გადაცემა 422-ით
+     * ჩავარდებოდა. რეალური საზღვარი ერთი INSERT-ის ზომაა — იხ. `INSERT_CHUNK`.
+     */
+    private const MAX_ITEMS = 5000;
+
+    /**
+     * **რამდენი job იწერება ერთ INSERT-ში.**
+     *
+     * ⚠️ `Batch::add()` მთელ სიას **ერთი** INSERT-ით წერს (`DatabaseQueue::bulk`),
+     * ერთი job კი ~800 ბაიტია — ამ მანქანაზე `max_allowed_packet` 1 MB-ია,
+     * ე.ი. ~1270-ზე მეტი ერთეული ერთ რექვესთში **MySQL-ის შეცდომით** ჩავარდებოდა
+     * (sqlite-ის ტესტებს ეს ზღვარი საერთოდ არ აქვს და ვერ დაინახავდა).
+     * 500 ცალი ~400 KB-ია — ორმაგი მარაგი.
+     */
+    private const INSERT_CHUNK = 500;
 
     /**
      * ⚠️ **worker-ის სიცოცხლის ჭერი.** `--stop-when-empty` მას რიგის
@@ -51,26 +70,38 @@ class BatchController extends Controller
 
     public function store(Request $request, BackgroundProcess $background)
     {
+        /* Tasks §39 — ⚠️ **მსახიობის ერთეულს დომენი არ აქვს** (`type: 'actor'`):
+           `cast_members` გლობალური ლექსიკონია და მედია-დომენად ვერ ჩაჯდება. */
+        $castKind = $request->input('kind') === RunBatchItem::KIND_CAST;
+
         $data = $request->validate([
             'kind' => ['required', Rule::in(RunBatchItem::KINDS)],
             'items' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITEMS],
-            'items.*.type' => ['required', Rule::in(MediaDomain::TYPES)],
+            'items.*.type' => ['required', Rule::in($castKind ? [RunBatchItem::ACTOR] : MediaDomain::TYPES)],
             'items.*.id' => ['required', 'integer', 'min:1'],
             'options' => ['nullable', 'array'],
         ]);
 
         $user = $request->user();
 
-        /* ⚠️ **უფლება აქვე მოწმდება და არა job-ში.** სამივე ოპერაცია
-           არსებულ ჩანაწერს ცვლის, ე.ი. `update` სჭირდება — იგივე წესი,
-           რაც `/media/sync/{type}/{id}`-ს (§A4). job-ში შემოწმება გვიანია:
-           მაშინ პასუხი უკვე გაცემულია და უარი არსად ჩანს. */
-        foreach (array_unique(array_column($data['items'], 'type')) as $type) {
-            if (! $user->hasModule($type) || ! $user->hasPermission($type, 'update')) {
-                return response()->json([
-                    'message' => 'forbidden_permission',
-                    'permission' => "{$type}.update",
-                ], 403);
+        if ($castKind) {
+            /* ⚠️ მსახიობს მოდული არ აქვს — „ვის შეუძლია" ჩართული მედია-მოდული
+               წყვეტს, ზუსტად ისე, როგორც `/cast/sync/plan`-ზე. */
+            if (! CastPool::typesFor($user)) {
+                return response()->json(['message' => 'module_disabled'], 403);
+            }
+        } else {
+            /* ⚠️ **უფლება აქვე მოწმდება და არა job-ში.** სამივე ოპერაცია
+               არსებულ ჩანაწერს ცვლის, ე.ი. `update` სჭირდება — იგივე წესი,
+               რაც `/media/sync/{type}/{id}`-ს (§A4). job-ში შემოწმება გვიანია:
+               მაშინ პასუხი უკვე გაცემულია და უარი არსად ჩანს. */
+            foreach (array_unique(array_column($data['items'], 'type')) as $type) {
+                if (! $user->hasModule($type) || ! $user->hasPermission($type, 'update')) {
+                    return response()->json([
+                        'message' => 'forbidden_permission',
+                        'permission' => "{$type}.update",
+                    ], 403);
+                }
             }
         }
 
@@ -85,7 +116,12 @@ class BatchController extends Controller
             $data['items'],
         );
 
-        $batch = Bus::batch($jobs)
+        /* ⚠️ **ნაწილებად** (იხ. `INSERT_CHUNK`): პირველი ნაწილი პარტიას ქმნის,
+           დანარჩენი `add()`-ით ემატება — **worker-ის გაშვებამდე**, ე.ი. პარტია
+           მანამდე ვერ „დასრულდება", სანამ ყველა ერთეული ჩაწერილი არ არის. */
+        $chunks = array_chunk($jobs, self::INSERT_CHUNK);
+
+        $batch = Bus::batch(array_shift($chunks))
             ->name($data['kind'])
             // ⚠️ ერთი ჩანაწერის ჩავარდნა დანარჩენებს არ აჩერებს — SPA-ს რიგის ქცევა
             ->allowFailures()
@@ -111,6 +147,10 @@ class BatchController extends Controller
                 ]);
             })
             ->dispatch();
+
+        foreach ($chunks as $chunk) {
+            $batch = $batch->add($chunk);
+        }
 
         if (! $this->startWorker($background)) {
             // ⚠️ პარტია იშლება: ჩაწერილი, მაგრამ არასდროს გაშვებული რიგი

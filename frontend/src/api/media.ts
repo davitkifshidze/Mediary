@@ -501,3 +501,96 @@ export async function resyncActor(id: number | string): Promise<{ updated: boole
   const { data } = await api.post(`/cast/${id}/resync`)
   return data
 }
+
+/* ---------- მსახიობების მასობრივი სინქრონიზაცია (Tasks §39) ---------- */
+
+/**
+ * ფარგლები. ⚠️ `never` ნაგულისხმევია (TMDB-ის ბიუჯეტი საერთოა); `stale`
+ * „არასდროს განახლებულსაც" მოიცავს — ნიშნის არქონა „უსასრულოდ ძველია".
+ * ⚠️ სია `CastSyncController::SCOPES`-ის სარკეა.
+ */
+export const CAST_SYNC_SCOPES = ['never', 'stale', 'all', 'ids'] as const
+export type CastSyncScope = (typeof CAST_SYNC_SCOPES)[number]
+
+/** რა განახლდეს — `CastEnricher::FIELDS`-ის სარკე */
+export const CAST_SYNC_FIELDS = ['details', 'biography', 'links', 'photo'] as const
+export type CastSyncField = (typeof CAST_SYNC_FIELDS)[number]
+
+/**
+ * ერთი ნაბიჯის შედეგი — `CastEnricher`-ის კოდები.
+ * ⚠️ `unchanged`/`tmdb_empty`/`no_tmdb_id` გამოტოვებაა და **არა** ჩავარდნა.
+ */
+export type CastSyncResult = 'updated' | 'unchanged' | 'tmdb_empty' | 'no_tmdb_id' | 'failed'
+
+export interface CastSyncOptions {
+  fields: CastSyncField[]
+  /** ფოტო ხელახლა ჩამოვიდეს მაშინაც, თუ უკვე აქვს */
+  overwrite_photo?: boolean
+}
+
+export interface CastSyncFilters extends Partial<CastSyncOptions> {
+  types?: MediaType[]
+  scope?: CastSyncScope
+  /** `stale` — „N დღეზე ადრე" */
+  days?: number
+  /** `ids` — კონკრეტული მსახიობები */
+  ids?: number[]
+  /** ამრჩევში ძებნა */
+  q?: string
+  /** ⚠️ გაშვება: იგივე გეგმა + ჟურნალის **ერთი** რიგი (და არა გადახედვა) */
+  start?: boolean
+}
+
+export interface CastSyncPlanItem {
+  type: 'actor'
+  id: number
+  title: string
+}
+
+export interface CastSyncCandidate {
+  id: number
+  name: string
+  name_ka: string | null
+  has_tmdb: boolean
+  details_synced_at: string | null
+}
+
+export interface CastSyncPlan {
+  types: MediaType[]
+  items: CastSyncPlanItem[]
+  count: number
+  eta_seconds: number
+  skipped_without_tmdb: number
+  /** ფარგლების გარეშე — რამდენი მსახიობია ბიბლიოთეკაში სულ */
+  pool_total: number
+  never_synced: number
+  /** `ids`-ის ამრჩევი (სხვა ფარგლებზე ცარიელია) */
+  cast: CastSyncCandidate[]
+  cast_truncated: boolean
+  /** TMDB-ის გასაღები მითითებულია? */
+  tmdb: boolean
+}
+
+/** ფარგლები → რიგი. ⚠️ `start: true` ჟურნალს წერს — მხოლოდ გაშვების ღილაკზე */
+export async function fetchCastSyncPlan(filters: CastSyncFilters): Promise<CastSyncPlan> {
+  const { data } = await api.post('/cast/sync/plan', filters)
+  return data
+}
+
+export interface CastSyncItemResult {
+  ok: boolean
+  skipped: boolean
+  result: CastSyncResult
+  error: string | null
+  title: string
+}
+
+/** რიგის ერთი ნაბიჯი — ერთი მსახიობი (`POST /cast/sync/{id}`) */
+export async function syncActor(
+  id: number,
+  opts: CastSyncOptions,
+  signal?: AbortSignal,
+): Promise<CastSyncItemResult> {
+  const { data } = await api.post(`/cast/sync/${id}`, opts, { signal })
+  return data
+}

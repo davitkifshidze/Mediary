@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useContentLang } from '@/lib/settings'
 import { statusName, useMergedStatuses } from '@/lib/statuses'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +18,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { RadioGroup } from '@/components/ui/radio-group'
+import { ScopeRow } from '@/components/ui/scope-row'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaDomainCards } from '@/components/MediaDomainCards'
@@ -312,34 +313,5 @@ export function TranslateDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-/** radio + (არჩეულზე) დამატებითი კონტროლი — `SyncDialog`-ის ანალოგი */
-function ScopeRow({
-  value,
-  active,
-  label,
-  children,
-}: {
-  value: Scope
-  active: Scope
-  label: string
-  children?: ReactNode
-}) {
-  const selected = active === value
-  return (
-    <div
-      className={cn(
-        'rounded-lg border p-3 transition-colors',
-        selected ? 'border-primary bg-secondary/50' : 'border-border',
-      )}
-    >
-      <label className="flex cursor-pointer items-center gap-3">
-        <RadioGroupItem value={value} />
-        <span className="text-sm font-medium">{label}</span>
-      </label>
-      {selected && children && <div className="mt-2 pl-8">{children}</div>}
-    </div>
   )
 }

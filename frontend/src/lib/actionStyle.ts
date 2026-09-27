@@ -14,6 +14,7 @@ import {
   UserMinus,
   UserPen,
   UserPlus,
+  UserRoundSearch,
 } from 'lucide-react'
 
 /* ============================================================
@@ -68,6 +69,10 @@ const ACTION_STYLE: Record<string, ActionStyle> = {
      ქართული სახელი — ლოგში ნედლი `restore` ეწერა. მწვანე: არაფერი იკარგება,
      პირიქით — დაკარგული ბრუნდება. */
   restore: { icon: ArchiveRestore, color: 'var(--icon-ok)' },
+  /* Tasks §39 — მსახიობების მასობრივი სინქრონიზაცია (ერთი რიგი გაშვებაზე).
+     ⚠️ ფერი **სინქრონიზაციის სექციისაა** (`--tool-sync`): ეს სწორედ იმ
+     გვერდიდან გაშვებული სამუშაოა, და საიდბარის ლურჯი აქაც იგივეს ამბობს. */
+  cast_sync: { icon: UserRoundSearch, color: 'var(--tool-sync)' },
 }
 
 /**

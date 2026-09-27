@@ -198,6 +198,33 @@ class BatchQueueTest extends TestCase
             ->assertJsonPath('cancelled', true);
     }
 
+    /**
+     * **დიდი პარტია ნაწილებად იწერება და სრულად** (Tasks §39).
+     *
+     * ⚠️ `Batch::add()` მთელ სიას ერთი INSERT-ით წერს, ერთი job კი ~800
+     * ბაიტია — MySQL-ის 1 MB-იანი `max_allowed_packet`-ზე ~1270-ზე მეტი
+     * ერთეული შეცდომით ჩავარდებოდა. sqlite-ს ეს ზღვარი არ აქვს, ამიტომ
+     * ტესტი რიცხვს კი არა, **INSERT-ების რაოდენობას** ამოწმებს.
+     */
+    public function test_a_large_batch_is_written_in_chunks_and_completely(): void
+    {
+        $inserts = 0;
+        DB::listen(function ($query) use (&$inserts) {
+            if (str_starts_with(strtolower($query->sql), 'insert into "jobs"')) {
+                $inserts++;
+            }
+        });
+
+        $items = array_map(fn (int $i) => ['type' => 'actor', 'id' => $i], range(1, 1200));
+
+        $this->actingAs($this->alice)->postJson('/api/batches', ['kind' => 'cast', 'items' => $items])
+            ->assertStatus(202)
+            ->assertJsonPath('total', 1200);
+
+        $this->assertSame(1200, DB::table('jobs')->count());
+        $this->assertGreaterThanOrEqual(3, $inserts, 'ერთი INSERT MySQL-ის პაკეტს გადააჭარბებდა');
+    }
+
     public function test_an_unknown_batch_is_a_404(): void
     {
         $this->actingAs($this->alice)->getJson('/api/batches/no-such-batch')->assertStatus(404);

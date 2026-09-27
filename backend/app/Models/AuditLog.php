@@ -112,6 +112,19 @@ class AuditLog extends Model
      */
     public const ACTION_RESTORE = 'restore';
 
+    /**
+     * მსახიობების მონაცემების **მასობრივი** სინქრონიზაცია (Tasks §39).
+     *
+     * ⚠️ **ერთი რიგი გაშვებაზე და არა თითო მსახიობზე.** `cast_members`
+     * გლობალური ლექსიკონია და იქ იწერება TMDB-ის ფაქტი; 300-მსახიობიანი
+     * გაშვება ჟურნალში 300 ერთნაირ `update`-ად ჩაიწერებოდა და ყველაფერს
+     * დამარხავდა. ამიტომ თითო მსახიობის რიგი ჩახშობილია
+     * (`AuditLogger::suppress()`), ეს კი ამბობს **ვინ, როდის, რამდენზე და
+     * რა ველებით** გაუშვა. ცალკე ღილაკი (მსახიობის გვერდი) ისევ ჩვეულებრივ
+     * `update`-ს წერს — იქ ერთი ცვლილება ერთი ფაქტია.
+     */
+    public const ACTION_CAST_SYNC = 'cast_sync';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
@@ -129,6 +142,7 @@ class AuditLog extends Model
         self::ACTION_EXPORT,
         self::ACTION_IMPORT,
         self::ACTION_RESTORE,
+        self::ACTION_CAST_SYNC,
     ];
 
     /**

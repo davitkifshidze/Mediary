@@ -527,7 +527,9 @@
     "handedOff": "{{count}} items handed to the server — you can close the tab now",
     "itemSkipped": "The record was gone — skipped",
     "importing": "Importing…",
-    "importDone": "Import finished"
+    "importDone": "Import finished",
+    "castSyncing": "Updating actors…",
+    "castSyncDone": "Actors updated"
   },
   "missing": {
     "label": "Missing:",
@@ -576,7 +578,7 @@
     "discoverMaxPagesHint": "How deep paging can go (1–{{max}}).",
     "discoverPerPage": "Records per page",
     "discoverPerPageHint": "A multiple of 20 — several TMDB pages are merged into one.",
-    "syncHint": "The data comes from TMDB. Bulk operations over the whole collection.",
+    "syncHint": "The data comes from TMDB — for records and for actors' biographies alike. Bulk operations over the whole collection.",
     "syncDesc": "Pick a scope, see how many records it touches, then watch the progress in the queue — it can be stopped at any time.",
     "syncDelay": "Pause between records",
     "syncDelayHint": "Gives TMDB some air on long runs.",
@@ -653,7 +655,13 @@
     "run": "Start",
     "addToQueue": "Add to queue",
     "started": "{{count}} record(s) queued",
-    "runsInQueue": "The loop runs in the queue — leaving this page is safe."
+    "runsInQueue": "The loop runs in the queue — leaving this page is safe.",
+    "flow": {
+      "records": "Records",
+      "recordsHint": "Poster, description, genres…",
+      "cast": "Actors",
+      "castHint": "Biography, links, photo"
+    }
   },
   "api": {
     "loading": "Loading…"
@@ -1020,7 +1028,8 @@
     "two_factor_not_started": "Start turning it on first — there is no secret yet.",
     "two_factor_not_enabled": "Two-factor sign-in is not on.",
     "reset_link_expired": "The link no longer works — it either expired or has already been used.",
-    "cast_order_mismatch": "The cast list changed elsewhere — the page was refreshed, try again."
+    "cast_order_mismatch": "The cast list changed elsewhere — the page was refreshed, try again.",
+    "tmdb_unavailable": "TMDB is not responding — try again later."
   },
   "fields": {
     "title": "Fields",
@@ -2468,7 +2477,8 @@
       "export": "Export",
       "import": "Import",
       "cast_update": "Cast member edited",
-      "restore": "Restored from trash"
+      "restore": "Restored from trash",
+      "cast_sync": "Actor sync"
     },
     "modules": {
       "account": "Account",
@@ -3302,5 +3312,56 @@
   },
   "mediaDomains": {
     "pickOne": "Pick at least one domain."
+  },
+  "castSync": {
+    "domains": "Actors from which libraries",
+    "scope": "Which actors should it run on?",
+    "scopeNever": "Never updated yet",
+    "inLibrary": "{{count}} actor(s) in the library",
+    "scopeStale": "Not updated for a while",
+    "scopeStaleHint": "The never-updated ones are included too",
+    "daysAgo": "days or more since the last update",
+    "scopeAll": "Every actor in my records",
+    "scopeIds": "Specific actors",
+    "pickAll": "Select the listed",
+    "clear": "Clear",
+    "picked": "{{count}} selected",
+    "search": "Search actors…",
+    "none": "No actor found",
+    "truncated": "Showing the first 1000 — narrow it down with the search.",
+    "syncedOn": "Updated {{date}}",
+    "neverSynced": "Never updated",
+    "field": {
+      "details": "Personal details",
+      "biography": "Biography",
+      "links": "Social links and official site",
+      "photo": "Profile photo"
+    },
+    "fieldHint": {
+      "details": "Birth and death dates, place of birth, IMDb, “known for”, the Georgian name",
+      "biography": "In English — TMDB almost never has a Georgian one",
+      "links": "Instagram, X, Facebook, TikTok, YouTube, Wikidata",
+      "photo": "Downloaded when the actor has none yet"
+    },
+    "overwritePhoto": "Replace an existing photo too",
+    "overwritePhotoHint": "The photo is shared by every account — it is replaced with TMDB's current one.",
+    "affected": "{{count}} actor(s)",
+    "noTmdb": "{{count}} actor(s) skipped — no TMDB id.",
+    "allUpdated": "Everyone is up to date already — pick “Not updated for a while” or “Every actor”.",
+    "nothingStale": "Everyone was updated within the last {{days}} days.",
+    "pickActors": "Pick actors from the list.",
+    "emptyLibrary": "There are no actors in these libraries.",
+    "nothingToRun": "No actor is left to run.",
+    "started": "{{count}} actor(s) queued",
+    "result": {
+      "unchanged": "Unchanged — everything was already up to date",
+      "tmdbEmpty": "TMDB has no data on this person",
+      "noTmdbId": "No TMDB id"
+    },
+    "summary": {
+      "updated": "Updated {{count}}",
+      "unchanged": "Unchanged {{count}}",
+      "empty": "Nothing on TMDB {{count}}"
+    }
   }
 }

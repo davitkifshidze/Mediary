@@ -172,6 +172,10 @@ export const CODES = [
   'tmdb_not_configured',
   'lookup_query_required',
   'tmdb_not_found',
+  /* Tasks §39 — მსახიობის ნაბიჯი: წყარო არ პასუხობს (ქსელი, 5xx, 401).
+     ⚠️ `tmdb_not_found`-ისგან განსხვავდება — 404 იქ „არ არის", აქ კი
+     „ვერ ვკითხეთ" და მსახიობი შემდეგ გაშვებაზე ისევ ჩადგება რიგში. */
+  'tmdb_unavailable',
   /* ორივე `withMessages`-ით მოდის, ე.ი. `fieldErrors()`-საც სჭირდება —
      ველის ქვეით დახატული `account_disabled` ისევე გაუგებარი იქნებოდა. */
   'account_disabled',
