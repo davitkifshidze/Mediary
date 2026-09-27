@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, Library, Loader2, Plus, Search, X } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Library, Plus, X } from 'lucide-react'
 import {
   createGame,
   fetchRawgCandidates,
@@ -35,18 +35,25 @@ import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Label } from '@/components/ui/label'
 import { FieldLabel } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FieldAction, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import {
+  QuickFill,
+  QuickFillCandidate,
+  QuickFillMessage,
+  QuickFillResults,
+  QuickFillSearch,
+} from '@/components/ui/quick-fill'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
-import { InfoHint } from '@/components/ui/info-hint'
 import { RatingSelect } from '@/components/ui/rating-select'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
    თამაშის ფორმა (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -87,7 +94,7 @@ function ChipGroup<T extends string>({
   onToggle: (value: T) => void
 }) {
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {values.map((value) => (
         <button
           key={value}
@@ -106,6 +113,9 @@ function ChipGroup<T extends string>({
     </div>
   )
 }
+
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'game-form'
 
 export function GameForm({
   game,
@@ -164,6 +174,9 @@ export function GameForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
   const [franchiseOpen, setFranchiseOpen] = useState(false)
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('game', game)
 
   /* ---------- სწრაფი შევსება RAWG-იდან ---------- */
 
@@ -260,8 +273,16 @@ export function GameForm({
   /* ---------- შენახვა ---------- */
 
   const save = useMutation({
-    mutationFn: (input: GameInput) => (game ? updateGame(game.id, input) : createGame(input)),
-    onSuccess: () => {
+    mutationFn: (input: GameInput) => (extras.current ? updateGame(extras.current.id, input) : createGame(input)),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['games'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('games.saved'), variant: 'success' })
       onSaved()
     },
@@ -344,142 +365,131 @@ export function GameForm({
 
   return (
     <ModalShell title={t(game ? 'games.edit' : 'games.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ---------- სწრაფი შევსება ---------- */}
-        <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="g-lookup" className="flex items-center gap-1.5">{t('games.lookup')} <InfoHint info={t('games.lookupHint')} /></Label>
-          <div className="mt-1.5 flex gap-2">
-            <Input
-              id="g-lookup"
-              placeholder={t('games.lookupPlaceholder')}
-              value={lookupQuery}
-              onChange={(e) => setLookupQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  // ⚠️ ფორმის submit-ს ვაჩერებთ — Enter აქ „ძებნას" ნიშნავს
-                  e.preventDefault()
-                  if (lookupQuery.trim()) lookup.mutate()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!lookupQuery.trim() || lookup.isPending}
-              onClick={() => lookup.mutate()}
-            >
-              {lookup.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Search className="size-4" />
-              )}
-              {t('games.lookupSearch')}
-            </Button>
-          </div>
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* ---------- §26.2 — სწრაფი შევსება (ყველა ფორმის ერთი ბლოკი) ---------- */}
+        <QuickFill title={t('games.lookup')} hint={t('games.lookupHint')} htmlFor="g-lookup">
+          <QuickFillSearch
+            id="g-lookup"
+            value={lookupQuery}
+            onChange={setLookupQuery}
+            onSearch={() => lookup.mutate()}
+            busy={lookup.isPending}
+            placeholder={t('games.lookupPlaceholder')}
+            buttonLabel={t('games.lookupSearch')}
+          />
 
-          {unavailable && (
-            <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              {t('games.lookupUnavailable')}
-            </p>
+          {/* ⚠️ „წყარო მიუწვდომელია" ცალკე მდგომარეობაა და არა ცარიელი სია */}
+          {unavailable && <QuickFillMessage tone="warn">{t('games.lookupUnavailable')}</QuickFillMessage>}
+
+          {!unavailable && candidates && !candidates.length && (
+            <QuickFillMessage>{t('games.lookupEmpty')}</QuickFillMessage>
           )}
 
-          {!unavailable && candidates && (
-            <div className="mt-3 space-y-1.5">
-              {!candidates.length && (
-                <p className="text-xs text-muted-foreground">{t('games.lookupEmpty')}</p>
-              )}
+          {!unavailable && candidates && candidates.length > 0 && (
+            <QuickFillResults>
               {candidates.map((candidate) => (
-                <button
+                <QuickFillCandidate
                   key={`${candidate.source ?? 'rawg'}-${candidate.rawg_id ?? candidate.igdb_id}`}
-                  type="button"
+                  shape="wide"
+                  image={candidate.cover_url}
+                  title={candidate.title_en ?? '—'}
+                  meta={[
+                    candidate.release_date,
+                    candidate.genres?.join(', '),
+                    // საიდან მოვიდა — IGDB სათადარიგოა და ეს ცხადად ჩანს
+                    candidate.source === 'igdb' ? 'IGDB' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                   disabled={pick.isPending}
-                  onClick={() => pick.mutate(candidate)}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-md border border-border px-2 py-1.5 text-left hover:bg-muted"
-                >
-                  {candidate.cover_url ? (
-                    <img
-                      src={candidate.cover_url}
-                      alt=""
-                      className="h-10 w-16 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <span className="h-10 w-16 shrink-0 rounded bg-muted" />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm">{candidate.title_en ?? '—'}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[
-                        candidate.release_date,
-                        candidate.genres?.join(', '),
-                        // საიდან მოვიდა — IGDB სათადარიგოა და ეს ცხადად ჩანს
-                        candidate.source === 'igdb' ? 'IGDB' : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </span>
-                </button>
+                  onPick={() => pick.mutate(candidate)}
+                />
               ))}
-            </div>
+            </QuickFillResults>
           )}
-        </div>
+        </QuickFill>
 
-        {/* ---------- სათაური ---------- */}
-        {/* ⚠️ §5.1 — მხოლოდ ინგლისური; `title_ka` state-ში რჩება და ძველ
-            ჩანაწერს არ ეშლება (იხ. ფაილის თავში) */}
-        <div className="grid gap-4 sm:grid-cols-4">
-          {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
-          <div className={fields.shows('title') ? 'sm:col-span-2' : 'hidden'}>
-            <FieldLabel htmlFor="g-title-en" required>{fields.label('title')}</FieldLabel>
+        {/* ---------- §26 — ყდა ზემოთაა, სათაურთან და აღწერასთან ერთად ---------- */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('cover') && (
+              <>
+                <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
+                  {fields.label('cover')}
+                </FieldLabel>
+                <PosterUploader
+                  variant="wide"
+                  hint={t('games.coverHint')}
+                  preview={coverPreview}
+                  onSelect={(file) => {
+                    setCover(file)
+                    setRawgCoverUrl(null)
+                    setRemoveCover(false)
+                    setCoverPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setCover(null)
+                    setRawgCoverUrl(null)
+                    setCoverPreview(null)
+                    setRemoveCover(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          {/* ⚠️ §5.1 — მხოლოდ ინგლისური; `title_ka` state-ში რჩება და ძველ
+              ჩანაწერს არ ეშლება (იხ. ფაილის თავში). ⚠️ სათაური `locked`-ია
+              (§6.5) — ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` ისმის. */}
+          <FormField
+            {...fields.field('title')}
+            required
+            htmlFor="g-title-en"
+            error={errors.title_en ?? errors.title_ka}
+          >
             <Input
               id="g-title-en"
               value={form.title_en}
               onChange={(e) => setForm((f) => ({ ...f, title_en: e.target.value }))}
             />
-            {errors.title_en && <p className="mt-1 text-xs text-destructive">{errors.title_en}</p>}
-            {errors.title_ka && <p className="mt-1 text-xs text-destructive">{errors.title_ka}</p>}
-          </div>
-          <div className={fields.shows('release_date') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="g-release" required={fields.required('release_date')} hint={fields.hint('release_date')}>
-              {fields.label('release_date')}
-            </FieldLabel>
-            {/* §2.8 — საერთო პიქერი (`YYYY-MM-DD`, იგივე ფორმატი) */}
+          </FormField>
+
+          {/* §2.8 — საერთო პიქერი (`YYYY-MM-DD`, იგივე ფორმატი) */}
+          <FormField size="third" {...fields.field('release_date')} htmlFor="g-release">
             <DatePicker
               id="g-release"
               value={form.release_date || null}
               onChange={(v) => setForm((f) => ({ ...f, release_date: v ?? '' }))}
             />
-          </div>
-          <div className={fields.shows('publisher') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="g-pub" required={fields.required('publisher')} hint={fields.hint('publisher')}>
-              {fields.label('publisher')}
-            </FieldLabel>
+          </FormField>
+
+          <FormField size="third" {...fields.field('publisher')} htmlFor="g-pub">
             <Input
               id="g-pub"
               value={form.publisher}
               onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
             />
-          </div>
-        </div>
+          </FormField>
 
-        {/* ---------- ფრენჩაიზი — ტექსტი აღარაა, მოდალია (§5.1) ---------- */}
-        {fields.shows('franchise') && (
-          <div>
-            <FieldLabel required={fields.required('franchise')} hint={fields.hint('franchise')}>
-              {fields.label('franchise')}
-            </FieldLabel>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => setFranchiseOpen(true)}>
-                <Library className="size-4" />
-                {form.franchise || t('games.franchiseNone')}
+          {/* ფრენჩაიზი — ტექსტი აღარაა, მოდალია (§5.1) */}
+          <FormField size="third" {...fields.field('franchise')}>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-0 flex-1 justify-start"
+                onClick={() => setFranchiseOpen(true)}
+              >
+                <Library className="size-4 shrink-0" />
+                <span className="truncate">{form.franchise || t('games.franchiseNone')}</span>
               </Button>
               {!!form.franchise && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="shrink-0"
                   onClick={() => setForm((f) => ({ ...f, franchise: '' }))}
                   aria-label={t('games.franchiseClear')}
                 >
@@ -487,103 +497,29 @@ export function GameForm({
                 </Button>
               )}
             </div>
-          </div>
-        )}
+          </FormField>
 
-        {/* ---------- პლატფორმები და რეჟიმები ---------- */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('platforms') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('platforms')} hint={fields.hint('platforms')}>
-              {fields.label('platforms')}
-            </FieldLabel>
-            <ChipGroup
-              values={GAME_PLATFORMS}
-              selected={platforms}
-              label={(p) => t(`games.platforms.${p}`)}
-              onToggle={(p) => setPlatforms((cur) => toggleIn(cur, p))}
+          {/* ⚠️ §5.1 — მხოლოდ ინგლისური აღწერა; `description_ka` state-ში
+              რჩება და ძველ ჩანაწერს არ ეშლება */}
+          <FormField
+            {...fields.field('description')}
+            label={`${fields.label('description')} · ${t('fields.langEn')}`}
+            htmlFor="g-desc-en"
+          >
+            <Textarea
+              id="g-desc-en"
+              rows={FORM_TEXT_ROWS}
+              value={form.description_en}
+              onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
             />
-            {/* ⚠️ §5.1 — „სად ვთამაშობ" (`my_platform`) ფორმიდან მოიხსნა;
-                სვეტი და ძველი მნიშვნელობა რჩება (payload-ში ისევ მიდის) */}
-          </div>
+          </FormField>
+        </FormSection>
 
-          <div>
-            <span className={fields.shows('modes') ? undefined : 'hidden'}>
-              <FieldLabel required={fields.required('modes')} hint={fields.hint('modes')}>
-                {fields.label('modes')}
-              </FieldLabel>
-            </span>
-            <ChipGroup
-              values={GAME_MODES}
-              selected={modes}
-              label={(m) => t(`games.modes.${m}`)}
-              onToggle={(m) => setModes((cur) => toggleIn(cur, m))}
-            />
-
-            <div className="mt-3">
-              {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (11.1) */}
-              <div className={fields.shows('genres') ? 'flex items-center justify-between' : 'hidden'}>
-                <FieldLabel required={fields.required('genres')} hint={fields.hint('genres')}>
-                  {fields.label('genres')}
-                </FieldLabel>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setNewGenre(true)}
-                  title={t('gameGenres.add')}
-                >
-                  <Plus className="size-3.5" />
-                  {t('gameGenres.add')}
-                </Button>
-              </div>
-              <div
-                className={cn(
-                  fields.shows('genres') ? 'mt-1 flex flex-wrap gap-1.5' : 'hidden',
-                  // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
-                  errors.genre_ids && 'rounded-md border border-destructive p-1.5',
-                )}
-              >
-                {genres.map((genre) => (
-                  <button
-                    key={genre.id}
-                    type="button"
-                    onClick={() => setGenreIds((cur) => toggleIn(cur, genre.id))}
-                    className={cn(
-                      'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
-                      genreIds.includes(genre.id)
-                        ? 'border-primary bg-secondary font-medium'
-                        : 'border-border text-muted-foreground hover:bg-muted',
-                    )}
-                  >
-                    {dictionaryName(genre, lang)}
-                  </button>
-                ))}
-              </div>
-              {errors.genre_ids && (
-                <p className="mt-1 text-xs text-destructive">{errors.genre_ids}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ⚠️ §5.1 — ქულების ბლოკი (OpenCritic · მოთამაშეების ქულა) ფორმიდან
-            მოიხსნა; RAWG-ის ქულები payload-ში ისევ მიდის. Metacritic Tasks §13-ით
-            მთლიანად ამოვიდა. „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით. */}
-
-        {/* ---------- სტატუსი / ქულა / დამატებითი ---------- */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="g-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
-            >
-              <SelectTrigger
-                id="g-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
+        {/* ---------- კლასიფიკაცია ---------- */}
+        <FormSection title={t('form.sections.classification')}>
+          <FormField size="third" {...fields.field('status')} htmlFor="g-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}>
+              <SelectTrigger id="g-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -594,12 +530,11 @@ export function GameForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="g-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-              {fields.label('rating')}
-            </FieldLabel>
+          </FormField>
+
+          {/* ⚠️ §5.1 — OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება (payload-ში
+              ისევ მიდის); „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით */}
+          <FormField size="third" {...fields.field('rating')} htmlFor="g-rating" error={errors.rating}>
             <RatingSelect
               id="g-rating"
               max={GAME_MAX_RATING}
@@ -607,12 +542,9 @@ export function GameForm({
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}
             />
-            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
-          </div>
-          <div className={fields.shows('rawg_id') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="g-rawg" required={fields.required('rawg_id')} hint={fields.hint('rawg_id')}>
-              {fields.label('rawg_id')}
-            </FieldLabel>
+          </FormField>
+
+          <FormField size="third" {...fields.field('rawg_id')} htmlFor="g-rawg" error={errors.rawg_id}>
             <Input
               id="g-rawg"
               type="number"
@@ -620,19 +552,68 @@ export function GameForm({
               value={form.rawgId}
               onChange={(e) => setForm((f) => ({ ...f, rawgId: e.target.value }))}
             />
-            {errors.rawg_id && <p className="mt-1 text-xs text-destructive">{errors.rawg_id}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            {/* ლინკები: ოფიციალური საიტი და მაღაზიები (§11.1) */}
-            <span className={fields.shows('links') ? undefined : 'hidden'}>
-              <FieldLabel required={fields.required('links')} hint={fields.hint('links')}>
-                {fields.label('links')}
-              </FieldLabel>
-            </span>
-            <div className={fields.shows('links') ? 'mt-1.5 space-y-1.5' : 'hidden'}>
+          {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (11.1) */}
+          <FormField
+            {...fields.field('genres')}
+            error={errors.genre_ids}
+            action={
+              <FieldAction onClick={() => setNewGenre(true)} icon={<Plus className="size-3.5" />}>
+                {t('gameGenres.add')}
+              </FieldAction>
+            }
+          >
+            <div
+              className={cn(
+                'flex flex-wrap gap-1.5',
+                // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
+                errors.genre_ids && 'rounded-md border border-destructive p-1.5',
+              )}
+            >
+              {genres.map((genre) => (
+                <button
+                  key={genre.id}
+                  type="button"
+                  onClick={() => setGenreIds((cur) => toggleIn(cur, genre.id))}
+                  className={cn(
+                    'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
+                    genreIds.includes(genre.id)
+                      ? 'border-primary bg-secondary font-medium'
+                      : 'border-border text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  {dictionaryName(genre, lang)}
+                </button>
+              ))}
+            </div>
+          </FormField>
+
+          <FormField size="half" {...fields.field('platforms')}>
+            <ChipGroup
+              values={GAME_PLATFORMS}
+              selected={platforms}
+              label={(p) => t(`games.platforms.${p}`)}
+              onToggle={(p) => setPlatforms((cur) => toggleIn(cur, p))}
+            />
+            {/* ⚠️ §5.1 — „სად ვთამაშობ" (`my_platform`) ფორმიდან მოიხსნა;
+                სვეტი და ძველი მნიშვნელობა რჩება (payload-ში ისევ მიდის) */}
+          </FormField>
+
+          <FormField size="half" {...fields.field('modes')}>
+            <ChipGroup
+              values={GAME_MODES}
+              selected={modes}
+              label={(m) => t(`games.modes.${m}`)}
+              onToggle={(m) => setModes((cur) => toggleIn(cur, m))}
+            />
+          </FormField>
+        </FormSection>
+
+        {/* ---------- დეტალები: ბმულები — ოფიციალური საიტი და მაღაზიები (§11.1) ---------- */}
+        <FormSection title={t('form.sections.details')} className={fields.shows('links') ? undefined : 'hidden'}>
+          <FormField {...fields.field('links')}>
+            <div className="space-y-1.5">
               {/* Tasks §22.3 — ორი ღერძი: „რა არის" (ტიპი) და „სად" (მხოლოდ მაღაზიას —
                   ჰოსტიდან ამოიცნობა), + არჩევითი წარწერა */}
               {links.map((link, i) => {
@@ -720,63 +701,19 @@ export function GameForm({
                 {t('games.addLink')}
               </Button>
             </div>
-
-          </div>
-
-          <div>
-            <span className={fields.shows('cover') ? undefined : 'hidden'}>
-              <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
-                {fields.label('cover')}
-              </FieldLabel>
-            </span>
-            <PosterUploader
-              variant="wide"
-              hint={t('games.coverHint')}
-              preview={coverPreview}
-              onSelect={(file) => {
-                setCover(file)
-                setRawgCoverUrl(null)
-                setRemoveCover(false)
-                setCoverPreview(URL.createObjectURL(file))
-              }}
-              onClear={() => {
-                setCover(null)
-                setRawgCoverUrl(null)
-                setCoverPreview(null)
-                setRemoveCover(true)
-              }}
-            />
-
-            {/* ⚠️ §5.1 — მხოლოდ ინგლისური აღწერა; `description_ka` state-ში
-                რჩება და ძველ ჩანაწერს არ ეშლება */}
-            <div className={fields.shows('description') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="g-desc-en" required={fields.required('description')} hint={fields.hint('description')}>
-                {fields.label('description')} · {t('fields.langEn')}
-              </FieldLabel>
-              <Textarea
-                id="g-desc-en"
-                rows={8}
-                value={form.description_en}
-                onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
-      <div className="mt-4">
-        <CustomFieldsCard module="game" recordId={game?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ თამაშზე მონახაზი */}
+      <CustomFieldsCard
+        module="game"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* ფრენჩაიზის მოდალი (§5.1) — ნაწილების სია + ბიბლიოთეკაში დამატება */}
       {franchiseOpen && (
