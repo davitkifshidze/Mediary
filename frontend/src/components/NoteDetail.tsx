@@ -12,6 +12,10 @@ import { useDateFormat } from '@/lib/dates'
 
    ⚠️ ატვირთვები **კვოტაზე გადის** (§13.1 → 17.1): ლიმიტის ამოწურვაზე
    backend 413-ს აბრუნებს და toast ცხადად წერს, რამდენი დარჩა.
+
+   ⚠️ **რიგი §26.4-ით**: ფოტოები ზემოთ, მერე ვადა, აღწერა, ბმულები,
+   დოკუმენტები და ვიდეოები. ⚠️ ფოტოები პრივატულ დისკზეა, ამიტომ ისინი
+   `NoteUploads`-ის ბადეში რჩება და არა საჯარო ვიტრინაში (`DetailPhotos`).
    ============================================================ */
 
 /* ⚠️ **`focus`-ის პროპი და გადახვევა მოიხსნა (ეტაპი 11).** ის ეტაპ 7-ზე
@@ -46,6 +50,9 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   return (
     <ModalShell title={note.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
+        {/* ---------- ფოტოები — ზემოთ (§26.4) ---------- */}
+        <NoteUploads noteId={note.id} kinds={['image']} />
+
         {note.due_at && (
           <p className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm">
             <CalendarClock className="size-4 text-muted-foreground" />
@@ -78,8 +85,8 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
           </section>
         )}
 
-        {/* სამივე ატვირთვის სექცია — იგივე კომპონენტი, რაც ფორმაშია */}
-        <NoteUploads noteId={note.id} />
+        {/* დოკუმენტები და ვიდეოები — იგივე კომპონენტი, რაც ფორმაშია */}
+        <NoteUploads noteId={note.id} kinds={['doc', 'video']} />
 
         {/* ეტაპი 11 — იგივე ღილაკი, რაც ფორმაში: ერთი შესვლის წერტილი */}
         <NoteRemindersButton note={note} onOpen={() => setReminders(true)} />

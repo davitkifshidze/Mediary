@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, ExternalLink, FileText, Image as ImageIcon, Loader2, Upload } from 'lucide-react'
+import { Award, ExternalLink, FileText, GraduationCap, Image as ImageIcon, Loader2, Upload } from 'lucide-react'
 import {
   COURSE_FILE_KINDS,
   deleteCourseFile,
@@ -19,10 +19,13 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { DetailFacts, DetailHero, DetailPhotos } from '@/components/DetailHero'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { videoTypeName as dictionaryName } from '@/lib/display'
+import { useContentLang } from '@/lib/settings'
 
 /**
  * **კურსის ბარათი (FEAT-25).**
@@ -42,7 +45,8 @@ const KIND_ICON: Record<CourseFileKind, typeof Award> = {
 }
 
 export function CourseDetail({ course, onClose }: { course: Course; onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
@@ -77,6 +81,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
   })
 
   const files = filesQ.data ?? []
+  const images = files.filter((f) => f.kind === 'image')
 
   const section = (kind: CourseFileKind) => {
     const rows = files.filter((f) => f.kind === kind)
@@ -154,14 +159,47 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
   return (
     <ModalShell title={course.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <EnumStatusBadge domain="course" status={course.status} />
-            {course.platform && <Badge className="bg-secondary">{course.platform}</Badge>}
-          </div>
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-          <VisibilityBadge value={course.visibility} />
-        </div>
+        {/* ---------- თავი: ფოტო, სტატუსი, კატეგორია, პლატფორმა (§26.4) ---------- */}
+        <DetailHero
+          image={storageUrl(course.image)}
+          alt={course.title}
+          shape="wide"
+          fallback={<GraduationCap className="size-8 text-muted-foreground" />}
+          badges={
+            <>
+              <EnumStatusBadge domain="course" status={course.status} />
+              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              <VisibilityBadge value={course.visibility} />
+            </>
+          }
+        >
+          {course.category && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs">
+                <ModuleIcon name={course.category.icon} className="size-3" />
+                {dictionaryName(course.category, lang)}
+              </span>
+            </div>
+          )}
+          {course.platform && (
+            <DetailFacts>
+              <Badge className="bg-secondary">{course.platform}</Badge>
+            </DetailFacts>
+          )}
+        </DetailHero>
+
+        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        <DetailPhotos
+          title={t('courses.fileKinds.image')}
+          items={images.map((f) => ({ id: f.id, src: f.path, title: f.original_name }))}
+          loading={filesQ.isLoading}
+          uploading={upload.isPending}
+          onUpload={(picked) => upload.mutate({ kind: 'image', files: picked })}
+          onDelete={(id) => remove.mutate(id)}
+          uploadLabel={t('courses.addPhotos')}
+          emptyTitle={t('courses.photosEmpty')}
+          deleteTitle={t('courses.photoDeleteTitle')}
+        />
 
         {course.description && (
           <p className="whitespace-pre-line text-sm text-muted-foreground">{course.description}</p>
@@ -180,18 +218,11 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           </a>
         )}
 
+        {/* სერტიფიკატი და დოკუმენტები — ფოტოები ზემოთაა (§26.4) */}
         {filesQ.isLoading ? (
           <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
         ) : (
-          <div className="space-y-5">{COURSE_FILE_KINDS.map(section)}</div>
-        )}
-
-        {!filesQ.isLoading && files.length === 0 && (
-          <EmptyState
-            icon={<Award className="size-6" />}
-            title={t('courses.noFilesTitle')}
-            hint={t('courses.certificateHint')}
-          />
+          <div className="space-y-5">{COURSE_FILE_KINDS.filter((kind) => kind !== 'image').map(section)}</div>
         )}
       </div>
 

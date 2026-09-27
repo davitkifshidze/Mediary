@@ -21,10 +21,13 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { DetailFacts, DetailHero, DetailPhotos } from '@/components/DetailHero'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { videoTypeName as dictionaryName } from '@/lib/display'
+import { useContentLang } from '@/lib/settings'
 
 /**
  * **ადგილის ბარათი (FEAT-26).**
@@ -44,7 +47,8 @@ const KIND_ICON: Record<PlaceFileKind, typeof MapPin> = {
 }
 
 export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const { date: formatDate } = useDateFormat()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -80,6 +84,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
   })
 
   const files = filesQ.data ?? []
+  const images = files.filter((f) => f.kind === 'image')
 
   const section = (kind: PlaceFileKind) => {
     const rows = files.filter((f) => f.kind === kind)
@@ -157,30 +162,57 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
   return (
     <ModalShell title={place.name} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <EnumStatusBadge domain="place" status={place.status} />
-            {place.rating != null && (
-              <Badge className="bg-secondary tabular-nums">
-                {place.rating}/{PLACE_MAX_RATING}
-              </Badge>
-            )}
-            {place.visited_at && (
-              <span className="text-sm text-muted-foreground">
-                {t('places.visitedOn', { date: formatDate(place.visited_at) })}
+        {/* ---------- თავი: ფოტო, სტატუსი, ქულა, მისამართი (§26.4) ---------- */}
+        <DetailHero
+          image={storageUrl(place.photo)}
+          alt={place.name}
+          shape="wide"
+          fallback={<MapPin className="size-8 text-muted-foreground" />}
+          badges={
+            <>
+              <EnumStatusBadge domain="place" status={place.status} />
+              {place.rating != null && (
+                <Badge className="bg-secondary tabular-nums">
+                  {place.rating}/{PLACE_MAX_RATING}
+                </Badge>
+              )}
+              {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+              <VisibilityBadge value={place.visibility} />
+            </>
+          }
+        >
+          {place.category && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs">
+                <ModuleIcon name={place.category.icon} className="size-3" />
+                {dictionaryName(place.category, lang)}
+              </span>
+            </div>
+          )}
+          <DetailFacts>
+            {(place.address || place.city || place.country) && (
+              <span className="inline-flex items-start gap-1.5">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                {place.address ?? [place.city, place.country].filter(Boolean).join(', ')}
               </span>
             )}
-          </div>
-          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-          <VisibilityBadge value={place.visibility} />
-        </div>
+            {place.visited_at && <span>{t('places.visitedOn', { date: formatDate(place.visited_at) })}</span>}
+          </DetailFacts>
+        </DetailHero>
 
-        {(place.address || place.city || place.country) && (
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <MapPin className="mt-0.5 size-4 shrink-0" />
-            <span>{place.address ?? [place.city, place.country].filter(Boolean).join(', ')}</span>
-          </p>
-        )}
+        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
+        <DetailPhotos
+          title={t('places.fileKinds.image')}
+          hint={t('places.photosHint')}
+          items={images.map((f) => ({ id: f.id, src: f.path, title: f.original_name }))}
+          loading={filesQ.isLoading}
+          uploading={upload.isPending}
+          onUpload={(picked) => upload.mutate({ kind: 'image', files: picked })}
+          onDelete={(id) => remove.mutate(id)}
+          uploadLabel={t('places.addPhotos')}
+          emptyTitle={t('places.photosEmpty')}
+          deleteTitle={t('places.photoDeleteTitle')}
+        />
 
         {place.description && (
           <p className="whitespace-pre-line text-sm text-muted-foreground">{place.description}</p>
@@ -203,18 +235,11 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           </a>
         )}
 
+        {/* დოკუმენტები — ფოტოები ზემოთაა (§26.4) */}
         {filesQ.isLoading ? (
           <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
         ) : (
-          <div className="space-y-5">{PLACE_FILE_KINDS.map(section)}</div>
-        )}
-
-        {!filesQ.isLoading && files.length === 0 && (
-          <EmptyState
-            icon={<ImageIcon className="size-6" />}
-            title={t('places.noFilesTitle')}
-            hint={t('places.photosHint')}
-          />
+          <div className="space-y-5">{PLACE_FILE_KINDS.filter((kind) => kind !== 'image').map(section)}</div>
         )}
       </div>
 

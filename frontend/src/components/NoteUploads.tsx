@@ -43,10 +43,16 @@ type Kind = NoteFile['kind']
 export function NoteUploads({
   noteId,
   pending,
+  kinds = ['image', 'doc', 'video'],
 }: {
   noteId: number | null
   /** ფორმის შენახვამდე არჩეული ფაილები (§23.4); დეტალების ფანჯარას არ სჭირდება */
   pending?: PendingUploads<Kind>
+  /**
+   * რომელი სექციები (Tasks §26.4) — დეტალის ფანჯარა **ფოტოებს ზემოთ** ხატავს,
+   * დოკუმენტებსა და ვიდეოებს კი აღწერისა და ბმულების შემდეგ.
+   */
+  kinds?: Kind[]
 }) {
   const { t } = useTranslation()
   const { data: limits } = useUploadLimits()
@@ -71,22 +77,20 @@ export function NoteUploads({
     </>
   )
 
+  const TITLES: Record<Kind, [string, string]> = {
+    image: [t('notes.imagesTitle'), t('notes.imagesHint')],
+    doc: [t('notes.filesTitle'), t('notes.filesHint')],
+    video: [t('notes.videosTitle'), t('notes.videosHint')],
+  }
+
   return (
     <div className="space-y-6">
-      <section>
-        <SectionHead title={t('notes.imagesTitle')} hint={t('notes.imagesHint')} limit={hint('image')} />
-        {body('image')}
-      </section>
-
-      <section>
-        <SectionHead title={t('notes.filesTitle')} hint={t('notes.filesHint')} limit={hint('doc')} />
-        {body('doc')}
-      </section>
-
-      <section>
-        <SectionHead title={t('notes.videosTitle')} hint={t('notes.videosHint')} limit={hint('video')} />
-        {body('video')}
-      </section>
+      {kinds.map((kind) => (
+        <section key={kind}>
+          <SectionHead title={TITLES[kind][0]} hint={TITLES[kind][1]} limit={hint(kind)} />
+          {body(kind)}
+        </section>
+      ))}
     </div>
   )
 }

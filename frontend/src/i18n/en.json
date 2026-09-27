@@ -3279,7 +3279,6 @@
     "open": "Open the course",
     "files": "Files",
     "noFiles": "No files.",
-    "noFilesTitle": "Nothing uploaded yet",
     "certificateHint": "The completion certificate — the thing a course ends with, which is why it has a block of its own rather than sitting among the notes.",
     "fileKinds": {
       "certificate": "Certificate",
@@ -3295,7 +3294,10 @@
     "sort_newest": "Newest",
     "sort_oldest": "Oldest",
     "sort_title": "By name",
-    "sort_finished": "By finish date"
+    "sort_finished": "By finish date",
+    "addPhotos": "Upload photos",
+    "photosEmpty": "No photos yet.",
+    "photoDeleteTitle": "Delete the photo?"
   },
   "places": {
     "title": "Places",
@@ -3321,7 +3323,6 @@
     "visitedOn": "Visited {{date}}",
     "files": "Files",
     "noFiles": "No files.",
-    "noFilesTitle": "Nothing uploaded yet",
     "photosHint": "Photos you took yourself live here; ones found on the web go to the gallery.",
     "lookupTitle": "Search the source",
     "lookupHint": "OpenStreetMap is free and needs no key. The search is a button of its own — the source allows one request per second.",
@@ -3341,7 +3342,10 @@
     "sort_oldest": "Oldest",
     "sort_name": "By name",
     "sort_rating": "By rating",
-    "sort_visited": "By visit date"
+    "sort_visited": "By visit date",
+    "addPhotos": "Upload photos",
+    "photosEmpty": "No photos yet.",
+    "photoDeleteTitle": "Delete the photo?"
   },
   "courseCategories": {
     "title": "Course categories",

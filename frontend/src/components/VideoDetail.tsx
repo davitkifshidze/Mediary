@@ -27,8 +27,12 @@ import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
-   ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · ჩანიშვნები · დოკუმენტები.
+   ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · დოკუმენტები · ჩანიშვნები.
    ფაილები `video_files`-შია, ჩანიშვნები `video_notes`-ში — ცხრილი სექციისაა.
+
+   ⚠️ Tasks §26.4 — ჩანართების რიგი ყველა დეტალის ფანჯრის რიგს მიჰყვება
+   (ფოტოები ზემოთ, მერე … დოკუმენტები, ჩანიშვნები); ჩანართები თვითონ რჩება —
+   ეს შენი გადაწყვეტილებაა (ბარათები შიგთავსს ეკრანის ქვემოთ ჩაწევდა).
    ============================================================ */
 
 type Tab = 'video' | 'images' | 'notes' | 'docs'
@@ -93,8 +97,8 @@ export function VideoDetail({
   const TABS: TabItem<Tab>[] = [
     { value: 'video', label: t('videos.tabVideo') },
     { value: 'images', label: t('videos.tabImages'), badge: images.length || undefined },
-    { value: 'notes', label: t('videos.tabNotes'), badge: notes.length || undefined },
     { value: 'docs', label: t('videos.tabDocs'), badge: docs.length || undefined },
+    { value: 'notes', label: t('videos.tabNotes'), badge: notes.length || undefined },
   ]
 
   const uploadButton = (kind: 'image' | 'doc') => (
