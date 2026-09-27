@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, Check, Loader2, Plus, Search, Store, X } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Check, Loader2, Plus, Store, X } from 'lucide-react'
 import {
   BOARD_GAME_MAX_RATING,
   createBoardGame,
@@ -28,16 +28,23 @@ import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
-import { Label } from '@/components/ui/label'
 import { FieldLabel } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import {
+  QuickFill,
+  QuickFillCandidate,
+  QuickFillMessage,
+  QuickFillResults,
+  QuickFillSearch,
+} from '@/components/ui/quick-fill'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
-import { InfoHint } from '@/components/ui/info-hint'
 import { RatingSelect } from '@/components/ui/rating-select'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
    ბორდგეიმის ფორმა (Tasks §14).
@@ -50,6 +57,9 @@ import { RatingSelect } from '@/components/ui/rating-select'
    საერთოდ არ გაიხსნას — ასეთ დროს ცხადად ვწერთ („წყარო მიუწვდომელია"),
    და არა „ვერაფერი მოიძებნა".
    ============================================================ */
+
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'board-game-form'
 
 export function BoardGameForm({
   game,
@@ -97,6 +107,9 @@ export function BoardGameForm({
   const [removeImage, setRemoveImage] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ თამაშზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('board_game', game)
 
   /* ---------- სწრაფი შევსება BGG-დან ---------- */
 
@@ -223,8 +236,16 @@ export function BoardGameForm({
 
   const save = useMutation({
     mutationFn: (input: BoardGameInput) =>
-      game ? updateBoardGame(game.id, input) : createBoardGame(input),
-    onSuccess: () => {
+      extras.current ? updateBoardGame(extras.current.id, input) : createBoardGame(input),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['board-games'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('boardGames.saved'), variant: 'success' })
       onSaved()
     },
@@ -297,79 +318,42 @@ export function BoardGameForm({
 
   return (
     <ModalShell title={t(game ? 'boardGames.edit' : 'boardGames.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ---------- სწრაფი შევსება ---------- */}
-        <div className="rounded-lg border border-border bg-card/50 p-3">
-          <Label htmlFor="bg-lookup" className="flex items-center gap-1.5">{t('boardGames.lookup')} <InfoHint info={t('boardGames.lookupHint')} /></Label>
-          <div className="mt-1.5 flex gap-2">
-            <Input
-              id="bg-lookup"
-              placeholder={t('boardGames.lookupPlaceholder')}
-              value={lookupQuery}
-              onChange={(e) => setLookupQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  // ⚠️ ფორმის submit-ს ვაჩერებთ — Enter აქ „ძებნას" ნიშნავს
-                  e.preventDefault()
-                  if (lookupQuery.trim()) searchAll()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!lookupQuery.trim() || lookup.isPending || shopLookup.isPending}
-              onClick={searchAll}
-            >
-              {lookup.isPending || shopLookup.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Search className="size-4" />
-              )}
-              {t('boardGames.lookupSearch')}
-            </Button>
-          </div>
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* ---------- §26.2 — სწრაფი შევსება: BGG + ქართული მაღაზიები ერთი ღილაკით ---------- */}
+        <QuickFill title={t('boardGames.lookup')} hint={t('boardGames.lookupHint')} htmlFor="bg-lookup">
+          <QuickFillSearch
+            id="bg-lookup"
+            value={lookupQuery}
+            onChange={setLookupQuery}
+            onSearch={searchAll}
+            busy={lookup.isPending || shopLookup.isPending}
+            placeholder={t('boardGames.lookupPlaceholder')}
+            buttonLabel={t('boardGames.lookupSearch')}
+          />
 
-          {unavailable && (
-            <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              {t('boardGames.lookupUnavailable')}
-            </p>
+          {/* ⚠️ „წყარო მიუწვდომელია" ცალკე მდგომარეობაა და არა ცარიელი სია */}
+          {unavailable && <QuickFillMessage tone="warn">{t('boardGames.lookupUnavailable')}</QuickFillMessage>}
+
+          {!unavailable && candidates && !candidates.length && (
+            <QuickFillMessage>{t('boardGames.lookupEmpty')}</QuickFillMessage>
           )}
 
-          {!unavailable && candidates && (
-            <div className="mt-3 space-y-1.5">
-              {!candidates.length && (
-                <p className="text-xs text-muted-foreground">{t('boardGames.lookupEmpty')}</p>
-              )}
+          {!unavailable && candidates && candidates.length > 0 && (
+            <QuickFillResults>
               {candidates.map((candidate) => (
-                <button
+                <QuickFillCandidate
                   key={candidate.bgg_id}
-                  type="button"
+                  shape="square"
+                  image={candidate.image_url}
+                  title={candidate.title ?? '—'}
+                  meta={[candidate.year, candidate.designer, candidate.bgg_rating ? `BGG ${candidate.bgg_rating}` : null]
+                    .filter(Boolean)
+                    .join(' · ')}
                   disabled={pick.isPending}
-                  onClick={() => pick.mutate(candidate)}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-md border border-border px-2 py-1.5 text-left hover:bg-muted"
-                >
-                  {candidate.image_url ? (
-                    <img src={candidate.image_url} alt="" className="size-10 shrink-0 rounded object-cover" />
-                  ) : (
-                    <span className="size-10 shrink-0 rounded bg-muted" />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm">{candidate.title ?? '—'}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[
-                        candidate.year,
-                        candidate.designer,
-                        candidate.bgg_rating ? `BGG ${candidate.bgg_rating}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </span>
-                </button>
+                  onPick={() => pick.mutate(candidate)}
+                />
               ))}
-            </div>
+            </QuickFillResults>
           )}
 
           {/* ---------- ქართული მაღაზიები (§7.2) ---------- */}
@@ -382,16 +366,18 @@ export function BoardGameForm({
 
               {/* ⚠️ „მაღაზია არ გაიხსნა" ≠ „ვერაფერი იპოვა" — ცალკე ვწერთ */}
               {shopSources.some((source) => !source.ok) && (
-                <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
-                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                <QuickFillMessage tone="warn">
                   {t('boardGames.shopSearch.unavailable', {
-                    shops: shopSources.filter((source) => !source.ok).map((source) => source.name).join(', '),
+                    shops: shopSources
+                      .filter((source) => !source.ok)
+                      .map((source) => source.name)
+                      .join(', '),
                   })}
-                </p>
+                </QuickFillMessage>
               )}
 
               {offers !== null && !offers.length && !shopLookup.isPending && (
-                <p className="mt-2 text-xs text-muted-foreground">{t('boardGames.shopSearch.empty')}</p>
+                <QuickFillMessage>{t('boardGames.shopSearch.empty')}</QuickFillMessage>
               )}
 
               <div className="mt-2 space-y-1.5">
@@ -400,7 +386,7 @@ export function BoardGameForm({
                   return (
                     <div
                       key={`${offer.shop}-${offer.url}`}
-                      className="flex items-center gap-3 rounded-md border border-border px-2 py-1.5"
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-2"
                     >
                       {offer.image ? (
                         <img src={offer.image} alt="" className="size-10 shrink-0 rounded object-cover" />
@@ -446,331 +432,13 @@ export function BoardGameForm({
               </div>
             </div>
           )}
-        </div>
+        </QuickFill>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
-          <div className={fields.shows('title') ? 'sm:col-span-2' : 'hidden'}>
-            <FieldLabel htmlFor="bg-title" required>{fields.label('title')}</FieldLabel>
-            <Input
-              id="bg-title"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            />
-            {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-          </div>
-          <div className={fields.shows('year') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="bg-year" required={fields.required('year')} hint={fields.hint('year')}>
-              {fields.label('year')}
-            </FieldLabel>
-            <Input
-              id="bg-year"
-              type="number"
-              inputMode="numeric"
-              value={form.year}
-              onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {fields.shows('designer') && (
-            <div>
-              <FieldLabel htmlFor="bg-designer" required={fields.required('designer')} hint={fields.hint('designer')}>
-                {fields.label('designer')}
-              </FieldLabel>
-              <Input
-                id="bg-designer"
-                placeholder={fields.placeholder('designer')}
-                value={form.designer}
-                onChange={(e) => setForm((f) => ({ ...f, designer: e.target.value }))}
-              />
-            </div>
-          )}
-          {fields.shows('publisher') && (
-            <div>
-              <FieldLabel htmlFor="bg-publisher" required={fields.required('publisher')} hint={fields.hint('publisher')}>
-                {fields.label('publisher')}
-              </FieldLabel>
-              <Input
-                id="bg-publisher"
-                placeholder={fields.placeholder('publisher')}
-                value={form.publisher}
-                onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* მოთამაშეები / ასაკი / ხანგრძლივობა */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className={fields.shows('players') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('players')} hint={fields.hint('players')}>
-              {fields.label('players')}
-            </FieldLabel>
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                placeholder={t('boardGames.min')}
-                value={form.players_min}
-                onChange={(e) => setForm((f) => ({ ...f, players_min: e.target.value }))}
-              />
-              <span className="text-muted-foreground">–</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                placeholder={t('boardGames.max')}
-                value={form.players_max}
-                onChange={(e) => setForm((f) => ({ ...f, players_max: e.target.value }))}
-              />
-            </div>
-            {errors.players_max && (
-              <p className="mt-1 text-xs text-destructive">{errors.players_max}</p>
-            )}
-          </div>
-
-          <div className={fields.shows('playtime') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('playtime')} hint={fields.hint('playtime')}>
-              {fields.label('playtime')}
-            </FieldLabel>
-            {/* §2.5 — საათი+წუთი ერთი კომპონენტით; სვეტი ისევ **წუთებია** */}
-            <div className="mt-1.5 space-y-1.5">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="w-8 shrink-0 text-xs text-muted-foreground">
-                  {t('boardGames.min')}
-                </span>
-                <DurationInput
-                  unit="minutes"
-                  value={form.playtime_min ? Number(form.playtime_min) : null}
-                  onChange={(v) => setForm((f) => ({ ...f, playtime_min: v == null ? '' : String(v) }))}
-                />
-              </span>
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="w-8 shrink-0 text-xs text-muted-foreground">
-                  {t('boardGames.max')}
-                </span>
-                <DurationInput
-                  unit="minutes"
-                  value={form.playtime_max ? Number(form.playtime_max) : null}
-                  onChange={(v) => setForm((f) => ({ ...f, playtime_max: v == null ? '' : String(v) }))}
-                />
-              </span>
-            </div>
-            {errors.playtime_max && (
-              <p className="mt-1 text-xs text-destructive">{errors.playtime_max}</p>
-            )}
-          </div>
-
-          <div className={fields.shows('age') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="bg-age" required={fields.required('age')} hint={fields.hint('age')}>
-              {fields.label('age')}
-            </FieldLabel>
-            <Input
-              id="bg-age"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={form.age_min}
-              onChange={(e) => setForm((f) => ({ ...f, age_min: e.target.value }))}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-4">
-          {fields.shows('complexity') && (
-            <div>
-              <FieldLabel htmlFor="bg-complexity" required={fields.required('complexity')} hint={fields.hint('complexity')}>
-                {fields.label('complexity')}
-              </FieldLabel>
-              <Input
-                id="bg-complexity"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min={1}
-                max={5}
-                placeholder={fields.placeholder('complexity')}
-                value={form.complexity}
-                onChange={(e) => setForm((f) => ({ ...f, complexity: e.target.value }))}
-              />
-            </div>
-          )}
-          <div className={fields.shows('bgg_id') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="bg-id" required={fields.required('bgg_id')} hint={fields.hint('bgg_id')}>
-              {fields.label('bgg_id')}
-            </FieldLabel>
-            <Input
-              id="bg-id"
-              type="number"
-              inputMode="numeric"
-              value={form.bggId}
-              onChange={(e) => setForm((f) => ({ ...f, bggId: e.target.value }))}
-            />
-            {errors.bgg_id && <p className="mt-1 text-xs text-destructive">{errors.bgg_id}</p>}
-          </div>
-          {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="bg-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-              {fields.label('rating')}
-            </FieldLabel>
-            <RatingSelect
-              id="bg-rating"
-              max={BOARD_GAME_MAX_RATING}
-              value={form.rating}
-              invalid={!!errors.rating}
-              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
-            />
-            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
-            <div className={fields.shows('genre') ? undefined : 'hidden'}>
-              <FieldLabel htmlFor="bg-genre" required={fields.required('genre')} hint={fields.hint('genre')}>
-                {fields.label('genre')}
-              </FieldLabel>
-            </div>
-            <div className={fields.shows('genre') ? 'flex gap-1' : 'hidden'}>
-              <Select
-                value={form.genreId}
-                onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}
-              >
-                <SelectTrigger
-                  id="bg-genre"
-                  className={errors.genre_id ? 'border-destructive' : undefined}
-                >
-                  <SelectValue placeholder={t('validation.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {genres.map((genre) => (
-                    <SelectItem key={genre.id} value={String(genre.id)}>
-                      {dictionaryName(genre, lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => setNewGenre(true)}
-                title={t('boardGameGenres.add')}
-                aria-label={t('boardGameGenres.add')}
-              >
-                <Plus className="size-4" />
-              </Button>
-            </div>
-            {errors.genre_id && <p className="mt-1 text-xs text-destructive">{errors.genre_id}</p>}
-
-            {/* მაღაზიები: ბმული + ფასი (§14) */}
-            <div className={fields.shows('links') ? 'mt-4' : 'hidden'}>
-              <FieldLabel required={fields.required('links')} hint={fields.hint('links')}>
-                {fields.label('links')}
-              </FieldLabel>
-              <div className="mt-1.5 space-y-1.5">
-                {links.map((link, i) => (
-                  <div key={link._key} className="flex gap-1.5">
-                    <Input
-                      className="w-24 shrink-0"
-                      placeholder={t('books.linkLabel')}
-                      value={link.label ?? ''}
-                      onChange={(e) =>
-                        setLinks((all) =>
-                          all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                        )
-                      }
-                    />
-                    <Input
-                      placeholder="https://…"
-                      value={link.url}
-                      onChange={(e) =>
-                        setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
-                      }
-                    />
-                    <Input
-                      className="w-20 shrink-0"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min={0}
-                      placeholder={t('boardGames.price')}
-                      value={link.price ?? ''}
-                      onChange={(e) =>
-                        setLinks((all) =>
-                          all.map((x, j) =>
-                            j === i
-                              ? { ...x, price: e.target.value === '' ? null : Number(e.target.value) }
-                              : x,
-                          ),
-                        )
-                      }
-                    />
-                    <Input
-                      className="w-16 shrink-0"
-                      placeholder="GEL"
-                      value={link.currency ?? ''}
-                      onChange={(e) =>
-                        setLinks((all) =>
-                          all.map((x, j) => (j === i ? { ...x, currency: e.target.value } : x)),
-                        )
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0"
-                      onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
-                      aria-label={t('actions.delete')}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <div className="flex flex-wrap gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setLinks((all) => [...all, keyRow({ label: '', url: '', price: null, currency: '' })])
-                    }
-                  >
-                    <Plus className="size-3.5" />
-                    {t('boardGames.addShop')}
-                  </Button>
-                  {/* რედაქტირებისას ზედა საძიებო ველი ცარიელია — აქ სახელით ვეძებთ */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!form.title.trim() || shopLookup.isPending}
-                    onClick={() => {
-                      setLookupQuery((q) => q || form.title.trim())
-                      shopLookup.mutate(form.title.trim())
-                    }}
-                  >
-                    {shopLookup.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Store className="size-3.5" />
-                    )}
-                    {t('boardGames.shopSearch.search')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            {fields.shows('image') && (
+        {/* ---------- §26 — ფოტო ზემოთაა, სახელთან, ავტორებთან და აღწერასთან ერთად ---------- */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('image') && (
               <>
                 <FieldLabel required={fields.required('image')} hint={fields.hint('image')}>
                   {fields.label('image')}
@@ -793,36 +461,279 @@ export function BoardGameForm({
                   }}
                 />
               </>
-            )}
+            )
+          }
+        >
+          {/* ⚠️ სათაური `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
+              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+          <FormField {...fields.field('title')} required htmlFor="bg-title" error={errors.title}>
+            <Input
+              id="bg-title"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </FormField>
 
-            <div className={fields.shows('description') ? 'mt-4' : 'hidden'}>
-              <FieldLabel htmlFor="bg-desc" required={fields.required('description')} hint={fields.hint('description')}>
-                {fields.label('description')}
-              </FieldLabel>
-              <Textarea
-                id="bg-desc"
-                rows={6}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          <FormField size="half" {...fields.field('designer')} htmlFor="bg-designer">
+            <Input
+              id="bg-designer"
+              placeholder={fields.placeholder('designer')}
+              value={form.designer}
+              onChange={(e) => setForm((f) => ({ ...f, designer: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField size="half" {...fields.field('publisher')} htmlFor="bg-publisher">
+            <Input
+              id="bg-publisher"
+              placeholder={fields.placeholder('publisher')}
+              value={form.publisher}
+              onChange={(e) => setForm((f) => ({ ...f, publisher: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField {...fields.field('description')} htmlFor="bg-desc">
+            <Textarea
+              id="bg-desc"
+              rows={FORM_TEXT_ROWS}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
+
+        {/* ---------- კლასიფიკაცია: ჟანრი · ქულა ---------- */}
+        <FormSection title={t('form.sections.classification')}>
+          {/* ჟანრი — per-user ლექსიკონიდან, გვერდით „ახალი ჟანრი" */}
+          <FormField size="half" {...fields.field('genre')} htmlFor="bg-genre" error={errors.genre_id}>
+            <div className="flex gap-1">
+              <Select value={form.genreId} onValueChange={(v) => setForm((f) => ({ ...f, genreId: v }))}>
+                <SelectTrigger id="bg-genre" className={errors.genre_id ? 'border-destructive' : undefined}>
+                  <SelectValue placeholder={t('validation.choose')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {genres.map((genre) => (
+                    <SelectItem key={genre.id} value={String(genre.id)}>
+                      {dictionaryName(genre, lang)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => setNewGenre(true)}
+                title={t('boardGameGenres.add')}
+                aria-label={t('boardGameGenres.add')}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+          </FormField>
+
+          {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
+          <FormField size="half" {...fields.field('rating')} htmlFor="bg-rating" error={errors.rating}>
+            <RatingSelect
+              id="bg-rating"
+              max={BOARD_GAME_MAX_RATING}
+              value={form.rating}
+              invalid={!!errors.rating}
+              onChange={(rating) => setForm((f) => ({ ...f, rating }))}
+            />
+          </FormField>
+        </FormSection>
+
+        {/* ---------- დეტალები: წელი · ასაკი · სირთულე · BGG + მოთამაშეები/დრო + მაღაზიები ---------- */}
+        <FormSection title={t('form.sections.details')}>
+          <FormField size="quarter" {...fields.field('year')} htmlFor="bg-year">
+            <Input
+              id="bg-year"
+              type="number"
+              inputMode="numeric"
+              value={form.year}
+              onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField size="quarter" {...fields.field('age')} htmlFor="bg-age">
+            <Input
+              id="bg-age"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={form.age_min}
+              onChange={(e) => setForm((f) => ({ ...f, age_min: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField size="quarter" {...fields.field('complexity')} htmlFor="bg-complexity">
+            <Input
+              id="bg-complexity"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min={1}
+              max={5}
+              placeholder={fields.placeholder('complexity')}
+              value={form.complexity}
+              onChange={(e) => setForm((f) => ({ ...f, complexity: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField size="quarter" {...fields.field('bgg_id')} htmlFor="bg-id" error={errors.bgg_id}>
+            <Input
+              id="bg-id"
+              type="number"
+              inputMode="numeric"
+              value={form.bggId}
+              onChange={(e) => setForm((f) => ({ ...f, bggId: e.target.value }))}
+            />
+          </FormField>
+
+          {/* მოთამაშეები: მინ – მაქს */}
+          <FormField size="half" {...fields.field('players')} htmlFor="bg-players" error={errors.players_max}>
+            <div className="flex items-center gap-1.5">
+              <Input
+                id="bg-players"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder={t('boardGames.min')}
+                value={form.players_min}
+                onChange={(e) => setForm((f) => ({ ...f, players_min: e.target.value }))}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder={t('boardGames.max')}
+                aria-label={t('boardGames.max')}
+                value={form.players_max}
+                onChange={(e) => setForm((f) => ({ ...f, players_max: e.target.value }))}
               />
             </div>
-          </div>
-        </div>
+          </FormField>
 
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          {/* §2.5 — საათი+წუთი ერთი კომპონენტით; სვეტი ისევ **წუთებია** */}
+          <FormField size="half" {...fields.field('playtime')} error={errors.playtime_max}>
+            <div className="space-y-1.5">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="w-8 shrink-0 text-xs text-muted-foreground">{t('boardGames.min')}</span>
+                <DurationInput
+                  unit="minutes"
+                  value={form.playtime_min ? Number(form.playtime_min) : null}
+                  onChange={(v) => setForm((f) => ({ ...f, playtime_min: v == null ? '' : String(v) }))}
+                />
+              </span>
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="w-8 shrink-0 text-xs text-muted-foreground">{t('boardGames.max')}</span>
+                <DurationInput
+                  unit="minutes"
+                  value={form.playtime_max ? Number(form.playtime_max) : null}
+                  onChange={(v) => setForm((f) => ({ ...f, playtime_max: v == null ? '' : String(v) }))}
+                />
+              </span>
+            </div>
+          </FormField>
+
+          {/* მაღაზიები: ბმული + ფასი (§14) */}
+          <FormField {...fields.field('links')}>
+            <div className="space-y-1.5">
+              {links.map((link, i) => (
+                <div key={link._key} className="flex gap-1.5">
+                  <Input
+                    className="w-24 shrink-0"
+                    placeholder={t('books.linkLabel')}
+                    value={link.label ?? ''}
+                    onChange={(e) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
+                    }
+                  />
+                  <Input
+                    placeholder="https://…"
+                    value={link.url}
+                    onChange={(e) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
+                    }
+                  />
+                  <Input
+                    className="w-20 shrink-0"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min={0}
+                    placeholder={t('boardGames.price')}
+                    value={link.price ?? ''}
+                    onChange={(e) =>
+                      setLinks((all) =>
+                        all.map((x, j) =>
+                          j === i ? { ...x, price: e.target.value === '' ? null : Number(e.target.value) } : x,
+                        ),
+                      )
+                    }
+                  />
+                  <Input
+                    className="w-16 shrink-0"
+                    placeholder="GEL"
+                    value={link.currency ?? ''}
+                    onChange={(e) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, currency: e.target.value } : x)))
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => setLinks((all) => all.filter((_, j) => j !== i))}
+                    aria-label={t('actions.delete')}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLinks((all) => [...all, keyRow({ label: '', url: '', price: null, currency: '' })])}
+                >
+                  <Plus className="size-3.5" />
+                  {t('boardGames.addShop')}
+                </Button>
+                {/* რედაქტირებისას ზედა საძიებო ველი ცარიელია — აქ სახელით ვეძებთ */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!form.title.trim() || shopLookup.isPending}
+                  onClick={() => {
+                    setLookupQuery((q) => q || form.title.trim())
+                    shopLookup.mutate(form.title.trim())
+                  }}
+                >
+                  {shopLookup.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Store className="size-3.5" />}
+                  {t('boardGames.shopSearch.search')}
+                </Button>
+              </div>
+            </div>
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
-      <div className="mt-4">
-        <CustomFieldsCard module="board_game" recordId={game?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ თამაშზე მონახაზი */}
+      <CustomFieldsCard
+        module="board_game"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* სწრაფი „ახალი ჟანრი" — შენახვისთანავე select-ში ირჩევა */}
       {newGenre && (
