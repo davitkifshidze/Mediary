@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import {
   fetchGalleryPhotos,
   type GalleryPhotoFilters,
@@ -9,6 +9,7 @@ import {
 } from '@/api/gallery'
 import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { Button } from '@/components/ui/button'
+import { Pager } from '@/components/ui/pager'
 import { GalleryPhotoGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { LockedPhotos } from '@/components/gallery/LockedPhotos'
 import { SortPick } from '@/components/gallery/SortPick'
@@ -137,38 +138,5 @@ export function GroupPhotos({
         <Pager page={meta.page} lastPage={meta.last_page} total={meta.total} onChange={setPage} />
       )}
     </section>
-  )
-}
-
-export function Pager({
-  page,
-  lastPage,
-  total,
-  onChange,
-}: {
-  page: number
-  lastPage: number
-  total: number
-  onChange: (page: number) => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-      <Button variant="outline" size="icon" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-        <ChevronLeft className="size-4" />
-      </Button>
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {t('gallery.pageOf', { page, last: lastPage, total })}
-      </span>
-      <Button
-        variant="outline"
-        size="icon"
-        disabled={page >= lastPage}
-        onClick={() => onChange(page + 1)}
-      >
-        <ChevronRight className="size-4" />
-      </Button>
-    </div>
   )
 }

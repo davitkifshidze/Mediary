@@ -203,6 +203,23 @@ export function VideosPage() {
     }
   }, [params, setParams])
 
+  /* Tasks §19.6 — ვებძებნის „უკვე ვიდეოებშია · გახსნა" → `?open=<id>`.
+     ⚠️ ჩანაწერი id-ით მოდის და არა ჩატვირთული სიიდან (FEAT-17-ის წესი):
+     ის შეიძლება მიმდინარე ფილტრს მიღმა იყოს. პარამეტრი მაშინვე იშლება,
+     თორემ მოდალის დახურვა და „უკან" მას ხელახლა გახსნიდა. */
+  useEffect(() => {
+    const open = Number(params.get('open'))
+    if (!open) return
+
+    const next = new URLSearchParams(params)
+    next.delete('open')
+    setParams(next, { replace: true })
+
+    fetchVideo(open)
+      .then(setDetail)
+      .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))
+  }, [params, setParams, toast])
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['videos'] })
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 

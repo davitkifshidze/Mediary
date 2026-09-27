@@ -231,11 +231,14 @@ export function RecordGallery({
           initialQuery={webQuery}
           title={t('web.searchPhotosFor', { name: webQuery })}
           /* §8.4 — შეკითხვა ფილმის სახელით იწყება, მსახიობები კი ჩიპებია;
-             მონიშნულ მსახიობებზე ფოტოები **ნაწილდება**. */
+             მონიშნულ მსახიობებზე ფოტოები **ნაწილდება**. §19.3 — „+ მსახიობი"
+             ამ ჩანაწერის შემადგენლობას ემატება, ამიტომ დეტალი თავიდან იკითხება. */
           context={{
             base: webQuery,
             people: (detail?.cast ?? []).map((member) => ({ id: member.id, name: member.name })),
             attachesTo: detail?.record.title_ka || detail?.record.title_en || undefined,
+            castRecord: { type, id },
+            onCastAdded: invalidate,
           }}
           onClose={() => setWebOpen(false)}
           onImported={invalidate}

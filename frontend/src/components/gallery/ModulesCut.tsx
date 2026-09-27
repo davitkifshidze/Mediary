@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PhotoGrid, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { GalleryStackSkeleton, GallerySkeletonGrid } from '@/components/gallery/GalleryPhotoGrid'
-import { Pager } from '@/components/gallery/GroupPhotos'
+import { Pager } from '@/components/ui/pager'
 
 /* ============================================================
    **სხვა მოდულების ფოტოები** (§8.3/§8.5).

@@ -4,9 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\SerpSearch;
 use App\Models\User;
+use App\Models\Video;
+use App\Models\VideoType;
 use App\Services\Serp\SerpApiClient;
+use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -495,5 +500,250 @@ class WebSearchTest extends TestCase
             ->getJson('/api/web/videos?query=kraken&engines[]=yandex_videos')
             ->assertOk()
             ->assertJsonPath('items.0.published', null);
+    }
+
+    /* ============================================================
+       Tasks §19 — „კიდევ ჩამოიტანე", ხარჯის კატეგორია და „უკვე ვიდეოებშია"
+       ============================================================ */
+
+    /** GET-ის შეკითხვის პარამეტრები — `Http::fake()`-ის closure-ისთვის */
+    private function queryOf(HttpRequest $request): array
+    {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return $query;
+    }
+
+    /**
+     * ⚠️ **„კიდევ" მხოლოდ ახალ გვერდს ყიდულობს.** უფრო დიდი `limit`-ით
+     * ხელახალი ძებნა ქეშის გასაღებს შეცვლიდა და პირველ გვერდს **თავიდან
+     * დახარჯავდა** — ტესტი ითვლის, რომელი გვერდები წავიდა Serper-ზე.
+     */
+    public function test_serper_more_buys_only_the_next_page(): void
+    {
+        config()->set('services.serpapi.key', null);
+        config()->set('services.serper.key', 'test-key');
+
+        $asked = [];
+        Http::fake(['google.serper.dev/*' => function (HttpRequest $request) use (&$asked) {
+            $page = (int) ($request->data()['page'] ?? 0);
+            $asked[] = $page;
+
+            return Http::response(['images' => [[
+                'title' => "page {$page}",
+                'imageUrl' => "https://example.com/{$page}.jpg",
+                'link' => 'https://example.com/article',
+            ]]]);
+        }]);
+
+        $first = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=serper&limit=100&pages=1')
+            ->assertOk();
+
+        $this->assertSame([1], $asked);
+        $this->assertSame(2, $first->json('sources.0.next'));
+
+        $more = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&cursor[serper]=2&limit=100&pages=1')
+            ->assertOk();
+
+        // ⚠️ პირველი გვერდი მეორედ არ ნაყიდა
+        $this->assertSame([1, 2], $asked);
+        $this->assertSame('https://example.com/2.jpg', $more->json('items.0.original'));
+        $this->assertSame(1, $more->json('sources.0.credits'));
+        $this->assertSame(3, $more->json('sources.0.next'));
+        // SerpApi-ის 250 ხელუხლებელია
+        $this->assertSame(0, $more->json('spent'));
+    }
+
+    /** ცარიელი გვერდი — ერთადერთი ნამდვილი „მეტი აღარაა" (ნაკლები 100-ზე ასეთი არ არის) */
+    public function test_an_empty_serper_page_ends_the_continuation(): void
+    {
+        config()->set('services.serpapi.key', null);
+        config()->set('services.serper.key', 'test-key');
+
+        Http::fake(['google.serper.dev/*' => fn (HttpRequest $request) => Http::response([
+            // ⚠️ პირველ გვერდზე 100-ზე ნაკლებია — და მაინც გრძელდება
+            'images' => (int) ($request->data()['page'] ?? 1) === 1
+                ? [['imageUrl' => 'https://example.com/1.jpg', 'link' => 'https://example.com/a']]
+                : [],
+        ])]);
+
+        $first = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=serper&limit=100&pages=1')
+            ->assertOk();
+        $this->assertSame(2, $first->json('sources.0.next'));
+
+        $more = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&cursor[serper]=2&limit=100&pages=1')
+            ->assertOk();
+
+        $this->assertSame([], $more->json('items'));
+        $this->assertNull($more->json('sources.0.next'));
+    }
+
+    /**
+     * **Commons-ის გაგრძელება მისივე `gsroffset`-ია** — ჩვენი გამოთვლილი
+     * „offset + 50" ტყუილი იქნებოდა: დარჩა თუ არა, მხოლოდ Commons-მა იცის.
+     */
+    public function test_wikimedia_continues_with_its_own_offset(): void
+    {
+        $asked = [];
+        Http::fake(['commons.wikimedia.org/*' => function (HttpRequest $request) use (&$asked) {
+            $offset = (int) ($this->queryOf($request)['gsroffset'] ?? 0);
+            $asked[] = $offset;
+
+            return Http::response([
+                'query' => ['pages' => ['1' => [
+                    'title' => "File:Keanu {$offset}.jpg",
+                    'imageinfo' => [[
+                        'url' => "https://upload.wikimedia.org/keanu-{$offset}.jpg",
+                        'descriptionurl' => 'https://commons.wikimedia.org/wiki/File:Keanu.jpg',
+                        'mime' => 'image/jpeg',
+                    ]],
+                ]]],
+                // მხოლოდ პირველ ნაწილს აქვს გაგრძელება
+                ...($offset === 0 ? ['continue' => ['gsroffset' => 50, 'continue' => 'gsroffset||']] : []),
+            ]);
+        }]);
+
+        $first = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=wikimedia')
+            ->assertOk();
+        $this->assertSame(50, $first->json('sources.0.next'));
+
+        $more = $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&cursor[wikimedia]=50')
+            ->assertOk();
+
+        $this->assertSame([0, 50], $asked);
+        $this->assertSame('https://upload.wikimedia.org/keanu-50.jpg', $more->json('items.0.original'));
+        $this->assertNull($more->json('sources.0.next'));
+        $this->assertSame(0, SerpSearch::count());
+    }
+
+    /**
+     * ⚠️ **SerpApi-ის engine-ს გაგრძელება არ აქვს** — `next: null`, ე.ი. ღილაკი
+     * არ ჩანს; და ხელით მოტანილი cursor 422-ია და არა ჩუმად „ცარიელი ახალი".
+     */
+    public function test_serpapi_engines_offer_no_continuation(): void
+    {
+        $this->fakeImages();
+
+        $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=google_images_light')
+            ->assertOk()
+            ->assertJsonPath('sources.0.next', null);
+
+        $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&cursor[google_images_light]=2')
+            ->assertStatus(422);
+
+        // ვიდეოზე გაგრძელების მქონე წყარო საერთოდ არ არსებობს
+        $this->actingAs($this->user)
+            ->getJson('/api/web/videos?query=keanu&cursor[youtube]=2')
+            ->assertStatus(422);
+    }
+
+    /**
+     * §19.2 — ვიდეოს წყაროები **`uses_quota`-ს** ამბობენ: ინტერფეისი ხარჯს
+     * ამით ითვლის და არა `!free`-ით (Serper-ზე ორივე ტყუილი იქნებოდა).
+     */
+    public function test_video_sources_say_they_spend_the_serpapi_quota(): void
+    {
+        Http::fake(['serpapi.com/account*' => Http::response(['total_searches_left' => 100])]);
+
+        $videos = $this->actingAs($this->user)->getJson('/api/web/status')->json('sources.videos');
+
+        $this->assertNotEmpty($videos);
+        foreach ($videos as $engine) {
+            $this->assertTrue($engine['uses_quota'], $engine['key']);
+            $this->assertFalse($engine['free'], $engine['key']);
+        }
+    }
+
+    /** ვიდეოს ძებნის შედეგი — YouTube-ის ორი ბმული */
+    private function fakeVideos(): void
+    {
+        Http::fake([
+            'serpapi.com/account*' => Http::response(['total_searches_left' => 100]),
+            'serpapi.com/search.json*' => Http::response(['video_results' => [
+                // ⚠️ იგივე ვიდეო **სხვა მისამართით** — ბიბლიოთეკაში `watch?v=`-ით დევს
+                ['title' => 'Never Gonna Give You Up', 'link' => 'https://youtu.be/dQw4w9WgXcQ?t=4'],
+                ['title' => 'Something new', 'link' => 'https://www.youtube.com/watch?v=oHg5SJYRHA0'],
+            ]]),
+        ]);
+    }
+
+    /**
+     * §19.6 — **ძებნის პასუხი თვითონ ამბობს, რომელი ბმული უკვე გაქვს**
+     * (`DuplicateLink`, FEAT-17): ცალკე მოთხოვნა ბადეს ორჯერ დახატავდა.
+     */
+    public function test_video_results_say_which_links_you_already_have(): void
+    {
+        $this->seed(ModulesSeeder::class);
+        $this->user->assignRole('super_admin')->save();
+
+        VideoType::ensureDefaults($this->user->id);
+        $video = Video::create([
+            'user_id' => $this->user->id,
+            'title' => 'უკვე მაქვს',
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'platform' => 'youtube',
+            'external_id' => 'dQw4w9WgXcQ',
+            'type_id' => VideoType::where('user_id', $this->user->id)->value('id'),
+        ]);
+
+        $this->fakeVideos();
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/web/videos?query=rick&engines[]=youtube')
+            ->assertOk();
+
+        $this->assertSame($video->id, $res->json('items.0.existing.id'));
+        $this->assertSame('უკვე მაქვს', $res->json('items.0.existing.title'));
+        $this->assertNull($res->json('items.1.existing'));
+    }
+
+    /** ვიდეოების მოდულის გარეშე ეს კითხვა საერთოდ არ ისმება — ბაზასაც არ ეკითხება */
+    public function test_video_results_carry_nothing_without_the_video_module(): void
+    {
+        $this->fakeVideos();
+
+        $res = $this->actingAs($this->user)
+            ->getJson('/api/web/videos?query=rick&engines[]=youtube')
+            ->assertOk();
+
+        $this->assertCount(2, $res->json('items'));
+        $this->assertArrayNotHasKey('existing', $res->json('items.0'));
+    }
+
+    /** ⚠️ ას შედეგზეც ორი მოთხოვნაა და არა ასი — `findMany()` ციკლს არ აწყობს */
+    public function test_existing_links_cost_a_constant_number_of_queries(): void
+    {
+        $this->seed(ModulesSeeder::class);
+        $this->user->assignRole('super_admin')->save();
+
+        $rows = [];
+        for ($i = 0; $i < 30; $i++) {
+            $rows[] = ['title' => "v{$i}", 'link' => 'https://www.youtube.com/watch?v=vid'.str_pad((string) $i, 8, '0', STR_PAD_LEFT)];
+        }
+        $rows[] = ['title' => 'file', 'link' => 'https://example.com/clip.mp4'];
+
+        Http::fake([
+            'serpapi.com/account*' => Http::response(['total_searches_left' => 100]),
+            'serpapi.com/search.json*' => Http::response(['video_results' => $rows]),
+        ]);
+
+        $this->actingAs($this->user);
+
+        DB::enableQueryLog();
+        $this->getJson('/api/web/videos?query=many&engines[]=youtube&limit=100')->assertOk();
+        $videoQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $q) => str_contains($q['query'], 'from "videos"'))
+            ->count();
+        DB::disableQueryLog();
+
+        $this->assertSame(2, $videoQueries);
     }
 }

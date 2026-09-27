@@ -30,8 +30,11 @@ export interface SerpEngine {
    * ⚠️ **სამი კატეგორიაა და არა ორი** (2026-09-14): უფასო (Wikimedia) ·
    * საკუთარი გასაღები (Serper) · SerpApi. მხოლოდ ბოლო ხარჯავს იმ 250-ს,
    * რომელიც ეკრანზე „დარჩა N ძებნა"-დ იკითხება.
+   *
+   * ⚠️ Tasks §19.2 — ხარჯი **ამით** ითვლება და არა `!free`-ით: Serper
+   * არც უფასოა და არც 250-ს ხარჯავს, ე.ი. `!free` მას ტყუილად ჩათვლიდა.
    */
-  uses_quota?: boolean
+  uses_quota: boolean
   /** გვერდები მხოლოდ Serper-ს აქვს — ველი სხვა წყაროზე არ ჩანს */
   paged?: boolean
 }
@@ -100,6 +103,12 @@ export interface SerpVideo {
   thumbnail: string | null
   description: string | null
   engines: string[]
+  /**
+   * Tasks §19.6 — ეს ბმული **უკვე გაქვს ვიდეოებში** (FEAT-17-ის
+   * `DuplicateLink`, სერვერი ძებნის პასუხშივე ამბობს). ⚠️ ველი მხოლოდ მაშინ
+   * მოდის, როცა ვიდეოების მოდული გაქვს — `undefined` ≠ „არ გაქვს".
+   */
+  existing?: { id: number; title: string | null } | null
 }
 
 /**
@@ -118,6 +127,12 @@ export interface SerpSource {
   quota_exceeded: boolean
   /** ⚠️ Serper-ის ხარჯი — **SerpApi-ის 250-ში არ ჯდება**, მაგრამ ფულია */
   credits?: number
+  /**
+   * Tasks §19.4 — „კიდევ ჩამოიტანე"-ს გაგრძელება (Serper — შემდეგი გვერდი,
+   * Wikimedia — Commons-ის offset). `null` = ამ წყაროდან მეტი არაფერი მოვა,
+   * ან წყაროს გაგრძელება საერთოდ არ აქვს (SerpApi-ის engine-ები).
+   */
+  next?: number | null
 }
 
 export interface SerpSearchResult<T> {
@@ -150,6 +165,12 @@ export interface SerpSearchParams {
   pages?: number
   /** ⚠️ ნაგულისხმევად **გამორთულია** (§7.5-ის პირობა) */
   safe?: boolean
+  /**
+   * Tasks §19.4 — „კიდევ ჩამოიტანე": engine → წინა პასუხის `next`.
+   * ⚠️ მითითებისას **მხოლოდ ეს წყაროები** ეშვება (`engines` არ ითვლება) —
+   * დანარჩენის ხელახლა გაშვება იგივე შედეგს და იგივე ხარჯს მოიტანდა.
+   */
+  cursor?: Record<string, number>
 }
 
 /** ხელით შეყვანის ჭერები — backend-ის `SerperImages`-ის ასლი */

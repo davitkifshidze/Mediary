@@ -40,22 +40,36 @@ class WikimediaImages
     /**
      * ძებნა.
      *
-     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int}
+     * ## „კიდევ ჩამოიტანე" (Tasks §19.4)
+     * ⚠️ **`$offset` Commons-ის საკუთარი გაგრძელებაა** (`gsroffset`) და
+     * `next` სწორედ მის პასუხს იმეორებს (`continue.gsroffset`) — ჩვენი
+     * გამოთვლილი „offset + 50" ტყუილი იქნებოდა: Commons თვითონ წყვეტს,
+     * დარჩა თუ არა კიდევ. `null` = მეტი არაფერია.
+     *
+     * ⚠️ **ქეშის გასაღებში offset-იც ზის** — თორემ მეორე ნაწილი პირველის
+     * ქეშიდან დაბრუნდებოდა და „ახალი" ფოტოები იგივე იქნებოდა.
+     *
+     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, next: int|null}
      */
-    public function search(string $query, int $limit = 20): array
+    public function search(string $query, int $limit = 20, int $offset = 0): array
     {
         $query = trim($query);
         $limit = max(1, min($limit, 50));
+        $offset = max(0, $offset);
 
         if ($query === '') {
             return $this->blank();
         }
 
-        $cacheKey = 'wikimedia:'.sha1($query.'|'.$limit);
+        $cacheKey = 'wikimedia:'.sha1($query.'|'.$limit.($offset > 0 ? '|'.$offset : ''));
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
-            return ['ok' => true, 'cached' => true, 'engine' => self::KEY, 'items' => $cached['items'], 'dropped' => $cached['dropped']];
+            return [
+                'ok' => true, 'cached' => true, 'engine' => self::KEY,
+                'items' => $cached['items'], 'dropped' => $cached['dropped'],
+                'next' => $cached['next'] ?? null,
+            ];
         }
 
         try {
@@ -70,6 +84,8 @@ class WikimediaImages
                     // namespace 6 = File: — სხვა namespace-ები სტატიებია და არა სურათები
                     'gsrnamespace' => 6,
                     'gsrlimit' => $limit,
+                    // Commons-ის გაგრძელება — პირველ ნაწილზე პარამეტრი საერთოდ არ იგზავნება
+                    ...($offset > 0 ? ['gsroffset' => $offset] : []),
                     'prop' => 'imageinfo',
                     'iiprop' => 'url|size|mime|extmetadata',
                     'iiurlwidth' => 400,
@@ -101,9 +117,12 @@ class WikimediaImages
             }
         }
 
-        Cache::put($cacheKey, ['items' => $items, 'dropped' => $dropped], now()->addHours(self::CACHE_HOURS));
+        $continue = $res->json('continue.gsroffset');
+        $next = is_numeric($continue) && (int) $continue > $offset ? (int) $continue : null;
 
-        return ['ok' => true, 'cached' => false, 'engine' => self::KEY, 'items' => $items, 'dropped' => $dropped];
+        Cache::put($cacheKey, ['items' => $items, 'dropped' => $dropped, 'next' => $next], now()->addHours(self::CACHE_HOURS));
+
+        return ['ok' => true, 'cached' => false, 'engine' => self::KEY, 'items' => $items, 'dropped' => $dropped, 'next' => $next];
     }
 
     /**
@@ -147,9 +166,9 @@ class WikimediaImages
         ];
     }
 
-    /** @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int} */
+    /** @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, next: null} */
     private function blank(bool $ok = true): array
     {
-        return ['ok' => $ok, 'cached' => false, 'engine' => self::KEY, 'items' => [], 'dropped' => 0];
+        return ['ok' => $ok, 'cached' => false, 'engine' => self::KEY, 'items' => [], 'dropped' => 0, 'next' => null];
     }
 }

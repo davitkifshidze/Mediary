@@ -8,6 +8,7 @@ import {
   type AttachCastInput,
   type CastCandidate,
 } from '@/api/cast'
+import type { CastMember } from '@/api/types'
 import { errorMessage } from '@/lib/errors'
 import type { MediaType } from '@/lib/media'
 import { Button } from '@/components/ui/button'
@@ -49,7 +50,12 @@ export function CastMemberDialog({
   type: MediaType
   recordId: number
   onClose: () => void
-  onAdded?: () => void
+  /**
+   * დამატებული მსახიობი — Tasks §19.3-ის ვებძებნის განაწილებამ ის **მაშინვე
+   * მონიშნულად** უნდა აჩვენოს, ე.ი. id და სახელი ჩანაწერის ხელახალ
+   * წაკითხვამდე სჭირდება.
+   */
+  onAdded?: (member: CastMember) => void
 }) {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -85,7 +91,7 @@ export function CastMemberDialog({
       qc.invalidateQueries({ queryKey: [type] })
       qc.invalidateQueries({ queryKey: ['actor'] })
       toast({ title: t('cast.added', { name: member.name_ka || member.name }), variant: 'success' })
-      onAdded?.()
+      onAdded?.(member)
       onClose()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),

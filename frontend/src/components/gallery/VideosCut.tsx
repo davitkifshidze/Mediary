@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { Pager } from '@/components/gallery/GroupPhotos'
+import { Pager } from '@/components/ui/pager'
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================

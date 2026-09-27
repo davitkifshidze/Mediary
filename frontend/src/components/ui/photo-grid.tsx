@@ -8,8 +8,6 @@ import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import {
   CheckSquare,
-  ChevronLeft,
-  ChevronRight,
   Download,
   ImageOff,
   Lock,
@@ -37,6 +35,7 @@ import { fetchPrivateObjectUrl, usePrivateFileUrl } from '@/components/PrivateFi
 import { useInViewOnce } from '@/lib/inView'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Pager } from '@/components/ui/pager'
 import 'yet-another-react-lightbox/styles.css'
 import 'yet-another-react-lightbox/plugins/counter.css'
 import 'yet-another-react-lightbox/plugins/thumbnails.css'
@@ -649,29 +648,7 @@ export function PhotoGrid({
 
       {/* გვერდები — მხოლოდ არამართულ რეჟიმში (მართულს სერვერის pager აქვს) */}
       {!controlled && lastPage > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {t('gallery.pageOf', { page, last: lastPage, total: items.length })}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={page >= lastPage}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        <Pager className="mt-4" page={page} lastPage={lastPage} total={items.length} onChange={setPage} />
       )}
 
       {open != null && (

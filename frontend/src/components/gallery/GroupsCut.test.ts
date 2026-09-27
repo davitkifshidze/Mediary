@@ -47,7 +47,7 @@ vi.mock('@/api/web', async (original) => ({
     remaining: 250,
     window_start: null,
     account: null,
-    sources: { images: [{ key: 'wikimedia', name: 'Wikimedia', safe_search: false, free: true }], videos: [{ key: 'youtube', name: 'YouTube', safe_search: false, free: false }] },
+    sources: { images: [{ key: 'wikimedia', name: 'Wikimedia', safe_search: false, free: true, uses_quota: false }], videos: [{ key: 'youtube', name: 'YouTube', safe_search: false, free: false, uses_quota: true }] },
   })),
 }))
 

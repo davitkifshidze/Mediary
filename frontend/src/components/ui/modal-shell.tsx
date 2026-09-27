@@ -108,6 +108,7 @@ export function ModalShell({
   wide,
   size,
   hint,
+  aside,
   children,
 }: {
   title: string
@@ -127,6 +128,14 @@ export function ModalShell({
   size?: ModalSize
   /** Tasks §8.3 — მოდალის შესავალი ახსნა: i სათაურის გვერდით და არა აბზაცი */
   hint?: string
+  /**
+   * Tasks §19 — **სათაურის ზოლის მარჯვენა მხარე** (ვებძებნის ხარჯი, ვიდეოს
+   * ტიპის ამრჩევი). ⚠️ ზოლი მიმაგრებულია, ე.ი. აქ ის დგას, რაც შედეგების
+   * გადახვევისას ხილული უნდა დარჩეს. ადგილი თუ არ ჰყოფნის, **მეორე ხაზზე**
+   * ჩამოდის და დახურვის ჯვარი ზედა კუთხეში რჩება — ორივე ერთ ხაზზე სათაურს
+   * ბოლომდე შეკუმშავდა.
+   */
+  aside?: ReactNode
   children: ReactNode
 }) {
   const { t } = useTranslation()
@@ -164,7 +173,7 @@ export function ModalShell({
             hidden && 'hidden',
           )}
         >
-          <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-6">
+          <div className="flex shrink-0 items-start gap-2 px-6 pb-2 pt-6">
             {back && (
               <button
                 type="button"
@@ -176,21 +185,30 @@ export function ModalShell({
               </button>
             )}
 
-            <DialogPrimitive.Title
-              className={cn(
-                'min-w-0 truncate font-display text-lg font-semibold tracking-tight',
-                destructive && 'text-destructive',
-              )}
-            >
-              {title}
-            </DialogPrimitive.Title>
-            <InfoHint info={hint} />
+            {/* ⚠️ სათაური და `aside` **ერთ გადასატან ჯგუფშია**, ჯვარი კი მის გარეთ:
+                ვიწრო ეკრანზე ან გრძელ სათაურზე `aside` მეორე ხაზზე ჩამოდის
+                (მარჯვნივ მიკრული), დახურვა კი ყოველთვის ზედა კუთხეში რჩება. */}
+            <div className="flex min-h-8 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <DialogPrimitive.Title
+                  className={cn(
+                    'min-w-0 truncate font-display text-lg font-semibold tracking-tight',
+                    destructive && 'text-destructive',
+                  )}
+                >
+                  {title}
+                </DialogPrimitive.Title>
+                <InfoHint info={hint} />
+              </div>
+
+              {aside && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{aside}</div>}
+            </div>
 
             {/* ⚠️ დახურვა **წითელ ჰოვერზეა** — იმავე ენაზე, რითაც ფილტრების
                 „გასუფთავება" ლაპარაკობს: ეს ერთადერთი ღილაკია, რომელიც ეკრანს ხურავს. */}
             <DialogPrimitive.Close
               aria-label={t('actions.close')}
-              className="ml-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+              className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
             >
               <X className="size-4" />
             </DialogPrimitive.Close>

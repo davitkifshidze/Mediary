@@ -54,15 +54,29 @@ class SerperImages
     /**
      * ძებნა.
      *
+     * ## „კიდევ ჩამოიტანე" (Tasks §19.4)
+     * ⚠️ **`$fromPage` მხოლოდ ახალ გვერდებს ითხოვს.** „მეტის" გაგება
+     * უფრო დიდი `limit`-ით იგივე შეკითხვის ხელახლა გაშვება იქნებოდა —
+     * ქეშის გასაღები იცვლება, ე.ი. **უკვე ნაყიდი გვერდები თავიდან
+     * დაიხარჯებოდა**. აქ მეორე ნაწილი ზუსტად ერთ ახალ credit-ს ღირს.
+     *
+     * ⚠️ **`next` = შემდეგი ჯერ არ მოთხოვნილი გვერდი**, `null` = მეტი
+     * აღარაფერია. „ნაკლები 100-ზე" დასასრული **არ არის**: Google გვერდზე
+     * ხშირად 40–60 სურათს აბრუნებს და შემდეგზე ისევ აქვს (ქართულ
+     * შეკითხვაზე გადამოწმებულია: 113 სურათი სამ გვერდზე). დასასრულს
+     * მხოლოდ ცარიელი გვერდი ამბობს — ან ჭერი (`MAX_PAGES`).
+     *
      * @param  int  $limit  სულ რამდენი სურათი (დუბლის მოჭრის შემდეგ)
      * @param  int  $pages  რამდენი გვერდი მოვითხოვოთ — **თითო ერთი credit**
-     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, spent: int}
+     * @param  int  $fromPage  რომელი გვერდიდან (1 = ახალი ძებნა)
+     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, spent: int, next: int|null}
      */
-    public function search(string $query, int $limit = 100, int $pages = 1, bool $safe = false): array
+    public function search(string $query, int $limit = 100, int $pages = 1, bool $safe = false, int $fromPage = 1): array
     {
         $query = trim($query);
         $limit = max(1, min($limit, self::MAX_LIMIT));
         $pages = max(1, min($pages, self::MAX_PAGES));
+        $fromPage = max(1, min($fromPage, self::MAX_PAGES));
 
         if ($query === '' || ! $this->configured()) {
             return $this->blank($this->configured());
@@ -71,14 +85,19 @@ class SerperImages
         // ⚠️ ზედმეტ გვერდს არ ვითხოვთ: 200 სურათს ორი გვერდი ჰყოფნის და
         // დანარჩენი უბრალოდ დახარჯული credit-ები იქნებოდა
         $pages = min($pages, (int) ceil($limit / self::PER_PAGE));
+        // ⚠️ ჭერი ბოლო გვერდზეცაა — გაგრძელება `MAX_PAGES`-ს ვერ გადასცდება
+        $lastPage = min($fromPage + $pages - 1, self::MAX_PAGES);
 
-        $cacheKey = 'serper:'.sha1($query.'|'.$limit.'|'.$pages.'|'.($safe ? 1 : 0));
+        /* ⚠️ პირველ ნაწილს ძველი გასაღები რჩება — თორემ ამ ცვლილებამდე
+           ქეშირებული ძებნა 24 საათის განმავლობაში credit-ებს თავიდან დახარჯავდა */
+        $cacheKey = 'serper:'.sha1($query.'|'.$limit.'|'.$pages.'|'.($safe ? 1 : 0).($fromPage > 1 ? '|'.$fromPage : ''));
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
             return [
                 'ok' => true, 'cached' => true, 'engine' => self::KEY,
                 'items' => $cached['items'], 'dropped' => $cached['dropped'], 'spent' => 0,
+                'next' => $cached['next'] ?? null,
             ];
         }
 
@@ -86,16 +105,20 @@ class SerperImages
         $dropped = 0;
         $spent = 0;
         $seen = [];
+        $next = $lastPage < self::MAX_PAGES ? $lastPage + 1 : null;
 
-        for ($page = 1; $page <= $pages; $page++) {
+        for ($page = $fromPage; $page <= $lastPage; $page++) {
             $rows = $this->page($query, $page, $safe);
 
             // ⚠️ `null` = წყარო ჩავარდა. თუ პირველივე გვერდია, ეს „მიუწვდომელია";
             // შუაში კი ვჩერდებით და **უკვე მოტანილს ვინახავთ** (გალერეის 413-ის წესი).
+            // ჩავარდნილი გვერდი `next`-ად რჩება — „კიდევ" სწორედ მას სცდის თავიდან.
             if ($rows === null) {
-                if ($page === 1) {
+                if ($page === $fromPage) {
                     return $this->blank(false);
                 }
+
+                $next = $page;
 
                 break;
             }
@@ -120,21 +143,27 @@ class SerperImages
                 $items[] = $item;
 
                 if (count($items) >= $limit) {
+                    // ⚠️ ამ გვერდის კუდი იკარგება, გაგრძელება კი შემდეგიდან იწყება —
+                    // ჭერი მომხმარებლის არჩევანია და ერთი გვერდის ხელახლა ყიდვა ზედმეტია
+                    $next = $page < self::MAX_PAGES ? $page + 1 : null;
+
                     break 2;
                 }
             }
 
-            // გვერდი ცარიელი — შემდეგზე გადასვლა credit-ის ფლანგვაა
+            // გვერდი ცარიელი — შემდეგზე გადასვლა credit-ის ფლანგვაა, და მეტიც აღარაფერია
             if (! $rows) {
+                $next = null;
+
                 break;
             }
         }
 
-        Cache::put($cacheKey, ['items' => $items, 'dropped' => $dropped], now()->addHours(self::CACHE_HOURS));
+        Cache::put($cacheKey, ['items' => $items, 'dropped' => $dropped, 'next' => $next], now()->addHours(self::CACHE_HOURS));
 
         return [
             'ok' => true, 'cached' => false, 'engine' => self::KEY,
-            'items' => $items, 'dropped' => $dropped, 'spent' => $spent,
+            'items' => $items, 'dropped' => $dropped, 'spent' => $spent, 'next' => $next,
         ];
     }
 
@@ -210,9 +239,9 @@ class SerperImages
         ];
     }
 
-    /** @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, spent: int} */
+    /** @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, spent: int, next: null} */
     private function blank(bool $ok = true): array
     {
-        return ['ok' => $ok, 'cached' => false, 'engine' => self::KEY, 'items' => [], 'dropped' => 0, 'spent' => 0];
+        return ['ok' => $ok, 'cached' => false, 'engine' => self::KEY, 'items' => [], 'dropped' => 0, 'spent' => 0, 'next' => null];
     }
 }

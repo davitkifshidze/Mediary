@@ -6,6 +6,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoType;
+use App\Support\DuplicateLink;
 use App\Support\VideoUrl;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -187,5 +188,43 @@ class DuplicateLinkTest extends TestCase
         $this->postJson('/api/videos/metadata', ['url' => 'https://youtu.be/dQw4w9WgXcQ'])
             ->assertOk()
             ->assertJsonPath('existing', null);
+    }
+
+    /**
+     * **`findMany()` — იგივე წესი ბევრ ბმულზე** (Tasks §19.6, ვებძებნის შედეგები).
+     *
+     * ⚠️ ერთ ტესტში ოთხივე ფაქტი: წყვილი სხვა მისამართითაც იპოვება, პირდაპირი
+     * ფაილი მხოლოდ მისამართით, კალათაში მყოფი არ ითვლება, და ერთი `external_id`
+     * სხვა პლატფორმაზე სხვა ვიდეოა. ორი ასლის წესი (`find` და `findMany`)
+     * ერთ დღეს სხვადასხვა პასუხს გასცემდა.
+     *
+     * ⚠️ რეგისტრი აქ არ მოწმდება: sqlite `IN`-ს რეგისტრით ადარებს, MySQL-ის
+     * collation — რეგისტრის გარეშე. `findMany()`-ის რუკა მეორე შემთხვევისთვისაა,
+     * ტესტი კი ორივე ძრავზე ერთნაირად უნდა გადიოდეს.
+     */
+    public function test_find_many_answers_like_find(): void
+    {
+        $pair = $this->video('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'წყვილი');
+        $file = $this->video('https://example.com/clips/one.mp4', 'ფაილი');
+        $this->video('https://www.youtube.com/watch?v=oHg5SJYRHA0', 'კალათაში')->moveToTrash();
+
+        $found = DuplicateLink::findMany(Video::class, [
+            'https://youtu.be/dQw4w9WgXcQ?t=42',
+            'https://example.com/clips/one.mp4',
+            'https://example.com/clips/two.mp4',
+            'https://youtu.be/oHg5SJYRHA0',
+        ]);
+
+        $this->assertSame($pair->id, $found['https://youtu.be/dQw4w9WgXcQ?t=42']['id']);
+        $this->assertSame('წყვილი', $found['https://youtu.be/dQw4w9WgXcQ?t=42']['title']);
+        $this->assertSame($file->id, $found['https://example.com/clips/one.mp4']['id']);
+        $this->assertNull($found['https://example.com/clips/two.mp4']);
+        $this->assertNull($found['https://youtu.be/oHg5SJYRHA0']);
+
+        // ⚠️ იგივე `external_id` სხვა პლატფორმაზე სხვა ვიდეოა (id ერთი
+        // მოთხოვნით მოდის, წყვილი კი PHP-ში მოწმდება)
+        $this->video('https://vimeo.com/76979871', 'Vimeo');
+        $youtube = 'https://www.youtube.com/watch?v=76979871';
+        $this->assertNull(DuplicateLink::findMany(Video::class, [$youtube])[$youtube]);
     }
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -11,7 +11,9 @@ import {
   Plus,
   Search,
   Square,
+  UserPlus,
   Users,
+  X,
 } from 'lucide-react'
 import {
   WEB_MAX_PAGES,
@@ -21,24 +23,33 @@ import {
   WEB_IMPORT_CHUNK,
   searchWebImages,
   webSearchStatus,
+  type SerpEngine,
   type SerpImage,
   type SerpImportResult,
   type SerpImportTarget,
   type SerpQuota,
+  type SerpSearchResult,
   type SerpSource,
 } from '@/api/web'
+import type { CastMember } from '@/api/types'
+import { useAuth } from '@/lib/auth'
 import { errorMessage, isApiCode } from '@/lib/errors'
+import type { MediaType } from '@/lib/media'
 import { cn, formatBytes } from '@/lib/utils'
+import { hasTerm, toggleTerm } from '@/lib/webQuery'
+import { CastMemberDialog } from '@/components/CastMemberDialog'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { Pager } from '@/components/ui/pager'
+import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
 import { StepSection } from '@/components/ui/step-section'
 import { Label } from '@/components/ui/label'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
-import { WebSourcePicker } from '@/components/WebSourcePicker'
+import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
 
 /* ============================================================
    ვებიდან ფოტოს ძებნა და ჩამოტვირთვა (Tasks §7.5/§7.6 → **§8.4**).
@@ -57,33 +68,33 @@ import { WebSourcePicker } from '@/components/WebSourcePicker'
    შენი პირდაპირი პირობა. კოდში შიგთავსის კლასიფიკაცია არ იწერება.
 
    ## ეტაპი 5 (2026-09-13) — ვიზუალი ნაბიჯებად
-   შენი სიტყვები: „ესეც რაღაც ვიზუალი შემიცვალე — ბორდერები, პადინგები,
-   ფერები". დიალოგი ერთ სქროლზე ყველაფერს ერთი წონით აწყობდა, ე.ი. თანრიგი
-   („ჯერ ძებნა, მერე მონიშვნა, ბოლოს ჩამოტვირთვა") ეკრანზე არსად ჩანდა.
-
    ⚠️ **ნაბიჯის ნომერი გამომძახებელთანაა** (`STEP`), რადგან განაწილება
-   მხოლოდ მაშინ არსებობს, როცა ჩანაწერს მსახიობები ჰყავს — ე.ი. „შედეგები"
+   მხოლოდ მაშინ არსებობს, როცა მასში ვინმე შეიძლება იყოს — ე.ი. „შედეგები"
    ხან მესამეა, ხან მეოთხე. ორ ადგილას დაწერილი ნომერი აუცილებლად გაშორდებოდა.
 
-   ⚠️ **ცარიელი პასუხი `EmptyState`-ია და არა ნაცრისფერი წინადადება** —
-   ეტაპ 1-ის წესი. და „სცადე სხვა წყარო" ახლა **ღილაკებია**: ტექსტი
-   ეუბნებოდა რა ექნა, ღილაკი კი აკეთებს. ⚠️ ძებნას ისევ **მხოლოდ დაჭერა**
-   უშვებს — ღილაკი ცხადი არჩევანია და არა ავტომატური ხელახალი მოთხოვნა.
+   ⚠️ **ცარიელი პასუხი `EmptyState`-ია და არა ნაცრისფერი წინადადება**, და
+   „სცადე სხვა წყარო" **ღილაკებია**. ⚠️ ძებნას ისევ **მხოლოდ დაჭერა** უშვებს.
 
    ## §8.4 — ვის მიება ფოტო
-   მოთხოვნა: „თუ ფილმზე ხარ შესული და კონკრეტულ მსახიობს მონიშნავ ან
-   რამდენიმეს, ამ მსახიობებზე დაანაწილოს შესაბამისი ფოტოები; თუ ვერ
-   გაირკვა — ზოგადად ფილმზე ჩააგდოს".
-
    ⚠️ **წესი სერვერზეა ერთხელ** (სახელით დამთხვევა სათაურსა და ბმულში) —
    ე.ი. ტესტდება და ქართულ სახელსაც ცნობს. აქ მხოლოდ **არჩევანია**: ვის
    შორის დაანაწილოს და (სურვილისამებრ) თითო ფოტოს ხელით გადაწერა.
 
    ⚠️ **ხელით გადაწერა ნატიური `<select>`-ია** და არა Radix-ის — ის portal-ს
    არ საჭიროებს, ე.ი. მოდალის შიგნით z-index-ის და `pointer-events`-ის
-   არცერთი ხაფანგი არ ეხება (იხ. `lib/layers.ts`-ის ისტორია). ეტაპ 5-ზე მან
-   თავისი ადგილი მიიღო — ბარათის ქვედა ზოლი საკუთარი ბორდერით, და არა
-   ესკიზზე მიკრული ნაცრისფერი ზოლი.
+   არცერთი ხაფანგი არ ეხება (იხ. `lib/layers.ts`-ის ისტორია).
+
+   ## Tasks §19 (2026-09-27)
+   ⚠️ **ჩიპები გადამრთველებია** (19.1, `lib/webQuery.ts`): შეკითხვაში უკვე
+   მყოფი სახელი აქტიურია და დაჭერით ამოიღება; ველს „გასუფთავება" ცლის,
+   ჩიპები კი რჩება. ⚠️ **ხარჯი სათაურის ზოლშია** (19.2) — ის მიმაგრებულია
+   და შედეგების გადახვევისას არ ქრება. ⚠️ **„+ მსახიობი"** (19.3) იმავე
+   `CastMemberDialog`-ს ხსნის, რასაც ჩანაწერის გვერდი; დამატებული ფილმის
+   შემადგენლობაშიც ჩნდება (Q13) და აქ მაშინვე მონიშნულია. ⚠️ **„აჩვენე"
+   უკვე ჩამოსულ შედეგებს ჰყოფს** (19.4) — ახალი ძებნის გარეშე; „კიდევ
+   ჩამოიტანე" ახალი ძებნაა, ე.ი. ცალკე ღილაკია და ფასს თვითონ ამბობს.
+   ⚠️ **„ყველას მონიშვნა" ყველა ჩამოსულს ნიშნავს** და არა მიმდინარე
+   გვერდს (19.5) — შემოტანა კი ნაწილებად მიდის, ერთი პროგრესით (§4.3).
    ============================================================ */
 
 /** კონტექსტი, საიდანაც შეკითხვა იწყება (§5.2) */
@@ -94,10 +105,21 @@ export interface WebImageContext {
   people?: { id: number; name: string }[]
   /** ვის მიება ჩამოწერილი ფოტო (ცხადად ეწერება) */
   attachesTo?: string
+  /**
+   * Tasks §19.3 — რომელ ჩანაწერს მიება განაწილებიდან დამატებული მსახიობი.
+   * ⚠️ შემადგენლობა მხოლოდ მედია-დომენს აქვს; მის გარეშე „+ მსახიობი" არ
+   * იხატება (წიგნს, თამაშს, ადგილს მსახიობი არ ჰყავს).
+   */
+  castRecord?: { type: MediaType; id: number }
+  /** მსახიობი დაემატა — გამომძახებელმა ჩანაწერის შემადგენლობა ხელახლა წაიკითხოს */
+  onCastAdded?: () => void
 }
 
 /** სენტინელი — „სერვერმა გადაწყვიტოს" */
 const AUTO = 'auto'
+
+/** Serper ერთ გვერდზე 100-მდე შედეგს აბრუნებს — backend-ის `SerperImages::PER_PAGE` */
+const SERPER_PER_PAGE = 100
 
 export function WebImageDialog({
   target,
@@ -118,14 +140,17 @@ export function WebImageDialog({
 }) {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const { can } = useAuth()
   const qc = useQueryClient()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [query, setQuery] = useState(initialQuery)
+  /** ⚠️ ბოლო **წარმატებული** ძებნის შეკითხვა — „კიდევ" მას აგრძელებს, ველს კი არა */
+  const [lastQuery, setLastQuery] = useState('')
   const [engines, setEngines] = useState<string[]>([])
   /* ⚠️ **რაოდენობა და გვერდები ხელით შეიყვანება** (შენი მითითება, 2026-09-14).
-     ორი სხვადასხვა რიცხვია და არა ერთი: `limit` — სულ რამდენი ფოტო მინდა,
-     `pages` — რამდენ გვერდს ვთხოვ წყაროს. **თითო გვერდი Serper-ის ერთი
-     credit-ია**, ე.ი. ეს არჩევანი ფულს ხარჯავს და ამიტომ ცხადად წერია.
+     `limit` — სულ რამდენი ფოტო მინდა, `pages` — რამდენ გვერდს ვთხოვ წყაროს.
+     **თითო გვერდი Serper-ის ერთი credit-ია**, ე.ი. ეს არჩევანი ფულს ხარჯავს.
      ⚠️ ნაგულისხმევი მცირეა განზრახ: „50 გვერდი" ერთი დაჭერით 50 credit-ია. */
   const [limit, setLimit] = useState(100)
   const [pages, setPages] = useState(5)
@@ -134,11 +159,17 @@ export function WebImageDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [quota, setQuota] = useState<SerpQuota | null>(null)
   const [searched, setSearched] = useState(false)
+  /** §19.4 — რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
+  const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
+  const [page, setPage] = useState(1)
 
   /** §8.4 — რომელ მსახიობებზე ნაწილდება */
   const [distribute, setDistribute] = useState<number[]>([])
   /** ფოტოს გასაღები → ხელით არჩეული მსახიობი (`AUTO` = სერვერის გადაწყვეტილება) */
   const [overrides, setOverrides] = useState<Record<string, string>>({})
+  /** §19.3 — აქვე დამატებული მსახიობები (ჩანაწერის ხელახალ წაკითხვამდე) */
+  const [added, setAdded] = useState<{ id: number; name: string }[]>([])
+  const [castOpen, setCastOpen] = useState(false)
   /**
    * ბოლო იმპორტის შედეგი — **ეკრანზე რჩება** და არა მხოლოდ ტოსტში.
    *
@@ -149,7 +180,18 @@ export function WebImageDialog({
    */
   const [result, setResult] = useState<SerpImportResult | null>(null)
 
-  const people = context?.people ?? []
+  /* ⚠️ **ჩანაწერის მსახიობები + აქვე დამატებულები, id-ით გაერთიანებული** —
+     ჩანაწერის ხელახალი წაკითხვის შემდეგ დამატებული ორივე სიაში იქნება და
+     ორჯერ არ უნდა დაიხატოს. */
+  const people = useMemo(() => {
+    const out = [...(context?.people ?? [])]
+    for (const person of added) if (!out.some((p) => p.id === person.id)) out.push(person)
+    return out
+  }, [context?.people, added])
+
+  const castRecord = context?.castRecord
+  /** ⚠️ მიბმა ჩანაწერის რედაქტირებაა — `update` უფლებას ითხოვს (`RecordCastController`-ის წესი) */
+  const canAddCast = !!castRecord && can(castRecord.type, 'update')
 
   // ⚠️ სტატუსი **კვოტას არ ხარჯავს** (`GET /account`)
   const { data: status, isLoading: statusLoading } = useQuery({
@@ -162,6 +204,28 @@ export function WebImageDialog({
   const selected = engines.length ? engines : available.slice(0, 1).map((e) => e.key)
   /** გვერდები მხოლოდ იმ წყაროს აქვს, რომელსაც backend `paged`-ად აღნიშნავს */
   const pagedSelected = available.some((e) => e.paged && selected.includes(e.key))
+  /**
+   * §19.2 — Serper-ის credit-ების **ჭერი** ამ ძებნაზე: backend-იც ზუსტად ასე
+   * ჭრის (`min(pages, ceil(limit / 100))`), ე.ი. ზედმეტ გვერდს არ ყიდულობს.
+   */
+  const credits = pagedSelected
+    ? Math.min(clampNum(pages, 1, WEB_MAX_PAGES, 1), Math.ceil(clampNum(limit, 1, WEB_MAX_PHOTOS, 100) / SERPER_PER_PAGE))
+    : 0
+  const shownQuota =
+    quota ?? (status ? { used: status.used, limit: status.limit, remaining: status.remaining } : null)
+
+  /** ტოსტის ტექსტი — რა დაიხარჯა მართლა (SerpApi-ის ძებნა და Serper-ის credit ცალ-ცალკე) */
+  const spendLine = (data: SerpSearchResult<SerpImage>) => {
+    const serperCredits = data.sources.reduce((sum, s) => sum + (s.credits ?? 0), 0)
+    const parts = [
+      data.spent > 0 ? t('web.spent', { count: data.spent }) : null,
+      serperCredits > 0 ? t('web.spentCredits', { count: serperCredits }) : null,
+    ].filter(Boolean)
+
+    if (parts.length) return parts.join(' · ')
+    // ⚠️ „ქეშიდან" მხოლოდ მაშინ, როცა მართლა ქეშიდანაა — უფასო წყაროც „არაფერი დახარჯულა"-ა
+    return data.sources.length && data.sources.every((s) => s.cached) ? t('web.fromCache') : t('web.spentNothing')
+  }
 
   /**
    * ⚠️ ძებნა **პარამეტრს იღებს** და არა მხოლოდ `selected`-ს: „ძებნა
@@ -170,25 +234,70 @@ export function WebImageDialog({
    * ძველი წყაროთი მოიძებნებოდა და ერთი ძებნა ტყუილად დაიხარჯებოდა.
    */
   const search = useMutation({
-    mutationFn: (override?: string[]) =>
+    mutationFn: (vars: { q: string; engines?: string[] }) =>
       searchWebImages({
-        query: query.trim(),
-        engines: override ?? selected,
+        query: vars.q,
+        engines: vars.engines ?? selected,
         limit: clampNum(limit, 1, WEB_MAX_PHOTOS, 100),
         pages: clampNum(pages, 1, WEB_MAX_PAGES, 1),
       }),
-    onSuccess: (data) => {
+    onSuccess: (data, vars) => {
       setItems(data.items)
       setSources(data.sources)
       setQuota(data.quota)
+      setLastQuery(vars.q)
       setPicked(new Set())
       setOverrides({})
       setResult(null)
       setSearched(true)
+      setPage(1)
       // ⚠️ ხარჯი ცხადად ითქვას — ქეშიდან მოსული ძებნა უფასოა და ესეც უნდა ჩანდეს
+      toast({ title: spendLine(data), variant: data.items.length ? 'success' : 'info' })
+      qc.invalidateQueries({ queryKey: ['web', 'status'] })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const runSearch = (override?: string[]) => {
+    const q = query.trim()
+    if (q) search.mutate({ q, engines: override })
+  }
+
+  /** §19.4 — ვისაც გაგრძელება აქვს (Serper — შემდეგი გვერდი, Commons — offset) */
+  const continuable = sources.filter((s) => s.next != null)
+  const moreCredits = continuable.some((s) => engineOf(available, s.engine)?.paged) ? 1 : 0
+
+  /**
+   * „კიდევ ჩამოიტანე" — **ახალი ძებნაა**, ოღონდ მხოლოდ ახალი ნაწილისა.
+   *
+   * ⚠️ backend-ი მხოლოდ იმ წყაროებს უშვებს, ვისაც `next` ჰქონდა, და Serper-ზე
+   * **მხოლოდ შემდეგ გვერდს** ყიდულობს — უფრო დიდი `limit`-ით ხელახალი ძებნა
+   * უკვე ნაყიდ გვერდებს თავიდან დახარჯავდა. ⚠️ შეკითხვა **ბოლო ძებნისაა**,
+   * ველისა კი არა: შეცვლილი ველი ძველ შედეგებს სხვა შეკითხვის შედეგებს
+   * შეურევდა.
+   */
+  const more = useMutation({
+    mutationFn: () =>
+      searchWebImages({
+        query: lastQuery,
+        cursor: Object.fromEntries(continuable.map((s) => [s.engine, s.next as number])),
+        limit: SERPER_PER_PAGE,
+        pages: 1,
+      }),
+    onSuccess: (data) => {
+      const before = items.length
+      const merged = mergeImages(items, data.items)
+
+      setItems(merged)
+      setSources((cur) => mergeSources(cur, data.sources))
+      setQuota(data.quota)
+      // ⚠️ ახალი ფოტოები იქ ჩანს, სადაც იწყება — თორემ „კიდევ" ეკრანზე არაფერს ცვლიდა
+      if (pageSize !== PHOTO_PAGE_ALL && merged.length > before) setPage(Math.floor(before / pageSize) + 1)
+
       toast({
-        title: data.spent > 0 ? t('web.spent', { count: data.spent }) : t('web.fromCache'),
-        variant: data.items.length ? 'success' : 'info',
+        title: merged.length > before ? t('web.moreFound', { count: merged.length - before }) : t('web.moreNothing'),
+        description: spendLine(data),
+        variant: merged.length > before ? 'success' : 'info',
       })
       qc.invalidateQueries({ queryKey: ['web', 'status'] })
     },
@@ -261,7 +370,20 @@ export function WebImageDialog({
       cur.includes(personId) ? cur.filter((x) => x !== personId) : [...cur, personId],
     )
 
+  /** §19.3 — დამატებული მსახიობი სიაში **მაშინვე მონიშნულია** */
+  const onCastAdded = (member: CastMember) => {
+    setAdded((cur) => (cur.some((p) => p.id === member.id) ? cur : [...cur, { id: member.id, name: member.name }]))
+    setDistribute((cur) => (cur.includes(member.id) ? cur : [...cur, member.id]))
+    context?.onCastAdded?.()
+  }
+
   const allPicked = items.length > 0 && picked.size === items.length
+
+  /** §19.4 — მიმდინარე გვერდი უკვე ჩამოსული შედეგებიდან (ახალი ძებნის გარეშე) */
+  const lastPage = pageSize === PHOTO_PAGE_ALL ? 1 : Math.max(1, Math.ceil(items.length / pageSize))
+  const current = Math.min(page, lastPage)
+  const shown =
+    pageSize === PHOTO_PAGE_ALL ? items : items.slice((current - 1) * pageSize, current * pageSize)
 
   // „იპოვა, მაგრამ გამოუსადეგარი" — ცალკე მდგომარეობა და ცალკე ტექსტი
   const dropped = useMemo(() => sources.reduce((sum, s) => sum + s.dropped, 0), [sources])
@@ -274,7 +396,7 @@ export function WebImageDialog({
   const others = available.filter((e) => !selected.includes(e.key))
 
   /** ⚠️ ნომერი ერთხელ ითვლება — განაწილების ნაბიჯი შეიძლება საერთოდ არ იყოს */
-  const hasDistribute = people.length > 0
+  const hasDistribute = people.length > 0 || canAddCast
   const STEP = { query: 1, sources: 2, distribute: 3, results: hasDistribute ? 4 : 3 }
 
   // ⚠️ **„გასაღები არ არის" ≠ „ვებძებნა არ მუშაობს"** — უფასო კატალოგი რჩება
@@ -291,378 +413,494 @@ export function WebImageDialog({
     )
   }
 
+  const busy = search.isPending || more.isPending
+
   return (
-    <ModalShell title={title} onClose={onClose} wide>
-      <div className="mt-5 space-y-3">
-        {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები, §5.2) ---------- */}
-        <StepSection step={STEP.query} title={t('web.stepQuery')}>
-          <div className="flex gap-2">
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('web.queryPlaceholder')}
-              // ⚠️ Enter = ძებნა (ღილაკის ტოლფასი); აკრეფისას ავტომატური ძებნა არასდროსაა
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  if (query.trim()) search.mutate(undefined)
-                }
-              }}
-            />
-            <Button
-              type="button"
-              onClick={() => search.mutate(undefined)}
-              disabled={!query.trim() || search.isPending || available.length === 0}
-            >
-              {search.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              {t('web.search')}
-            </Button>
-          </div>
-
-          {context && (
-            <div className="mt-3 space-y-2">
-              <p className="text-xs text-muted-foreground">{t('web.contextAdd')}</p>
-              <ChipRow>
-                <Chip onClick={() => setQuery(context.base)}>{context.base}</Chip>
-                {people.map((person) => (
-                  <Chip
-                    key={person.id}
-                    icon={<Plus className="size-3" />}
-                    // ⚠️ **ემატება და არ ანაცვლებს** — „ფილმი + მსახიობი" სწორედ
-                    // ის შეკითხვაა, რომელსაც §5.2 ითხოვს
-                    onClick={() =>
-                      setQuery((cur) =>
-                        cur.toLowerCase().includes(person.name.toLowerCase())
-                          ? cur
-                          : `${cur.trim()} ${person.name}`.trim(),
-                      )
-                    }
-                  >
-                    {person.name}
-                  </Chip>
-                ))}
-              </ChipRow>
-            </div>
-          )}
-        </StepSection>
-
-        {/* ---------- 2. სად ვეძებთ ---------- */}
-        <StepSection step={STEP.sources} title={t('web.stepSources')}>
-          <WebSourcePicker
-            engines={available}
-            selected={selected}
-            onChange={setEngines}
-            quota={quota ?? (status ? { used: status.used, limit: status.limit, remaining: status.remaining } : null)}
-            disabled={search.isPending}
-          />
-
-          {/* ⚠️ **ხელით შესაყვანი ორი რიცხვი** — ჩაშენებული 40 აღარაა.
-              „გვერდები" მხოლოდ იმ წყაროს ეხება, რომელსაც ისინი აქვს (Serper);
-              დანარჩენებზე ველი გამორთულია, რომ ცრუ დაპირება არ იყოს. */}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="web-limit" className="flex items-center gap-1.5">
-                {t('web.limitLabel')} <InfoHint info={t('web.limitHint', { max: WEB_MAX_PHOTOS })} />
-              </Label>
+    <>
+      <ModalShell
+        title={title}
+        onClose={onClose}
+        wide
+        aside={<WebSearchCost engines={available} selected={selected} quota={shownQuota} credits={credits} />}
+      >
+        <div className="mt-5 space-y-3">
+          {/* ---------- 1. რას ვეძებთ (შეკითხვა + კონტექსტის ჩიპები, §5.2) ---------- */}
+          <StepSection step={STEP.query} title={t('web.stepQuery')}>
+            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
               <Input
-                id="web-limit"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={WEB_MAX_PHOTOS}
-                value={limit}
-                disabled={search.isPending}
-                onChange={(e) => setLimit(Number(e.target.value))}
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('web.queryPlaceholder')}
+                // ⚠️ Enter = ძებნა (ღილაკის ტოლფასი); აკრეფისას ავტომატური ძებნა არასდროსაა
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    runSearch()
+                  }
+                }}
               />
-            </div>
-
-            <div>
-              {/* ⚠️ „თითო გვერდი ერთი კრედიტია" ეკრანზე უნდა ეწეროს (Tasks DEBT-17):
-                  `web.pagesCostWarn` InfoHint-ის გაყოფისას გაჩნდა და არსად
-                  ჩაერთო — ე.ი. ფულის გაფრთხილება ლოკალში იწერებოდა და
-                  მომხმარებელს არასდროს უნახავს. */}
-              <Label htmlFor="web-pages" className="inline-flex items-center gap-1">
-                {t('web.pagesLabel')}
-                {pagedSelected && <InfoHint critical={t('web.pagesCostWarn')} />}
-              </Label>
-              <Input
-                id="web-pages"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={WEB_MAX_PAGES}
-                value={pages}
-                disabled={search.isPending || !pagedSelected}
-                onChange={(e) => setPages(Number(e.target.value))}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {pagedSelected ? t('web.pagesHint', { max: WEB_MAX_PAGES }) : t('web.pagesOnlySerper')}
-              </p>
-            </div>
-          </div>
-        </StepSection>
-
-        {/* ---------- 3. §8.4 — განაწილება მსახიობებზე ---------- */}
-        {hasDistribute && (
-          <StepSection
-            step={STEP.distribute}
-            title={
-              <span className="flex items-center gap-2">
-                <Users className="size-4 text-muted-foreground" />
-                {t('web.distributeTitle')}
-              </span>
-            }
-            hint={distribute.length ? t('web.distributeOn', { count: distribute.length }) : t('web.distributeOff')}
-            action={
+              {/* §19.1 — ველი იცლება, ჩიპები რჩება; ფოკუსი ველში ბრუნდება */}
               <Button
                 type="button"
-                size="sm"
                 variant="ghost"
-                onClick={() =>
-                  setDistribute((cur) => (cur.length === people.length ? [] : people.map((p) => p.id)))
-                }
+                disabled={!query}
+                onClick={() => {
+                  setQuery('')
+                  inputRef.current?.focus()
+                }}
               >
-                {distribute.length === people.length ? t('photos.clear') : t('photos.selectAll')}
+                <X className="size-4" />
+                {t('actions.clear')}
               </Button>
+              <Button
+                type="button"
+                onClick={() => runSearch()}
+                disabled={!query.trim() || busy || available.length === 0}
+              >
+                {search.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                {t('web.search')}
+              </Button>
+            </div>
+
+            {context && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">{t('web.contextAdd')}</p>
+                <ChipRow>
+                  {/* ⚠️ ჩანაწერის სახელი **თავში** ჯდება — ის შეკითხვის საფუძველია */}
+                  <QueryChip
+                    label={context.base}
+                    active={hasTerm(query, context.base)}
+                    onClick={() => setQuery((cur) => toggleTerm(cur, context.base, 'start'))}
+                  />
+                  {people.map((person) => (
+                    <QueryChip
+                      key={person.id}
+                      label={person.name}
+                      active={hasTerm(query, person.name)}
+                      // ⚠️ „ფილმი + მსახიობი" სწორედ ის შეკითხვაა, რომელსაც §5.2 ითხოვს
+                      onClick={() => setQuery((cur) => toggleTerm(cur, person.name, 'end'))}
+                    />
+                  ))}
+                </ChipRow>
+              </div>
+            )}
+          </StepSection>
+
+          {/* ---------- 2. სად ვეძებთ ---------- */}
+          <StepSection step={STEP.sources} title={t('web.stepSources')}>
+            <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={busy} />
+
+            {/* ⚠️ **ხელით შესაყვანი ორი რიცხვი** — ჩაშენებული 40 აღარაა.
+                „გვერდები" მხოლოდ იმ წყაროს ეხება, რომელსაც ისინი აქვს (Serper);
+                დანარჩენებზე ველი გამორთულია, რომ ცრუ დაპირება არ იყოს. */}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="web-limit" className="flex items-center gap-1.5">
+                  {t('web.limitLabel')} <InfoHint info={t('web.limitHint', { max: WEB_MAX_PHOTOS })} />
+                </Label>
+                <Input
+                  id="web-limit"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={WEB_MAX_PHOTOS}
+                  value={limit}
+                  disabled={busy}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                />
+              </div>
+
+              <div>
+                {/* ⚠️ „თითო გვერდი ერთი კრედიტია" ეკრანზე უნდა ეწეროს (Tasks DEBT-17) */}
+                <Label htmlFor="web-pages" className="inline-flex items-center gap-1">
+                  {t('web.pagesLabel')}
+                  {pagedSelected && <InfoHint critical={t('web.pagesCostWarn')} />}
+                </Label>
+                <Input
+                  id="web-pages"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={WEB_MAX_PAGES}
+                  value={pages}
+                  disabled={busy || !pagedSelected}
+                  onChange={(e) => setPages(Number(e.target.value))}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {pagedSelected ? t('web.pagesHint', { max: WEB_MAX_PAGES }) : t('web.pagesOnlySerper')}
+                </p>
+              </div>
+            </div>
+          </StepSection>
+
+          {/* ---------- 3. §8.4 — განაწილება მსახიობებზე ---------- */}
+          {hasDistribute && (
+            <StepSection
+              step={STEP.distribute}
+              title={
+                <span className="flex items-center gap-2">
+                  <Users className="size-4 text-muted-foreground" />
+                  {t('web.distributeTitle')}
+                </span>
+              }
+              hint={distribute.length ? t('web.distributeOn', { count: distribute.length }) : t('web.distributeOff')}
+              action={
+                <>
+                  {/* §19.3 — ჩანაწერის შემადგენლობას ემატება (Q13) */}
+                  {canAddCast && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setCastOpen(true)}>
+                      <UserPlus className="size-4" />
+                      {t('cast.add')}
+                    </Button>
+                  )}
+                  {people.length > 0 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setDistribute((cur) => (cur.length === people.length ? [] : people.map((p) => p.id)))
+                      }
+                    >
+                      {distribute.length === people.length ? t('photos.clear') : t('photos.selectAll')}
+                    </Button>
+                  )}
+                </>
+              }
+            >
+              {people.length > 0 ? (
+                <ChipRow>
+                  {people.map((person) => (
+                    <Chip
+                      key={person.id}
+                      active={distribute.includes(person.id)}
+                      onClick={() => togglePerson(person.id)}
+                    >
+                      {person.name}
+                    </Chip>
+                  ))}
+                </ChipRow>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t('web.distributeNoCast')}</p>
+              )}
+            </StepSection>
+          )}
+
+          {/* ---------- 4. შედეგები ---------- */}
+          <StepSection
+            step={STEP.results}
+            title={t('web.stepResults')}
+            status={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
+            action={
+              items.length > 0 ? (
+                <>
+                  {/* §19.4 — „აჩვენე" უკვე ჩამოსულს ჰყოფს და ახალ ძებნას არ უშვებს */}
+                  <PhotoPageSizePick
+                    value={pageSize}
+                    total={items.length}
+                    onChange={(size) => {
+                      setPageSize(size)
+                      setPage(1)
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">{t('web.selected', { count: picked.size })}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPicked(allPicked ? new Set() : new Set(items.map(keyOf)))}
+                  >
+                    {allPicked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+                    {/* ⚠️ §19.5 — **ყველა ჩამოსული** და არა მიმდინარე გვერდი: რიცხვი ამას ამბობს */}
+                    {allPicked ? t('photos.clear') : t('web.selectAllCount', { count: items.length })}
+                  </Button>
+                </>
+              ) : null
             }
           >
-            <ChipRow>
-              {people.map((person) => (
-                <Chip
-                  key={person.id}
-                  active={distribute.includes(person.id)}
-                  onClick={() => togglePerson(person.id)}
-                >
-                  {person.name}
-                </Chip>
-              ))}
-            </ChipRow>
-          </StepSection>
-        )}
+            {/* ⚠️ „არ პასუხობს" ბადესთან ერთადაც ჩანს: ერთმა წყარომ შეიძლება
+                იმუშაოს და მეორემ არა — ნაპოვნის რაოდენობა ამას არ ამბობს */}
+            {offline.length > 0 && (
+              <p className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="mt-px size-3.5 shrink-0" />
+                {t('web.sourceOffline', { engines: offline.join(', ') })}
+              </p>
+            )}
 
-        {/* ---------- 4. შედეგები ---------- */}
-        <StepSection
-          step={STEP.results}
-          title={t('web.stepResults')}
-          status={items.length > 0 ? t('web.found', { count: items.length }) : undefined}
-          action={
-            items.length > 0 ? (
-              <>
-                <span className="text-xs text-muted-foreground">{t('web.selected', { count: picked.size })}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setPicked(allPicked ? new Set() : new Set(items.map(keyOf)))}
-                >
-                  {allPicked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-                  {t(allPicked ? 'photos.clear' : 'photos.selectAll')}
+            {result && (
+              <div
+                className={cn(
+                  'mb-3 rounded-lg border px-3 py-2 text-xs',
+                  result.added > 0
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                )}
+              >
+                {[
+                  t('web.imported', { count: result.added }),
+                  result.failed > 0 ? t('web.importFailed', { count: result.failed }) : null,
+                  result.skipped > 0 ? t('web.importSkipped', { count: result.skipped }) : null,
+                  result.thumbnails > 0 ? t('web.importedThumbnails', { count: result.thumbnails }) : null,
+                  // §8.4 — სად წავიდა („ჰელენა 3 · ფილმი 7"), სერვერის პასუხიდან
+                  assignedLine(result.assigned, people, context?.attachesTo, t),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
+
+            {items.length === 0 ? (
+              /* ⚠️ სამი ცარიელი მდგომარეობა და სამივე სხვადასხვა ამბავია:
+                 ჯერ არ მოგიძებნია · იპოვა ლინკის გარეშე · ვერაფერი იპოვა */
+              <EmptyState
+                icon={searched ? <ImageOff className="size-6" /> : <Search className="size-6" />}
+                title={searched ? t('web.nothingFound') : t('web.notSearchedYet')}
+                hint={
+                  searched
+                    ? dropped > 0
+                      ? t('web.foundUnusable', { count: dropped })
+                      : undefined
+                    : t('web.notSearchedHint')
+                }
+                /* ⚠️ **ცარიელი პასუხი ჩიხი არ უნდა იყოს.** ნაგულისხმევი წყარო
+                   უფასო Wikimedia-ა და მისი ტეგებით ძებნა სუსტია — ფილმის
+                   სახელზე ხშირად ნამდვილად არაფერს პოულობს. დანარჩენი წყაროები
+                   აქვე დგას ღილაკებად: ერთი დაჭერა წყაროსაც ცვლის და ეძებს. */
+                actions={
+                  // ⚠️ ცარიელი მასივი `EmptyState`-ისთვის „არის" — ღილაკების
+                  // ცარიელი რიგი ზედმეტ ჰაერს დახატავდა
+                  searched && query.trim() && others.length > 0
+                    ? others.map((engine) => (
+                        <Button
+                          key={engine.key}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => {
+                            setEngines([engine.key])
+                            runSearch([engine.key])
+                          }}
+                        >
+                          <Search className="size-3.5" />
+                          {t('web.searchWith', { engine: engine.name })}
+                        </Button>
+                      ))
+                    : undefined
+                }
+              />
+            ) : (
+              <div className="fb-scroll grid max-h-[45vh] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
+                {shown.map((item) => {
+                  const key = keyOf(item)
+                  const on = picked.has(key)
+
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        'group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors',
+                        on ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggle(item)}
+                        className="flex flex-1 cursor-pointer flex-col text-left"
+                      >
+                        <span className="relative block aspect-square w-full overflow-hidden bg-muted">
+                          {/* ⚠️ **ორიგინალი ჯერ, ესკიზი მხოლოდ სათადარიგოდ** (2026-09-14).
+                              Google-ის ესკიზები (`encrypted-tbn0.gstatic.com`) მონიშნულ
+                              სურათებზე **თვითონ მოდის დაბუნდოვნებული** — ეს ჩვენი CSS
+                              არასდროს ყოფილა. ⚠️ `onError` **აუცილებელია**: hotlink-ის
+                              დაცვა ჩვეულებრივი ამბავია — მის გარეშე ბადეში ტეხილი
+                              სურათები გამოჩნდებოდა. */}
+                          <img
+                            src={item.original ?? item.thumbnail ?? ''}
+                            alt={item.title ?? ''}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const img = e.currentTarget
+                              if (item.thumbnail && img.src !== item.thumbnail) img.src = item.thumbnail
+                            }}
+                            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+
+                          {/* ზომა ესკიზზე — სწორედ ის ფაქტია, რომელზეც არჩევანი დგას */}
+                          {item.width && item.height && (
+                            <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+                              {item.width}×{item.height}
+                            </span>
+                          )}
+
+                          <span
+                            className={cn(
+                              'absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-md border transition-colors',
+                              on
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-white/70 bg-black/40 text-transparent',
+                            )}
+                          >
+                            <Check className="size-3.5" />
+                          </span>
+                        </span>
+
+                        <span className="block space-y-1 px-2.5 py-2">
+                          <span className="block truncate text-xs font-medium" title={item.title ?? ''}>
+                            {item.domain ?? item.title ?? '—'}
+                          </span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {[item.engines.map((e) => engineName(available, e)).join(' · '), item.license ?? null]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </span>
+                      </button>
+
+                      {/* §8.4 — ხელით გადაწერა; ჩანს მხოლოდ განაწილების დროს */}
+                      {distribute.length > 0 && on && (
+                        <label className="flex items-center gap-1.5 border-t border-border bg-muted/40 px-2.5 py-1.5">
+                          <Users className="size-3 shrink-0 text-muted-foreground" />
+                          <select
+                            value={overrides[key] ?? AUTO}
+                            onChange={(e) => setOverrides((cur) => ({ ...cur, [key]: e.target.value }))}
+                            className="w-full cursor-pointer truncate bg-transparent text-[11px] text-muted-foreground outline-none focus:text-foreground"
+                            aria-label={t('web.assignLabel')}
+                          >
+                            <option value={AUTO}>{t('web.assignAuto')}</option>
+                            {people
+                              .filter((p) => distribute.includes(p.id))
+                              .map((p) => (
+                                <option key={p.id} value={String(p.id)}>
+                                  {p.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {items.length > 0 && lastPage > 1 && (
+              <Pager className="mt-4" page={current} lastPage={lastPage} total={items.length} onChange={setPage} />
+            )}
+
+            {/* §19.4 — ახალი ძებნა, ე.ი. ცალკე ღილაკი, რომელიც ფასს თვითონ ამბობს */}
+            {items.length > 0 && continuable.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => more.mutate()}>
+                  {more.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                  {t('web.fetchMore')}
                 </Button>
-              </>
-            ) : null
-          }
-        >
-          {/* ⚠️ „არ პასუხობს" ბადესთან ერთადაც ჩანს: ერთმა წყარომ შეიძლება
-              იმუშაოს და მეორემ არა — ნაპოვნის რაოდენობა ამას არ ამბობს */}
-          {offline.length > 0 && (
-            <p className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="mt-px size-3.5 shrink-0" />
-              {t('web.sourceOffline', { engines: offline.join(', ') })}
+                <span className="text-xs text-muted-foreground">
+                  {moreCredits > 0 ? t('web.costSerper', { count: moreCredits }) : t('web.moreFree')}
+                </span>
+              </div>
+            )}
+          </StepSection>
+        </div>
+
+        <ModalFooter>
+          {context?.attachesTo && (
+            // ⚠️ „ვის მიება" ჩამოტვირთვის ღილაკის გვერდითაა — იმ წამს, როცა
+            // ეს ფაქტი მნიშვნელობას იძენს
+            <p className="mr-auto text-xs text-muted-foreground">
+              {t('web.attachesTo', { name: context.attachesTo })}
             </p>
           )}
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t('actions.cancel')}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => importing.mutate()}
+            disabled={picked.size === 0 || importing.isPending}
+          >
+            {importing.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {progress && progress.total > WEB_IMPORT_CHUNK
+              ? t('web.importProgress', { done: progress.done, total: progress.total })
+              : t('web.download', { count: picked.size })}
+          </Button>
+        </ModalFooter>
+      </ModalShell>
 
-          {result && (
-            <div
-              className={cn(
-                'mb-3 rounded-lg border px-3 py-2 text-xs',
-                result.added > 0
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
-              )}
-            >
-              {[
-                t('web.imported', { count: result.added }),
-                result.failed > 0 ? t('web.importFailed', { count: result.failed }) : null,
-                result.skipped > 0 ? t('web.importSkipped', { count: result.skipped }) : null,
-                result.thumbnails > 0 ? t('web.importedThumbnails', { count: result.thumbnails }) : null,
-                // §8.4 — სად წავიდა („ჰელენა 3 · ფილმი 7"), სერვერის პასუხიდან
-                assignedLine(result.assigned, people, context?.attachesTo, t),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </div>
-          )}
+      {/* ⚠️ **ჩადგმული მოდალია** — `ModalShell`-ის დასტა ამ ფანჯარას მალავს
+          (მონტირებულს ტოვებს) და დახურვაზე უკან აბრუნებს; შედეგები ადგილზეა. */}
+      {castOpen && castRecord && (
+        <CastMemberDialog
+          type={castRecord.type}
+          recordId={castRecord.id}
+          onClose={() => setCastOpen(false)}
+          onAdded={onCastAdded}
+        />
+      )}
+    </>
+  )
+}
 
-          {items.length === 0 ? (
-            /* ⚠️ სამი ცარიელი მდგომარეობა და სამივე სხვადასხვა ამბავია:
-               ჯერ არ მოგიძებნია · იპოვა ლინკის გარეშე · ვერაფერი იპოვა */
-            <EmptyState
-              icon={searched ? <ImageOff className="size-6" /> : <Search className="size-6" />}
-              title={searched ? t('web.nothingFound') : t('web.notSearchedYet')}
-              hint={
-                searched
-                  ? dropped > 0
-                    ? t('web.foundUnusable', { count: dropped })
-                    : undefined
-                  : t('web.notSearchedHint')
-              }
-              /* ⚠️ **ცარიელი პასუხი ჩიხი არ უნდა იყოს.** ნაგულისხმევი წყარო
-                 უფასო Wikimedia-ა და მისი ტეგებით ძებნა სუსტია — ფილმის
-                 სახელზე ხშირად ნამდვილად არაფერს პოულობს. დანარჩენი წყაროები
-                 აქვე დგას ღილაკებად: ერთი დაჭერა წყაროსაც ცვლის და ეძებს. */
-              actions={
-                // ⚠️ ცარიელი მასივი `EmptyState`-ისთვის „არის" — ღილაკების
-                // ცარიელი რიგი ზედმეტ ჰაერს დახატავდა
-                searched && query.trim() && others.length > 0
-                  ? others.map((engine) => (
-                      <Button
-                        key={engine.key}
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={search.isPending}
-                        onClick={() => {
-                          setEngines([engine.key])
-                          search.mutate([engine.key])
-                        }}
-                      >
-                        <Search className="size-3.5" />
-                        {t('web.searchWith', { engine: engine.name })}
-                      </Button>
-                    ))
-                  : undefined
-              }
-            />
-          ) : (
-            <div className="fb-scroll grid max-h-[45vh] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
-              {items.map((item) => {
-                const key = keyOf(item)
-                const on = picked.has(key)
-
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      'group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors',
-                      on ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/50',
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggle(item)}
-                      className="flex flex-1 cursor-pointer flex-col text-left"
-                    >
-                      <span className="relative block aspect-square w-full overflow-hidden bg-muted">
-                        {/* ⚠️ **ორიგინალი ჯერ, ესკიზი მხოლოდ სათადარიგოდ** (2026-09-14).
-                            ადრე პირიქით იყო და სწორედ ეს იძლეოდა „ბლარს": Google-ის
-                            ესკიზები (`encrypted-tbn0.gstatic.com`) მონიშნულ სურათებზე
-                            **თვითონ მოდის დაბუნდოვნებული** — ეს ჩვენი CSS არასდროს
-                            ყოფილა (`blur` კლასი კოდში არსად არის). ორიგინალი ნამდვილი
-                            ფაილია და ბლარი მასზე არ დევს.
-                            ⚠️ `onError` **აუცილებელია**: hotlink-ის დაცვა ჩვეულებრივი
-                            ამბავია (იგივე მიზეზი, რის გამოც ჩამოტვირთვაც ესკიზზე
-                            ეშვება) — მის გარეშე ბადეში ტეხილი სურათები გამოჩნდებოდა. */}
-                        <img
-                          src={item.original ?? item.thumbnail ?? ''}
-                          alt={item.title ?? ''}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            const img = e.currentTarget
-                            if (item.thumbnail && img.src !== item.thumbnail) img.src = item.thumbnail
-                          }}
-                          className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-
-                        {/* ზომა ესკიზზე — სწორედ ის ფაქტია, რომელზეც არჩევანი დგას */}
-                        {item.width && item.height && (
-                          <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
-                            {item.width}×{item.height}
-                          </span>
-                        )}
-
-                        <span
-                          className={cn(
-                            'absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-md border transition-colors',
-                            on
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-white/70 bg-black/40 text-transparent',
-                          )}
-                        >
-                          <Check className="size-3.5" />
-                        </span>
-                      </span>
-
-                      <span className="block space-y-1 px-2.5 py-2">
-                        <span className="block truncate text-xs font-medium" title={item.title ?? ''}>
-                          {item.domain ?? item.title ?? '—'}
-                        </span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {[item.engines.map((e) => engineName(available, e)).join(' · '), item.license ?? null]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                    </button>
-
-                    {/* §8.4 — ხელით გადაწერა; ჩანს მხოლოდ განაწილების დროს */}
-                    {distribute.length > 0 && on && (
-                      <label className="flex items-center gap-1.5 border-t border-border bg-muted/40 px-2.5 py-1.5">
-                        <Users className="size-3 shrink-0 text-muted-foreground" />
-                        <select
-                          value={overrides[key] ?? AUTO}
-                          onChange={(e) => setOverrides((cur) => ({ ...cur, [key]: e.target.value }))}
-                          className="w-full cursor-pointer truncate bg-transparent text-[11px] text-muted-foreground outline-none focus:text-foreground"
-                          aria-label={t('web.assignLabel')}
-                        >
-                          <option value={AUTO}>{t('web.assignAuto')}</option>
-                          {people
-                            .filter((p) => distribute.includes(p.id))
-                            .map((p) => (
-                              <option key={p.id} value={String(p.id)}>
-                                {p.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </StepSection>
-      </div>
-
-      <ModalFooter>
-        {context?.attachesTo && (
-          // ⚠️ „ვის მიება" ჩამოტვირთვის ღილაკის გვერდითაა — იმ წამს, როცა
-          // ეს ფაქტი მნიშვნელობას იძენს
-          <p className="mr-auto text-xs text-muted-foreground">
-            {t('web.attachesTo', { name: context.attachesTo })}
-          </p>
-        )}
-        <Button type="button" variant="ghost" onClick={onClose}>
-          {t('actions.cancel')}
-        </Button>
-        <Button
-          type="button"
-          onClick={() => importing.mutate()}
-          disabled={picked.size === 0 || importing.isPending}
-        >
-          {importing.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          {progress && progress.total > WEB_IMPORT_CHUNK
-            ? t('web.importProgress', { done: progress.done, total: progress.total })
-            : t('web.download', { count: picked.size })}
-        </Button>
-      </ModalFooter>
-    </ModalShell>
+/**
+ * შეკითხვის ჩიპი (§19.1) — არააქტიური „+"-ით ამატებს, აქტიური ჯვრით ამოიღებს.
+ * ⚠️ ჯვარი ნიშანია და არა ცალკე ღილაკი (`Chip`-ის `remove`) — ჩიპი თვითონაა ღილაკი.
+ */
+function QueryChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <Chip active={active} remove={active} icon={active ? undefined : <Plus className="size-3" />} onClick={onClick}>
+      {label}
+    </Chip>
   )
 }
 
 /** ერთეულის ვინაობა — ორიგინალი ლინკი (backend-იც ამით ცნობს დუბლს) */
 function keyOf(item: SerpImage): string {
   return item.original ?? item.link ?? item.thumbnail ?? ''
+}
+
+/**
+ * „კიდევ"-ის პასუხის შერწყმა (§19.4) — **დუბლი ერთდება** და მისი წყაროები
+ * ერთ სიაში იკრიბება (სერვერის `search()`-ის იგივე წესი, ოღონდ ნაწილებს შორის).
+ */
+function mergeImages(current: SerpImage[], incoming: SerpImage[]): SerpImage[] {
+  const out = [...current]
+  const index = new Map(out.map((item, i) => [keyOf(item), i]))
+
+  for (const item of incoming) {
+    const at = index.get(keyOf(item))
+    if (at === undefined) {
+      index.set(keyOf(item), out.length)
+      out.push(item)
+    } else {
+      out[at] = { ...out[at], engines: [...new Set([...out[at].engines, ...item.engines])] }
+    }
+  }
+
+  return out
+}
+
+/** წყაროების მრიცხველები ნაწილებს შორის ჯამდება; `next` კი ახალ პასუხს ეკუთვნის */
+function mergeSources(current: SerpSource[], incoming: SerpSource[]): SerpSource[] {
+  const out = [...current]
+
+  for (const row of incoming) {
+    const at = out.findIndex((s) => s.engine === row.engine)
+    if (at === -1) {
+      out.push(row)
+      continue
+    }
+    const prev = out[at]
+    out[at] = {
+      ...row,
+      count: prev.count + row.count,
+      dropped: prev.dropped + row.dropped,
+      credits: (prev.credits ?? 0) + (row.credits ?? 0),
+    }
+  }
+
+  return out
 }
 
 /**
@@ -677,8 +915,12 @@ function clampNum(value: number, min: number, max: number, fallback: number): nu
   return Math.min(Math.trunc(value), max)
 }
 
-function engineName(engines: { key: string; name: string }[], key: string): string {
-  return engines.find((e) => e.key === key)?.name ?? key
+function engineOf(engines: SerpEngine[], key: string): SerpEngine | undefined {
+  return engines.find((e) => e.key === key)
+}
+
+function engineName(engines: SerpEngine[], key: string): string {
+  return engineOf(engines, key)?.name ?? key
 }
 
 /**

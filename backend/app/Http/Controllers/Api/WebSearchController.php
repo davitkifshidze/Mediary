@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CastMember;
+use App\Models\User;
+use App\Models\Video;
 use App\Services\Serp\SerpApiClient;
 use App\Services\Serp\SerpQuotaExceeded;
 use App\Services\Serp\WebImageImporter;
 use App\Services\Web\SerperImages;
 use App\Services\Web\WikimediaImages;
+use App\Support\DuplicateLink;
 use App\Support\GalleryParent;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
@@ -88,6 +91,18 @@ class WebSearchController extends Controller
     private const EXTRA_IMAGE_SOURCES = [
         SerperImages::KEY => ['name' => 'Google Images (Serper)', 'safe' => true],
     ];
+
+    /**
+     * **ვის შეუძლია „კიდევ ჩამოიტანე"** (Tasks §19.4) — წყაროები, რომლებსაც
+     * საკუთარი გაგრძელება აქვთ: Commons-ს `gsroffset`, Serper-ს გვერდი.
+     *
+     * ⚠️ **SerpApi-ის engine-ები აქ არ არის და ეს განზრახაა**: ოთხივეს
+     * გვერდების პარამეტრი სხვადასხვაა (`ijn` · `p` · `b`…) და ცოცხლად
+     * გადაუმოწმებელია, თითო ცდა კი 250-იდან ერთ ძებნას ჭამს. გაგრძელების
+     * გარეშე წყარო `next: null`-ს აბრუნებს, ე.ი. ღილაკი უბრალოდ არ ჩანს —
+     * ცრუ დაპირება არ არის.
+     */
+    private const CONTINUABLE = [WikimediaImages::KEY, SerperImages::KEY];
 
     /**
      * კვოტისა და წყაროების მდგომარეობა (§7.6.1).
@@ -418,6 +433,8 @@ class WebSearchController extends Controller
      */
     private function search(Request $request, array $keys, string $kind): JsonResponse
     {
+        $continuable = array_values(array_intersect(self::CONTINUABLE, $keys));
+
         $data = $request->validate([
             'query' => ['required', 'string', 'max:255'],
             'engines' => ['sometimes', 'array', 'max:'.count($keys)],
@@ -431,11 +448,23 @@ class WebSearchController extends Controller
             // ⚠️ ცენზურა **გამორთულია ნაგულისხმევად** (§7.5-ის პირდაპირი პირობა):
             // „რასაც ტეგში დაწერს, ის ჩამოიწეროს".
             'safe' => ['sometimes', 'boolean'],
+            /* §19.4 — „კიდევ ჩამოიტანე": engine → წინა პასუხის `next`.
+               ⚠️ გასაღებები მხოლოდ გაგრძელების მქონე წყაროებია; ვიდეოზე ასეთი
+               არ არსებობს, ე.ი. იქ პარამეტრი საერთოდ აკრძალულია — უცნობი
+               გასაღების ჩუმად გადაგდება ცარიელ „ახალ" პასუხს დააბრუნებდა. */
+            'cursor' => $continuable ? ['sometimes', 'array:'.implode(',', $continuable)] : ['prohibited'],
+            'cursor.*' => ['integer', 'min:1', 'max:100000'],
         ]);
+
+        /** @var array<string, int> $cursor */
+        $cursor = array_map('intval', $data['cursor'] ?? []);
 
         // ცარიელი არჩევანი = **პირველი** წყარო და არა „ყველა". სიაში პირველი
         // უფასოა, ე.ი. ნაგულისხმევი ქცევა ბიუჯეტს არ ეხება (§7.5).
-        $engines = $data['engines'] ?? [];
+        // ⚠️ გაგრძელებაზე წყაროები **cursor-იდან** მოდის: მხოლოდ მათ, ვისაც
+        // `next` ჰქონდა — დანარჩენის ხელახლა გაშვება იგივე შედეგს და
+        // (SerpApi-ზე) იგივე ხარჯს მოიტანდა.
+        $engines = $cursor ? array_keys($cursor) : ($data['engines'] ?? []);
         $engines = $engines ? array_values(array_unique($engines)) : [$keys[0] ?? ''];
 
         // ⚠️ 503 მხოლოდ მაშინ, როცა **არჩეული** წყაროებიდან არც ერთი არ მუშაობს.
@@ -457,7 +486,7 @@ class WebSearchController extends Controller
 
         foreach ($usable as $engine) {
             try {
-                $result = $this->runOne($engine, $kind, $data['query'], $limit, $pages, $safe);
+                $result = $this->runOne($engine, $kind, $data['query'], $limit, $pages, $safe, $cursor[$engine] ?? null);
             } catch (SerpQuotaExceeded $e) {
                 // ⚠️ უკვე მოტანილი შედეგები **არ იკარგება** — ლიმიტი შუა გზაზე
                 // რომ ამოიწუროს, სამი engine-ის პასუხის გადაგდება ძებნის
@@ -468,7 +497,7 @@ class WebSearchController extends Controller
 
                 $sources[] = [
                     'engine' => $engine, 'ok' => false, 'cached' => false,
-                    'count' => 0, 'dropped' => 0, 'quota_exceeded' => true,
+                    'count' => 0, 'dropped' => 0, 'quota_exceeded' => true, 'next' => null,
                 ];
 
                 break;
@@ -512,11 +541,19 @@ class WebSearchController extends Controller
                 // ⚠️ Serper-ის ხარჯი ცალკე იწერება: ის SerpApi-ის 250-ში არ ჯდება,
                 // მაგრამ ფული მაინც არის და ეკრანზე უნდა ჩანდეს
                 'credits' => (int) ($result['spent'] ?? 0),
+                // §19.4 — გაგრძელება; `null` = ამ წყაროდან მეტი არაფერი მოვა
+                'next' => isset($result['next']) ? (int) $result['next'] : null,
             ];
         }
 
+        $items = array_values($merged);
+
+        if ($kind === 'videos') {
+            $items = $this->withExisting($request->user(), $items);
+        }
+
         return response()->json([
-            'items' => array_values($merged),
+            'items' => $items,
             'sources' => $sources,
             'spent' => $spent,
             'quota' => $this->quotaBlock(),
@@ -524,22 +561,52 @@ class WebSearchController extends Controller
     }
 
     /**
+     * **„უკვე ვიდეოებშია"** (Tasks §19.6, FEAT-17-ის `DuplicateLink`).
+     *
+     * ⚠️ **ძებნის პასუხშივეა და არა ცალკე მოთხოვნაში** — „რა არის ამ ბმულის
+     * უკან და ხომ არ მაქვს უკვე" ერთი კითხვის ორი ნახევარია (`POST
+     * /videos/metadata`-ის წესი). ცალკე endpoint-ს ბადე შედეგების მოსვლის
+     * შემდეგ კიდევ ერთხელ დაელოდებოდა და ღილაკი ჯერ „დამატებად", მერე
+     * „უკვე გაქვს"-ად გადაიხატებოდა.
+     *
+     * ⚠️ **მხოლოდ მაშინ, როცა ვიდეოების მოდული გაქვს და მისი ნახვის
+     * უფლებაც** — ეს მარშრუტი მოდულის ჯგუფს გარეთაა, ე.ი. შემოწმება ცხადია.
+     * ქეში ამას არ ეხება: ძებნის პასუხი ქეშიდან მოდის, ეს კი ყოველთვის ახლაა.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function withExisting(?User $user, array $items): array
+    {
+        if (! $user || ! $items || ! $user->hasModule('video') || ! $user->hasPermission('video', 'view')) {
+            return $items;
+        }
+
+        $existing = DuplicateLink::findMany(Video::class, array_column($items, 'link'));
+
+        return array_map(
+            fn (array $item) => $item + ['existing' => $existing[$item['link'] ?? ''] ?? null],
+            $items,
+        );
+    }
+
+    /**
      * ერთი წყაროს გაშვება. **ერთადერთი ადგილი, სადაც უფასო და ფასიანი წყარო
      * ერთმანეთისგან განსხვავდება** — დანარჩენი ლოგიკა (გაერთიანება, დუბლი,
      * მდგომარეობები) ორივეზე ერთნაირად მუშაობს.
      *
-     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int}
+     * @return array{ok: bool, cached: bool, engine: string, items: list<array<string, mixed>>, dropped: int, next?: int|null}
      */
-    private function runOne(string $engine, string $kind, string $query, int $limit, int $pages, bool $safe): array
+    private function runOne(string $engine, string $kind, string $query, int $limit, int $pages, bool $safe, ?int $cursor = null): array
     {
         if ($engine === WikimediaImages::KEY) {
-            return $this->wikimedia->search($query, min($limit, 100));
+            return $this->wikimedia->search($query, min($limit, 100), $cursor ?? 0);
         }
 
         // ⚠️ **ერთადერთი წყარო, რომელსაც გვერდები აქვს** — დანარჩენებს ერთი
         // ძახილი აქვთ და 1000-ის თხოვნა მათ უბრალოდ შეცდომას დააბრუნებინებდა
         if ($engine === SerperImages::KEY) {
-            return $this->serper->search($query, $limit, $pages, $safe);
+            return $this->serper->search($query, $limit, $pages, $safe, $cursor ?? 1);
         }
 
         return $kind === 'images'
@@ -640,6 +707,11 @@ class WebSearchController extends Controller
                 'name' => $spec['name'],
                 'safe_search' => (bool) $spec['safe'],
                 'free' => $free,
+                /* ⚠️ §19.2 — ინტერფეისი ხარჯს **`uses_quota`-ით** ითვლის და არა
+                   `!free`-ით (Serper არც უფასოა და არც 250-ს ხარჯავს). ვიდეოს
+                   ორივე წყარო SerpApi-ისაა, ე.ი. ორივე ბიუჯეტიდან იხარჯება. */
+                'uses_quota' => ! $free,
+                'paged' => false,
             ];
         }
 
