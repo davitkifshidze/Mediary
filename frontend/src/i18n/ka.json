@@ -3117,8 +3117,17 @@
     },
     "tabs": {
       "calendar": "კალენდარი",
-      "stats": "სტატისტიკა"
-    }
+      "media": "მედია"
+    },
+    "thisYearNow": "წელს",
+    "lastYearNow": "შარშან {{count}}",
+    "thisYear": "{{year}} წელს",
+    "lastYear": "{{year}}-ში {{count}}",
+    "mediaGenres": "რა ჟანრებს ვუყურებ",
+    "mediaActors": "ვინ არის ჩემი ყველაზე ხშირი მსახიობი",
+    "mediaMonths": "როდის ვუყურებ — {{year}}",
+    "actorCount": "{{count}} ჩანაწერში",
+    "noActors": "მსახიობები ჯერ არ არის — სინქრონიზაცია მათ TMDB-იდან მოიტანს."
   },
   "episodes": {
     "title": "სეზონები და ეპიზოდები",

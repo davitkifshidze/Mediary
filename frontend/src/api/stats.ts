@@ -47,12 +47,33 @@ export interface StatModule {
   months: { month: number; count: number }[]
   /** აქვს თუ არა ამ მოდულს „როდის გავაკეთე" თარიღი (წიგნს — არა) */
   has_months: boolean
+  /**
+   * Tasks §28.3 — არჩეულ წელს და მის წინა წელს რამდენი დავასრულე.
+   * ⚠️ `null` = მოდულს დასრულების თარიღი არ აქვს (ხაზი არ იხატება), ნული კი პასუხია.
+   */
+  this_year: number | null
+  last_year: number | null
+}
+
+/** დომენი → რიცხვი (`movie`/`series`/`anime`), ნულებით შევსებული */
+export type ByDomain = Record<string, number>
+
+/** Tasks §28.5 — ფილმი, სერიალი და ანიმე ერთ შედარებაში */
+export interface StatsMedia {
+  /** რომელი მედია-დომენები მაქვს — სერიების რიგი */
+  domains: string[]
+  genres: (StatNamed & { by: ByDomain })[]
+  actors: { id: number; name: string; name_ka: string | null; photo_path: string | null; by: ByDomain; count: number }[]
+  this_year: number
+  last_year: number
 }
 
 export interface StatsPayload {
   year: number
   /** წლები, რომლებშიც აქტივობა მაქვს — ამომრჩევს სია სჭირდება */
   years: number[]
+  /** `null` — მედია-მოდული არ მაქვს */
+  media: StatsMedia | null
   data: StatModule[]
 }
 

@@ -5,8 +5,8 @@ import {
   BookOpen,
   Boxes,
   CalendarClock,
-  ChartColumn,
   CheckCheck,
+  Clapperboard,
   CircleCheck,
   CircleSlash,
   CircleX,
@@ -121,7 +121,8 @@ const CUT_STYLE: Record<string, CutStyle> = {
 
   /* ---- სტატისტიკის ჩანართები (Tasks §27.4 → §28.1) ---- */
   calendar: { icon: CalendarClock, color: 'var(--tool-sync)' },
-  stats: { icon: ChartColumn, color: 'var(--tool-stats)' },
+  // ფილმი, სერიალი და ანიმე ერთად (§28.1) — მოდულების ჩანართებს თავიანთი ფერი აქვთ
+  media: { icon: Clapperboard, color: 'var(--tool-stats)' },
 
   /* ---- საცავის ფაილის სახეობა ---- */
   image: { icon: Image, color: 'var(--tool-sync)' },

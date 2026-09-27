@@ -781,3 +781,37 @@
 .dark .fb-chat-swatch {
   background: var(--sw-dark);
 }
+
+/* Tasks §28.4 — **გრაფიკის სერიის ფერი თემის მიხედვით** (`lib/chartColors.ts`).
+   ორივე ვარიანტი JS-ში წინასწარ გამოითვლება (მოდულის ფერი, საჭიროებისას
+   იმავე ტონის გამუქებული/განათებული — WCAG 1.4.11-ის 3:1), აქ კი CSS
+   ირჩევს, რომელი ჩანს — ჩატის `.fb-chat`-ის ზუსტი ხერხი: JS თემას არ
+   კითხულობს და გადართვაზე გრაფიკი ხელახლა არ იხატება. */
+.fb-series {
+  --series-0: var(--series-0-light);
+  --series-1: var(--series-1-light);
+  --series-2: var(--series-2-light);
+  --series-3: var(--series-3-light);
+  --series-4: var(--series-4-light);
+  --series-5: var(--series-5-light);
+  --series-6: var(--series-6-light);
+  --series-7: var(--series-7-light);
+  --series-8: var(--series-8-light);
+  --series-9: var(--series-9-light);
+  --series-10: var(--series-10-light);
+  --series-11: var(--series-11-light);
+}
+.dark .fb-series {
+  --series-0: var(--series-0-dark);
+  --series-1: var(--series-1-dark);
+  --series-2: var(--series-2-dark);
+  --series-3: var(--series-3-dark);
+  --series-4: var(--series-4-dark);
+  --series-5: var(--series-5-dark);
+  --series-6: var(--series-6-dark);
+  --series-7: var(--series-7-dark);
+  --series-8: var(--series-8-dark);
+  --series-9: var(--series-9-dark);
+  --series-10: var(--series-10-dark);
+  --series-11: var(--series-11-dark);
+}

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { Status } from '@/api/types'
-import { STATUS_BADGE } from './statusStyles'
-import { ENUM_STATUS_ROLE, enumStatusTone, statusByKey, statusName, statusTone, type EnumStatusDomain } from './statuses'
+import { STATUS_BADGE, STATUS_FILL } from './statusStyles'
+import {
+  ENUM_STATUS_ROLE,
+  enumStatusTone,
+  statusByKey,
+  statusFill,
+  statusName,
+  statusTone,
+  type EnumStatusDomain,
+} from './statuses'
 
 /* ============================================================
    `lib/statuses.ts` — სტატუსის სახელი, პოვნა და ფერი.
@@ -112,5 +120,36 @@ describe('enumStatusTone', () => {
 
   it('უცნობი სტატუსი ნეიტრალურია', () => {
     expect(enumStatusTone('book', 'lost')).toBe('undecided')
+  })
+})
+
+/**
+ * **სტატუსის ფერი გრაფიკზე** (Tasks §28) — ბეჯის ტონი, ორივე მექანიზმზე.
+ *
+ * ⚠️ სტატისტიკის ზოლს საკუთარი პალიტრა ჰქონდა („საყურებელი" იისფერი,
+ * „მიტოვებული" ნაცრისფერი), ე.ი. ერთი სტატუსი ჩანაწერზე ერთ ფერში იყო და
+ * გრაფიკზე — მეორეში.
+ */
+describe('statusFill', () => {
+  it('ლექსიკონის სტატუსი ბეჯის ფერშია', () => {
+    expect(statusFill('movie', 'watched', 'done')).toBe('var(--status-watched)')
+    // ხელით დამატებული — როლის ფერი, ზუსტად როგორც ბეჯზე
+    expect(statusFill('movie', 'rewatching', 'doing')).toBe(STATUS_FILL[statusTone(status({ key: 'rewatching', role: 'doing' }))])
+  })
+
+  it('enum-ზე ფერი დომენიდან მოდის — სერვერი როლს არ აბრუნებს', () => {
+    expect(statusFill('book', 'reading', null)).toBe('var(--status-watching)')
+    expect(statusFill('book', 'abandoned', null)).toBe('var(--destructive)')
+    expect(statusFill('place', 'visited', null)).toBe('var(--status-watched)')
+  })
+
+  it('ყველა ტონს გრაფიკის ფერი აქვს', () => {
+    for (const tone of Object.keys(STATUS_BADGE)) {
+      expect(STATUS_FILL[tone], tone).toMatch(/^var\(--/)
+    }
+  })
+
+  it('გასაღების გარეშე — ნეიტრალური', () => {
+    expect(statusFill('movie', null, null)).toBe(STATUS_FILL.undecided)
   })
 })

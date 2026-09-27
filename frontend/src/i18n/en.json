@@ -3117,8 +3117,17 @@
     },
     "tabs": {
       "calendar": "Calendar",
-      "stats": "Statistics"
-    }
+      "media": "Media"
+    },
+    "thisYearNow": "this year",
+    "lastYearNow": "last year {{count}}",
+    "thisYear": "in {{year}}",
+    "lastYear": "{{count}} in {{year}}",
+    "mediaGenres": "Which genres I watch",
+    "mediaActors": "Who my most frequent actors are",
+    "mediaMonths": "When I watch — {{year}}",
+    "actorCount": "Titles: {{count}}",
+    "noActors": "No actors yet — a sync brings them from TMDB."
   },
   "episodes": {
     "title": "Seasons and episodes",

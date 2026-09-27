@@ -22,5 +22,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    /* ⚠️ vitest CSS-ფაილს **ცარიელ სტრიქონად** ცვლის, `?raw`-ის ჩათვლით —
+       `lib/chartColors.test.ts` კი სწორედ `index.css`-ს კითხულობს (გრაფიკის
+       ზედაპირი `--card`-ს უნდა ემთხვეოდეს). სხვა CSS ისევ ცარიელდება. */
+    css: { include: [/src\/index\.css/] },
   },
 })

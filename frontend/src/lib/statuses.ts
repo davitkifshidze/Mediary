@@ -6,6 +6,7 @@ import type { GameStatus } from '@/api/games'
 import type { PlaceStatus } from '@/api/places'
 import { STATUS_DOMAINS, fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
 import type { Status, StatusRole } from '@/api/types'
+import { STATUS_FILL } from '@/lib/statusStyles'
 
 /* ============================================================
    **სტატუსების წაკითხვის ერთადერთი ადგილი (Tasks §6.4).**
@@ -110,7 +111,7 @@ const ROLE_TONE: Record<StatusRole, string> = {
   done: 'watched',
 }
 
-export function statusTone(status: Status | null | undefined): string {
+export function statusTone(status: Pick<Status, 'key' | 'role'> | null | undefined): string {
   if (!status) return 'undecided'
 
   return KEY_TONE[status.key] ?? ROLE_TONE[status.role] ?? 'undecided'
@@ -181,4 +182,24 @@ export function enumStatusTone(domain: EnumStatusDomain, status: string): string
   if (!role) return 'undecided'
 
   return role === 'dropped' ? 'dropped' : ROLE_TONE[role]
+}
+
+/**
+ * **სტატუსის ფერი გრაფიკზე** (Tasks §28) — ზუსტად ბეჯის ტონი, ორივე
+ * მექანიზმზე: ლექსიკონის სტატუსი `statusTone`-ით, enum-ისა `enumStatusTone`-ით.
+ *
+ * ⚠️ enum-ზე სერვერი `role`-ს არ აბრუნებს, ამიტომ დომენი აუცილებელია —
+ * უამისოდ წიგნის ყველა სეგმენტი ერთ ფერში დაიხატებოდა. ⚠️ `statuses.color`
+ * არსად იხატება (ბეჯიც ტონს კითხულობს), ამიტომ აქაც არა — სხვაგვარად ერთი
+ * სტატუსი ორ ფერში გამოჩნდებოდა.
+ */
+export function statusFill(domain: string, key: string | null, role: string | null): string {
+  if (!key) return STATUS_FILL.undecided
+
+  const tone =
+    domain in ENUM_STATUS_NS
+      ? enumStatusTone(domain as EnumStatusDomain, key)
+      : statusTone({ key, role: (role ?? 'todo') as StatusRole })
+
+  return STATUS_FILL[tone] ?? STATUS_FILL.undecided
 }

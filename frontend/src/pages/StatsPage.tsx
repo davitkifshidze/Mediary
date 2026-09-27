@@ -1,82 +1,87 @@
 import { useTranslation } from 'react-i18next'
-import { enumStatusKey } from '@/lib/statuses'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChartColumn, Heart } from 'lucide-react'
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  type TooltipContentProps,
-  type TooltipValueType,
-} from 'recharts'
-import { fetchStats, type StatModule, type StatNamed } from '@/api/stats'
+import { fetchStats, type StatModule, type StatNamed, type StatsMedia, type StatStatus } from '@/api/stats'
+import { seriesVars } from '@/lib/chartColors'
+import { enumStatusKey, statusFill } from '@/lib/statuses'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
+import { useContentLang } from '@/lib/settings'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { UpcomingCard } from '@/components/UpcomingCard'
-import { CutTabs } from '@/components/ui/cut-tabs'
+import {
+  ActorGrid,
+  Cut,
+  Legend,
+  StackedBars,
+  StackedColumns,
+  StackedShare,
+  YearLine,
+  type Series,
+  type ShareSegment,
+  type StackRow,
+} from '@/components/stats/StatsCharts'
+import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  BAR_RADIUS_X,
-  BAR_RADIUS_Y,
-  CHART_GRID,
-  CHART_TICK,
-  ChartFrame,
-  ChartTip,
-  clipLabel,
-} from '@/components/ui/chart'
 
 /* ============================================================
-   სტატისტიკა (FEAT-08) — 19.10-ის „მოგვიანებით".
+   სტატისტიკა (FEAT-08 → Tasks §28, თავიდან).
 
-   ⚠️ **ზოლები ნამდვილ გრაფიკებად შეიცვალა (2026-09-19, შენი მითითებით).**
-   თავდაპირველად ბიბლიოთეკა განზრახ არ დაემატა — „ყველა ჭრილი
-   ჰორიზონტალური ზოლია, ეს კი ერთი `div`-ია". ეს მოსაზრება ორ რამეს
-   არ ითვალისწინებდა: `div`-ს **ღერძი და ტულტიპი არ აქვს** (თორმეტი
-   თვის დინამიკა ზოლებად საერთოდ არ იკითხება), და ხუთივე ჭრილი ერთ
-   ფორმად იყო დაყვანილი, მაშინ როცა მათი **ამოცანები სხვადასხვაა**.
+   შენი სიტყვები: „სტატისტიკის გვერდი სრულად განაახლე — მაგალითად, ფილმებისა
+   და სერიალების გრაფიკები ძალიან არ მომწონს". Q19-ით არ მოგეწონა ოთხივე:
+   ფორმა (სტატუსის რგოლი, თვეების ფართობი), ფერი (ერთი ტონი), სიმჭიდროვე
+   (ბევრი პატარა გრაფიკი ერთ გრძელ გვერდზე) და სამი ერთნაირი ბლოკი.
 
-   ⚠️ **თითო ჭრილს თავისი ფორმა აქვს და ეს არჩევანი შინაარსობრივია:**
-   – სტატუსი — **ნაწილი მთელთან**: დონატი (≤6 სექტორი), მეტზე ზოლები;
-   – თვეები — **დრო**: ფართობიანი ხაზი, თორმეტივე თვით;
-   – ჟანრები — **სიდიდე გრძელსახელიან კატეგორიებზე**: ჰორიზონტალური ზოლი;
-   – ქულები და გამოშვების წელი — **განაწილება რიგობრივ ღერძზე**: სვეტები.
+   ⚠️ **ჩანართები** (§28.1): „კალენდარი" (პირველი — დეშბორდის „მალე") ·
+   „მედია" (ფილმი, სერიალი და ანიმე **ერთად**) · დანარჩენი მოდულები თითო
+   ჩანართად — მხოლოდ ჩართული და მონაცემიანი. თითო ჩანართში ცოტა, მაგრამ
+   დიდი გრაფიკი.
 
-   ⚠️ **ერთსერიიან ჭრილს ლეგენდა არ აქვს** — სათაური თვითონ ასახელებს
-   სერიას; ლეგენდა მხოლოდ დონატს აქვს, სადაც სექტორები **განსხვავებული
-   არსებებია**. ამიტომვე ზოლები ერთ ფერშია (მოდულის აქცენტი) და არა
-   „რაც დიდია, მით მუქი": სიგრძე უკვე ამბობს რიცხვს, ფერის იმავეზე
-   დახარჯვა ერთადერთ თავისუფალ არხს კარგავს.
+   ⚠️ **მედიის ჩანართის თავში Q20-ის სამი კითხვა, ამ რიგით**: რა ჟანრებს
+   ვუყურებ · ვინ არის ჩემი ყველაზე ხშირი მსახიობი · როდის ვუყურებ; ქვემოთ
+   სტატუსები და ქულები. ⚠️ „შენი ქულით საუკეთესო ათეული" **არ არის** —
+   მედიას პირადი შეფასება არ აქვს (`rating` TMDB-ისაა).
 
-   ⚠️ **წელი URL-შია** (`?year=`), და არა `useState`-ში — ისევე როგორც
-   ფილტრები: გვერდის გაზიარება და ბრაუზერის „უკან" უნდა მუშაობდეს.
-
-   ⚠️ **ჩანართები (Tasks §27.4 → §28.1)**: პირველი „კალენდარია" — დეშბორდის
-   „მალე" (Q18) აქ გადმოვიდა; ჩანართი URL-შია (`?tab=`), წლის ამრჩევი კი
-   მხოლოდ სტატისტიკის ჩანართზე ჩანს (კალენდარი მომავალ 30 დღეს აჩვენებს).
+   ⚠️ **წელი და ჩანართი URL-შია** (`?year=`, `?tab=`) — გვერდის გაზიარება და
+   ბრაუზერის „უკან" უნდა მუშაობდეს. წლის ამრჩევი კალენდარზე არ ჩანს.
    ============================================================ */
 
-/** ჩანართები — ⚠️ პირველი ნაგულისხმევია (`?tab=`-ის გარეშე) */
-const TABS = ['calendar', 'stats'] as const
-type Tab = (typeof TABS)[number]
+const MEDIA_KEYS = ['movie', 'series', 'anime']
 
 export function StatsPage() {
   const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const [params, setParams] = useSearchParams()
 
   const year = Number(params.get('year')) || undefined
-  const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : TABS[0]
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['stats', year ?? 'auto'],
+    queryFn: () => fetchStats(year),
+    staleTime: 60_000,
+  })
+
+  const modules = (data?.data ?? []).filter((m) => m.total > 0)
+  const media = modules.filter((m) => MEDIA_KEYS.includes(m.key))
+  const others = modules.filter((m) => !MEDIA_KEYS.includes(m.key))
+
+  const tabs: CutOption[] = [
+    { key: 'calendar', label: t('stats.tabs.calendar') },
+    ...(media.length > 0 && data?.media ? [{ key: 'media', label: t('stats.tabs.media') }] : []),
+    ...others.map((m) => ({
+      key: m.key,
+      label: lang === 'ka' ? m.name_ka : m.name_en,
+      color: m.color,
+      node: <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />,
+    })),
+  ]
+
+  const requested = params.get('tab') ?? 'calendar'
+  // ⚠️ უცნობი/გამქრალი ჩანართი (მოდული გამოირთო, ცარიელი დარჩა) კალენდარზე ბრუნდება
+  const tab = tabs.some((o) => o.key === requested) ? requested : 'calendar'
 
   // ⚠️ ერთი პარამეტრის შეცვლა მეორეს არ შლის (წელი ჩანართზე გადასვლისას რჩება)
   const setParam = (key: string, value: string) =>
@@ -86,14 +91,7 @@ export function StatsPage() {
       return next
     })
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['stats', year ?? 'auto'],
-    queryFn: () => fetchStats(year),
-    staleTime: 60_000,
-  })
-
-  const modules = data?.data ?? []
-  const anything = modules.some((m) => m.total > 0)
+  const selectedYear = data?.year ?? new Date().getFullYear()
 
   return (
     <PageContainer>
@@ -102,12 +100,9 @@ export function StatsPage() {
         title={t('stats.title')}
         hint={t('stats.hint')}
         actions={
-          tab === 'stats' &&
+          tab !== 'calendar' &&
           (data?.years.length ?? 0) > 0 && (
-            <Select
-              value={String(data?.year ?? '')}
-              onValueChange={(v) => setParam('year', v)}
-            >
+            <Select value={String(data?.year ?? '')} onValueChange={(v) => setParam('year', v)}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -124,373 +119,260 @@ export function StatsPage() {
       />
 
       <div className="mb-6">
-        <CutTabs
-          layout="inline"
-          value={tab}
-          onChange={(key) => setParam('tab', key)}
-          options={TABS.map((key) => ({ key, label: t(`stats.tabs.${key}`) }))}
-        />
+        <CutTabs layout="inline" value={tab} onChange={(key) => setParam('tab', key)} options={tabs} />
       </div>
 
       {tab === 'calendar' ? (
         <UpcomingCard />
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-      ) : !anything ? (
-        <EmptyState
-          icon={<ChartColumn className="size-6" />}
-          title={t('stats.empty')}
-          hint={t('stats.emptyHint')}
-        />
+      ) : !modules.length ? (
+        <EmptyState icon={<ChartColumn className="size-6" />} title={t('stats.empty')} hint={t('stats.emptyHint')} />
+      ) : tab === 'media' && data?.media ? (
+        <MediaStats media={data.media} modules={media} year={selectedYear} lang={lang} />
       ) : (
-        <div className="grid gap-4">
-          {modules.filter((m) => m.total > 0).map((m) => (
-            <ModuleStats key={m.key} module={m} lang={i18n.language} year={data?.year ?? 0} />
-          ))}
-        </div>
+        (() => {
+          const m = others.find((x) => x.key === tab)
+          return m ? <ModuleStats module={m} year={selectedYear} lang={lang} /> : null
+        })()
       )}
     </PageContainer>
   )
 }
 
-function ModuleStats({ module: m, lang, year }: { module: StatModule; lang: string; year: number }) {
+/* ============================================================
+   „მედია" — ფილმი, სერიალი და ანიმე ერთ შედარებაში (§28.2).
+   ============================================================ */
+
+function MediaStats({
+  media,
+  modules,
+  year,
+  lang,
+}: {
+  media: StatsMedia
+  modules: StatModule[]
+  year: number
+  lang: string
+}) {
   const { t } = useTranslation()
-  const named = (row: StatNamed) =>
-    (lang === 'ka' ? row.name_ka : row.name_en) || row.name_en || row.name_ka || t('stats.other')
 
-  /* ⚠️ `t`-ს ტიპი პარამეტრად ვერ გადაეცემა (i18next-ის ოვერლოადები),
-     ამიტომ დამხმარე აქვეა — იქ, სადაც `t` სქოუპშია. */
-  const enumStatus = (key: string | null) => {
-    const k = key ? enumStatusKey(m.key, key) : null
-    return k ? t(k, { defaultValue: key ?? undefined }) : (key ?? '—')
-  }
+  // ⚠️ სერიების რიგი სერვერისაა (`domains`); ფერი — მოდულის (`modules.color`)
+  const ordered = media.domains
+    .map((key) => modules.find((m) => m.key === key))
+    .filter((m): m is StatModule => Boolean(m))
+  const series: Series[] = ordered.map((m) => ({ key: m.key, label: lang === 'ka' ? m.name_ka : m.name_en }))
+  const vars = seriesVars(ordered.map((m) => m.color))
 
-  const statusRows: Row[] = m.status.map((s) => ({
-    key: s.key ?? '—',
-    // enum-იან მოდულებს ლექსიკონი არ აქვთ — სახელი i18n-შია
-    label: (lang === 'ka' ? s.name_ka : s.name_en) || enumStatus(s.key),
-    value: s.count,
-    tone: s.color ?? roleTone(s.role),
+  const genreRows: StackRow[] = media.genres.map((g) => ({
+    key: String(g.id),
+    label: named(g, lang, t('stats.other')),
+    ...g.by,
   }))
 
+  const monthRows: StackRow[] = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1
+    const row: StackRow = { key: String(month), label: t(`stats.monthShort.${month}`), full: t(`stats.month.${month}`) }
+    ordered.forEach((m) => {
+      row[m.key] = m.months.find((x) => x.month === month)?.count ?? 0
+    })
+    return row
+  })
+
+  // TMDB-ის ქულები 1…10 — დომენებად
+  const ratingRows: StackRow[] = Array.from({ length: 10 }, (_, i) => {
+    const score = i + 1
+    const row: StackRow = { key: String(score), label: String(score) }
+    ordered.forEach((m) => {
+      row[m.key] = m.ratings.find((r) => r.score === score)?.count ?? 0
+    })
+    return row
+  })
+  const hasRatings = ordered.some((m) => m.ratings.length > 0)
+
   return (
-    <section
-      className="rounded-xl border border-border bg-card p-5"
-      style={modAccent(m.color) ?? MODULE_ACCENT_FALLBACK}
-    >
-      <header className="mb-4 flex flex-wrap items-center gap-3">
+    <div className="fb-series space-y-4" style={vars}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <YearLine year={year} thisYear={media.this_year} lastYear={media.last_year} />
+        <Legend series={series} />
+      </div>
+
+      {/* (1) რა ჟანრებს ვუყურებ */}
+      {genreRows.length > 0 && (
+        <Cut title={t('stats.mediaGenres')}>
+          <StackedBars rows={genreRows} series={series} />
+        </Cut>
+      )}
+
+      {/* (2) ვინ არის ჩემი ყველაზე ხშირი მსახიობი */}
+      <Cut title={t('stats.mediaActors')}>
+        <ActorGrid
+          actors={media.actors.map((a) => ({
+            id: a.id,
+            name: (lang === 'ka' ? a.name_ka : null) || a.name,
+            photo: a.photo_path,
+            count: a.count,
+            by: series.map((s, index) => ({ label: s.label, value: a.by[s.key] ?? 0, index })),
+          }))}
+        />
+      </Cut>
+
+      {/* (3) როდის ვუყურებ — ხელახლა ნახვაც ითვლება (`media_watches`) */}
+      <Cut title={t('stats.mediaMonths', { year })}>
+        <StackedColumns rows={monthRows} series={series} />
+      </Cut>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Cut title={t('stats.byStatus')}>
+          <div className="space-y-5">
+            {ordered.map((m) => (
+              <DomainStatus key={m.key} module={m} lang={lang} />
+            ))}
+          </div>
+        </Cut>
+
+        {hasRatings && (
+          <Cut title={t('stats.byRating')}>
+            <StackedColumns rows={ratingRows} series={series} height={220} />
+          </Cut>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   ერთი მოდულის ჩანართი.
+   ============================================================ */
+
+function ModuleStats({ module: m, year, lang }: { module: StatModule; year: number; lang: string }) {
+  const { t } = useTranslation()
+  const name = lang === 'ka' ? m.name_ka : m.name_en
+  const series: Series[] = [{ key: 'count', label: name }]
+  const vars = seriesVars([m.color])
+
+  const monthRows: StackRow[] = m.months.map((row) => ({
+    key: String(row.month),
+    label: t(`stats.monthShort.${row.month}`),
+    full: t(`stats.month.${row.month}`),
+    count: row.count,
+  }))
+  const genreRows: StackRow[] = m.genres.map((g) => ({ key: String(g.id), label: named(g, lang, t('stats.other')), count: g.count }))
+  const ratingRows: StackRow[] = m.ratings.map((r) => ({ key: String(r.score), label: String(r.score), count: r.count }))
+  const yearRows: StackRow[] = m.years.map((y) => ({ key: String(y.year), label: String(y.year), count: y.count }))
+  const statusLabel = useStatusLabel(m.key, lang)
+  const segments = statusSegments(m.key, m.status, statusLabel)
+
+  return (
+    <div className="fb-series space-y-4" style={{ ...vars, ...(modAccent(m.color) ?? MODULE_ACCENT_FALLBACK) }}>
+      <header className="flex flex-wrap items-center gap-3">
         <span className="flex size-9 items-center justify-center rounded-md bg-[var(--mod-soft)] [&>svg]:size-5 [&>svg]:text-[var(--mod)]">
           <ModuleIcon name={m.icon} />
         </span>
-        <h2 className="font-display text-lg font-semibold">
-          {lang === 'ka' ? m.name_ka : m.name_en}
-        </h2>
-        <span className="text-sm text-muted-foreground">{t('stats.total', { count: m.total })}</span>
-        {m.favorites > 0 && (
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Heart className="size-4" />
-            {m.favorites}
-          </span>
-        )}
+        <div className="min-w-0">
+          <h2 className="font-display text-lg font-semibold">{name}</h2>
+          <p className="flex items-center gap-3 text-sm text-muted-foreground">
+            {t('stats.total', { count: m.total })}
+            {m.favorites > 0 && (
+              <span className="flex items-center gap-1">
+                <Heart className="size-4" />
+                {m.favorites}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="ml-auto">
+          <YearLine year={year} thisYear={m.this_year} lastYear={m.last_year} />
+        </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        {statusRows.length > 0 && (
-          <Cut title={t('stats.byStatus')}>
-            <StatusCut rows={statusRows} total={m.total} />
-          </Cut>
-        )}
+      {m.has_months && (
+        <Cut title={t('stats.byMonth', { year })}>
+          <StackedColumns rows={monthRows} series={series} />
+        </Cut>
+      )}
 
-        {m.has_months && (
-          <Cut title={t('stats.byMonth', { year })}>
-            <MonthsChart
-              rows={m.months.map((row) => ({
-                key: String(row.month),
-                label: t(`stats.monthShort.${row.month}`),
-                full: t(`stats.month.${row.month}`),
-                value: row.count,
-              }))}
-            />
-          </Cut>
-        )}
+      {genreRows.length > 0 && (
+        <Cut title={t('stats.byGenre')}>
+          <StackedBars rows={genreRows} series={series} />
+        </Cut>
+      )}
 
-        {m.genres.length > 0 && (
-          <Cut title={t('stats.byGenre')}>
-            <RankedBars rows={m.genres.map((g) => ({ key: String(g.id), label: named(g), value: g.count }))} />
-          </Cut>
-        )}
+      {(segments.length > 0 || ratingRows.length > 0) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {segments.length > 0 && (
+            <Cut title={t('stats.byStatus')}>
+              <StackedShare segments={segments} />
+            </Cut>
+          )}
+          {ratingRows.length > 0 && (
+            <Cut title={t('stats.byRating')}>
+              <StackedColumns rows={ratingRows} series={series} height={220} />
+            </Cut>
+          )}
+        </div>
+      )}
 
-        {m.ratings.length > 0 && (
-          <Cut title={t('stats.byRating')}>
-            <ColumnChart
-              rows={m.ratings.map((r) => ({ key: String(r.score), label: String(r.score), value: r.count }))}
-            />
-          </Cut>
-        )}
-
-        {m.years.length > 0 && (
-          <Cut title={t('stats.byYear')}>
-            <ColumnChart rows={m.years.map((y) => ({ key: String(y.year), label: String(y.year), value: y.count }))} />
-          </Cut>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/**
- * ⚠️ **`min-w-0` აუცილებელია და არა კოსმეტიკა.** grid-ის ელემენტს
- * ნაგულისხმევად `min-width: auto` აქვს, ე.ი. ის შიგთავსზე ვიწრო ვერ
- * ხდება — `ResponsiveContainer` კი მშობლის სიგანეს ზომავს და შემდეგ
- * იმავე მშობელს აგანიერებს. შედეგი უჯრედის უწყვეტი ზრდაა ეკრანის
- * შევიწროებისას.
- */
-function Cut({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <h3 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h3>
-      {children}
+      {yearRows.length > 0 && (
+        <Cut title={t('stats.byYear')}>
+          <StackedColumns rows={yearRows} series={series} height={220} />
+        </Cut>
+      )}
     </div>
   )
 }
 
-interface Row {
-  key: string
-  label: string
-  value: number
-  /** სრული სახელი ტულტიპისთვის, როცა ღერძზე შემოკლებულია */
-  full?: string
-  /** სტატუსის საკუთარი ფერი; უამისოდ მოდულის აქცენტი */
-  tone?: string | null
+/** მედიის ჩანართის ერთი დომენის სტატუსის ზოლი — hook ციკლში ვერ გამოიძახება */
+function DomainStatus({ module: m, lang }: { module: StatModule; lang: string }) {
+  const { t } = useTranslation()
+  const label = useStatusLabel(m.key, lang)
+
+  return (
+    <StackedShare
+      segments={statusSegments(m.key, m.status, label)}
+      label={
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <ModuleIcon name={m.icon} className="size-4 text-muted-foreground" />
+          {lang === 'ka' ? m.name_ka : m.name_en}
+          <span className="text-xs font-normal text-muted-foreground">{t('stats.total', { count: m.total })}</span>
+        </p>
+      }
+    />
+  )
+}
+
+/* ---------- დამხმარეები ---------- */
+
+function named(row: StatNamed, lang: string, other: string): string {
+  return (lang === 'ka' ? row.name_ka : row.name_en) || row.name_en || row.name_ka || other
 }
 
 /**
- * recharts-ის ტულტიპის payload — ჩვენი რიგი `payload`-შია.
+ * სტატუსის ზოლის სეგმენტები — ფერი **ბეჯის ტონია** (`statusFill`), ე.ი.
+ * სტატისტიკის „ნანახი" იმავე მწვანეშია, რაც ჩანაწერზე.
  *
- * ⚠️ **გენერიკები ნაგულისხმევი უნდა დარჩეს** (`ValueType`/`NameType`) და არა
- * `<number, string>`: `content`-ის ტიპი უფრო ზოგადს ელოდება, ვიწრო კი
- * კონტრავარიანტულად აღარ ჯდება — `tsc` სწორედ ამაზე წითლდება.
+ * ⚠️ სახელს გამომძახებელი აწვდის (`label`) — `t`-ს ტიპი პარამეტრად ვერ
+ * გადაეცემა (i18next-ის ოვერლოადები).
  */
-type Tip = TooltipContentProps<TooltipValueType, number | string>
-
-function tipRow(props: Tip): Row | null {
-  const entry = props.payload?.[0]
-
-  return props.active && entry ? (entry.payload as Row) : null
+function statusSegments(module: string, rows: StatStatus[], label: (s: StatStatus) => string): ShareSegment[] {
+  return rows.map((s) => ({
+    key: s.key ?? '—',
+    label: label(s),
+    value: s.count,
+    tone: statusFill(module, s.key, s.role),
+  }))
 }
 
-/* ---------- სტატუსი: ნაწილი მთელთან ---------- */
+/** სტატუსის სახელი — ლექსიკონიდან, enum-ზე i18n-იდან */
+function useStatusLabel(module: string, lang: string) {
+  const { t } = useTranslation()
 
-/**
- * ⚠️ **ერთ სტატუსზე გრაფიკი არ იხატება.** ერთსექტორიანი დონატი (ისევე
- * როგორც ერთზოლიანი დიაგრამა) არაფერს ადარებს — რიცხვი თვითონაა პასუხი.
- *
- * ⚠️ **ექვსზე მეტ სტატუსზე დონატი ზოლებად იცვლება** — მჭიდრო სექტორები
- * ერთმანეთისგან აღარ განირჩევა და სწორედ იქ იწყება „ლამაზი, მაგრამ
- * წაუკითხავი" დიაგრამა.
- */
-function StatusCut({ rows, total }: { rows: Row[]; total: number }) {
-  const only = rows[0]
+  return (s: StatStatus) => {
+    const own = lang === 'ka' ? s.name_ka : s.name_en
+    if (own) return own
 
-  if (rows.length === 1 && only) {
-    return (
-      <p className="flex items-baseline gap-2">
-        <span className="font-display text-3xl font-semibold tabular-nums">{only.value}</span>
-        <span className="text-sm text-muted-foreground">{only.label}</span>
-      </p>
-    )
+    const key = s.key ? enumStatusKey(module, s.key) : null
+
+    return key ? t(key, { defaultValue: s.key ?? '—' }) : (s.key ?? '—')
   }
-
-  if (rows.length > 6) return <RankedBars rows={rows} />
-
-  return (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="min-w-40 flex-1">
-        <ChartFrame height={168}>
-          <PieChart>
-            <Pie
-              data={rows}
-              dataKey="value"
-              nameKey="label"
-              innerRadius="58%"
-              outerRadius="86%"
-              /* ⚠️ სექტორებს შორის 2px **ზედაპირის** ღრეჭოა და არა ჩარჩო */
-              stroke="var(--card)"
-              strokeWidth={2}
-              isAnimationActive={false}
-            >
-              {rows.map((row) => (
-                <Cell key={row.key} fill={row.tone ?? 'var(--mod)'} />
-              ))}
-            </Pie>
-            <Tooltip
-              content={(props: Tip) => {
-                const row = tipRow(props)
-
-                return row ? <ChartTip rows={[{ label: row.label, value: row.value, tone: row.tone }]} /> : null
-              }}
-            />
-          </PieChart>
-        </ChartFrame>
-      </div>
-
-      {/* ლეგენდა — ორ და მეტ სერიაზე იდენტობა მხოლოდ ფერით არ ითქმის */}
-      <ul className="min-w-44 flex-1 space-y-1">
-        {rows.map((row) => (
-          <li key={row.key} className="flex items-center gap-2 text-sm">
-            <span
-              className="size-2.5 shrink-0 rounded-[2px]"
-              style={{ background: row.tone ?? 'var(--mod)' }}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1 truncate text-muted-foreground" title={row.label}>
-              {row.label}
-            </span>
-            <span className="tabular-nums">{row.value}</span>
-            <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
-              {total > 0 ? `${Math.round((row.value / total) * 100)}%` : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-/* ---------- ჟანრები: სიდიდე გრძელსახელიან კატეგორიებზე ---------- */
-
-function RankedBars({ rows }: { rows: Row[] }) {
-  const shown = rows.filter((r) => r.value > 0)
-
-  if (!shown.length) return null
-
-  /* სიმაღლე რიგების რაოდენობიდან — თორემ ათი ჟანრი ერთმანეთზე დაჯდებოდა */
-  const height = Math.max(120, shown.length * 26 + 16)
-
-  return (
-    <ChartFrame height={height}>
-      <BarChart data={shown} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 0 }}>
-        <CartesianGrid horizontal={false} stroke={CHART_GRID} />
-        <XAxis type="number" allowDecimals={false} hide />
-        <YAxis
-          type="category"
-          dataKey="label"
-          width={104}
-          tick={CHART_TICK}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v: string) => clipLabel(v)}
-        />
-        <Tooltip
-          cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
-          content={(props: Tip) => {
-            const row = tipRow(props)
-
-            return row ? <ChartTip rows={[{ label: row.full ?? row.label, value: row.value, tone: row.tone }]} /> : null
-          }}
-        />
-        <Bar dataKey="value" radius={BAR_RADIUS_X} barSize={12} isAnimationActive={false} label={VALUE_LABEL}>
-          {shown.map((row) => (
-            <Cell key={row.key} fill={row.tone ?? 'var(--mod)'} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ChartFrame>
-  )
-}
-
-/**
- * რიცხვი ზოლის **გარეთ**, ბოლოში.
- *
- * ⚠️ ვიწრო ზოლში (12px) შიგნით მოთავსებული წარწერა აუცილებლად ჩაიჭრება —
- * ზუსტად ის შეცდომა, როცა პირველი ასო `overflow: hidden`-ს მიღმა რჩება.
- */
-const VALUE_LABEL = {
-  position: 'right' as const,
-  fill: 'var(--muted-foreground)',
-  fontSize: 11,
-}
-
-/* ---------- ქულები და წლები: განაწილება რიგობრივ ღერძზე ---------- */
-
-function ColumnChart({ rows }: { rows: Row[] }) {
-  if (!rows.length) return null
-
-  return (
-    <ChartFrame height={168}>
-      <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
-        <CartesianGrid vertical={false} stroke={CHART_GRID} />
-        <XAxis dataKey="label" tick={CHART_TICK} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} allowDecimals={false} width={44} />
-        <Tooltip
-          cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
-          content={(props: Tip) => {
-            const row = tipRow(props)
-
-            return row ? <ChartTip title={row.full ?? row.label} rows={[{ label: row.label, value: row.value }]} /> : null
-          }}
-        />
-        <Bar dataKey="value" radius={BAR_RADIUS_Y} fill="var(--mod)" maxBarSize={28} isAnimationActive={false} />
-      </BarChart>
-    </ChartFrame>
-  )
-}
-
-/* ---------- თვეები: დრო ---------- */
-
-/**
- * ⚠️ **ნულოვანი თვე მაინც იხატება** — თორემ „ივლისში არაფერი" იმ თვისგან
- * ვერ განირჩეოდა, რომელიც სიაში საერთოდ არ იყო. სწორედ ამიტომ არის ეს
- * ჭრილი ხაზი და არა ზოლები: უწყვეტი ღერძი თვითონ ამბობს, რომ ნული
- * ნულია და არა „უცნობი".
- */
-function MonthsChart({ rows }: { rows: Row[] }) {
-  return (
-    <ChartFrame height={168}>
-      <AreaChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
-        <defs>
-          <linearGradient id="fb-months" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--mod)" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="var(--mod)" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid vertical={false} stroke={CHART_GRID} />
-        <XAxis dataKey="label" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
-        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} allowDecimals={false} width={44} />
-        <Tooltip
-          cursor={{ stroke: CHART_GRID }}
-          content={(props: Tip) => {
-            const row = tipRow(props)
-
-            return row ? <ChartTip rows={[{ label: row.full ?? row.label, value: row.value }]} /> : null
-          }}
-        />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="var(--mod)"
-          strokeWidth={2}
-          fill="url(#fb-months)"
-          isAnimationActive={false}
-          dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--card)' }}
-        />
-      </AreaChart>
-    </ChartFrame>
-  )
-}
-
-/**
- * როლის ტონი — სტატუსს საკუთარი ფერი შეიძლება არ ჰქონდეს.
- *
- * ⚠️ **`lib/statuses.ts`-ის `statusTone()` აქ ვერ გამოდგება**: ის
- * Tailwind-ის **კლასებს** აბრუნებს (`lib/statusStyles.ts`), გრაფიკს კი
- * `fill`-ისთვის CSS-ის მნიშვნელობა სჭირდება.
- */
-function roleTone(role: string | null): string | undefined {
-  if (role === 'done') return 'var(--icon-ok)'
-  if (role === 'doing') return 'var(--icon-info)'
-  if (role === 'todo') return 'var(--status-undecided)'
-
-  return undefined
 }

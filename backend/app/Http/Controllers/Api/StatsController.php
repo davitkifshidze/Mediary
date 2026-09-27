@@ -51,6 +51,10 @@ class StatsController extends Controller
         return response()->json([
             'year' => $year,
             'years' => $years,
+            /* Tasks §28.5 — ფილმი, სერიალი და ანიმე ერთ შედარებაში (ჟანრები
+               დომენებად, ყველაზე ხშირი მსახიობები, წლის ერთი ხაზი); `null`,
+               თუ მედია-მოდული არ მაქვს. */
+            'media' => $this->stats->media($user, $keys, $year),
             'data' => $modules->map(fn (Module $m) => [
                 'key' => $m->key,
                 'name_ka' => $m->name_ka,

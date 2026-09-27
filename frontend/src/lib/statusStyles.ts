@@ -42,3 +42,16 @@ export const STATUS_BADGE: Record<string, string> = {
      როგორც წიგნის ძველ ხელით დაწერილ რუკაში იყო. */
   dropped: 'bg-destructive/15 text-destructive',
 }
+
+/**
+ * **იგივე ტონი გრაფიკისთვის** — CSS-ცვლადად, რადგან ზოლი ფერს inline
+ * `style`-ით იღებს (Tasks §28). ⚠️ ცალკე პალიტრა არ იწერება: სტატისტიკის
+ * „ნანახი" ზუსტად იმ მწვანეშია, რაც ჩანაწერის ბეჯზე.
+ */
+export const STATUS_FILL: Record<string, string> = {
+  undecided: 'var(--status-undecided)',
+  towatch: 'var(--status-towatch)',
+  watching: 'var(--status-watching)',
+  watched: 'var(--status-watched)',
+  dropped: 'var(--destructive)',
+}
