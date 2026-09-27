@@ -341,12 +341,12 @@ export function BoardGamesPage() {
 
                   <span className="flex shrink-0 items-center gap-1">
                     {game.bgg_rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
                         BGG {game.bgg_rating}
                       </Badge>
                     )}
                     {game.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
                         {game.rating}/{BOARD_GAME_MAX_RATING}
                       </Badge>
                     )}

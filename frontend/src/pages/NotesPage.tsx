@@ -383,7 +383,7 @@ export function NotesPage() {
                 </div>
 
                 <span className="flex shrink-0 items-center gap-1">
-                  <Badge className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
+                  <Badge size="row" className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
                     {statusName(note.status, lang)}
                   </Badge>
                   <button

@@ -50,7 +50,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
-import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
@@ -85,14 +85,6 @@ interface PanelFilters {
 }
 
 const EMPTY_FILTERS: PanelFilters = { categories: [], tags: [], statuses: [] }
-
-/** სტატუსის ტონი — მწვანე დასრულებულს, ნაცრისფერი მიტოვებულს */
-const STATUS_TONE: Record<CourseStatus, string> = {
-  to_take: 'bg-secondary text-muted-foreground',
-  taking: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-  done: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  dropped: 'bg-secondary text-muted-foreground line-through',
-}
 
 export function CoursesPage() {
   const { t, i18n } = useTranslation()
@@ -310,9 +302,7 @@ export function CoursesPage() {
                         >
                           {course.title}
                         </button>
-                        <Badge className={STATUS_TONE[course.status]}>
-                          {t(`courses.statuses.${course.status}`)}
-                        </Badge>
+                        <EnumStatusBadge domain="course" status={course.status} />
                         <VisibilityBadge value={course.visibility} />
                       </div>
 

@@ -391,7 +391,7 @@ export function SongsPage() {
 
                   <span className="flex shrink-0 items-center gap-1">
                     {song.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
                         {song.rating}/{SONG_MAX_RATING}
                       </Badge>
                     )}

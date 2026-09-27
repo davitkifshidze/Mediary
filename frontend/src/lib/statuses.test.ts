@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Status } from '@/api/types'
-import { statusByKey, statusName, statusTone } from './statuses'
+import { STATUS_BADGE } from './statusStyles'
+import { ENUM_STATUS_ROLE, enumStatusTone, statusByKey, statusName, statusTone, type EnumStatusDomain } from './statuses'
 
 /* ============================================================
    `lib/statuses.ts` — სტატუსის სახელი, პოვნა და ფერი.
@@ -75,5 +76,41 @@ describe('statusTone', () => {
 
   it('სტატუსის გარეშე — ნეიტრალური', () => {
     expect(statusTone(null)).toBe('undecided')
+  })
+})
+
+/**
+ * **enum-სტატუსის ფერი — ლექსიკონის პალიტრით** (Tasks §21).
+ *
+ * ⚠️ ოთხ გვერდს ოთხი ხელით დაწერილი რუკა ჰქონდა: წიგნის „ვკითხულობ"
+ * ნაცრისფრად იხატებოდა, თამაშის „დახურული" — ნაცრისფრად. ახლა ფერი
+ * **როლს** ეკუთვნის და ზუსტად ის, რაც ფილმის იმავე როლის სტატუსს აქვს.
+ */
+describe('enumStatusTone', () => {
+  it('ფერი ფილმის იმავე როლის სტატუსისაა', () => {
+    expect(enumStatusTone('book', 'to_read')).toBe(statusTone(status({ key: 'someday', role: 'todo' })))
+    expect(enumStatusTone('book', 'reading')).toBe(statusTone(status({ key: 'watching', role: 'doing' })))
+    expect(enumStatusTone('game', 'finished')).toBe(statusTone(status({ key: 'watched', role: 'done' })))
+    expect(enumStatusTone('place', 'visited')).toBe('watched')
+  })
+
+  it('„მიტოვებული" წითელია და არა ნაცრისფერი', () => {
+    expect(enumStatusTone('book', 'abandoned')).toBe('dropped')
+    expect(enumStatusTone('course', 'dropped')).toBe('dropped')
+  })
+
+  /** ⚠️ ტონი ფერის გარეშე ეკრანზე ჩუმად ნაცრისფერი იქნებოდა — ზუსტად ის, რასაც ეს ასწორებს */
+  it('ყველა enum-სტატუსს ბეჯის ფერი აქვს', () => {
+    for (const [domain, roles] of Object.entries(ENUM_STATUS_ROLE)) {
+      for (const key of Object.keys(roles)) {
+        const tone = enumStatusTone(domain as EnumStatusDomain, key)
+        expect(STATUS_BADGE[tone], `${domain}.${key}`).toBeTruthy()
+        expect(tone, `${domain}.${key}`).not.toBe('undecided')
+      }
+    }
+  })
+
+  it('უცნობი სტატუსი ნეიტრალურია', () => {
+    expect(enumStatusTone('book', 'lost')).toBe('undecided')
   })
 })

@@ -17,6 +17,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -155,7 +156,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
       <div className="mt-4 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-secondary">{t(`courses.statuses.${course.status}`)}</Badge>
+            <EnumStatusBadge domain="course" status={course.status} />
             {course.platform && <Badge className="bg-secondary">{course.platform}</Badge>}
           </div>
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}

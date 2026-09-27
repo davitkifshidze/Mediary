@@ -18,6 +18,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -157,7 +158,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
       <div className="mt-4 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-secondary">{t(`places.statuses.${place.status}`)}</Badge>
+            <EnumStatusBadge domain="place" status={place.status} />
             {place.rating && <Badge className="bg-secondary">★ {place.rating}</Badge>}
             {place.visited_at && (
               <span className="text-sm text-muted-foreground">

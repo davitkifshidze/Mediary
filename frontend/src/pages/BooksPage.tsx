@@ -52,6 +52,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -63,13 +64,6 @@ import { Badge } from '@/components/ui/badge'
    ============================================================ */
 
 const SORTS = ['newest', 'oldest', 'title', 'author', 'series', 'year', 'rating', 'pages'] as const
-
-const STATUS_TONE: Record<string, string> = {
-  to_read: 'bg-secondary text-muted-foreground',
-  reading: 'bg-primary/15 text-primary',
-  read: 'bg-gold/20 text-gold',
-  abandoned: 'bg-destructive/15 text-destructive',
-}
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { genres: [] as string[], tags: [] as string[] }
@@ -378,11 +372,10 @@ export function BooksPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    <Badge className={cn('mr-1', STATUS_TONE[book.status] ?? 'bg-secondary')}>
-                      {t(`books.statuses.${book.status}`)}
-                    </Badge>
+                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
+                    <EnumStatusBadge domain="book" status={book.status} size="row" className="mr-1" />
                     {book.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
                         {book.rating}/{BOOK_MAX_RATING}
                       </Badge>
                     )}

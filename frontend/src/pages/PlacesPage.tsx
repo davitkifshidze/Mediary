@@ -54,6 +54,7 @@ import {
   FilterTrigger,
 } from '@/components/FilterPanel'
 import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -93,12 +94,6 @@ interface PanelFilters {
 }
 
 const EMPTY_FILTERS: PanelFilters = { categories: [], countries: [], tags: [], statuses: [] }
-
-/** სტატუსის ტონი — მწვანე ნანახს */
-const STATUS_TONE: Record<PlaceStatus, string> = {
-  to_visit: 'bg-secondary text-muted-foreground',
-  visited: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-}
 
 export function PlacesPage() {
   const { t, i18n } = useTranslation()
@@ -328,9 +323,7 @@ export function PlacesPage() {
                         >
                           {place.name}
                         </button>
-                        <Badge className={STATUS_TONE[place.status]}>
-                          {t(`places.statuses.${place.status}`)}
-                        </Badge>
+                        <EnumStatusBadge domain="place" status={place.status} />
                         {place.rating && <Badge className="bg-secondary">★ {place.rating}</Badge>}
                         <VisibilityBadge value={place.visibility} />
                       </div>

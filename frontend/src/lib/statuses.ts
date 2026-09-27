@@ -1,5 +1,9 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
 
+import type { BookStatus } from '@/api/books'
+import type { CourseStatus } from '@/api/courses'
+import type { GameStatus } from '@/api/games'
+import type { PlaceStatus } from '@/api/places'
 import { STATUS_DOMAINS, fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
 import type { Status, StatusRole } from '@/api/types'
 
@@ -133,4 +137,48 @@ export const ENUM_STATUS_NS = {
 export function enumStatusKey(domain: string, status: string): string | null {
   const ns = (ENUM_STATUS_NS as Record<string, string>)[domain]
   return ns ? `${ns}.${status}` : null
+}
+
+export type EnumStatusDomain = keyof typeof ENUM_STATUS_NS
+
+/** ლექსიკონის სამი როლი + „მიტოვებული", რომელიც მათგან არცერთს არ უდრის */
+export type EnumStatusRole = StatusRole | 'dropped'
+
+/**
+ * **enum-სტატუსის როლი — ფერი ლექსიკონის სტატუსებისაა** (Tasks §21).
+ *
+ * შენი სიტყვები: „წიგნებში სტატუსს „ვკითხულობ“ ნაცრისფერი ფონი აქვს …
+ * შესაბამისი ფერი მიეცი — ნაცრისფერი არ მომწონს".
+ *
+ * ⚠️ **ოთხ გვერდს ოთხი ხელით დაწერილი რუკა ჰქონდა** და ოთხივე სხვადასხვა
+ * ენაზე ლაპარაკობდა: წიგნის „ვკითხულობ" `bg-primary/15`-ით ნაცრისფრად
+ * იხატებოდა (ნათელ თემაზე `--primary` მუქი მელანია), თამაშის „დახურული" —
+ * ნაცრისფრად, კურსის „მიმდინარე" — ლურჯად, ადგილის „ნანახი" — მწვანედ.
+ * ახლა ერთი ფერი ერთ **როლს** ეკუთვნის და ზუსტად ის, რაც ფილმის სტატუსებს
+ * აქვს (`ROLE_TONE`): „ჯერ არა" — ქარვისფერი (ფილმის „საყურებელი"),
+ * „მიმდინარეობს" — ლურჯი („ვუყურებ"), „დასრულდა" — მწვანე („ნანახი"),
+ * „მიტოვებული" — წითელი.
+ *
+ * ⚠️ `satisfies` თითო დომენზე **სრულ** სიას ითხოვს — ახალი enum-სტატუსი
+ * ფერის გარეშე `tsc`-ს აწითლებს და ჩუმად ნაცრისფერი აღარ დარჩება.
+ */
+export const ENUM_STATUS_ROLE = {
+  book: { to_read: 'todo', reading: 'doing', read: 'done', abandoned: 'dropped' },
+  game: { to_play: 'todo', playing: 'doing', finished: 'done' },
+  course: { to_take: 'todo', taking: 'doing', done: 'done', dropped: 'dropped' },
+  place: { to_visit: 'todo', visited: 'done' },
+} as const satisfies {
+  book: Record<BookStatus, EnumStatusRole>
+  game: Record<GameStatus, EnumStatusRole>
+  course: Record<CourseStatus, EnumStatusRole>
+  place: Record<PlaceStatus, EnumStatusRole>
+}
+
+/** enum-სტატუსის ტონი (`STATUS_BADGE`-ის გასაღები); უცნობზე — ნეიტრალური `undecided` */
+export function enumStatusTone(domain: EnumStatusDomain, status: string): string {
+  const role = (ENUM_STATUS_ROLE[domain] as Record<string, EnumStatusRole>)[status]
+
+  if (!role) return 'undecided'
+
+  return role === 'dropped' ? 'dropped' : ROLE_TONE[role]
 }

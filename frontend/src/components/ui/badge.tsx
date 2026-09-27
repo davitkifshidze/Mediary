@@ -19,11 +19,28 @@ import { cn } from '@/lib/utils'
    (`index.css`-ის `@theme inline`); ლიტერალი მას გვერდს უვლის.
    ============================================================ */
 
-export function Badge({ className, children, ...props }: ComponentProps<'span'>) {
+/**
+ * ⚠️ **`row` — სიის რიგის ღილაკების გვერდით მდგარი ნიშანი** (Tasks §21.2).
+ *
+ * შენი სიტყვები: „დაშორება ისეთივე, როგორიც რედაქტირების ღილაკს აქვს
+ * ჰოვერზე". სიმაღლე და შიდა დაშორება **`Button size="sm"`-ისაა** (h-9 px-3.5,
+ * text-sm) — ერთ რიგში 24px-იანი ნიშანი 36px-იან ღილაკებს შორის ჩავარდნილი
+ * ჩანდა. ⚠️ ეს **მხოლოდ რიგის ღილაკების ჯგუფისთვისაა**: სათაურის გვერდით
+ * ან მეტა-ხაზში (ვიდეოს სტატუსი, კურსის სტატუსი) ნიშანი პატარა რჩება.
+ */
+export type BadgeSize = 'default' | 'row'
+
+export function Badge({
+  className,
+  children,
+  size = 'default',
+  ...props
+}: ComponentProps<'span'> & { size?: BadgeSize }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1 rounded-md font-medium',
+        size === 'row' ? 'h-9 px-3.5 text-sm' : 'px-2.5 py-1 text-xs',
         className,
       )}
       {...props}

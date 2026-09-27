@@ -31,10 +31,14 @@ export const STATUS_INACTIVE: Record<string, string> = {
   favorite: 'border-dashed border-favorite/50 bg-favorite/10 text-favorite hover:bg-favorite/20',
 }
 
-/** ბეჯის რბილი ვარიანტი (`StatusBadge`) */
+/** ბეჯის რბილი ვარიანტი (`StatusBadge`, `EnumStatusBadge`) */
 export const STATUS_BADGE: Record<string, string> = {
   undecided: 'bg-status-undecided/15 text-status-undecided',
   towatch: 'bg-status-towatch/15 text-status-towatch',
   watching: 'bg-status-watching/15 text-status-watching',
   watched: 'bg-status-watched/15 text-status-watched',
+  /* Tasks §21 — „მიტოვებული" (წიგნი, კურსი). ⚠️ ლექსიკონის სამი როლიდან
+     არცერთს არ უდრის, ამიტომ საკუთარი ტონი აქვს და ის წითელია — ისევე,
+     როგორც წიგნის ძველ ხელით დაწერილ რუკაში იყო. */
+  dropped: 'bg-destructive/15 text-destructive',
 }

@@ -54,6 +54,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { EnumStatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11).
@@ -64,12 +65,6 @@ import { Badge } from '@/components/ui/badge'
    ============================================================ */
 
 const SORTS = ['newest', 'oldest', 'title', 'year', 'rating'] as const
-
-const STATUS_TONE: Record<string, string> = {
-  to_play: 'bg-primary/15 text-primary',
-  playing: 'bg-gold/20 text-gold',
-  finished: 'bg-secondary text-foreground',
-}
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
 const EMPTY_FILTERS = { genres: [] as string[], platforms: [] as string[], modes: [] as string[] }
@@ -357,11 +352,10 @@ export function GamesPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    <Badge className={cn('mr-1', STATUS_TONE[game.status] ?? 'bg-secondary')}>
-                      {t(`games.statuses.${game.status}`)}
-                    </Badge>
+                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
+                    <EnumStatusBadge domain="game" status={game.status} size="row" className="mr-1" />
                     {game.rating != null && (
-                      <Badge className="mr-1 bg-secondary tabular-nums">
+                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
                         {game.rating}/{GAME_MAX_RATING}
                       </Badge>
                     )}
