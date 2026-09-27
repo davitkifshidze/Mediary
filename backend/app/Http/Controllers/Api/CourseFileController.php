@@ -73,9 +73,11 @@ class CourseFileController extends Controller
 
     public function destroy(CourseFile $courseFile)
     {
-        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია;
-        // დისკიდან წაშლასა და კვოტის დაბრუნებას `StoredFile` აკეთებს
-        $courseFile->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+           დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
+           ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
+           გამო ისედაც 404-ია. */
+        $courseFile->moveToTrash();
 
         return response()->noContent();
     }

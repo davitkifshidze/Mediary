@@ -66,12 +66,15 @@ class StorageController extends Controller
     public function files(Request $request)
     {
         $limit = max(1, min((int) $request->integer('limit', 2000), 5000));
-        $files = $this->meter->files($request->user())->sortByDesc('size')->values();
+        // ⚠️ Tasks §29 — ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი `trash`-შია
+        $library = $this->meter->library($request->user());
+        $files = $library['files']->sortByDesc('size')->values();
 
         return response()->json([
             'files' => $files->take($limit)->values()->all(),
             'total' => $files->count(),
             'bytes' => (int) $files->sum('size'),
+            'trash' => $library['trash'],
             // მოდულებად ჯამი — ფილტრის ჩიპებს რიცხვები სჭირდება
             'modules' => $files->groupBy('module')->map(fn ($g) => [
                 'files' => $g->count(),
@@ -122,6 +125,8 @@ class StorageController extends Controller
             ...$this->meter->usage($user->refresh(), withModules: true),
             'deleted' => $result['files'],
             'freed' => $result['bytes'],
+            // Tasks §29 — ურნაში გადავიდა (ადგილს კვლავ იკავებს)
+            'trashed' => $result['trashed'],
         ]);
     }
 
@@ -169,8 +174,9 @@ class StorageController extends Controller
      */
     private function pickPaths(array $data, User $user): array
     {
+        // ⚠️ „ყველა" = სიაში ნაჩვენები; ურნაში მყოფს სია არ აჩვენებს (Tasks §29)
         if ($data['all'] ?? false) {
-            return $this->meter->files($user)->pluck('path')->all();
+            return $this->meter->library($user)['files']->pluck('path')->all();
         }
 
         return array_values(array_filter(array_map(

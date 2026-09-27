@@ -72,9 +72,11 @@ class PlaceFileController extends Controller
 
     public function destroy(PlaceFile $placeFile)
     {
-        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია;
-        // დისკიდან წაშლასა და კვოტის დაბრუნებას `StoredFile` აკეთებს
-        $placeFile->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+           დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
+           ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
+           გამო ისედაც 404-ია. */
+        $placeFile->moveToTrash();
 
         return response()->noContent();
     }

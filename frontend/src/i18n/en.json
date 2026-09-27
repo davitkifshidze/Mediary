@@ -918,12 +918,18 @@
     "downloadAll": "Download all ({{count}})",
     "filesDeleted": "Deleted {{count}} file(s) · {{size}} freed",
     "filesDeleteTitle": "Delete files",
-    "filesDeleteSelectedHint": "The {{count}} selected file(s) will be deleted for good. The records stay — only the upload goes.",
-    "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted for good: avatar, posters, main photos, other photos and documents. The records stay.",
+    "filesDeleteSelectedHint": "Of the {{count}} selected files, attachments, photos and documents move to the trash, while a poster, a main photo or the avatar is deleted for good. The records stay.",
+    "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted: attachments, photos and documents move to the trash, while the avatar, posters and main photos go for good. The records stay.",
     "orphansWhy": "Where they come from: a record or attachment was deleted straight from the database (a script, a migration) and the copy stayed on disk · an upload was interrupted — the file landed, the row never did · the database was restored from a backup that is older than the files on disk.",
     "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only.",
     "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block.",
-    "backup": "Database backup"
+    "backup": "Database backup",
+    "fileTrashHint": "“{{name}}” moves to the trash — it can be restored from there; the space is freed when it is deleted for good.",
+    "fileTrashed": "The file moved to the trash",
+    "filesTrashed": "{{count}} files moved to the trash — the space is freed when they are deleted for good",
+    "filesDeletedMixed": "{{trashed}} files moved to the trash, {{count}} deleted · {{size}} freed",
+    "inTrash": "{{count}} more files in the trash · {{size}}",
+    "openTrash": "Open the trash"
   },
   "errors": {
     "storage_quota_exceeded": "Out of space: {{needed}} needed, {{remaining}} left (quota {{quota}}).",
@@ -1036,7 +1042,12 @@
     "two_factor_not_enabled": "Two-factor sign-in is not on.",
     "reset_link_expired": "The link no longer works — it either expired or has already been used.",
     "cast_order_mismatch": "The cast list changed elsewhere — the page was refreshed, try again.",
-    "tmdb_unavailable": "TMDB is not responding — try again later."
+    "tmdb_unavailable": "TMDB is not responding — try again later.",
+    "parent_blocked": "Restoring this needs its record back too, and that record's module is off.",
+    "parent_missing": "What this belonged to no longer exists.",
+    "slot_taken": "Another file already sits in that place.",
+    "field_missing": "The field no longer exists or is no longer a file field — bring the field back first.",
+    "field_full": "The field is full — remove a file first."
   },
   "fields": {
     "title": "Fields",
@@ -1581,7 +1592,7 @@
     "primarySet": "Poster updated",
     "deleted": "Photo deleted",
     "deleteTitle": "Delete this photo?",
-    "deleteHint": "The file is deleted for good and the space is freed.",
+    "deleteHint": "The photo moves to the trash — it can be restored from there. The space is freed when it is deleted for good.",
     "subject": {
       "stills": "Stills",
       "posters": "Posters"
@@ -1753,7 +1764,7 @@
     "openGroup": "Open the group",
     "deleteGroup": "Delete every photo in the group ({{count}})",
     "deleteGroupTitle": "Delete every photo in this group?",
-    "deleteGroupHint": "“{{name}}” — {{count}} photos will be deleted for good and the space freed. The record itself stays.",
+    "deleteGroupHint": "“{{name}}” — {{count}} photos move to the trash; they can be restored from there. The record itself stays.",
     "groupDeleted": "{{count}} photos deleted",
     "moduleOff": "The “Gallery” module is off — saving photos and video links needs it.",
     "categoryScope": "Kind of photo",
@@ -1919,7 +1930,7 @@
     "fileUploaded": "File uploaded",
     "fileDownload": "Download",
     "fileDeleteTitle": "Delete this file?",
-    "fileDeleteHint": "“{{name}}” is deleted for good and the space is freed.",
+    "fileDeleteHint": "“{{name}}” moves to the trash — it can be restored from there.",
     "notesTitle": "Notes and quotes",
     "notesHint": "A quote can carry a page number.",
     "notesEmpty": "No notes yet.",
@@ -2264,7 +2275,7 @@
     "attachmentDeleted": "File deleted",
     "fileDeleted": "File deleted",
     "fileDeleteTitle": "Delete file",
-    "fileDeleteHint": "The file disappears for **both** sides and your space is freed. The message stays and reads “File deleted”.",
+    "fileDeleteHint": "The file disappears for **both** sides and moves to your trash — from there it comes back into the same message. The message stays and reads “File deleted”.",
     "type": {
       "text": "Text",
       "emoji": "Emoji",
@@ -2941,7 +2952,7 @@
     "recalcHint": "Files on disk do not follow the database — run Recalculate storage after a restore.",
     "typeToConfirm": "Type RESTORE to confirm",
     "deleteTitle": "Delete the dump",
-    "deleteHint": "{{name}} will be removed from disk and the space freed.",
+    "deleteHint": "{{name}} moves to the trash — from there it returns to the backups list; the space is freed when it is deleted for good.",
     "status": {
       "running": "running",
       "ready": "ready",
@@ -3151,14 +3162,14 @@
   },
   "trash": {
     "title": "Trash",
-    "hint": "A deleted record is kept here for {{days}} days — with its files, notes and links. After that it is deleted for good, and only then is the space freed.",
-    "count": "{{count}} records",
+    "hint": "Anything deleted is kept here for {{days}} days — a record with its files and links, a photo, a file, a link or a database backup. After that it is deleted for good, and only then is the space freed.",
+    "count": "{{count}} items",
     "empty": "The trash is empty",
-    "emptyHint": "Records you delete from the sections land here, so an accidental deletion can be undone.",
+    "emptyHint": "Everything you delete lands here — records, photos, files and links — so an accidental deletion can be undone.",
     "restore": "Restore",
-    "restored": "The record is back",
+    "restored": "Restored",
     "deleteNow": "Delete for good",
-    "deleted": "The record is gone for good",
+    "deleted": "Deleted for good",
     "deleteTitle": "Delete for good?",
     "deleteHint": "“{{name}}” and its files are deleted permanently — nothing stays in the trash.",
     "expiresIn": "deleted in {{count}} days",
@@ -3166,7 +3177,34 @@
     "more": "and {{count}} more",
     "confirmLabel": "Type {{word}} to confirm",
     "emptyAction": "Empty the trash",
-    "emptied": "{{count}} records deleted"
+    "emptied": "{{count}} items deleted",
+    "restoredWithParent": "Restored — together with “{{name}}”",
+    "deleteFileHint": "“{{name}}” is deleted permanently and {{size}} is freed.",
+    "bytes": "The trash holds {{size}}",
+    "bytesHint": "The space is freed only when an item is deleted for good or expires.",
+    "parentTrashed": "“{{name}}” is in the trash too — restoring brings it back as well",
+    "backupHint": "A backup in the trash cannot restore the database — “Restore” puts it back in the backups list.",
+    "blocked": {
+      "module_disabled": "The module is off — enable it to restore",
+      "parent_blocked": "Its record is in the trash too, and that record's module is off",
+      "parent_missing": "What it belonged to no longer exists",
+      "slot_taken": "Another file already sits in that place",
+      "field_missing": "This field no longer exists or is no longer a file field"
+    },
+    "kinds": {
+      "gallery_image": "Gallery photos",
+      "gallery_video": "Video links",
+      "video_file": "Video files",
+      "book_file": "Book files",
+      "board_game_file": "Board game files",
+      "game_file": "Game files",
+      "note_entry_file": "Note files",
+      "course_file": "Course files",
+      "place_file": "Place files",
+      "database_backup": "Database backups",
+      "chat_file": "Chat files",
+      "field_file": "Custom field files"
+    }
   },
   "watchLog": {
     "title": "Watches",

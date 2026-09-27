@@ -116,6 +116,11 @@ export interface StorageFiles {
   bytes: number
   /** მოდულების ჯამები — ფილტრის ჩიპებს რიცხვები სჭირდება */
   modules: Record<string, { files: number; bytes: number }>
+  /**
+   * Tasks §29 — ურნაში მყოფი: სიაში არ ჩანს, მაგრამ ადგილს იკავებს, ე.ი.
+   * „ნაჩვენები" და „დაკავებული" სწორედ ამით ეთანხმება ერთმანეთს.
+   */
+  trash?: { files: number; bytes: number }
 }
 
 /** ატვირთვების მედია-ბიბლიოთეკა — ადმინის სიის იგივე წყარო (`StorageMeter::files()`) */
@@ -128,7 +133,9 @@ export async function fetchStorageFiles(limit = 2000): Promise<StorageFiles> {
 export type StorageScope = { paths: string[] } | { all: true }
 
 /** ერთი საკუთარი ატვირთვის წაშლა; აბრუნებს განახლებულ მდგომარეობას */
-export async function deleteStorageFile(path: string): Promise<StorageUsage> {
+export async function deleteStorageFile(
+  path: string,
+): Promise<StorageUsage & { deleted: number; freed: number; trashed: number }> {
   const { data } = await api.delete('/storage/files', { data: { path } })
   return data
 }
@@ -139,7 +146,7 @@ export async function deleteStorageFile(path: string): Promise<StorageUsage> {
  */
 export async function deleteStorageFiles(
   scope: StorageScope,
-): Promise<StorageUsage & { deleted: number; freed: number }> {
+): Promise<StorageUsage & { deleted: number; freed: number; trashed: number }> {
   const { data } = await api.delete('/storage/files', { data: scope })
   return data
 }
@@ -719,6 +726,12 @@ export interface UploadedFile {
   size: number
   mime: string | null
   created_at: string | null
+  /**
+   * Tasks §29 — წაშლა ფაილს ურნაში აგზავნის (`true`) თუ ჯერ მყისიერად შლის
+   * (სვეტის ფაილი: პოსტერი, მთავარი ფოტო, ავატარი — §29-ის მე-4 ეტაპი).
+   * ⚠️ სერვერი წყვეტს — SPA-ში სიის ასლი პირველივე ეტაპზე დაშორდებოდა.
+   */
+  trashable?: boolean
 }
 
 /** მომხმარებლის შიდა გვერდი (K14) */

@@ -13,12 +13,17 @@ use App\Models\Message;
 use App\Models\NoteEntryFile;
 use App\Models\Place;
 use App\Models\PlaceFile;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Models\VideoFile;
+use App\Services\Chat\ChatService;
+use App\Services\Modules\CustomFieldService;
 use App\Services\Notify\Notifier;
 use App\Support\CustomFields;
+use App\Support\GalleryParent;
 use App\Support\NotificationType;
 use App\Support\StorageFolder;
+use App\Support\TrashDomain;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
@@ -135,6 +140,10 @@ class StorageMeter
      * `private` = ფაილი პრივატულ დისკზეა (§17.5), ე.ი. `/storage/*`-ით **არ**
      * იხსნება — UI-მ ხატულა უნდა აჩვენოს და არა გატეხილი `<img>`.
      *
+     * ⚠️ **ურნაში მყოფი ფაილიც აქაა** (Tasks §29): ის დისკზეა და კვოტაში
+     * ითვლება, ე.ი. `recalculate()`, მოდულის ლიმიტი და ანგარიშის წაშლა მას
+     * უნდა ხედავდნენ. ატვირთვების **სია** კი მას არ აჩვენებს (`library()`).
+     *
      * @return Collection<int, array{kind: string, module: string, owner_type: string, owner_id: int|null, path: string, private: bool, name: string|null, size: int, mime: string|null, created_at: string|null}>
      */
     public function files(User $user, ?string $only = null): Collection
@@ -174,6 +183,12 @@ class StorageMeter
                 'size' => $file['size'] ?? $this->fileSize($path),
                 'mime' => $file['mime'] ?? null,
                 'created_at' => ($file['created_at'] ?? null)?->toIso8601String(),
+                /* ⚠️ **შიდა ველები ურნისთვის** (Tasks §29) — `markTrash()` მათგან
+                   იგებს, ურნაშია თუ არა ფაილი (თვითონ თუ მშობლით). API-ის
+                   სიებს ისინი არ ატანს (`library()` შლის). */
+                '_trashed' => (bool) ($file['trashed'] ?? false),
+                '_parent' => $file['parent'] ?? null,
+                '_trash_kind' => $file['trash_kind'] ?? null,
             ]);
         };
 
@@ -193,7 +208,7 @@ class StorageMeter
             }
 
             $records = $user->{$relation}()
-                ->withoutGlobalScope('owner')
+                ->withoutGlobalScopes(['owner', 'trash'])
                 ->where('poster_source', 'upload')
                 ->whereNotNull('poster_path')
                 ->get(['id', 'poster_path', 'created_at']);
@@ -217,7 +232,7 @@ class StorageMeter
         // ერეოდა. `poster` ცალკე რჩება — ის ფილმის, სერიალისა და ანიმეს ტერმინია.
         // `thumbnail_url` პლატფორმის ბმულია (ჩვენთან არ ინახება) — მხოლოდ `thumbnail_path`
         $videos = $skip('video') ? collect() : $user->videos()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
 
@@ -240,7 +255,7 @@ class StorageMeter
            (`StoredFile`-ის წესი), `private` კი `videos/downloads`-ის გამო
            true-ა და გვერდი ჩამკეტს ხატავს ნაცვლად გატეხილი ბმულისა. */
         $downloads = $skip('video') ? collect() : $user->videos()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->whereNotNull('download_path')
             ->get(['id', 'title', 'download_path', 'download_name', 'download_size', 'downloaded_at']);
 
@@ -259,7 +274,7 @@ class StorageMeter
 
         // სიმღერის ატვირთული ფოტო — იმავე წესით, რაც ვიდეოს თამბნეილი
         $songs = $skip('song') ? collect() : $user->songs()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
 
@@ -278,7 +293,7 @@ class StorageMeter
         // ბუკმარკის ატვირთული ფოტო — იმავე წესით, რაც სიმღერის თამბნეილი.
         // ⚠️ og:image აქ **არ ხვდება**: ის დაშორებული URL-ია და დისკს არ იკავებს.
         $bookmarks = $skip('bookmark') ? collect() : $user->bookmarks()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
 
@@ -295,7 +310,7 @@ class StorageMeter
         }
 
         // FEAT-25 — კურსის ატვირთული ესკიზი (og:image აქაც დაშორებული რჩება)
-        $courses = $skip('course') ? collect() : Course::withoutGlobalScope('owner')
+        $courses = $skip('course') ? collect() : Course::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
             ->whereNotNull('thumbnail_path')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
@@ -313,9 +328,9 @@ class StorageMeter
         }
 
         // კურსზე მიმაგრებული ფაილები — სერტიფიკატი, ეკრანის ასლი, კონსპექტი
-        $courseFiles = $skip('course') ? collect() : CourseFile::withoutGlobalScope('owner')
+        $courseFiles = $skip('course') ? collect() : CourseFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'course_id']);
 
         foreach ($courseFiles as $f) {
             $add([
@@ -328,11 +343,13 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['course', (int) $f->course_id],
             ]);
         }
 
         // FEAT-26 — ადგილის ატვირთული ფოტო
-        $places = $skip('place') ? collect() : Place::withoutGlobalScope('owner')
+        $places = $skip('place') ? collect() : Place::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
             ->whereNotNull('photo_path')
             ->get(['id', 'name', 'photo_path', 'created_at']);
@@ -350,9 +367,9 @@ class StorageMeter
         }
 
         // ადგილზე მიმაგრებული ფაილები — ჩემი ფოტო, ბილეთი, ბროშურა
-        $placeFiles = $skip('place') ? collect() : PlaceFile::withoutGlobalScope('owner')
+        $placeFiles = $skip('place') ? collect() : PlaceFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'place_id']);
 
         foreach ($placeFiles as $f) {
             $add([
@@ -365,12 +382,14 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['place', (int) $f->place_id],
             ]);
         }
 
         // წიგნის **ხელით ატვირთული** ყდა; Open Library-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
         $books = $skip('book') ? collect() : $user->books()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->where('cover_source', 'upload')
             ->whereNotNull('cover_path')
             ->get(['id', 'title_ka', 'title_en', 'cover_path', 'created_at']);
@@ -388,9 +407,9 @@ class StorageMeter
         }
 
         // წიგნის ფაილები (pdf/epub) — ერთეულზე ყველაზე მძიმეები
-        $bookFiles = $skip('book') ? collect() : BookFile::withoutGlobalScope('owner')
+        $bookFiles = $skip('book') ? collect() : BookFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'book_id']);
 
         foreach ($bookFiles as $f) {
             $add([
@@ -403,12 +422,14 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['book', (int) $f->book_id],
             ]);
         }
 
         // ბორდგეიმის **ხელით ატვირთული** ფოტო; BGG-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
         $boardGames = $skip('board_game') ? collect() : $user->boardGames()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->where('image_source', 'upload')
             ->whereNotNull('image_path')
             ->get(['id', 'title', 'image_path', 'created_at']);
@@ -426,9 +447,9 @@ class StorageMeter
         }
 
         // ბორდგეიმის ფაილები — წესების PDF და გალერეის ფოტოები
-        $boardGameFiles = $skip('board_game') ? collect() : BoardGameFile::withoutGlobalScope('owner')
+        $boardGameFiles = $skip('board_game') ? collect() : BoardGameFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'board_game_id']);
 
         foreach ($boardGameFiles as $f) {
             $add([
@@ -441,12 +462,14 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['board_game', (int) $f->board_game_id],
             ]);
         }
 
         // თამაშის **ხელით ატვირთული** ყდა; RAWG-დან ჩამოტვირთული აქ არ ხვდება (19.4/B)
         $games = $skip('game') ? collect() : $user->games()
-            ->withoutGlobalScope('owner')
+            ->withoutGlobalScopes(['owner', 'trash'])
             ->where('cover_source', 'upload')
             ->whereNotNull('cover_path')
             ->get(['id', 'title_ka', 'title_en', 'cover_path', 'created_at']);
@@ -464,9 +487,9 @@ class StorageMeter
         }
 
         // თამაშის ფაილები — ატვირთული სქრინშოტები და დოკუმენტები
-        $gameFiles = $skip('game') ? collect() : GameFile::withoutGlobalScope('owner')
+        $gameFiles = $skip('game') ? collect() : GameFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'game_id']);
 
         foreach ($gameFiles as $f) {
             $add([
@@ -479,13 +502,15 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['game', (int) $f->game_id],
             ]);
         }
 
         // ჩანაწერების ატვირთვები (§13.1) — სქრინშოტი/ვიდეო/დოკუმენტი
-        $noteFiles = $skip('note') ? collect() : NoteEntryFile::withoutGlobalScope('owner')
+        $noteFiles = $skip('note') ? collect() : NoteEntryFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'note_entry_id']);
 
         foreach ($noteFiles as $f) {
             $add([
@@ -498,13 +523,15 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['note', (int) $f->note_entry_id],
             ]);
         }
 
         // ვიდეოზე მიმაგრებული ფაილები — ზომა ცხრილშივე ინახება, ე.ი. დისკს არ ვეკითხებით
-        $videoFiles = $skip('video') ? collect() : VideoFile::withoutGlobalScope('owner')
+        $videoFiles = $skip('video') ? collect() : VideoFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'video_id']);
 
         foreach ($videoFiles as $f) {
             $add([
@@ -517,14 +544,16 @@ class StorageMeter
                 'size' => $f->size,
                 'mime' => $f->mime,
                 'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['video', (int) $f->video_id],
             ]);
         }
 
         // Tasks 10 — გალერეის ფოტო **გალერეის** მოდულს ეკუთვნის და არა მშობელს:
         // მსახიობის ფოტოზე `imageable_type` = `cast_member`, რაც მოდული არ არის
-        $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScope('owner')
+        $galleryImages = $skip('gallery') ? collect() : GalleryImage::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
-            ->get(['id', 'path', 'original_name', 'mime', 'size', 'created_at']);
+            ->get(['id', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'imageable_type', 'imageable_id']);
 
         foreach ($galleryImages as $g) {
             $add([
@@ -537,6 +566,9 @@ class StorageMeter
                 'size' => $g->size,
                 'mime' => $g->mime,
                 'created_at' => $g->created_at,
+                'trashed' => $g->trashed_at !== null,
+                // ⚠️ მსახიობი (`cast_member`) ან ალბომის ფოტო მშობლად არ ითვლება — ურნაში ისინი ვერ მოხვდებიან
+                'parent' => $g->imageable_type ? [(string) $g->imageable_type, (int) $g->imageable_id] : null,
             ]);
         }
 
@@ -569,9 +601,9 @@ class StorageMeter
            ⚠️ **ყველაზე დიდი ერთეული ფაილია მთელ კვოტაში**, ე.ი. საცავის
            გვერდზე მისი დანახვა ზუსტად ის შემთხვევაა, რისთვისაც ის სია
            არსებობს. */
-        $backups = $skip('backup') ? collect() : DatabaseBackup::where('user_id', $user->id)
+        $backups = $skip('backup') ? collect() : DatabaseBackup::withoutGlobalScope('trash')->where('user_id', $user->id)
             ->whereNotNull('path')
-            ->get(['id', 'path', 'name', 'size', 'created_at']);
+            ->get(['id', 'path', 'name', 'size', 'created_at', 'trashed_at']);
 
         foreach ($backups as $backup) {
             $add([
@@ -583,6 +615,7 @@ class StorageMeter
                 'name' => $backup->name,
                 'size' => $backup->size,
                 'created_at' => $backup->created_at,
+                'trashed' => $backup->trashed_at !== null,
             ]);
         }
 
@@ -598,7 +631,7 @@ class StorageMeter
             $rows = DB::table($table)
                 ->where('user_id', $user->getKey())
                 ->whereNotNull('value_path')
-                ->get(['id', 'value_path', 'value_name', 'value_mime', 'value_size', 'created_at']);
+                ->get(['id', 'record_id', 'value_path', 'value_name', 'value_mime', 'value_size', 'created_at']);
 
             foreach ($rows as $row) {
                 $add([
@@ -612,8 +645,42 @@ class StorageMeter
                     'size' => (int) $row->value_size,
                     'mime' => $row->value_mime,
                     'created_at' => $row->created_at ? Carbon::parse($row->created_at) : null,
+                    'parent' => [$module, (int) $row->record_id],
                 ]);
             }
+        }
+
+        /* **ურნაში მყოფი ფაილები, რომელთაც წყაროს რიგი აღარ ატარებს** (Tasks §29):
+           ჩატის მიმაგრება და დამატებითი ველის ფაილი. ⚠️ **აქ ყოფნა სავალდებულოა**:
+           ფაილი დისკზეა და კვოტაში ითვლება, ე.ი. `recalculate()`-ს ის უნდა
+           ხედავდეს, ანგარიშის წაშლას (`AccountEraser`) კი — წასაშლელად. მოდული
+           წყაროსია: ჩატის ფაილი `chat`-ში რჩება, ველის ფაილი — ჩანაწერის მოდულში. */
+        $trashed = $only === null
+            ? TrashedFile::withoutGlobalScope('owner')->where('user_id', $user->getKey())->get()
+            : TrashedFile::withoutGlobalScope('owner')->where('user_id', $user->getKey())
+                ->where(fn ($q) => $only === 'chat'
+                    ? $q->where('kind', 'chat_file')
+                    : $q->where('kind', 'field_file')->where('record_type', $only))
+                ->get();
+
+        foreach ($trashed as $t) {
+            $add([
+                'kind' => $t->kind === 'field_file' ? 'field' : match ($t->meta['type'] ?? null) {
+                    'image' => 'image',
+                    'video' => 'video',
+                    default => 'doc',
+                },
+                'module' => $t->kind === 'chat_file' ? 'chat' : (string) $t->record_type,
+                'owner_type' => 'trashed_file',
+                'owner_id' => (int) $t->id,
+                'path' => $t->path,
+                'name' => $t->name,
+                'size' => (int) $t->size,
+                'mime' => $t->mime,
+                'created_at' => $t->trashed_at,
+                'trashed' => true,
+                'trash_kind' => $t->kind,
+            ]);
         }
 
         return $files;
@@ -625,12 +692,17 @@ class StorageMeter
      * ⚠️ `path` **`files()`-ში** ეძებება, ე.ი. სხვისი ფაილი და TMDB-ის საერთო
      * პოსტერი აქედან პრინციპულად ვერ წაიშლება — რაც არ ითვლება კვოტაში,
      * ის ამ სიაშიც არ არის.
+     *
+     * ⚠️ **ორი რეჟიმი და ორივე ცხადია** (Tasks §29): მომხმარებლის წაშლა
+     * ფაილს **ურნაში** აგზავნის (`$permanent = false`), ანგარიშის წაშლა კი
+     * **ნამდვილად** შლის. ნაგულისხმევი ურნაა — ახალი გამომძახებელი ფაილს
+     * შემთხვევით ვერ გაანადგურებს.
      */
-    public function deleteOwnFile(User $user, string $path): bool
+    public function deleteOwnFile(User $user, string $path, bool $permanent = false): bool
     {
-        $file = $this->files($user)->firstWhere('path', $path);
+        $file = $this->pickable($user, $permanent)->firstWhere('path', $path);
 
-        return $file ? $this->deleteResolved($user, $file) : false;
+        return $file ? $this->deleteResolved($user, $file, $permanent) : false;
     }
 
     /**
@@ -641,26 +713,46 @@ class StorageMeter
      * ნიშნავდა. სნეპშოტი ერთი მოქმედების დასაწყისშია აღებული — იმავე
      * მოთხოვნის შიგნით მას ვერავინ შეცვლის.
      *
+     * ⚠️ **`bytes` მხოლოდ მართლა გათავისუფლებულია** (Tasks §29): ურნაში
+     * გადატანილი ფაილი ადგილს კვლავ იკავებს, ე.ი. „გათავისუფლდა N MB"
+     * ტყუილი იქნებოდა — ის ცალკე ითვლება (`trashed`).
+     *
      * @param  list<string>  $paths
-     * @return array{files: int, bytes: int}
+     * @return array{files: int, bytes: int, trashed: int}
      */
-    public function deleteOwnFiles(User $user, array $paths): array
+    public function deleteOwnFiles(User $user, array $paths, bool $permanent = false): array
     {
-        $known = $this->files($user)->keyBy('path');
+        $known = $this->pickable($user, $permanent)->keyBy('path');
         $deleted = 0;
         $bytes = 0;
+        $trashed = 0;
 
         foreach (array_unique($paths) as $path) {
             $file = $known->get($path);
 
-            if ($file && $this->deleteResolved($user, $file)) {
+            if ($file && $this->deleteResolved($user, $file, $permanent)) {
                 $deleted++;
-                $bytes += (int) $file['size'];
+
+                if ($permanent || ! in_array($file['owner_type'], self::TRASHED_ON_DELETE, true)) {
+                    $bytes += (int) $file['size'];
+                } else {
+                    $trashed++;
+                }
             }
         }
 
-        return ['files' => $deleted, 'bytes' => $bytes];
+        return ['files' => $deleted, 'bytes' => $bytes, 'trashed' => $trashed];
     }
+
+    /**
+     * რომელი ფაილი მიდის წაშლისას ურნაში (Tasks §29, ეტაპი 1) — რიგიანი
+     * ფაილები, ველის ფაილი და ჩატის მიმაგრება. სვეტის ფაილი (პოსტერი, ყდა,
+     * ავატარი, ჩამოწერილი ვიდეო) ჯერ მყისიერად იშლება — მე-4 ეტაპი.
+     */
+    private const TRASHED_ON_DELETE = [
+        'video_file', 'book_file', 'board_game_file', 'game_file', 'note_entry_file',
+        'course_file', 'place_file', 'gallery_image', 'database_backup', 'field_value', 'message',
+    ];
 
     /**
      * **§6.2 — მონიშნულების/ყველას ჩამოტვირთვა ერთ zip-ად.**
@@ -736,14 +828,45 @@ class StorageMeter
     }
 
     /**
+     * წასაშლელად არჩევადი ფაილები.
+     *
+     * ⚠️ **ურნაში მყოფი ფაილი მომხმარებლის წაშლას არ ექვემდებარება** — ის
+     * ისედაც ურნაშია და მისი საბოლოო წაშლა ურნის საქმეა; სიაც მას არ
+     * აჩვენებს (`library()`). ანგარიშის წაშლა კი (`$permanent`) ყველაფერს
+     * შლის — ურნაში მყოფსაც.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function pickable(User $user, bool $permanent): Collection
+    {
+        $files = $this->files($user);
+
+        return $permanent ? $files : $this->markTrash($user, $files)->whereNull('trash')->values();
+    }
+
+    /**
      * ერთი, **უკვე ამოცნობილი** ფაილის წაშლა (`files()`-ის რიგი).
+     *
+     * ⚠️ რიგიანი ფაილი (ფოტო, მოდულის ფაილი, ასლი) ურნაში `moveToTrash()`-ით
+     * გადადის; ველის და ჩატის ფაილი — `trashed_files`-ში (Tasks §29). სვეტის
+     * ფაილი (პოსტერი, ყდა, ავატარი) ჯერ კიდევ მყისიერად იშლება — §29-ის მე-4
+     * ეტაპი.
      *
      * @param  array<string, mixed>  $file
      */
-    private function deleteResolved(User $user, array $file): bool
+    private function deleteResolved(User $user, array $file, bool $permanent = false): bool
     {
         $path = (string) $file['path'];
         $ownerId = $file['owner_id'];
+
+        /* ურნის საკუთარი რიგი — მხოლოდ საბოლოო წაშლა არსებობს (`StoredFile`
+           ფაილსაც შლის და ჩაწერილ ზომასაც ათავისუფლებს) */
+        if ($file['owner_type'] === 'trashed_file') {
+            return $permanent && (bool) TrashedFile::withoutGlobalScope('owner')
+                ->whereKey($ownerId)
+                ->where('user_id', $user->getKey())
+                ->first()?->delete();
+        }
 
         // ჩანაწერის წაშლა თვითონ შლის ფაილს და ათავისუფლებს კვოტას
         // (`StoredFile` trait), ე.ი. აქ დელტას ხელით არ ვცვლით
@@ -765,10 +888,21 @@ class StorageMeter
         };
 
         if ($fileModel) {
-            return (bool) $fileModel::withoutGlobalScope('owner')
+            $model = $fileModel::withoutGlobalScopes()
                 ->whereKey($ownerId)
                 ->where('user_id', $user->getKey())
-                ->first()?->delete();
+                ->first();
+
+            if (! $model) {
+                return false;
+            }
+
+            // ⚠️ ფოტო ჩანაწერის მთავარი ფოტო თუ იყო, ბმული არ უნდა დაეკიდოს (BUG-20)
+            if ($model instanceof GalleryImage && ! $permanent) {
+                GalleryParent::clearPrimaryIfAt($model->imageable, (string) $model->imageable_type, $model->path);
+            }
+
+            return $permanent ? (bool) $model->delete() : $model->moveToTrash();
         }
 
         /* §6 ფაზა 4b — მორგებული ველის ატვირთვა. ⚠️ **მთელი რიგი იშლება**
@@ -782,6 +916,13 @@ class StorageMeter
 
             if (! $row) {
                 return false;
+            }
+
+            // Tasks §29 — ფაილი ურნაში, რიგი ქრება; დისკი და კვოტა ხელუხლებელი
+            if (! $permanent) {
+                app(CustomFieldService::class)->trashRows($file['module'], $table, DB::table($table)->where('id', $ownerId));
+
+                return true;
             }
 
             /* ⚠️ **რიგი და მრიცხველი ერთ ტრანზაქციაში, ფაილი — commit-ის
@@ -839,6 +980,13 @@ class StorageMeter
 
             if (! $message) {
                 return false;
+            }
+
+            // Tasks §29 — ჩატის „ფაილის წაშლის" იგივე გზა: ურნაში, შეტყობინება რჩება
+            if (! $permanent) {
+                app(ChatService::class)->deleteAttachment($message, $user);
+
+                return true;
             }
 
             // ჩაწერილი ზომა თავისუფლდება და არა დისკიდან წაკითხული (იხ. `StoredFile`)
@@ -1125,6 +1273,9 @@ class StorageMeter
             // §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ ადმინის
             // „ობოლების გასუფთავება" ცოცხალ ბექაპებს **წაშლიდა**
             'database_backups.path',
+            // Tasks §29 — ურნაში მყოფი ჩატისა და ველის ფაილები. ⚠️ აქ არყოფნა
+            // მათ ობლად აქცევდა და აღსადგენს ადმინის „გასუფთავება" წაშლიდა
+            'trashed_files.path',
             // §6 ფაზა 4b — რვავე `<module>_field_values` (ქვემოთ ემატება)
         ];
 
@@ -1146,6 +1297,82 @@ class StorageMeter
         }
 
         return $paths;
+    }
+
+    /**
+     * **ატვირთვების სია — ურნაში მყოფის გარეშე** (Tasks §29).
+     *
+     * ⚠️ ურნაში მყოფი ფაილი (თვითონ წაშლილი ან წაშლილი ჩანაწერისა) აქ არ
+     * ჩანს, მაგრამ ადგილს იკავებს — ამიტომ მისი ჯამი ცალკე ბრუნდება
+     * (`trash`), რომ „ნაჩვენები" და „დაკავებული" ერთმანეთს ეთანხმებოდეს.
+     *
+     * @return array{files: Collection<int, array<string, mixed>>, trash: array{files: int, bytes: int}}
+     */
+    public function library(User $user): array
+    {
+        $marked = $this->markTrash($user, $this->files($user));
+        $inTrash = $marked->whereNotNull('trash');
+
+        return [
+            'files' => $marked->whereNull('trash')
+                ->map(fn (array $f) => [
+                    ...array_diff_key($f, array_flip(['_trashed', '_parent', '_trash_kind', 'trash'])),
+                    // ⚠️ დადასტურების ტექსტს სჭირდება: „ურნაში გადავა" თუ „სამუდამოდ წაიშლება"
+                    'trashable' => in_array($f['owner_type'], self::TRASHED_ON_DELETE, true),
+                ])
+                ->values(),
+            'trash' => ['files' => $inTrash->count(), 'bytes' => (int) $inTrash->sum('size')],
+        ];
+    }
+
+    /**
+     * **რომელ ურნის ელემენტს ეკუთვნის ფაილი** — `kind:id` ან `null`.
+     *
+     * ფაილი ურნაშია, თუ თვითონ წაიშალა (`_trashed`), ან თუ მისი ჩანაწერია
+     * ურნაში (`_parent`, ან სვეტის ფაილზე — თვითონ მფლობელი). ⚠️ **საკუთარი
+     * წაშლა იმარჯვებს**: ფილმის ცალკე წაშლილი ფოტო თავის ელემენტს ეკუთვნის
+     * და არა ფილმს — ურნაში ის ცალკე ჩანს და ცალკე ბრუნდება.
+     *
+     * @param  Collection<int, array<string, mixed>>  $files
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function markTrash(User $user, Collection $files): Collection
+    {
+        $parentOf = function (array $f): ?array {
+            if ($f['_parent'] ?? null) {
+                return $f['_parent'];
+            }
+
+            // სვეტის ფაილი — მფლობელი თვითონ ჩანაწერია (`movie`, `video`, …)
+            return match (true) {
+                TrashDomain::category((string) $f['owner_type']) === 'record' => [(string) $f['owner_type'], (int) $f['owner_id']],
+                $f['owner_type'] === 'video_download' => ['video', (int) $f['owner_id']],
+                default => null,
+            };
+        };
+
+        $domains = $files->map($parentOf)->filter()->pluck(0)->unique()
+            ->filter(fn (string $d) => TrashDomain::category($d) === 'record');
+
+        $trashed = [];
+        foreach ($domains as $domain) {
+            $trashed[$domain] = TrashDomain::model($domain)::trashOf((int) $user->getKey())
+                ->pluck('id')
+                ->mapWithKeys(fn ($id) => [(int) $id => true])
+                ->all();
+        }
+
+        return $files->map(function (array $f) use ($parentOf, $trashed) {
+            $parent = $parentOf($f);
+
+            $f['trash'] = match (true) {
+                (bool) ($f['_trashed'] ?? false) => ($f['_trash_kind'] ?? $f['owner_type']).':'.$f['owner_id'],
+                $parent !== null && isset($trashed[$parent[0]][$parent[1]]) => $parent[0].':'.$parent[1],
+                default => null,
+            };
+
+            return $f;
+        });
     }
 
     /** სრული გადათვლა დისკიდან + დაქეშილი მრიცხველის ჩაწერა */

@@ -7,6 +7,7 @@ use App\Models\ConversationNickname;
 use App\Models\Message;
 use App\Models\MessageHide;
 use App\Models\MessageReaction;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\Storage\StorageMeter;
@@ -116,9 +117,10 @@ class ChatService
     /**
      * **მიმაგრებული ფაილის წაშლა (`DECISIONS.md` §1 — „ქრება ორივესთან").**
      *
-     * ფაილი დისკიდან ქრება და გამგზავნის კვოტა თავისუფლდება; **შეტყობინების
-     * რიგი რჩება** და ორივე მხარეს ნაცრისფერ „ფაილი წაშლილია"-დ იხატება.
-     * ასე საუბრის ძაფი იკითხება და ადგილიც მართლა თავისუფლდება.
+     * **შეტყობინების რიგი რჩება** და ორივე მხარეს ნაცრისფერ „ფაილი
+     * წაშლილია"-დ იხატება, ფაილი კი **ურნაში** გადადის (Tasks §29): დისკზე
+     * და გამგზავნის კვოტაში რჩება, სანამ ურნიდან საბოლოოდ არ წაიშლება —
+     * ადგილი მაშინ თავისუფლდება. აღდგენა მას იმავე შეტყობინებაში აბრუნებს.
      *
      * ⚠️ **მხოლოდ ავტორს შეუძლია.** ფაილი მისი კვოტიდან იხარჯება, ე.ი.
      * მიმღების მიერ წაშლა ჩუმად სხვის ადგილს ათავისუფლებდა.
@@ -129,25 +131,64 @@ class ChatService
             $this->fail('not_the_author', 403);
         }
 
-        if ($message->attachment_path) {
-            /* ⚠️ კვოტიდან **ჩაწერილი** `attachment_size` თავისუფლდება და არა
-               დისკიდან წაკითხული ზომა — ზუსტად ის, რაც ატვირთვისას დაითვალა
-               (`StoredFile`-ის იგივე წესი). სხვაგვარად ორი წყარო გაჩნდებოდა
-               და მრიცხველი ნელ-ნელა აცდებოდა. */
-            $this->meter->deleteUpload(null, $message->attachment_path);
-            $this->meter->addFor((int) $message->user_id, -(int) $message->attachment_size);
+        if (! $message->attachment_path) {
+            return $message;
         }
 
-        // ⚠️ `attachment_size` განზრახ ნულდება: ის კვოტის ანარეკლია და
-        // წაშლის შემდეგ „ჯერ კიდევ 4 MB"-ს ვერ იტყვის. სახელი რჩება, რომ
-        // ჩანაცვლებამ თქვას, **რა** იყო წაშლილი.
-        $message->forceFill([
-            'attachment_path' => null,
-            'attachment_mime' => null,
-            'attachment_size' => null,
-        ])->save();
+        /* ⚠️ **აღწერა და სვეტების გასუფთავება ერთ ტრანზაქციაში** — ჩავარდნაზე
+           ფაილი ან შეტყობინებაშია, ან ურნაში, და არასდროს — არცერთში (მაშინ
+           ობოლების სკანერი მას წაშლიდა) ან ორივეში (ორჯერ დაითვლებოდა).
+           ⚠️ `attachment_size` ურნაში ინახება — სწორედ ის **ჩაწერილი** ზომა
+           დაუბრუნდება კვოტას საბოლოო წაშლისას (`StoredFile`-ის წესი). */
+        DB::transaction(function () use ($message) {
+            TrashedFile::capture((int) $message->user_id, 'chat_file', [
+                'path' => $message->attachment_path,
+                'name' => $message->attachment_name,
+                'mime' => $message->attachment_mime,
+                'size' => $message->attachment_size,
+            ], 'message', (int) $message->id, 'attachment', ['type' => $message->type]);
+
+            // ⚠️ სახელი რჩება, რომ ჩანაცვლებამ თქვას, **რა** იყო წაშლილი
+            $message->forceFill([
+                'attachment_path' => null,
+                'attachment_mime' => null,
+                'attachment_size' => null,
+            ])->save();
+        });
 
         return $message;
+    }
+
+    /**
+     * **მიმაგრების აღდგენა ურნიდან** (Tasks §29) — იმავე შეტყობინებაში.
+     *
+     * @return string|null უარის მიზეზი (`parent_missing` · `slot_taken`) ან `null` — აღდგა
+     */
+    public function restoreAttachment(TrashedFile $file): ?string
+    {
+        $message = Message::find($file->record_id);
+
+        if (! $message || (int) $message->user_id !== (int) $file->user_id) {
+            return 'parent_missing';
+        }
+
+        if ($message->attachment_path) {
+            return 'slot_taken';
+        }
+
+        DB::transaction(function () use ($message, $file) {
+            $message->forceFill([
+                'attachment_path' => $file->path,
+                'attachment_name' => $message->attachment_name ?: $file->name,
+                'attachment_mime' => $file->mime,
+                'attachment_size' => $file->size,
+            ])->save();
+
+            // ⚠️ `deleteQuietly()` — `StoredFile` ფაილს და კვოტას არ უნდა შეეხოს
+            $file->deleteQuietly();
+        });
+
+        return null;
     }
 
     /**

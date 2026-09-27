@@ -1708,7 +1708,10 @@ class GalleryController extends Controller
             $galleryImage->path,
         );
 
-        $galleryImage->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — ფოტო ურნაში გადადის: რიგი, ფაილი და კვოტა
+           რჩება, `trash` scope კი მას ყველა ჭრილიდან მალავს. მთავარი ფოტოს
+           ბმული ზემოთ მაინც იხსნება — წაშლილი ფოტო მთავარი აღარ არის. */
+        $galleryImage->moveToTrash();
 
         return response()->noContent();
     }

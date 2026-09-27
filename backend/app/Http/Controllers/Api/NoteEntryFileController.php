@@ -113,8 +113,11 @@ class NoteEntryFileController extends Controller
 
     public function destroy(NoteEntryFile $noteEntryFile)
     {
-        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია
-        $noteEntryFile->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+           დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
+           ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
+           გამო ისედაც 404-ია. */
+        $noteEntryFile->moveToTrash();
 
         return response()->noContent();
     }

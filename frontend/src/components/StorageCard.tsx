@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RotateCcw, Trash2 } from 'lucide-react'
+import { ArchiveRestore, RotateCcw, Trash2 } from 'lucide-react'
 import {
   cancelRequest,
   cleanStorageOrphans,
@@ -180,9 +181,10 @@ function UploadedFiles() {
 
   const removeOne = useMutation({
     mutationFn: (path: string) => deleteStorageFile(path),
-    onSuccess: () => {
+    onSuccess: (res) => {
       refreshAll()
-      toast({ title: t('storage.fileDeleted'), variant: 'success' })
+      // Tasks §29 — ურნაში გადატანილი ადგილს კვლავ იკავებს, ამიტომ სხვა სიტყვაა
+      toast({ title: t(res.trashed > 0 ? 'storage.fileTrashed' : 'storage.fileDeleted'), variant: 'success' })
     },
     onError: fail,
   })
@@ -191,8 +193,19 @@ function UploadedFiles() {
     mutationFn: (scope: StorageScope) => deleteStorageFiles(scope),
     onSuccess: (res) => {
       refreshAll()
+      /* ⚠️ „გათავისუფლდა N MB" მხოლოდ მართლა წაშლილზე ითქმის (`freed`) —
+         ურნაში გადატანილი ადგილს კვლავ იკავებს და ცალკე ითვლება. */
       toast({
-        title: t('storage.filesDeleted', { count: res.deleted, size: formatBytes(res.freed) }),
+        title:
+          res.trashed === 0
+            ? t('storage.filesDeleted', { count: res.deleted, size: formatBytes(res.freed) })
+            : res.trashed === res.deleted
+              ? t('storage.filesTrashed', { count: res.trashed })
+              : t('storage.filesDeletedMixed', {
+                  trashed: res.trashed,
+                  count: res.deleted - res.trashed,
+                  size: formatBytes(res.freed),
+                }),
         variant: 'success',
       })
     },
@@ -202,7 +215,7 @@ function UploadedFiles() {
   const askDeleteOne = async (file: UploadedFile) => {
     const ok = await confirm({
       title: t('storage.fileDeleteTitle'),
-      description: t('storage.fileDeleteHint', { name: file.name ?? file.path }),
+      description: t(file.trashable ? 'storage.fileTrashHint' : 'storage.fileDeleteHint', { name: file.name ?? file.path }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
     })
@@ -239,6 +252,20 @@ function UploadedFiles() {
         {t('storage.filesTitle')}
         <InfoHint info={t('storage.filesHint')} />
       </h3>
+
+      {/* Tasks §29 — ურნაში მყოფი აქ არ ჩანს, მაგრამ ადგილს იკავებს: ჯამი ამბობს, სად არის */}
+      {(filesQ.data?.trash?.files ?? 0) > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <ArchiveRestore className="size-4" />
+          {t('storage.inTrash', {
+            count: filesQ.data?.trash?.files ?? 0,
+            size: formatBytes(filesQ.data?.trash?.bytes ?? 0),
+          })}
+          <Link to="/trash" className="font-medium text-primary hover:text-primary/70">
+            {t('storage.openTrash')}
+          </Link>
+        </p>
+      )}
 
       {filesQ.isLoading ? (
         <div className="h-10 animate-pulse rounded-md bg-muted" />

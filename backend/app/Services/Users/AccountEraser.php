@@ -78,15 +78,15 @@ class AccountEraser
      */
     private function purgeGallery(User $user): void
     {
-        $images = GalleryImage::withoutGlobalScope('owner')
-            ->withoutGlobalScope('album_lock')
+        // ⚠️ ურნაში მყოფიც (Tasks §29) — `trash` scope-ით ის დისკზე ობლად დარჩებოდა
+        $images = GalleryImage::withoutGlobalScopes(['owner', 'album_lock', 'trash'])
             ->where('user_id', $user->getKey());
 
         foreach ($images->cursor() as $image) {
             $image->delete();
         }
 
-        foreach (GalleryVideo::withoutGlobalScope('owner')->where('user_id', $user->getKey())->cursor() as $video) {
+        foreach (GalleryVideo::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $user->getKey())->cursor() as $video) {
             $video->delete();
         }
 
@@ -95,13 +95,19 @@ class AccountEraser
         }
     }
 
-    /** ავატარი, ჩატის მიმაგრებები, ბაზის ასლები — რაც purge-ის სამიზნე არაა */
+    /**
+     * ავატარი, ჩატის მიმაგრებები, ბაზის ასლები — რაც purge-ის სამიზნე არაა.
+     *
+     * ⚠️ **`permanent: true` სავალდებულოა** (Tasks §29): ნაგულისხმევი რეჟიმი
+     * ფაილს **ურნაში** აგზავნის, ურნა კი ანგარიშთან ერთად ქრება — ე.ი. ფაილი
+     * დისკზე ობლად დარჩებოდა. აქვე იშლება ურნაში უკვე მყოფი ფაილებიც.
+     */
     private function sweepRemainingFiles(User $user): void
     {
         $paths = $this->meter->files($user)->pluck('path')->filter()->all();
 
         if ($paths) {
-            $this->meter->deleteOwnFiles($user, $paths);
+            $this->meter->deleteOwnFiles($user, $paths, permanent: true);
         }
     }
 

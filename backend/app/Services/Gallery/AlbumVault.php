@@ -107,13 +107,19 @@ final class AlbumVault
         );
     }
 
-    /** @return int რამდენი ფაილი გადავიდა */
+    /**
+     * ⚠️ **ურნაში მყოფი ფოტოც გადადის** (Tasks §29): ის ალბომს კვლავ
+     * ეკუთვნის და აღდგენისას იქვე ბრუნდება — `trash` scope-ით ჩაკეტვა მას
+     * საჯარო დისკზე დატოვებდა, ე.ი. ჩაკეტილი ალბომის ფოტო `/storage/*`-ით
+     * გაიხსნებოდა.
+     *
+     * @return int რამდენი ფაილი გადავიდა
+     */
     private static function move(GalleryAlbum $album, string $target, bool $clearPosters): int
     {
         return self::relocateAll(
             GalleryImage::query()
-                ->withoutGlobalScope('album_lock')
-                ->withoutGlobalScope('owner')
+                ->withoutGlobalScopes(['album_lock', 'owner', 'trash'])
                 ->where('album_id', $album->id)
                 ->get(),
             $target,

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\StoredFile;
 use App\Support\AlbumLock;
 use App\Support\StorageFolder;
@@ -20,7 +21,13 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class GalleryImage extends Model
 {
-    use BelongsToUser, StoredFile;
+    /**
+     * ⚠️ **ურნა (Tasks §29)** — ფოტოს წაშლა მას ურნაში გადააქვს: რიგი, ფაილი
+     * და კვოტა ადგილზე რჩება. სამი scope ერთად დგას (`owner`, `album_lock`,
+     * `trash`) და ყველა ადგილი, რომელიც ფოტოს **ნამდვილად** შლის (მშობლის
+     * საბოლოო წაშლა, `/purge`, ანგარიშის წაშლა), სამივეს თიშავს.
+     */
+    use BelongsToUser, HasTrash, StoredFile;
 
     protected $guarded = ['id'];
 

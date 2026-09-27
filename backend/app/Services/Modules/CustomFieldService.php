@@ -3,6 +3,7 @@
 namespace App\Services\Modules;
 
 use App\Models\Module;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
@@ -130,21 +131,17 @@ class CustomFieldService
         $orphaned = [...array_values($removed), ...array_values($retyped)];
 
         if ($orphaned && $table = CustomFields::table($module)) {
-            // ჯერ დისკი და კვოტა, მერე რიგები — შებრუნებული რიგი გზას დაკარგავდა
-            $this->releaseFiles($table, DB::table($table)
+            /* ⚠️ **ფაილები ურნაში და არა დისკიდან** (Tasks §29 — „ყველაფერი,
+               რაც იშლება"). აღდგენა მხოლოდ მაშინ იმუშავებს, თუ იმავე key-ით
+               `file` ველი კვლავ არსებობს — სხვაგვარად ურნა ამას ცხადად იტყვის.
+
+               ⚠️ **რიგები ორივე შემთხვევაში იშლება** (§7.3-ის შემდეგ) —
+               `trashRows()` ყველა შერჩეულ რიგს შლის, უფაილოსაც: ტიპშეცვლილი
+               ველის „გასუფთავებული" რიგი არავის სჭირდება (`file` ველზე
+               ტექსტი/რიცხვი არასდროს იწერება). */
+            $this->trashRows($module, $table, DB::table($table)
                 ->where('user_id', $user->getKey())
                 ->whereIn('field_key', $orphaned));
-
-            /* ⚠️ **რიგები ორივე შემთხვევაში იშლება** (§7.3-ის შემდეგ). ადრე
-               მხოლოდ წაშლილი ველის რიგები იშლებოდა, ტიპშეცვლილისა კი
-               „გასუფთავებული" რჩებოდა — ერთფაილიან სქემაზე ეს ერთი ცარიელი
-               რიგი იყო, ახლა კი **ყველა** ატვირთვისა, `sort_order`-ებით.
-               ისინი არავის სჭირდება: `file` ველზე ტექსტი/რიცხვი არასდროს
-               იწერება, ე.ი. ფაილის გარეშე რიგში სრულიად არაფერია. */
-            DB::table($table)
-                ->where('user_id', $user->getKey())
-                ->whereIn('field_key', $orphaned)
-                ->delete();
         }
 
         return $out;
@@ -360,13 +357,94 @@ class CustomFieldService
             ->where('field_key', $key)
             ->when($fileId !== null, fn ($q) => $q->where('id', $fileId));
 
-        if ($this->releaseFiles($table, clone $query) === 0) {
-            return false;
+        // Tasks §29 — ურნაში: რიგი ქრება, ფაილი და კვოტა ადგილზე რჩება
+        return $this->trashRows($module, $table, $query) > 0;
+    }
+
+    /**
+     * **ველის ფაილების ურნაში გადატანა** (Tasks §29) — თითო ფაილის აღწერა
+     * `trashed_files`-ში, მერე რიგის წაშლა. დისკი და კვოტა **ხელუხლებელია**:
+     * ფაილი ურნაში ადგილს იკავებს, სანამ იქიდან საბოლოოდ არ წაიშლება.
+     *
+     * ⚠️ **ორივე ერთ ტრანზაქციაში** — ჩავარდნაზე ან ორივე მოხდა, ან არცერთი:
+     * აღწერის გარეშე წაშლილი რიგი ფაილს ობლად აქცევდა (ობოლების სკანერი
+     * მას წაშლიდა), რიგის გარეშე აღწერა კი ფაილს ორჯერ დათვლიდა.
+     *
+     * @return int რამდენი ფაილი გადავიდა
+     */
+    public function trashRows(string $module, string $table, Builder $query): int
+    {
+        return DB::transaction(function () use ($module, $table, $query) {
+            $rows = (clone $query)->whereNotNull('value_path')->get();
+
+            foreach ($rows as $row) {
+                TrashedFile::capture(
+                    (int) $row->user_id,
+                    'field_file',
+                    ['path' => $row->value_path, 'name' => $row->value_name, 'mime' => $row->value_mime, 'size' => $row->value_size],
+                    $module,
+                    (int) $row->record_id,
+                    (string) $row->field_key,
+                );
+            }
+
+            // უფაილო რიგიც მიდის — `file` ველზე ფაილის გარეშე რიგში არაფერია
+            DB::table($table)->whereIn('id', (clone $query)->pluck('id'))->delete();
+
+            return $rows->count();
+        });
+    }
+
+    /**
+     * **ველის ფაილის აღდგენა ურნიდან** (Tasks §29).
+     *
+     * ⚠️ ფაილი ბრუნდება **ველის ბოლოში** (`max(sort_order) + 1`) — ძველი
+     * ადგილი შეიძლება უკვე დაკავებულია, ხოლო იგივე `sort_order` unique-ს
+     * დაარღვევდა.
+     *
+     * @return string|null უარის მიზეზი (`field_missing` · `field_full`) ან `null` — აღდგა
+     */
+    public function restoreFile(User $user, TrashedFile $file): ?string
+    {
+        $module = (string) $file->record_type;
+        $table = CustomFields::table($module);
+
+        if (! $table || $this->typeOf($user, $module, (string) $file->slot) !== 'file') {
+            return 'field_missing';
         }
 
-        $query->delete();
+        $rows = DB::table($table)
+            ->where('record_id', $file->record_id)
+            ->where('field_key', $file->slot)
+            ->whereNotNull('value_path');
 
-        return true;
+        if ((clone $rows)->count() >= CustomFields::FILE_MAX_COUNT) {
+            return 'field_full';
+        }
+
+        DB::transaction(function () use ($table, $file, $rows) {
+            DB::table($table)->insert([
+                'user_id' => $file->user_id,
+                'record_id' => $file->record_id,
+                'field_key' => $file->slot,
+                'value_text' => null,
+                'value_number' => null,
+                'value_date' => null,
+                'value_bool' => null,
+                'value_path' => $file->path,
+                'value_name' => $file->name,
+                'value_mime' => $file->mime,
+                'value_size' => $file->size,
+                'sort_order' => (int) ((clone $rows)->max('sort_order') ?? -1) + 1,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]);
+
+            // ⚠️ `deleteQuietly()` — `StoredFile` ფაილს და კვოტას არ უნდა შეეხოს
+            $file->deleteQuietly();
+        });
+
+        return null;
     }
 
     /**
@@ -387,6 +465,18 @@ class CustomFieldService
         }
 
         $this->releaseFiles($table, DB::table($table)->where('record_id', $record->getKey()));
+
+        /* ⚠️ **ურნაში მყოფი ველის ფაილებიც** (Tasks §29) — ჩანაწერი საბოლოოდ
+           იშლება, ე.ი. მათი აღდგენა ვეღარსად მოხდება; დარჩენილი აღწერა ფაილს
+           ვადის ამოწურვამდე ტყუილად დაიკავებდა. მოდელით, რომ `StoredFile`-მა
+           ფაილიც წაშალოს და კვოტაც დააბრუნოს. */
+        TrashedFile::withoutGlobalScope('owner')
+            ->where('kind', 'field_file')
+            ->where('record_type', $module)
+            ->where('record_id', $record->getKey())
+            ->get()
+            ->each
+            ->delete();
     }
 
     /**

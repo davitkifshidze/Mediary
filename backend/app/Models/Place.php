@@ -83,7 +83,7 @@ class Place extends Model
                გაკვეთილი): `/admin/purge` და ანგარიშის წაშლა სხვის
                ბიბლიოთეკას ადმინის სესიიდან შლის — გაფილტრული კავშირი
                ცარიელს დააბრუნებდა და ფაილები დისკზე დარჩებოდა. */
-            $place->files()->withoutGlobalScope('owner')->get()->each->delete();
+            $place->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
 
             $place->deleteGalleryMedia();
         });

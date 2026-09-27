@@ -73,8 +73,11 @@ class BookFileController extends Controller
 
     public function destroy(BookFile $bookFile)
     {
-        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია
-        $bookFile->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+           დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
+           ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
+           გამო ისედაც 404-ია. */
+        $bookFile->moveToTrash();
 
         return response()->noContent();
     }

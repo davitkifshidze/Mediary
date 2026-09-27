@@ -4,16 +4,26 @@ namespace App\Support;
 
 use App\Models\Anime;
 use App\Models\BoardGame;
+use App\Models\BoardGameFile;
 use App\Models\Book;
+use App\Models\BookFile;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CourseFile;
+use App\Models\DatabaseBackup;
+use App\Models\GalleryImage;
+use App\Models\GalleryVideo;
 use App\Models\Game;
+use App\Models\GameFile;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\NoteEntryFile;
 use App\Models\Place;
+use App\Models\PlaceFile;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
+use App\Models\VideoFile;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -24,14 +34,19 @@ use Illuminate\Database\Eloquent\Model;
  * ერთსა და იმავეს კითხულობენ. `MediaDomain`-ის იგივე წესი: `['movie',
  * 'series']` თოთხმეტ ადგილას ეწერა და ერთის გამორჩენა ჩუმი იყო.
  *
- * ⚠️ **გალერეა შიგნით არ არის და ეს გამორჩენა არ არის.** მისი შიგთავსი
- * **ფაილებია** და არა ჩანაწერები (`ExportDomain`-ის იგივე გამიჯვნა), ხოლო
- * ფოტოს „წაშლა" გალერეაში ისედაც მყისიერია — ის ბიბლიოთეკაა და არა ფორმა.
+ * ⚠️ **სამი სახის ელემენტი, სამი რუკა** (Tasks §29): `MODELS` — მოდულის
+ * ჩანაწერი (FEAT-11); `ITEMS` — რიგიანი ფაილი ან ბმული, რომელსაც თავისი
+ * `trashed_at` აქვს (გალერეის ფოტო, ვიდეო-ბმული, მოდულების ფაილები, ბაზის
+ * ასლი); `FILES` — `trashed_files`-ის რიგი, ე.ი. ფაილი, რომლის წყაროს რიგი
+ * წაშლისას ქრება ან ცარიელდება (ჩატის მიმაგრება, დამატებითი ველის ფაილი).
+ * სამივე ერთ სახელთა სივრცეშია (`kinds()`), რადგან ურნის მარშრუტი ერთია —
+ * `/trash/{kind}/{id}`.
  *
- * ⚠️ **სექციების ცხრილები (`<module>_files`, `<module>_notes`) შიგნით არ
- * არიან**: ისინი მშობელს მიჰყვებიან. კალათაში გადატანა მშობელს **არ**
- * შლის, ე.ი. ფაილებიც და ჩანიშვნებიც ადგილზე რჩება და აღდგენა უფასოა —
- * სწორედ ეს არის მიზეზი, რის გამოც კალათა `delete()` **არაა**.
+ * ⚠️ **ჩანაწერის ურნაში გადატანა მის ფაილებს არ ეხება** — ისინი ადგილზე
+ * რჩება და ჩანაწერთან ერთად ბრუნდება; ცალკე წაშლილი ფაილი კი ურნაში
+ * თავისი ელემენტია. ⚠️ მოდულის ფაილის ცხრილი მშობლის `booted()`-ში
+ * **`trash` scope-ის გარეშე** უნდა იშლებოდეს, თორემ ჩანაწერის საბოლოო
+ * წაშლა ურნაში მყოფ ფაილს დისკზე ობლად დატოვებდა (BUG-21-ის გაკვეთილი).
  */
 final class TrashDomain
 {
@@ -55,6 +70,45 @@ final class TrashDomain
         'place' => Place::class,
     ];
 
+    /**
+     * **რიგიანი ფაილები და ბმულები (Tasks §29, ეტაპი 1)** — `kind` → მოდელი,
+     * მოდული (უფლება და ფერი მისია) და მშობლის ურთიერთობა.
+     *
+     * ⚠️ `kind` **`StorageMeter::files()`-ის `owner_type`-ია** — ერთი სახელი
+     * ერთი ფაქტისთვის; ურნის ზომის დათვლა სწორედ ამ დამთხვევაზე დგას.
+     *
+     * ⚠️ `module = null` — `modules` ცხრილში რიგი არ აქვს (ბაზის ასლი
+     * `super_admin`-ისაა, ე.ი. ხილვადობას ის წყვეტს და არა მოდულის უფლება).
+     *
+     * @var array<string, array{model: class-string<Model>, module: ?string, parent: ?string}>
+     */
+    public const ITEMS = [
+        'gallery_image' => ['model' => GalleryImage::class, 'module' => 'gallery', 'parent' => 'imageable'],
+        'gallery_video' => ['model' => GalleryVideo::class, 'module' => 'gallery', 'parent' => 'videoable'],
+        'video_file' => ['model' => VideoFile::class, 'module' => 'video', 'parent' => 'video'],
+        'book_file' => ['model' => BookFile::class, 'module' => 'book', 'parent' => 'book'],
+        'board_game_file' => ['model' => BoardGameFile::class, 'module' => 'board_game', 'parent' => 'boardGame'],
+        'game_file' => ['model' => GameFile::class, 'module' => 'game', 'parent' => 'game'],
+        'note_entry_file' => ['model' => NoteEntryFile::class, 'module' => 'note', 'parent' => 'noteEntry'],
+        'course_file' => ['model' => CourseFile::class, 'module' => 'course', 'parent' => 'course'],
+        'place_file' => ['model' => PlaceFile::class, 'module' => 'place', 'parent' => 'place'],
+        'database_backup' => ['model' => DatabaseBackup::class, 'module' => null, 'parent' => null],
+    ];
+
+    /**
+     * **`trashed_files`-ის სახეები** — ფაილი, რომლის წყაროს რიგიც წაშლისას
+     * ქრება (ველის მნიშვნელობა) ან ცარიელდება (ჩატის შეტყობინება).
+     *
+     * ⚠️ ველის ფაილის მოდული **ჩანაწერისაა** (`record_type`) — ერთი `kind`
+     * თერთმეტივე მოდულს ემსახურება, ამიტომ უფლება რიგ-რიგად მოწმდება.
+     *
+     * @var array<string, array{module: ?string}>
+     */
+    public const FILES = [
+        'chat_file' => ['module' => null],
+        'field_file' => ['module' => null],
+    ];
+
     /** რამდენ დღეს ინახება წაშლილი ჩანაწერი */
     public const KEEP_DAYS = 30;
 
@@ -62,6 +116,40 @@ final class TrashDomain
     public static function domains(): array
     {
         return array_keys(self::MODELS);
+    }
+
+    /**
+     * ურნის ყველა სახე — ჩანაწერები, რიგიანი ფაილები და `trashed_files`.
+     *
+     * @return list<string>
+     */
+    public static function kinds(): array
+    {
+        return [...array_keys(self::MODELS), ...array_keys(self::ITEMS), ...array_keys(self::FILES)];
+    }
+
+    /** `record` · `item` · `file` */
+    public static function category(string $kind): ?string
+    {
+        return match (true) {
+            isset(self::MODELS[$kind]) => 'record',
+            isset(self::ITEMS[$kind]) => 'item',
+            isset(self::FILES[$kind]) => 'file',
+            default => null,
+        };
+    }
+
+    /**
+     * რიგიანი ფაილების ცხრილები — მიგრაციისთვის.
+     *
+     * @return list<string>
+     */
+    public static function itemTables(): array
+    {
+        return array_values(array_map(
+            fn (array $item) => (new $item['model'])->getTable(),
+            self::ITEMS,
+        ));
     }
 
     public static function has(string $domain): bool
@@ -89,13 +177,13 @@ final class TrashDomain
     }
 
     /**
-     * ვალიდაციის წესი — `in:movie,series,…`.
+     * ვალიდაციის წესი — `in:movie,series,…,gallery_image,…`.
      *
      * ⚠️ ჩაწერილი სია `MediaDomain::rule()`-ის იგივე ხაფანგს დაიჭერდა:
      * ახალი მოდული დაემატებოდა და ერთი endpoint ჩუმად 422-ს დააბრუნებდა.
      */
     public static function rule(): string
     {
-        return 'in:'.implode(',', self::domains());
+        return 'in:'.implode(',', self::kinds());
     }
 }

@@ -118,18 +118,36 @@ trait HasTrash
     }
 
     /**
+     * **ერთი ანგარიშის ურნა — ყველა global scope-ის გარეშე** (Tasks §29).
+     *
+     * ⚠️ `owner`-ის გარდა ფოტოს `album_lock`-იც ითიშება: ჩაკეტილი ალბომის
+     * ფოტო ურნაშიც ურნაშია — გვერდი მას ბუნდოვნად ხატავს (`AlbumLock`-ის
+     * წესი), მაგრამ სიიდან არ ქრება. მფლობელი ცხადი `user_id`-ით იჭრება.
+     */
+    public static function trashOf(int $userId): Builder
+    {
+        $table = (new static)->getTable();
+
+        return static::withoutGlobalScopes()
+            ->whereNotNull("{$table}.trashed_at")
+            ->where("{$table}.user_id", $userId);
+    }
+
+    /**
      * ვადაგასული ჩანაწერები.
      *
-     * ⚠️ **`owner` scope-იც უნდა გაითიშოს** — გასუფთავება კონსოლიდან
-     * ეშვება, სადაც `Auth::id()` ცარიელია, ე.ი. scope ისედაც არაფერს
-     * აკეთებს; მაგრამ იმავე მეთოდის რექვესთიდან გამოძახება მხოლოდ
-     * ერთი მომხმარებლის რიგებს დაითვლიდა და „წაშლილია 3" ნაცვლად
-     * „წაშლილია 40"-ისა ჩუმად არასწორი იქნებოდა.
+     * ⚠️ **ყველა global scope ითიშება** — `owner` (გასუფთავება კონსოლიდან
+     * ეშვება, სადაც `Auth::id()` ცარიელია, რექვესთიდან კი ერთ მომხმარებელზე
+     * დაიჭრებოდა) და ფოტოს `album_lock`-იც (Tasks §29): scope-ის გარეშე
+     * ჩაკეტილი ალბომის ურნაში მყოფი ფოტო **ვერასდროს** წაიშლებოდა, ე.ი.
+     * დისკს და კვოტას სამუდამოდ დაიკავებდა.
      */
     public static function expiredTrash(?int $days = null): Builder
     {
-        return static::withoutGlobalScopes(['trash', 'owner'])
-            ->whereNotNull('trashed_at')
-            ->where('trashed_at', '<=', now()->subDays($days ?? TrashDomain::KEEP_DAYS));
+        $table = (new static)->getTable();
+
+        return static::withoutGlobalScopes()
+            ->whereNotNull("{$table}.trashed_at")
+            ->where("{$table}.trashed_at", '<=', now()->subDays($days ?? TrashDomain::KEEP_DAYS));
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Module;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\Storage\StorageMeter;
@@ -276,8 +277,12 @@ class CustomFieldTest extends TestCase
         $this->assertNotNull(DB::table('video_field_values')->value('value_path'));
     }
 
-    /** ფაილის წაშლა: დისკიდანაც ქრება და კვოტაც უკან ბრუნდება */
-    public function test_deleting_a_file_frees_the_quota(): void
+    /**
+     * **ფაილის წაშლა ურნაში მიდის** (Tasks §29): რიგი ქრება (`file` ველზე ფაილი
+     * *არის* მნიშვნელობა), ფაილი და კვოტა კი ადგილზე რჩება — ადგილი მხოლოდ
+     * ურნიდან საბოლოო წაშლისას თავისუფლდება.
+     */
+    public function test_deleting_a_file_moves_it_to_the_trash(): void
     {
         Storage::fake('public');
         $this->defineFileField();
@@ -289,16 +294,69 @@ class CustomFieldTest extends TestCase
         ])->assertCreated();
 
         $path = DB::table('video_field_values')->value('value_path');
-        $this->assertTrue(Storage::disk('public')->exists($path));
+        $used = (int) $this->user->fresh()->storage_used_bytes;
+        $this->assertGreaterThan(0, $used);
 
         $this->actingAs($this->user)
             ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket")
             ->assertNoContent();
 
-        $this->assertFalse(Storage::disk('public')->exists($path));
-        // ⚠️ რიგიც იშლება — `file` ველზე ფაილი *არის* მნიშვნელობა
+        // ⚠️ რიგი იშლება — `file` ველზე ფაილი *არის* მნიშვნელობა; ფაილი კი ურნაშია
         $this->assertDatabaseCount('video_field_values', 0);
+        $this->assertTrue(Storage::disk('public')->exists($path));
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->assertSame(
+            ['field_file', 'video', (int) $video->id, 'ticket', $path],
+            [$trashed->kind, $trashed->record_type, $trashed->record_id, $trashed->slot, $trashed->path],
+        );
+
+        // საბოლოო წაშლა — ფაილიც და კვოტაც
+        $this->actingAs($this->user)->deleteJson("/api/trash/field_file/{$trashed->id}")->assertNoContent();
+
+        $this->assertFalse(Storage::disk('public')->exists($path));
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
+    }
+
+    /**
+     * **ურნიდან ფაილი თავის ველში ბრუნდება** (Tasks §29) — ბოლოში, რადგან
+     * ძველი `sort_order` შეიძლება უკვე დაკავებულია; ფაილი და კვოტა არ იცვლება.
+     */
+    public function test_a_trashed_file_comes_back_into_its_field(): void
+    {
+        Storage::fake('public');
+        $this->defineFileField();
+        $video = $this->makeVideo();
+
+        foreach (['one.pdf', 'two.pdf'] as $name) {
+            $this->actingAs($this->user)->post("/api/custom-fields/video/{$video->id}/file", [
+                'key' => 'ticket',
+                'file' => UploadedFile::fake()->create($name, 10),
+            ])->assertCreated();
+        }
+
+        $first = DB::table('video_field_values')->orderBy('sort_order')->first();
+        $used = (int) $this->user->fresh()->storage_used_bytes;
+
+        $this->actingAs($this->user)
+            ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket/{$first->id}")
+            ->assertNoContent();
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+
+        $this->actingAs($this->user)
+            ->postJson("/api/trash/field_file/{$trashed->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('restored', true);
+
+        $this->assertSame(0, TrashedFile::withoutGlobalScope('owner')->count());
+        $this->assertSame(2, DB::table('video_field_values')->count());
+        $back = DB::table('video_field_values')->where('value_path', $first->value_path)->first();
+        $this->assertNotNull($back);
+        $this->assertGreaterThan((int) $first->sort_order, (int) $back->sort_order);
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+        Storage::disk('public')->assertExists($first->value_path);
     }
 
     /**
@@ -324,8 +382,12 @@ class CustomFieldTest extends TestCase
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
     }
 
-    /** ველის სიიდან ამოღება ატვირთულ ფაილსაც იტანს */
-    public function test_removing_the_definition_removes_the_file(): void
+    /**
+     * **ველის სიიდან ამოღება ფაილს ურნაში აგზავნის** (Tasks §29). აღდგენა
+     * მხოლოდ მაშინ მუშაობს, თუ იმავე key-ით `file` ველი კვლავ არსებობს —
+     * სხვაგვარად 409 `field_missing` (ფაილი არსად დაბრუნდებოდა).
+     */
+    public function test_removing_the_definition_moves_the_file_to_the_trash(): void
     {
         Storage::fake('public');
         $this->defineFileField();
@@ -337,12 +399,26 @@ class CustomFieldTest extends TestCase
         ])->assertCreated();
 
         $path = DB::table('video_field_values')->value('value_path');
+        $used = (int) $this->user->fresh()->storage_used_bytes;
 
         $this->defineFields([]);
 
-        $this->assertFalse(Storage::disk('public')->exists($path));
         $this->assertDatabaseCount('video_field_values', 0);
-        $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
+        $this->assertTrue(Storage::disk('public')->exists($path));
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+
+        $this->actingAs($this->user)
+            ->postJson("/api/trash/field_file/{$trashed->id}/restore")
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'field_missing');
+
+        // ველი ისევ არსებობს — ფაილი თავის ადგილს უბრუნდება
+        $this->defineFileField();
+
+        $this->actingAs($this->user)->postJson("/api/trash/field_file/{$trashed->id}/restore")->assertOk();
+        $this->assertSame($path, DB::table('video_field_values')->value('value_path'));
     }
 
     /**
@@ -361,13 +437,20 @@ class CustomFieldTest extends TestCase
         ])->assertCreated();
 
         $path = DB::table('video_field_values')->value('value_path');
+        $used = (int) $this->user->fresh()->storage_used_bytes;
 
         $this->defineFields([
             ['key' => 'ticket', 'type' => 'text', 'label_ka' => 'ბილეთი', 'label_en' => 'Ticket'],
         ]);
 
-        $this->assertFalse(Storage::disk('public')->exists($path));
+        // Tasks §29 — ფაილი ურნაშია: ველიდან ქრება, დისკზე და კვოტაში რჩება
         $this->assertNull(DB::table('video_field_values')->value('value_path'));
+        $this->assertTrue(Storage::disk('public')->exists($path));
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+
+        $this->actingAs($this->user)->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+
+        $this->assertFalse(Storage::disk('public')->exists($path));
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
     }
 
@@ -618,8 +701,14 @@ class CustomFieldTest extends TestCase
             ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket/{$first->id}")
             ->assertNoContent();
 
-        Storage::disk('public')->assertMissing($first->value_path);
+        // Tasks §29 — ურნაში: რიგი ქრება, ადგილი კი საბოლოო წაშლამდე რჩება
         $this->assertSame(1, DB::table('video_field_values')->count());
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->actingAs($this->user)->deleteJson("/api/trash/field_file/{$trashed->id}")->assertNoContent();
+
+        Storage::disk('public')->assertMissing($first->value_path);
         // კვოტას **ჩაწერილი ზომა** დაუბრუნდა (`StoredFile`-ის წესი)
         $this->assertSame($used - (int) $first->value_size, (int) $this->user->fresh()->storage_used_bytes);
 
@@ -645,11 +734,18 @@ class CustomFieldTest extends TestCase
             ])->assertCreated();
         }
 
+        $used = (int) $this->user->fresh()->storage_used_bytes;
+
         $this->actingAs($this->user)
             ->deleteJson("/api/custom-fields/video/{$video->id}/file/ticket")
             ->assertNoContent();
 
+        // Tasks §29 — ორივე ურნაშია; ადგილი ურნის დაცლისას თავისუფლდება
         $this->assertSame(0, DB::table('video_field_values')->count());
+        $this->assertSame(2, TrashedFile::withoutGlobalScope('owner')->count());
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
+
+        $this->actingAs($this->user)->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
     }
 
@@ -704,16 +800,19 @@ class CustomFieldTest extends TestCase
         }
 
         $paths = DB::table('video_field_values')->pluck('value_path')->all();
+        $used = (int) $this->user->fresh()->storage_used_bytes;
 
         $this->defineFields([
             ['key' => 'ticket', 'type' => 'text', 'label_ka' => 'ბილეთი', 'label_en' => 'Ticket'],
         ]);
 
+        // Tasks §29 — სამივე ფაილი ურნაშია (დისკზე და კვოტაში), ველის რიგები კი აღარ არის
         foreach ($paths as $path) {
-            Storage::disk('public')->assertMissing($path);
+            Storage::disk('public')->assertExists($path);
         }
         $this->assertSame(0, DB::table('video_field_values')->count());
-        $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
+        $this->assertSame(3, TrashedFile::withoutGlobalScope('owner')->count());
+        $this->assertSame($used, (int) $this->user->fresh()->storage_used_bytes);
 
         // ველი ისევ იწერება — ძველი რიგები ახალ მნიშვნელობას ვერ უშლიან ხელს
         $this->actingAs($this->user)

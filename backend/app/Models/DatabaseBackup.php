@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\StoredFile;
 use App\Services\Backup\BackupInspector;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class DatabaseBackup extends Model
 {
-    use StoredFile;
+    /**
+     * ⚠️ **ურნა (Tasks §29)** — წაშლილი ასლი ურნაში გადადის; იქიდან **სიაში
+     * დაბრუნება** შეიძლება, ბაზის აღდგენა კი არა — `trash` scope-ის გამო
+     * `/admin/backups/{backup}/restore` მას 404-ით ხვდება.
+     */
+    use HasTrash, StoredFile;
 
     public const STATUS_RUNNING = 'running';
 

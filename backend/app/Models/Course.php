@@ -72,7 +72,7 @@ class Course extends Model
                `/admin/purge` და ანგარიშის წაშლა სხვის ბიბლიოთეკას ადმინის
                სესიიდან შლის — სია ცარიელი დაბრუნდებოდა, ფაილები დისკზე
                დარჩებოდა და კვოტაც არ გათავისუფლდებოდა. */
-            $course->files()->withoutGlobalScope('owner')->get()->each->delete();
+            $course->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
         });
     }
 

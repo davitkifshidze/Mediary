@@ -152,7 +152,8 @@ class AdminUserController extends Controller
             'storage' => $this->storageUsage($user),
             // 1.3 — ატვირთული ფაილების სია (ნახვა/გადმოწერა ადმინიდან).
             // ყველაზე მძიმეები თავში, რომ „რა ჭამს ადგილს" მაშინვე ჩანდეს.
-            'files' => $this->meter->files($user)
+            // ⚠️ Tasks §29 — ურნაში მყოფის გარეშე, user-ის საკუთარი სიის იგივე წესით
+            'files' => $this->meter->library($user)['files']
                 ->sortByDesc('size')
                 ->take(200)
                 ->values()

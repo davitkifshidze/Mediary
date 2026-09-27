@@ -1,7 +1,19 @@
-import { useState } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArchiveRestore, Trash2 } from 'lucide-react'
+import {
+  ArchiveRestore,
+  DatabaseBackup,
+  FormInput,
+  HardDrive,
+  ImageIcon,
+  Lock,
+  MessageSquare,
+  Paperclip,
+  SquarePlay,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import {
   deleteFromTrash,
   emptyTrash,
@@ -10,10 +22,15 @@ import {
   type TrashGroup,
   type TrashItem,
 } from '@/api/trash'
+import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
+import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
+import { toolAccent } from '@/lib/toolSections'
+import { formatBytes } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { PrivateImage } from '@/components/PrivateFile'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -24,20 +41,46 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 
 /* ============================================================
-   კალათა (FEAT-11).
+   ურნა (FEAT-11 → Tasks §29).
 
-   ⚠️ **ეს `/purge`-ის შემცვლელი არ არის და არც მისი მსუბუქი ვერსია.**
-   `/purge` **სხვისი** ბიბლიოთეკიდან შლის მასობრივად და შეუქცევადად
-   (`super_admin`), ეს კი **ჩემი** წაშლილების სიაა, საიდანაც უკან დაბრუნება
-   ხდება. ორივე საჭიროა და ერთმანეთს არ ცვლის.
+   შენი სიტყვები: „იქ ყველა წაშლილი ჩავარდეს, ნებისმიერი რამ: ფოტო, ბმული,
+   ფილმი, სერიალი, გალერეიდან თუ საიდანაც იქნება — და 30 დღე აღდგენის
+   შესაძლებლობა იყოს".
 
-   ⚠️ **დაცლას აკრეფილი `DELETE` სჭირდება, ერთი ჩანაწერის წაშლას — არა.**
-   იგივე ზღვარი, რაც `/purge`-ს აქვს: ტიპიზებული სიტყვა იქ დგას, სადაც
-   ერთი დაჭერა ბევრ ჩანაწერს ანადგურებს; ერთი ჩანაწერის წაშლა კი იგივე
-   მოქმედებაა, რაც სექციაში — ჩვეულებრივი დადასტურება.
+   ⚠️ **ჯგუფი ურნის სახეა** (`kind`) — ჩანაწერები მოდულებად, ფაილები
+   თავ-თავიანთ ჯგუფად (გალერეის ფოტო, ვიდეო-ბმული, მოდულის ფაილი, ველის
+   ფაილი, ჩატის ფაილი, ბაზის ასლი). ფოტოს ესკიზი აქვს.
+
+   ⚠️ **ურნა ადგილს იკავებს** (29.4) — გვერდი თავში ამბობს, რამდენს, და
+   „ადგილის გათავისუფლება" = საბოლოო წაშლა.
+
+   ⚠️ **ეს `/purge`-ის შემცვლელი არ არის.** `/purge` **სხვისი** ბიბლიოთეკიდან
+   შლის მასობრივად (`super_admin`), ეს კი **ჩემი** წაშლილების სიაა.
+
+   ⚠️ **დაცლას აკრეფილი `DELETE` სჭირდება, ერთი ელემენტის წაშლას — არა.**
    ============================================================ */
 
 const CONFIRM_WORD = 'DELETE'
+
+/**
+ * არაჩანაწერული სახის ხატულა. ⚠️ ჩანაწერს მოდულის ხატულა აქვს (`modules.icon`),
+ * ფაილს — საკუთარი: „ფილმის ფაილი" ფილმის ხატულით ჩანაწერს დაემსგავსებოდა.
+ */
+function kindIcon(kind: string): ReactNode {
+  if (kind === 'gallery_image') return <ImageIcon />
+  if (kind === 'gallery_video') return <SquarePlay />
+  if (kind === 'database_backup') return <DatabaseBackup />
+  if (kind === 'chat_file') return <MessageSquare />
+  if (kind === 'field_file') return <FormInput />
+  return <Paperclip />
+}
+
+/** ჯგუფის ფერი — მოდულისა; ფსევდო-მოდულზე ინსტრუმენტისა (ჩატი, ასლები) */
+function groupAccent(group: TrashGroup): CSSProperties {
+  if (group.module === 'chat') return toolAccent('chat') ?? MODULE_ACCENT_FALLBACK
+  if (group.module === 'backup') return toolAccent('backups') ?? MODULE_ACCENT_FALLBACK
+  return modAccent(group.color) ?? MODULE_ACCENT_FALLBACK
+}
 
 export function TrashPage() {
   const { t, i18n } = useTranslation()
@@ -57,23 +100,29 @@ export function TrashPage() {
 
   /**
    * ⚠️ **ყველა query უქმდება და არა მხოლოდ `['trash']`.** აღდგენილი
-   * ჩანაწერი თავის სექციაშიც უნდა გამოჩნდეს, დეშბორდის რიცხვიც შეიცვალა
+   * ელემენტი თავის სექციაშიც უნდა გამოჩნდეს, დეშბორდის რიცხვიც შეიცვალა
    * და საცავის ჯამიც — წერტილოვანი invalidate ერთ-ერთს აუცილებლად
    * გამორჩებოდა და გვერდი „არაფერი შეიცვალა"-ს აჩვენებდა.
    */
   const refresh = () => queryClient.invalidateQueries()
 
   const restore = useMutation({
-    mutationFn: ({ domain, id }: { domain: string; id: number }) => restoreFromTrash(domain, id),
-    onSuccess: () => {
-      toast({ title: t('trash.restored'), variant: 'success' })
+    mutationFn: ({ group, item }: { group: TrashGroup; item: TrashItem }) => restoreFromTrash(group.kind, item.id),
+    onSuccess: (res, { item }) => {
+      toast({
+        title:
+          res.with_parent && item.parent
+            ? t('trash.restoredWithParent', { name: item.parent.title })
+            : t('trash.restored'),
+        variant: 'success',
+      })
       refresh()
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   const remove = useMutation({
-    mutationFn: ({ domain, id }: { domain: string; id: number }) => deleteFromTrash(domain, id),
+    mutationFn: ({ group, item }: { group: TrashGroup; item: TrashItem }) => deleteFromTrash(group.kind, item.id),
     onSuccess: () => {
       toast({ title: t('trash.deleted'), variant: 'success' })
       refresh()
@@ -94,13 +143,21 @@ export function TrashPage() {
   const removeOne = async (group: TrashGroup, item: TrashItem) => {
     const ok = await confirm({
       title: t('trash.deleteTitle'),
-      description: t('trash.deleteHint', { name: item.title }),
+      description:
+        group.category === 'record'
+          ? t('trash.deleteHint', { name: item.title })
+          : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
     })
 
-    if (ok) remove.mutate({ domain: group.domain, id: item.id })
+    if (ok) remove.mutate({ group, item })
   }
+
+  const groupName = (group: TrashGroup) =>
+    group.category === 'record'
+      ? ((i18n.language === 'ka' ? group.name_ka : group.name_en) ?? group.kind)
+      : t(`trash.kinds.${group.kind}`)
 
   return (
     <PageContainer>
@@ -121,23 +178,30 @@ export function TrashPage() {
         />
       ) : (
         <>
+          {/* ⚠️ ცოცხალი ფაქტი და არა ინსტრუქცია — ამიტომ ტექსტია და არა `i` */}
+          <p className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-4 py-3 text-sm">
+            <HardDrive className="size-4 text-muted-foreground" />
+            <span className="font-medium tabular-nums">{t('trash.bytes', { size: formatBytes(data?.bytes ?? 0) })}</span>
+            <span className="text-muted-foreground">{t('trash.bytesHint')}</span>
+          </p>
+
           <div className="grid gap-4">
             {groups.map((group) => (
               <section
-                key={group.domain}
+                key={group.kind}
                 className="rounded-xl border border-border bg-card p-5"
-                style={modAccent(group.color) ?? MODULE_ACCENT_FALLBACK}
+                style={groupAccent(group)}
               >
                 <header className="mb-3 flex flex-wrap items-center gap-3">
                   <span className="flex size-9 items-center justify-center rounded-md bg-[var(--mod-soft)] [&>svg]:size-5 [&>svg]:text-[var(--mod)]">
-                    <ModuleIcon name={group.icon} />
+                    {group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)}
                   </span>
-                  <h2 className="font-display text-lg font-semibold">
-                    {i18n.language === 'ka' ? group.name_ka : group.name_en}
-                  </h2>
+                  <h2 className="font-display text-lg font-semibold">{groupName(group)}</h2>
                   <span className="text-sm text-muted-foreground">
                     {t('trash.count', { count: group.total })}
+                    {group.bytes > 0 && ` · ${formatBytes(group.bytes)}`}
                   </span>
+                  {group.kind === 'database_backup' && <InfoHint info={t('trash.backupHint')} />}
                 </header>
 
                 <ul className="grid gap-2">
@@ -146,19 +210,32 @@ export function TrashPage() {
                       key={item.id}
                       className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background p-3"
                     >
+                      <Thumb item={item} fallback={group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)} />
+
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{item.title}</span>
+                        {item.subtitle && (
+                          <span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span>
+                        )}
                         <Expiry item={item} />
+                        {item.parent?.trashed && (
+                          <span className="block text-xs text-[var(--icon-info)]">
+                            {t('trash.parentTrashed', { name: item.parent.title })}
+                          </span>
+                        )}
+                        {item.blocked && (
+                          <span className="block text-xs text-destructive">{t(`trash.blocked.${item.blocked}`)}</span>
+                        )}
                       </span>
 
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={restore.isPending}
-                        onClick={() => restore.mutate({ domain: group.domain, id: item.id })}
+                        disabled={restore.isPending || !item.restorable}
+                        onClick={() => restore.mutate({ group, item })}
                       >
-                        <ArchiveRestore className="size-4" />
+                        <Undo2 className="size-4" />
                         {t('trash.restore')}
                       </Button>
 
@@ -166,6 +243,7 @@ export function TrashPage() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="text-destructive"
                         disabled={remove.isPending}
                         onClick={() => removeOne(group, item)}
                       >
@@ -176,7 +254,7 @@ export function TrashPage() {
                   ))}
                 </ul>
 
-                {/* ⚠️ სერვერი თითო დომენზე 50 რიგს აბრუნებს — თუ მეტია,
+                {/* ⚠️ სერვერი თითო ჯგუფზე 50 რიგს აბრუნებს — თუ მეტია,
                     ეს ითქმება, თორემ „სულ 120" და თხუთმეტი ხილული რიგი
                     ერთმანეთს ეწინააღმდეგება. */}
                 {group.total > group.items.length && (
@@ -215,7 +293,41 @@ export function TrashPage() {
 }
 
 /**
- * „როდის წაიშლება" — თარიღიც და დარჩენილი დღეებიც.
+ * ესკიზი — ფოტო, პოსტერი ან სახის ხატულა.
+ *
+ * ⚠️ **ჩაკეტილი ალბომის ფოტო ბუნდოვანი ფილაა** (29.5): სერვერი ესკიზს
+ * საერთოდ არ აგზავნის, ე.ი. აქ დასაბუნდოვნებელი არაფერია — ერთი სტატიკური
+ * აქტივი (`LOCKED_PHOTO_PLACEHOLDER`) და ბოქლომი. პირადი დისკის ფაილი
+ * ბლობად იკითხება ურნის საკუთარი მარშრუტით.
+ */
+function Thumb({ item, fallback }: { item: TrashItem; fallback: ReactNode }) {
+  const box =
+    'relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-[var(--mod-soft)] [&>svg]:size-5 [&>svg]:text-[var(--mod)]'
+
+  if (item.locked) {
+    return (
+      <span className={box}>
+        <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" className="absolute inset-0 size-full object-cover" />
+        <Lock className="relative size-4 text-white drop-shadow" />
+      </span>
+    )
+  }
+
+  if (!item.preview) return <span className={box}>{fallback}</span>
+
+  return (
+    <span className={box}>
+      {item.preview.private ? (
+        <PrivateImage url={item.preview.src} alt="" className="size-full object-cover" />
+      ) : (
+        <img src={storageUrl(item.preview.src) ?? ''} alt="" loading="lazy" className="size-full object-cover" />
+      )}
+    </span>
+  )
+}
+
+/**
+ * „როდის წაიშლება" — თარიღიც, დარჩენილი დღეებიც და ზომა.
  *
  * ⚠️ **დღეების რიცხვი სერვერიდან მოდის** (`expires_in_days`): ვადა
  * `TrashDomain::KEEP_DAYS`-შია და მისი ასლი კლიენტში პირველივე შეცვლაზე
@@ -232,6 +344,7 @@ function Expiry({ item }: { item: TrashItem }) {
       {item.expires_in_days > 0
         ? t('trash.expiresIn', { count: item.expires_in_days })
         : t('trash.expiresToday')}
+      {item.size > 0 && ` · ${formatBytes(item.size)}`}
     </span>
   )
 }

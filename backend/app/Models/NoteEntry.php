@@ -71,7 +71,7 @@ class NoteEntry extends Model
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
                სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
                თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
-            $entry->files()->withoutGlobalScope('owner')->get()->each->delete();
+            $entry->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
         });
     }
 

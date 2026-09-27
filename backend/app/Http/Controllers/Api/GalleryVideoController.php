@@ -158,7 +158,8 @@ class GalleryVideoController extends Controller
 
     public function destroy(GalleryVideo $galleryVideo)
     {
-        $galleryVideo->delete();
+        // ⚠️ **ურნა (Tasks §29, Q22)** — ბმული ურნაში გადადის და იქიდან ბრუნდება
+        $galleryVideo->moveToTrash();
 
         return response()->noContent();
     }

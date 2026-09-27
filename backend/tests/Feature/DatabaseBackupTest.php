@@ -128,15 +128,36 @@ class DatabaseBackupTest extends TestCase
         $this->assertGreaterThan(0, $backup->size);
     }
 
-    /** წაშლა ფაილსაც შლის და ბაიტებსაც ათავისუფლებს (`StoredFile`) */
+    /**
+     * **წაშლა ასლს ურნაში აგზავნის** (Tasks §29): სიიდან ქრება, ფაილი და
+     * კვოტა კი რჩება; ურნაში მყოფი ასლიდან ბაზის აღდგენა 404-ია, სიაში
+     * დაბრუნება — შესაძლებელი; საბოლოო წაშლა ფაილსაც შლის და ბაიტებსაც
+     * ათავისუფლებს (`StoredFile`).
+     */
     public function test_deleting_a_backup_frees_the_file_and_the_quota(): void
     {
         $backup = $this->runFakeDump('mediary-test.sql');
         $path = $backup->path;
+        $size = (int) $backup->size;
 
         $this->actingAs($this->admin)
             ->deleteJson('/api/admin/backups/'.$backup->id)
             ->assertOk();
+
+        Storage::disk('private')->assertExists($path);
+        $this->assertSame($size, (int) $this->admin->fresh()->storage_used_bytes);
+        $this->actingAs($this->admin)->getJson('/api/admin/backups')->assertOk()->assertJsonCount(0, 'data');
+        $this->actingAs($this->admin)
+            ->postJson("/api/admin/backups/{$backup->id}/restore", ['confirm' => 'RESTORE'])
+            ->assertStatus(404);
+
+        // სიაში დაბრუნება
+        $this->actingAs($this->admin)->postJson("/api/trash/database_backup/{$backup->id}/restore")->assertOk();
+        $this->actingAs($this->admin)->getJson('/api/admin/backups')->assertOk()->assertJsonCount(1, 'data');
+
+        // და საბოლოო წაშლა
+        $this->actingAs($this->admin)->deleteJson('/api/admin/backups/'.$backup->id)->assertOk();
+        $this->actingAs($this->admin)->deleteJson("/api/trash/database_backup/{$backup->id}")->assertNoContent();
 
         Storage::disk('private')->assertMissing($path);
         $this->assertSame(0, (int) $this->admin->fresh()->storage_used_bytes);

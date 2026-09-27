@@ -19,6 +19,7 @@ use App\Models\NoteEntryFile;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
@@ -257,7 +258,13 @@ class StorageManagementTest extends TestCase
         $this->assertNull($video->refresh()->thumbnail_path);
     }
 
-    /** მიმაგრებული ფაილი იმავე endpoint-იდან იშლება (ჩანაწერიც ქრება) */
+    /**
+     * მიმაგრებული ფაილი იმავე endpoint-იდან იშლება — **ურნაში** (Tasks §29).
+     *
+     * ⚠️ ურნაში მყოფი ადგილს კვლავ იკავებს: `used` არ იცვლება, `freed` ნულია,
+     * სია კი ფაილს აღარ აჩვენებს და მის ზომას `trash`-ში ამბობს. ადგილი
+     * მხოლოდ ურნიდან საბოლოო წაშლისას თავისუფლდება.
+     */
     public function test_deleting_an_attachment_removes_the_row(): void
     {
         Storage::fake('public');
@@ -274,9 +281,24 @@ class StorageManagementTest extends TestCase
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['path' => $attachment->path])
             ->assertOk()
-            ->assertJsonPath('used', 0);
+            ->assertJsonPath('used', 40960)
+            ->assertJsonPath('freed', 0)
+            ->assertJsonPath('trashed', 1);
 
-        $this->assertSame(0, VideoFile::withoutGlobalScope('owner')->count());
+        Storage::disk('public')->assertExists($attachment->path);
+        $this->actingAs($this->user)->getJson('/api/storage/files')
+            ->assertOk()
+            ->assertJsonPath('total', 0)
+            ->assertJsonPath('trash.files', 1)
+            ->assertJsonPath('trash.bytes', 40960);
+
+        // გადათვლა ურნაში მყოფს **ითვლის** — ის დისკზეა
+        $this->assertSame(40960, app(StorageMeter::class)->recalculate($this->user));
+
+        $this->actingAs($this->user)->deleteJson("/api/trash/video_file/{$attachment->id}")->assertNoContent();
+
+        $this->assertSame(0, VideoFile::withoutGlobalScopes()->count());
+        $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
         Storage::disk('public')->assertMissing($attachment->path);
     }
 
@@ -308,21 +330,29 @@ class StorageManagementTest extends TestCase
             ->assertStatus(422);
         Storage::disk('public')->assertExists('videos/thumbnails/one.jpg');
 
-        // მონიშნულები
+        // მონიშნულები — მიმაგრება ურნაში მიდის და ადგილს კვლავ იკავებს (Tasks §29)
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['paths' => [$second->path]])
             ->assertOk()
             ->assertJsonPath('deleted', 1)
-            ->assertJsonPath('used', 1024);
+            ->assertJsonPath('trashed', 1)
+            ->assertJsonPath('used', 3072);
 
-        // ყველა დანარჩენი
+        // ყველა დანარჩენი — „ყველა" სიაში ნაჩვენებია, ურნაში მყოფი არა;
+        // თამბნეილი (სვეტის ფაილი) ჯერ მყისიერად იშლება — §29-ის მე-4 ეტაპი
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['all' => true])
             ->assertOk()
-            ->assertJsonPath('used', 0);
+            ->assertJsonPath('deleted', 1)
+            ->assertJsonPath('used', 2048);
 
         Storage::disk('public')->assertMissing('videos/thumbnails/one.jpg');
         $this->assertNull($video->refresh()->thumbnail_path);
+        Storage::disk('public')->assertExists($second->path);
+
+        $this->actingAs($this->user->refresh())->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+        $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
+        Storage::disk('public')->assertMissing($second->path);
     }
 
     /**
@@ -751,6 +781,23 @@ class StorageManagementTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        /* Tasks §29 — **ურნაში მყოფიც ინვენტარშია**: ის დისკზეა და კვოტაში
+           ითვლება, ე.ი. გადათვლამ და ანგარიშის წაშლამ ორივემ უნდა იპოვოს —
+           საკუთარი `trashed_at`-იანი ფოტოც და `trashed_files`-ის ორივე სახეც. */
+        GalleryImage::create([
+            'user_id' => $u->id, 'imageable_type' => 'movie', 'imageable_id' => $movie->id,
+            'path' => 'gallery/images/trashed.jpg', 'size' => 6, 'source' => 'tmdb', 'category' => 'backdrop',
+            'trashed_at' => now(),
+        ]);
+        TrashedFile::create([
+            'user_id' => $u->id, 'kind' => 'chat_file', 'record_type' => 'message', 'record_id' => 1,
+            'slot' => 'attachment', 'path' => 'chat/files/docs/trashed.pdf', 'size' => 12, 'trashed_at' => now(),
+        ]);
+        TrashedFile::create([
+            'user_id' => $u->id, 'kind' => 'field_file', 'record_type' => 'video', 'record_id' => $video->id,
+            'slot' => 'f', 'path' => 'videos/fields/trashed.pdf', 'size' => 10, 'trashed_at' => now(),
+        ]);
+
         return $u->refresh();
     }
 
@@ -895,8 +942,11 @@ class StorageManagementTest extends TestCase
         $meter = $this->getMockBuilder(StorageMeter::class)->onlyMethods(['addFor'])->getMock();
         $meter->method('addFor')->willThrowException(new \RuntimeException('boom'));
 
+        /* ⚠️ **`permanent: true`** (Tasks §29): მომხმარებლის წაშლა ფაილს ახლა
+           ურნაში აგზავნის და კვოტას არ ეხება — BUG-13-ის რიგი ნამდვილი წაშლის
+           ბრანჩს ეხება, რომელსაც ანგარიშის წაშლა იყენებს. */
         try {
-            $meter->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf');
+            $meter->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf', permanent: true);
             $this->fail('ჩავარდნა ვერ მოხდა — ე.ი. წაშლის ბრანჩი საერთოდ არ გაშვებულა');
         } catch (\RuntimeException) {
             // მოსალოდნელია
@@ -913,7 +963,7 @@ class StorageManagementTest extends TestCase
         $this->assertSame($before, (int) $this->user->refresh()->storage_used_bytes);
 
         // და წარმატებულ გზაზე სამივე მართლა ქრება — თორემ ზემოთა სამი უაზროა
-        $this->assertTrue(app(StorageMeter::class)->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf'));
+        $this->assertTrue(app(StorageMeter::class)->deleteOwnFile($this->user->refresh(), 'videos/fields/ticket.pdf', permanent: true));
         $this->assertFalse(Storage::disk('public')->exists('videos/fields/ticket.pdf'));
         $this->assertNull(DB::table('video_field_values')->where('field_key', 'ticket')->first());
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);

@@ -92,7 +92,7 @@ class Book extends Model
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
                სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
                თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
-            $book->files()->withoutGlobalScope('owner')->get()->each->delete();
+            $book->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
             $book->deleteGalleryMedia();
         });
     }

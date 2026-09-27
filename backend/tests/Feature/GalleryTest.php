@@ -683,11 +683,18 @@ class GalleryTest extends TestCase
         $this->assertSame('tmdb', $movie->poster_source);
         $this->assertSame(2048, (int) $this->user->refresh()->storage_used_bytes);
 
-        // წაშლა: ფაილიც, კვოტაც და დაკიდებული პოსტერიც
+        // წაშლა: დაკიდებული პოსტერი მაშინვე იხსნება, ფოტო კი ურნაში მიდის (Tasks §29)
         $this->actingAs($this->user)->deleteJson("/api/gallery/images/{$id}")->assertNoContent();
 
         $movie->refresh();
         $this->assertNull($movie->poster_path);
+        $this->assertSame(2048, (int) $this->user->refresh()->storage_used_bytes);
+        Storage::disk('public')->assertExists($images[0]['url']);
+        $this->actingAs($this->user)->getJson("/api/gallery/movie/{$movie->id}")->assertJsonCount(1, 'images');
+
+        // საბოლოო წაშლა — ფაილიც და კვოტაც
+        $this->actingAs($this->user)->deleteJson("/api/trash/gallery_image/{$id}")->assertNoContent();
+
         $this->assertSame(1024, (int) $this->user->refresh()->storage_used_bytes);
         Storage::disk('public')->assertMissing($images[0]['url']);
     }

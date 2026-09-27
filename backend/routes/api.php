@@ -374,15 +374,17 @@ Route::middleware('auth:sanctum')->group(function () {
        `year` აქვთ, ე.ი. კონკრეტულ დღეს ვერ დადგებიან. */
     Route::get('/upcoming', [UpcomingController::class, 'index']);
 
-    /* ---------- კალათა (FEAT-11) ----------
+    /* ---------- ურნა (FEAT-11 → Tasks §29) ----------
        ⚠️ **`module:`/`permission:` middleware განზრახ არ ადევს**: პარამეტრს
        `domain` ჰქვია და არა `type`, ე.ი. `@type` ყოველთვის `movie`-ს
-       შეამოწმებდა. ორივე შემოწმება (წვდომა + `delete` უფლება) კონტროლერშია.
+       შეამოწმებდა. ორივე შემოწმება (წვდომა + `delete` უფლება) `TrashBin`-შია.
+       `{domain}` ახლა ურნის ნებისმიერი სახეა (`TrashDomain::kinds()`).
        ⚠️ **`DELETE /trash` `/trash/{domain}/{id}`-ზე მაღლა დგას** — თორემ
        დაცლის მისამართს როუტერი ვერ გაარჩევდა ერთი ჩანაწერის წაშლისგან. */
     Route::get('/trash', [TrashController::class, 'index']);
     Route::delete('/trash', [TrashController::class, 'empty']);
     Route::post('/trash/{domain}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id');
+    Route::get('/trash/{domain}/{id}/file', [TrashController::class, 'file'])->whereNumber('id');
     Route::delete('/trash/{domain}/{id}', [TrashController::class, 'destroy'])->whereNumber('id');
 
     Route::get('/import/sources', [ImportController::class, 'sources']);

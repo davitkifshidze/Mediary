@@ -77,8 +77,11 @@ class BoardGameFileController extends Controller
 
     public function destroy(BoardGameFile $boardGameFile)
     {
-        // global scope-ის გამო სხვისი ფაილი ისედაც 404-ია
-        $boardGameFile->delete();
+        /* ⚠️ **ურნა (Tasks §29)** — `delete()` კი არა, `moveToTrash()`: ფაილი
+           დისკზე და კვოტაში რჩება და ურნიდან ბრუნდება; ადგილი საბოლოო წაშლისას
+           ან ვადის ამოწურვისას თავისუფლდება. სხვისი ფაილი global scope-ის
+           გამო ისედაც 404-ია. */
+        $boardGameFile->moveToTrash();
 
         return response()->noContent();
     }

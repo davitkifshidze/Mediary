@@ -209,6 +209,15 @@ export const CODES = [
   'invalid_status',
   'mode_not_supported_for_target',
   'backup_file_missing',
+  /* Tasks §29 — ურნიდან აღდგენის უარი (`TrashBin::blocked()`, 409).
+     ⚠️ `error-codes.mjs` მათ ვერ ხედავს — სერვერი მათ ცვლადიდან აბრუნებს
+     (`return 'slot_taken'`), ამიტომ აქ ხელითაა ჩაწერილი. `module_disabled`
+     უკვე ზემოთაა. */
+  'parent_blocked',
+  'parent_missing',
+  'slot_taken',
+  'field_missing',
+  'field_full',
 ] as const
 
 /**

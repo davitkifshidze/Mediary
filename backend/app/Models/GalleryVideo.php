@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasTrash;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -23,7 +24,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class GalleryVideo extends Model
 {
-    use BelongsToUser;
+    /** ⚠️ **ურნა (Tasks §29, Q22)** — „ბმულის" წაშლა ეს იყო: ბმული ურნაში გადადის */
+    use BelongsToUser, HasTrash;
 
     /** საიდან მოვიდა ბმული — ცხადი სია, რომ „წყაროს" ფილტრს აზრი ჰქონდეს */
     public const SOURCE_MANUAL = 'manual';

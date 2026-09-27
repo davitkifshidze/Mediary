@@ -142,7 +142,7 @@ class Game extends Model
                და ანგარიშის წაშლა სხვის ბიბლიოთეკას შლის ადმინის სესიიდან —
                სია ცარიელი ბრუნდებოდა, ფაილები დისკზე რჩებოდა და კვოტაც არ
                თავისუფლდებოდა. `Video::booted()` ამას თავიდანვე სწორად აკეთებდა. */
-            $game->files()->withoutGlobalScope('owner')->get()->each->delete();
+            $game->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
             $game->deleteGalleryMedia();
         });
     }

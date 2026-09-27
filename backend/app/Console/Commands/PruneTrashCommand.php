@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Trash\TrashBin;
 use App\Support\TrashDomain;
 use Illuminate\Console\Command;
 
@@ -22,6 +23,10 @@ use Illuminate\Console\Command;
  * ⚠️ **`--days` არსებობს ტესტისთვის და არა კონფიგურაციისთვის** — ვადა
  * ერთია (`TrashDomain::KEEP_DAYS`) და ის UI-შიც ჩანს; ორი წყარო
  * „30 დღე წერია, 7-ზე იშლება"-ს გამოიწვევდა.
+ *
+ * ⚠️ **ყველა სახე — ჩანაწერი, ფაილი, `trashed_files`** (Tasks §29) — წესები
+ * `TrashBin::prune()`-შია, რომ ბრძანება და ურნის გვერდი „რა არის ურნაში"-ზე
+ * ერთსა და იმავეს ამბობდნენ.
  */
 class PruneTrashCommand extends Command
 {
@@ -36,24 +41,11 @@ class PruneTrashCommand extends Command
         $dry = (bool) $this->option('dry-run');
         $total = 0;
 
-        foreach (TrashDomain::MODELS as $domain => $model) {
-            $query = $model::expiredTrash($days);
-            $count = (clone $query)->count();
-
-            if ($count === 0) {
-                continue;
-            }
-
-            if (! $dry) {
-                /* ⚠️ `lazyById` და არა `chunk`: `chunk()` offset-ით დადის და
-                   წაშლა რიგებს წაანაცვლებს, ე.ი. ყოველი მეორე გვერდი ჩუმად
-                   გამოტოვდებოდა — იგივე ხაფანგი, რაც BUG-23-ის მიგრაციას ჰქონდა. */
-                foreach ($query->lazyById() as $record) {
-                    $record->delete();
-                }
-            }
-
-            $this->line("  {$domain}: {$count}");
+        /* ⚠️ `lazyById` და არა `chunk` (`TrashBin::prune()`-ში): `chunk()`
+           offset-ით დადის და წაშლა რიგებს წაანაცვლებს, ე.ი. ყოველი მეორე
+           გვერდი ჩუმად გამოტოვდებოდა — იგივე ხაფანგი, რაც BUG-23-ის მიგრაციას ჰქონდა. */
+        foreach (TrashBin::prune($days, $dry) as $kind => $count) {
+            $this->line("  {$kind}: {$count}");
             $total += $count;
         }
 

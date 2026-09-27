@@ -170,7 +170,11 @@ class NoteModuleTest extends TestCase
             (int) app(StorageMeter::class)->breakdown($this->user->refresh())['note'],
         );
 
+        // Tasks §29 — წაშლა ურნაშია; ადგილი საბოლოო წაშლისას თავისუფლდება
         $this->actingAs($this->user)->deleteJson("/api/note-files/{$fileId}")->assertNoContent();
+        $this->assertSame($used, (int) $this->user->refresh()->storage_used_bytes);
+
+        $this->actingAs($this->user)->deleteJson("/api/trash/note_entry_file/{$fileId}")->assertNoContent();
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
@@ -891,6 +895,12 @@ class NoteModuleTest extends TestCase
         $path = NoteEntryFile::withoutGlobalScope('owner')->findOrFail($fileId)->path;
 
         $this->actingAs($this->user)->deleteJson("/api/note-files/{$fileId}")->assertNoContent();
+
+        // ⚠️ ურნაში მყოფი ფაილის ფაილი ჩვეულებრივი მარშრუტით აღარ იხსნება (Tasks §29)
+        Storage::disk('private')->assertExists($path);
+        $this->actingAs($this->user)->get("/api/note-files/{$fileId}")->assertStatus(404);
+
+        $this->actingAs($this->user)->deleteJson("/api/trash/note_entry_file/{$fileId}")->assertNoContent();
 
         Storage::disk('private')->assertMissing($path);
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);

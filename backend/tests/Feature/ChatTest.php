@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\TrashedFile;
 use App\Models\User;
 use App\Services\Chat\ChatService;
 use Database\Seeders\ModulesSeeder;
@@ -310,7 +311,9 @@ class ChatTest extends TestCase
 
     /**
      * ⚠️ **`DECISIONS.md` §1 — ფაილი ორივესთან ქრება**, შეტყობინების რიგი კი
-     * რჩება („ფაილი წაშლილია"), და კვოტა მართლა თავისუფლდება.
+     * რჩება („ფაილი წაშლილია"). ⚠️ **Tasks §29-იდან ფაილი ურნაში გადადის**:
+     * დისკზე და გამგზავნის კვოტაში რჩება, აღდგენა მას იმავე შეტყობინებაში
+     * აბრუნებს, ხოლო ადგილი საბოლოო წაშლისას თავისუფლდება.
      */
     public function test_deleting_an_attachment_removes_it_for_both_and_frees_the_quota(): void
     {
@@ -338,10 +341,27 @@ class ChatTest extends TestCase
             // სახელი რჩება: ჩანაცვლებამ უნდა თქვას, **რა** წაიშალა
             ->assertJsonPath('data.attachment_name', 'cat.jpg');
 
+        // რიგი რჩება — ისტორია არ იხევა; ფაილი კი ურნაშია
+        $this->assertSame(1, Message::count());
+        Storage::disk('private')->assertExists($path);
+        $used = (int) $this->alice->refresh()->storage_used_bytes;
+        $this->assertGreaterThan(0, $used);
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->assertSame(['chat_file', (int) $message->id, $path], [$trashed->kind, $trashed->record_id, $trashed->path]);
+
+        // აღდგენა იმავე შეტყობინებაში
+        $this->actingAs($this->alice)->postJson("/api/trash/chat_file/{$trashed->id}/restore")->assertOk();
+        $this->assertSame($path, $message->refresh()->attachment_path);
+        $this->actingAs($this->bob)->get("/api/chat/files/{$message->id}")->assertOk();
+
+        // ხელახლა წაშლა + საბოლოო წაშლა — ადგილი ახლა თავისუფლდება
+        $this->actingAs($this->alice)->deleteJson("/api/chat/files/{$message->id}")->assertOk();
+        $again = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->actingAs($this->alice)->deleteJson("/api/trash/chat_file/{$again->id}")->assertNoContent();
+
         Storage::disk('private')->assertMissing($path);
         $this->assertSame(0, (int) $this->alice->refresh()->storage_used_bytes);
-        // რიგი რჩება — ისტორია არ იხევა
-        $this->assertSame(1, Message::count());
 
         // მიმღებთანაც ქრება და იმავე მდგომარეობას ხედავს
         $this->actingAs($this->bob)

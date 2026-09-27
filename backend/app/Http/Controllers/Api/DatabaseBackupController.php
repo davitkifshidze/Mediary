@@ -249,22 +249,22 @@ class DatabaseBackupController extends Controller
         ]);
     }
 
+    /**
+     * ⚠️ **ურნა (Tasks §29)** — ასლი ურნაში გადადის: ფაილი და კვოტა რჩება,
+     * სიიდან კი ქრება. ურნიდან მხოლოდ **სიაში დაბრუნება** შეიძლება; ბაზის
+     * აღდგენა ურნაში მყოფი ასლიდან 404-ია (`trash` scope მარშრუტის
+     * მიბმასაც ეხება). ჟურნალს `HasTrash::moveToTrash()` წერს.
+     */
     public function destroy(DatabaseBackup $backup): JsonResponse
     {
-        $label = $backup->name;
-        $id = $backup->id;
+        /* ⚠️ **ნახვის დროებითი ბაზა ახლავე იშლება** (§11) — ურნაში მყოფი ასლის
+           ნახვა ისედაც 404-ია, ბაზის მეორე ასლი კი დისკს კვოტის მიღმა იკავებს.
+           `deleting` აქ არ ისვრება (რიგი რჩება), ამიტომ ცხადად. */
+        app(BackupInspector::class)->close($backup);
 
-        // ⚠️ **მოდელით და არა query-ით**: `StoredFile` ფაილს დისკიდან შლის
-        // და ჩაწერილ ბაიტებს კვოტიდან ათავისუფლებს
-        $backup->delete();
+        $backup->moveToTrash();
 
-        $this->audit->log(AuditLog::ACTION_DELETE, [
-            'subject_type' => 'database_backup',
-            'subject_id' => $id,
-            'subject_label' => $label,
-        ]);
-
-        return response()->json(['deleted' => true]);
+        return response()->json(['deleted' => true, 'trashed' => true]);
     }
 
     /** @return array<string, mixed> */

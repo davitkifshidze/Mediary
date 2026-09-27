@@ -46,13 +46,17 @@ trait HasGallery
      * ⚠️ ფოტოები **სათითაოდ** იშლება: `GalleryImage::deleting` ფაილსაც შლის
      * და კვოტასაც ათავისუფლებს, მასობრივი `delete()` კი ივენთს არ ისვრის.
      * ვიდეოს ფაილი არ აქვს, ე.ი. მისი წაშლა ერთი მოთხოვნაა.
+     *
+     * ⚠️ **ურნაში მყოფი ფოტოც და ბმულიც აქ იშლება** (Tasks §29): `trash`
+     * scope-ით ისინი ვერ მოიძებნებოდა და მშობლის საბოლოო წაშლა მათ დისკზე
+     * ობლად დატოვებდა — კვოტასაც სამუდამოდ დაიკავებდა.
      */
     public function deleteGalleryMedia(): void
     {
-        foreach ($this->galleryImages()->withoutGlobalScope('owner')->withoutGlobalScope('album_lock')->cursor() as $image) {
+        foreach ($this->galleryImages()->withoutGlobalScopes(['owner', 'album_lock', 'trash'])->cursor() as $image) {
             $image->delete();
         }
 
-        $this->galleryVideos()->withoutGlobalScope('owner')->delete();
+        $this->galleryVideos()->withoutGlobalScopes(['owner', 'trash'])->delete();
     }
 }

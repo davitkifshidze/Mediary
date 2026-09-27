@@ -79,7 +79,7 @@ class Video extends Model
     protected static function booted(): void
     {
         static::deleting(function (Video $video) {
-            foreach ($video->files()->withoutGlobalScope('owner')->cursor() as $file) {
+            foreach ($video->files()->withoutGlobalScopes(['owner', 'trash'])->cursor() as $file) {
                 $file->delete();
             }
             $video->deleteThumbnail();

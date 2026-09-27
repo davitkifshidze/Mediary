@@ -99,7 +99,9 @@ class TrashTest extends TestCase
 
         $groups = $this->actingAs($this->me)->getJson('/api/trash')->assertOk()->json('data');
         $this->assertCount(1, $groups);
-        $this->assertSame('movie', $groups[0]['domain']);
+        // Tasks §29 — ჯგუფი ურნის **სახეა** (`kind`); ჩანაწერზე ის მოდულის key-ს ემთხვევა
+        $this->assertSame('movie', $groups[0]['kind']);
+        $this->assertSame('record', $groups[0]['category']);
         $this->assertSame('Restored', $groups[0]['items'][0]['title']);
 
         $this->actingAs($this->me)

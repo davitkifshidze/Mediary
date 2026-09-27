@@ -239,8 +239,10 @@ class GalleryAlbumController extends Controller
             : null;
 
         /* ⚠️ ფოტოები **ცვლილებამდე** იკითხება: ქვემოთ ისინი ამ ალბომს
-           აღარ ეკუთვნიან, ე.ი. `where('album_id', …)` ვეღარაფერს იპოვიდა. */
-        $images = $galleryAlbum->images()->withoutGlobalScope('album_lock')->get();
+           აღარ ეკუთვნიან, ე.ი. `where('album_id', …)` ვეღარაფერს იპოვიდა.
+           ⚠️ ურნაში მყოფიც (Tasks §29) — ის ალბომს კვლავ ეკუთვნის და მისი
+           ფაილი სხვებთან ერთად უნდა გადავიდეს. */
+        $images = $galleryAlbum->images()->withoutGlobalScopes(['album_lock', 'trash'])->get();
 
         /* ⚠️ **ჯერ რიგები — ერთ ტრანზაქციაში —, მერე ფაილები** (Tasks BUG-04).
            ადრე პირველი ნაბიჯი `AlbumVault::reveal()` იყო, ე.ი. `update()`-ის
@@ -253,13 +255,14 @@ class GalleryAlbumController extends Controller
            სწორი**: ფაილი `gallery/locked`-ში დარჩა, მაგრამ `path` მასზე
            მიუთითებს და `GalleryImage::servedUrl()` პირად დისკს API-ის
            მარშრუტით ემსახურება — ფოტო ჩანს, უბრალოდ `/storage/*`-ის გარეთ. */
-        $moved = DB::transaction(function () use ($galleryAlbum, $data) {
-            $count = $galleryAlbum->images()->withoutGlobalScope('album_lock')
+        DB::transaction(function () use ($galleryAlbum, $data) {
+            $galleryAlbum->images()->withoutGlobalScopes(['album_lock', 'trash'])
                 ->update(['album_id' => $data['move_to'] ?? null]);
             $galleryAlbum->delete();
-
-            return $count;
         });
+
+        // ⚠️ რიცხვი **ხილულ** ფოტოებს ითვლის — ურნაში მყოფი ისედაც არსად ჩანს
+        $moved = $images->whereNull('trashed_at')->count();
 
         /* ⚠️ კომპენსაცია აქ საჭირო აღარ არის: `placeMany()` თითო ფოტოს ან
            ბოლომდე გადაიტანს, ან ხელს არ ახლებს (BUG-03-ის ასლი → commit →
