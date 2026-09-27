@@ -11,6 +11,7 @@ use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\Enrichment\AnimeEnricher;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
@@ -236,17 +237,15 @@ class AnimeController extends Controller
         // 17.1 — იხ. `MovieController`-ის იგივე ბლოკი: კვოტაში მხოლოდ ხელით
         // ატვირთული პოსტერი ითვლება (19.4/B)
         if ($request->boolean('remove_poster')) {
-            if ($anime->poster_source === 'upload') {
-                $this->meter->deleteUpload($anime->user_id, $anime->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($anime, 'poster_path', 'poster_source');
             $anime->poster_path = null;
             $anime->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            if ($anime->poster_source === 'upload') {
-                $this->meter->deleteUpload($anime->user_id, $anime->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($anime, 'poster_path', 'poster_source');
             $anime->poster_path = $this->meter
                 ->storeUpload($request->user(), $request->file('poster'), StorageFolder::ANIME_POSTERS);
             $anime->poster_source = 'upload';

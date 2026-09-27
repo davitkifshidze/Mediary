@@ -19,6 +19,7 @@ use App\Models\VideoFile;
 use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Notify\Notifier;
+use App\Support\ColumnTrash;
 use App\Support\CustomFields;
 use App\Support\GalleryParent;
 use App\Support\NotificationType;
@@ -349,9 +350,13 @@ class StorageMeter
         }
 
         // FEAT-26 — ადგილის ატვირთული ფოტო
+        /* ⚠️ გალერეიდან „მთავარად დაყენებული" ფოტო აქ **არ** ითვლება (Tasks §29,
+           ეტაპი 4): ადგილს `photo_source` არ აქვს, ე.ი. სვეტი გალერეის ფაილზეც
+           მიუთითებს — მას კი გალერეის რიგი უკვე ითვლის და ჯამში ორჯერ ჯდებოდა. */
         $places = $skip('place') ? collect() : Place::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
             ->whereNotNull('photo_path')
+            ->where('photo_path', 'not like', 'gallery/%')
             ->get(['id', 'name', 'photo_path', 'created_at']);
 
         foreach ($places as $place) {
@@ -658,19 +663,31 @@ class StorageMeter
         $trashed = $only === null
             ? TrashedFile::withoutGlobalScope('owner')->where('user_id', $user->getKey())->get()
             : TrashedFile::withoutGlobalScope('owner')->where('user_id', $user->getKey())
-                ->where(fn ($q) => $only === 'chat'
-                    ? $q->where('kind', 'chat_file')
-                    : $q->where('kind', 'field_file')->where('record_type', $only))
+                ->where(fn ($q) => match ($only) {
+                    'chat' => $q->where('kind', 'chat_file'),
+                    'account' => $q->where('kind', 'avatar'),
+                    default => $q->whereIn('kind', ['field_file', 'record_photo'])->where('record_type', $only),
+                })
                 ->get();
 
         foreach ($trashed as $t) {
             $add([
-                'kind' => $t->kind === 'field_file' ? 'field' : match ($t->meta['type'] ?? null) {
-                    'image' => 'image',
-                    'video' => 'video',
-                    default => 'doc',
+                'kind' => match ($t->kind) {
+                    'field_file' => 'field',
+                    'avatar' => 'avatar',
+                    // ეტაპი 4 — მთავარი ფოტო; მედიაზე ის პოსტერია (`files()`-ის იგივე გამიჯვნა)
+                    'record_photo' => in_array($t->record_type, ['movie', 'series', 'anime'], true) ? 'poster' : 'primary',
+                    default => match ($t->meta['type'] ?? null) {
+                        'image' => 'image',
+                        'video' => 'video',
+                        default => 'doc',
+                    },
                 },
-                'module' => $t->kind === 'chat_file' ? 'chat' : (string) $t->record_type,
+                'module' => match ($t->kind) {
+                    'chat_file' => 'chat',
+                    'avatar' => 'account',
+                    default => (string) $t->record_type,
+                },
                 'owner_type' => 'trashed_file',
                 'owner_id' => (int) $t->id,
                 'path' => $t->path,
@@ -745,13 +762,16 @@ class StorageMeter
     }
 
     /**
-     * რომელი ფაილი მიდის წაშლისას ურნაში (Tasks §29, ეტაპი 1) — რიგიანი
-     * ფაილები, ველის ფაილი და ჩატის მიმაგრება. სვეტის ფაილი (პოსტერი, ყდა,
-     * ავატარი, ჩამოწერილი ვიდეო) ჯერ მყისიერად იშლება — მე-4 ეტაპი.
+     * რომელი ფაილი მიდის წაშლისას ურნაში (Tasks §29) — ყველა, გარდა
+     * **ჩამოწერილი ვიდეოსი** (`video_download`): ის ადგილობრივი ასლია, რომლის
+     * თავიდან ჩამოწერა ყოველთვის შეიძლება, ხოლო გიგაბაიტიანი ფაილის 30 დღით
+     * შენახვა სწორედ იმ ადგილს დაიკავებდა, რისი გათავისუფლებაც სურდა.
      */
     private const TRASHED_ON_DELETE = [
         'video_file', 'book_file', 'board_game_file', 'game_file', 'note_entry_file',
         'course_file', 'place_file', 'gallery_image', 'database_backup', 'field_value', 'message',
+        // ეტაპი 4 — სვეტის ფაილი: მთავარი ფოტო და ავატარი
+        'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
     ];
 
     /**
@@ -949,8 +969,16 @@ class StorageMeter
         }
 
         if ($file['owner_type'] === 'user') {
+            // Tasks §29, ეტაპი 4 — ურნაში; ანგარიშის წაშლისას კი ნამდვილად
+            if (! $permanent) {
+                ColumnTrash::capture($user, 'avatar_path');
+            }
+
             $user->forceFill(['avatar_path' => null])->save();
-            $this->deleteUpload((int) $user->getKey(), $path);
+
+            if ($permanent) {
+                $this->deleteUpload((int) $user->getKey(), $path);
+            }
 
             return true;
         }
@@ -1006,6 +1034,8 @@ class StorageMeter
         $relation = match ($file['owner_type']) {
             'movie' => 'movies',
             'series' => 'series',
+            // ⚠️ ანიმე აქ არ ეწერა — მისი პოსტერი ბიბლიოთეკიდან ჩუმად ვერ იშლებოდა
+            'anime' => 'animes',
             'video' => 'videos',
             'song' => 'songs',
             'bookmark' => 'bookmarks',
@@ -1021,23 +1051,36 @@ class StorageMeter
             return false;
         }
 
-        $record = $user->{$relation}()->withoutGlobalScope('owner')->whereKey($ownerId)->first();
+        $record = $user->{$relation}()->withoutGlobalScopes(['owner', 'trash'])->whereKey($ownerId)->first();
 
         if (! $record) {
             return false;
         }
 
+        $columns = match ($relation) {
+            'videos', 'songs', 'bookmarks', 'courses' => ['thumbnail_path', null],
+            'places' => ['photo_path', null],
+            'books', 'games' => ['cover_path', 'cover_source'],
+            'boardGames' => ['image_path', 'image_source'],
+            default => ['poster_path', 'poster_source'],
+        };
+
+        // Tasks §29, ეტაპი 4 — ჯერ ურნაში (წყაროს სვეტი ჯერ კიდევ `upload`-ს ამბობს)
+        if (! $permanent) {
+            ColumnTrash::capture($record, $columns[0], $columns[1]);
+        }
+
         // `poster_source`/`cover_source` ერთად უნდა მოიხსნას, თორემ
         // „ხელით ატვირთული" ნიშანი უფაილო ჩანაწერზე დარჩება
-        $record->forceFill(match ($relation) {
-            'videos', 'songs', 'bookmarks', 'courses' => ['thumbnail_path' => null],
-            'places' => ['photo_path' => null],
-            'books', 'games' => ['cover_path' => null, 'cover_source' => null],
-            'boardGames' => ['image_path' => null, 'image_source' => null],
-            default => ['poster_path' => null, 'poster_source' => null],
-        })->save();
+        $clear = [$columns[0] => null];
+        if ($columns[1]) {
+            $clear[$columns[1]] = null;
+        }
+        $record->forceFill($clear)->save();
 
-        $this->deleteUpload((int) $user->getKey(), $path);
+        if ($permanent) {
+            $this->deleteUpload((int) $user->getKey(), $path);
+        }
 
         return true;
     }

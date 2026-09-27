@@ -7,6 +7,7 @@ use App\Http\Resources\BookResource;
 use App\Models\Book;
 use App\Services\Books\OpenLibraryClient;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Lang;
 use App\Support\Like;
 use App\Support\StorageFolder;
@@ -340,7 +341,8 @@ class BookController extends Controller
         }
 
         if ($request->boolean('remove_cover')) {
-            $book->deleteCover();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($book, 'cover_path', 'cover_source');
             $book->cover_path = null;
             $book->cover_source = null;
         }
@@ -351,7 +353,8 @@ class BookController extends Controller
 
         if ($request->hasFile('cover')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $book->deleteCover();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($book, 'cover_path', 'cover_source');
             $book->cover_path = $this->meter
                 ->storeUpload($request->user(), $request->file('cover'), StorageFolder::BOOK_COVERS);
             $book->cover_source = 'upload';

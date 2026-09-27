@@ -8,6 +8,7 @@ use App\Models\Bookmark;
 use App\Models\Status;
 use App\Services\Bookmarks\LinkMetadata;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -221,13 +222,15 @@ class BookmarkController extends Controller
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            $bookmark->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($bookmark, 'thumbnail_path');
             $bookmark->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $bookmark->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($bookmark, 'thumbnail_path');
             $bookmark->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::BOOKMARK_THUMBNAILS);
         }

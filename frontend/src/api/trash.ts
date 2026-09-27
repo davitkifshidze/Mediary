@@ -61,6 +61,11 @@ export interface TrashItem {
   module: string | null
   /** კლასიფიკატორის რიგი: აღდგენას შეუძლია გადატანილი ჩანაწერებიც დააბრუნოს (Tasks §29, ეტაპი 3) */
   offers_records: boolean
+  /**
+   * მთავარი ფოტო/ავატარი დაკავებულ სვეტში (ეტაპი 4): აღდგენა ახლანდელს
+   * ჩაანაცვლებს — ის თვითონ გადავა ურნაში (29.2 — „ჯერ იკითხავს")
+   */
+  replaceable: boolean
   parent: TrashParent | null
   restorable: boolean
   blocked: TrashBlocked | null
@@ -100,9 +105,12 @@ export async function fetchTrash(): Promise<TrashPayload> {
 export async function restoreFromTrash(
   kind: string,
   id: number,
-  records = false,
+  options: { records?: boolean; replace?: boolean } = {},
 ): Promise<{ restored: true; with_parent: boolean; records: number }> {
-  const res = await api.post(`/trash/${kind}/${id}/restore`, records ? { records: true } : {})
+  const res = await api.post(`/trash/${kind}/${id}/restore`, {
+    ...(options.records ? { records: true } : {}),
+    ...(options.replace ? { replace: true } : {}),
+  })
   return res.data
 }
 

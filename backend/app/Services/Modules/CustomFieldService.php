@@ -470,8 +470,9 @@ class CustomFieldService
            იშლება, ე.ი. მათი აღდგენა ვეღარსად მოხდება; დარჩენილი აღწერა ფაილს
            ვადის ამოწურვამდე ტყუილად დაიკავებდა. მოდელით, რომ `StoredFile`-მა
            ფაილიც წაშალოს და კვოტაც დააბრუნოს. */
+        // ეტაპი 4 — და ურნაში მყოფი მთავარი ფოტოც (`record_photo`): ჩანაწერი აღარ არის, სვეტიც აღარ
         TrashedFile::withoutGlobalScope('owner')
-            ->where('kind', 'field_file')
+            ->whereIn('kind', ['field_file', 'record_photo'])
             ->where('record_type', $module)
             ->where('record_id', $record->getKey())
             ->get()

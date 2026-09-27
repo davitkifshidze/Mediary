@@ -11,6 +11,7 @@ use App\Models\Genre;
 use App\Models\Series;
 use App\Services\Enrichment\SeriesEnricher;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
@@ -228,17 +229,15 @@ class SeriesController extends Controller
         // 17.1 — იხ. `MovieController`-ის იგივე ბლოკი: კვოტაში მხოლოდ ხელით
         // ატვირთული პოსტერი ითვლება (19.4/B)
         if ($request->boolean('remove_poster')) {
-            if ($series->poster_source === 'upload') {
-                $this->meter->deleteUpload($series->user_id, $series->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($series, 'poster_path', 'poster_source');
             $series->poster_path = null;
             $series->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            if ($series->poster_source === 'upload') {
-                $this->meter->deleteUpload($series->user_id, $series->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($series, 'poster_path', 'poster_source');
             $series->poster_path = $this->meter
                 ->storeUpload($request->user(), $request->file('poster'), StorageFolder::SERIES_POSTERS);
             $series->poster_source = 'upload';

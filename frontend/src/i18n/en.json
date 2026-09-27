@@ -918,8 +918,8 @@
     "downloadAll": "Download all ({{count}})",
     "filesDeleted": "Deleted {{count}} file(s) · {{size}} freed",
     "filesDeleteTitle": "Delete files",
-    "filesDeleteSelectedHint": "Of the {{count}} selected files, attachments, photos and documents move to the trash, while a poster, a main photo or the avatar is deleted for good. The records stay.",
-    "filesDeleteAllHint": "All of your uploads ({{count}} files) will be deleted: attachments, photos and documents move to the trash, while the avatar, posters and main photos go for good. The records stay.",
+    "filesDeleteSelectedHint": "The {{count}} selected files move to the trash — they can be restored from there; a downloaded video is deleted for good. The records stay.",
+    "filesDeleteAllHint": "All of your uploads ({{count}} files) move to the trash — avatar, posters, main photos, other photos and documents; a downloaded video is deleted for good. The records stay.",
     "orphansWhy": "Where they come from: a record or attachment was deleted straight from the database (a script, a migration) and the copy stayed on disk · an upload was interrupted — the file landed, the row never did · the database was restored from a backup that is older than the files on disk.",
     "orphansSafe": "Files touched in the last hour do not count as orphans (an upload may still be in flight). Cleanup does not touch records. The operation is global — an orphan has no owner left — so it is admin-only.",
     "allocationsWhere": "The one storage setting: “how much is allowed”. How much you have, what you uploaded, asking for more space and the orphan cleanup all live on your profile, in one block.",
@@ -3189,7 +3189,7 @@
       "module_disabled": "The module is off — enable it to restore",
       "parent_blocked": "Its record is in the trash too, and that record's module is off",
       "parent_missing": "What it belonged to no longer exists",
-      "slot_taken": "Another file already sits in that place",
+      "slot_taken": "Another file sits in that place now",
       "field_missing": "This field no longer exists or is no longer a file field",
       "already_present": "Already in place — nothing to restore"
     },
@@ -3225,7 +3225,9 @@
       "note_category": "Note categories",
       "bookmark_category": "Bookmark categories",
       "course_category": "Course categories",
-      "place_category": "Place categories"
+      "place_category": "Place categories",
+      "record_photo": "Main photos of records",
+      "avatar": "Avatar"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3234,7 +3236,9 @@
     "albumPhotos": "Restoring puts {{count}} photos back into the album",
     "recordsMoved": "Deleting it moved {{count}} records — you can bring them back too",
     "withRecords": "With the records ({{count}})",
-    "restoredWithRecords": "Restored — together with {{count}} records"
+    "restoredWithRecords": "Restored — together with {{count}} records",
+    "replace": "Replace",
+    "replaceHint": "The current photo moves to the trash and this one takes its place"
   },
   "watchLog": {
     "title": "Watches",

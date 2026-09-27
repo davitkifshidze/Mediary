@@ -7,6 +7,7 @@ use App\Http\Resources\PlaceResource;
 use App\Models\Place;
 use App\Services\Places\NominatimClient;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -254,13 +255,15 @@ class PlaceController extends Controller
         }
 
         if ($request->boolean('remove_photo')) {
-            $place->deletePhoto();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($place, 'photo_path');
             $place->photo_path = null;
         }
 
         if ($request->hasFile('photo')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $place->deletePhoto();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($place, 'photo_path');
             $place->photo_path = $this->meter
                 ->storeUpload($request->user(), $request->file('photo'), StorageFolder::PLACE_PHOTOS);
         }

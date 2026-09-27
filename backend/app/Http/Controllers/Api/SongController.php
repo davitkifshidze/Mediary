@@ -7,6 +7,7 @@ use App\Http\Resources\SongResource;
 use App\Models\Song;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
+use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\Like;
 use App\Support\StorageFolder;
@@ -229,13 +230,15 @@ class SongController extends Controller
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            $song->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($song, 'thumbnail_path');
             $song->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $song->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($song, 'thumbnail_path');
             $song->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::SONG_THUMBNAILS);
             $song->thumbnail_url = null;

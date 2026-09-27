@@ -154,6 +154,9 @@ final class TrashDomain
     public const FILES = [
         'chat_file' => ['module' => null],
         'field_file' => ['module' => null],
+        // ეტაპი 4 — სვეტის ფაილი (`ColumnTrash`); მოდული ჩანაწერისაა, უფლება — `update`
+        'record_photo' => ['module' => null],
+        'avatar' => ['module' => null],
     ];
 
     /**

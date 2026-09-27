@@ -21,6 +21,8 @@ import {
   Undo2,
   UserRound,
   CircleDashed,
+  CircleUserRound,
+  Replace,
 } from 'lucide-react'
 import {
   deleteFromTrash,
@@ -75,7 +77,8 @@ const CONFIRM_WORD = 'DELETE'
  * ფაილს — საკუთარი: „ფილმის ფაილი" ფილმის ხატულით ჩანაწერს დაემსგავსებოდა.
  */
 function kindIcon(kind: string): ReactNode {
-  if (kind === 'gallery_image') return <ImageIcon />
+  if (kind === 'gallery_image' || kind === 'record_photo') return <ImageIcon />
+  if (kind === 'avatar') return <CircleUserRound />
   if (kind === 'gallery_video' || kind === 'game_video') return <SquarePlay />
   if (kind === 'database_backup') return <DatabaseBackup />
   if (kind === 'chat_file') return <MessageSquare />
@@ -123,8 +126,17 @@ export function TrashPage() {
   const refresh = () => queryClient.invalidateQueries()
 
   const restore = useMutation({
-    mutationFn: ({ group, item, records = false }: { group: TrashGroup; item: TrashItem; records?: boolean }) =>
-      restoreFromTrash(group.kind, item.id, records),
+    mutationFn: ({
+      group,
+      item,
+      records = false,
+      replace = false,
+    }: {
+      group: TrashGroup
+      item: TrashItem
+      records?: boolean
+      replace?: boolean
+    }) => restoreFromTrash(group.kind, item.id, { records, replace }),
     onSuccess: (res, { item }) => {
       toast({
         title:
@@ -286,6 +298,22 @@ export function TrashPage() {
 
                       {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია (Q21), ჩანაწერების
                           დაბრუნება — ცალკე, ცხადი არჩევანი */}
+                      {/* ⚠️ ეტაპი 4 — დაკავებულ სვეტში აღდგენა ცხადი „ჩანაცვლებაა":
+                          ახლანდელი ფოტო თვითონ გადავა ურნაში და არაფერი დაიკარგება */}
+                      {item.replaceable && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={restore.isPending}
+                          title={t('trash.replaceHint')}
+                          onClick={() => restore.mutate({ group, item, replace: true })}
+                        >
+                          <Replace className="size-4" />
+                          {t('trash.replace')}
+                        </Button>
+                      )}
+
                       {item.offers_records && (
                         <Button
                           type="button"

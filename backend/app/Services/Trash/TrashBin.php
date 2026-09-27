@@ -17,6 +17,7 @@ use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
+use App\Support\ColumnTrash;
 use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
 use App\Support\SafeMime;
@@ -215,6 +216,8 @@ final class TrashBin
             'parent' => $parent,
             'restorable' => $blocked === null,
             'blocked' => $blocked,
+            // ⚠️ ეტაპი 4 — სვეტი დაკავებულია, მაგრამ აღდგენა ახლანდელს ჩაანაცვლებს (ის თვითონ ურნაში გადავა)
+            'replaceable' => $blocked === 'slot_taken' && in_array($kind, ['record_photo', 'avatar'], true),
         ];
     }
 
@@ -242,6 +245,11 @@ final class TrashBin
                 ->when($kind === 'field_file', fn (Builder $q) => $q->whereIn(
                     'record_type',
                     $this->permitted($user, TrashDomain::domains(), 'delete'),
+                ))
+                // ⚠️ მთავარი ფოტოს მოშორება ჩანაწერის რედაქტირებაა — უფლება `update`
+                ->when($kind === 'record_photo', fn (Builder $q) => $q->whereIn(
+                    'record_type',
+                    $this->permitted($user, TrashDomain::domains(), 'update'),
                 )),
             default => TrashEntry::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
@@ -286,19 +294,22 @@ final class TrashBin
      *
      * @return array{restored: true, with_parent: bool, records: int}
      */
-    public function restore(User $user, string $kind, int $id, bool $withRecords = false): array
+    public function restore(User $user, string $kind, int $id, bool $withRecords = false, bool $replace = false): array
     {
         $row = $this->find($user, $kind, $id);
         $parent = $this->parents($kind, collect([$row]))[$row->getKey()] ?? null;
 
-        if ($reason = $this->blocked($user, $kind, $row, $parent, strict: true)) {
+        $reason = $this->blocked($user, $kind, $row, $parent, strict: true);
+
+        // ⚠️ ეტაპი 4 — დაკავებული სვეტი მხოლოდ ცხადი „ჩანაცვლებით" (29.2 — „სხვაგვარად ჯერ იკითხავს")
+        if ($reason && ! ($reason === 'slot_taken' && $replace && in_array($kind, ['record_photo', 'avatar'], true))) {
             $this->fail($reason, 409);
         }
 
         $withParent = false;
         $records = 0;
 
-        DB::transaction(function () use ($user, $kind, $row, $parent, $withRecords, &$withParent, &$records) {
+        DB::transaction(function () use ($user, $kind, $row, $parent, $withRecords, $replace, &$withParent, &$records) {
             if ($parent && $parent['trashed']) {
                 TrashDomain::model($parent['kind'])::trashOf((int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
                 $withParent = true;
@@ -311,16 +322,27 @@ final class TrashBin
             }
 
             if ($row instanceof TrashedFile) {
-                $reason = $row->kind === 'chat_file'
-                    ? $this->chat->restoreAttachment($row)
-                    : $this->custom->restoreFile($user, $row);
+                $reason = match ($row->kind) {
+                    'chat_file' => $this->chat->restoreAttachment($row),
+                    'record_photo' => ColumnTrash::restore(
+                        TrashDomain::model($row->record_type)::withoutGlobalScopes()->findOrFail($row->record_id),
+                        $row,
+                        $replace,
+                    ),
+                    'avatar' => ColumnTrash::restore($user, $row, $replace),
+                    default => $this->custom->restoreFile($user, $row),
+                };
 
                 if ($reason) {
                     $this->fail($reason, 409);
                 }
 
                 $this->audit->log(AuditLog::ACTION_RESTORE, [
-                    'module' => $row->kind === 'chat_file' ? 'chat' : $row->record_type,
+                    'module' => match ($row->kind) {
+                        'chat_file' => 'chat',
+                        'avatar' => null,
+                        default => $row->record_type,
+                    },
                     'subject_type' => $row->kind,
                     'subject_id' => $row->record_id,
                     'subject_label' => $row->name,
@@ -507,7 +529,7 @@ final class TrashBin
     {
         return match (true) {
             $row instanceof TrashEntry => $row->record_type,
-            $row instanceof TrashedFile => $row->kind === 'field_file' ? $row->record_type : null,
+            $row instanceof TrashedFile => in_array($row->kind, ['field_file', 'record_photo'], true) ? $row->record_type : null,
             isset(TrashDomain::ITEMS[$kind]['module_column']) => (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column']),
             default => $this->moduleOf($kind),
         };
@@ -562,6 +584,19 @@ final class TrashBin
             }
 
             return $message->attachment_path ? 'slot_taken' : null;
+        }
+
+        if ($row instanceof TrashedFile && in_array($row->kind, ['record_photo', 'avatar'], true)) {
+            $owner = $row->kind === 'avatar'
+                ? $user
+                : ($parent ? TrashDomain::model($row->record_type)::withoutGlobalScopes()->find($row->record_id) : null);
+
+            if (! $owner) {
+                return 'parent_missing';
+            }
+
+            // ⚠️ სვეტი დაკავებულია — `replaceable` ღილაკი ახლანდელს ჩაანაცვლებს
+            return $owner->getAttribute((string) $row->slot) ? 'slot_taken' : null;
         }
 
         if ($row instanceof TrashedFile && $row->kind === 'field_file') {
@@ -719,7 +754,7 @@ final class TrashBin
     private function parentRef(string $kind, Model $row): ?array
     {
         if ($row instanceof TrashedFile || $row instanceof TrashEntry) {
-            $applies = $row instanceof TrashEntry || $row->kind === 'field_file';
+            $applies = $row instanceof TrashEntry || in_array($row->kind, ['field_file', 'record_photo'], true);
 
             return $applies && $row->record_type && TrashDomain::category($row->record_type) === 'record'
                 ? [$row->record_type, (int) $row->record_id]

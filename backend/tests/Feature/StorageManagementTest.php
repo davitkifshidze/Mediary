@@ -234,7 +234,10 @@ class StorageManagementTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists('movies/posters/shared.jpg'));
     }
 
-    /** თამბნეილის წაშლა — სვეტი ცარიელდება, კვოტა თავისუფლდება */
+    /**
+     * მთავარი ფოტოს წაშლა — სვეტი ცარიელდება, ფაილი **ურნაში** (Tasks §29, ეტაპი 4):
+     * ადგილს კვლავ იკავებს, აღდგენა სვეტში აბრუნებს, საბოლოო წაშლა ათავისუფლებს.
+     */
     public function test_deleting_a_thumbnail_frees_the_quota(): void
     {
         Storage::fake('public');
@@ -252,10 +255,26 @@ class StorageManagementTest extends TestCase
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['path' => 'videos/thumbnails/thumb.jpg'])
             ->assertOk()
-            ->assertJsonPath('used', 0);
+            ->assertJsonPath('used', 30720)
+            ->assertJsonPath('trashed', 1);
+
+        Storage::disk('public')->assertExists('videos/thumbnails/thumb.jpg');
+        $this->assertNull($video->refresh()->thumbnail_path);
+
+        $trashed = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->assertSame(['record_photo', 'video', 'thumbnail_path'], [$trashed->kind, $trashed->record_type, $trashed->slot]);
+
+        // აღდგენა სვეტში
+        $this->actingAs($this->user)->postJson("/api/trash/record_photo/{$trashed->id}/restore")->assertOk();
+        $this->assertSame('videos/thumbnails/thumb.jpg', $video->refresh()->thumbnail_path);
+
+        // და საბოლოო წაშლა
+        $this->actingAs($this->user->refresh())->deleteJson('/api/storage/files', ['path' => 'videos/thumbnails/thumb.jpg'])->assertOk();
+        $again = TrashedFile::withoutGlobalScope('owner')->sole();
+        $this->actingAs($this->user)->deleteJson("/api/trash/record_photo/{$again->id}")->assertNoContent();
 
         Storage::disk('public')->assertMissing('videos/thumbnails/thumb.jpg');
-        $this->assertNull($video->refresh()->thumbnail_path);
+        $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
     }
 
     /**
@@ -339,20 +358,22 @@ class StorageManagementTest extends TestCase
             ->assertJsonPath('used', 3072);
 
         // ყველა დანარჩენი — „ყველა" სიაში ნაჩვენებია, ურნაში მყოფი არა;
-        // თამბნეილი (სვეტის ფაილი) ჯერ მყისიერად იშლება — §29-ის მე-4 ეტაპი
+        // თამბნეილიც (სვეტის ფაილი) ურნაში მიდის — §29-ის მე-4 ეტაპი
         $this->actingAs($this->user->refresh())
             ->deleteJson('/api/storage/files', ['all' => true])
             ->assertOk()
             ->assertJsonPath('deleted', 1)
-            ->assertJsonPath('used', 2048);
+            ->assertJsonPath('trashed', 1)
+            ->assertJsonPath('used', 3072);
 
-        Storage::disk('public')->assertMissing('videos/thumbnails/one.jpg');
+        Storage::disk('public')->assertExists('videos/thumbnails/one.jpg');
         $this->assertNull($video->refresh()->thumbnail_path);
         Storage::disk('public')->assertExists($second->path);
 
         $this->actingAs($this->user->refresh())->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
         $this->assertSame(0, (int) $this->user->refresh()->storage_used_bytes);
         Storage::disk('public')->assertMissing($second->path);
+        Storage::disk('public')->assertMissing('videos/thumbnails/one.jpg');
     }
 
     /**

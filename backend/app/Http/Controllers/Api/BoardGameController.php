@@ -8,6 +8,7 @@ use App\Models\BoardGame;
 use App\Services\BoardGames\BggClient;
 use App\Services\BoardGames\GeorgianShops;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
@@ -295,7 +296,8 @@ class BoardGameController extends Controller
         }
 
         if ($request->boolean('remove_image')) {
-            $game->deleteImage();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($game, 'image_path', 'image_source');
             $game->image_path = null;
             $game->image_source = null;
         }
@@ -306,7 +308,8 @@ class BoardGameController extends Controller
 
         if ($request->hasFile('image')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $game->deleteImage();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($game, 'image_path', 'image_source');
             $game->image_path = $this->meter
                 ->storeUpload($request->user(), $request->file('image'), StorageFolder::BOARD_GAME_IMAGES);
             $game->image_source = 'upload';

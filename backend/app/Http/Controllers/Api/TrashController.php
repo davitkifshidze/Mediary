@@ -43,9 +43,19 @@ class TrashController extends Controller
      */
     public function restore(Request $request, string $domain, int $id)
     {
-        $data = $request->validate(['records' => ['nullable', 'boolean']]);
+        $data = $request->validate([
+            'records' => ['nullable', 'boolean'],
+            // ეტაპი 4 — მთავარი ფოტო/ავატარი დაკავებულ სვეტში: ახლანდელი ურნაში გადავა
+            'replace' => ['nullable', 'boolean'],
+        ]);
 
-        return response()->json($this->bin->restore($request->user(), $domain, $id, (bool) ($data['records'] ?? false)));
+        return response()->json($this->bin->restore(
+            $request->user(),
+            $domain,
+            $id,
+            (bool) ($data['records'] ?? false),
+            (bool) ($data['replace'] ?? false),
+        ));
     }
 
     /** ახლავე წაშლა — ნამდვილად */

@@ -9,6 +9,7 @@ use App\Models\GameVideo;
 use App\Services\Games\IgdbClient;
 use App\Services\Games\RawgClient;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
@@ -406,7 +407,8 @@ class GameController extends Controller
         }
 
         if ($request->boolean('remove_cover')) {
-            $game->deleteCover();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($game, 'cover_path', 'cover_source');
             $game->cover_path = null;
             $game->cover_source = null;
         }
@@ -417,7 +419,8 @@ class GameController extends Controller
 
         if ($request->hasFile('cover')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $game->deleteCover();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($game, 'cover_path', 'cover_source');
             $game->cover_path = $this->meter
                 ->storeUpload($request->user(), $request->file('cover'), StorageFolder::GAME_COVERS);
             $game->cover_source = 'upload';

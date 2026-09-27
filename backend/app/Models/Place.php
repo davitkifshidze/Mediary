@@ -8,6 +8,7 @@ use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
+use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -135,8 +136,16 @@ class Place extends Model
         return 'https://www.openstreetmap.org/?mlat='.$this->lat.'&mlon='.$this->lng.'#map=17/'.$this->lat.'/'.$this->lng;
     }
 
+    /**
+     * ⚠️ **გალერეის ფოტო აქ არ იშლება** (Tasks §29, ეტაპი 4) — ადგილს
+     * `photo_source` არ აქვს, ე.ი. „მთავარად დაყენებული" გალერეის ფოტოს
+     * გზაც ამავე სვეტშია. ადრე მისი ჩანაცვლება გალერეის ფაილს დისკიდან
+     * შლიდა (რიგი რჩებოდა, ფოტო გატყდებოდა) და კვოტას ორჯერ აბრუნებდა.
+     */
     public function deletePhoto(): void
     {
-        app(StorageMeter::class)->deleteUpload($this->user_id, $this->photo_path);
+        if ($this->photo_path && ! StorageFolder::inGallery($this->photo_path)) {
+            app(StorageMeter::class)->deleteUpload($this->user_id, $this->photo_path);
+        }
     }
 }

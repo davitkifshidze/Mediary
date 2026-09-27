@@ -11,6 +11,7 @@ use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
@@ -291,17 +292,15 @@ class MovieController extends Controller
         // 17.1 — მხოლოდ **ხელით ატვირთული** პოსტერი ითვლება კვოტაში (19.4/B),
         // ამიტომ წაშლაც `deleteUpload()`-ით ხდება, TMDB-ის ფაილი კი ხელუხლებელია
         if ($request->boolean('remove_poster')) {
-            if ($movie->poster_source === 'upload') {
-                $this->meter->deleteUpload($movie->user_id, $movie->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($movie, 'poster_path', 'poster_source');
             $movie->poster_path = null;
             $movie->poster_source = null;
         }
 
         if ($request->hasFile('poster')) {
-            if ($movie->poster_source === 'upload') {
-                $this->meter->deleteUpload($movie->user_id, $movie->poster_path);
-            }
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($movie, 'poster_path', 'poster_source');
             $movie->poster_path = $this->meter
                 ->storeUpload($request->user(), $request->file('poster'), StorageFolder::MOVIE_POSTERS);
             $movie->poster_source = 'upload';

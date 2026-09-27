@@ -9,6 +9,7 @@ use App\Models\Module;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Storage\StorageMeter;
+use App\Support\ColumnTrash;
 use App\Support\PublicDomain;
 use App\Support\ResetLink;
 use App\Support\StorageFolder;
@@ -254,13 +255,14 @@ class AuthController extends Controller
         }
 
         // 17.1 — ავატარიც კვოტაზე გადის (`deleteUpload`/`storeUpload` მრიცხველს თვითონ ცვლის)
+        // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ავატარი ურნაში; ადგილი საბოლოო წაშლისას თავისუფლდება
         if ($request->boolean('remove_avatar')) {
-            $this->meter->deleteUpload($user->id, $user->avatar_path);
+            ColumnTrash::capture($user, 'avatar_path');
             $user->avatar_path = null;
         }
 
         if ($request->hasFile('avatar')) {
-            $this->meter->deleteUpload($user->id, $user->avatar_path);
+            ColumnTrash::capture($user, 'avatar_path');
             $user->avatar_path = $this->meter->storeUpload($user, $request->file('avatar'), StorageFolder::AVATARS);
         }
 

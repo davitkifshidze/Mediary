@@ -9,6 +9,7 @@ use App\Models\Video;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Services\Video\VideoSearch;
+use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
@@ -252,13 +253,15 @@ class VideoController extends Controller
         }
 
         if ($request->boolean('remove_thumbnail')) {
-            $video->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($video, 'thumbnail_path');
             $video->thumbnail_path = null;
         }
 
         if ($request->hasFile('thumbnail')) {
             // 17.3 — `storeUpload()` ატვირთვამდე ამოწმებს კვოტას (ამოწურვაზე 413)
-            $video->deleteThumbnail();
+            // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
+            ColumnTrash::capture($video, 'thumbnail_path');
             $video->thumbnail_path = $this->meter
                 ->storeUpload($request->user(), $request->file('thumbnail'), StorageFolder::VIDEO_THUMBNAILS);
             $video->thumbnail_url = null;

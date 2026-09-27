@@ -255,6 +255,21 @@ final class StorageFolder
         return isset($parts[1]) && in_array($parts[0].'/'.$parts[1], self::PRIVATE_FOLDERS, true);
     }
 
+    /**
+     * გალერეის ფაილია? (Tasks §29, ეტაპი 4)
+     *
+     * ⚠️ „მთავარად დაყენება" ჩანაწერის სვეტს გალერეის ფაილზე მიუთითებს — ის
+     * `gallery_images`-ის რიგს ეკუთვნის და არა სვეტს: მისი წაშლა ან ურნაში
+     * „სვეტის ფაილად" გადატანა გალერეის ფოტოს ფაილს წაშლიდა და კვოტას
+     * ორჯერ დააბრუნებდა.
+     */
+    public static function inGallery(string $path): bool
+    {
+        $root = explode('/', trim($path, '/'))[0];
+
+        return $root === 'gallery';
+    }
+
     /** პოსტერის საქაღალდე morph alias-ით (`movie` | `series` | `anime`) */
     public static function posters(string $morphAlias): string
     {

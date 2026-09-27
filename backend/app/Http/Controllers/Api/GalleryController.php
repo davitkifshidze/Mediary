@@ -17,6 +17,7 @@ use App\Services\Gallery\GalleryScope;
 use App\Services\Gallery\ModuleImages;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
+use App\Support\ColumnTrash;
 use App\Support\GalleryParent;
 use App\Support\Like;
 use App\Support\MediaDomain;
@@ -1748,12 +1749,14 @@ class GalleryController extends Controller
             return response()->json(['message' => 'primary_not_supported'], 422);
         }
 
-        // ძველი **ხელით ატვირთული** სურათი კვოტიდან თავისუფლდება
+        /* ძველი **ხელით ატვირთული** სურათი ურნაში გადადის (Tasks §29, ეტაპი 4) —
+           კვოტიდან საბოლოო წაშლისას თავისუფლდება. `ColumnTrash` TMDB-ის და
+           გალერეის ფაილს თვითონ გამოტოვებს. */
         $source = $columns['source'];
         if ($source
             && $parent->{$source} === 'upload'
             && $parent->{$columns['path']} !== $galleryImage->path) {
-            $this->meter->deleteUpload($parent->user_id, $parent->{$columns['path']});
+            ColumnTrash::capture($parent, $columns['path'], $source);
         }
 
         /* ⚠️ სვეტები ცალ-ცალკე ეწერება და არა ერთი ლიტერალით: `null` გასაღები
