@@ -15,6 +15,7 @@ import {
   FileX,
   Globe,
   HardDriveDownload,
+  Link2,
   ListVideo,
   Loader2,
   SquarePen,
@@ -78,12 +79,15 @@ import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { DurationInput } from '@/components/ui/duration-input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { QuickFill } from '@/components/ui/quick-fill'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
@@ -748,6 +752,9 @@ export function VideosPage() {
 
 /* ---------- ფორმა ---------- */
 
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'video-form'
+
 function VideoForm({
   video,
   allTags,
@@ -800,6 +807,9 @@ function VideoForm({
   const [webLoading, setWebLoading] = useState(false)
   const [newType, setNewType] = useState(false)
   const lastFetched = useRef<string>(video?.url ?? '')
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ ვიდეოზე; ჩავარდნისას შექმნილი რჩება
+  const extras = useRecordExtras('video', video)
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/thumbnail-ის/ხანგრძლივობის წამოღებას (K2).
@@ -872,8 +882,16 @@ function VideoForm({
 
   const save = useMutation({
     mutationFn: (input: VideoInput) =>
-      video ? updateVideo(video.id, input) : createVideo(input),
-    onSuccess: () => {
+      extras.current ? updateVideo(extras.current.id, input) : createVideo(input),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['videos'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('videos.saved'), variant: 'success' })
       onSaved()
     },
@@ -941,14 +959,26 @@ function VideoForm({
     })
   }
 
+  /* ⚠️ ხანგრძლივობა ნაგულისხმევად დამალულია (§6) — ჩართვისას რიგი სამ
+     სვეტად იყოფა, თორემ ორი ველი რიგის ორ მესამედს დაიკავებდა და ბოლო
+     მესამედი ცარიელი დარჩებოდა. */
+  const detailSize = fields.shows('duration') ? 'third' : 'half'
+
   return (
     <ModalShell title={t(video ? 'videos.edit' : 'videos.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        {/* ⚠️ `url` `locked`-ია (§6.5): მისი გამორთვა ჩაწერას გატეხავდა — და
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია (§6.5): მისი გამორთვა ჩაწერას გატეხავდა — და
             სწორედ ამიტომ ითხოვს ჩაკეტვის ცხად მოხსნას (§4). ⚠️ `shows()`-ს
             მაინც ეკითხება, თორემ მოხსნის შემდეგ ჩამრთველი ტყუილი იქნებოდა. */}
-        <div className={fields.shows('url') ? undefined : 'hidden'}>
-          <FieldLabel hint={t('videos.urlHint')} htmlFor="v-url" required>{fields.label('url')}</FieldLabel>
+        <QuickFill
+          show={fields.shows('url')}
+          title={fields.label('url')}
+          htmlFor="v-url"
+          required
+          hint={t('videos.urlHint')}
+          icon={<Link2 className="size-3.5 text-primary" />}
+        >
           <Input
             id="v-url"
             autoFocus
@@ -973,13 +1003,10 @@ function VideoForm({
           {/* FEAT-17 — ბმულის დუბლი. ⚠️ `metaLoading`-ის მიღმაც ჩანს:
               ჩანაწერის არსებობა oEmbed-ის პასუხზე არ არის დამოკიდებული. */}
           {!metaLoading && meta?.existing && (
-            <DuplicateLinkNotice
-              title={meta.existing.title}
-              onOpen={() => onOpenExisting(meta.existing!.id)}
-            />
+            <DuplicateLinkNotice title={meta.existing.title} onOpen={() => onOpenExisting(meta.existing!.id)} />
           )}
           {!metaLoading && meta && (
-            <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card/50 p-2">
+            <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card p-2">
               {meta.thumbnail_url && (
                 <img src={meta.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
               )}
@@ -1017,55 +1044,63 @@ function VideoForm({
               {t('videos.durationProbing')}
             </p>
           )}
+        </QuickFill>
 
-          {/* …ხელით შეყვანა კი **არჩევითი ველია** (§5 → §6): default-ად
-              გამორთულია და ირთვება `/modules/video`-ზე. საჭიროა მაშინ, როცა
-              ავტომატიკა ვერ მუშაობს (მაგ. YouTube-ის კლავიშის გარეშე). */}
-          {fields.shows('duration') && (
-            <div className="mt-3">
-              <FieldLabel htmlFor="v-duration" required={fields.required('duration')} hint={fields.hint('duration')}>
-                {fields.label('duration')}
-              </FieldLabel>
-              {/* §2.5 — წუთი + წამი (საათი გადამრთველით); ბაზაში ისევ წამები */}
-              <div className="flex flex-wrap items-center gap-2">
-                <DurationInput id="v-duration" value={duration} onChange={setDuration} />
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {duration ? formatDuration(duration) : '—'}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 2.3 — ველები ორ სვეტად, მოდალის სიმაღლის შესამცირებლად */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('title') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-title" required={fields.required('title')} hint={fields.hint('title')}>
-              {fields.label('title')}
-            </FieldLabel>
+        {/* §26 — მთავარი ფოტო ზემოთაა, სათაურსა და აღწერასთან ერთად
+            (5.4 — იმავე კომპონენტით, რითიც ფილმის პოსტერი) */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('thumbnail') && (
+              <>
+                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+                  {fields.label('thumbnail')}
+                </FieldLabel>
+                <PosterUploader
+                  variant="wide"
+                  hint={t('videos.thumbnailHint')}
+                  preview={thumbPreview}
+                  onSelect={(file) => {
+                    setThumbnail(file)
+                    setRemoveThumb(false)
+                    setThumbPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setThumbnail(null)
+                    setThumbPreview(null)
+                    setRemoveThumb(true)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          <FormField {...fields.field('title')} htmlFor="v-title" error={errors.title}>
             <Input
               id="v-title"
               placeholder={fields.placeholder('title') ?? t('videos.namePlaceholder')}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             />
-            {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-          </div>
+          </FormField>
 
+          <FormField {...fields.field('description')} htmlFor="v-desc">
+            <Textarea
+              id="v-desc"
+              rows={FORM_TEXT_ROWS}
+              placeholder={fields.placeholder('description')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
+
+        <FormSection title={t('form.sections.classification')}>
           {/* ტიპი — მართვადი ლექსიკონიდან, გვერდით „ახალი ტიპი" (5.1, ეტაპი 2) */}
-          <div className={fields.shows('type_id') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-type" required={fields.required('type_id')} hint={fields.hint('type_id')}>
-              {fields.label('type_id')}
-            </FieldLabel>
+          <FormField size="half" {...fields.field('type_id')} htmlFor="v-type" error={errors.type_id}>
             <div className="flex gap-1">
-              <Select
-                value={form.typeId}
-                onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}
-              >
-                <SelectTrigger
-                  id="v-type"
-                  className={errors.type_id ? 'border-destructive' : undefined}
-                >
+              <Select value={form.typeId} onValueChange={(v) => setForm((f) => ({ ...f, typeId: v }))}>
+                <SelectTrigger id="v-type" className={errors.type_id ? 'border-destructive' : undefined}>
                   <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1088,19 +1123,12 @@ function VideoForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {errors.type_id && <p className="mt-1 text-xs text-destructive">{errors.type_id}</p>}
-          </div>
+          </FormField>
 
           {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-status" required={fields.required('status')} hint={fields.hint('status')}>
-              {fields.label('status')}
-            </FieldLabel>
+          <FormField size="half" {...fields.field('status')} htmlFor="v-status" error={errors.status}>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-              <SelectTrigger
-                id="v-status"
-                className={errors.status ? 'border-destructive' : undefined}
-              >
+              <SelectTrigger id="v-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -1111,57 +1139,13 @@ function VideoForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
-        </div>
+          </FormField>
 
-        {fields.shows('description') && (
-          <div>
-            <FieldLabel htmlFor="v-desc" required={fields.required('description')} hint={fields.hint('description')}>
-              {fields.label('description')}
-            </FieldLabel>
-            <Textarea
-              id="v-desc"
-              rows={3}
-              placeholder={fields.placeholder('description')}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-          </div>
-        )}
-
-        {/* Q52 — არხი და გამოქვეყნების დღე: ბმულის ჩასმა არხს ავსებს, ვებძებნა — ორივეს */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('channel') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-channel" required={fields.required('channel')} hint={fields.hint('channel')}>
-              {fields.label('channel')}
-            </FieldLabel>
-            <Input
-              id="v-channel"
-              maxLength={255}
-              placeholder={fields.placeholder('channel')}
-              value={form.channel}
-              onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
-            />
-          </div>
-
-          <div className={fields.shows('published_at') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-published" required={fields.required('published_at')} hint={fields.hint('published_at')}>
-              {fields.label('published_at')}
-            </FieldLabel>
-            <DatePicker
-              id="v-published"
-              value={form.publishedAt || null}
-              onChange={(value) => setForm((f) => ({ ...f, publishedAt: value ?? '' }))}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('tags') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="v-tags" required={fields.required('tags')} hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}>
-              {fields.label('tags')}
-            </FieldLabel>
+          <FormField
+            {...fields.field('tags')}
+            hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
+            htmlFor="v-tags"
+          >
             {/* multi-select — იგივე ბიბლიოთეკა, რაც ჟანრებზე (L8) */}
             <TagSelect
               inputId="v-tags"
@@ -1169,45 +1153,53 @@ function VideoForm({
               value={form.tags}
               onChange={(tags) => setForm((f) => ({ ...f, tags }))}
             />
-          </div>
+          </FormField>
+        </FormSection>
 
-          {/* 5.4 — thumbnail იმავე კომპონენტით, რითიც ფილმის პოსტერი */}
-          <div className={fields.shows('thumbnail') ? undefined : 'hidden'}>
-            <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-              {fields.label('thumbnail')}
-            </FieldLabel>
-            <PosterUploader
-              variant="wide"
-              hint={t('videos.thumbnailHint')}
-              preview={thumbPreview}
-              onSelect={(file) => {
-                setThumbnail(file)
-                setRemoveThumb(false)
-                setThumbPreview(URL.createObjectURL(file))
-              }}
-              onClear={() => {
-                setThumbnail(null)
-                setThumbPreview(null)
-                setRemoveThumb(true)
-              }}
+        {/* Q52 — არხი და გამოქვეყნების დღე: ბმულის ჩასმა არხს ავსებს, ვებძებნა — ორივეს */}
+        <FormSection title={t('form.sections.details')}>
+          <FormField size={detailSize} {...fields.field('channel')} htmlFor="v-channel">
+            <Input
+              id="v-channel"
+              maxLength={255}
+              placeholder={fields.placeholder('channel')}
+              value={form.channel}
+              onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
             />
-          </div>
-        </div>
+          </FormField>
 
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? t('actions.saving') : t('actions.save')}
-          </Button>
-        </ModalFooter>
+          <FormField size={detailSize} {...fields.field('published_at')} htmlFor="v-published">
+            <DatePicker
+              id="v-published"
+              value={form.publishedAt || null}
+              onChange={(value) => setForm((f) => ({ ...f, publishedAt: value ?? '' }))}
+            />
+          </FormField>
+
+          {/* …ხელით შეყვანა კი **არჩევითი ველია** (§5 → §6): default-ად
+              გამორთულია და ირთვება `/modules/video`-ზე. საჭიროა მაშინ, როცა
+              ავტომატიკა ვერ მუშაობს (მაგ. YouTube-ის კლავიშის გარეშე).
+              §2.5 — წუთი + წამი (საათი გადამრთველით); ბაზაში ისევ წამები */}
+          <FormField size={detailSize} {...fields.field('duration')} htmlFor="v-duration">
+            <div className="flex flex-wrap items-center gap-2">
+              <DurationInput id="v-duration" value={duration} onChange={setDuration} />
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {duration ? formatDuration(duration) : '—'}
+              </span>
+            </div>
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
-      <div className="mt-4">
-        <CustomFieldsCard module="video" recordId={video?.id ?? null} />
-      </div>
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ვიდეოზე მონახაზი */}
+      <CustomFieldsCard
+        module="video"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 
       {/* სწრაფი „ახალი ტიპი" — შენახვისთანავე select-ში ირჩევა */}
       {newType && (
