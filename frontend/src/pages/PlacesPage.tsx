@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Loader2,
   MapPin,
   Map as MapIcon,
   Paperclip,
@@ -59,17 +58,23 @@ import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
-import { FieldLabel } from '@/components/ui/field-label'
-import { InfoHint } from '@/components/ui/info-hint'
+import { FieldLabel, joinHints } from '@/components/ui/field-label'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { RatingSelect } from '@/components/ui/rating-select'
-import { Label } from '@/components/ui/label'
-import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { ModalShell } from '@/components/ui/modal-shell'
+import {
+  QuickFill,
+  QuickFillCandidate,
+  QuickFillMessage,
+  QuickFillResults,
+  QuickFillSearch,
+} from '@/components/ui/quick-fill'
+import { useRecordExtras } from '@/lib/customFieldDraft'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
-import { StepSection } from '@/components/ui/step-section'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -540,6 +545,9 @@ export function PlacesPage() {
 
 /* ---------- ფორმა ---------- */
 
+/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+const FORM_ID = 'place-form'
+
 function PlaceForm({
   place,
   allTags,
@@ -583,6 +591,9 @@ function PlaceForm({
   )
   const [removePhoto, setRemovePhoto] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const qc = useQueryClient()
+  // §26.5 — დამატებითი ველები ახალ ადგილზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
+  const extras = useRecordExtras('place', place)
 
   /* ---- Nominatim ---- */
   const [lookupQuery, setLookupQuery] = useState(place?.name ?? '')
@@ -618,8 +629,17 @@ function PlaceForm({
   }
 
   const save = useMutation({
-    mutationFn: (input: PlaceInput) => (place ? updatePlace(place.id, input) : createPlace(input)),
-    onSuccess: () => {
+    mutationFn: (input: PlaceInput) =>
+      extras.current ? updatePlace(extras.current.id, input) : createPlace(input),
+    onSuccess: async (saved) => {
+      const done = await extras.afterSave(saved)
+      if (!done.ok) {
+        qc.invalidateQueries({ queryKey: ['places'] })
+        toast({ title: done.message, variant: 'error' })
+
+        return
+      }
+
       toast({ title: t('places.saved'), variant: 'success' })
       onSaved()
     },
@@ -687,78 +707,90 @@ function PlaceForm({
 
   return (
     <ModalShell title={t(place ? 'places.edit' : 'places.add')} onClose={onClose} wide>
-      <form onSubmit={submit} className="space-y-4">
-        {/* ნაბიჯი 1 — წყაროთი მოძებნა; ხელით შევსება ყოველთვის ღიაა */}
-        <StepSection step={1} title={t('places.lookupTitle')} hint={t('places.lookupHint')}>
-          <div className="flex gap-2">
-            <Input
-              value={lookupQuery}
-              onChange={(e) => setLookupQuery(e.target.value)}
-              placeholder={t('places.lookupPlaceholder')}
-              onKeyDown={(e) => {
-                // ⚠️ Enter-მა ფორმა არ უნდა გაგზავნოს — ეს ძებნაა
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  if (lookupQuery.trim()) lookup.mutate()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={lookup.isPending || !lookupQuery.trim()}
-              onClick={() => lookup.mutate()}
-            >
-              {lookup.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              {t('places.lookupAction')}
-            </Button>
-          </div>
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
+        {/* §26.2 — წყაროთი მოძებნა, ყველა ფორმის ერთი ბლოკით; ხელით შევსება ყოველთვის ღიაა */}
+        <QuickFill title={t('places.lookupTitle')} hint={t('places.lookupHint')} htmlFor="p-lookup">
+          <QuickFillSearch
+            id="p-lookup"
+            value={lookupQuery}
+            onChange={setLookupQuery}
+            onSearch={() => lookup.mutate()}
+            busy={lookup.isPending}
+            placeholder={t('places.lookupPlaceholder')}
+            buttonLabel={t('places.lookupAction')}
+          />
 
-          {results != null && results.length === 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">{t('places.lookupEmpty')}</p>
-          )}
+          {results != null && results.length === 0 && <QuickFillMessage>{t('places.lookupEmpty')}</QuickFillMessage>}
 
           {results != null && results.length > 0 && (
-            <ul className="mt-2 max-h-60 space-y-1 overflow-y-auto fb-scroll">
+            <QuickFillResults>
               {results.map((c) => (
-                <li key={`${c.osm_type}:${c.osm_id}`}>
-                  <button
-                    type="button"
-                    onClick={() => takeCandidate(c)}
-                    className="w-full rounded-md border border-border p-2 text-left transition-colors hover:border-primary"
-                  >
-                    <span className="block truncate text-sm font-medium">{c.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[c.address, c.kind].filter(Boolean).join(' · ')}
-                    </span>
-                  </button>
-                </li>
+                <QuickFillCandidate
+                  key={`${c.osm_type}:${c.osm_id}`}
+                  shape="none"
+                  title={c.name}
+                  meta={[c.address, c.kind].filter(Boolean).join(' · ')}
+                  onPick={() => takeCandidate(c)}
+                />
               ))}
-            </ul>
+            </QuickFillResults>
           )}
-        </StepSection>
+        </QuickFill>
 
-        <div className={fields.shows('name') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="p-name" required hint={fields.hint('name')}>
-            {fields.label('name')}
-          </FieldLabel>
-          <Input
-            id="p-name"
-            autoFocus
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          />
-          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
-        </div>
+        {/* §26 — ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
+        <FormSection
+          title={t('form.sections.basic')}
+          media={
+            fields.shows('photo') && (
+              <>
+                <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
+                  {fields.label('photo')}
+                </FieldLabel>
+                <PosterUploader
+                  preview={preview}
+                  variant="wide"
+                  onSelect={(file) => {
+                    setPhoto(file)
+                    setRemovePhoto(false)
+                    setPreview(URL.createObjectURL(file))
+                  }}
+                  onClear={() => {
+                    setPhoto(null)
+                    setRemovePhoto(true)
+                    setPreview(null)
+                  }}
+                />
+              </>
+            )
+          }
+        >
+          {/* ⚠️ სახელი `locked`-ია (§6.5) — ყოველთვის სავალდებულო */}
+          <FormField {...fields.field('name')} required htmlFor="p-name" error={errors.name}>
+            <Input
+              id="p-name"
+              autoFocus
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className={fields.shows('status') ? undefined : 'hidden'}>
-            <FieldLabel required hint={fields.hint('status')}>{fields.label('status')}</FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v as PlaceStatus }))}
-            >
-              <SelectTrigger>
+          <FormField {...fields.field('description')} htmlFor="p-description">
+            <Textarea
+              id="p-description"
+              rows={FORM_TEXT_ROWS}
+              placeholder={fields.placeholder('description')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+        </FormSection>
+
+        {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
+            მოდის (სავალდებულობას `pickErrors` ამოწმებს, როგორც ყველა ფორმაში) */}
+        <FormSection title={t('form.sections.classification')}>
+          <FormField size="quarter" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as PlaceStatus }))}>
+              <SelectTrigger id="p-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -769,16 +801,11 @@ function PlaceForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('category') ? undefined : 'hidden'}>
-            <FieldLabel required hint={fields.hint('category')}>{fields.label('category')}</FieldLabel>
-            <Select
-              value={form.categoryId}
-              onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
-            >
-              <SelectTrigger>
+          <FormField size="quarter" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
+            <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+              <SelectTrigger id="p-category" className={errors.category_id ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
               </SelectTrigger>
               <SelectContent>
@@ -789,34 +816,10 @@ function PlaceForm({
                 ))}
               </SelectContent>
             </Select>
-            {errors.category_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
-            )}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('city') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="p-city">{fields.label('city')}</FieldLabel>
-            <Input
-              id="p-city"
-              value={form.city}
-              onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-            />
-          </div>
-
-          <div className={fields.shows('country') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="p-country">{fields.label('country')}</FieldLabel>
-            <Input
-              id="p-country"
-              value={form.country}
-              onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-            />
-          </div>
-
-          <div className={fields.shows('rating') ? undefined : 'hidden'}>
-            <FieldLabel htmlFor="p-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-              {fields.label('rating')}
-            </FieldLabel>
-            {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
+          {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
+          <FormField size="quarter" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
             <RatingSelect
               id="p-rating"
               max={PLACE_MAX_RATING}
@@ -824,110 +827,93 @@ function PlaceForm({
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}
             />
-            {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating}</p>}
-          </div>
+          </FormField>
 
-          <div className={fields.shows('visited_at') ? undefined : 'hidden'}>
-            <FieldLabel hint={fields.hint('visited_at')}>{fields.label('visited_at')}</FieldLabel>
+          <FormField size="quarter" {...fields.field('visited_at')} htmlFor="p-visited">
             <DatePicker
+              id="p-visited"
               value={form.visitedAt}
               onChange={(v) => setForm((f) => ({ ...f, visitedAt: v ?? '' }))}
             />
-          </div>
-        </div>
+          </FormField>
 
-        <div className={fields.shows('address') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="p-address">{fields.label('address')}</FieldLabel>
-          <Input
-            id="p-address"
-            value={form.address}
-            onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-          />
-        </div>
-
-        {/* ⚠️ კოორდინატი **ერთი ველია** კატალოგში (`coords`): განცალკევებული
-            გრძედი უაზროა და მისი დამალვა ნახევრად გატეხილ ფორმას დატოვებდა. */}
-        <div className={fields.shows('coords') ? undefined : 'hidden'}>
-          <Label className="flex items-center gap-1.5">
-            {fields.label('coords')}
-            <InfoHint info={t('places.coordsHint')} />
-          </Label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Input
-              type="number"
-              step="any"
-              min={-90}
-              max={90}
-              aria-label={t('places.lat')}
-              placeholder={t('places.lat')}
-              value={form.lat}
-              onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+          <FormField {...fields.field('tags')} htmlFor="p-tags">
+            <TagSelect
+              inputId="p-tags"
+              value={form.tags}
+              onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
+              options={allTags}
             />
+          </FormField>
+        </FormSection>
+
+        <FormSection title={t('form.sections.details')}>
+          <FormField {...fields.field('address')} htmlFor="p-address">
             <Input
-              type="number"
-              step="any"
-              min={-180}
-              max={180}
-              aria-label={t('places.lng')}
-              placeholder={t('places.lng')}
-              value={form.lng}
-              onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+              id="p-address"
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
             />
-          </div>
-          {errors.lat && <p className="mt-1 text-xs text-destructive">{errors.lat}</p>}
-          {errors.lng && <p className="mt-1 text-xs text-destructive">{errors.lng}</p>}
-        </div>
+          </FormField>
 
-        <div className={fields.shows('photo') ? undefined : 'hidden'}>
-          <Label>{fields.label('photo')}</Label>
-          <PosterUploader
-            preview={preview}
-            variant="wide"
-            onSelect={(file) => {
-              setPhoto(file)
-              setRemovePhoto(false)
-              setPreview(URL.createObjectURL(file))
-            }}
-            onClear={() => {
-              setPhoto(null)
-              setRemovePhoto(true)
-              setPreview(null)
-            }}
-          />
-        </div>
+          <FormField size="half" {...fields.field('city')} htmlFor="p-city">
+            <Input id="p-city" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} />
+          </FormField>
 
-        <div className={fields.shows('description') ? undefined : 'hidden'}>
-          <FieldLabel htmlFor="p-description">{fields.label('description')}</FieldLabel>
-          <Textarea
-            id="p-description"
-            rows={3}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </div>
+          <FormField size="half" {...fields.field('country')} htmlFor="p-country">
+            <Input
+              id="p-country"
+              value={form.country}
+              onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+            />
+          </FormField>
 
-        <div className={fields.shows('tags') ? undefined : 'hidden'}>
-          <FieldLabel>{fields.label('tags')}</FieldLabel>
-          <TagSelect
-            value={form.tags}
-            onChange={(v) => setForm((f) => ({ ...f, tags: v }))}
-            options={allTags}
-          />
-        </div>
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('actions.cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending && <Loader2 className="size-4 animate-spin" />}
-            {t('actions.save')}
-          </Button>
-        </ModalFooter>
+          {/* ⚠️ კოორდინატი **ერთი ველია** კატალოგში (`coords`): განცალკევებული
+              გრძედი უაზროა და მისი დამალვა ნახევრად გატეხილ ფორმას დატოვებდა. */}
+          <FormField
+            {...fields.field('coords')}
+            hint={joinHints(fields.hint('coords'), t('places.coordsHint'))}
+            htmlFor="p-lat"
+            error={[errors.lat, errors.lng].filter(Boolean).join(' ')}
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                id="p-lat"
+                type="number"
+                step="any"
+                min={-90}
+                max={90}
+                aria-label={t('places.lat')}
+                placeholder={t('places.lat')}
+                value={form.lat}
+                onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+              />
+              <Input
+                type="number"
+                step="any"
+                min={-180}
+                max={180}
+                aria-label={t('places.lng')}
+                placeholder={t('places.lng')}
+                value={form.lng}
+                onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+              />
+            </div>
+          </FormField>
+        </FormSection>
       </form>
 
-      {/* §6 ფაზა 3 — მორგებული ველები საკუთარ თავს ინახავს (ფორმის გარეთ) */}
-      {place && <CustomFieldsCard module="place" recordId={place.id} />}
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ ადგილზეც** (აქამდე მხოლოდ
+          რედაქტირებისას ჩანდა); ახალზე მონახაზია და ადგილთან ერთად ინახება */}
+      <CustomFieldsCard
+        module="place"
+        recordId={extras.current?.id ?? null}
+        draft={extras.draft}
+        className="mt-6"
+      />
+
+      {/* ⚠️ „ინახება…" შენახვისას — აქამდე „შენახვა" ეწერა და ღილაკი უმოქმედოს ჰგავდა */}
+      <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
     </ModalShell>
   )
 }

@@ -159,7 +159,8 @@ export function QuickFillCandidate({
   disabled,
 }: {
   image?: string | null
-  shape?: 'poster' | 'wide' | 'square'
+  /** `none` — წყაროს სურათი საერთოდ არ აქვს (ადგილი): ცარიელი ფილა ხმაური იქნებოდა */
+  shape?: 'poster' | 'wide' | 'square' | 'none'
   title: string
   meta?: ReactNode
   onPick: () => void
@@ -172,7 +173,7 @@ export function QuickFillCandidate({
       onClick={onPick}
       className="flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-2 text-left transition-colors hover:border-primary disabled:cursor-wait disabled:opacity-60"
     >
-      {image ? (
+      {shape === 'none' ? null : image ? (
         <img src={image} alt="" className={cn(THUMB[shape], 'shrink-0 rounded object-cover')} />
       ) : (
         <span className={cn(THUMB[shape], 'shrink-0 rounded bg-muted')} />
