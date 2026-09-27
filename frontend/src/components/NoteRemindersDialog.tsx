@@ -6,6 +6,7 @@ import { NoteReminders } from '@/components/NoteReminders'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Button } from '@/components/ui/button'
+import { InfoHint } from '@/components/ui/info-hint'
 import { activeCount } from '@/lib/reminders'
 import { cn } from '@/lib/utils'
 
@@ -106,13 +107,11 @@ export function NoteRemindersLink({
   const total = data?.length ?? note?.reminders_count ?? 0
 
   return (
-    <>
+    <span className="inline-flex items-center gap-1.5">
       <Button
         type="button"
         variant="outline"
         disabled={!note}
-        // ⚠️ ჯერ შეუნახავ ჩანაწერზე მიზეზი `title`-შია — შეხსენებას `note_entry_id` სჭირდება
-        title={note ? undefined : t('notes.remindersSaveFirst')}
         onClick={onOpen}
       >
         <BellRing className="size-4" />
@@ -123,7 +122,11 @@ export function NoteRemindersLink({
           </span>
         )}
       </Button>
-    </>
+      {/* Tasks §23.5 — ⚠️ შეხსენება **შექმნის შემდეგ** რჩება (შენი სიტყვით): მას
+          `note_entry_id` სჭირდება. მიზეზი აქამდე `title`-ში იყო — გათიშულ ღილაკზე
+          ის ზოგ ბრაუზერში საერთოდ არ ჩანს და შეხებით ვერ იხსნება; i ორივეს აკეთებს. */}
+      {!note && <InfoHint info={t('notes.remindersSaveFirst')} />}
+    </span>
   )
 }
 

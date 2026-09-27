@@ -16,7 +16,9 @@ export const api = axios.create({
 /** სურათის სრული URL storage-იდან (მაგ. "posters/kraken.jpg") */
 export function storageUrl(path?: string | null) {
   if (!path) return null
-  if (/^https?:\/\//.test(path)) return path
+  /* ⚠️ `blob:`/`data:` — შენახვამდე არჩეული ფაილის წინასწარი ხედი (Tasks §23.4).
+     უამისოდ ის `/storage/blob:…`-ად იქცეოდა და ბადე ცარიელ უჯრას ხატავდა. */
+  if (/^(https?:\/\/|blob:|data:)/.test(path)) return path
   return `${API_URL}/storage/${path.replace(/^\/+/, '')}`
 }
 

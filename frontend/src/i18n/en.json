@@ -2230,7 +2230,11 @@
       "paused": "Paused",
       "done": "Finished"
     },
-    "uploadsSaveFirst": "Save the note first — files are attached to it."
+    "uploadsSaveFirst": "Save the note first — files are attached to it.",
+    "reminderTimeDuplicate": "{{time}} is already selected — not added again.",
+    "uploadsPending": "Files are attached to the note when you save.",
+    "uploadsFailed": "Could not upload: {{names}}. The note is saved — “Save” will try them again.",
+    "uploadingProgress": "Uploading {{done}} / {{total}}…"
   },
   "chat": {
     "title": "Chat",
@@ -2393,7 +2397,10 @@
     "pickMany": "Pick dates",
     "pickRange": "Pick a period",
     "time": "Time",
-    "pickTime": "Pick a time"
+    "pickTime": "Pick a time",
+    "hour": "Hour",
+    "minute": "Minute",
+    "timeConfirm": "Pick {{time}}"
   },
   "photos": {
     "pickOn": "Select",
@@ -2801,7 +2808,9 @@
       "rules": "Rules (PDF)"
     },
     "anyFormat": "any format",
-    "hintWarn": "Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`."
+    "hintWarn": "Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`.",
+    "tooLarge": "“{{name}}” is too large — the maximum is {{max}}.",
+    "wrongType": "“{{name}}” — this format is not accepted here."
   },
   "files": {
     "viewerTitle": "File",

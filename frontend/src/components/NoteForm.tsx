@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
 import {
   createNote,
   updateNote,
+  uploadNoteFiles,
   type NoteCategory,
   type NoteEntry,
+  type NoteFile,
   type NoteInput,
   type NoteLink,
 } from '@/api/notes'
@@ -30,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
+import { usePendingUploads } from '@/lib/pendingUploads'
 import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 
 /* ============================================================
@@ -38,9 +41,10 @@ import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
    გარე წყარო არ არსებობს, ე.ი. „სწრაფი შევსება" აქ არაა — ეს user-ის
    საკუთარი ინფორმაციაა და არა კატალოგის ჩანაწერი.
 
-   ფაილები და შეხსენებები **ფორმაში არ არის**: ორივე ჩანაწერის შენახვის
-   შემდეგ ემატება (დეტალების მოდალში), რადგან ატვირთვას არსებული `note_id`
-   სჭირდება — იგივე წესი, რაც წიგნსა და ბორდგეიმზეა.
+   ⚠️ **ფაილები ახალ ჩანაწერზეც ემატება** (Tasks §23.4): შენახვამდე ისინი
+   ბრაუზერშია, შენახვისას კი ჩანაწერის შემდეგ სათითაოდ ადის. ⚠️ **შეხსენება
+   კი შექმნის შემდეგ რჩება** (§23.5, შენი სიტყვით) — მას `note_entry_id`
+   სჭირდება და ფანჯარა ამას i-ით ამბობს.
    ============================================================ */
 
 /** ⚠️ `form="…"`-ს სჭირდება id; ერთი მოდალი ერთ ფორმას შეიცავს, ე.ი. მუდმივია */
@@ -82,10 +86,43 @@ export function NoteForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newCategory, setNewCategory] = useState(false)
   const [reminders, setReminders] = useState(false)
+  const qc = useQueryClient()
+
+  /* ---------- §23.4 — ფაილები ახალ ჩანაწერზე ----------
+     ⚠️ შენახვამდე ფაილი ბრაუზერშია (`pending`); შენახვისას ჯერ ჩანაწერი
+     იქმნება, მერე ფაილები **სათითაოდ**, პროგრესით. ⚠️ ჩავარდნა ჩანაწერს არ
+     აუქმებს: ფანჯარა ღია რჩება და **შექმნილის რედაქტირებად** გადადის
+     (`created`), ჩავარდნილი ფაილი კი მიზეზით რჩება — „შენახვა" მას ხელახლა ცდის. */
+  const pending = usePendingUploads<NoteFile['kind']>()
+  const [created, setCreated] = useState<NoteEntry | null>(null)
+  const current = note ?? created
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const save = useMutation({
-    mutationFn: (input: NoteInput) => (note ? updateNote(note.id, input) : createNote(input)),
-    onSuccess: (saved) => {
+    mutationFn: (input: NoteInput) => (current ? updateNote(current.id, input) : createNote(input)),
+    onSuccess: async (saved) => {
+      if (pending.items.length) {
+        const failed = await pending.run(
+          (kind, file) => uploadNoteFiles(saved.id, kind, [file]),
+          (done, total) => setProgress({ done, total }),
+        )
+        setProgress(null)
+        qc.invalidateQueries({ queryKey: ['note-files', saved.id] })
+        qc.invalidateQueries({ queryKey: ['storage'] })
+        qc.invalidateQueries({ queryKey: ['me'] })
+
+        if (failed.length) {
+          setCreated(saved)
+          qc.invalidateQueries({ queryKey: ['notes'] })
+          toast({
+            title: t('notes.uploadsFailed', { names: failed.map((f) => f.file.name).join(', ') }),
+            variant: 'error',
+          })
+
+          return
+        }
+      }
+
       toast({ title: t('notes.saved'), variant: 'success' })
       onSaved(saved)
     },
@@ -150,10 +187,10 @@ export function NoteForm({
      ⚠️ **ფორმა მონტირებული რჩება** — მხოლოდ მისი `ModalShell` იცვლება, ე.ი.
      შევსებული ველები ადგილზეა, როცა ფანჯრიდან ბრუნდები. სწორედ ამიტომ უჭირავს
      მდგომარეობა ფორმას და არა ღილაკს. */
-  if (reminders && note) {
+  if (reminders && current) {
     return (
       <NoteRemindersDialog
-        note={note}
+        note={current}
         onBack={() => setReminders(false)}
         onClose={() => setReminders(false)}
       />
@@ -348,7 +385,7 @@ export function NoteForm({
           კომპონენტი, რაც დეტალებშია. ⚠️ `</form>`-ის გარეთ დგას: ფაილს
           საკუთარი endpoint აქვს და ჩანაწერის `PUT`-ში არ მოგზაურობს. */}
       <div className="mt-4">
-        <NoteUploads noteId={note?.id ?? null} />
+        <NoteUploads noteId={current?.id ?? null} pending={pending} />
       </div>
 
       {/* ⚠️ **შეხსენება ფორმის შიგნით არ დგას — არც ველებს შორის და არც
@@ -357,12 +394,12 @@ export function NoteForm({
           ე.ი. ჩანაწერის ფორმას ისევ ერთი საქმე აქვს, გვერდზე კი ცხადად
           ჩანს გასასვლელი შეხსენებებზე. იგივე, რასაც სიის ზარი აკეთებს. */}
       <div className="mt-4">
-        <NoteRemindersLink note={note} onOpen={() => setReminders(true)} />
+        <NoteRemindersLink note={current} onOpen={() => setReminders(true)} />
       </div>
 
       {/* §6 ფაზა 3 — მორგებული ველები (იხ. `CustomFieldsCard`: ბარათი თვითონ ინახავს თავს) */}
       <div className="mt-4">
-        <CustomFieldsCard module="note" recordId={note?.id ?? null} />
+        <CustomFieldsCard module="note" recordId={current?.id ?? null} />
       </div>
 
       {/* ⚠️ ბოლოში და ზედა ხაზით გამოყოფილი — ყველაფრის შემდეგ, რაც გვერდზეა */}
@@ -371,7 +408,11 @@ export function NoteForm({
           {t('actions.cancel')}
         </Button>
         <Button type="submit" form={FORM_ID} disabled={save.isPending}>
-          {save.isPending ? t('actions.saving') : t('actions.save')}
+          {progress
+            ? t('notes.uploadingProgress', { done: progress.done + 1, total: progress.total })
+            : save.isPending
+              ? t('actions.saving')
+              : t('actions.save')}
         </Button>
       </div>
 

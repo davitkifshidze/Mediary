@@ -19,7 +19,7 @@ import { notificationPermission, requestNotificationPermission } from '@/lib/not
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { TimePicker } from '@/components/ui/time-picker'
+import { TimeWheelPopover } from '@/components/ui/time-wheel'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -347,7 +347,8 @@ function ReminderEditor({
   const [draft, setDraft] = useState<ReminderDraft>(() =>
     reminder ? draftOf(reminder) : EMPTY_DRAFT,
   )
-  const [newTime, setNewTime] = useState('09:00')
+  /** §23.3 — ბოლოს დამატებული დრო უკვე არჩეულია? (შეტყობინება ღილაკის ქვეშ) */
+  const [duplicate, setDuplicate] = useState<string | null>(null)
   const [permission, setPermission] = useState(notificationPermission())
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
@@ -360,11 +361,21 @@ function ReminderEditor({
   const usesRepeat = draft.mode !== 'once'
   const broken = windowBroken(draft)
 
-  /** ⚠️ დუბლიკატი ჩუმად იკარგება — „09:00" ორჯერ ორ გასროლას არ ნიშნავს */
-  const addTime = () => {
-    if (newTime && !draft.times.includes(newTime)) {
-      patch({ times: [...draft.times, newTime].sort() })
+  /**
+   * **დრო ბორბლის დადასტურებისთანავე ემატება** (§23.3, Q36) — ცალკე ღილაკის
+   * გარეშე. ⚠️ აქამდე მონახაზი `09:00`-ით იწყებოდა და დუბლიკატი ჩუმად
+   * იკარგებოდა, ე.ი. „დამატებაზე" პირველი დაჭერა არაფერს აკეთებდა. ახლა
+   * დუბლიკატი **ხმამაღლა** ითქმება და არაფერი ემატება — „09:00" ორჯერ ორ
+   * გასროლას არ ნიშნავს.
+   */
+  const addTime = (time: string) => {
+    if (draft.times.includes(time)) {
+      setDuplicate(time)
+      return
     }
+
+    setDuplicate(null)
+    patch({ times: [...draft.times, time].sort() })
   }
 
   const toggleIn = <T,>(list: T[], value: T): T[] =>
@@ -514,16 +525,20 @@ function ReminderEditor({
                 ))}
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <TimePicker
-                  id="rem-time"
-                  value={newTime}
-                  onChange={(v) => setNewTime(v ?? '')}
-                />
-                <Button type="button" size="sm" variant="outline" onClick={addTime}>
-                  <Plus className="size-3.5" />
-                  {t('notes.reminderAddTime')}
-                </Button>
+                {/* ⚠️ ბორბალი ბოლოს დამატებული დროიდან იწყება — რიგრიგობით
+                    რამდენიმე დროის დამატება ასე ყველაზე ცოტა ტრიალია */}
+                <TimeWheelPopover value={draft.times[draft.times.length - 1] ?? null} onConfirm={addTime}>
+                  <Button id="rem-time" type="button" size="sm" variant="outline">
+                    <Plus className="size-3.5" />
+                    {t('notes.reminderAddTime')}
+                  </Button>
+                </TimeWheelPopover>
               </div>
+              {duplicate && (
+                <p className="mt-1.5 text-xs text-destructive">
+                  {t('notes.reminderTimeDuplicate', { time: duplicate })}
+                </p>
+              )}
               <p className="mt-1.5 text-xs text-muted-foreground">
                 {draft.times.length
                   ? t('notes.reminderTimesHint')
