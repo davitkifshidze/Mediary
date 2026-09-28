@@ -73,7 +73,7 @@ class CourseCategoryController extends Controller
 
         // ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Course::where('category_id', $courseCategory->id));
+            $deleted = DictionaryRecords::trash(Course::where('category_id', $courseCategory->id));
             DictionaryTrash::trash($courseCategory, 'course_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

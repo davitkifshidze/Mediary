@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\User;
+use App\Support\AuditLogTrash;
 use App\Support\AuditRegistry;
 use App\Support\Like;
 use Illuminate\Database\Eloquent\Builder;
@@ -170,6 +171,11 @@ class AdminAuditController extends Controller
      * ⚠️ `ids` და ფილტრი ერთმანეთს არ ცვლის: მონიშვნა ყოველთვის
      * გაფილტრულის შიგნითაა, ე.ი. ორივე ერთდროულად მოქმედებს და
      * შემთხვევით უფრო ფართო წაშლა შეუძლებელია.
+     *
+     * ⚠️ **გამწმენდის ურნაში, ერთ ელემენტად** (Tasks §29.8 — Q39 „ა"): ათასი
+     * ცალკე რიგი ურნას დამარხავდა. რიგები ადგილზე რჩება და ელემენტს
+     * `trash_entry_id`-ით მიებმის — ელემენტის საბოლოო წაშლა მათ FK-ის
+     * კასკადით შლის (`AuditLogTrash`). `deleted` = რამდენი გადავიდა ურნაში.
      */
     public function destroy(Request $request)
     {
@@ -186,7 +192,7 @@ class AdminAuditController extends Controller
             $query->whereIn('id', $ids);
         }
 
-        return response()->json(['deleted' => $query->delete()]);
+        return response()->json(['deleted' => AuditLogTrash::trash($request->user(), $query)]);
     }
 
     /**

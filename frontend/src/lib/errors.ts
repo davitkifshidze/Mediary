@@ -219,6 +219,8 @@ export const CODES = [
   'field_missing',
   'field_full',
   'already_present',
+  // Tasks §29.8 — აუდიტის ლოგის აღდგენას `admin:audit` სჭირდება
+  'permission_missing',
 ] as const
 
 /**

@@ -314,7 +314,13 @@ class GalleryAlbumTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertNull(GalleryImage::withoutGlobalScope('owner')->find($image->id));
+        /* ⚠️ Tasks §29.8 — ჩანაწერი ურნაშია და ფოტო მასზე მიბმული რჩება
+           (ერთად ბრუნდება); ურნის დაცლა მას ჩანაწერთან ერთად შლის. */
+        $this->assertSame('movie', GalleryImage::withoutGlobalScope('owner')->find($image->id)?->imageable_type);
+
+        $this->actingAs($this->user)->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+
+        $this->assertNull(GalleryImage::withoutGlobalScopes()->find($image->id));
     }
 
     /**

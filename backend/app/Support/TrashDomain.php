@@ -170,6 +170,10 @@ final class TrashDomain
     public const ENTRIES = [
         // ⚠️ `update` და არა `delete`: მსახიობის მოხსნა ჩანაწერის რედაქტირებაა (`RecordCastController`)
         'cast_link' => ['permission' => 'update'],
+        /* Tasks §29.8 — აუდიტის ლოგის გასუფთავება ერთ ელემენტად (`AuditLogTrash`).
+           ⚠️ მოდულის უფლება აქ არაფერს ნიშნავს (`null`): ელემენტი გამწმენდისაა
+           და ყოველთვის ჩანს, აღდგენას კი `admin:audit` სჭირდება. */
+        'audit_log' => ['permission' => null],
     ];
 
     /**

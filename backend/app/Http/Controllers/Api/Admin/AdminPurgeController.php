@@ -35,7 +35,8 @@ class AdminPurgeController extends Controller
         $data = $this->validated($request);
         $user = $this->targetUser($request, $data);
 
-        $plan = $this->purge->plan($user, $data);
+        // ⚠️ Tasks §29.8 — `/purge` სამიზნე ანგარიშის ურნაში აგზავნის (Q39 — „ა")
+        $plan = $this->purge->plan($user, $data, PurgeService::TO_TRASH);
 
         return response()->json([
             'plan' => $plan,
@@ -77,7 +78,7 @@ class AdminPurgeController extends Controller
         $data = $this->validated($request, withConfirm: true);
         $user = $this->targetUser($request, $data);
 
-        $result = $this->purge->run($user, $data);
+        $result = $this->purge->run($user, $data, PurgeService::TO_TRASH);
 
         return response()->json([
             'result' => $result,
@@ -111,7 +112,7 @@ class AdminPurgeController extends Controller
         $user = $this->targetUser($request, $data);
 
         try {
-            $result = $this->purge->runOne($user, $data, (int) $data['id']);
+            $result = $this->purge->runOne($user, $data, (int) $data['id'], PurgeService::TO_TRASH);
         } catch (\Throwable $e) {
             Log::warning('purge item failed', [
                 'user_id' => $user->getKey(),

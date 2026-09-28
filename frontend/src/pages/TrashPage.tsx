@@ -24,6 +24,7 @@ import {
   CircleDashed,
   CircleUserRound,
   Replace,
+  ScrollText,
 } from 'lucide-react'
 import {
   deleteFromTrash,
@@ -85,6 +86,7 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'database_backup') return <DatabaseBackup />
   if (kind === 'chat_file') return <MessageSquare />
   if (kind === 'chat_message') return <MessageSquareText />
+  if (kind === 'audit_log') return <ScrollText />
   if (kind === 'field_file') return <FormInput />
   if (kind.endsWith('_note')) return <StickyNote />
   if (kind === 'playlist') return <ListMusic />
@@ -101,6 +103,7 @@ function kindIcon(kind: string): ReactNode {
 function groupAccent(group: TrashGroup): CSSProperties {
   if (group.module === 'chat') return toolAccent('chat') ?? MODULE_ACCENT_FALLBACK
   if (group.module === 'backup') return toolAccent('backups') ?? MODULE_ACCENT_FALLBACK
+  if (group.module === 'audit') return toolAccent('audit') ?? MODULE_ACCENT_FALLBACK
   return modAccent(group.color) ?? MODULE_ACCENT_FALLBACK
 }
 
@@ -184,7 +187,9 @@ export function TrashPage() {
           ? t('trash.deleteHint', { name: item.title })
           : group.category === 'message'
             ? t('trash.deleteMessageHint', { name: item.title })
-            : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
+            : group.kind === 'audit_log'
+              ? t('trash.deleteAuditHint', { count: item.count ?? 0 })
+              : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
     })
@@ -203,6 +208,11 @@ export function TrashPage() {
     const found = allModules.find((m) => m.key === item.module)
     return found ? moduleName(found, i18n.language) : null
   }
+
+  /* ⚠️ აუდიტის გასუფთავების სათაურს კლიენტი აწყობს — ის ენაზეა დამოკიდებული,
+     სერვერი კი მხოლოდ რიცხვს იძლევა (`count`) */
+  const itemTitle = (group: TrashGroup, item: TrashItem) =>
+    group.kind === 'audit_log' ? t('trash.auditTitle', { count: item.count ?? 0 }) : item.title
 
   const groupName = (group: TrashGroup) =>
     group.category === 'record'
@@ -263,7 +273,7 @@ export function TrashPage() {
                       <Thumb item={item} fallback={group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)} />
 
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{item.title}</span>
+                        <span className="block truncate text-sm font-medium">{itemTitle(group, item)}</span>
                         {(item.subtitle ?? itemModule(group, item)) && (
                           <span className="block truncate text-xs text-muted-foreground">
                             {item.subtitle ?? itemModule(group, item)}
@@ -277,7 +287,7 @@ export function TrashPage() {
                             {t(`trash.when.${group.kind}`, { date: dateTime(item.when) })}
                           </span>
                         )}
-                        {item.count !== null && item.count > 0 && (
+                        {item.count !== null && item.count > 0 && group.kind !== 'audit_log' && (
                           <span className="block text-xs text-muted-foreground">
                             {group.kind === 'gallery_album'
                               ? t('trash.albumPhotos', { count: item.count })

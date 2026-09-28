@@ -27,6 +27,8 @@ export type TrashBlocked =
   | 'slot_taken'
   | 'field_missing'
   | 'already_present'
+  /** აუდიტის ლოგის გასუფთავება — აღდგენას `admin:audit` სჭირდება (Tasks §29.8) */
+  | 'permission_missing'
 
 export interface TrashParent {
   kind: string
@@ -55,7 +57,10 @@ export interface TrashItem {
   locked: boolean
   /** მომენტი, რომელიც თვითონ ელემენტია — ნახვის დრო, შეხსენების შემდეგი გაგზავნა */
   when: string | null
-  /** ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა; კლასიფიკატორზე — რამდენი ჩანაწერი გადაიტანა წაშლამ */
+  /**
+   * ალბომზე — რამდენ ფოტოს დააბრუნებს აღდგენა; კლასიფიკატორზე — რამდენი
+   * ჩანაწერი გადაიტანა წაშლამ; აუდიტის გასუფთავებაზე — რამდენი ლოგის რიგია
+   */
   count: number | null
   /** რომელ მოდულს ეკუთვნის — მრავალმოდულიან ჯგუფში (სტატუსი, ნახვა, ველის ფაილი) */
   module: string | null

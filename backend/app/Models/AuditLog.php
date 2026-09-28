@@ -164,6 +164,19 @@ class AuditLog extends Model
         'created_at' => 'datetime',
     ];
 
+    /**
+     * **ურნაში მყოფი ლოგი ჩვეულებრივ წაკითხვას ემალება** (Tasks §29.8).
+     *
+     * ⚠️ global scope და არა `where` `AdminAuditController`-ში: ლოგს სია,
+     * ჭრილების რიცხვები, გეგმა, `/translations`-ის ჟურნალი და `visit`-ის
+     * დედუპლიკაცია კითხულობს — ერთი გამორჩენილი ადგილი ურნაში გადატანილს
+     * ისევ აჩვენებდა. აღდგენა და დათვლა ცხადად თიშავს (`withoutGlobalScope('trash')`).
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('trash', fn (Builder $q) => $q->whereNull($q->getModel()->getTable().'.trash_entry_id'));
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

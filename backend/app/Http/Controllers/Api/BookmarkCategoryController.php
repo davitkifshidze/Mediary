@@ -70,9 +70,9 @@ class BookmarkCategoryController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Bookmark::where('category_id', $bookmarkCategory->id));
+            $deleted = DictionaryRecords::trash(Bookmark::where('category_id', $bookmarkCategory->id));
             DictionaryTrash::trash($bookmarkCategory, 'bookmark_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

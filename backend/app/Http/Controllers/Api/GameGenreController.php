@@ -74,10 +74,10 @@ class GameGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი).
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით.
         // ⚠️ pivot-ზე ეს ის ჩანაწერიცაა, რომელსაც სხვა ჟანრიც აქვს — UI ამას ცხადად ამბობს
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Game::whereKey($gameGenre->games()->pluck('games.id')->all()));
+            $deleted = DictionaryRecords::trash(Game::whereKey($gameGenre->games()->pluck('games.id')->all()));
             DictionaryTrash::trash($gameGenre, 'game_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

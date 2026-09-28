@@ -1054,7 +1054,8 @@
     "slot_taken": "Another file already sits in that place.",
     "field_missing": "The field no longer exists or is no longer a file field — bring the field back first.",
     "field_full": "The field is full — remove a file first.",
-    "already_present": "Already in place — nothing to restore."
+    "already_present": "Already in place — nothing to restore.",
+    "permission_missing": "You no longer have the right needed for this."
   },
   "fields": {
     "title": "Fields",
@@ -1306,7 +1307,7 @@
   },
   "purge": {
     "title": "Bulk delete",
-    "subtitle": "This cannot be undone. Check the scope first, then confirm.",
+    "subtitle": "Records go to the target account's trash. Check the scope first, then confirm.",
     "target": "What to delete",
     "scope": "Which records",
     "pickScope": "Pick a scope",
@@ -1317,13 +1318,13 @@
     "keepFavorites": "Keep favourites",
     "keepFavoritesHint": "Starred records are excluded from the deletion.",
     "summary": "Summary",
-    "willDeleteRecords": "{{count}} record(s) will be deleted",
-    "willDeletePhotos": "{{count}} photo(s) will be deleted",
-    "willFree": "{{size}} will be freed",
+    "willDeleteRecords": "{{count}} record(s) go to the trash",
+    "willDeletePhotos": "{{count}} photo(s) go to the trash",
+    "willFree": "{{size}} is freed when the target's trash is emptied, or after {{days}} days",
     "nothing": "Nothing matches these settings.",
     "attachments": "Attached files",
     "notes": "Notes",
-    "warning": "These records are gone for good — they do not go to the trash.",
+    "warning": "These records go to the target account's trash — its owner can restore them until the period runs out. Files and space stay until the trash is emptied.",
     "confirmLabel": "Type DELETE to confirm",
     "run": "Delete",
     "started": "Deletion started — {{count}} record(s)",
@@ -1376,11 +1377,11 @@
     "itemsMore": "{{count}} more",
     "deleteOne": "Delete just this one",
     "deleteOneTitle": "Delete one record",
-    "deleteOneHint": "“{{name}}” will be deleted for good, with its files and photos.",
-    "deletedOne": "“{{name}}” deleted",
+    "deleteOneHint": "“{{name}}” goes to the target's trash, with its files and photos; it can be restored from there.",
+    "deletedOne": "“{{name}}” moved to the trash",
     "deleteOneFailed": "“{{name}}” could not be deleted",
     "keepGallery": "Keep the photos in the gallery",
-    "keepGalleryHint": "The record goes, its photos stay behind with no album.",
+    "keepGalleryHint": "The record goes to the trash, its photos stay in the gallery with no album.",
     "willKeepPhotos": "{{count}} photos stay in the gallery",
     "keepGalleryWarn": "No space is freed — the files stay on disk."
   },
@@ -2486,10 +2487,10 @@
     "deleteSelected": "Delete selected ({{count}})",
     "deleteFiltered": "Delete everything matching this filter",
     "deleteNow": "Delete",
-    "deleted": "{{count}} entries deleted",
+    "deleted": "{{count}} entries moved to the trash",
     "confirmTitle": "Clean up the log",
-    "confirmSelected": "{{count}} selected entries will be deleted. This cannot be undone.",
-    "confirmFiltered": "All {{count}} entries matching this filter will be deleted. This cannot be undone.",
+    "confirmSelected": "{{count}} selected entries go to your trash as one item; they can be restored from there.",
+    "confirmFiltered": "All {{count}} entries matching this filter go to your trash as one item; they can be restored from there.",
     "confirmWord": "Type {{word}} to confirm",
     "diffTitle": "Change details",
     "field": "Field",
@@ -2723,10 +2724,10 @@
     "hide": "Hide from the sidebar",
     "show": "Show in the sidebar",
     "deleteRecords": "Delete the records too ({{count}})",
-    "deleteRecordsWarning": "{{count}} record(s) will be deleted for good — together with their files, photos and notes. This cannot be undone.",
-    "deleteRecordsMulti": "A record that also has other genres is deleted too.",
+    "deleteRecordsWarning": "{{count}} record(s) go to your trash — together with their files, photos and notes; they can be brought back until the period runs out.",
+    "deleteRecordsMulti": "A record that also has other genres goes to the trash too.",
     "confirmLabel": "Type {{word}} to confirm",
-    "recordsDeleted": "{{count}} record(s) deleted",
+    "recordsDeleted": "{{count}} record(s) moved to the trash",
     "navHint": "Every module's statuses, genres, types and categories.",
     "indexAction": "Open a card to add, reorder, hide or delete entries."
   },
@@ -3197,7 +3198,8 @@
       "parent_missing": "What it belonged to no longer exists",
       "slot_taken": "Another file sits in that place now",
       "field_missing": "This field no longer exists or is no longer a file field",
-      "already_present": "Already in place — nothing to restore"
+      "already_present": "Already in place — nothing to restore",
+      "permission_missing": "Restoring needs the right to manage the audit log"
     },
     "kinds": {
       "gallery_image": "Gallery photos",
@@ -3234,7 +3236,8 @@
       "place_category": "Place categories",
       "record_photo": "Main photos of records",
       "avatar": "Avatar",
-      "chat_message": "Chat messages"
+      "chat_message": "Chat messages",
+      "audit_log": "Audit log clean-ups"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3251,7 +3254,9 @@
       "self": "Hidden for me only",
       "both": "Deleted for both"
     },
-    "deleteMessageHint": "“{{name}}” leaves the trash and can no longer be restored. The message stays out of the chat but remains in the database, like every deleted chat message."
+    "deleteMessageHint": "“{{name}}” leaves the trash and can no longer be restored. The message stays out of the chat but remains in the database, like every deleted chat message.",
+    "auditTitle": "Audit log: {{count}} entries",
+    "deleteAuditHint": "{{count}} log entries are deleted for good — nothing stays in the trash."
   },
   "watchLog": {
     "title": "Watches",

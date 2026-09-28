@@ -1059,6 +1059,12 @@ export interface PurgePlan {
     bytes: number
     /** §25.5 — რამდენი ფოტო რჩება გალერეაში (და არა იშლება) */
     kept_photos: number
+    /**
+     * ⚠️ Tasks §29.8 — `/purge` სამიზნის ურნაში აგზავნის: `bytes` მხოლოდ მისი
+     * ურნის დაცლისას ან `trash_days` დღის შემდეგ თავისუფლდება
+     */
+    to_trash: boolean
+    trash_days: number
     items: PurgePlanItem[]
   }
   eta_seconds: number

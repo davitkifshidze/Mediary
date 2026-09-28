@@ -71,9 +71,9 @@ class VideoTypeController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Video::where('type_id', $videoType->id));
+            $deleted = DictionaryRecords::trash(Video::where('type_id', $videoType->id));
             DictionaryTrash::trash($videoType, 'video_type');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

@@ -104,7 +104,10 @@ class PurgeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('plan.records', 1)
             ->assertJsonPath('plan.photos', 1)
-            ->assertJsonPath('plan.bytes', 1000);
+            ->assertJsonPath('plan.bytes', 1000)
+            // ⚠️ Tasks §29.8 — სამიზნის ურნაში, მისი ვადით
+            ->assertJsonPath('plan.to_trash', true)
+            ->assertJsonPath('plan.trash_days', 30);
 
         // დადასტურების გარეშე — 422, ჩანაწერი ხელუხლებელი
         $this->actingAs($this->admin)
@@ -117,11 +120,19 @@ class PurgeTest extends TestCase
             ->postJson('/api/admin/purge', ['target' => 'movie', 'mode' => 'all', 'confirm' => 'DELETE'])
             ->assertOk()
             ->assertJsonPath('result.records', 1)
-            ->assertJsonPath('storage.used', 0);
+            // ⚠️ Tasks §29.8 — ჩანაწერი ურნაშია, ე.ი. ადგილი ჯერ არ თავისუფლდება (29.4)
+            ->assertJsonPath('storage.used', 1000);
 
         $this->assertSame(0, Movie::withoutGlobalScope('owner')->count());
-        $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
+        $this->assertSame(1, Movie::withoutGlobalScopes()->whereNotNull('trashed_at')->count());
+        Storage::disk('public')->assertExists('gallery/images/a.jpg');
+
+        // ურნის დაცლა — ახლა ნამდვილად: ფოტოც, ფაილიც, კვოტაც
+        $this->actingAs($this->admin)->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+
+        $this->assertSame(0, GalleryImage::withoutGlobalScopes()->count());
         Storage::disk('public')->assertMissing('gallery/images/a.jpg');
+        $this->assertSame(0, (int) $this->admin->refresh()->storage_used_bytes);
     }
 
     /** ჟანრით წაშლა — სხვა ჟანრი და სხვისი ჩანაწერი ხელუხლებელი რჩება */
@@ -212,11 +223,17 @@ class PurgeTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('result.photos', 2)
-            ->assertJsonPath('storage.used', 0);
+            // ⚠️ Tasks §29.8 — ფოტოები ურნაშია და ადგილს ჯერ იკავებს
+            ->assertJsonPath('storage.used', 800);
 
         $this->assertSame(1, Movie::withoutGlobalScope('owner')->count());
         $this->assertSame(0, GalleryImage::withoutGlobalScope('owner')->count());
+        Storage::disk('public')->assertExists('gallery/images/actor.jpg');
+
+        $this->actingAs($this->admin)->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+
         Storage::disk('public')->assertMissing('gallery/images/actor.jpg');
+        $this->assertSame(0, (int) $this->admin->refresh()->storage_used_bytes);
     }
 
     /** ვიდეოები: ტიპით და ტეგით */
@@ -374,7 +391,8 @@ class PurgeTest extends TestCase
             ->assertJsonPath('result.records', 1);
 
         $this->assertSame([$keep->id], Book::withoutGlobalScope('owner')->pluck('id')->all());
-        $this->assertSame(0, BookNote::withoutGlobalScope('owner')->count());
+        // ⚠️ Tasks §29.8 — ჩანიშვნა წიგნთან ერთად ურნაშია და მასთან ერთად ბრუნდება
+        $this->assertSame(1, BookNote::withoutGlobalScope('owner')->where('book_id', $gone->id)->count());
         // ლექსიკონი ხელუხლებელი რჩება
         $this->assertSame(count(BookGenre::DEFAULTS), BookGenre::withoutGlobalScope('owner')->count());
     }
@@ -643,10 +661,11 @@ class PurgeTest extends TestCase
             ->assertJsonPath('result.records', 1)
             ->assertJsonPath('result.title', 'Goner')
             ->assertJsonPath('result.bytes', 700)
-            ->assertJsonPath('storage.used', 0);
+            // ⚠️ Tasks §29.8 — ურნაშია: `bytes` დაცლის შემდეგ გათავისუფლდება
+            ->assertJsonPath('storage.used', 700);
 
         $this->assertSame([$keep->id], Movie::withoutGlobalScope('owner')->pluck('id')->all());
-        Storage::disk('public')->assertMissing('gallery/images/a.jpg');
+        Storage::disk('public')->assertExists('gallery/images/a.jpg');
     }
 
     /**

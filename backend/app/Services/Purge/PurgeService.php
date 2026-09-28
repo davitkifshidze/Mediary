@@ -32,7 +32,9 @@ use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
 use App\Support\MediaDomain;
 use App\Support\StatusDomain;
+use App\Support\UserSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -45,7 +47,14 @@ use Illuminate\Support\Facades\Log;
  *  2. `plan()` და `run()` **ერთსა და იმავე** query-ს იყენებს, ე.ი. დათვლილი
  *     და წაშლილი ერთი და იგივეა;
  *  3. წაშლა მოდელებით მიდის (და არა `delete()`-ით query-ზე), რომ
- *     `deleting` ივენთები იმუშაოს: ფაილები, კვოტა, polymorphic pivot-ები.
+ *     `deleting` ივენთები იმუშაოს: ფაილები, კვოტა, polymorphic pivot-ები;
+ *  4. **სად მიდის, ცხადად ითქმის** (Tasks §29.8) — `TO_TRASH` თუ `FOR_GOOD`.
+ *     ⚠️ ნაგულისხმევი მნიშვნელობა განზრახ **არ** აქვს: `/purge` სამიზნე
+ *     ანგარიშის ურნაში აგზავნის, ანგარიშის წაშლა (`AccountEraser`) კი
+ *     ნამდვილად შლის. ერთი სერვისი ორივეს ემსახურება, და თუ „ურნაში"
+ *     ნაგულისხმევი გახდებოდა, ანგარიშის წაშლა ჩანაწერებს ურნაში გადაიტანდა,
+ *     მომხმარებლის რიგის წაშლა კი მათ SQL-კასკადით — მოვლენების გარეშე —
+ *     წაშლიდა: ფაილები დისკზე ობლად დარჩებოდა (BUG-21-ის გაკვეთილი).
  *
  * `target = 'gallery'` მხოლოდ ფოტოებს შლის — ჩანაწერი რჩება („ადგილი
  * გამომინთავისუფლე, ჩანაწერები დამიტოვე").
@@ -60,6 +69,16 @@ class PurgeService
     public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'gallery'];
 
     public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'];
+
+    /**
+     * **სამიზნე ანგარიშის ურნაში** (`/purge`, Tasks §29.8 — Q39 „ა"). აკრეფილი
+     * `DELETE` მასშტაბის გამო რჩება, მაგრამ „სამუდამოს" აღარ ნიშნავს: მფლობელი
+     * თავის ჩანაწერებს თვითონ აღადგენს.
+     */
+    public const TO_TRASH = 'trash';
+
+    /** **ნამდვილად** — ანგარიშის წაშლა (ურნა ანგარიშისაა და მასთან ერთად ქრება) */
+    public const FOR_GOOD = 'hard';
 
     /**
      * რომელი სკოუპი რომელ სამიზნეს შეესაბამება — **ერთი წყარო** კონტროლერის
@@ -238,19 +257,29 @@ class PurgeService
      * კრძალავს კლასის მთავარი წესი: „დათვლილი" და „წაშლილი" ერთი query-დან
      * უნდა მოდიოდეს.
      *
+     * ⚠️ **`TO_TRASH`-ზე `bytes` ახლავე არ თავისუფლდება** (29.4): ფაილი ურნაში
+     * ადგილს იკავებს — სამიზნის ურნის დაცლამდე ან მისი ვადის გასვლამდე
+     * (`trash_days`). გეგმა ამას ამბობს და UI ტექსტსაც ამაზე აგებს.
+     *
+     * @param  string  $how  `TO_TRASH` · `FOR_GOOD`
      * @param  list<int>|null  $ids  უკვე დათვლილი სკოუპი; `null` = თვითონ დათვალოს
-     * @return array{records: int, photos: int, attachments: int, notes: int, bytes: int, target: string, mode: string, items: array<int, array{type: string, id: int, title: string, year: int|null}>}
+     * @return array{records: int, photos: int, attachments: int, notes: int, bytes: int, target: string, mode: string, to_trash: bool, trash_days: int, items: array<int, array{type: string, id: int, title: string, year: int|null}>}
      */
-    public function plan(User $user, array $input, ?array $ids = null): array
+    public function plan(User $user, array $input, string $how, ?array $ids = null): array
     {
         $target = $input['target'];
-        $ids ??= $this->recordIds($user, $input);
-        $items = $this->planItems($user, $input, $ids);
+        $ids ??= $this->recordIds($user, $input, $how);
+        $items = $this->planItems($user, $input, $ids, $how);
+        $destination = [
+            'to_trash' => $how === self::TO_TRASH,
+            // სამიზნის ვადა — მისი ურნაა (29.6)
+            'trash_days' => UserSettings::trashDays($user),
+        ];
 
         if ($target === 'gallery') {
-            [$photos, $photoBytes] = $this->galleryTotals($user, $input['media_type'] ?? 'movie', $ids);
+            [$photos, $photoBytes] = $this->galleryTotals($user, $input['media_type'] ?? 'movie', $ids, $how);
 
-            return [
+            return $destination + [
                 'target' => $target,
                 'mode' => $input['mode'],
                 // ჩანაწერი არ იშლება — მხოლოდ ფოტოები
@@ -269,7 +298,7 @@ class PurgeService
         $totals = $this->recordTotals($user, $target, $ids);
         $keepGallery = ! empty($input['keep_gallery']);
 
-        return [
+        return $destination + [
             'target' => $target,
             'mode' => $input['mode'],
             'records' => count($ids),
@@ -298,13 +327,16 @@ class PurgeService
      * მომხმარებელი სიიდან ირჩევს — მე-2 გვერდზე დარჩენილი ჩანაწერი ჩუმად
      * ამოვარდებოდა (იგივე წესი, რაც `all=1`-ის ოთხ გამომძახებელს აქვს).
      *
+     * ⚠️ **ურნაში მყოფი აქ არ ჩანს** (Tasks §29.8): `/purge` ურნაში აგზავნის,
+     * ე.ი. უკვე ურნაში მყოფის არჩევა არაფერს გააკეთებდა.
+     *
      * @return array<int, array{id: int, title: string, year: int|null}>
      */
     public function records(User $user, string $target, ?string $mediaType = null): array
     {
         $type = $target === 'gallery' ? ($mediaType ?: 'movie') : $target;
 
-        $query = $this->modelQuery($user, $type)->orderBy('id');
+        $query = $this->modelQuery($user, $type, self::TO_TRASH)->orderBy('id');
 
         // ორენოვანი ტექსტი translation-ცხრილშია მხოლოდ მედია-დომენებზე
         if (in_array($type, MediaDomain::TYPES, true)) {
@@ -328,22 +360,25 @@ class PurgeService
      *
      * ⚠️ id-ს **სკოუპში** ვეძებთ (`modelQuery`), ე.ი. სხვისი ჩანაწერის
      * id-ის გამოცნობით წაშლა შეუძლებელია — უცნობი id უბრალოდ ნულებს აბრუნებს.
+     * ⚠️ `TO_TRASH`-ზე ურნაში უკვე მყოფიც „გამოტოვებულია" — მისი `trashed_at`
+     * არ ახლდება, თორემ ვადა თავიდან დაიწყებოდა.
      *
+     * @param  string  $how  `TO_TRASH` · `FOR_GOOD`
      * @return array{records: int, photos: int, bytes: int, target: string, title: string|null}
      */
-    public function runOne(User $user, array $input, int $id): array
+    public function runOne(User $user, array $input, int $id, string $how): array
     {
         $target = $input['target'];
 
         if ($target === 'gallery') {
             $type = $input['media_type'] ?? 'movie';
-            $record = $this->modelQuery($user, $type)->find($id);
+            $record = $this->modelQuery($user, $type, $how)->find($id);
 
             if (! $record) {
                 return ['target' => $target, 'records' => 0, 'photos' => 0, 'bytes' => 0, 'title' => null];
             }
 
-            $deleted = $this->deleteGallery($user, $type, [$id]);
+            $deleted = $this->deleteGallery($user, $type, [$id], $how);
 
             return [
                 'target' => $target,
@@ -354,7 +389,7 @@ class PurgeService
             ];
         }
 
-        $record = $this->modelQuery($user, $target)->find($id);
+        $record = $this->modelQuery($user, $target, $how)->find($id);
 
         if (! $record) {
             return ['target' => $target, 'records' => 0, 'photos' => 0, 'bytes' => 0, 'title' => null];
@@ -366,7 +401,7 @@ class PurgeService
 
         $kept = $this->detachGallery($user, $target, [$id], ! empty($input['keep_gallery']));
 
-        $record->delete();
+        $this->dispose($record, $how);
 
         return [
             'target' => $target,
@@ -382,24 +417,26 @@ class PurgeService
      * წაშლა. აბრუნებს ფაქტობრივ რიცხვებს (და არა გეგმას) — თუ სხვა სესიამ
      * ჩანაწერი უკვე წაშალა, ეს რიცხვი უფრო მცირე იქნება.
      *
+     * @param  string  $how  `TO_TRASH` · `FOR_GOOD`
      * @return array{records: int, photos: int, bytes: int, target: string}
      */
-    public function run(User $user, array $input): array
+    public function run(User $user, array $input, string $how): array
     {
         $target = $input['target'];
         // ⚠️ ერთი `recordIds()` ორივესთვის (Tasks PERF-10) — იხ. `plan()`-ის docblock
-        $ids = $this->recordIds($user, $input);
-        $plan = $this->plan($user, $input, $ids);
+        $ids = $this->recordIds($user, $input, $how);
+        $plan = $this->plan($user, $input, $how, $ids);
 
         Log::warning('purge started', [
             'user_id' => $user->getKey(),
             'target' => $target,
             'mode' => $input['mode'],
+            'how' => $how,
             'plan' => $plan,
         ]);
 
         if ($target === 'gallery') {
-            $photos = $this->deleteGallery($user, $input['media_type'] ?? 'movie', $ids);
+            $photos = $this->deleteGallery($user, $input['media_type'] ?? 'movie', $ids, $how);
 
             return ['target' => $target, 'records' => 0, 'photos' => $photos['count'], 'bytes' => $photos['bytes']];
         }
@@ -411,13 +448,13 @@ class PurgeService
 
             // ⚠️ მოდელით ვშლით, თორემ `deleting` ივენთი არ იმუშავებს:
             // ფაილები დისკზე დარჩება და კვოტის მრიცხველი აცდება
-            foreach ($this->modelQuery($user, $target)->whereIn('id', $chunk)->get() as $record) {
-                $record->delete();
+            foreach ($this->modelQuery($user, $target, $how)->whereIn('id', $chunk)->get() as $record) {
+                $this->dispose($record, $how);
                 $deleted++;
             }
         }
 
-        Log::warning('purge finished', ['user_id' => $user->getKey(), 'target' => $target, 'deleted' => $deleted]);
+        Log::warning('purge finished', ['user_id' => $user->getKey(), 'target' => $target, 'how' => $how, 'deleted' => $deleted]);
 
         return [
             'target' => $target,
@@ -482,7 +519,7 @@ class PurgeService
      *
      * @return array<int, array{type: string, id: int, title: string, year: int|null}>
      */
-    private function planItems(User $user, array $input, array $ids): array
+    private function planItems(User $user, array $input, array $ids, string $how): array
     {
         if (! $ids) {
             return [];
@@ -494,14 +531,14 @@ class PurgeService
         // გალერეაზე ერთეული ისეთი ჩანაწერია, რომელსაც **მართლა აქვს** ფოტო —
         // თორემ 500-ჩანაწერიან სკოუპზე რიგი 497 ცარიელ რექვესთს გააკეთებდა
         if ($target === 'gallery') {
-            $ids = $this->galleryOwnerIds($user, $type, $ids);
+            $ids = $this->galleryOwnerIds($user, $type, $ids, $how);
         }
 
         if (! $ids) {
             return [];
         }
 
-        $query = $this->modelQuery($user, $type)->whereIn('id', $ids)->orderBy('id');
+        $query = $this->modelQuery($user, $type, $how)->whereIn('id', $ids)->orderBy('id');
 
         // ორენოვანი ტექსტი translation-ცხრილშია მხოლოდ მედია-დომენებზე
         // (წიგნზე ბრტყელი სვეტებია, დანარჩენებზე — ერთი `title`)
@@ -529,15 +566,17 @@ class PurgeService
      * ჩანაწერი მოხვდება რიგში და მეორეზე ფოტო აღარ იქნება („გამოტოვებული").
      * ეს გალერეის მოდელის თვისებაა და არა ამ ციკლის.
      */
-    private function galleryOwnerIds(User $user, string $type, array $ids): array
+    private function galleryOwnerIds(User $user, string $type, array $ids, string $how): array
     {
         if (! $ids) {
             return [];
         }
 
+        // ⚠️ `TO_TRASH`-ზე ურნაში უკვე მყოფი ფოტო ითვლება „არარსებულად" — ის ხელახლა არ გადადის
         $photos = fn (string $morph) => GalleryImage::withoutGlobalScopes(['owner', 'album_lock', 'trash'])
             ->where('user_id', $user->getKey())
-            ->where('imageable_type', $morph);
+            ->where('imageable_type', $morph)
+            ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull('trashed_at'));
 
         $direct = $photos($this->morphAlias($type))
             ->whereIn('imageable_id', $ids)
@@ -615,12 +654,12 @@ class PurgeService
     }
 
     /** სკოუპში მოხვედრილი ჩანაწერების id-ები */
-    private function recordIds(User $user, array $input): array
+    private function recordIds(User $user, array $input, string $how): array
     {
         $target = $input['target'];
         $type = $target === 'gallery' ? ($input['media_type'] ?? 'movie') : $target;
 
-        $query = $this->modelQuery($user, $type);
+        $query = $this->modelQuery($user, $type, $how);
 
         match ($input['mode']) {
             // „ყველა" ცალკე რეჟიმია — ცარიელი ფილტრი ვერ მოხვდება აქ შემთხვევით
@@ -671,7 +710,7 @@ class PurgeService
             abort_unless(self::supportsTag($type), 422, 'mode_not_supported_for_target');
 
             $wanted = collect($input['tags'] ?? [])->map(fn ($t) => Video::tagKey($t))->filter()->all();
-            $ids = $this->modelQuery($user, $type)
+            $ids = $this->modelQuery($user, $type, $how)
                 ->whereIn('id', $ids)
                 ->get(['id', 'tags'])
                 ->filter(fn ($row) => collect($row->tags ?? [])
@@ -697,8 +736,12 @@ class PurgeService
      * დატოვებდა ნაწილს (ანგარიშის წაშლისას ობოლი ფაილები დისკზე
      * დარჩებოდა — BUG-21-ის ზუსტი განმეორება), და `plan()`-ის „გათავისუფლდება
      * N ბაიტი" ტყუილი იქნებოდა.
+     *
+     * ⚠️ **`TO_TRASH`-ზე კი ურნაში მყოფი გამოირიცხება** (Tasks §29.8) — ის უკვე
+     * ურნაშია, და ხელახლა „გადატანა" მის `trashed_at`-ს განაახლებდა, ე.ი. ვადა
+     * თავიდან დაიწყებოდა. ნამდვილ წაშლაზე (`FOR_GOOD`) ის ისევ ითვლება.
      */
-    private function modelQuery(User $user, string $type): Builder
+    private function modelQuery(User $user, string $type, ?string $how = null): Builder
     {
         $model = match ($type) {
             'series' => Series::class,
@@ -715,7 +758,26 @@ class PurgeService
             default => Movie::class,
         };
 
-        return $model::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $user->getKey());
+        $table = (new $model)->getTable();
+
+        return $model::withoutGlobalScopes(['owner', 'trash'])
+            ->where("{$table}.user_id", $user->getKey())
+            ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull("{$table}.trashed_at"));
+    }
+
+    /**
+     * ერთი ჩანაწერის (ან ფოტოს) წაშლა ცხადი მიმართულებით.
+     *
+     * ⚠️ `moveToTrash()` ფაილს, კვოტასა და ნაწილებს არ ეხება — ისინი
+     * ჩანაწერთან ერთად ბრუნდება; `delete()` კი მოვლენებს ისვრის და ყველაფერს
+     * ათავისუფლებს. მესამე გზა არ არსებობს.
+     */
+    private function dispose(Model $row, string $how): void
+    {
+        match ($how) {
+            self::TO_TRASH => $row->moveToTrash(),
+            self::FOR_GOOD => $row->delete(),
+        };
     }
 
     private function morphAlias(string $target): string
@@ -737,9 +799,9 @@ class PurgeService
     }
 
     /** გალერეის ფოტოების ჯამი — ჩანაწერზეც და მისივე მსახიობებზეც */
-    private function galleryTotals(User $user, string $type, array $ids): array
+    private function galleryTotals(User $user, string $type, array $ids, string $how): array
     {
-        $query = $this->galleryQuery($user, $type, $ids);
+        $query = $this->galleryQuery($user, $type, $ids, $how);
 
         return [$query->count(), (int) $query->sum('size')];
     }
@@ -748,7 +810,7 @@ class PurgeService
      * გალერეის ფოტოების query: ჩანაწერზე მიმაგრებული + ამ ჩანაწერების
      * **მსახიობების** ფოტოები (მშობელი `cast_member`-ია, იხ. Tasks 10).
      */
-    private function galleryQuery(User $user, string $type, array $ids)
+    private function galleryQuery(User $user, string $type, array $ids, string $how)
     {
         $morph = $this->morphAlias($type);
         $castIds = $ids
@@ -764,6 +826,8 @@ class PurgeService
 
         return GalleryImage::withoutGlobalScopes(['owner', 'album_lock', 'trash'])
             ->where('user_id', $user->getKey())
+            // ⚠️ ურნაში უკვე მყოფი ფოტო ხელახლა არ გადადის — ვადა თავიდან არ იწყება
+            ->when($how === self::TO_TRASH, fn ($q) => $q->whereNull('trashed_at'))
             ->where(function ($q) use ($morph, $ids, $castIds) {
                 $q->where(fn ($inner) => $inner->where('imageable_type', $morph)->whereIn('imageable_id', $ids));
                 if ($castIds) {
@@ -772,19 +836,24 @@ class PurgeService
             });
     }
 
-    /** ფოტოების წაშლა — თითოეული მოდელით, რომ კვოტა და ფაილი გასუფთავდეს */
-    private function deleteGallery(User $user, string $type, array $ids): array
+    /**
+     * ფოტოების წაშლა — თითოეული მოდელით, რომ კვოტა და ფაილი გასუფთავდეს.
+     *
+     * ⚠️ `lazyById` და არა `chunkById`: ურნაში გადატანა `trashed_at`-ს წერს,
+     * ე.ი. query-ის პირობას (`whereNull('trashed_at')`) ცვლის — `chunkById`
+     * თავის გვერდებს ამავე პირობით იღებს, და შედეგი ერთნაირი დარჩებოდა, მაგრამ
+     * `lazyById` id-ის კურსორით მიდის და ამაზე საერთოდ არ არის დამოკიდებული.
+     */
+    private function deleteGallery(User $user, string $type, array $ids, string $how): array
     {
         $count = 0;
         $bytes = 0;
 
-        $this->galleryQuery($user, $type, $ids)->chunkById(self::CHUNK, function ($rows) use (&$count, &$bytes) {
-            foreach ($rows as $image) {
-                $bytes += (int) $image->size;
-                $image->delete();
-                $count++;
-            }
-        });
+        foreach ($this->galleryQuery($user, $type, $ids, $how)->lazyById(self::CHUNK) as $image) {
+            $bytes += (int) $image->size;
+            $this->dispose($image, $how);
+            $count++;
+        }
 
         return ['count' => $count, 'bytes' => $bytes];
     }

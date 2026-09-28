@@ -117,6 +117,24 @@ const payload: TrashPayload = {
         },
       ],
     },
+    {
+      kind: 'audit_log',
+      category: 'entry',
+      module: 'audit',
+      name_ka: null,
+      name_en: null,
+      icon: null,
+      color: null,
+      total: 1,
+      bytes: 0,
+      items: [
+        {
+          id: 21, title: '#21', subtitle: null, trashed_at: '2026-09-22T10:00:00+04:00',
+          expires_in_days: 24, size: 0, preview: null, locked: false, when: null, count: 42, module: null,
+          offers_records: false, replaceable: false, scope: null, parent: null, restorable: false, blocked: 'permission_missing',
+        },
+      ],
+    },
   ],
 }
 
@@ -221,6 +239,18 @@ describe('TrashPage', () => {
     await flush()
 
     expect(document.body.textContent).toContain(i18n.t('trash.deleteMessageHint', { name: 'გამარჯობა' }))
+  })
+
+  /* ⚠️ ეტაპი 7 — აუდიტის გასუფთავების სათაური კლიენტისაა (ენა), და „რამდენი
+     ჩანაწერი გადაიტანა" ხაზი მას არ ეკუთვნის */
+  it('titles an audit clean-up by its entry count and says why it cannot come back', async () => {
+    await mount()
+
+    const li = row(i18n.t('trash.auditTitle', { count: 42 }))
+    expect(li).toBeTruthy()
+    expect(li.textContent).not.toContain(i18n.t('trash.recordsMoved', { count: 42 }))
+    expect(li.textContent).toContain(i18n.t('trash.blocked.permission_missing'))
+    expect(restoreButton(li).disabled).toBe(true)
   })
 
   it('restores by kind and id', async () => {

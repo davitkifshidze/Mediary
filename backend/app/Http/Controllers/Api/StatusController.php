@@ -143,7 +143,7 @@ class StatusController extends Controller
         $targetId = null;
 
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete($records);
+            $deleted = DictionaryRecords::trash($records);
             $moved = 0;
         } else {
             $deleted = 0;

@@ -66,9 +66,9 @@ class BoardGameGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(BoardGame::where('genre_id', $boardGameGenre->id));
+            $deleted = DictionaryRecords::trash(BoardGame::where('genre_id', $boardGameGenre->id));
             DictionaryTrash::trash($boardGameGenre, 'board_game_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

@@ -404,7 +404,12 @@ class StatusDictionaryTest extends TestCase
      * ის არის, რაც ფაილს, კვოტასა და გალერეას ასუფთავებს; query-ზე `delete()`
      * მას ჩუმად გვერდს აუვლიდა. სხვა სტატუსის ჩანაწერი ადგილზე რჩება.
      */
-    public function test_deleting_a_status_can_delete_its_records(): void
+    /**
+     * ⚠️ **„ჩანაწერებიც წაიშალოს" მფლობელის ურნაშია** (Tasks §29.8) — `deleted`
+     * ჯერ არ ისვრის, ჩანაწერი სიიდან ქრება და ბაზაში `trashed_at`-ით რჩება;
+     * ნამდვილად მხოლოდ ურნის დაცლა შლის.
+     */
+    public function test_deleting_a_status_sends_its_records_to_the_trash(): void
     {
         $this->actingAs($this->user);
 
@@ -426,9 +431,13 @@ class StatusDictionaryTest extends TestCase
             ->assertJsonPath('deleted', 1)
             ->assertJsonPath('moved', 0);
 
-        $this->assertSame(1, $fired);
+        $this->assertSame(0, $fired, 'ურნაში გადატანა ნამდვილი წაშლა არ არის');
         $this->assertNull(Movie::find($gone->id));
+        $this->assertNotNull(Movie::withoutGlobalScope('trash')->find($gone->id)?->trashed_at);
         $this->assertNotNull(Movie::find($kept->id));
+
+        $this->deleteJson('/api/trash', ['confirm' => 'DELETE'])->assertOk();
+        $this->assertSame(1, $fired);
     }
 
     /**

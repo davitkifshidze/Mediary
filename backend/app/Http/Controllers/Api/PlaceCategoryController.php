@@ -73,7 +73,7 @@ class PlaceCategoryController extends Controller
 
         // ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Place::where('category_id', $placeCategory->id));
+            $deleted = DictionaryRecords::trash(Place::where('category_id', $placeCategory->id));
             DictionaryTrash::trash($placeCategory, 'place_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

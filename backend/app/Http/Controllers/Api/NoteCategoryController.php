@@ -66,9 +66,9 @@ class NoteCategoryController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(NoteEntry::where('category_id', $noteCategory->id));
+            $deleted = DictionaryRecords::trash(NoteEntry::where('category_id', $noteCategory->id));
             DictionaryTrash::trash($noteCategory, 'note_category');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

@@ -151,11 +151,13 @@ class TrashTest extends TestCase
     /* ---------- ის, რაც კალათას **უნდა** გვერდი აუაროს ---------- */
 
     /**
-     * ⚠️ **`/purge` კალათაში მყოფსაც შლის.** გამოტოვება ორ რამეს გააფუჭებდა:
-     * „წაშალე ყველაფერი" ჩუმად დატოვებდა ნაწილს, ხოლო ანგარიშის წაშლისას
-     * ობოლი ფაილები დისკზე დარჩებოდა (BUG-21-ის ზუსტი განმეორება).
+     * ⚠️ **`/purge` ურნაში მყოფს ხელს აღარ ახლებს** (Tasks §29.8): ის თვითონ
+     * ურნაში აგზავნის, ე.ი. უკვე ურნაში მყოფის ხელახლა „გადატანა" მის
+     * `trashed_at`-ს განაახლებდა და ვადა თავიდან დაიწყებოდა. ანგარიშის
+     * წაშლა კი მას ისევ ნამდვილად შლის (`PurgeService::FOR_GOOD`) — იხ.
+     * `StorageManagementTest::test_deleting_an_account_leaves_no_file_behind`.
      */
-    public function test_purge_still_deletes_a_trashed_record(): void
+    public function test_purge_leaves_a_trashed_record_and_its_clock_alone(): void
     {
         $admin = User::create([
             'name' => 'root', 'username' => 'root',
@@ -166,14 +168,17 @@ class TrashTest extends TestCase
         $movie = $this->movie();
         $this->actingAs($this->me)->deleteJson("/api/movies/{$movie->id}")->assertNoContent();
 
+        $before = now()->subDays(10)->startOfSecond();
+        Movie::withoutGlobalScopes()->whereKey($movie->id)->update(['trashed_at' => $before]);
+
         $this->actingAs($admin)->postJson('/api/admin/purge', [
             'user_id' => $this->me->id,
             'target' => 'movie',
             'mode' => 'all',
             'confirm' => 'DELETE',
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('result.records', 0);
 
-        $this->assertDatabaseMissing('movies', ['id' => $movie->id]);
+        $this->assertEquals($before, Movie::withoutGlobalScopes()->find($movie->id)?->trashed_at);
     }
 
     /** ვადაგასული ჩანაწერი ნამდვილად იშლება, ახალი — რჩება */

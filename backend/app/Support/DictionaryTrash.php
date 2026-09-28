@@ -26,6 +26,10 @@ use Illuminate\Database\Eloquent\Model;
  * ⚠️ **ჟანრის pivot ცხადად იხსნება** — რიგი აღარ იშლება, ე.ი. FK-ის
  * კასკადი, რომელიც `song_genre_song`/`game_genre_game`-ს წმენდდა, აღარ
  * ეშვება. სხვაგვარად ჩანაწერი ურნაში მყოფ ჟანრზე დარჩებოდა მიბმული.
+ * ⚠️ **მაგრამ მხოლოდ ცოცხალი ჩანაწერისა** (Tasks §29.8): ურნაში მყოფი
+ * (და „ჩანაწერებიც წაიშალოს"-ით ახლა გადატანილი) ბმულს ინარჩუნებს —
+ * ორივე ერთად ბრუნდება, ხოლო ჟანრის საბოლოო წაშლისას FK-ის კასკადი მას
+ * თვითონ მოაშორებს. დამალულ ჟანრს relation ისედაც ვერ ხედავს (`trash` scope).
  *
  * ⚠️ **ჩანაწერები მოდელით ბრუნდება** (`DictionaryRecords::move()`), და
  * სტატუსზე `applyStatus()`-ით — BUG-05-ის წესი: `watched_at`-ს მხოლოდ ის
@@ -69,7 +73,13 @@ final class DictionaryTrash
         $row->trash_meta = $ids ? ['ids' => array_values(array_map('intval', $ids)), 'to' => $to] : null;
 
         if (isset($map['pivot'])) {
-            $row->{$map['pivot']}()->detach();
+            // `trash` scope-ით relation მხოლოდ ცოცხალ ჩანაწერებს აბრუნებს
+            $relation = $row->{$map['pivot']}();
+            $live = $relation->pluck($relation->getRelated()->getQualifiedKeyName())->all();
+
+            if ($live) {
+                $relation->detach($live);
+            }
         }
 
         // ⚠️ ნაგულისხმევი ურნაში აღარ არის ნაგულისხმევი — `StatusController` შემდეგს აწინაურებს

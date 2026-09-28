@@ -42,8 +42,12 @@ class DictionaryDeletionTest extends TestCase
         $this->user->refresh();
     }
 
-    /** ⚠️ `deleted` ივენთი ისვრის — ე.ი. ფაილი და კვოტა მოდელის hook-ში თავისუფლდება */
-    public function test_deleting_a_video_type_can_delete_its_videos(): void
+    /**
+     * ⚠️ **„ჩანაწერებიც წაიშალოს" ახლა მფლობელის ურნაშია** (Tasks §29.8) —
+     * `deleted` ჯერ არ ისვრის (ფაილი და კვოტა ადგილზეა), და ორივე აღდგენის
+     * შემდეგ ვიდეო ისევ თავის ტიპზეა: სვეტის ბმული ხელუხლებელი დარჩა.
+     */
+    public function test_deleting_a_video_type_sends_its_videos_to_the_trash(): void
     {
         $this->actingAs($this->user);
 
@@ -62,10 +66,16 @@ class DictionaryDeletionTest extends TestCase
             ->assertJsonPath('deleted', 1)
             ->assertJsonPath('moved', 0);
 
-        $this->assertSame(1, $fired);
+        $this->assertSame(0, $fired, 'ურნაში გადატანა ნამდვილი წაშლა არ არის');
         $this->assertNull(Video::find($gone->id));
+        $this->assertNotNull(Video::withoutGlobalScope('trash')->find($gone->id)?->trashed_at);
         $this->assertNotNull(Video::find($kept->id));
         $this->assertNull(VideoType::find($first));
+
+        $this->postJson("/api/trash/video_type/{$first}/restore")->assertOk();
+        $this->postJson("/api/trash/video/{$gone->id}/restore")->assertOk();
+
+        $this->assertSame($first, Video::find($gone->id)?->type?->id);
     }
 
     /**

@@ -65,7 +65,10 @@ class AccountEraser
                 continue;
             }
 
-            $this->purge->run($user, ['target' => $target, 'mode' => 'all']);
+            /* ⚠️ `FOR_GOOD` ცხადად (Tasks §29.8): `/purge` იმავე სერვისით ურნაში
+               აგზავნის, ურნა კი ანგარიშისაა და `user_id`-ის SQL-კასკადით —
+               მოვლენების გარეშე — გაქრებოდა: ფაილები დისკზე ობლად დარჩებოდა. */
+            $this->purge->run($user, ['target' => $target, 'mode' => 'all'], PurgeService::FOR_GOOD);
         }
     }
 

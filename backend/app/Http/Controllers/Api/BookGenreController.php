@@ -66,9 +66,9 @@ class BookGenreController extends Controller
             DictionaryRecords::messages(),
         );
 
-        // ეტაპი 8 — ჩანაწერებიც იშლება, **მოდელის გავლით** (ფაილი, კვოტა, აუდიტი)
+        // ეტაპი 8 — ჩანაწერებიც „იშლება“ — Tasks §29.8-ის შემდეგ **მფლობელის ურნაში**, მოდელის გავლით
         if ($request->boolean('delete_records')) {
-            $deleted = DictionaryRecords::delete(Book::where('genre_id', $bookGenre->id));
+            $deleted = DictionaryRecords::trash(Book::where('genre_id', $bookGenre->id));
             DictionaryTrash::trash($bookGenre, 'book_genre');
 
             return response()->json(['moved' => 0, 'deleted' => $deleted]);

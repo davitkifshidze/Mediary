@@ -656,7 +656,10 @@ export function PurgePage() {
                   {t('purge.willKeepPhotos', { count: plan.kept_photos })}
                 </li>
               )}
-              <li className="font-medium">{t('purge.willFree', { size: formatBytes(plan.bytes) })}</li>
+              {/* ⚠️ Tasks §29.8 — ურნაშია: ადგილი სამიზნის ურნის დაცლისას ან მისი ვადით თავისუფლდება */}
+              <li className="font-medium">
+                {t('purge.willFree', { size: formatBytes(plan.bytes), days: plan.trash_days })}
+              </li>
               {/* 20.2 — რიგის სიგრძე და სავარაუდო დრო, როგორც `/sync`-ზე.
                   ⚠️ რიცხვი **დატოვებულია** და არა გეგმისა (§25.3) — თორემ
                   ეკრანზე ხაზგადასმული ერთეულებიც ჩაითვლებოდა. */}

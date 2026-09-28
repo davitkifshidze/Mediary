@@ -18,6 +18,7 @@ use App\Services\Chat\ChatService;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
+use App\Support\AuditLogTrash;
 use App\Support\ColumnTrash;
 use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
@@ -160,6 +161,8 @@ final class TrashBin
                 'module' => $moduleKey ?? match ($kind) {
                     'database_backup' => 'backup',
                     'chat_file', 'chat_message' => 'chat',
+                    // ეტაპი 7 — აუდიტის ლოგის გასუფთავება (ფერი ინსტრუმენტისაა)
+                    AuditLogTrash::KIND => 'audit',
                     default => null,
                 },
                 'name_ka' => $category === 'record' ? $module?->name_ka : null,
@@ -279,6 +282,8 @@ final class TrashBin
             // ალბომზე — რამდენ ფოტოს დააბრუნებს; კლასიფიკატორზე — რამდენ ჩანაწერს შემოგთავაზებს
             'count' => match (true) {
                 $kind === 'gallery_album' => count($row->trashed_photo_ids['ids'] ?? []),
+                // ეტაპი 7 — რამდენი ლოგის რიგი დაბრუნდება (სათაურს კლიენტი აწყობს — ენა)
+                $kind === AuditLogTrash::KIND => AuditLogTrash::count($row),
                 DictionaryTrash::has($kind) => DictionaryTrash::remembered($row),
                 default => null,
             },
@@ -329,7 +334,11 @@ final class TrashBin
             default => TrashEntry::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
-                ->whereIn('record_type', $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission'])),
+                // ⚠️ აუდიტის ელემენტს მოდული არ აქვს — ის გამწმენდისაა (`AuditLogTrash`)
+                ->when($kind !== AuditLogTrash::KIND, fn (Builder $q) => $q->whereIn(
+                    'record_type',
+                    $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']),
+                )),
         };
     }
 
@@ -388,6 +397,20 @@ final class TrashBin
             if ($parent && $parent['trashed']) {
                 TrashDomain::model($parent['kind'])::trashOf((int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
                 $withParent = true;
+            }
+
+            // ეტაპი 7 — აუდიტის ლოგის რიგები ლოგში ბრუნდება, ელემენტი ქრება
+            if ($row instanceof TrashEntry && $row->kind === AuditLogTrash::KIND) {
+                $count = AuditLogTrash::restore($row);
+
+                $this->audit->log(AuditLog::ACTION_RESTORE, [
+                    'subject_type' => AuditLogTrash::KIND,
+                    'subject_id' => $row->getKey(),
+                    'subject_label' => (string) $count,
+                    'new_values' => ['rows' => $count, 'trashed' => false],
+                ]);
+
+                return;
             }
 
             if ($row instanceof TrashEntry) {
@@ -657,7 +680,9 @@ final class TrashBin
         return match (true) {
             $kind === 'database_backup' => $user->isSuperAdmin(),
             $category === 'file', $category === 'message' => true,
-            $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, TrashDomain::ENTRIES[$kind]['permission']) !== [],
+            // ⚠️ აუდიტის ელემენტი ყოველთვის ჩანს — უფლება მხოლოდ აღდგენას ეკითხება (29.8)
+            $kind === AuditLogTrash::KIND => true,
+            $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']) !== [],
             $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
         };
@@ -760,6 +785,11 @@ final class TrashBin
             if ($this->custom->typeOf($user, (string) $row->record_type, (string) $row->slot) !== 'file') {
                 return 'field_missing';
             }
+        }
+
+        // ⚠️ ეტაპი 7 — როლი რომ დაკარგოს, ელემენტი ჩანს, მაგრამ აღდგენა `admin:audit`-ს ითხოვს
+        if ($row instanceof TrashEntry && $row->kind === AuditLogTrash::KIND) {
+            return $user->hasAdminAccess('audit', 'delete') ? null : 'permission_missing';
         }
 
         if ($row instanceof TrashEntry) {
