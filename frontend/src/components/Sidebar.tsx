@@ -5,13 +5,13 @@ import { useQuery } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
   ArchiveRestore,
+  ArrowLeftRight,
   BellRing,
   ChartColumn,
   ChevronDown,
   Clapperboard,
   DatabaseBackup,
   DownloadCloud,
-  Import,
   Inbox,
   KeyRound,
   Languages,
@@ -683,14 +683,13 @@ export function Sidebar({
           <ChartColumn className="size-4 shrink-0" />
           {t('stats.title')}
         </Link>
-        {/* FEAT-07 — გარე სერვისის CSV-ის იმპორტი.
-            ⚠️ **პირობის გარეშე ჩანს**: ცნობადი ფორმატები სამ სხვადასხვა
-            მოდულს ეხება (ფილმი · წიგნი · თამაში), ე.ი. „მედია-მოდული მაქვს
-            თუ არა" აქ არასწორი კითხვაა — რომელ მოდულს ეხება, თვითონ ფაილი
-            წყვეტს და უფლებას სერვერი ამოწმებს. */}
-        <Link to="/import" onClick={() => setDrawerOpen(false)} style={toolAccent('import')} className={toolLink('/import')}>
-          <Import className="size-4 shrink-0" />
-          {t('import.title')}
+        {/* Tasks §31 — „ექსპორტ & იმპორტი" (FEAT-06 + FEAT-07 ერთ სექციაში).
+            ⚠️ **პირობის გარეშე ჩანს**: ექსპორტი ყველა ჩართულ მოდულს ეხება,
+            იმპორტის ფორმატები კი სამ სხვადასხვას (ფილმი · წიგნი · თამაში) —
+            რომელს, თვითონ ფაილი წყვეტს და უფლებას სერვერი ამოწმებს. */}
+        <Link to="/transfer" onClick={() => setDrawerOpen(false)} style={toolAccent('transfer')} className={toolLink('/transfer')}>
+          <ArrowLeftRight className="size-4 shrink-0" />
+          {t('transfer.title')}
         </Link>
         {/* FEAT-11 — კალათა.
             ⚠️ **პირობის გარეშე ჩანს**: წაშლილი ჩანაწერი ათივე მოდულიდან

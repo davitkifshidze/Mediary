@@ -12,6 +12,18 @@ import { api } from '@/lib/api'
    გაჩერება შესაძლებელია და `syncDelayMs`-ის პაუზაც მოქმედებს.
    ============================================================ */
 
+/**
+ * ცნობადი წყაროები — `ImportSource::SOURCES`-ის სარკე (Tasks §31).
+ *
+ * ⚠️ **სია აქაც წერია, რადგან თითო წყაროს ბარათს თავისი ფერი, ხატულა და
+ * „როგორ მივიღო ფაილი" აქვს** — ეს SPA-ის ცოდნაა და სერვერი მას ვერ
+ * გადმოსცემს. `RegistryConsistencyTest` სარკეს წყაროდან კითხულობს, ე.ი.
+ * backend-ის ახალი წყარო ბარათის გარეშე ვერ დარჩება ჩუმად.
+ */
+export const IMPORT_SOURCES = ['letterboxd', 'imdb', 'goodreads', 'steam'] as const
+
+export type ImportSourceKey = (typeof IMPORT_SOURCES)[number]
+
 /** ერთი ცნობადი ფორმატი */
 export interface ImportSourceInfo {
   key: string

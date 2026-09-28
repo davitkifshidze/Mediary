@@ -12,6 +12,7 @@ import {
   CircleX,
   Clock,
   DatabaseBackup,
+  Download,
   FileText,
   Film,
   Frame,
@@ -24,6 +25,7 @@ import {
   MessageSquare,
   Radio,
   Sparkles,
+  Upload,
   User,
   UserCog,
   Users,
@@ -118,6 +120,14 @@ const CUT_STYLE: Record<string, CutStyle> = {
   account: { icon: UserCog, color: 'var(--tool-users)' },
   chat: { icon: MessageSquare, color: 'var(--tool-chat)' },
   backup: { icon: DatabaseBackup, color: 'var(--tool-backups)' },
+
+  /* ---- „ექსპორტ & იმპორტი"-ს ჩანართები (Tasks §31) ----
+     ⚠️ ჩამოტვირთვა და ატვირთვის ხატულები განზრახ: ჰოვერზე ერთი ქვევით
+     მიდის, მეორე — ზევით (`index.css`), ე.ი. მიმართულება მოძრაობითაც
+     იკითხება. იმპორტს სექციის ვარდისფერი აქვს — ის ამ სექციის პირველი
+     ნახევარი იყო. */
+  export: { icon: Download, color: 'var(--tool-backups)' },
+  import: { icon: Upload, color: 'var(--tool-transfer)' },
 
   /* ---- სტატისტიკის ჩანართები (Tasks §27.4 → §28.1) ---- */
   calendar: { icon: CalendarClock, color: 'var(--tool-sync)' },

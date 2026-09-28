@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ArrowLeftRight,
   ChartColumn,
   ContactRound,
   DatabaseBackup,
   DownloadCloud,
-  Import,
   Inbox,
   KeyRound,
   Languages,
@@ -59,7 +59,7 @@ export type ToolSectionKey =
   | 'audit'
   | 'credentials'
   | 'backups'
-  | 'import'
+  | 'transfer'
   | 'stats'
   | 'trash'
   | 'purge'
@@ -81,7 +81,10 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   audit: { color: 'var(--tool-audit)', icon: ScrollText },
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
-  import: { color: 'var(--tool-import)', icon: Import },
+  /* Tasks §31 — „ექსპორტ & იმპორტი": ორი მიმართულება ერთ სექციაში, ამიტომ
+     ხატულაც ორმხრივია. ⚠️ ყოფილი „იმპორტის" ვარდისფერი რჩება — სექცია
+     იგივეა, უბრალოდ მეორე ნახევარი შემოემატა. */
+  transfer: { color: 'var(--tool-transfer)', icon: ArrowLeftRight },
   stats: { color: 'var(--tool-stats)', icon: ChartColumn },
   /* ⚠️ **ურნა და არა კალათა** — `Trash2` რიგში უკვე მასობრივ წაშლას
      (`purge`) აქვს; ერთი ხატვა ორ სხვადასხვა რამეს რომ ნიშნავდეს,

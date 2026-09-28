@@ -1,49 +1,85 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { FileUp, Import, Play, Upload } from 'lucide-react'
+import { BookOpen, CircleSlash, Clapperboard, FileUp, Film, Gamepad2, Play, Upload } from 'lucide-react'
 import {
+  IMPORT_SOURCES,
   fetchImportSources,
   planImport,
   type ImportPlan,
   type ImportPlanItem,
+  type ImportSourceKey,
 } from '@/api/import'
 import { errorMessage, isApiCode } from '@/lib/errors'
+import { modAccent, useModules } from '@/lib/modules'
+import type { CutStyle } from '@/lib/cutStyle'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
-import { PageContainer } from '@/components/ui/page'
-import { PageHeader } from '@/components/ui/page-header'
+import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { StepSection } from '@/components/ui/step-section'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
-import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
-   იმპორტი გარე სერვისის CSV-იდან (FEAT-07).
+   „ექსპორტ & იმპორტი"-ს იმპორტის ჩანართი (Tasks §31 ← FEAT-07).
 
    ⚠️ **ეს „ლინკების ბოტი" არ არის** (2026-09-05-ს სამუდამოდ მოხსნილი):
    იქ აპი თვითონ დაეძებდა ყურების ბმულებს უცხო საიტებზე, აქ კი
    მომხმარებელი საკუთარ ფაილს ტვირთავს — სხვა საიტს არავინ ეკითხება.
 
-   ⚠️ **სამი ბიჯი და არა ერთი ღილაკი**: ფაილი → გეგმა → რიგი. შუა ბიჯი
-   სწორედ იმიტომაა, რომ იმპორტი **ქმნის** ჩანაწერებს: „რამდენი ახალი,
-   რამდენი უკვე მაქვს" კითხვას ჩაწერამდე უნდა ჰქონდეს პასუხი. იგივე
-   ფორმა, რაც `/sync`-სა და `/purge`-ს აქვს.
+   ⚠️ **წყაროს ბარათი მიმართულებაა და არა ბრძანება.** აირჩევ — გეტყვი,
+   როგორ მიიღო ფაილი იმ სერვისიდან. ფაილს მაინც **სერვერი ცნობს**
+   სვეტებით: არჩეული ბარათი რომ „ძალით" გაგვეგზავნა, Letterboxd-ის ფაილი
+   IMDb-ის რუკით წაიკითხებოდა და ყველა რიგი „გაუმართავი" გამოვიდოდა.
+   ამიტომ წყარო ძალით მხოლოდ მაშინ მიდის, როცა ფორმატი ვერ ვიცანით და
+   შენ ცხადად თქვი „წაიკითხე როგორც …". ამოცნობის შემდეგ ბარათი
+   ამოცნობილზე გადადის, ხოლო სხვაობა ხმამაღლა ითქმება.
+
+   ⚠️ **ნაბიჯები ფაილი → გეგმა → გაშვებაა და არა ერთი ღილაკი**: იმპორტი
+   **ქმნის** ჩანაწერებს, ე.ი. „რამდენი ახალი, რამდენი უკვე მაქვს"
+   კითხვას ჩაწერამდე უნდა ჰქონდეს პასუხი (`/sync`-ისა და `/purge`-ის ფორმა).
 
    ⚠️ **გეგმა გარე წყაროს არ ეკითხება** — 800-რიგიანი ფაილი 800
    TMDB-გამოძახება იქნებოდა მხოლოდ რიცხვის საჩვენებლად. ძებნა რიგშია,
    სადაც `syncDelayMs`-ის პაუზაც მოქმედებს.
    ============================================================ */
 
-export function ImportPage() {
-  const { t } = useTranslation()
+/**
+ * წყაროს ფერი და ხატულა — ფერები `index.css`-შია, ორივე თემაზე (`--import-*`).
+ *
+ * ⚠️ **`satisfies` ახალ წყაროს ფერის გარეშე ვერ გაატარებს**: `IMPORT_SOURCES`
+ * backend-ის სარკეა (`RegistryConsistencyTest`), ე.ი. ახალი წყარო ჯერ იქ
+ * გამოჩნდება და მერე აქ `tsc` მოითხოვს მის ბარათს.
+ */
+const SOURCE_STYLE = {
+  letterboxd: { icon: Clapperboard, color: 'var(--import-letterboxd)' },
+  imdb: { icon: Film, color: 'var(--import-imdb)' },
+  goodreads: { icon: BookOpen, color: 'var(--import-goodreads)' },
+  steam: { icon: Gamepad2, color: 'var(--import-steam)' },
+} satisfies Record<ImportSourceKey, CutStyle>
+
+function isKnownSource(key: string): key is ImportSourceKey {
+  return (IMPORT_SOURCES as readonly string[]).includes(key)
+}
+
+/** უცნობი წყარო (სერვერი SPA-ზე წინ წავიდა) ნეიტრალურად იხატება და არ ქრება */
+function sourceStyle(key: string): CutStyle {
+  return isKnownSource(key) ? SOURCE_STYLE[key] : { icon: CircleSlash, color: 'var(--muted-foreground)' }
+}
+
+export function ImportPanel() {
+  const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const { enqueueImport, isBusy } = useQueue()
+  const { all: allModules, has } = useModules()
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [plan, setPlan] = useState<ImportPlan | null>(null)
   const [busy, setBusy] = useState(false)
+  /** არჩეული წყაროს ბარათი — მხოლოდ მიმართულება, ფაილს სერვერი ცნობს */
+  const [chosen, setChosen] = useState<string | null>(null)
+  /** ფაილი სხვა წყაროსი აღმოჩნდა, ვიდრე ბარათზე ეწერა */
+  const [mismatch, setMismatch] = useState<{ chosen: string; detected: string } | null>(null)
   /** ფაილის სათაურები, როცა ფორმატი ვერ ვიცანით — ხელით არჩევისთვის */
   const [unknown, setUnknown] = useState<string[] | null>(null)
 
@@ -53,10 +89,19 @@ export function ImportPage() {
     staleTime: 5 * 60_000,
   })
 
-  const pick = (chosen: File | null) => {
-    setFile(chosen)
+  const label = (key: string) => sources?.data.find((s) => s.key === key)?.label ?? key
+
+  const moduleName = (key: string) => {
+    const m = allModules.find((x) => x.key === key)
+    if (!m) return key
+    return i18n.language === 'ka' ? m.name_ka : m.name_en
+  }
+
+  const pick = (chosenFile: File | null) => {
+    setFile(chosenFile)
     setPlan(null)
     setUnknown(null)
+    setMismatch(null)
   }
 
   const build = async (forced?: string) => {
@@ -66,6 +111,10 @@ export function ImportPage() {
       const result = await planImport(file, forced)
       setPlan(result)
       setUnknown(null)
+      /* ⚠️ ბარათი ამოცნობილზე გადადის — სხვაგვარად ეკრანზე ერთი წყარო
+         იქნებოდა მონიშნული და გეგმა მეორით წაკითხული */
+      setMismatch(!forced && chosen && chosen !== result.source ? { chosen, detected: result.source } : null)
+      setChosen(result.source)
     } catch (e) {
       if (isApiCode(e, 'import_source_unknown')) {
         /* ⚠️ „ფორმატი ვერ ვიცანი" ცარიელი სია **არ არის** — ეკრანზე ის
@@ -73,6 +122,7 @@ export function ImportPage() {
            ეძებდა. სერვერი სათაურებს აბრუნებს, რომ წყარო ხელით აირჩიო. */
         setUnknown(headersOf(e))
         setPlan(null)
+        setMismatch(null)
       } else {
         toast({ title: errorMessage(e), variant: 'error' })
       }
@@ -87,14 +137,52 @@ export function ImportPage() {
     if (fresh.length) enqueueImport(fresh, plan.source)
   }
 
-  const label = (key: string) => sources?.data.find((s) => s.key === key)?.label ?? key
+  /* ⚠️ ჩაურთველ მოდულზე ბარათი გამორთულია და ამბობს რატომ — სერვერი
+     გეგმას მაინც 403-ით უპასუხებდა, ოღონდ ფაილის არჩევის შემდეგ */
+  const options: CutOption[] = (sources?.data ?? []).map((s) => {
+    const style = sourceStyle(s.key)
+    const enabled = has(s.module)
+    return {
+      key: s.key,
+      label: s.label,
+      icon: style.icon,
+      color: style.color,
+      hint: enabled ? moduleName(s.module) : t('transfer.moduleOff', { module: moduleName(s.module) }),
+      disabled: !enabled,
+    }
+  })
+
+  const guide = chosen && isKnownSource(chosen) ? chosen : null
+  const GuideIcon = guide ? SOURCE_STYLE[guide].icon : null
 
   return (
-    <PageContainer>
-      <PageHeader tool="import" title={t('import.title')} hint={<InfoHint info={t('import.hint')} />} />
+    <div className="space-y-4">
+      {/* ---------- 1. წყარო ---------- */}
+      <StepSection step={1} title={t('transfer.stepSource')} hint={t('transfer.stepSourceHint')}>
+        <CutTabs
+          layout="inline"
+          value={chosen ?? ''}
+          // აქტიურზე მეორე დაჭერა არჩევანს მოხსნის — ჭრილის ბარათების წესი
+          onChange={(key) => setChosen((current) => (current === key ? null : key))}
+          options={options}
+        />
 
-      {/* ---------- 1. ფაილი ---------- */}
-      <StepSection step={1} title={t('import.stepFile')} hint={t('import.stepFileHint')}>
+        {guide && GuideIcon && (
+          <div
+            className="mt-3 rounded-xl border border-[var(--mod)] bg-[var(--mod-soft)] p-4 text-sm"
+            style={modAccent(SOURCE_STYLE[guide].color)}
+          >
+            <p className="mb-1 flex items-center gap-2 font-medium">
+              <GuideIcon className="size-4 text-[var(--mod)]" />
+              {t('transfer.howTitle', { source: label(guide) })}
+            </p>
+            <p className="leading-relaxed text-muted-foreground">{t(`transfer.how.${guide}`)}</p>
+          </div>
+        )}
+      </StepSection>
+
+      {/* ---------- 2. ფაილი ---------- */}
+      <StepSection step={2} title={t('import.stepFile')} hint={t('import.stepFileHint')}>
         <div className="flex flex-wrap items-center gap-3">
           <input
             ref={fileRef}
@@ -114,37 +202,46 @@ export function ImportPage() {
           </Button>
         </div>
 
-        {/* ცნობადი ფორმატები — „რა შეიძლება ავტვირთო"-ს პასუხი */}
-        <ul className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {(sources?.data ?? []).map((s) => (
-            <li key={s.key} className="rounded-md border border-border px-2 py-1">
-              {s.label}
-            </li>
-          ))}
-        </ul>
-
         {unknown && (
           <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
             <p className="mb-2 font-medium">{t('errors.import_source_unknown')}</p>
             <p className="mb-3 text-xs text-muted-foreground">{unknown.join(' · ')}</p>
             <div className="flex flex-wrap gap-2">
-              {(sources?.data ?? []).map((s) => (
-                <Button key={s.key} type="button" size="sm" variant="outline" onClick={() => build(s.key)}>
-                  {s.label}
-                </Button>
-              ))}
+              {(sources?.data ?? []).map((s) => {
+                const Icon = sourceStyle(s.key).icon
+                return (
+                  <Button
+                    key={s.key}
+                    type="button"
+                    size="sm"
+                    // ბარათზე არჩეული წყარო — ის, რაც თვითონ თქვი, რომ ფაილია
+                    variant={chosen === s.key ? 'default' : 'outline'}
+                    disabled={busy || !has(s.module)}
+                    onClick={() => build(s.key)}
+                  >
+                    <Icon className="size-4" />
+                    {t('transfer.readAs', { source: s.label })}
+                  </Button>
+                )
+              })}
             </div>
           </div>
         )}
       </StepSection>
 
-      {/* ---------- 2. გეგმა ---------- */}
+      {/* ---------- 3. გეგმა ---------- */}
       {plan && (
         <StepSection
-          step={2}
+          step={3}
           title={t('import.stepPlan')}
           hint={t('import.stepPlanHint', { source: label(plan.source) })}
         >
+          {mismatch && (
+            <p className="mb-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+              {t('transfer.detectedOther', { detected: label(mismatch.detected), chosen: label(mismatch.chosen) })}
+            </p>
+          )}
+
           <dl className="grid grid-cols-3 gap-3 text-center">
             <Count label={t('import.new')} value={plan.counts.new} tone="var(--icon-ok)" />
             <Count label={t('import.duplicate')} value={plan.counts.duplicate} />
@@ -171,24 +268,16 @@ export function ImportPage() {
         </StepSection>
       )}
 
-      {/* ---------- 3. გაშვება ---------- */}
+      {/* ---------- 4. გაშვება ---------- */}
       {plan && (
-        <StepSection step={3} title={t('import.stepRun')} hint={t('import.stepRunHint')}>
+        <StepSection step={4} title={t('import.stepRun')} hint={t('import.stepRunHint')}>
           <Button type="button" disabled={isBusy || plan.counts.new === 0} onClick={run}>
             <Play className="size-4" />
             {t('import.run', { count: plan.counts.new })}
           </Button>
         </StepSection>
       )}
-
-      {!plan && !file && (
-        <EmptyState
-          icon={<Import className="size-6" />}
-          title={t('import.empty')}
-          hint={t('import.emptyHint')}
-        />
-      )}
-    </PageContainer>
+    </div>
   )
 }
 

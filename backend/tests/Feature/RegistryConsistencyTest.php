@@ -21,6 +21,7 @@ use App\Support\CredentialProviders;
 use App\Support\CustomFields;
 use App\Support\ExportDomain;
 use App\Support\GalleryParent;
+use App\Support\ImportSource;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
@@ -356,6 +357,19 @@ class RegistryConsistencyTest extends TestCase
             (new \ReflectionClassConstant(Game::class, 'STORE_HOSTS'))->getValue(),
             $spa,
         );
+    }
+
+    /**
+     * ⚠️ **იმპორტის წყაროების სარკე SPA-ში** (Tasks §31).
+     *
+     * თითო წყაროს ბარათს თავისი ფერი, ხატულა და „როგორ მივიღო ფაილი" აქვს —
+     * ეს SPA-ის ცოდნაა (`SOURCE_STYLE` `satisfies`-ით და `transfer.how.*`).
+     * backend-ის ახალი წყარო სარკეში რომ არ ჩაიწეროს, ბარათი ნეიტრალურად
+     * დაიხატებოდა და ინსტრუქცია უბრალოდ არ გამოჩნდებოდა — ჩუმად.
+     */
+    public function test_the_spa_import_source_list_mirrors_the_backend(): void
+    {
+        $this->assertSame(ImportSource::keys(), $this->tsConstList('api/import.ts', 'IMPORT_SOURCES'));
     }
 
     /**

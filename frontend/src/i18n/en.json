@@ -3070,18 +3070,42 @@
     "recordHint": "The record has been deleted, or it belongs to someone else.",
     "backToList": "Back to the list"
   },
+  "transfer": {
+    "title": "Export & import",
+    "hint": "Take your library out and bring it in, in one place. Export gives you each module's records as a file and your uploads as a ZIP; import reads a CSV from another service and adds the records.",
+    "tabExport": "Export",
+    "tabExportHint": "Records and files",
+    "tabImport": "Import",
+    "tabImportHint": "A CSV from another service",
+    "records": "Records",
+    "noRecords": "No records yet",
+    "files": "Files",
+    "filesHint": "The ZIP holds what your storage library lists — your uploads and gallery photos, in one folder per module. Shared files (a TMDB poster, an actor's photo) and files in the trash are not included.",
+    "zipTitle": "Uploaded files",
+    "zipCount": "{{count}} files · {{size}}",
+    "zipEmpty": "No uploaded files yet",
+    "zipBuilding": "Packing the ZIP…",
+    "profileLink": "Take your library out or bring it in",
+    "moduleOff": "{{module}} — module turned off",
+    "stepSource": "Source",
+    "stepSourceHint": "Pick where you are coming from and you'll see how to get the file. Picking is optional: the format is recognised from the file's columns. The file is only read, never stored on the server.",
+    "howTitle": "How to get the file from {{source}}",
+    "how": {
+      "letterboxd": "In Letterboxd's settings, press “Export Your Data” and upload watched.csv or ratings.csv from the downloaded archive. Every film is marked watched with its watch date, and 0.5–5 stars become the 1–10 scale.",
+      "imdb": "On IMDb, open your ratings (“Your Ratings”) or any list and choose “Export” from its menu. The file carries IMDb ids, so each film is found exactly and marked watched.",
+      "goodreads": "On Goodreads: “My Books” → “Import and export” → “Export Library”. Shelves become statuses: `read` — read, `currently-reading` — reading, `to-read` — to read; a book is looked up by ISBN first.",
+      "steam": "Steam has no CSV export of its own — you need a file with `appid` and `name` columns (from a library export tool, for example). Each game is found by name and added as to play."
+    },
+    "readAs": "Read it as {{source}}",
+    "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way."
+  },
   "exportData": {
-    "title": "My data",
-    "hint": "Every module’s records in one file: title, status, genre, tags and links. Uploaded files are not packed here — the download above does that; the file’s poster_path column points at exactly that archive entry.",
+    "hint": "Each module's records in one file: title, status, genre, tags and links. CSV opens in Excel with Georgian intact; JSON is for other programs. Uploaded files are not packed here — download them separately below, as a ZIP.",
     "records": "{{count}} records",
     "fields": "{{count}} columns",
-    "empty": "You have no module to export",
-    "importLink": "Import a CSV from another service",
-    "importHint": "A Letterboxd, IMDb, Goodreads or Steam file is added to your library."
+    "empty": "You have no module to export"
   },
   "import": {
-    "title": "Import",
-    "hint": "An export file (CSV) from another service: Letterboxd and IMDb for films, Goodreads for books, Steam for games. The file is only read, never stored on the server.",
     "stepFile": "File",
     "stepFileHint": "Pick the export file — the format is recognised from its columns.",
     "choose": "Choose a file",
@@ -3113,9 +3137,7 @@
     "showAll": "Show all ({{count}})",
     "stepRun": "Run",
     "stepRunHint": "Each record is its own request — progress shows below and you can stop at any time.",
-    "run": "Import ({{count}})",
-    "empty": "No file chosen yet",
-    "emptyHint": "The export file comes from the service itself: Letterboxd from its settings, IMDb from a list page, Goodreads from “My Books”."
+    "run": "Import ({{count}})"
   },
   "stats": {
     "title": "Statistics",

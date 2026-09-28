@@ -35,7 +35,7 @@ const ActorPage = lazy(() => import('@/pages/ActorPage').then((m) => ({ default:
 const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ default: m.GenresPage })))
 const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
-const ImportPage = lazy(() => import('@/pages/ImportPage').then((m) => ({ default: m.ImportPage })))
+const TransferPage = lazy(() => import('@/pages/TransferPage').then((m) => ({ default: m.TransferPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
@@ -281,10 +281,14 @@ function AppShell() {
           {/* ძებნის შედეგები — ⚠️ **მოდულზე დამოცებული არაა**:
               ის თვითონ ეკითხება ძებნას ყველა ჩართულ დომენში და გამორთულს
               საერთოდ არ აჭვენებს. */}
-          {/* FEAT-07 — CSV-ის იმპორტი. ⚠️ **მოდულზე დამოკიდებული არაა**:
-              რომელ მოდულს ეხება, ფაილი წყვეტს, და კონტროლერი თვითონ
-              ამოწმებს წვდომასაც და უფლებასაც (ისევე, როგორც ძებნა). */}
-          <Route path="import" element={<ImportPage />} />
+          {/* Tasks §31 — „ექსპორტ & იმპორტი". ⚠️ **მოდულზე დამოკიდებული არაა**:
+              ექსპორტი ჩართულ მოდულებს თვითონ ჩამოთვლის, იმპორტში კი რომელ
+              მოდულს ეხება, ფაილი წყვეტს — კონტროლერები თვითონ ამოწმებენ
+              წვდომასაც და უფლებასაც (ისევე, როგორც ძებნა).
+              ⚠️ ძველი `/import` ბმული **გადამისამართებაა** და არა წაშლილი
+              მარშრუტი — შენახული ბმულები არ უნდა გატყდეს (31.2). */}
+          <Route path="transfer" element={<TransferPage />} />
+          <Route path="import" element={<Navigate to="/transfer?tab=import" replace />} />
           {/* FEAT-08 — სტატისტიკა. ⚠️ **მოდულზე დამოკიდებული არაა**: პასუხი
               ყველა ჩართულ მოდულს ეხება და ჩაურთველი სიიდან თვითონ ცვივა. */}
           <Route path="stats" element={<StatsPage />} />
