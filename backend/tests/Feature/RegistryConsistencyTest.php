@@ -17,6 +17,7 @@ use App\Services\Gallery\ModuleImages;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AuditRegistry;
+use App\Support\CredentialProviders;
 use App\Support\CustomFields;
 use App\Support\ExportDomain;
 use App\Support\GalleryParent;
@@ -907,6 +908,51 @@ class RegistryConsistencyTest extends TestCase
         }
 
         $this->assertSame([], $offenders, 'CA bundle ხელით წერია — გამოიყენე SourceLog::request()');
+    }
+
+    /**
+     * **Tasks §30.8 — წყაროს გასაღები `.env`-იდან აღარ იკითხება, არსად.**
+     *
+     * ⚠️ წესი სამ ადგილას შეიძლება ჩუმად დაბრუნდეს და სამივე მოწმდება:
+     * `config/services.php` (ხელახლა ჩაწერილი `env('TMDB_API_KEY')`),
+     * აპის კოდი (`config('services.tmdb.key')` `CredentialStore`-ის გვერდის
+     * ავლით) და `.env.example` (ცარიელი ხაზი ადამიანს შევსებისკენ უბიძგებს —
+     * აპი კი ჩაწერილს ვეღარ წაიკითხავს და „ხომ ჩავწერე" ტყუილი იქნება).
+     */
+    public function test_source_keys_are_never_read_from_env(): void
+    {
+        $services = (string) file_get_contents(config_path('services.php'));
+        $example = (string) file_get_contents(base_path('.env.example'));
+
+        foreach (array_keys(CredentialProviders::LEGACY_ENV) as $name) {
+            $this->assertStringNotContainsString("env('{$name}'", $services, "{$name} ისევ `config/services.php`-შია");
+            $this->assertDoesNotMatchRegularExpression('/^\s*'.$name.'\s*=/m', $example, "{$name} ისევ `.env.example`-შია");
+        }
+
+        $providers = array_diff(CredentialProviders::keys(), [CredentialProviders::TELEGRAM]);
+
+        foreach ($providers as $provider) {
+            $this->assertNull(config("services.{$provider}"), "`services.{$provider}` ისევ კონფიგშია");
+        }
+
+        $pattern = '/config\(\s*[\'"]services\.('.implode('|', $providers).')\b/';
+        $offenders = [];
+
+        foreach ($this->phpFiles(app_path()) as $file) {
+            if (preg_match($pattern, (string) file_get_contents($file))) {
+                $offenders[] = str_replace(DIRECTORY_SEPARATOR, '/', str_replace(base_path().DIRECTORY_SEPARATOR, '', $file));
+            }
+        }
+
+        $this->assertSame([], $offenders, 'გასაღები `config()`-იდან იკითხება — გამოიყენე CredentialStore');
+    }
+
+    /** SPA-ის წყაროების სია (`lib/credentials.ts`) backend-ის რეესტრს ემთხვევა — რიგითაც */
+    public function test_the_spa_credential_providers_mirror_the_backend(): void
+    {
+        $spa = $this->tsConstList('lib/credentials.ts', 'CREDENTIAL_PROVIDERS');
+
+        $this->assertEqualsCanonicalizing(CredentialProviders::keys(), $spa);
     }
 
     /**

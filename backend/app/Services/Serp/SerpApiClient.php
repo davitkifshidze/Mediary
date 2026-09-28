@@ -141,17 +141,16 @@ class SerpApiClient
     }
 
     /**
-     * **ვის ხარჯზე იწერება ეს ძებნა** (Tasks §21.4).
+     * **ვის ხარჯზე იწერება ეს ძებნა** (Tasks §21.4 → §30).
      *
-     * ⚠️ `null` = საერთო გასაღები, ე.ი. მრიცხველი ძველებურად **მთელ
-     * ინსტალაციას** ითვლის (ზუსტად ის, რასაც `SerpSearch`-ის დოკბლოკი
-     * აღწერს: „კვოტა ანგარიშისაა და არა მომხმარებლისა"). თავისი გასაღებით
-     * კი მხოლოდ თავისი რიგები ითვლება — თორემ სხვისი ძებნა ჩემს 250-ს
-     * ხარჯავდა, თუმცა SerpApi-ს ჩემი გასაღები საერთოდ არ უნახავს.
+     * ⚠️ **ყოველთვის მომხმარებელზე** — საერთო გასაღები აღარ არსებობს, ე.ი.
+     * მხოლოდ ჩემი რიგები ითვლება: სხვისი ძებნა ჩემს 250-ს არ ხარჯავს, რადგან
+     * SerpApi-ს ჩემი გასაღები საერთოდ არ უნახავს. `null` — მომხმარებელი არ
+     * არის (CLI), და მაშინ გასაღებიც არაა.
      */
     private function quotaOwner(): ?int
     {
-        return CredentialStore::quotaOwner(CredentialProviders::SERPAPI);
+        return CredentialStore::quotaOwner();
     }
 
     /** ბოლო რექვესთი **დაბლოკილი/ჩავარდნილი** იყო და არა უბრალოდ უშედეგო */
@@ -160,7 +159,7 @@ class SerpApiClient
         return in_array($this->lastStatus, [0, 401, 403, 429, 500, 502, 503], true);
     }
 
-    /** ჩვენი ჭერი (`SERPAPI_MONTHLY_LIMIT`); `null` = ჭერი არ დაგვიწესებია */
+    /** ჩვენი ჭერი (პირადი ან კოდის ნაგულისხმევი 250); `0` = ჭერი არ მოწმდება */
     public function limit(): ?int
     {
         return CredentialStore::limit(CredentialProviders::SERPAPI, 'monthly');
@@ -179,9 +178,13 @@ class SerpApiClient
     {
         $owner = $this->quotaOwner();
 
+        // §30 — გასაღების გარეშე (CLI) დასათვლელიც არაფერია; სხვისი ხარჯი — არასდროს
+        if ($owner === null) {
+            return 0;
+        }
+
         return SerpSearch::where('created_at', '>=', $since ?? $this->windowStart())
-            // §21.4 — თავისი გასაღები → თავისი ხარჯი; საერთო → ყველასი
-            ->when($owner !== null, fn ($q) => $q->where('user_id', $owner))
+            ->where('user_id', $owner)
             ->count();
     }
 

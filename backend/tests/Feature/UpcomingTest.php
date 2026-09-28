@@ -132,7 +132,7 @@ class UpcomingTest extends TestCase
      */
     public function test_sync_fills_and_then_clears_the_next_air_date(): void
     {
-        config()->set('services.tmdb.key', 'test-key');
+        $this->giveCredential($this->me, 'tmdb');
 
         $anime = Anime::create(['user_id' => $this->me->id, 'tmdb_id' => 31910]);
 
@@ -167,7 +167,7 @@ class UpcomingTest extends TestCase
      */
     public function test_the_bulk_sync_fills_and_clears_the_next_air_date(): void
     {
-        config()->set('services.tmdb.key', 'test-key');
+        $this->giveCredential($this->me, 'tmdb');
 
         $series = Series::create(['user_id' => $this->me->id, 'tmdb_id' => 1402]);
 

@@ -29,6 +29,7 @@ import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { GameFranchiseDialog } from '@/components/GameFranchiseDialog'
 import { GameGenreDialog } from '@/components/GameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
@@ -183,19 +184,25 @@ export function GameForm({
   const [lookupQuery, setLookupQuery] = useState('')
   const [candidates, setCandidates] = useState<RawgCandidate[] | null>(null)
   const [unavailable, setUnavailable] = useState(false)
+  // Tasks §30.6 — ჩემი RAWG/IGDB-ის გასაღები არ მაქვს (≠ წყარო ჩავარდა)
+  const [noKey, setNoKey] = useState(false)
 
   const lookup = useMutation({
     mutationFn: () => fetchRawgCandidates(lookupQuery.trim()),
     onSuccess: (results) => {
       setUnavailable(false)
+      setNoKey(false)
       setCandidates(results)
     },
     onError: (e) => {
-      // 503 = კლავიში არ არის ან წყარო ჩავარდა; დანარჩენი ჩვეულებრივი შეცდომაა
+      /* 503 = წყარო ჩავარდა · 409 `credential_missing` = გასაღები არ მაქვს (§30.6) —
+         ⚠️ ორი სხვადასხვა ქმედება: „სცადე მოგვიანებით" და „ჩაწერე „მონაცემებში"" */
+      const missing = isApiCode(e, 'credential_missing')
       const blocked = isApiCode(e, 'rawg_unavailable')
+      setNoKey(missing)
       setUnavailable(blocked)
-      setCandidates(blocked ? [] : null)
-      if (!blocked) toast({ title: errorMessage(e), variant: 'error' })
+      setCandidates(blocked || missing ? [] : null)
+      if (!blocked && !missing) toast({ title: errorMessage(e), variant: 'error' })
     },
   })
 
@@ -380,12 +387,13 @@ export function GameForm({
 
           {/* ⚠️ „წყარო მიუწვდომელია" ცალკე მდგომარეობაა და არა ცარიელი სია */}
           {unavailable && <QuickFillMessage tone="warn">{t('games.lookupUnavailable')}</QuickFillMessage>}
+          {noKey && <CredentialMissingNotice provider="rawg" />}
 
-          {!unavailable && candidates && !candidates.length && (
+          {!unavailable && !noKey && candidates && !candidates.length && (
             <QuickFillMessage>{t('games.lookupEmpty')}</QuickFillMessage>
           )}
 
-          {!unavailable && candidates && candidates.length > 0 && (
+          {!unavailable && !noKey && candidates && candidates.length > 0 && (
             <QuickFillResults>
               {candidates.map((candidate) => (
                 <QuickFillCandidate

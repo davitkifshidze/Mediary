@@ -14,6 +14,7 @@ use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -397,18 +398,21 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * კლავიშების გარეშე ორივე წყარო მიუწვდომელია → **503 და არა ცარიელი სია**.
-     * ⚠️ ცარიელი სია user-ს „ასეთი თამაში არ არსებობს"-ად წაეკითხებოდა.
+     * ⚠️ **ორივე გასაღების გარეშე — „ჩაწერე შენი გასაღები" და არა ცარიელი სია**
+     * (Tasks §30.6). ცარიელი სია „ასეთი თამაში არ არსებობს"-ად წაიკითხებოდა,
+     * „წყარო მიუწვდომელია" კი სხვაგან გაგზავნიდა — სწორი ქმედება ჩაწერაა.
      */
-    public function test_candidates_report_the_source_as_unavailable_without_keys(): void
+    public function test_candidates_without_any_key_ask_for_the_users_own_key(): void
     {
-        config(['services.rawg.key' => null, 'services.igdb.client_id' => null, 'services.igdb.client_secret' => null]);
+        Http::fake();
 
         $this->actingAs($this->user)
             ->postJson('/api/games/lookup/candidates', ['query' => 'zelda'])
-            ->assertStatus(503)
-            ->assertJsonPath('message', 'rawg_unavailable')
-            ->assertJsonPath('configured', false);
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'credential_missing')
+            ->assertJsonPath('provider', 'rawg');
+
+        Http::assertNothingSent();
     }
 
     /** ორივე სათაური ცარიელი — ჩანაწერი უსახელო დარჩებოდა */
@@ -548,17 +552,19 @@ class GameModuleTest extends TestCase
     }
 
     /**
-     * ⚠️ RAWG-ის კლავიში ტესტში არ არის — endpoint-მა **503** უნდა დააბრუნოს
-     * და არა ცარიელი სია, თორემ user-ს ეგონებოდა, რომ თამაში არ არსებობს.
+     * ⚠️ გასაღები მაქვს, მაგრამ RAWG **არ პასუხობს** → **503** და არა ცარიელი
+     * სია, თორემ user-ს ეგონებოდა, რომ თამაში არ არსებობს. ⚠️ ეს
+     * `credential_missing`-ისგან განსხვავებული ფაქტია და ორივე ცალ-ცალკე მოწმდება.
      */
     public function test_lookup_reports_an_unavailable_source_instead_of_empty_results(): void
     {
-        config(['services.rawg.key' => null]);
+        $this->giveCredential($this->user, 'rawg');
+        Http::fake(['api.rawg.io/*' => Http::response([], 503)]);
 
         $this->actingAs($this->user)
             ->postJson('/api/games/lookup/candidates', ['query' => 'hades'])
             ->assertStatus(503)
             ->assertJsonPath('message', 'rawg_unavailable')
-            ->assertJsonPath('configured', false);
+            ->assertJsonPath('configured', true);
     }
 }

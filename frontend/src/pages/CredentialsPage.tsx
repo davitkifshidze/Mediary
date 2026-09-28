@@ -1,7 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, HelpCircle, KeyRound, Loader2, RotateCw, Trash2, TriangleAlert } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  ArrowRight,
+  BellRing,
+  CheckCircle2,
+  Clapperboard,
+  Gamepad2,
+  HelpCircle,
+  Images,
+  Joystick,
+  KeyRound,
+  Languages,
+  Loader2,
+  Plus,
+  RotateCw,
+  ScanSearch,
+  Search,
+  Send,
+  Sparkles,
+  SquarePlay,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react'
 import {
   clearCredential,
   fetchCredentials,
@@ -9,108 +31,179 @@ import {
   saveCredential,
   testCredential,
   type Credential,
-  type CredentialSource,
 } from '@/api/credentials'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { SecretInput } from '@/components/ui/secret-input'
 import { CredentialHelpDialog } from '@/components/CredentialHelpDialog'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Badge } from '@/components/ui/badge'
-import { useAuth } from '@/lib/auth'
+import {
+  CREDENTIAL_BRAND,
+  CREDENTIAL_GROUPS,
+  credentialState,
+  isCredentialProvider,
+  usagePercent,
+  type CredentialProvider,
+  type CredentialState,
+} from '@/lib/credentials'
 import { useDateFormat } from '@/lib/dates'
-import { TOOL_SECTIONS } from '@/lib/toolSections'
+import { errorMessage } from '@/lib/errors'
+import { modAccent } from '@/lib/modules'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   **„მონაცემები" — ჩემი გასაღებები და ლიმიტები (Tasks §21).**
+   **„მონაცემები" — ჩემი გასაღებები და ლიმიტები (Tasks §21 → §30).**
 
-   ⚠️ **საიდუმლოს ველი ყოველთვის ცარიელი იწყება და ეს არაა ხარვეზი.**
-   სერვერი გასაღებს არ აბრუნებს (მხოლოდ ნიღბიან კუდს), ე.ი. „უცვლელად
-   დატოვება" ნიშნავს ველის საერთოდ არშევსებას. სწორედ ამიტომ ცარიელი ველი
-   **არ იგზავნება**: სხვაგვარად ჩვეულებრივი „შენახვა" ყოველ ჯერზე ჩუმად
-   წაშლიდა გასაღებს.
+   §30: რვა სრულსიგანიანი, ერთფეროვანი ბარათი ერთმანეთის ქვეშ **ბადედ**
+   იქცა — ჯგუფებად („რისთვის მჭირდება"), თითო წყაროს თავისი ფერითა და
+   აიქონით, მდგომარეობის ფერადი ნიშნით, ბოლო შემოწმებითა და ლიმიტის
+   ზოლით. რედაქტირება ბარათზე დაჭერით, მოდალში იხსნება.
 
-   ⚠️ **სამი მდგომარეობა ჩანს და არა ორი** — „ჩემია" · „საერთოა" · „არსად
-   არაა". შუა მდგომარეობის დამალვა ნიშნავდა, რომ მომხმარებელი ვერ
-   მიხვდებოდა, რატომ მუშაობს თარგმანი გასაღების ჩაწერის გარეშე (და ვისი
-   კვოტა იხარჯება).
+   ⚠️ **გასაღები მხოლოდ ჩემია (Q38)** — „საერთო" მდგომარეობა, მისი ნიღაბი
+   და „საერთო გასაღებით" placeholder აღარ არსებობს. ვისაც გასაღები არ
+   აქვს, მისთვის წყარო არ მუშაობს — ბარათი ამას ცხადად ამბობს და
+   დამატებისკენ მიუთითებს.
+
+   ⚠️ **ყველა ძველი წესი რჩება** (§30.2): საიდუმლო სიაში არასდროს მოდის
+   (მხოლოდ ნიღაბი), „ნახვა" ცალკე მოთხოვნაა, ცარიელი ველი არ იგზავნება
+   (= „უცვლელი"), Serper-ის შემოწმება კრედიტს ხარჯავს და დასტურს ითხოვს.
    ============================================================ */
 
-const PROVIDERS = ['tmdb', 'gemini', 'rawg', 'igdb', 'serpapi', 'serper', 'youtube', 'telegram'] as const
-
-/** ბრენდის სახელი — არ ითარგმნება, ე.ი. i18n-ის გასაღები არ ეკუთვნის */
-const BRAND: Record<string, string> = {
-  tmdb: 'TMDB',
-  gemini: 'Google Gemini',
-  rawg: 'RAWG.io',
-  igdb: 'IGDB (Twitch)',
-  serpapi: 'SerpApi',
-  serper: 'Serper.dev',
-  youtube: 'YouTube Data API',
-  telegram: 'Telegram',
+/** წყაროს ფერი და აიქონი — ფერები `index.css`-შია, ორივე თემაზე (`--cred-*`) */
+const LOOK: Record<CredentialProvider, { icon: LucideIcon; color: string }> = {
+  tmdb: { icon: Clapperboard, color: 'var(--cred-tmdb)' },
+  gemini: { icon: Sparkles, color: 'var(--cred-gemini)' },
+  rawg: { icon: Gamepad2, color: 'var(--cred-rawg)' },
+  igdb: { icon: Joystick, color: 'var(--cred-igdb)' },
+  serpapi: { icon: ScanSearch, color: 'var(--cred-serpapi)' },
+  serper: { icon: Images, color: 'var(--cred-serper)' },
+  youtube: { icon: SquarePlay, color: 'var(--cred-youtube)' },
+  telegram: { icon: Send, color: 'var(--cred-telegram)' },
 }
 
-const SOURCE_TONE: Record<CredentialSource, string> = {
-  user: 'bg-[color-mix(in_oklab,var(--icon-ok)_18%,transparent)] text-foreground',
-  shared: 'bg-secondary text-secondary-foreground',
-  none: 'bg-[color-mix(in_oklab,var(--destructive)_14%,transparent)] text-foreground',
+/** უცნობი (ახალი სერვერის) წყარო ცვივის ნაცვლად ნეიტრალურად იხატება */
+const FALLBACK_LOOK = { icon: KeyRound, color: 'var(--tool-credentials)' }
+
+type GroupKey = (typeof CREDENTIAL_GROUPS)[number]['key']
+
+const GROUP_ICON: Record<GroupKey, LucideIcon> = {
+  media: Clapperboard,
+  translation: Languages,
+  web: Search,
+  notify: BellRing,
+}
+
+/**
+ * მდგომარეობის ფერი. ⚠️ „შეუვსებელი" და „გამორთული" ქარვისფერია — არაფერი
+ * გატეხილა, უბრალოდ ერთი ნაბიჯი აკლია; „ვერ იშიფრება" კი წითელია: ჩაწერილი
+ * გასაღები ფაქტობრივად დაკარგულია.
+ */
+const STATE_TONE: Record<CredentialState, string> = {
+  mine: 'bg-[color-mix(in_oklab,var(--icon-ok)_18%,transparent)] text-foreground',
+  off: 'bg-[color-mix(in_oklab,var(--icon-warn)_22%,transparent)] text-foreground',
+  partial: 'bg-[color-mix(in_oklab,var(--icon-warn)_22%,transparent)] text-foreground',
+  none: 'bg-secondary text-muted-foreground',
+  undecryptable: 'bg-[color-mix(in_oklab,var(--destructive)_16%,transparent)] text-foreground',
+}
+
+/** ბარათის შემოსვლის საფეხური და ჭერი (`/modules`-ის წესი, `index.css`-ის `fb-card`) */
+const STAGGER_MS = 40
+const STAGGER_MAX_MS = 240
+
+function lookOf(provider: string) {
+  return isCredentialProvider(provider) ? LOOK[provider] : FALLBACK_LOOK
+}
+
+function brandOf(provider: string) {
+  return isCredentialProvider(provider) ? CREDENTIAL_BRAND[provider] : provider
 }
 
 export function CredentialsPage() {
   const { t } = useTranslation()
-  const qc = useQueryClient()
-
   const { data, isLoading } = useQuery({ queryKey: ['credentials'], queryFn: fetchCredentials })
-  const { isAdmin } = useAuth()
+  const [open, setOpen] = useState<string | null>(null)
+
+  const byProvider = useMemo(() => new Map((data?.data ?? []).map((c) => [c.provider, c])), [data])
+  const connected = (data?.data ?? []).filter((c) => c.source === 'user').length
+  /* ⚠️ მოდალი წყაროს **სახელით** იხსნება და ობიექტს ყოველ რენდერზე
+     ახალი სიიდან იღებს — შენახვის/შემოწმების შემდეგ ის თვითონ განახლდება. */
+  const openCredential = open ? byProvider.get(open) : undefined
+
+  let index = 0
 
   return (
-    <PageContainer width="narrow">
+    <PageContainer>
       <PageHeader
         tool="credentials"
         title={t('credentials.title')}
-        hint={<InfoHint info={t('credentials.subtitle')} />}
+        hint={<InfoHint info={t('credentials.intro')} />}
+        subtitle={data ? t('credentials.connected', { count: connected, total: data.data.length }) : undefined}
       />
 
-      <p className="mb-5 rounded-xl border border-border bg-card p-4 text-sm leading-relaxed text-muted-foreground">
-        {t('credentials.intro')}
-      </p>
-
-      {isLoading && <div className="h-40 animate-pulse rounded-xl bg-muted" />}
-
-      <div className="space-y-4">
-        {data?.data
-          .slice()
-          .sort((a, b) => PROVIDERS.indexOf(a.provider as never) - PROVIDERS.indexOf(b.provider as never))
-          .map((c) => (
-            <ProviderCard
-              key={c.provider}
-              credential={c}
-              canSeeShared={isAdmin}
-              onChanged={() => qc.invalidateQueries({ queryKey: ['credentials'] })}
-            />
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-2xl bg-muted" />
           ))}
+        </div>
+      )}
+
+      <div className="space-y-8">
+        {CREDENTIAL_GROUPS.map((group) => {
+          const items = group.providers
+            .map((p) => byProvider.get(p))
+            .filter((c): c is Credential => c !== undefined)
+
+          if (!items.length) return null
+
+          const Icon = GROUP_ICON[group.key]
+
+          return (
+            <section key={group.key} aria-labelledby={`cred-group-${group.key}`}>
+              <h2
+                id={`cred-group-${group.key}`}
+                className="mb-3 flex items-center gap-2 font-display text-lg font-semibold tracking-tight"
+              >
+                <Icon className="size-4 text-muted-foreground" />
+                {t(`credentials.group.${group.key}`)}
+              </h2>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {items.map((c) => (
+                  <ProviderTile
+                    key={c.provider}
+                    credential={c}
+                    delay={Math.min(index++ * STAGGER_MS, STAGGER_MAX_MS)}
+                    onOpen={() => setOpen(c.provider)}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
 
-      {/* §21.9 — რაც `.env`-შია, მაგრამ გასაღები არაა.
+      {/* §21.9 → §30.10 — რაც `.env`-შია, მაგრამ გასაღები არაა (მხოლოდ სუპერ-ადმინს).
           ⚠️ **წასაკითხია და არა ფორმა**: `yt-dlp`-ის ბილიკი ამ *კომპიუტერის*
           ფაქტია და per-user ვერ გახდება; ღია რეგისტრაცია — მთელი
-          ინსტალაციისა. მაგრამ „რატომ არ ჩანს, რაც `.env`-ში წერია"
-          სამართლიანი კითხვაა, ამიტომ აქვეა, ცხადი მინაწერით. */}
+          ინსტალაციისა. ⚠️ წყაროს გასაღები აქ **არასდროს** ჩნდება — ის
+          ადამიანისაა (Q38). ბოლოსაა და ცალკე, რომ ბარათებს არ ერეოდეს. */}
       {(data?.installation.length ?? 0) > 0 && (
-        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+        <section className="mt-10 rounded-2xl border border-border bg-card p-5">
           <h2 className="flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
             {t('credentials.installation')}
             <InfoHint info={t('credentials.installationHint')} />
           </h2>
 
-          <dl className="mt-4 space-y-2">
+          <dl className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
             {data?.installation.map((row) => (
-              <div key={row.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-2 last:border-0">
+              <div key={row.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-2">
                 <dt className="font-mono text-xs text-muted-foreground">{row.key}</dt>
                 <dd className="min-w-0 flex-1 break-all font-mono text-xs">
                   {row.value ?? <span className="text-muted-foreground">{t('credentials.empty')}</span>}
@@ -120,24 +213,137 @@ export function CredentialsPage() {
           </dl>
         </section>
       )}
+
+      {openCredential && <ProviderDialog credential={openCredential} onClose={() => setOpen(null)} />}
     </PageContainer>
   )
 }
 
-function ProviderCard({
+/* ---------- ბარათი (§30.1) ---------- */
+
+function ProviderTile({
   credential,
-  canSeeShared,
-  onChanged,
+  delay,
+  onOpen,
 }: {
   credential: Credential
-  /** super_admin — მხოლოდ მას უბრუნებს სერვერი ინსტალაციის მნიშვნელობას */
-  canSeeShared: boolean
-  onChanged: () => void
+  delay: number
+  onOpen: () => void
 }) {
   const { t } = useTranslation()
+  const look = lookOf(credential.provider)
+  const state = credentialState(credential)
+  const Icon = look.icon
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={t('credentials.editTitle', { name: brandOf(credential.provider) })}
+      style={{ ...modAccent(look.color), animationDelay: `${delay}ms` }}
+      className="fb-card group flex h-full cursor-pointer flex-col rounded-2xl border border-border bg-card p-5 text-left transition-[border-color,transform] hover:-translate-y-0.5 hover:border-[var(--mod)]"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+          <Icon className="size-5 text-[var(--mod)]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-display text-base font-semibold tracking-tight">{brandOf(credential.provider)}</div>
+          <Badge className={cn('mt-1', STATE_TONE[state])}>{t(`credentials.state.${state}`)}</Badge>
+        </div>
+        <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </div>
+
+      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{t(`credentials.desc.${credential.provider}`)}</p>
+
+      <div className="mt-auto space-y-3 border-t border-border pt-3">
+        {state === 'mine' && <UsageBar credential={credential} />}
+        <CheckLine credential={credential} state={state} />
+      </div>
+    </button>
+  )
+}
+
+/** ლიმიტის მოხმარების ზოლი — მხოლოდ კვოტიან წყაროებზე (Gemini, SerpApi) */
+function UsageBar({ credential }: { credential: Credential }) {
+  const { t } = useTranslation()
+  const usage = credential.usage
+  const percent = usagePercent(usage)
+
+  if (!usage) return null
+
+  return (
+    <div className="text-[11px]">
+      <div className="mb-1 flex items-center justify-between gap-2 text-muted-foreground">
+        <span>{t(usage.period === 'month' ? 'credentials.usageMonth' : 'credentials.usageDay')}</span>
+        <span className="tabular-nums">
+          {usage.limit ? `${usage.used} / ${usage.limit}` : t('credentials.usageNoLimit', { used: usage.used })}
+        </span>
+      </div>
+      {percent !== null && (
+        <div className="h-1.5 overflow-hidden rounded-md bg-muted" aria-hidden>
+          <div
+            className={cn('h-full rounded-md', percent >= 100 ? 'bg-destructive' : 'bg-[var(--mod)]')}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** ბოლო შემოწმება — ან რა ნაბიჯი აკლია */
+function CheckLine({ credential, state }: { credential: Credential; state: CredentialState }) {
+  const { t } = useTranslation()
+  const { dateTime } = useDateFormat()
+
+  if (state !== 'mine') {
+    const Icon = state === 'undecryptable' ? TriangleAlert : Plus
+
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 text-[11px]',
+          state === 'undecryptable' ? 'text-destructive' : 'text-[var(--mod)]',
+        )}
+      >
+        <Icon className="size-3.5" />
+        {t(`credentials.cta.${state}`)}
+      </span>
+    )
+  }
+
+  if (credential.last_error) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] text-destructive">
+        <TriangleAlert className="size-3.5" />
+        {t(`credentials.error.${credential.last_error}`, credential.last_error)}
+      </span>
+    )
+  }
+
+  return credential.verified_at ? (
+    <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <CheckCircle2 className="size-3.5 text-[var(--icon-ok)]" />
+      {t('credentials.verifiedAt', { date: dateTime(credential.verified_at) })}
+    </span>
+  ) : (
+    <span className="text-[11px] text-muted-foreground">{t('credentials.neverChecked')}</span>
+  )
+}
+
+/* ---------- რედაქტირების მოდალი (§30.2) ---------- */
+
+function ProviderDialog({ credential, onClose }: { credential: Credential; onClose: () => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
   const { dateTime } = useDateFormat()
+
+  const brand = brandOf(credential.provider)
+  const state = credentialState(credential)
+  const onChanged = () => qc.invalidateQueries({ queryKey: ['credentials'] })
 
   /* ველების მონახაზი. ⚠️ საიდუმლო ყოველთვის ცარიელია (სერვერი მას არ
      აბრუნებს), ღია ველი კი მიმდინარე მნიშვნელობით იწყება — თორემ მოდელის
@@ -187,7 +393,7 @@ function ProviderCard({
       toast({ title: t('credentials.saved'), variant: 'success' })
       onChanged()
     },
-    onError: () => toast({ title: t('toast.error'), variant: 'error' }),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   const check = useMutation({
@@ -200,7 +406,7 @@ function ProviderCard({
       })
       onChanged()
     },
-    onError: () => toast({ title: t('toast.error'), variant: 'error' }),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   const remove = useMutation({
@@ -209,187 +415,191 @@ function ProviderCard({
       toast({ title: t('credentials.cleared'), variant: 'success' })
       onChanged()
     },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   const toggleActive = useMutation({
     mutationFn: (value: boolean) => saveCredential(credential.provider, { is_active: value }),
     onSuccess: onChanged,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const accent = TOOL_SECTIONS.credentials.color
   const hasOwn = credential.fields.some((f) => f.has_own)
 
   return (
-    <section
-      className="rounded-xl border border-border bg-card p-5"
-      style={credential.source === 'user' ? { borderColor: `color-mix(in oklab, ${accent} 35%, var(--border))` } : undefined}
+    <ModalShell
+      title={brand}
+      hint={t(`credentials.desc.${credential.provider}`)}
+      onClose={onClose}
+      aside={<Badge className={STATE_TONE[state]}>{t(`credentials.state.${state}`)}</Badge>}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <KeyRound className="size-4 shrink-0" style={{ color: accent }} />
-        <h2 className="font-display text-lg font-semibold tracking-tight">{BRAND[credential.provider]}</h2>
-
-        <Badge className={SOURCE_TONE[credential.source]}>{t(`credentials.source.${credential.source}`)}</Badge>
-
-        {credential.verified_at && (
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle2 className="size-3.5" />
-            {t('credentials.verifiedAt', { date: dateTime(credential.verified_at) })}
-          </span>
-        )}
-        {credential.last_error && (
-          <span className="inline-flex items-center gap-1 text-xs text-destructive">
-            <TriangleAlert className="size-3.5" />
-            {t(`credentials.error.${credential.last_error}`, credential.last_error)}
-          </span>
+      <div className="mt-2 space-y-5">
+        {/* ⚠️ **გაუშიფრავი გასაღები ცხადად უნდა ითქვას (Tasks GAP-11).** ტექსტი
+            პროზაა და არა ხატულა: ის **მდგომარეობითია** (გამოჩნდა ამჟამინდელი
+            მდგომარეობის გამო) — სწორედ ის შემთხვევა, რომელსაც `InfoHint`-ის
+            წესი პროზად ტოვებს. */}
+        {credential.undecryptable && (
+          <p className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>{t('credentials.undecryptable')}</span>
+          </p>
         )}
 
-        <span className="flex-1" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {credential.fields.map((f) => (
+            <label key={f.name} className="block">
+              <span className="mb-1.5 block text-sm font-medium">
+                {t(`credentials.field.${f.name}`)}
+                {f.required && <span className="text-destructive"> *</span>}
+              </span>
+              {f.secret ? (
+                <SecretInput
+                  value={fields[f.name] ?? ''}
+                  onChange={(value) => setFields((s) => ({ ...s, [f.name]: value }))}
+                  /* ⚠️ ნიღაბი ველის **შიგთავსია** და არა `placeholder` — მისი
+                     არსებობა თვითონ ამბობს, რომ გასაღები შენახულია. §30-იდან
+                     მხოლოდ **ჩემი** ნიღაბი არსებობს. */
+                  masked={f.masked}
+                  placeholder={t('credentials.empty')}
+                  // თვალი მხოლოდ მაშინ, როცა სერვერი მართლა გასცემს — ჩემს გასაღებს
+                  onReveal={
+                    f.has_own
+                      ? async () => (await revealCredential(credential.provider)).fields[f.name] ?? null
+                      : undefined
+                  }
+                />
+              ) : (
+                <Input
+                  autoComplete="off"
+                  value={fields[f.name] ?? ''}
+                  onChange={(e) => setFields((s) => ({ ...s, [f.name]: e.target.value }))}
+                  // კოდის ნაგულისხმევი (Gemini-ის მოდელი) — ცარიელი ველი მას ნიშნავს
+                  placeholder={f.default ?? ''}
+                />
+              )}
+            </label>
+          ))}
 
-        {/* ⚠️ **ბმულის ნაცვლად ინსტრუქცია** (შენი მითითება): „გახსენი
-            დოკუმენტაცია და გაერკვიე" ზუსტად ის ადგილია, სადაც ადამიანი
-            ჩერდება — ბმული ახლა ნაბიჯების ბოლოშია. */}
-        <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)}>
-          <HelpCircle className="size-4" />
-          {t('credentials.getKey')}
-        </Button>
-      </div>
-
-      <p className="mb-4 text-sm text-muted-foreground">{t(`credentials.desc.${credential.provider}`)}</p>
-
-      {/* ⚠️ **გაუშიფრავი გასაღები ცხადად უნდა ითქვას (Tasks GAP-11).** მანქანის
-          შეცვლა ან `key:generate` რიგს წასაკითხად უვარგისს ხდის და აპი საერთო
-          `.env`-ის გასაღებზე ვარდება — აქამდე ეს უბრალოდ „არ არის"-ად
-          იხატებოდა, ე.ი. მიზეზი არსად ჩანდა. ⚠️ ტექსტი პროზაა და არა ხატულა:
-          ის **მდგომარეობითია** (გამოჩნდა ამჟამინდელი მდგომარეობის გამო) —
-          სწორედ ის შემთხვევა, რომელსაც `InfoHint`-ის წესი პროზად ტოვებს. */}
-      {credential.undecryptable && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{t('credentials.undecryptable')}</span>
-        </p>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {credential.fields.map((f) => (
-          <label key={f.name} className="block">
-            <span className="mb-1 block text-sm font-medium">
-              {t(`credentials.field.${f.name}`)}
-              {f.required && <span className="text-destructive"> *</span>}
-            </span>
-            {f.secret ? (
-              <SecretInput
-                value={fields[f.name] ?? ''}
-                onChange={(value) => setFields((s) => ({ ...s, [f.name]: value }))}
-                /* ⚠️ **ნიღაბი აღარაა `placeholder`** — ის ფერმკრთალად იხატებოდა
-                   და შევსებული ველი ცარიელისგან არ განსხვავდებოდა. ახლა ის
-                   ველის **შიგთავსია** და მისი არსებობა თვითონ ამბობს, რომ
-                   გასაღები შენახულია. */
-                masked={f.masked ?? (canSeeShared && f.has_shared ? f.shared_hint : null)}
-                placeholder={f.has_shared ? t('credentials.usingShared') : t('credentials.empty')}
-                /* ⚠️ თვალი მხოლოდ მაშინ ჩანს, როცა **სერვერი მართლა გასცემს**
-                   მნიშვნელობას: ჩემი გასაღები ყოველთვის, ინსტალაციისა კი
-                   მხოლოდ super_admin-ს (§21.9). სხვა შემთხვევაში ღილაკი
-                   ცარიელს დააბრუნებდა და გაუგებარი „არაფერი მოხდა" იქნებოდა. */
-                onReveal={
-                  f.has_own || (canSeeShared && f.has_shared)
-                    ? async () => (await revealCredential(credential.provider)).fields[f.name] ?? null
-                    : undefined
-                }
-              />
-            ) : (
+          {credential.limits.map((l) => (
+            <label key={l.name} className="block">
+              <span className="mb-1.5 block text-sm font-medium">{t(`credentials.limit.${l.name}`)}</span>
               <Input
-                autoComplete="off"
-                value={fields[f.name] ?? ''}
-                onChange={(e) => setFields((s) => ({ ...s, [f.name]: e.target.value }))}
-                placeholder={f.shared_hint ?? ''}
+                type="number"
+                min={0}
+                value={limits[l.name] ?? ''}
+                onChange={(e) => setLimits((s) => ({ ...s, [l.name]: e.target.value }))}
+                placeholder={l.default === null ? '' : String(l.default)}
               />
-            )}
-          </label>
-        ))}
+              {/* ⚠️ `0` და ცარიელი სხვადასხვა ფაქტია და ველის ქვეშ ეს ცხადად წერია */}
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {l.default === null
+                  ? t('credentials.limitHintNoDefault')
+                  : t('credentials.limitHint', { n: l.default })}
+              </span>
+            </label>
+          ))}
+        </div>
 
-        {credential.limits.map((l) => (
-          <label key={l.name} className="block">
-            <span className="mb-1 block text-sm font-medium">{t(`credentials.limit.${l.name}`)}</span>
-            <Input
-              type="number"
-              min={0}
-              value={limits[l.name] ?? ''}
-              onChange={(e) => setLimits((s) => ({ ...s, [l.name]: e.target.value }))}
-              placeholder={l.shared === null ? t('credentials.noLimit') : String(l.shared)}
-            />
-            {/* ⚠️ `0` და ცარიელი სხვადასხვა ფაქტია და ველის ქვეშ ეს ცხადად წერია */}
-            <span className="mt-1 block text-xs text-muted-foreground">{t('credentials.limitHint')}</span>
+        {state === 'mine' && credential.usage && (
+          <div className="rounded-md border border-border bg-muted/40 p-3" style={modAccent(lookOf(credential.provider).color)}>
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+              {t('credentials.usage')}
+              <InfoHint info={t('credentials.usageHint')} />
+              {credential.usage.remaining !== null && credential.usage.remaining !== undefined && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {t('credentials.remaining', { n: credential.usage.remaining })}
+                </span>
+              )}
+            </div>
+            <UsageBar credential={credential} />
+          </div>
+        )}
+
+        {hasOwn && (
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch checked={credential.is_active} onCheckedChange={(v) => toggleActive.mutate(v)} />
+            <span className={cn(!credential.is_active && 'text-muted-foreground')}>{t('credentials.enabled')}</span>
+            <InfoHint info={t('credentials.enabledHint')} />
           </label>
-        ))}
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* ⚠️ **ბმულის ნაცვლად ინსტრუქცია** (§21.8): „გახსენი დოკუმენტაცია და
+              გაერკვიე" ზუსტად ის ადგილია, სადაც ადამიანი ჩერდება. */}
+          <Button variant="outline" size="sm" onClick={() => setHelpOpen(true)}>
+            <HelpCircle className="size-4" />
+            {t('credentials.getKey')}
+          </Button>
+
+          {/* ⚠️ შემოწმება **შენახულ** გასაღებს ამოწმებს — შეუნახავ ცვლილებაზე
+              ძველის შემოწმება მომხმარებელს შეცდომაში შეიყვანდა */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => check.mutate()}
+            disabled={!credential.configured || dirty || check.isPending}
+          >
+            {check.isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCw className="size-4" />}
+            {credential.test_costs_credit ? t('credentials.testPaid') : t('credentials.test')}
+          </Button>
+          {/* ფულის ხარჯი — წითელი სამკუთხედი (`InfoHint`-ის წესი) */}
+          {credential.test_costs_credit && <InfoHint critical={t('credentials.testCosts')} />}
+
+          {credential.verified_at && !credential.last_error && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <CheckCircle2 className="size-3.5 text-[var(--icon-ok)]" />
+              {t('credentials.verifiedAt', { date: dateTime(credential.verified_at) })}
+            </span>
+          )}
+          {credential.last_error && (
+            <span className="inline-flex items-center gap-1 text-xs text-destructive">
+              <TriangleAlert className="size-3.5" />
+              {t(`credentials.error.${credential.last_error}`, credential.last_error)}
+            </span>
+          )}
+        </div>
+
+        {dirty && credential.configured && (
+          <p className="text-xs text-muted-foreground">{t('credentials.testAfterSave')}</p>
+        )}
       </div>
 
-      {credential.usage && (
-        <div className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm">
-          <span className="font-medium">
-            {t('credentials.usage')} <InfoHint info={t('credentials.usageHint')} />:{' '}
-          </span>
-          <span className="tabular-nums">{credential.usage.used}</span>
-          {credential.usage.limit ? <span className="text-muted-foreground"> / {credential.usage.limit}</span> : null}
-          {credential.usage.remaining !== null && credential.usage.remaining !== undefined && (
-            <span className="text-muted-foreground"> · {t('credentials.remaining', { n: credential.usage.remaining })}</span>
-          )}
-          {/* ⚠️ მრიცხველი **ჩვენია** და არა provider-ისა — ეს ცხადად ეწერება,
-              თორემ რიცხვი ავტორიტეტულად წაიკითხებოდა */}
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <ModalFooter>
+        {hasOwn && (
+          <Button
+            variant="destructiveOutline"
+            className="mr-auto"
+            disabled={remove.isPending}
+            onClick={async () => {
+              const ok = await confirm({
+                title: t('credentials.clearTitle'),
+                description: t('credentials.clearHint', { name: brand }),
+                variant: 'destructive',
+              })
+              if (ok) remove.mutate()
+            }}
+          >
+            <Trash2 className="size-4" />
+            {t('credentials.clear')}
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onClose}>
+          {t('actions.close')}
+        </Button>
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
           {save.isPending && <Loader2 className="size-4 animate-spin" />}
           {t('actions.save')}
         </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => check.mutate()}
-          disabled={!credential.configured || check.isPending}
-          title={credential.test_costs_credit ? t('credentials.testCosts') : undefined}
-        >
-          {check.isPending ? <Loader2 className="size-4 animate-spin" /> : <RotateCw className="size-4" />}
-          {credential.test_costs_credit ? t('credentials.testPaid') : t('credentials.test')}
-        </Button>
-
-        {hasOwn && (
-          <>
-            <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm">
-              <Switch
-                checked={credential.is_active}
-                onCheckedChange={(v) => toggleActive.mutate(v)}
-              />
-              <span className={cn(!credential.is_active && 'text-muted-foreground')}>{t('credentials.useMine')}</span>
-            </label>
-
-            <Button
-              variant="outline"
-              onClick={async () => {
-                const ok = await confirm({
-                  title: t('credentials.clearTitle'),
-                  description: t('credentials.clearHint', { name: BRAND[credential.provider] }),
-                  variant: 'destructive',
-                })
-                if (ok) remove.mutate()
-              }}
-            >
-              <Trash2 className="size-4" />
-              {t('credentials.clear')}
-            </Button>
-          </>
-        )}
-      </div>
+      </ModalFooter>
 
       {helpOpen && (
         <CredentialHelpDialog
           provider={credential.provider}
-          brand={BRAND[credential.provider]}
+          brand={brand}
           docs={credential.docs}
           onClose={() => setHelpOpen(false)}
         />
       )}
-    </section>
+    </ModalShell>
   )
 }

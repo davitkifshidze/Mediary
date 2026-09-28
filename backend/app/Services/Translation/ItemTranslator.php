@@ -6,6 +6,7 @@ use App\Models\Genre;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use App\Support\Redact;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
@@ -109,7 +110,31 @@ class ItemTranslator
             return $this->result(false, false, [], $reason, $providers);
         }
 
+        /* ⚠️ **არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს — ესეც შეცდომაა**
+           (Tasks §30.6). §30-იდან გასაღები ანგარიშისაა, ე.ი. ეს ყოველდღიური
+           მდგომარეობაა ყველასთვის, ვისაც ჯერ არ ჩაუწერია; „გამოტოვებულად"
+           ჩათვლა რიგს 300-ჯერ „შესრულდა"-ს ათქმევინებდა უთარგმნელ ბიბლიოთეკაზე. */
+        if (! $changed && ! $this->anyConfigured($sources)) {
+            return $this->result(false, false, [], MissingCredential::CODE, $providers);
+        }
+
         return $this->result(true, $changed === [], $changed, null, $providers);
+    }
+
+    /**
+     * არჩეულ წყაროებს შორის ერთს მაინც აქვს ჩემი გასაღები?
+     *
+     * @param  array<int, string>  $sources
+     */
+    public function anyConfigured(array $sources): bool
+    {
+        foreach ($this->normalizeSources($sources) as $source) {
+            if ($source === 'tmdb' ? $this->tmdb->configured() : $this->translator->configured()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /* ---------- ნაბიჯი 3: გადამოწმება (`review`, 2026-09-14) ---------- */

@@ -16,6 +16,7 @@ import {
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -80,6 +81,7 @@ export function GameFranchiseDialog({
   const [query, setQuery] = useState('')
   const [candidates, setCandidates] = useState<RawgCandidate[] | null>(null)
   const [unavailable, setUnavailable] = useState(false)
+  const [noKey, setNoKey] = useState(false)
 
   /* Tasks §4.4 — სტატუსი და ჟანრი სავალდებულოა, ღილაკი კი ორივეს გარეშე
      იძახებდა `createGame`-ს ⇒ ყოველთვის 422. სტატუსი ნაგულისხმევად
@@ -108,14 +110,18 @@ export function GameFranchiseDialog({
     mutationFn: () => fetchRawgCandidates(query.trim()),
     onSuccess: (results) => {
       setUnavailable(false)
+      setNoKey(false)
       setCandidates(results)
     },
     onError: (e) => {
-      // 503 = წყარო მიუწვდომელია; ეს „ვერაფერი მოიძებნა" **არ არის**
+      /* 503 = წყარო მიუწვდომელია; ეს „ვერაფერი მოიძებნა" **არ არის**.
+         409 `credential_missing` (§30.6) — ჩემი გასაღები არ მაქვს: სხვა ქმედებაა */
+      const missing = isApiCode(e, 'credential_missing')
       const blocked = isApiCode(e, 'rawg_unavailable')
+      setNoKey(missing)
       setUnavailable(blocked)
-      setCandidates(blocked ? [] : null)
-      if (!blocked) toast({ title: errorMessage(e), variant: 'error' })
+      setCandidates(blocked || missing ? [] : null)
+      if (!blocked && !missing) toast({ title: errorMessage(e), variant: 'error' })
     },
   })
 
@@ -327,10 +333,11 @@ export function GameFranchiseDialog({
                   {t('games.lookupUnavailable')}
                 </p>
               )}
+              {noKey && <CredentialMissingNotice provider="rawg" className="mt-2" />}
 
               {candidates && (
                 <div className="mt-2 space-y-1.5">
-                  {!candidates.length && !unavailable && (
+                  {!candidates.length && !unavailable && !noKey && (
                     <p className="text-xs text-muted-foreground">{t('games.lookupEmpty')}</p>
                   )}
                   {candidates.map((candidate) => (

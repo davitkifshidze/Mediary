@@ -1,34 +1,38 @@
 import { api } from '@/lib/api'
 
 /* ============================================================
-   **„მონაცემები" — გასაღებები და ლიმიტები (Tasks §21).**
+   **„მონაცემები" — გასაღებები და ლიმიტები (Tasks §21 → §30).**
 
    ⚠️ **საიდუმლო აქ არასდროს მოდის.** სერვერი მხოლოდ ნიღბიან კუდს
    აბრუნებს (`masked`), ე.ი. ფორმის ველი ყოველთვის **ცარიელი** იწყება და
    „უცვლელად დატოვება" ნიშნავს მისი საერთოდ არგაგზავნას — სწორედ ამიტომ
    ცარიელი სტრიქონი backend-ზე „გასუფთავებას" ნიშნავს და არა „არ შეცვლილა".
+
+   ⚠️ **§30-იდან გასაღები მხოლოდ მომხმარებლისაა** — `.env`-ის საერთო ფენა,
+   მისი ნიღაბი (`shared_hint`) და `has_shared` აღარ არსებობს.
    ============================================================ */
 
-/** `user` — ჩემი გასაღებია · `shared` — ინსტალაციისა (`.env`) · `none` — არსად */
-export type CredentialSource = 'user' | 'shared' | 'none'
+/** `user` — ჩემი გასაღებია და მუშაობს · `none` — არ მაქვს (წყარო ჩემთვის არ მუშაობს) */
+export type CredentialSource = 'user' | 'none'
 
 export interface CredentialField {
   name: string
   secret: boolean
   required: boolean
   has_own: boolean
-  has_shared: boolean
   /** ღია ველის (მოდელი, `client_id`) მიმდინარე მნიშვნელობა; საიდუმლოზე `null` */
   value: string | null
   /** `••••a1b2` — მხოლოდ საიდუმლოზე */
   masked: string | null
-  shared_hint: string | null
+  /** კოდის ნაგულისხმევი — მხოლოდ ღია ველს აქვს (Gemini-ის მოდელი) */
+  default: string | null
 }
 
 export interface CredentialLimit {
   name: string
   own: number | null
-  shared: number | null
+  /** კოდის ნაგულისხმევი (Gemini 1500/15, SerpApi 250) */
+  default: number | null
   effective: number | null
 }
 
@@ -41,6 +45,8 @@ export interface CredentialUsage {
   exhausted?: boolean
   model?: string | null
   source?: CredentialSource
+  /** რა ფანჯარას ითვლის: Gemini — დღე, SerpApi — თვე */
+  period?: 'day' | 'month'
 }
 
 export interface Credential {
@@ -49,9 +55,9 @@ export interface Credential {
   /**
    * ჩემი გასაღები **სხვა `APP_KEY`-ით** არის დაშიფრული (Tasks GAP-11).
    *
-   * ⚠️ `source`-ისგან ცალკეა განზრახ: `source` ამბობს, რომელი გასაღები
-   * **მოქმედებს ახლა** (გაუშიფრავზე ეს `shared`/`none`-ია და აპი მართლა
-   * ასე იქცევა), ეს კი — რომ ჩემი რიგი არსებობს და ვერ იკითხება.
+   * ⚠️ `source`-ისგან ცალკეა განზრახ: `source` ამბობს, **მოქმედებს თუ არა**
+   * ჩემი გასაღები (გაუშიფრავზე ეს `none`-ია და აპი მართლა ასე იქცევა), ეს კი
+   * — რომ ჩემი რიგი არსებობს და ვერ იკითხება.
    */
   undecryptable: boolean
   configured: boolean
@@ -97,17 +103,11 @@ export async function clearCredential(provider: string): Promise<Credential> {
  *
  * ⚠️ **ცალკე გამოძახებაა და არა სიის ველი**: სია ყოველ გახსნაზე მოდის, ე.ი.
  * სრული გასაღები ქეშსა და ქსელის ჩანართში დარჩებოდა. აქ ის მხოლოდ თვალის
- * ღილაკზე გადის. ⚠️ **საერთო (`.env`) გასაღები არასდროს ბრუნდება** — ის
- * ინსტალაციისაა და არა ჩემი.
+ * ღილაკზე გადის — და მხოლოდ **ჩემი** (§30: სუპერ-ადმინისთვისაც).
  */
-export async function revealCredential(
-  provider: string,
-): Promise<{ fields: Record<string, string>; owner: Record<string, 'user' | 'shared'> }> {
-  const { data } = await api.get<{
-    fields: Record<string, string>
-    owner: Record<string, 'user' | 'shared'>
-  }>(`/credentials/${provider}/reveal`)
-  return { fields: data.fields, owner: data.owner ?? {} }
+export async function revealCredential(provider: string): Promise<{ fields: Record<string, string> }> {
+  const { data } = await api.get<{ fields: Record<string, string> }>(`/credentials/${provider}/reveal`)
+  return { fields: data.fields }
 }
 
 export async function testCredential(

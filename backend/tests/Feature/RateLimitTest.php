@@ -194,10 +194,10 @@ class RateLimitTest extends TestCase
 
         // ⚠️ გასაღები **ცხადად** იწერება: მის გარეშე მარშრუტი უფლებამდე
         // საერთოდ ვერ აღწევს — `MediaSyncController::item()` ჯერ
-        // `configured()`-ს კითხულობს და 503-ს აბრუნებს. ჩანაწერს `tmdb_id`
-        // არ აქვს, ე.ი. სინქრონი ისედაც ვერაფერს მოიტანს; მნიშვნელოვანი
+        // `configured()`-ს კითხულობს და `credential_missing`-ს აბრუნებს. ჩანაწერს
+        // `tmdb_id` არ აქვს, ე.ი. სინქრონი ისედაც ვერაფერს მოიტანს; მნიშვნელოვანი
         // ისაა, რომ **უფლების** კარიბჭე გაიარა (403 არაა).
-        $this->fakeTmdb();
+        $this->fakeTmdb($alice);
 
         $this->actingAs($alice->refresh())
             ->postJson("/api/media/sync/movie/{$movie->id}", ['fields' => ['title']])
@@ -214,7 +214,7 @@ class RateLimitTest extends TestCase
         $alice = $this->makeUser('alice');
         $alice->forceFill(['role_id' => $this->roleWith(['view'])->id])->save();
 
-        $this->fakeTmdb();
+        $this->fakeTmdb($alice);
 
         $this->actingAs($alice->refresh())
             ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'matrix'])
@@ -225,14 +225,16 @@ class RateLimitTest extends TestCase
      * TMDB — გასაღები და ცარიელი პასუხი.
      *
      * ⚠️ **ორივე ნაწილი აუცილებელია და ორივე ხარვეზი აქ იყო.** გასაღების
-     * გარეშე ორივე მარშრუტი 503-ს აბრუნებს, ე.ი. ტესტი უფლებას კი არა,
-     * კონფიგურაციას ამოწმებდა; `Http::fake()`-ის გარეშე კი გასაღებიან
-     * მანქანაზე ტესტი ნამდვილ ქსელურ ზარს აკეთებდა (`?query=matrix`).
+     * გარეშე ორივე მარშრუტი `credential_missing`-ს აბრუნებს, ე.ი. ტესტი
+     * უფლებას კი არა, კონფიგურაციას ამოწმებდა; `Http::fake()`-ის გარეშე კი
+     * გასაღებიან მანქანაზე ტესტი ნამდვილ ქსელურ ზარს აკეთებდა (`?query=matrix`).
      * პასუხი შეგნებულად ცარიელია — შიგთავსი ამ ფაილს არ ეხება.
+     * ⚠️ Tasks §30 — გასაღები **მომხმარებლისაა**, ამიტომ ვის სახელითაც ტესტი
+     * მუშაობს, მას ეძლევა.
      */
-    private function fakeTmdb(): void
+    private function fakeTmdb(User $user): void
     {
-        config()->set('services.tmdb.key', 'test-key');
+        $this->giveCredential($user, 'tmdb');
 
         Http::fake([
             'api.themoviedb.org/*' => Http::response(['results' => [], 'cast' => []]),

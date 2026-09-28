@@ -7,9 +7,13 @@ use App\Jobs\RunBatchItem;
 use App\Models\BatchItem;
 use App\Models\User;
 use App\Services\Cast\CastPool;
+use App\Services\Credentials\CredentialStore;
 use App\Services\Notify\Notifier;
+use App\Services\Translation\ItemTranslator;
 use App\Support\BackgroundProcess;
+use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use App\Support\NotificationType;
 use Illuminate\Bus\Batch;
 use Illuminate\Http\Request;
@@ -105,6 +109,14 @@ class BatchController extends Controller
             }
         }
 
+        /* Tasks §30.6 — ⚠️ **გასაღებიც აქვე მოწმდება, უფლების გვერდით.**
+           §30-იდან გასაღები მხოლოდ მომხმარებლისაა, ე.ი. მის გარეშე 300-ერთეულიანი
+           პარტია 300-ჯერ ერთსა და იმავე მიზეზზე ჩავარდებოდა — და ეს მხოლოდ
+           ბოლოს გამოჩნდებოდა. თარგმანს ერთი წყაროც ჰყოფნის (TMDB ან Gemini). */
+        if ($missing = $this->missingCredential($data['kind'], $data['options'] ?? [])) {
+            return MissingCredential::response($missing);
+        }
+
         $jobs = array_map(
             fn (array $item) => new RunBatchItem(
                 userId: (int) $user->getKey(),
@@ -161,6 +173,32 @@ class BatchController extends Controller
         }
 
         return response()->json($this->payload($batch->fresh()), 202);
+    }
+
+    /**
+     * რომელი წყაროს გასაღები აკლია ამ ოპერაციას; `null` — არაფერი.
+     *
+     * ⚠️ სინქრონი, გალერეა და მსახიობი TMDB-ზე დგანან; თარგმანი კი არჩეულ
+     * წყაროებზე — ერთი მაინც უნდა მუშაობდეს (`ItemTranslator`-ის წესი).
+     */
+    private function missingCredential(string $kind, array $options): ?string
+    {
+        if ($kind !== 'translate') {
+            return CredentialStore::configured(CredentialProviders::TMDB) ? null : CredentialProviders::TMDB;
+        }
+
+        $sources = array_values(array_intersect(ItemTranslator::SOURCES, (array) ($options['sources'] ?? [])))
+            ?: ItemTranslator::SOURCES;
+
+        foreach ($sources as $source) {
+            $provider = $source === 'gemini' ? CredentialProviders::GEMINI : CredentialProviders::TMDB;
+
+            if (CredentialStore::configured($provider)) {
+                return null;
+            }
+        }
+
+        return $sources === ['gemini'] ? CredentialProviders::GEMINI : CredentialProviders::TMDB;
     }
 
     /** პარტიის მდგომარეობა — SPA ამას ეკითხება, სანამ მიმდინარეობს */

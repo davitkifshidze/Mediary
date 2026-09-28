@@ -22,6 +22,7 @@ import { RadioGroup } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 
 /* ============================================================
    **მსახიობების მონაცემები — სინქრონიზაციის მეორე ნაკადი** (Tasks §39).
@@ -295,7 +296,8 @@ export function CastSyncFlow({
           {!types.length ? null : !fields.length ? (
             <span className="text-destructive">{t('sync.pickSomething')}</span>
           ) : plan && !plan.tmdb ? (
-            <span className="text-destructive">{t('errors.tmdb_not_configured')}</span>
+            // Tasks §30.6 — გასაღები ანგარიშისაა: ერთი შეტყობინება ყველგან, „მონაცემების" ბმულით
+            <CredentialMissingNotice provider="tmdb" />
           ) : plan ? (
             <>
               <span className="font-medium">{t('castSync.affected', { count: plan.count })}</span>

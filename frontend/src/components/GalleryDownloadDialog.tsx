@@ -27,6 +27,7 @@ import { fetchGenres } from '@/api/media'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { useModules, isMediaKey } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
@@ -317,7 +318,9 @@ export function GalleryDownloadDialog({
      აქტიური იქნებოდა და ჩამოტვირთვა ცარიელს დაითვლიდა. */
   const pickedSubjects = subjects.filter((s) => (limits[s] ?? 0) > 0)
   const nothingPicked = castFlow ? perActor <= 0 : pickedSubjects.length === 0
-  const canRun = !!plan?.count && !nothingPicked && !planQ.isFetching
+  // Tasks §30.6 — გასაღები ანგარიშისაა; მის გარეშე რიგი ყოველ ერთეულზე ჩავარდებოდა
+  const noKey = plan?.tmdb === false
+  const canRun = !!plan?.count && !nothingPicked && !planQ.isFetching && !noKey
 
   /** §3.2 — „რამდენი მსახიობი × თითოზე რამდენი = რამდენი ფოტო" */
   const castTotal = (plan?.count ?? 0) * perActor
@@ -434,6 +437,9 @@ export function GalleryDownloadDialog({
     >
       {/* Tasks §18.2 — დაშორებები გაიზარდა (`space-y-6`, რიგები `p-3.5`) */}
       <div className="space-y-6 pt-2">
+        {/* Tasks §30.6 — ჩემი TMDB-ის გასაღების გარეშე ჩამოტვირთვა ვერ დაიწყება */}
+        {noKey && <CredentialMissingNotice provider="tmdb" />}
+
         {/* ---------- ორი ნაკადი — ორი ტაბი ---------- */}
         {/* ⚠️ **ორი სკოუპია და არა ერთის ორი ხედი** — „ჩანაწერის კადრები" და
             „მსახიობების ფოტოები" სხვადასხვა რამეს ჩამოტვირთავს, ამიტომ

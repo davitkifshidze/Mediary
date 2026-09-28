@@ -20,7 +20,11 @@ use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
- * Tasks §21 — „მონაცემები": გასაღები და ლიმიტი თითო მომხმარებელზე.
+ * Tasks §21 → §30 — „მონაცემები": გასაღები და ლიმიტი **მხოლოდ** თითო მომხმარებელზე.
+ *
+ * ⚠️ §30-იდან (Q38) საერთო `.env` ფენა აღარ არსებობს — ტესტები, რომლებიც მას
+ * იცავდნენ, **შებრუნებულია**: `config('services.*')`-ში ჩაწერილი გასაღები
+ * იგნორირდება, ხოლო ვისაც თავისი არ აქვს, მისთვის წყარო არ მუშაობს.
  *
  * ⚠️ აქ **ლოგიკა** მოწმდება და არა ცოცხალი წყარო: ვისი გასაღები წავიდა,
  * ვის ხარჯზე დაითვალა და რა გავიდა პასუხში.
@@ -65,19 +69,24 @@ class CredentialTest extends TestCase
         return $row;
     }
 
-    public function test_the_shared_env_key_is_used_when_the_user_has_none(): void
+    /**
+     * ⚠️ **`config`/`.env`-ში ჩაწერილი გასაღები იგნორირდება** (Tasks §30.9) —
+     * აქამდე ეს „საერთო გასაღები" იყო; ახლა ის არაფერს ნიშნავს.
+     */
+    public function test_a_key_in_config_is_ignored(): void
     {
         config(['services.tmdb.key' => 'installation-key']);
 
         $this->actingAs($this->user);
 
-        $this->assertSame('shared', CredentialStore::source(CredentialProviders::TMDB));
-        $this->assertSame('installation-key', CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertSame('none', CredentialStore::source(CredentialProviders::TMDB));
+        $this->assertNull(CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertFalse(CredentialStore::configured(CredentialProviders::TMDB));
     }
 
-    public function test_a_users_own_key_wins_over_the_shared_one(): void
+    /** ჩემი გასაღები ჩემია — სხვას, ვისაც თავისი არ აქვს, არაფერი მოხვდება */
+    public function test_a_users_own_key_is_theirs_alone(): void
     {
-        config(['services.tmdb.key' => 'installation-key']);
         $this->own($this->user, CredentialProviders::TMDB, ['key' => 'mine']);
 
         $this->actingAs($this->user);
@@ -85,64 +94,64 @@ class CredentialTest extends TestCase
         $this->assertSame('user', CredentialStore::source(CredentialProviders::TMDB));
         $this->assertSame('mine', CredentialStore::value(CredentialProviders::TMDB));
 
-        // სხვას იგივე გასაღები არ უნდა მოხვდეს
+        // ⚠️ სხვას იგივე გასაღები არ უნდა მოხვდეს — და სარეზერვოც აღარ აქვს
         $this->actingAs($this->other);
         CredentialStore::forget();
-        $this->assertSame('installation-key', CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertNull(CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertSame('none', CredentialStore::source(CredentialProviders::TMDB));
     }
 
     /**
      * ⚠️ IGDB-ს ორი სავალდებულო ველი აქვს: ერთი ჩაწერილი „ჩემს გასაღებს"
-     * არ ნიშნავს — გამოძახება მაინც საერთოთი წავიდოდა, კვოტა კი ჩემზე
-     * დაითვლებოდა.
+     * არ ნიშნავს — და §30-იდან ნახევრად შევსებულ წყაროს სარეზერვოც აღარ აქვს.
      */
     public function test_a_half_filled_provider_is_not_treated_as_own(): void
     {
-        config(['services.igdb.client_id' => 'shared-id', 'services.igdb.client_secret' => 'shared-secret']);
         $this->own($this->user, CredentialProviders::IGDB, ['client_id' => 'mine']);
 
         $this->actingAs($this->user);
 
         $this->assertFalse(CredentialStore::usesOwnKey(CredentialProviders::IGDB));
-        $this->assertSame('shared-id', CredentialStore::value(CredentialProviders::IGDB, 'client_id'));
+        $this->assertFalse(CredentialStore::configured(CredentialProviders::IGDB));
+        $this->assertNull(CredentialStore::value(CredentialProviders::IGDB, 'client_id'));
     }
 
     /**
-     * ⚠️ ცალკეული, **არასავალდებულო** ველი საერთოზე ეცემა: ჩემი გასაღები +
-     * ცარიელი მოდელი = ჩემი გასაღები და ინსტალაციის ნაგულისხმევი მოდელი.
+     * ⚠️ ცალკეული, **არასავალდებულო** ღია ველი **კოდის ნაგულისხმევზე** ეცემა:
+     * ჩემი გასაღები + ცარიელი მოდელი = ჩემი გასაღები და `gemini-3.5-flash`.
      */
-    public function test_an_unset_optional_field_falls_back_while_the_key_stays_mine(): void
+    public function test_an_unset_optional_field_falls_back_to_the_code_default(): void
     {
-        config(['services.gemini.key' => 'shared', 'services.gemini.model' => 'shared-model']);
+        config(['services.gemini.model' => 'config-model-is-ignored']);
         $this->own($this->user, CredentialProviders::GEMINI, ['key' => 'mine']);
 
         $this->actingAs($this->user);
 
         $this->assertSame('mine', CredentialStore::value(CredentialProviders::GEMINI));
-        $this->assertSame('shared-model', CredentialStore::value(CredentialProviders::GEMINI, 'model'));
+        $this->assertSame('gemini-3.5-flash', CredentialStore::value(CredentialProviders::GEMINI, 'model'));
     }
 
-    public function test_an_inactive_row_falls_back_to_the_shared_key(): void
+    /** ⚠️ გამორთული რიგი = გასაღები არ მაქვს — საერთოზე ვარდნა აღარ არსებობს */
+    public function test_an_inactive_row_means_no_key(): void
     {
-        config(['services.tmdb.key' => 'installation-key']);
         $row = $this->own($this->user, CredentialProviders::TMDB, ['key' => 'mine']);
         $row->update(['is_active' => false]);
         CredentialStore::forget();
 
         $this->actingAs($this->user);
 
-        $this->assertSame('installation-key', CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertNull(CredentialStore::value(CredentialProviders::TMDB));
+        $this->assertSame('none', CredentialStore::source(CredentialProviders::TMDB));
     }
 
     /**
-     * **ეს თასქის არსია (§21.4).** საკუთარი გასაღებით მრიცხველი მხოლოდ ჩემს
-     * რიგებს ითვლის — თორემ სხვისი თარგმანი ჩემს კვოტას ხარჯავდა, თუმცა
-     * Google-ს ჩემი გასაღები საერთოდ არ უნახავს.
+     * **ეს თასქის არსია (§21.4 → §30).** მრიცხველი მხოლოდ ჩემს რიგებს ითვლის —
+     * სხვისი თარგმანი ჩემს კვოტას არ ხარჯავს, რადგან Google-ს ჩემი გასაღები
+     * საერთოდ არ უნახავს.
      */
     public function test_own_key_means_own_quota(): void
     {
-        config(['services.gemini.key' => 'shared', 'services.gemini.daily_limit' => 10]);
-        $this->own($this->user, CredentialProviders::GEMINI, ['key' => 'mine']);
+        $this->own($this->user, CredentialProviders::GEMINI, ['key' => 'mine'], ['daily' => 10]);
 
         // სხვისი ხარჯი — ჩემთვის უხილავი უნდა იყოს
         foreach (range(1, 8) as $i) {
@@ -162,13 +171,15 @@ class CredentialTest extends TestCase
         $this->assertSame('user', $usage['source']);
         $this->assertSame(0, $usage['used'], 'სხვისი ხარჯი ჩემს გასაღებს არ ეხება');
         $this->assertFalse($usage['exhausted']);
+        $this->assertSame('day', $usage['period']);
     }
 
-    /** საერთო გასაღებზე კი ძველი ქცევა რჩება — ჯამი ინსტალაციისაა */
-    public function test_a_shared_key_still_counts_the_whole_installation(): void
+    /**
+     * ⚠️ **„მთელი ინსტალაციის ჯამი" აღარ არსებობს** (Tasks §30) — გასაღების
+     * გარეშეც მრიცხველი მხოლოდ ჩემს რიგებს ითვლის, და არა ყველასას.
+     */
+    public function test_the_counter_never_counts_the_whole_installation(): void
     {
-        config(['services.gemini.key' => 'shared', 'services.gemini.daily_limit' => 10]);
-
         foreach (range(1, 8) as $i) {
             TranslationUsage::create([
                 'user_id' => $this->other->id,
@@ -182,27 +193,33 @@ class CredentialTest extends TestCase
 
         $usage = app(Translator::class)->usage();
 
-        $this->assertSame('shared', $usage['source']);
-        $this->assertSame(8, $usage['used']);
+        $this->assertSame('none', $usage['source']);
+        $this->assertSame(0, $usage['used']);
+        // ⚠️ მომხმარებლის გარეშე (CLI) გასაღებიც არაა, ე.ი. დასათვლელიც არაფერია
+        $this->assertSame(0, TranslationUsage::usedToday(null));
     }
 
-    /** ჩემი ლიმიტი საერთოს ცვლის; `0` = ლიმიტი არაა და `null`-ისგან განსხვავდება */
-    public function test_a_personal_limit_overrides_the_installation_one(): void
+    /** ჩემი ლიმიტი კოდის ნაგულისხმევს ცვლის; `0` = ლიმიტი არაა და `null`-ისგან განსხვავდება */
+    public function test_a_personal_limit_overrides_the_code_default(): void
     {
-        config(['services.gemini.key' => 'shared', 'services.gemini.daily_limit' => 1500]);
+        config(['services.gemini.daily_limit' => 7]);
         $this->own($this->user, CredentialProviders::GEMINI, ['key' => 'mine'], ['daily' => 50]);
 
         $this->actingAs($this->user);
 
         $this->assertSame(50, CredentialStore::limit(CredentialProviders::GEMINI, 'daily'));
+        // ⚠️ `config` არაფერს ცვლის — ნაგულისხმევი კოდისაა (1500)
         $this->assertSame(1500, CredentialStore::limit(CredentialProviders::GEMINI, 'daily', $this->other->id));
+
+        $this->own($this->other, CredentialProviders::GEMINI, ['key' => 'theirs'], ['daily' => 0]);
+        $this->assertSame(0, CredentialStore::limit(CredentialProviders::GEMINI, 'daily', $this->other->id));
     }
 
     /* ---------- API ---------- */
 
     public function test_the_api_never_returns_a_secret(): void
     {
-        config(['services.tmdb.key' => 'shared-key-value']);
+        config(['services.tmdb.key' => 'config-key-value']);
         $this->own($this->user, CredentialProviders::TMDB, ['key' => 'super-secret-value']);
 
         $res = $this->actingAs($this->user)->getJson('/api/credentials')->assertOk();
@@ -210,7 +227,7 @@ class CredentialTest extends TestCase
         $body = $res->getContent();
 
         $this->assertStringNotContainsString('super-secret-value', $body);
-        $this->assertStringNotContainsString('shared-key-value', $body);
+        $this->assertStringNotContainsString('config-key-value', $body);
         // …მაგრამ „ჩავწერე" ჩანს
         $tmdb = collect($res->json('data'))->firstWhere('provider', 'tmdb');
         $this->assertSame('user', $tmdb['source']);
@@ -223,8 +240,6 @@ class CredentialTest extends TestCase
 
     public function test_saving_and_clearing_a_field(): void
     {
-        config(['services.tmdb.key' => 'installation-key']);
-
         $this->actingAs($this->user)
             ->putJson('/api/credentials/tmdb', ['fields' => ['key' => 'mine']])
             ->assertOk()
@@ -233,11 +248,38 @@ class CredentialTest extends TestCase
         CredentialStore::forget();
         $this->assertSame('mine', CredentialStore::value(CredentialProviders::TMDB, 'key', $this->user->id));
 
-        // ცარიელი = გასუფთავება (გამოტოვებული კი — არ ცვლის)
+        // ცარიელი = გასუფთავება (გამოტოვებული კი — არ ცვლის); სარეზერვო აღარ არსებობს
         $this->actingAs($this->user)
             ->putJson('/api/credentials/tmdb', ['fields' => ['key' => '']])
             ->assertOk()
-            ->assertJsonPath('data.source', 'shared');
+            ->assertJsonPath('data.source', 'none')
+            ->assertJsonPath('data.configured', false);
+    }
+
+    /**
+     * ⚠️ **პასუხში საერთო ფენის კვალი აღარაა** (Tasks §30.10): არც `has_shared`,
+     * არც `shared_hint`, ლიმიტზე კი `default` — კოდის ნაგულისხმევი.
+     */
+    public function test_the_payload_carries_code_defaults_not_shared_values(): void
+    {
+        $gemini = collect($this->actingAs($this->user)->getJson('/api/credentials')->json('data'))
+            ->firstWhere('provider', 'gemini');
+
+        $this->assertSame('none', $gemini['source']);
+
+        foreach ($gemini['fields'] as $field) {
+            $this->assertArrayNotHasKey('has_shared', $field);
+            $this->assertArrayNotHasKey('shared_hint', $field);
+        }
+
+        $model = collect($gemini['fields'])->firstWhere('name', 'model');
+        $this->assertSame('gemini-3.5-flash', $model['default']);
+        // ⚠️ საიდუმლოს ნაგულისხმევი არასდროს აქვს
+        $this->assertNull(collect($gemini['fields'])->firstWhere('name', 'key')['default']);
+
+        $daily = collect($gemini['limits'])->firstWhere('name', 'daily');
+        $this->assertSame(1500, $daily['default']);
+        $this->assertArrayNotHasKey('shared', $daily);
     }
 
     /** ⚠️ გასაღების შეცვლა ძველ „შემოწმებულია"-ს ბათილს ხდის */
@@ -281,19 +323,15 @@ class CredentialTest extends TestCase
             ->assertJsonPath('source', 'user');
     }
 
-    /**
-     * ⚠️ **საერთო (`.env`) გასაღები არასდროს გადის.** ის ინსტალაციისაა და
-     * არა ჩემი — მისი ჩვენება ნებისმიერ ავტორიზებულ ანგარიშს სხვისი
-     * (და ფასიანი) გასაღების გატანის საშუალებას მისცემდა.
-     */
-    public function test_reveal_never_returns_the_shared_key(): void
+    /** ⚠️ **`config`-ში ჩაწერილი მნიშვნელობა არასდროს გადის** — ის ჩემი არაა */
+    public function test_reveal_never_returns_a_key_from_config(): void
     {
         config(['services.tmdb.key' => 'installation-key']);
 
         $res = $this->actingAs($this->user)
             ->getJson('/api/credentials/tmdb/reveal')
             ->assertOk()
-            ->assertJsonPath('source', 'shared')
+            ->assertJsonPath('source', 'none')
             ->assertJsonPath('fields', []);
 
         $this->assertStringNotContainsString('installation-key', $res->getContent());
@@ -338,41 +376,29 @@ class CredentialTest extends TestCase
         $this->assertStringNotContainsString('my-real-key', json_encode($log->new_values));
     }
 
-    /* ---------- საერთო გასაღები და ტელეგრამი (§21.9) ---------- */
+    /* ---------- სუპერ-ადმინი და ტელეგრამი (§21.9 → §30) ---------- */
 
     /**
-     * ⚠️ **სუპერ-ადმინი ინსტალაციის გასაღებს ხედავს** (შენი მითითება): `.env`
-     * ფაილი ისედაც მისი წასაკითხია, ე.ი. დამალვა მხოლოდ უხერხულობა იყო.
+     * ⚠️ **სუპერ-ადმინიც მხოლოდ თავის გასაღებს ხედავს** (Tasks §30): §21.9-ის
+     * „ინსტალაციის გასაღების ნახვა" საერთო ფენასთან ერთად გაქრა.
      */
-    public function test_a_super_admin_can_reveal_the_shared_key(): void
+    public function test_even_a_super_admin_cannot_reveal_a_config_key(): void
     {
         config(['services.tmdb.key' => 'installation-key']);
         $this->user->assignRole('super_admin')->save();
 
-        $this->actingAs($this->user->fresh())
+        $res = $this->actingAs($this->user->fresh())
             ->getJson('/api/credentials/tmdb/reveal')
             ->assertOk()
-            ->assertJsonPath('fields.key', 'installation-key')
-            ->assertJsonPath('owner.key', 'shared');
-    }
-
-    /** …ჩვეულებრივი ანგარიში კი — არა: გასაღები ანგარიშისაა და არა მისი */
-    public function test_a_plain_user_still_cannot_reveal_the_shared_key(): void
-    {
-        config(['services.tmdb.key' => 'installation-key']);
-
-        $res = $this->actingAs($this->user)
-            ->getJson('/api/credentials/tmdb/reveal')
-            ->assertOk()
-            ->assertJsonPath('fields', []);
+            ->assertJsonPath('fields', [])
+            ->assertJsonMissingPath('owner');
 
         $this->assertStringNotContainsString('installation-key', $res->getContent());
     }
 
-    /** ⚠️ ჩემი გასაღები ყოველთვის ჩემია — საერთოს ის სძლევს */
-    public function test_reveal_prefers_my_own_key_over_the_shared_one(): void
+    /** …ხოლო თავისას — ჩვეულებრივად */
+    public function test_a_super_admin_reveals_their_own_key(): void
     {
-        config(['services.tmdb.key' => 'installation-key']);
         $this->user->assignRole('super_admin')->save();
         $this->own($this->user, CredentialProviders::TMDB, ['key' => 'mine']);
 
@@ -380,7 +406,7 @@ class CredentialTest extends TestCase
             ->getJson('/api/credentials/tmdb/reveal')
             ->assertOk()
             ->assertJsonPath('fields.key', 'mine')
-            ->assertJsonPath('owner.key', 'user');
+            ->assertJsonPath('source', 'user');
     }
 
     /** ტელეგრამი ჩვეულებრივი წყაროა სიაში — მისი ბარათიც იქვეა */
@@ -391,9 +417,28 @@ class CredentialTest extends TestCase
         $telegram = collect($res->json('data'))->firstWhere('provider', 'telegram');
 
         $this->assertNotNull($telegram);
-        // ⚠️ `.env`-ში არასდროს ყოფილა: ბოტი პირადია, საერთო ვერსია არ არსებობს
+        // ⚠️ ბოტი პირადია — ჩაწერამდე წყარო უბრალოდ „არ არის"
         $this->assertSame('none', $telegram['source']);
-        $this->assertFalse($telegram['fields'][0]['has_shared']);
+        $this->assertFalse($telegram['fields'][0]['has_own']);
+    }
+
+    /**
+     * Tasks §30 — ⚠️ **ბოტის შემოწმება `getMe`-ია**: უფასოა და ჩატში არაფერს
+     * აგზავნის. აქამდე ტელეგრამის ბარათის „შემოწმება" `unknown_provider`-ს
+     * აბრუნებდა — ბარათების ბადეზე ეს ღილაკი ყოველთვის ჩავარდებოდა.
+     */
+    public function test_the_telegram_token_is_checked_with_get_me(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['is_bot' => true]])]);
+        $this->own($this->user, CredentialProviders::TELEGRAM, ['bot_token' => '123:ABC', 'chat_id' => '42']);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/credentials/telegram/test')
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/bot123:ABC/getMe'));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'sendMessage'));
     }
 
     /**
@@ -603,7 +648,7 @@ class CredentialTest extends TestCase
     /** ⚠️ Serper-ის შემოწმება კრედიტს ხარჯავს → ცხადი დასტურის გარეშე 422 */
     public function test_a_paid_test_requires_an_explicit_confirmation(): void
     {
-        config(['services.serper.key' => 'shared']);
+        $this->own($this->user, CredentialProviders::SERPER, ['key' => 'mine']);
 
         $this->actingAs($this->user)
             ->postJson('/api/credentials/serper/test')
@@ -730,5 +775,88 @@ class CredentialTest extends TestCase
 
         CredentialStore::forget();
         $this->assertSame('999:FRESH', CredentialStore::value(CredentialProviders::TELEGRAM, 'bot_token', $this->user->id));
+    }
+
+    /* ---------- `.env` → პირადი ჩანაწერები (Tasks §30.5) ---------- */
+
+    /** დროებითი `.env` — მიგრაცია დეველოპერის ნამდვილ ფაილს არ კითხულობს */
+    private function withEnvFile(string $contents): string
+    {
+        $dir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mediary-env-'.uniqid();
+        mkdir($dir);
+        file_put_contents($dir.DIRECTORY_SEPARATOR.'.env', $contents);
+        $this->app->useEnvironmentPath($dir);
+
+        return $dir;
+    }
+
+    private function runEnvMigration(): void
+    {
+        (require database_path('migrations/2026_09_28_000006_move_env_credentials_to_first_super_admin.php'))->up();
+        CredentialStore::forget();
+    }
+
+    /**
+     * **`.env`-ის გასაღებები პირველი სუპერ-ადმინისაა** — ის გადადის მის
+     * ჩანაწერებში, დაშიფრულად. ⚠️ უკვე ჩაწერილს არ ცვლის, ხოლო ნაგულისხმევის
+     * ტოლი მოდელი/ლიმიტი „პირადად" არ იყინება.
+     */
+    public function test_the_migration_moves_env_keys_to_the_first_super_admin(): void
+    {
+        $this->other->assignRole('super_admin')->save();
+        // ⚠️ RAWG-ის თავისი გასაღები უკვე აქვს — ის უნდა დარჩეს
+        $this->own($this->other, CredentialProviders::RAWG, ['key' => 'already-mine']);
+
+        $dir = $this->withEnvFile(implode("\n", [
+            'TMDB_API_KEY=tmdb-from-env',
+            'GEMINI_API_KEY=gemini-from-env',
+            'GEMINI_MODEL=gemini-3.5-flash',
+            'RAWG_API_KEY=rawg-from-env',
+            'SERPAPI_KEY=',
+            'SERPAPI_MONTHLY_LIMIT=250',
+            'SERPER_API_KEY="serper-from-env"',
+        ])."\n");
+
+        try {
+            $this->runEnvMigration();
+        } finally {
+            @unlink($dir.DIRECTORY_SEPARATOR.'.env');
+            @rmdir($dir);
+        }
+
+        $owner = $this->other->id;
+
+        $this->assertSame('tmdb-from-env', CredentialStore::value(CredentialProviders::TMDB, 'key', $owner));
+        $this->assertSame('gemini-from-env', CredentialStore::value(CredentialProviders::GEMINI, 'key', $owner));
+        $this->assertSame('serper-from-env', CredentialStore::value(CredentialProviders::SERPER, 'key', $owner));
+        $this->assertSame('already-mine', CredentialStore::value(CredentialProviders::RAWG, 'key', $owner));
+
+        // ცარიელი ხაზი გასაღები არაა, ნაგულისხმევის ტოლი პარამეტრი კი არ იყინება
+        $this->assertFalse(UserCredential::where('user_id', $owner)->where('provider', 'serpapi')->exists());
+        $gemini = UserCredential::where('user_id', $owner)->where('provider', 'gemini')->first();
+        $this->assertArrayNotHasKey('model', $gemini->fields());
+        $this->assertNull($gemini->limits);
+
+        // ⚠️ მხოლოდ მფლობელს — სხვა ანგარიშს არაფერი ეძლევა
+        $this->assertFalse(UserCredential::where('user_id', $this->user->id)->exists());
+
+        // ⚠️ დაშიფრულად — `DB::table()`-ით ჩაწერა ღია ტექსტს დატოვებდა
+        $raw = (string) DB::table('user_credentials')->where('user_id', $owner)->where('provider', 'tmdb')->value('credentials');
+        $this->assertStringNotContainsString('tmdb-from-env', $raw);
+    }
+
+    /** სუპერ-ადმინის გარეშე ვერავის მიეწერება — და ვერც სხვას მიეწერება */
+    public function test_the_migration_writes_nothing_without_a_super_admin(): void
+    {
+        $dir = $this->withEnvFile("TMDB_API_KEY=tmdb-from-env\n");
+
+        try {
+            $this->runEnvMigration();
+        } finally {
+            @unlink($dir.DIRECTORY_SEPARATOR.'.env');
+            @rmdir($dir);
+        }
+
+        $this->assertSame(0, UserCredential::count());
     }
 }

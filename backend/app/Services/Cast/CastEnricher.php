@@ -173,7 +173,7 @@ class CastEnricher
         }
 
         if (! $this->configured()) {
-            $this->lastError = 'tmdb_not_configured';
+            $this->lastError = 'credential_missing';
 
             return self::FAILED;
         }

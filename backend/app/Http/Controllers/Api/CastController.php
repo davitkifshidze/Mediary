@@ -12,7 +12,9 @@ use App\Models\Genre;
 use App\Models\Video;
 use App\Services\Cast\CastEnricher;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\CredentialProviders;
 use App\Support\Lang;
+use App\Support\MissingCredential;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -159,7 +161,7 @@ class CastController extends Controller
     public function resync(CastMember $castMember, CastEnricher $enricher): JsonResponse
     {
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         if (! $castMember->tmdb_person_id) {

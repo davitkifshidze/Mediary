@@ -355,14 +355,17 @@ class MovieModuleTest extends TestCase
             ->assertJson(['message' => 'module_not_enabled']);
     }
 
-    /** ⚠️ TMDB-ის გასაღების გარეშე **503 და არა 500** (`bgg_unavailable`-ის წესი) */
-    public function test_adding_from_tmdb_without_a_key_is_a_503(): void
+    /**
+     * ⚠️ TMDB-ის პირადი გასაღების გარეშე **409 `credential_missing` და არა 500**
+     * (Tasks §30.6) — „წყარო მიუწვდომელია" (503) სხვა ფაქტია და სხვა ქმედებას ითხოვს.
+     */
+    public function test_adding_from_tmdb_without_a_key_asks_for_the_users_own_key(): void
     {
-        config(['services.tmdb.key' => null]);
-
         $this->actingAs($this->alice)
             ->postJson('/api/movies/from-tmdb', ['tmdb_id' => 603])
-            ->assertStatus(503);
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'credential_missing')
+            ->assertJsonPath('provider', 'tmdb');
     }
 
     /**

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Sync\ItemSyncer;
+use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -89,6 +91,10 @@ class MediaSyncController extends Controller
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
             'skipped_without_tmdb' => $withoutTmdb,
+            /* Tasks §30.6 — ⚠️ **გეგმა თვითონ ამბობს, რომ გასაღები არ მაქვს**:
+               §30-იდან ის ანგარიშისაა, ე.ი. მის გარეშე ფანჯარა გაშვებამდე უნდა
+               თქვას „ჩაწერე" — და არა 300 ერთნაირი ჩავარდნის შემდეგ. */
+            'tmdb' => $syncer->configured(),
         ]);
     }
 
@@ -104,7 +110,7 @@ class MediaSyncController extends Controller
         }
 
         if (! $syncer->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         $data = $request->validate([

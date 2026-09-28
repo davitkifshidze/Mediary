@@ -7,8 +7,10 @@ use App\Models\Genre;
 use App\Models\Movie;
 use App\Models\Series;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\CredentialProviders;
 use App\Support\Lang;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -46,7 +48,7 @@ class DiscoverController extends Controller
     public function index(Request $request, TmdbClient $tmdb)
     {
         if (! $tmdb->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         // query-string-ში boolean სტრიქონად მოდის ("true"/"1"/"yes") — ვანორმალებთ

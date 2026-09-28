@@ -27,6 +27,7 @@ import { statusName, useStatuses } from '@/lib/statuses'
 import { formatDuration } from '@/lib/videoDuration'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
@@ -265,11 +266,17 @@ export function WebVideoDialog({
     pageSize === PHOTO_PAGE_ALL ? items : items.slice((current - 1) * pageSize, current * pageSize)
 
   /* ⚠️ **ვიდეოს უფასო წყარო არ არსებობს** — ორივე engine SerpApi-სია, ე.ი.
-     გასაღების გარეშე სია ცარიელია და ამას ცხადად ვამბობთ. */
+     გასაღების გარეშე სია ცარიელია და ამას ცხადად ვამბობთ. ⚠️ Tasks §30.6 —
+     §30-იდან ეს ჩვეულებრივი მდგომარეობაა, ვისაც **თავისი** SerpApi-ის გასაღები
+     არ აქვს, და მისი ქმედება „მონაცემებში" ჩაწერაა — არა „სცადე მოგვიანებით". */
   if (!statusLoading && status && available.length === 0) {
     return (
       <ModalShell title={title} onClose={onClose} wide>
-        <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
+        {status.missing?.includes('serpapi') ? (
+          <CredentialMissingNotice provider="serpapi" className="mt-4" />
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
+        )}
         <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}

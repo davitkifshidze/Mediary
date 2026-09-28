@@ -36,10 +36,6 @@ class EnrichmentLanguageTest extends TestCase
         parent::setUp();
 
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', 'test-key');
-        // ⚠️ გასაღები **ჩაწერილია** — თორემ „Gemini არ იძახება" ტესტი
-        // იმიტომაც გაიარებდა, რომ თარჯიმანი საერთოდ გამორთულია
-        config()->set('services.gemini.key', 'test-gemini-key');
 
         $this->user = User::create([
             'name' => 'enrich',
@@ -49,6 +45,15 @@ class EnrichmentLanguageTest extends TestCase
         ]);
         $this->user->modules()->sync(Module::where('key', 'movie')->pluck('id')->all());
         $this->user->refresh();
+
+        $this->giveCredential($this->user, 'tmdb');
+        // ⚠️ გასაღები **ჩაწერილია** — თორემ „Gemini არ იძახება" ტესტი
+        // იმიტომაც გაიარებდა, რომ თარჯიმანი საერთოდ გამორთულია
+        $this->giveCredential($this->user, 'gemini', ['key' => 'test-gemini-key']);
+
+        /* ⚠️ სერვისები პირდაპირ იძახება (HTTP-ის გარეშე), გასაღები კი
+           `Auth::id()`-ის მომხმარებლისაა — ე.ი. ტესტი მის სახელით მუშაობს */
+        $this->actingAs($this->user);
     }
 
     /** TMDB — ინგლისური და ქართული პასუხი, `language=ka`-ს მიხედვით */

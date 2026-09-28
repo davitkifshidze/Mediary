@@ -1,5 +1,6 @@
 import axios from 'axios'
 import i18n from '@/i18n'
+import { credentialShortName } from '@/lib/credentials'
 import { formatBytes } from '@/lib/utils'
 
 /**
@@ -32,7 +33,7 @@ export const CODES = [
   'openlibrary_unavailable',
   // FEAT-26 — OSM Nominatim არ პასუხობს („ვერაფერი ვიპოვე“ სხვა ფაქტია)
   'nominatim_unavailable',
-  // §11 — RAWG კლავიშს ითხოვს; მისი გარეშე წყარო „მიუწვდომელია"
+  // §11 — RAWG **არ პასუხობს** (გასაღების არქონა §30-იდან `credential_missing`-ია)
   'rawg_unavailable',
   // §16.2 — დამთხვევა ორ **საჯარო** პროფილს შორის ითვლება
   'profile_not_public',
@@ -74,9 +75,10 @@ export const CODES = [
   'chat_blocked',
   'cannot_chat_with_self',
   // §7.6 — SerpApi. ⚠️ **სამი სხვადასხვა მდგომარეობაა და სამივეს თავისი
-  // ტექსტი აქვს**: ლიმიტი ამოიწურა (429) · წყარო/გასაღები არ არის (503) ·
+  // ტექსტი აქვს**: ლიმიტი ამოიწურა (429) · წყარო არ პასუხობს (503) ·
   // ვიდეოს მისამართი YouTube-ისა არაა (422). „ვერაფერი ვიპოვე" კი საერთოდ
-  // შეცდომა არ არის — ის 200-ია ცარიელი სიით.
+  // შეცდომა არ არის — ის 200-ია ცარიელი სიით; გასაღების არქონა კი (§30)
+  // `credential_missing`-ია.
   'serpapi_quota_exceeded',
   'serpapi_unavailable',
   /* ეტაპი 1 — მსახიობის ხელით მიბმა. ⚠️ ოთხივე სხვადასხვა მდგომარეობაა
@@ -167,9 +169,9 @@ export const CODES = [
      Guzzle მას **სრულ URL-ს** უწერს (`?api_key=…`), ე.ი. თითო timeout
      საერთო გასაღებს ნებისმიერ შესულ მომხმარებელს აჩვენებდა. */
   'tmdb_error',
-  /* GAP-12 — TMDB-ის დანარჩენი მდგომარეობები. ⚠️ სამივე სხვადასხვაა:
-     გასაღები არ არის (503) · საძებნი არაფერი მითხარი (422) · ვერ მოიძებნა (404). */
-  'tmdb_not_configured',
+  /* GAP-12 — TMDB-ის დანარჩენი მდგომარეობები. ⚠️ ორივე სხვადასხვაა:
+     საძებნი არაფერი მითხარი (422) · ვერ მოიძებნა (404). გასაღების არქონა
+     §30-იდან ყველა წყაროზე ერთი კოდია — `credential_missing` (ქვემოთ). */
   'lookup_query_required',
   'tmdb_not_found',
   /* Tasks §39 — მსახიობის ნაბიჯი: წყარო არ პასუხობს (ქსელი, 5xx, 401).
@@ -221,6 +223,13 @@ export const CODES = [
   'already_present',
   // Tasks §29.8 — აუდიტის ლოგის აღდგენას `admin:audit` სჭირდება
   'permission_missing',
+  /* Tasks §30.6 — **„შენი გასაღები არ გაქვს"**, ყველა წყაროზე ერთი კოდით
+     (409 + `provider`). ⚠️ „წყარო მიუწვდომელია"-სგან (`rawg_unavailable`,
+     `serpapi_unavailable`, 503) ცალკეა: იქ „სცადე მოგვიანებით", აქ —
+     „ჩაწერე შენი გასაღები „მონაცემებში"". ⚠️ სერვერი მას 200-იან ერთეულის
+     პასუხშიც აბრუნებს (`error: 'credential_missing'`, თარგმანი/იმპორტი),
+     სადაც `provider` არ მოდის — ამიტომ ტექსტი ორია (იხ. `errorMessage()`). */
+  'credential_missing',
 ] as const
 
 /**
@@ -316,6 +325,14 @@ export function errorMessage(e: unknown, fallback: string = i18n.t('toast.error'
 
   // მანქანური კოდი → თარგმანი (17.3-ის კვოტის შეტყობინება ცხადი უნდა იყოს)
   if (!code) return message
+
+  /* §30.6 — წყარო ცნობილია → მისი სახელი ტექსტშივე („TMDB-ის გასაღები არ
+     გაქვს"). ⚠️ ცალკე გასაღებია და არა `{{provider}}` ერთ ტექსტში: 200-იან
+     ერთეულის პასუხს წყარო არ მოსდევს, და `translateCode()` ტექსტს
+     პარამეტრის გარეშე ხატავს — ნედლი `{{provider}}` ეკრანზე დაიწერებოდა. */
+  if (code === 'credential_missing' && typeof data?.provider === 'string') {
+    return i18n.t('errors.credential_missing_for', { provider: credentialShortName(data.provider) })
+  }
 
   // ბაიტების ველები წაკითხად ფორმაში — თორემ „დარჩა 8388608" წერია
   const bytes = ['needed', 'remaining', 'quota'] as const

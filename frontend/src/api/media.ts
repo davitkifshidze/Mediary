@@ -145,6 +145,8 @@ export interface SyncPlan {
   eta_seconds: number
   /** tmdb_id-ის გარეშე ჩანაწერები — მათი სინქრონი შეუძლებელია */
   skipped_without_tmdb: number
+  /** Tasks §30.6 — ჩემი TMDB-ის გასაღები მაქვს? (`false` — გაშვება ვერ დაიწყება) */
+  tmdb: boolean
 }
 
 /** ფილტრები → დასამუშავებელი რიგი (გაშვებამდე ჩვენებისთვის) */

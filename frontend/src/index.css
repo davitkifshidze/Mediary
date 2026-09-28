@@ -88,6 +88,19 @@
   --tool-trash: #6b6f76;
   --tool-purge: #a52714;
 
+  /* **„მონაცემების" წყაროები (Tasks §30)** — თითო ბარათს თავისი ტონი.
+     ⚠️ ბრენდის ფერი **მიახლოებითია და არა ზუსტი**: RAWG-ის შავი და YouTube-ის
+     სუფთა წითელი `color-mix()`-ის ფილაზე ან ლაქა იქნებოდა, ან განგაში —
+     წითელი ამ აპში წაშლას ნიშნავს. ⚠️ მუქ თემაზე ცალკე ნაკრებია (§23-ის წესი). */
+  --cred-tmdb: #0f7f96;
+  --cred-gemini: #4a5fd0;
+  --cred-rawg: #5a6070;
+  --cred-igdb: #7545d6;
+  --cred-serpapi: #2f8a4c;
+  --cred-serper: #b8651c;
+  --cred-youtube: #b8413b;
+  --cred-telegram: #2383c2;
+
   /* ⚠️ **ერთადერთი ადგილი, სადაც მომრგვალება წყდება.** იხ. `@theme inline` —
      `rounded-xl`/`rounded-2xl` Tailwind-ის საკუთარ სკალას კითხულობს და ამ
      ცვლადს **არ** ემორჩილება, სანამ იქ ცხადად არ გადავფარავთ.
@@ -147,6 +160,15 @@
   --tool-stats: #b6c46a;
   --tool-trash: #a2a8b2;
   --tool-purge: #e5674f;
+
+  --cred-tmdb: #4cc3e0;
+  --cred-gemini: #8e9bf5;
+  --cred-rawg: #b3b8c4;
+  --cred-igdb: #a98bf5;
+  --cred-serpapi: #69c28a;
+  --cred-serper: #eb9656;
+  --cred-youtube: #ee7a74;
+  --cred-telegram: #5db4ea;
 
   /* ⚠️ მუქ თემაზე ცალკე უნდა გამეორდეს: `var()` მნიშვნელობა იქ გამოითვლება,
      სადაც ცვლადი გამოცხადდა — მარტო `:root`-ში დაწერილი alias მუქ თემაზე

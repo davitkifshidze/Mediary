@@ -53,11 +53,14 @@ class CastSyncTest extends TestCase
         parent::setUp();
 
         $this->seed(ModulesSeeder::class);
-        config(['services.tmdb.key' => 'test-key']);
         Storage::fake('public');
 
         $this->alice = $this->makeUser('alice', ['movie', 'series']);
         $this->bob = $this->makeUser('bob', ['movie']);
+
+        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        $this->giveCredential($this->alice, 'tmdb');
+        $this->giveCredential($this->bob, 'tmdb');
 
         Http::fake([
             'image.tmdb.org/*' => fn () => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),

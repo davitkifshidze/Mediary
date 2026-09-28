@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use Illuminate\Http\Request;
 use Throwable;
@@ -39,7 +41,7 @@ class LookupController extends Controller
 
         $enricher = $this->enricher($request);
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         try {
@@ -74,7 +76,7 @@ class LookupController extends Controller
 
         $enricher = $this->enricher($request);
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         try {

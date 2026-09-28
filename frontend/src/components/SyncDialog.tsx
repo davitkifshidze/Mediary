@@ -22,6 +22,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CastSyncFlow } from '@/components/CastSyncFlow'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
@@ -173,7 +174,10 @@ function RecordsFlow({
 
   const plan = planQ.data
   const nothingSelected = !media && fields.length === 0
-  const canRun = !!plan?.count && !nothingSelected && types.length > 0 && !planQ.isFetching
+  /* Tasks §30.6 — ⚠️ **გასაღები ანგარიშისაა**: მის გარეშე გაშვება 300 ერთნაირ
+     ჩავარდნად იქცეოდა, ამიტომ გეგმა თვითონ ამბობს და ღილაკი ითიშება */
+  const noKey = plan?.tmdb === false
+  const canRun = !!plan?.count && !nothingSelected && types.length > 0 && !planQ.isFetching && !noKey
 
   const eta = (seconds: number) =>
     seconds < 90 ? t('sync.etaSec', { count: seconds }) : t('sync.etaMin', { count: Math.round(seconds / 60) })
@@ -191,6 +195,8 @@ function RecordsFlow({
     <div className={active ? 'contents' : 'hidden'}>
       <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
         {header}
+
+        {noKey && <CredentialMissingNotice provider="tmdb" />}
 
         {/* ---------- სკოუპი ---------- */}
         <div>

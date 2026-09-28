@@ -38,7 +38,6 @@ class SecretRedactionTest extends TestCase
         parent::setUp();
 
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', self::KEY);
 
         $this->user = User::create([
             'name' => 'redact',
@@ -48,6 +47,9 @@ class SecretRedactionTest extends TestCase
         ]);
         $this->user->modules()->sync(Module::where('key', 'movie')->pluck('id')->all());
         $this->user->refresh();
+
+        // Tasks §30 — გასაღები ანგარიშისაა; ჟონვის საფრთხე კი იგივე რჩება
+        $this->giveCredential($this->user, 'tmdb', ['key' => self::KEY]);
     }
 
     /** Guzzle-ის სტილის ტექსტი — ზუსტად ის, რასაც `CurlFactory` აწყობს */

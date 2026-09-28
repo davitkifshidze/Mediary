@@ -93,6 +93,15 @@ class CredentialTester
                     ])
                 ),
 
+                /* Tasks §30 — ბოტის `getMe` **უფასოა და არაფერს აგზავნის**:
+                   ტოკენის სისწორეს ამოწმებს, ჩატში კი შეტყობინება არ მიდის.
+                   ⚠️ ტოკენი მისამართშია (Telegram-ის ფორმატი), ამიტომ
+                   გამონაკლისის ტექსტი პასუხში არ მიდის — `Redact` მას ლოგშიც
+                   ნიღბავს (`/bot<id>:<secret>`). */
+                CredentialProviders::TELEGRAM => $this->check(
+                    SourceLog::request(15)->get('https://api.telegram.org/bot'.$value('bot_token').'/getMe')
+                ),
+
                 default => ['ok' => false, 'error' => 'unknown_provider'],
             };
         } catch (Throwable $e) {

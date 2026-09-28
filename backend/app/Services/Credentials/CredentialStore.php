@@ -7,38 +7,34 @@ use App\Support\CredentialProviders;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * **გარე წყაროს გასაღების ერთადერთი წასაკითხი წერტილი** (Tasks §21).
+ * **გარე წყაროს გასაღების ერთადერთი წასაკითხი წერტილი** (Tasks §21 → §30).
  *
  * შვიდივე კლიენტი (`TmdbClient`, `Translator`, `RawgClient`, `IgdbClient`,
- * `SerpApiClient`, `SerperImages`, `VideoMetadata`) `config('services.*')`-ს
- * აღარ კითხულობს — მას აქედან იღებს. ეს `StorageMeter`-ის იგივე წესია:
- * ერთი შესვლა-გამოსვლა, თორემ მეორე გზა მრიცხველს ჩუმად აცდენს.
+ * `SerpApiClient`, `SerperImages`, `VideoMetadata`) და ტელეგრამის არხი
+ * გასაღებს აქედან იღებს. ეს `StorageMeter`-ის იგივე წესია: ერთი
+ * შესვლა-გამოსვლა, თორემ მეორე გზა მრიცხველს ჩუმად აცდენს.
  *
- * ## სამი მდგომარეობა და არა ორი
+ * ## ორი მდგომარეობა (Q38, 2026-09-28)
  *
- *   `user`   — ჩემი გასაღებია ჩადებული და ჩართულია
- *   `shared` — ჩემი არაა, მაგრამ ინსტალაციას (`.env`) აქვს
- *   `none`   — არსად არაა (endpoint 503-ს აბრუნებს, როგორც აქამდე)
+ *   `user` — ჩემი გასაღებია ჩადებული, სრულია და ჩართულია
+ *   `none` — არ მაქვს: წყარო ჩემთვის არ მუშაობს (`credential_missing`)
  *
- * ⚠️ **`shared` განზრახ დარჩა.** დღევანდელი ინსტალაცია ერთმომხმარებლიანია
- * და ყველა გასაღები `.env`-შია — მისი უბრალოდ წაშლა ყველა წყაროს ერთ
- * წამში გათიშავდა. ამიტომ `.env` „ინსტალაციის ნაგულისხმევია", ხოლო ვინც
- * თავისას ჩადებს, თავისით მუშაობს.
+ * ⚠️ **საერთო (`.env`) ფენა აღარ არსებობს** — „ნებისმიერი პაროლი მომხმარებელს
+ * თავისი უნდა ჰქონდეს". ე.ი. გასაღების გარეშე ანგარიშს სარეზერვო აღარაფერი
+ * აქვს, და ეს ცხადად ითქმის (`App\Support\MissingCredential`) — „წყარო
+ * მიუწვდომელია"-ს ნაცვლად, რომელიც სულ სხვა ფაქტია.
  *
  * ⚠️ **„ჩემი გასაღები" `required` ველებით წყდება და არა ნებისმიერით.**
- * Gemini-ს ორი ველი აქვს — `key` (სავალდებულო) და `model` (არა). მხოლოდ
- * მოდელის ჩაწერა „ჩემს გასაღებს" არ ნიშნავს: გამოძახება მაინც საერთო
- * გასაღებით წავიდოდა, კვოტა კი ჩემს რიგებზე დაითვლებოდა — ე.ი. ორივე
- * მრიცხველი მოტყუვდებოდა. IGDB-ს იგივე მიზეზით **ორივე** ველი უნდა ჰქონდეს.
+ * Gemini-ს ორი ველი აქვს — `key` (სავალდებულო) და `model` (არა): მხოლოდ
+ * მოდელი გასაღებს არ ნიშნავს. IGDB-ს იგივე მიზეზით **ორივე** ველი უნდა ჰქონდეს.
  *
- * ⚠️ **ცალკეული ველი მაინც ეცემა საერთოზე.** ჩემი გასაღები + ცარიელი
- * `model` = ჩემი გასაღები და ინსტალაციის ნაგულისხმევი მოდელი. სხვაგვარად
- * გასაღების ჩაწერა მოდელს ჩუმად ცარიელს დატოვებდა და თარგმანი დაიშლებოდა.
+ * ⚠️ **არასავალდებულო ღია ველი კოდის ნაგულისხმევზე ეცემა** (`model` →
+ * `gemini-3.5-flash`), თორემ გასაღების ჩაწერა მოდელს ცარიელს დატოვებდა და
+ * თარგმანი დაიშლებოდა. საიდუმლოს ნაგულისხმევი არასდროს აქვს.
  *
- * ⚠️ **CLI-ს `Auth::id()` არ აქვს** → იქ ყოველთვის საერთო გასაღებია. ეს
- * `BelongsToUser`-ის დღევანდელი, ცნობილი ქცევაა (`media:redownload --user=`)
- * და არა ახალი გამონაკლისი; ამიტომ `$userId`-ს ცხადადაც იღებს — ფონური
- * სამუშაო (`RunBatchItem`, რომელიც `Auth::setUser()`-ს აკეთებს) მუშაობს.
+ * ⚠️ **CLI-ს `Auth::id()` არ აქვს** → იქ გასაღებიც არ არის. ფონური სამუშაო
+ * (`RunBatchItem`) და `media:redownload` მფლობელზე `Auth::setUser()`-ს აკეთებენ,
+ * ე.ი. თითო ჩანაწერი **თავისი მფლობელის** გასაღებით მიდის (Tasks §30.7).
  */
 class CredentialStore
 {
@@ -80,7 +76,7 @@ class CredentialStore
         return $row === false ? null : $row;
     }
 
-    /** ქეშის ჩამოყრა — შენახვის/წაშლის შემდეგ და ტესტებში */
+    /** ქეშის ჩამოყრა — შენახვის/წაშლის შემდეგ, ყოველ ფონურ job-ზე და ტესტებში */
     public static function forget(?int $userId = null, ?string $provider = null): void
     {
         if ($userId === null && $provider === null) {
@@ -101,8 +97,8 @@ class CredentialStore
     /**
      * ამ მომხმარებელს **თავისი** (ჩართული და სრული) გასაღები აქვს თუ არა.
      *
-     * ⚠️ ეს ერთადერთი პრედიკატია, რომელზეც კვოტის დათვლა დგას (§21.4) —
-     * ორი ასლი ორ სხვადასხვა პასუხს გასცემდა.
+     * ⚠️ ერთადერთი პრედიკატია, რომელზეც `value()`, `configured()` და
+     * `source()` დგანან — ორი ასლი ორ სხვადასხვა პასუხს გასცემდა.
      */
     public static function usesOwnKey(string $provider, ?int $userId = null): bool
     {
@@ -123,23 +119,18 @@ class CredentialStore
         return true;
     }
 
-    /** `user` | `shared` | `none` — ინტერფეისისთვის და დიაგნოსტიკისთვის */
+    /** `user` | `none` — ინტერფეისისთვის და დიაგნოსტიკისთვის */
     public static function source(string $provider, ?int $userId = null): string
     {
-        if (self::usesOwnKey($provider, $userId)) {
-            return 'user';
-        }
-
-        foreach (CredentialProviders::required($provider) as $name) {
-            if (trim((string) CredentialProviders::shared($provider, $name)) === '') {
-                return 'none';
-            }
-        }
-
-        return 'shared';
+        return self::usesOwnKey($provider, $userId) ? 'user' : 'none';
     }
 
-    /** გასაღები/ველი. `null` — არსად არაა (endpoint 503-ს აბრუნებს) */
+    /**
+     * გასაღები/ველი. `null` — არ მაქვს (endpoint `credential_missing`-ს აბრუნებს).
+     *
+     * ⚠️ ღია, არასავალდებულო ველი (Gemini-ის მოდელი) ცარიელზე კოდის
+     * ნაგულისხმევს აბრუნებს; საიდუმლო — არასდროს.
+     */
     public static function value(string $provider, string $field = 'key', ?int $userId = null): ?string
     {
         if (self::usesOwnKey($provider, $userId)) {
@@ -150,57 +141,48 @@ class CredentialStore
             }
         }
 
-        $shared = trim((string) CredentialProviders::shared($provider, $field));
+        $default = CredentialProviders::default($provider, $field);
 
-        return $shared === '' ? null : $shared;
+        return $default === null || $default === '' ? null : (string) $default;
     }
 
     public static function configured(string $provider, ?int $userId = null): bool
     {
-        foreach (CredentialProviders::required($provider) as $name) {
-            if (self::value($provider, $name, $userId) === null) {
-                return false;
-            }
-        }
-
-        return CredentialProviders::required($provider) !== [];
+        return CredentialProviders::required($provider) !== [] && self::usesOwnKey($provider, $userId);
     }
 
     /**
-     * ლიმიტი. `null` = ჭერი არ დაგვიწესებია, `0` = ლიმიტი გამორთულია —
-     * **ორი სხვადასხვა ფაქტია** და `Translator`/`SerpApiClient` ისედაც ასე
-     * კითხულობს, ამიტომ `??` ჯაჭვში `0`-ს ვერ გამოვტოვებთ.
+     * ლიმიტი. `null` = ჭერი არ არის (ნაგულისხმევიც არ აქვს), `0` = ლიმიტი
+     * გამორთულია — **ორი სხვადასხვა ფაქტია** და `Translator`/`SerpApiClient`
+     * ისედაც ასე კითხულობს, ამიტომ `??` ჯაჭვში `0`-ს ვერ გამოვტოვებთ.
+     *
+     * ⚠️ პირადი ლიმიტი რიგიდან იკითხება მაშინაც, როცა გასაღები ჯერ არ წერია:
+     * `limits` დაშიფრული არაა და ცალკე ფაქტია — „რა ჭერი დავიწესე".
      */
     public static function limit(string $provider, string $name, ?int $userId = null): ?int
     {
-        if (self::usesOwnKey($provider, $userId)) {
-            $own = self::row($provider, $userId)?->limits[$name] ?? null;
+        $own = self::row($provider, $userId)?->limits[$name] ?? null;
 
-            if ($own !== null && $own !== '') {
-                return max(0, (int) $own);
-            }
+        if ($own !== null && $own !== '') {
+            return max(0, (int) $own);
         }
 
-        $shared = CredentialProviders::shared($provider, $name);
+        $default = CredentialProviders::default($provider, $name);
 
-        return $shared === null || $shared === '' ? null : max(0, (int) $shared);
+        return $default === null || $default === '' ? null : max(0, (int) $default);
     }
 
     /**
-     * **ვის ხარჯზე იწერება ეს გამოძახება** (§21.4).
+     * **ვის ხარჯზე იწერება ეს გამოძახება** (§21.4 → §30).
      *
-     * თავისი გასაღებით — ჩემი id, ე.ი. მრიცხველი მხოლოდ ჩემს რიგებს ითვლის
-     * და ჩემს ლიმიტს ამოწმებს. საერთო გასაღებით — `null`, ე.ი. ძველებურად
-     * მთელი ინსტალაციის ჯამი (ზუსტად ის, რასაც `TranslationUsage`-ისა და
-     * `SerpSearch`-ის დოკბლოკები აღწერენ: „ლიმიტი ანგარიშისაა").
-     *
-     * ⚠️ ამის გარეშე მთელი თასქი ტყუილია: თავისი გასაღები + საერთო
-     * მრიცხველი ნიშნავს, რომ სხვისმა თარგმანმა შენი კვოტა შეიძლება
-     * ამოწუროს, თუმცა შენი გასაღები ხელუხლებელია.
+     * ⚠️ **ყოველთვის მომხმარებელზე** — საერთო გასაღები აღარ არსებობს, ე.ი.
+     * „მთელი ინსტალაციის ჯამიც" აღარაფერს ნიშნავს: თითო ანგარიში თავის
+     * გასაღებს და თავის ლიმიტს ითვლის. `null` — მომხმარებელი არ არის (CLI),
+     * და მაშინ გასაღებიც არ არის, ე.ი. დასათვლელი არაფერია.
      */
-    public static function quotaOwner(string $provider, ?int $userId = null): ?int
+    public static function quotaOwner(?int $userId = null): ?int
     {
-        return self::usesOwnKey($provider, $userId) ? self::currentUserId($userId) : null;
+        return self::currentUserId($userId);
     }
 
     /**

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SeriesResource;
 use App\Models\Series;
 use App\Services\Enrichment\SeriesEnricher;
+use App\Support\CredentialProviders;
+use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use Throwable;
 
@@ -15,7 +17,7 @@ class SeriesSyncController extends Controller
     public function resync(Series $series, SeriesEnricher $enricher)
     {
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         try {

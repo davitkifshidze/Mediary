@@ -169,3 +169,30 @@ describe('errorMessage — BUG-14', () => {
     expect(text).toBe('The url field is required.')
   })
 })
+
+describe('errorMessage — credential_missing (Tasks §30.6)', () => {
+  it('names the source when the response carries it', async () => {
+    await i18n.changeLanguage('en')
+
+    const text = errorMessage(apiError(409, { message: 'credential_missing', provider: 'tmdb' }))
+
+    expect(text).toBe(i18n.t('errors.credential_missing_for', { provider: 'TMDB' }))
+    expect(text).toContain('TMDB')
+    expect(text).not.toContain('{{')
+  })
+
+  it('falls back to the generic text without a provider (a 200 item result)', async () => {
+    await i18n.changeLanguage('en')
+
+    const text = errorMessage(apiError(409, { message: 'credential_missing' }))
+
+    expect(text).toBe(i18n.t('errors.credential_missing'))
+    expect(text).not.toContain('{{')
+  })
+
+  it('shows an unknown provider raw rather than dropping it', async () => {
+    await i18n.changeLanguage('en')
+
+    expect(errorMessage(apiError(409, { message: 'credential_missing', provider: 'newsource' }))).toContain('newsource')
+  })
+})

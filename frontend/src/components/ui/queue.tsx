@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
 import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
 import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
-import { errorMessage, translateCode } from '@/lib/errors'
+import { errorMessage, isApiCode, translateCode } from '@/lib/errors'
 import { useToast } from '@/components/ui/feedback'
 import {
   fetchActorGalleryImages,
@@ -565,19 +565,26 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
+        /* Tasks §30.6 — ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
+           ერთეულის პასუხმაც (`ok:false, error:'credential_missing'` — თარგმანი,
+           იმპორტი) შეიძლება თქვას, და მაშინ იგივე სახეობის დანარჩენი ერთეულიც
+           ზუსტად ასე ჩავარდებოდა — ამიტომ ისინი რიგიდან იშლება (413-ის წესი). */
+        const noKey = !ok && error === 'credential_missing'
         setItems((cur) =>
-          cur.map((i) =>
-            i.id === next.id
-              ? {
-                  ...i,
-                  status: ok ? 'done' : 'error',
-                  error,
-                  skipped,
-                  castResult,
-                  ms: performance.now() - started,
-                }
-              : i,
-          ),
+          cur
+            .filter((i) => !(noKey && i.status === 'pending' && i.kind === next.kind))
+            .map((i) =>
+              i.id === next.id
+                ? {
+                    ...i,
+                    status: ok ? 'done' : 'error',
+                    error,
+                    skipped,
+                    castResult,
+                    ms: performance.now() - started,
+                  }
+                : i,
+            ),
         )
       })
       .catch((e: { code?: string; message?: string; response?: { status?: number } }) => {
@@ -585,15 +592,21 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         // 17.3 — კვოტა გავსდა: ნაკადი **ჩერდება** და არ აგრძელებს ცდას
         const quotaFull = e?.response?.status === 413
         if (quotaFull) qc.invalidateQueries({ queryKey: ['storage'] })
+        /* Tasks §30.6 — **ჩემი გასაღები არ მაქვს** (409 `credential_missing`):
+           იგივე სახეობის ყოველი მომდევნო ერთეული ზუსტად ასე ჩავარდებოდა, ე.ი.
+           ისინი იშლება, მიზეზი კი წყაროს სახელით იწერება („TMDB-ის გასაღები
+           არ გაქვს") — `errorMessage()` მას პასუხის `provider`-იდან აწყობს. */
+        const noKey = isApiCode(e, 'credential_missing')
         setItems((cur) =>
           cur
             .filter((i) => !(quotaFull && i.status === 'pending'))
+            .filter((i) => !(noKey && i.status === 'pending' && i.kind === next.kind))
             .map((i) =>
               i.id === next.id
                 ? {
                     ...i,
                     status: 'error',
-                    error: quotaFull ? 'quota' : cancelled ? 'cancelled' : e?.message,
+                    error: quotaFull ? 'quota' : cancelled ? 'cancelled' : noKey ? errorMessage(e) : e?.message,
                     ms: performance.now() - started,
                   }
                 : i,

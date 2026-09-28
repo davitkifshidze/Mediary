@@ -102,6 +102,7 @@ function plan(cast: GalleryCastMember[], items: GalleryPlanItem[] = []): Gallery
   return {
     target: 'actor',
     types: ['movie'],
+    tmdb: true,
     items,
     count: items.length,
     eta_seconds: 0,

@@ -31,8 +31,8 @@ class ApiLanguageTest extends TestCase
     {
         parent::setUp();
 
+        // ⚠️ TMDB-ის პირადი გასაღები განზრახ არ ეძლევა (Tasks §30)
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', null);
 
         $this->user = User::create([
             'name' => 'lang',
@@ -44,12 +44,13 @@ class ApiLanguageTest extends TestCase
         $this->user->refresh();
     }
 
+    /** Tasks §30.6 — გასაღების არქონა ერთი კოდით და წყაროს სახელით ითქმის */
     public function test_a_missing_tmdb_key_answers_with_a_code(): void
     {
         $this->actingAs($this->user)
             ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'matrix'])
-            ->assertStatus(503)
-            ->assertJson(['message' => 'tmdb_not_configured']);
+            ->assertStatus(409)
+            ->assertJson(['message' => 'credential_missing', 'provider' => 'tmdb']);
     }
 
     public function test_an_empty_lookup_answers_with_a_code(): void

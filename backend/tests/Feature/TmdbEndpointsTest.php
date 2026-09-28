@@ -36,10 +36,13 @@ class TmdbEndpointsTest extends TestCase
         parent::setUp();
 
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', 'test-key');
 
         $this->user = $this->makeUser('ana');
         $this->other = $this->makeUser('gio');
+
+        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        $this->giveCredential($this->user, 'tmdb');
+        $this->giveCredential($this->other, 'tmdb');
     }
 
     private function makeUser(string $name): User
@@ -172,15 +175,34 @@ class TmdbEndpointsTest extends TestCase
         $this->assertSame(5, $series->fresh()->seasons);
     }
 
-    /** ⚠️ „წყარო არ არის" 503-ია და არა 500 — `bgg_unavailable`-ის იგივე წესი */
-    public function test_resync_without_a_key_is_a_503(): void
+    /**
+     * ⚠️ „ჩემი გასაღები არ მაქვს" **409 `credential_missing`**-ია და არა 500 ან 503
+     * (Tasks §30.6) — „წყარო არ პასუხობს" სხვა ფაქტია და სხვა ქმედებას ითხოვს.
+     */
+    public function test_resync_without_a_key_asks_for_the_users_own_key(): void
     {
-        config()->set('services.tmdb.key', '');
+        $this->takeCredential($this->user, 'tmdb');
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603]);
 
         $this->actingAs($this->user)->postJson("/api/movies/{$movie->id}/resync")
-            ->assertStatus(503)
-            ->assertJson(['message' => 'tmdb_not_configured']);
+            ->assertStatus(409)
+            ->assertJson(['message' => 'credential_missing', 'provider' => 'tmdb']);
+    }
+
+    /**
+     * ⚠️ **სხვისი გასაღები ჩემს მოთხოვნას არ ემსახურება** (Tasks §30): გიოს
+     * გასაღები აქვს, ანას — არა; ანას ზარი TMDB-მდე საერთოდ არ მიდის.
+     */
+    public function test_another_users_key_never_serves_my_request(): void
+    {
+        $this->takeCredential($this->user, 'tmdb');
+        Http::fake();
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup', ['type' => 'movie', 'tmdb_id' => 603])
+            ->assertStatus(409);
+
+        Http::assertNothingSent();
     }
 
     public function test_another_users_resync_is_a_404(): void
@@ -278,14 +300,14 @@ class TmdbEndpointsTest extends TestCase
             ->assertJsonPath('data.year', 1999);
     }
 
-    public function test_lookup_without_a_key_is_a_503(): void
+    public function test_lookup_without_a_key_asks_for_the_users_own_key(): void
     {
-        config()->set('services.tmdb.key', '');
+        $this->takeCredential($this->user, 'tmdb');
 
         $this->actingAs($this->user)
             ->postJson('/api/lookup', ['type' => 'movie', 'tmdb_id' => 603])
-            ->assertStatus(503)
-            ->assertJson(['message' => 'tmdb_not_configured']);
+            ->assertStatus(409)
+            ->assertJson(['message' => 'credential_missing', 'provider' => 'tmdb']);
     }
 
     /* ============================================================
@@ -318,12 +340,26 @@ class TmdbEndpointsTest extends TestCase
         $this->assertTrue($owned['owned']);
     }
 
-    public function test_discover_without_a_key_is_a_503(): void
+    public function test_discover_without_a_key_asks_for_the_users_own_key(): void
     {
-        config()->set('services.tmdb.key', '');
+        $this->takeCredential($this->user, 'tmdb');
 
         $this->actingAs($this->user)->getJson('/api/discover?type=movie')
-            ->assertStatus(503)
-            ->assertJson(['message' => 'tmdb_not_configured']);
+            ->assertStatus(409)
+            ->assertJson(['message' => 'credential_missing', 'provider' => 'tmdb']);
+    }
+
+    /**
+     * ⚠️ **`.env`/`config`-ში ჩაწერილი გასაღები იგნორირდება** (Tasks §30.9) —
+     * საერთო ფენა აღარ არსებობს, ე.ი. `services.tmdb.key` ვერაფერს ცვლის.
+     */
+    public function test_a_key_in_config_is_ignored(): void
+    {
+        $this->takeCredential($this->user, 'tmdb');
+        config()->set('services.tmdb.key', 'installation-key');
+
+        $this->actingAs($this->user)->getJson('/api/discover?type=movie')
+            ->assertStatus(409)
+            ->assertJson(['message' => 'credential_missing']);
     }
 }

@@ -2,9 +2,11 @@
 
 namespace Tests;
 
+use App\Models\User;
 use App\Models\UserCredential;
 use App\Services\Credentials\CredentialStore;
 use App\Support\AlbumLock;
+use App\Support\CredentialProviders;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -28,5 +30,52 @@ abstract class TestCase extends BaseTestCase
         // (Tasks GAP-11) — წინა ტესტის `user 1 : telegram` მომდევნოს
         // გაფრთხილებას ჩუმად ჩაყლაპავდა
         UserCredential::flushWarnings();
+    }
+
+    /**
+     * **მომხმარებელს წყაროს პირადი გასაღები** (Tasks §30.9).
+     *
+     * ⚠️ `config(['services.tmdb.key' => …])` აქამდე ტესტის „გასაღები" იყო —
+     * §30-იდან აპი `config('services.*')`-ს შვიდ წყაროზე **აღარ კითხულობს**,
+     * ე.ი. ასეთი ხაზი ჩუმად აღარაფერს აკეთებს. გასაღები ახლა ისევე ჩნდება,
+     * როგორც ცოცხალ აპში: `user_credentials`-ის რიგით, მოდელით (დაშიფრულად).
+     *
+     * ⚠️ ცარიელი `$fields` → ყოველ სავალდებულო ველზე `test-<ველი>`, ე.ი.
+     * TMDB-ზე `['key' => 'test-key']` — ზუსტად ის, რაც ძველ ტესტებს ეწერა.
+     * არსებულ რიგს **გადაწერს** (ერთ ტესტში გასაღების შეცვლა ჩვეულებრივია).
+     *
+     * @param  array<string, string>  $fields
+     * @param  array<string, int|null>  $limits
+     */
+    protected function giveCredential(User|int $user, string $provider, array $fields = [], array $limits = []): UserCredential
+    {
+        $userId = $user instanceof User ? (int) $user->getKey() : $user;
+
+        if ($fields === []) {
+            foreach (CredentialProviders::required($provider) as $name) {
+                $fields[$name] = 'test-'.str_replace('_', '-', $name);
+            }
+        }
+
+        $row = UserCredential::firstOrNew(['user_id' => $userId, 'provider' => $provider]);
+        $row->forgetUnreadable();
+        $row->credentials = $fields;
+        $row->limits = array_filter($limits, fn ($v) => $v !== null) ?: null;
+        $row->is_active = true;
+        $row->save();
+
+        CredentialStore::forget();
+
+        return $row;
+    }
+
+    /** პირადი გასაღების წაშლა — „გასაღების გარეშე" ტესტებისთვის */
+    protected function takeCredential(User|int $user, string $provider): void
+    {
+        $userId = $user instanceof User ? (int) $user->getKey() : $user;
+
+        UserCredential::where('user_id', $userId)->where('provider', $provider)->delete();
+
+        CredentialStore::forget();
     }
 }

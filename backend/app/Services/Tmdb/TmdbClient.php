@@ -47,7 +47,7 @@ class TmdbClient
     private function get(string $path, array $query = [], int $attempt = 1): array
     {
         if (! $this->configured()) {
-            throw new RuntimeException('tmdb_not_configured');
+            throw new RuntimeException('credential_missing');
         }
 
         $res = SourceLog::request(15)

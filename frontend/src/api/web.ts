@@ -62,6 +62,12 @@ export interface SerpStatus {
   } | null
   /** ⚠️ სიაში **ჯერ უფასო, მერე ფასიანი** — რიგი backend-ისაა (§7.5) */
   sources: { images: SerpEngine[]; videos: SerpEngine[] }
+  /**
+   * Tasks §30.6 — რომელ ფასიან წყაროს აკლია **ჩემი** გასაღები (`serpapi` · `serper`).
+   * ⚠️ სიიდან ისინი უბრალოდ ქრებიან, ე.ი. ამის გარეშე ფანჯარა ვერ იტყოდა, რატომ ჩანს
+   * მხოლოდ Wikimedia. ძველი სერვერი ველს არ აბრუნებს — ამიტომ არასავალდებულოა.
+   */
+  missing?: string[]
 }
 
 export interface SerpImage {

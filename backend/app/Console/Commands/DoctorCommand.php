@@ -8,6 +8,8 @@ use App\Services\Backup\BackupInspector;
 use App\Services\Backup\DatabaseDumper;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\YtDlp;
+use App\Support\CredentialProviders;
+use Dotenv\Dotenv;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -306,8 +308,61 @@ class DoctorCommand extends Command
 
         $this->check('PUBLIC_PROFILES', true, config('mediary.public_profiles') ? 'ჩართული' : 'გამორთული — საჯარო პროფილიც და მატჩინგიც დახურულია', warnOnly: true);
 
-        // ⚠️ გასაღების **მნიშვნელობა** არასდროს იბეჭდება — მხოლოდ არსებობა
-        $this->check('TMDB_API_KEY', (bool) config('services.tmdb.key'), config('services.tmdb.key') ? 'ჩაწერილია' : 'ცარიელია — TMDB-ს დამოკიდებული ყველაფერი გაჩერდება (ან `/credentials`-ზე per-user)', warnOnly: true);
+        $this->legacyCredentials();
+    }
+
+    /**
+     * **`.env`-ში წყაროს გასაღები აღარ უნდა ეწეროს** (Tasks §30.8).
+     *
+     * ⚠️ **ეს შემოწმება ყირავდება:** აქამდე აქ `TMDB_API_KEY`-ის **არსებობა**
+     * მოწმდებოდა (ცარიელი = WARN). §30-იდან (Q38) გასაღები მხოლოდ
+     * მომხმარებლისაა, ე.ი. `.env`-ში ჩაწერილს აპი **აღარ კითხულობს** — და
+     * სწორედ ესაა საშიში: ადამიანს ეგონება, რომ „გასაღები ხომ ჩაწერილია",
+     * ფაილი კი დამპებსა და ასლებთან ერთად მოგზაურობს. ამიტომ **FAIL**.
+     *
+     * ⚠️ **ფაილი იკითხება და არა `env()`**: `config:cache`-ის შემდეგ `env()`
+     * ცარიელია, ე.ი. ჩაწერილი გასაღები ჩუმად გამოეპარებოდა. გზა
+     * `environmentFilePath()`-იდან მოდის — ტესტი მას დროებით ფაილზე აბრუნებს.
+     *
+     * ⚠️ მოდელი და ლიმიტები **WARN**-ია: საიდუმლო არაა, უბრალოდ აღარ მოქმედებს.
+     * ⚠️ მნიშვნელობა არასდროს იბეჭდება — მხოლოდ ცვლადის სახელი.
+     */
+    private function legacyCredentials(): void
+    {
+        $path = $this->laravel->environmentFilePath();
+        $values = is_file($path) ? Dotenv::parse((string) file_get_contents($path)) : [];
+
+        $secrets = [];
+        $settings = [];
+
+        foreach (CredentialProviders::LEGACY_ENV as $name => [, , , $credential]) {
+            if (trim((string) ($values[$name] ?? '')) === '') {
+                continue;
+            }
+
+            if ($credential) {
+                $secrets[] = $name;
+            } else {
+                $settings[] = $name;
+            }
+        }
+
+        $this->check(
+            'წყაროს გასაღებები',
+            $secrets === [],
+            $secrets === []
+                ? '`.env`-ში არცერთი არ დგას — გასაღები მომხმარებლისაა („მონაცემები")'
+                : implode(', ', $secrets).' — `.env`-ში დგას და აპი მას აღარ კითხულობს: გადაიტანე „მონაცემებში“ და ამოშალე',
+        );
+
+        if ($settings !== []) {
+            $this->check(
+                'ძველი პარამეტრები',
+                false,
+                implode(', ', $settings).' — აღარ მოქმედებს (ნაგულისხმევი კოდშია, პირადი — „მონაცემებში“); ამოშალე',
+                warnOnly: true,
+            );
+        }
     }
 
     /* ---------- ბეჭდვა ---------- */

@@ -33,15 +33,16 @@ class WebSearchTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('services.serpapi.key', 'test-key');
-        config()->set('services.serpapi.monthly_limit', 250);
-
         $this->user = User::create([
             'name' => 'serp',
             'username' => 'serp',
             'email' => 'serp@example.com',
             'password' => 'password',
         ]);
+
+        /* Tasks §30 — SerpApi-ის გასაღები **მომხმარებლისაა**; თვიური ჭერი კი
+           კოდის ნაგულისხმევია (250), ე.ი. ცალკე ჩაწერა აღარ სჭირდება. */
+        $this->giveCredential($this->user, 'serpapi');
     }
 
     /** @param  list<array<string, mixed>>  $images */
@@ -139,20 +140,37 @@ class WebSearchTest extends TestCase
             ->assertJsonPath('message', 'serpapi_quota_exceeded');
     }
 
-    /** გასაღების გარეშე **ფასიანი** წყარო სიაში არ ჩანს და ცხადად ამბობს ამას (§7.6.7) */
-    public function test_without_a_key_the_paid_source_is_unavailable_not_empty(): void
+    /**
+     * გასაღების გარეშე **ფასიანი** წყარო სიაში არ ჩანს და ცხადად ამბობს ამას (§7.6.7).
+     *
+     * ⚠️ Tasks §30.6 — პასუხი **`credential_missing` + წყაროა** და არა
+     * `serpapi_unavailable`: „ჩაწერე შენი გასაღები" და „წყარო არ პასუხობს"
+     * სხვადასხვა ქმედებას ითხოვს. სტატუსი კი ამბობს, **რომელს** აკლია გასაღები.
+     */
+    public function test_without_a_key_the_paid_source_asks_for_the_users_own_key(): void
     {
-        config()->set('services.serpapi.key', null);
+        $this->takeCredential($this->user, 'serpapi');
 
         $this->actingAs($this->user)
             ->getJson('/api/web/images?query=keanu&engines[]=google_images_light')
-            ->assertStatus(503)
-            ->assertJsonPath('message', 'serpapi_unavailable');
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'credential_missing')
+            ->assertJsonPath('provider', 'serpapi');
 
         $this->actingAs($this->user)
             ->getJson('/api/web/status')
             ->assertOk()
-            ->assertJsonPath('configured', false);
+            ->assertJsonPath('configured', false)
+            ->assertJsonPath('missing', ['serpapi', 'serper']);
+    }
+
+    /** ⚠️ Serper-ის არჩევა მისი გასაღების გარეშე — წყაროდ **Serper** სახელდება */
+    public function test_a_serper_search_without_its_key_names_serper(): void
+    {
+        $this->actingAs($this->user)
+            ->getJson('/api/web/images?query=keanu&engines[]=serper')
+            ->assertStatus(409)
+            ->assertJsonPath('provider', 'serper');
     }
 
     /**
@@ -161,9 +179,8 @@ class WebSearchTest extends TestCase
      */
     public function test_the_free_catalogue_works_without_any_key(): void
     {
-        config()->set('services.serpapi.key', null);
         // ⚠️ Serper-საც **თავისი** გასაღები აქვს — „გასაღების გარეშე" ორივეს ნიშნავს
-        config()->set('services.serper.key', null);
+        $this->takeCredential($this->user, 'serpapi');
 
         Http::fake(['commons.wikimedia.org/*' => Http::response(['query' => ['pages' => [
             '1' => [
@@ -205,8 +222,8 @@ class WebSearchTest extends TestCase
      */
     public function test_serper_is_neither_free_nor_on_the_serpapi_quota(): void
     {
-        config()->set('services.serpapi.key', null);
-        config()->set('services.serper.key', 'test-key');
+        $this->takeCredential($this->user, 'serpapi');
+        $this->giveCredential($this->user, 'serper');
 
         Http::fake(['google.serper.dev/*' => Http::response(['images' => [
             [
@@ -440,6 +457,8 @@ class WebSearchTest extends TestCase
             },
         ]);
 
+        // ⚠️ კლიენტი პირდაპირ იძახება — გასაღები კი `Auth::id()`-ის მომხმარებლისაა (§30)
+        $this->actingAs($this->user);
         $client = app(SerpApiClient::class);
 
         $first = $client->images('google_images_light', 'keanu', 5);
@@ -521,8 +540,8 @@ class WebSearchTest extends TestCase
      */
     public function test_serper_more_buys_only_the_next_page(): void
     {
-        config()->set('services.serpapi.key', null);
-        config()->set('services.serper.key', 'test-key');
+        $this->takeCredential($this->user, 'serpapi');
+        $this->giveCredential($this->user, 'serper');
 
         $asked = [];
         Http::fake(['google.serper.dev/*' => function (HttpRequest $request) use (&$asked) {
@@ -559,8 +578,8 @@ class WebSearchTest extends TestCase
     /** ცარიელი გვერდი — ერთადერთი ნამდვილი „მეტი აღარაა" (ნაკლები 100-ზე ასეთი არ არის) */
     public function test_an_empty_serper_page_ends_the_continuation(): void
     {
-        config()->set('services.serpapi.key', null);
-        config()->set('services.serper.key', 'test-key');
+        $this->takeCredential($this->user, 'serpapi');
+        $this->giveCredential($this->user, 'serper');
 
         Http::fake(['google.serper.dev/*' => fn (HttpRequest $request) => Http::response([
             // ⚠️ პირველ გვერდზე 100-ზე ნაკლებია — და მაინც გრძელდება

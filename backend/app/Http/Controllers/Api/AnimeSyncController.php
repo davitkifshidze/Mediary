@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AnimeResource;
 use App\Models\Anime;
 use App\Services\Enrichment\AnimeEnricher;
+use App\Support\CredentialProviders;
+use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use Throwable;
 
@@ -15,7 +17,7 @@ class AnimeSyncController extends Controller
     public function resync(Anime $anime, AnimeEnricher $enricher)
     {
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         try {

@@ -15,7 +15,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * **„მონაცემები" — თითო მომხმარებლის გასაღებები და ლიმიტები** (Tasks §21).
+ * **„მონაცემები" — თითო მომხმარებლის გასაღებები და ლიმიტები** (Tasks §21 → §30).
+ *
+ * ⚠️ **§30-იდან გასაღები მხოლოდ მომხმარებლისაა** — `.env`-ის საერთო ფენა,
+ * მისი ნიღაბი და სუპერ-ადმინისთვის მისი „ნახვა" აღარ არსებობს. პასუხში
+ * `source` ორმნიშვნელოვანია (`user` | `none`), გაუშიფრავი რიგი კი ცალკე
+ * ველით ითქმის (`undecryptable`).
  *
  * ⚠️ **საიდუმლო ველი პასუხში არასდროს ბრუნდება.** „ჩავწერე თუ არა" ერთადერთი
  * კითხვაა, რასაც ინტერფეისმა უნდა უპასუხოს, და მას ნიღბიანი კუდი
@@ -64,7 +69,7 @@ class CredentialController extends Controller
         }
 
         foreach (array_keys($limits) as $name) {
-            // `null` = ინსტალაციის ნაგულისხმევი, `0` = ლიმიტი არაა — ორივე ნებადართულია
+            // `null` = კოდის ნაგულისხმევი, `0` = ლიმიტი არაა — ორივე ნებადართულია
             $rules["limits.$name"] = ['sometimes', 'nullable', 'integer', 'min:0', 'max:1000000'];
         }
 
@@ -86,7 +91,7 @@ class CredentialController extends Controller
             $value = trim((string) $value);
 
             if ($value === '') {
-                // ცხადად გასუფთავება — ველი საერთოზე ბრუნდება
+                // ცხადად გასუფთავება — სავალდებულო ველის გარეშე წყარო ჩერდება
                 if (array_key_exists($name, $stored)) {
                     unset($stored[$name]);
                     $changed[] = $name;
@@ -167,16 +172,10 @@ class CredentialController extends Controller
      * გადის, როცა თვალის ღილაკს ცხადად დააჭერ — ე.ი. „ნახვა" მოქმედებაა
      * და არა გვერდის ფონური მონაცემი.
      *
-     * ⚠️ **საერთო (`.env`) მნიშვნელობას მხოლოდ `super_admin` ხედავს** (§21.9,
-     * შენი მითითება: „რაც `.env`-ში წერია, მონაცემებშიც უნდა ჩანდეს").
-     * ინსტალაციის გასაღები **ანგარიშისაა და არა მომხმარებლის**: ჩვეულებრივი
-     * ანგარიშისთვის მისი ჩვენება სხვისი (და ფასიანი) გასაღების გატანის
-     * საშუალება იქნებოდა. სუპერ-ადმინს კი ის ისედაც ხელთ აქვს — `.env`
-     * ფაილი მისი წასაკითხია — ე.ი. დამალვა მხოლოდ უხერხულობა იყო.
-     *
-     * ⚠️ **პასუხი ამბობს, რომელი მნიშვნელობა ვისია** (`owner`): „ჩემი
-     * გასაღები" და „ინსტალაციის გასაღები" ერთნაირად გამოიყურებოდა, და
-     * კოპირებისას ადამიანი ვერ გაიგებდა, რომელი აიღო.
+     * ⚠️ **მხოლოდ საკუთარი მნიშვნელობა** — ყველასთვის, სუპერ-ადმინის
+     * ჩათვლით. §21.9-ის „სუპერ-ადმინი საერთო `.env`-ის გასაღებსაც ხედავს"
+     * §30-მა გააუქმა: საერთო გასაღები აღარ არსებობს, ხოლო სხვისი გასაღების
+     * ჩვენება — არც ადმინისთვის — არასდროს ყოფილა ამ endpoint-ის საქმე.
      *
      * ⚠️ **ნახვა აუდიტ-ლოგში იწერება** (მნიშვნელობის გარეშე, რა თქმა უნდა):
      * გასაღების გატანა ის მოქმედებაა, რომელსაც კვალი უნდა დარჩეს.
@@ -190,7 +189,6 @@ class CredentialController extends Controller
         $own = $row?->fields() ?? [];
 
         $fields = [];
-        $owner = [];
 
         foreach (CredentialProviders::fields($provider) as $name => $meta) {
             // ღია ველი სიაშივე მოდის — მისი გამეორება აქ ზედმეტია
@@ -202,19 +200,6 @@ class CredentialController extends Controller
 
             if ($mine !== '') {
                 $fields[$name] = $mine;
-                $owner[$name] = 'user';
-
-                continue;
-            }
-
-            // §21.9 — ინსტალაციის მნიშვნელობა **მხოლოდ** სუპერ-ადმინს
-            if ($user->isSuperAdmin()) {
-                $shared = trim((string) CredentialProviders::shared($provider, $name));
-
-                if ($shared !== '') {
-                    $fields[$name] = $shared;
-                    $owner[$name] = 'shared';
-                }
             }
         }
 
@@ -226,11 +211,6 @@ class CredentialController extends Controller
 
         return response()->json([
             'fields' => $fields,
-            // რომელი მნიშვნელობა ვისია — `user` | `shared` თითო ველზე
-            'owner' => $owner,
-            /* ⚠️ ცარიელი პასუხი ორ სხვადასხვა ფაქტს ნიშნავს და ინტერფეისმა
-               უნდა გაარჩიოს: „ჩემი გასაღები არ მაქვს" და „საერთოა და მისი
-               ნახვის უფლება არ გაქვს". */
             'source' => CredentialStore::source($provider, $user->id),
         ]);
     }
@@ -255,9 +235,9 @@ class CredentialController extends Controller
         $user = $request->user();
         $result = $tester->test($provider, $user->id);
 
-        /* ⚠️ შედეგი მხოლოდ **საკუთარ** ჩანაწერზე იწერება: საერთო გასაღების
-           შემოწმება ინსტალაციის ფაქტია და ჩემს რიგში მისი ჩაწერა მერე
-           „ჩემი გასაღები შემოწმებულია"-დ წაიკითხებოდა. */
+        /* ⚠️ შედეგი მხოლოდ მაშინ იწერება, როცა ჩანაწერი **სრულია და ჩართული**:
+           შეუვსებელ ან გამორთულ რიგზე ტესტი „გასაღები ჯერ არაა" პასუხობს,
+           და მისი `last_error`-ად დაწერა ჩანაწერს ცრუ ჩავარდნას მიაწერდა. */
         if (CredentialStore::usesOwnKey($provider, $user->id)) {
             UserCredential::where('user_id', $user->id)
                 ->where('provider', $provider)
@@ -336,31 +316,31 @@ class CredentialController extends Controller
         foreach (CredentialProviders::fields($provider) as $name => $meta) {
             $secret = (bool) ($meta['secret'] ?? false);
             $mine = trim((string) ($own[$name] ?? ''));
-            $shared = trim((string) CredentialProviders::shared($provider, $name));
+            $default = CredentialProviders::default($provider, $name);
 
             $fields[] = [
                 'name' => $name,
                 'secret' => $secret,
                 'required' => in_array($name, $required, true),
                 'has_own' => $mine !== '',
-                'has_shared' => $shared !== '',
-                /* ⚠️ საიდუმლო **არასდროს** მიდის სრულად — არც ჩემი, არც საერთო.
-                   ღია ველი (მოდელი, `client_id`) კი ფორმას სჭირდება. */
+                /* ⚠️ საიდუმლო **არასდროს** მიდის სრულად. ღია ველი (მოდელი,
+                   `client_id`) კი ფორმას სჭირდება. */
                 'value' => $secret ? null : ($mine !== '' ? $mine : null),
                 'masked' => $secret ? CredentialProviders::mask($mine) : null,
-                'shared_hint' => $secret ? CredentialProviders::mask($shared) : ($shared ?: null),
+                // კოდის ნაგულისხმევი — მხოლოდ ღია ველს აქვს (მოდელი); placeholder-ად ჩანს
+                'default' => $default === null ? null : (string) $default,
             ];
         }
 
         $limits = [];
 
         foreach (array_keys(CredentialProviders::limits($provider)) as $name) {
+            $default = CredentialProviders::default($provider, $name);
+
             $limits[] = [
                 'name' => $name,
                 'own' => isset($row?->limits[$name]) ? (int) $row->limits[$name] : null,
-                'shared' => CredentialProviders::shared($provider, $name) === null
-                    ? null
-                    : (int) CredentialProviders::shared($provider, $name),
+                'default' => $default === null ? null : (int) $default,
                 'effective' => CredentialStore::limit($provider, $name, $userId),
             ];
         }
@@ -368,11 +348,11 @@ class CredentialController extends Controller
         return [
             'provider' => $provider,
             'source' => CredentialStore::source($provider, $userId),
-            /* ⚠️ **ცალკე ველი და არა `source`-ის მეოთხე მნიშვნელობა (Tasks GAP-11).**
-               `source` პასუხობს კითხვას „რომელი გასაღები მოქმედებს ახლა", და
-               გაუშიფრავ რიგზე პასუხი მართლაც `shared`/`none`-ია — აპი ზუსტად
-               ასე იქცევა. „ჩემი გასაღები აქ წერია, მაგრამ ვერ იკითხება"
-               მეორე ფაქტია, და ერთ ველში შერევა ერთს მათგანს ატყუებდა. */
+            /* ⚠️ **ცალკე ველი და არა `source`-ის მესამე მნიშვნელობა (Tasks GAP-11).**
+               `source` პასუხობს კითხვას „მოქმედებს თუ არა ჩემი გასაღები", და
+               გაუშიფრავ რიგზე პასუხი მართლაც `none`-ია — აპი ზუსტად ასე
+               იქცევა. „ჩემი გასაღები აქ წერია, მაგრამ ვერ იკითხება" მეორე
+               ფაქტია, და ერთ ველში შერევა ერთს მათგანს ატყუებდა. */
             'undecryptable' => $row !== null && ! $row->isReadable(),
             'configured' => CredentialStore::configured($provider, $userId),
             'is_active' => $row?->is_active ?? true,
@@ -390,9 +370,10 @@ class CredentialController extends Controller
     /**
      * ხარჯის სურათი იმ ორ წყაროზე, რომელსაც კვოტა აქვს.
      *
-     * ⚠️ **მრიცხველი უკვე იცის, ვისია გასაღები** (`CredentialStore::quotaOwner()`),
-     * ე.ი. თავისი გასაღებით აქ ჩემი ხარჯი წერია და არა ინსტალაციისა —
-     * სწორედ ესაა §21.4-ის აზრი.
+     * ⚠️ **ხარჯი ყოველთვის ჩემია** (`CredentialStore::quotaOwner()`, §30) —
+     * გასაღები ჩემია, ე.ი. სხვისი გამოძახება ამ რიცხვში ვერ მოხვდება.
+     * ⚠️ `period` ბარათს ეუბნება, რა ფანჯარას ითვლის ზოლი: Gemini — დღე,
+     * SerpApi — თვე (მისი განახლების თარიღიდან).
      *
      * @return array<string, mixed>|null
      */
@@ -409,6 +390,7 @@ class CredentialController extends Controller
                 'used' => $serp->usage(),
                 'limit' => $serp->limit(),
                 'remaining' => $serp->remaining(),
+                'period' => 'month',
             ];
         }
 

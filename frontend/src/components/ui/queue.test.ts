@@ -105,3 +105,41 @@ describe('queue: the cast kind', () => {
     expect(text).toContain(i18n.t('castSync.summary.empty', { count: 1 }))
   })
 })
+
+describe('queue: a missing key (Tasks §30.6)', () => {
+  /* A missing personal key is not a fact about one record: every later item of the
+     same kind would fail identically, so the queue drops them and names the source. */
+  it('stops the same kind and names the source instead of failing every record', async () => {
+    const error = Object.assign(new Error('Request failed with status code 409'), {
+      isAxiosError: true,
+      response: { status: 409, data: { message: 'credential_missing', provider: 'tmdb' } },
+    })
+    mocks.syncItem.mockRejectedValue(error)
+
+    const { QueueProvider, useQueue } = await import('@/components/ui/queue')
+
+    function Starter() {
+      const { enqueueSync } = useQueue()
+
+      useEffect(() => {
+        enqueueSync(
+          [
+            { type: 'movie', id: 1, title: 'First film', year: null },
+            { type: 'movie', id: 2, title: 'Second film', year: null },
+          ],
+          { fields: ['title'] },
+        )
+      }, [enqueueSync])
+
+      return null
+    }
+
+    const el = await render(h(QueueProvider, null, h(Starter)))
+    await flush()
+    await flush()
+
+    expect(mocks.syncItem).toHaveBeenCalledTimes(1)
+    expect(el.textContent).toContain(i18n.t('errors.credential_missing_for', { provider: 'TMDB' }))
+    expect(el.textContent).not.toContain('Second film')
+  })
+})

@@ -38,7 +38,6 @@ class GalleryTest extends TestCase
         parent::setUp();
 
         $this->seed(ModulesSeeder::class);
-        config(['services.tmdb.key' => 'test-key']);
 
         $this->user = User::create([
             'name' => 'gia',
@@ -50,6 +49,9 @@ class GalleryTest extends TestCase
             Module::whereIn('key', ['movie', 'gallery'])->pluck('id')->all()
         );
         $this->user = $this->user->refresh();
+
+        // Tasks §30 — TMDB-ის გასაღები ანგარიშისაა და არა `config`-ისა
+        $this->giveCredential($this->user, 'tmdb');
     }
 
     private function makeMovie(string $title, ?int $tmdbId = 550): Movie

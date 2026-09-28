@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaDomainCards } from '@/components/MediaDomainCards'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
@@ -137,11 +138,13 @@ export function TranslateDialog({
         <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
           {/* ---------- რითი ითარგმნება ---------- */}
 
-          {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა */}
+          {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა.
+              ⚠️ Tasks §30.6 — გასაღები ანგარიშისაა, ე.ი. „მონაცემების" ბმულიც აქვეა */}
           {summaryQ.data && !summaryQ.data.translator_configured && (
-            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-              {t('translate.noKey')}
-            </p>
+            <CredentialMissingNotice provider="gemini">{t('translate.noKey')}</CredentialMissingNotice>
+          )}
+          {summaryQ.data && !summaryQ.data.tmdb_configured && (
+            <CredentialMissingNotice provider="tmdb">{t('translate.noTmdbKey')}</CredentialMissingNotice>
           )}
 
           {/* ---------- წყაროები (შენი მითითება, 2026-09-14) ----------

@@ -22,6 +22,38 @@ class DoctorCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** დროებითი `.env`-ის საქაღალდე — ტესტი დეველოპერის ნამდვილ ფაილს არ კითხულობს */
+    private string $envDir;
+
+    /**
+     * ⚠️ **`doctor` `.env` ფაილს კითხულობს** (Tasks §30.8), ე.ი. ამ ტესტების
+     * გარეშე შედეგი დამოკიდებული იქნებოდა იმაზე, **ვისი მანქანა** უშვებს
+     * მათ — ზუსტად ის, რისთვისაც `phpunit.xml`-ს ოდესღაც გასაღებები
+     * ეჩამაგრა. გზა დროებით, სუფთა ფაილზე გადადის.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->envDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mediary-doctor-'.uniqid();
+        mkdir($this->envDir);
+        $this->writeEnv("APP_NAME=Mediary\n");
+        $this->app->useEnvironmentPath($this->envDir);
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink($this->envDir.DIRECTORY_SEPARATOR.'.env');
+        @rmdir($this->envDir);
+
+        parent::tearDown();
+    }
+
+    private function writeEnv(string $contents): void
+    {
+        file_put_contents($this->envDir.DIRECTORY_SEPARATOR.'.env', $contents);
+    }
+
     private function binaries(bool $ok): void
     {
         $ytdlp = $this->mock(YtDlp::class);
@@ -116,16 +148,58 @@ class DoctorCommandTest extends TestCase
 
     /**
      * ⚠️ **გასაღები არასდროს იბეჭდება.** დიაგნოსტიკის გამონატანი ლოგებში,
-     * ეკრანის სურათებსა და CI-ს არტეფაქტებში ხვდება.
+     * ეკრანის სურათებსა და CI-ს არტეფაქტებში ხვდება — მხოლოდ ცვლადის სახელი ჩანს.
      */
     public function test_the_report_never_prints_a_secret(): void
     {
-        config(['services.tmdb.key' => 'super-secret-value']);
+        $this->writeEnv("TMDB_API_KEY=super-secret-value\n");
         $this->binaries(true);
         $this->makeUser();
 
         $this->artisan('mediary:doctor')
+            ->expectsOutputToContain('TMDB_API_KEY')
             ->doesntExpectOutputToContain('super-secret-value')
+            ->assertFailed();
+    }
+
+    /**
+     * **Tasks §30.8 — `.env`-ში წყაროს გასაღები FAIL-ია.** აპი მას აღარ
+     * კითხულობს (გასაღები მომხმარებლისაა), ე.ი. ჩაწერილი საიდუმლო მხოლოდ
+     * ფაილში მოგზაურობს და ადამიანს ატყუებს, რომ „ხომ ჩაწერილია".
+     * ⚠️ IGDB-ის `client_id` თვითონ საიდუმლო არაა, მაგრამ წყვილის ნაწილია.
+     */
+    public function test_a_source_key_left_in_env_fails(): void
+    {
+        $this->writeEnv("SERPER_API_KEY=abc123\nIGDB_CLIENT_ID=twitch-id\n");
+        $this->binaries(true);
+        $this->makeUser();
+
+        // რიგი რეესტრისაა (`CredentialProviders::LEGACY_ENV`) და არა ფაილისა
+        $this->artisan('mediary:doctor')
+            ->expectsOutputToContain('IGDB_CLIENT_ID, SERPER_API_KEY')
+            ->assertFailed();
+    }
+
+    /** ცარიელი ხაზი (`TMDB_API_KEY=`) გასაღები არაა — ის FAIL-ს არ იწვევს */
+    public function test_an_empty_legacy_line_is_not_a_key(): void
+    {
+        $this->writeEnv("TMDB_API_KEY=\nGEMINI_API_KEY=\"\"\n");
+        $this->binaries(true);
+        $this->makeUser();
+        Cache::put(SendNoteRemindersCommand::HEARTBEAT, now()->toIso8601String(), 60);
+
+        $this->artisan('mediary:doctor')->assertSuccessful();
+    }
+
+    /** მოდელი და ლიმიტი საიდუმლო არაა — უბრალოდ აღარ მოქმედებს: WARN */
+    public function test_a_leftover_setting_is_only_a_warning(): void
+    {
+        $this->writeEnv("GEMINI_MODEL=gemini-x\nSERPAPI_MONTHLY_LIMIT=100\n");
+        $this->binaries(true);
+        $this->makeUser();
+
+        $this->artisan('mediary:doctor')
+            ->expectsOutputToContain('GEMINI_MODEL, SERPAPI_MONTHLY_LIMIT')
             ->assertSuccessful();
     }
 

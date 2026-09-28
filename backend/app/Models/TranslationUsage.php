@@ -14,9 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * ⚠️ **`BelongsToUser` განზრახ არ გამოიყენება** — `user_id` აქ „ვინ დახარჯა"
  * არის და არა „ვისია ეს ჩანაწერი" (`SerpSearch`/`AuditLog`-ის ზუსტი
- * პრეცედენტი). ლიმიტი **ანგარიშისაა და არა მომხმარებლისა**: Gemini-ის
- * გასაღები ერთია მთელ ინსტალაციაზე, ე.ი. სხვისი ხარჯის დამალვა ჯამს
- * უბრალოდ მცდარს გახდიდა.
+ * პრეცედენტი), და მრიცხველი მას ცხადად, `CredentialStore::quotaOwner()`-ით
+ * ირჩევს — ფონურ სამუშაოსა და ტესტში `Auth::id()` შეიძლება სხვა იყოს.
+ *
+ * ⚠️ **ლიმიტი მომხმარებლისაა (Tasks §30)**: გასაღები ყველას თავისი აქვს, ე.ი.
+ * „მთელი ინსტალაციის ჯამი" აღარაფერს ნიშნავს — სხვისი თარგმანი ჩემს კვოტას
+ * არ ხარჯავს, რადგან Google-ს ჩემი გასაღები საერთოდ არ უნახავს.
  */
 class TranslationUsage extends Model
 {
@@ -75,28 +78,36 @@ class TranslationUsage extends Model
     }
 
     /**
-     * დღეს დახარჯული გამოძახებები.
+     * ამ მომხმარებლის დღევანდელი გამოძახებები.
      *
-     * ⚠️ **`$userId` სამ ფაქტს არჩევს (Tasks §21.4)**: `null` = მთელი
-     * ინსტალაცია (საერთო `.env` გასაღები — ზუსტად ის, რასაც ზემოთ
-     * დოკბლოკი აღწერს), რიცხვი = მხოლოდ ამ მომხმარებლის ხარჯი (მას
-     * თავისი გასაღები აქვს, ე.ი. სხვისი თარგმანი მის კვოტას არ ეხება).
-     * არგუმენტის უგულებელყოფა „თავისი ლიმიტის" დაპირებას ტყუილად აქცევს.
+     * ⚠️ **საერთო შტო აღარ არსებობს (Tasks §30).** აქამდე `null` „მთელ
+     * ინსტალაციას" ნიშნავდა (საერთო `.env` გასაღები) — ახლა ის ნიშნავს,
+     * რომ მომხმარებელი არ არის (CLI), ე.ი. გასაღებიც არ არის და დასათვლელი
+     * არაფერია. `0` და არა „ყველასი": სხვისი ხარჯის ჩათვლა ჩემს ლიმიტს
+     * ტყუილად ამოწურავდა.
      */
-    public static function usedToday(string $provider = self::PROVIDER_GEMINI, ?int $userId = null): int
+    public static function usedToday(?int $userId, string $provider = self::PROVIDER_GEMINI): int
     {
+        if ($userId === null) {
+            return 0;
+        }
+
         return static::where('provider', $provider)
+            ->where('user_id', $userId)
             ->where('created_at', '>=', self::dayStart())
-            ->when($userId !== null, fn ($q) => $q->where('user_id', $userId))
             ->count();
     }
 
     /** ბოლო წუთში გასული გამოძახებები — უფასო დონეზე RPM-იც ლიმიტია */
-    public static function usedThisMinute(string $provider = self::PROVIDER_GEMINI, ?int $userId = null): int
+    public static function usedThisMinute(?int $userId, string $provider = self::PROVIDER_GEMINI): int
     {
+        if ($userId === null) {
+            return 0;
+        }
+
         return static::where('provider', $provider)
+            ->where('user_id', $userId)
             ->where('created_at', '>=', CarbonImmutable::now()->subMinute())
-            ->when($userId !== null, fn ($q) => $q->where('user_id', $userId))
             ->count();
     }
 

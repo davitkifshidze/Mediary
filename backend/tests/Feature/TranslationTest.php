@@ -97,11 +97,11 @@ class TranslationTest extends TestCase
 
         $res->assertJsonPath('movie', 1)->assertJsonPath('series', 1);
         /* გასაღები არ არის → ინტერფეისმა უნდა თქვას, რომ თარჯიმანი არ მუშაობს.
-           ⚠️ კლავიშს **ცხადად** ვანულებთ და `.env`-ს არ ვენდობით: ნამდვილი
-           `GEMINI_API_KEY` ამ ტესტს დეველოპერის მანქანაზე ჩააგდებდა. */
+           ⚠️ Tasks §30 — გასაღები **მომხმარებლისაა** (`user_credentials`), ე.ი.
+           დეველოპერის `.env`-ის `GEMINI_API_KEY` ამ ტესტს ვეღარ შეეხება. */
         $res->assertJsonPath('translator_configured', false);
 
-        config(['services.gemini.key' => 'test-key']);
+        $this->giveCredential($this->user, 'gemini');
         $this->actingAs($this->user)->getJson('/api/translations/summary')
             ->assertJsonPath('translator_configured', true);
     }
@@ -184,6 +184,10 @@ class TranslationTest extends TestCase
 
         // თარჯიმანს თარგმანი უნდა, მაგრამ არჩევანში არ არის — არ უნდა გამოიძახოს
         $this->mockTranslator(['The Matrix' => 'მატრიცა']);
+        /* ⚠️ TMDB-ის გასაღები **აქვს** (Tasks §30): მის გარეშე პასუხი
+           `credential_missing` იქნებოდა, ტესტი კი გამოტოვებას ამოწმებს —
+           ჩანაწერს `tmdb_id` არ აქვს, ე.ი. TMDB-ს ამ ჩანაწერზე სათქმელი არაფერი აქვს. */
+        $this->giveCredential($this->user, 'tmdb');
 
         $this->actingAs($this->user)
             ->postJson("/api/translations/movie/{$movie->id}", ['sources' => ['tmdb']])
@@ -229,9 +233,10 @@ class TranslationTest extends TestCase
 
     public function test_usage_reports_our_own_ceiling(): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.daily_limit' => 10]);
+        $this->giveCredential($this->user, 'gemini', [], ['daily' => 10]);
 
-        TranslationUsage::create(['provider' => 'gemini', 'target_lang' => 'ka', 'chars' => 5]);
+        // ⚠️ Tasks §30 — მრიცხველი **ჩემს** რიგებს ითვლის (გასაღები ჩემია)
+        TranslationUsage::create(['user_id' => $this->user->id, 'provider' => 'gemini', 'target_lang' => 'ka', 'chars' => 5]);
 
         $this->actingAs($this->user)->getJson('/api/translations/usage')
             ->assertOk()
@@ -242,8 +247,8 @@ class TranslationTest extends TestCase
 
     public function test_an_exhausted_quota_never_reaches_gemini(): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.daily_limit' => 1]);
-        TranslationUsage::create(['provider' => 'gemini', 'target_lang' => 'ka', 'chars' => 5]);
+        $this->gemini(limits: ['daily' => 1]);
+        TranslationUsage::create(['user_id' => $this->user->id, 'provider' => 'gemini', 'target_lang' => 'ka', 'chars' => 5]);
 
         Http::fake();
 
@@ -258,7 +263,7 @@ class TranslationTest extends TestCase
 
     public function test_tmdb_text_is_not_labelled_as_a_machine_translation(): void
     {
-        config(['services.tmdb.key' => 'test-key']);
+        $this->giveCredential($this->user, 'tmdb');
 
         Http::fake([
             'api.themoviedb.org/3/movie/*' => Http::response([
@@ -445,7 +450,10 @@ class TranslationTest extends TestCase
      */
     public function test_translator_without_a_key_calls_nothing(): void
     {
-        config(['services.gemini.key' => null]);
+        /* ⚠️ Tasks §30.9 — `config`/`.env`-ში ჩაწერილი გასაღები **იგნორირდება**:
+           საერთო ფენა აღარ არსებობს, ე.ი. ესეც „გასაღების გარეშეა". */
+        config(['services.gemini.key' => 'installation-key']);
+        $this->actingAs($this->user);
         Http::fake();
 
         $translator = new Translator;
@@ -459,7 +467,8 @@ class TranslationTest extends TestCase
     /** გასაღებით — Gemini-ს ვურეკავთ და პასუხის ტექსტს ვიღებთ */
     public function test_translator_calls_gemini_and_returns_the_text(): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-3.5-flash']);
+        // ⚠️ მოდელი არ იწერება — ნაგულისხმევი (`gemini-3.5-flash`) რეესტრიდან მოდის
+        $this->gemini();
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [['content' => ['parts' => [['text' => 'მატრიცა']]]]],
@@ -485,7 +494,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_skips_a_thought_part(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [['content' => ['parts' => [
@@ -504,7 +513,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_keeps_a_part_that_carries_a_thought_signature(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [['content' => ['parts' => [
@@ -523,7 +532,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_retries_a_transient_failure(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Sleep::fake();
         Http::fakeSequence()
             ->push(['error' => ['code' => 503]], 503)
@@ -539,7 +548,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_does_not_retry_a_permanent_failure(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Sleep::fake();
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['error' => ['code' => 400]], 400)]);
 
@@ -555,7 +564,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_retries_without_thinking_config_on_400(): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-3.5-flash-lite']);
+        $this->gemini(['model' => 'gemini-3.5-flash-lite']);
         Sleep::fake();
         Http::fakeSequence()
             ->push(['error' => ['code' => 400]], 400)
@@ -576,7 +585,7 @@ class TranslationTest extends TestCase
     /** წყაროს მუდმივი ჩავარდნა null-ია და არა გამონაკლისი — შენახვა არ უნდა გაწყდეს */
     public function test_translator_failure_is_null_not_an_exception(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Sleep::fake();
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([], 503)]);
 
@@ -719,10 +728,13 @@ class TranslationTest extends TestCase
             ->assertJsonPath('total', 0);
     }
 
-    /** გასაღების გარეშე გადამოწმება უბრალოდ არ ხდება (და არ ცდილობს) */
+    /**
+     * გასაღების გარეშე გადამოწმება არ ხდება (და არ ცდილობს) — ⚠️ და ეს **ცხადად
+     * ითქმის** (Tasks §30.6): არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს,
+     * ე.ი. „გამოტოვდა" რიგს ჩუმ „შესრულდა"-ს ათქმევინებდა.
+     */
     public function test_review_does_nothing_without_a_gemini_key(): void
     {
-        config(['services.gemini.key' => null]);
         Http::fake();
 
         $movie = $this->movie(
@@ -733,7 +745,8 @@ class TranslationTest extends TestCase
         $this->actingAs($this->user)
             ->postJson("/api/translations/movie/{$movie->id}", ['review' => true])
             ->assertOk()
-            ->assertJsonPath('skipped', true);
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'credential_missing');
 
         Http::assertNothingSent();
         $this->assertSame('tmdb', $movie->refresh()->description_ka_source);
@@ -746,7 +759,7 @@ class TranslationTest extends TestCase
      */
     public function test_translator_review_returns_null_when_the_text_is_unchanged(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
             'candidates' => [['content' => ['parts' => [['text' => "  ქართული  აღწერა \n"]]]]],
         ])]);
@@ -759,7 +772,7 @@ class TranslationTest extends TestCase
 
     public function test_translator_review_sends_both_texts_and_counts_one_call(): void
     {
-        config(['services.gemini.key' => 'test-key']);
+        $this->gemini();
         $reply = ['candidates' => [['content' => ['parts' => [['text' => 'გასწორებული აღწერა']]]]]];
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response($reply)]);
 
@@ -780,6 +793,22 @@ class TranslationTest extends TestCase
     }
 
     /* ---------- helpers ---------- */
+
+    /**
+     * Gemini-ის **პირადი** გასაღები + ტესტი ამ მომხმარებლის სახელით (Tasks §30).
+     *
+     * ⚠️ `actingAs` აუცილებელია: `new Translator` პირდაპირ იძახება (HTTP-ის
+     * გარეშე), გასაღები კი `Auth::id()`-ის მომხმარებლისაა — CLI-ში, მომხმარებლის
+     * გარეშე, გასაღებიც არ არსებობს.
+     *
+     * @param  array<string, string>  $fields
+     * @param  array<string, int>  $limits
+     */
+    private function gemini(array $fields = [], array $limits = []): void
+    {
+        $this->giveCredential($this->user, 'gemini', ['key' => 'test-key'] + $fields, $limits);
+        $this->actingAs($this->user);
+    }
 
     /**
      * @param  array<string, string>  $map  წყარო => თარგმანი

@@ -18,9 +18,11 @@ use App\Services\Gallery\ModuleImages;
 use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\ColumnTrash;
+use App\Support\CredentialProviders;
 use App\Support\GalleryParent;
 use App\Support\Like;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -1312,7 +1314,7 @@ class GalleryController extends Controller
     public function castFetch(Request $request, CastMember $castMember)
     {
         if (! $this->fetcher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         $data = $request->validate([
@@ -1412,6 +1414,8 @@ class GalleryController extends Controller
         return response()->json([
             'target' => 'record',
             'types' => $types,
+            // Tasks §30.6 — ჩემი TMDB-ის გასაღების გარეშე ჩამოტვირთვა ვერ დაიწყება
+            'tmdb' => $this->fetcher->configured(),
             'items' => $items,
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
@@ -1543,6 +1547,7 @@ class GalleryController extends Controller
         return response()->json([
             'target' => 'actor',
             'types' => $types,
+            'tmdb' => $this->fetcher->configured(),
             'items' => $items,
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
@@ -1643,7 +1648,7 @@ class GalleryController extends Controller
         }
 
         if (! $this->fetcher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         $data = $request->validate($this->optionRules());

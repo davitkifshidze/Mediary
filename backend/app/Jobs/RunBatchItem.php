@@ -10,6 +10,7 @@ use App\Models\Series;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
+use App\Services\Credentials\CredentialStore;
 use App\Services\Gallery\GalleryFetcher;
 use App\Services\Sync\ItemSyncer;
 use App\Services\Translation\ItemTranslator;
@@ -113,6 +114,12 @@ class RunBatchItem implements ShouldQueue
            ვარდებოდა. `setUser()` ორივე ტიპის guard-ს აქვს და სწორედ ის
            აისახება `Auth::id()`-ზე, რომელსაც global scope კითხულობს. */
         Auth::setUser($user);
+
+        /* Tasks §30.7 — ⚠️ **გასაღები მფლობელისაა და worker-ი ცოცხლობს** ერთზე
+           მეტ job-ს: `CredentialStore`-ის მემო სტატიკურია, ე.ი. გაშვების შუაში
+           ჩაწერილი (ან წაშლილი) გასაღები worker-ის სიცოცხლის ბოლომდე ძველად
+           წაიკითხებოდა. თითო job-ზე ერთი `select` — ფასი არაფერია. */
+        CredentialStore::forget((int) $user->getKey());
 
         /* ⚠️ **რიგი job-ის დასაწყისში იწერება** (Tasks FEAT-03) და არა ბოლოს:
            ჩავარდნისას გამონაკლისი გადაისვრება, ე.ი. ბოლოში ჩაწერა

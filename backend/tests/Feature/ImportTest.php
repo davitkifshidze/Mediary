@@ -32,7 +32,6 @@ class ImportTest extends TestCase
     {
         parent::setUp();
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', 'test-key');
 
         $this->user = User::create([
             'name' => 'impo',
@@ -42,6 +41,9 @@ class ImportTest extends TestCase
         ]);
         $this->user->modules()->sync(Module::whereIn('key', ['movie', 'book'])->pluck('id')->all());
         $this->user->refresh();
+
+        // Tasks §30 — TMDB-ის გასაღები ანგარიშისაა და არა `config`-ისა
+        $this->giveCredential($this->user, 'tmdb');
     }
 
     private function csv(): UploadedFile

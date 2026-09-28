@@ -595,6 +595,8 @@ export interface GalleryPlanFilters extends GalleryOptions {
 export interface GalleryPlan {
   target: GalleryTarget
   types: MediaType[]
+  /** Tasks §30.6 — ჩემი TMDB-ის გასაღები მაქვს? (`false` — ჩამოტვირთვა ვერ დაიწყება) */
+  tmdb: boolean
   items: GalleryPlanItem[]
   count: number
   eta_seconds: number

@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { CastSyncFilters, CastSyncPlan, CastSyncPlanItem } from '@/api/media'
 import i18n from '@/i18n'
@@ -100,10 +101,15 @@ async function mount(onClose = vi.fn()) {
 
   await act(async () => {
     root!.render(
+      // ⚠️ Router — „გასაღები არ გაქვს"-ის შეტყობინებაში „მონაცემების" ბმულია (§30.6)
       h(
-        QueryClientProvider,
-        { client: qc },
-        h(TooltipProvider, null, h(CastSyncFlow, { open: true, active: true, types: ['movie'], onClose })),
+        MemoryRouter,
+        null,
+        h(
+          QueryClientProvider,
+          { client: qc },
+          h(TooltipProvider, null, h(CastSyncFlow, { open: true, active: true, types: ['movie'], onClose })),
+        ),
       ),
     )
   })
@@ -158,12 +164,14 @@ describe('CastSyncFlow', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('keeps the run button off when TMDB is not configured', async () => {
+  /** Tasks §30.6 — „შენი TMDB-ის გასაღები არ გაქვს" + ბმული „მონაცემებზე" */
+  it('keeps the run button off and points to Credentials without a TMDB key', async () => {
     mocks.fetchCastSyncPlan.mockResolvedValue({ ...plan([actor(1, 'Anna')]), tmdb: false })
 
     const { el } = await mount()
 
     expect(runButton(el).disabled).toBe(true)
-    expect(el.textContent).toContain(i18n.t('errors.tmdb_not_configured'))
+    expect(el.textContent).toContain(i18n.t('errors.credential_missing_for', { provider: 'TMDB' }))
+    expect(el.querySelector('a[href="/credentials"]')).not.toBeNull()
   })
 })

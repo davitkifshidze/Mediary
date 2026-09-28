@@ -11,8 +11,10 @@ use App\Services\Serp\SerpQuotaExceeded;
 use App\Services\Serp\WebImageImporter;
 use App\Services\Web\SerperImages;
 use App\Services\Web\WikimediaImages;
+use App\Support\CredentialProviders;
 use App\Support\DuplicateLink;
 use App\Support\GalleryParent;
+use App\Support\MissingCredential;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -123,6 +125,13 @@ class WebSearchController extends Controller
                 'images' => $this->imageSources(),
                 'videos' => $this->sourceList($this->serp::VIDEO_ENGINES, false),
             ],
+            /* Tasks §30.6 — **რომელ ფასიან წყაროს აკლია ჩემი გასაღები.** სიიდან
+               ისინი უბრალოდ ქრებიან (RAWG-ის წესი), ე.ი. მის გარეშე ფანჯარა ვერ
+               იტყოდა, რატომ ჩანს მხოლოდ Wikimedia და სად უნდა ჩაიწეროს გასაღები. */
+            'missing' => array_values(array_filter([
+                $this->serp->configured() ? null : CredentialProviders::SERPAPI,
+                $this->serper->configured() ? null : CredentialProviders::SERPER,
+            ])),
         ]);
     }
 
@@ -151,8 +160,9 @@ class WebSearchController extends Controller
             'url' => ['required', 'string', 'max:2000'],
         ]);
 
+        // §30.6 — გასაღების არქონა ≠ მკვდარი წყარო: აქ სწორი ქმედება ჩაწერაა
         if (! $this->serp->configured()) {
-            return response()->json(['message' => 'serpapi_unavailable'], 503);
+            return MissingCredential::response(CredentialProviders::SERPAPI);
         }
 
         $parsed = VideoUrl::parse($data['url']);
@@ -472,8 +482,13 @@ class WebSearchController extends Controller
         // არ არის" მთელ ძებნას აღარ კეტავს.
         $usable = array_values(array_filter($engines, fn (string $e) => $this->usable($e)));
 
+        /* ⚠️ **უფასო წყარო ყოველთვის გამოსადეგია**, ე.ი. ცარიელი `$usable` ერთ
+           რამეს ნიშნავს: არჩეულია მხოლოდ ფასიანი წყარო და მისი გასაღები არ მაქვს
+           (Tasks §30.6) — „წყარო არ პასუხობს" აქ ტყუილი იქნებოდა. */
         if (! $usable) {
-            return response()->json(['message' => 'serpapi_unavailable'], 503);
+            return MissingCredential::response(
+                in_array(SerperImages::KEY, $engines, true) ? CredentialProviders::SERPER : CredentialProviders::SERPAPI,
+            );
         }
 
         $limit = (int) ($data['limit'] ?? 20);

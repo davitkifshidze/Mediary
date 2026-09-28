@@ -33,11 +33,13 @@ import {
 } from '@/api/web'
 import type { CastMember } from '@/api/types'
 import { useAuth } from '@/lib/auth'
+import { credentialShortName } from '@/lib/credentials'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import type { MediaType } from '@/lib/media'
 import { cn, formatBytes } from '@/lib/utils'
 import { hasTerm, toggleTerm } from '@/lib/webQuery'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -399,11 +401,20 @@ export function WebImageDialog({
   const hasDistribute = people.length > 0 || canAddCast
   const STEP = { query: 1, sources: 2, distribute: 3, results: hasDistribute ? 4 : 3 }
 
+  /* Tasks §30.6 — რომელ ფასიან წყაროს აკლია **ჩემი** გასაღები. ⚠️ სიიდან ისინი
+     უბრალოდ ქრებიან, ე.ი. ამის თქმის გარეშე უცნობი დარჩებოდა, რატომ ჩანს
+     მხოლოდ Wikimedia და სად უნდა ჩაიწეროს გასაღები. */
+  const missingKeys = status?.missing ?? []
+
   // ⚠️ **„გასაღები არ არის" ≠ „ვებძებნა არ მუშაობს"** — უფასო კატალოგი რჩება
   if (!statusLoading && status && available.length === 0) {
     return (
       <ModalShell title={title} onClose={onClose} wide>
-        <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
+        {missingKeys.length ? (
+          <CredentialMissingNotice provider={missingKeys[0]} className="mt-4" />
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">{t('errors.serpapi_unavailable')}</p>
+        )}
         <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
@@ -490,6 +501,12 @@ export function WebImageDialog({
           {/* ---------- 2. სად ვეძებთ ---------- */}
           <StepSection step={STEP.sources} title={t('web.stepSources')}>
             <WebSourcePicker engines={available} selected={selected} onChange={setEngines} disabled={busy} />
+
+            {missingKeys.length > 0 && (
+              <CredentialMissingNotice provider={missingKeys[0]} className="mt-3">
+                {t('web.missingKeys', { names: missingKeys.map(credentialShortName).join(', ') })}
+              </CredentialMissingNotice>
+            )}
 
             {/* ⚠️ **ხელით შესაყვანი ორი რიცხვი** — ჩაშენებული 40 აღარაა.
                 „გვერდები" მხოლოდ იმ წყაროს ეხება, რომელსაც ისინი აქვს (Serper);

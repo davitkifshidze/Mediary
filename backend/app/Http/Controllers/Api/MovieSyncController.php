@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\MovieResource;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
+use App\Support\CredentialProviders;
+use App\Support\MissingCredential;
 use App\Support\SourceLog;
 use Throwable;
 
@@ -15,7 +17,7 @@ class MovieSyncController extends Controller
     public function resync(Movie $movie, MovieEnricher $enricher)
     {
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         try {

@@ -947,13 +947,13 @@
     "openlibrary_unavailable": "Open Library is not answering — try later or fill the fields by hand.",
     "nominatim_unavailable": "OpenStreetMap is not answering right now. You can fill the place in by hand.",
     "bgg_unavailable": "BoardGameGeek is unavailable right now — try later or fill the fields by hand.",
-    "rawg_unavailable": "RAWG is unavailable (no API key configured) — fill the fields by hand.",
+    "rawg_unavailable": "RAWG is not answering — fill in the fields by hand or try again later.",
     "profile_not_public": "Your own profile must be public to compare.",
     "cannot_match_self": "You can't compare a profile with itself.",
     "chat_blocked": "Messaging is stopped — one side blocked the other.",
     "cannot_chat_with_self": "You can't message yourself.",
     "serpapi_quota_exceeded": "The monthly web-search limit is used up (250 searches per account). Web search stays off until it renews.",
-    "serpapi_unavailable": "Web search is unavailable — no API key is configured or the source is not answering.",
+    "serpapi_unavailable": "The web search source is not answering — try again later.",
     "not_youtube": "That is not a YouTube address — fetching details only works for YouTube.",
     "ytdlp_unavailable": "Downloading is off on this server — yt-dlp is not installed.",
     "download_already_running": "This video is already being downloaded.",
@@ -1016,7 +1016,6 @@
     "too_many_videos": "This record has reached its video limit.",
     "invalid_url": "The address must start with http:// or https://.",
     "tmdb_error": "TMDB is not answering right now — try again later. The reason is in the sources log.",
-    "tmdb_not_configured": "There is no TMDB key — add one under “Credentials” or in `backend/.env`.",
     "lookup_query_required": "Give a link, an IMDb ID or a title.",
     "tmdb_not_found": "Nothing was found on TMDB.",
     "account_disabled": "This account is disabled — contact an administrator.",
@@ -1055,7 +1054,9 @@
     "field_missing": "The field no longer exists or is no longer a file field — bring the field back first.",
     "field_full": "The field is full — remove a file first.",
     "already_present": "Already in place — nothing to restore.",
-    "permission_missing": "You no longer have the right needed for this."
+    "permission_missing": "You no longer have the right needed for this.",
+    "credential_missing": "You have no key for this source — add your own under “Credentials”.",
+    "credential_missing_for": "You have no {{provider}} key — add your own under “Credentials”."
   },
   "fields": {
     "title": "Fields",
@@ -2010,7 +2011,7 @@
     "lookupPlaceholder": "Game name in English",
     "lookupHint": "Pick the right game — the fields fill themselves.",
     "lookupEmpty": "Nothing found on RAWG.",
-    "lookupUnavailable": "RAWG is unavailable (no API key) — fill the fields by hand.",
+    "lookupUnavailable": "RAWG is not answering — fill in the fields by hand or try again later.",
     "videosTitle": "Videos",
     "videosHint": "Walkthrough, trailer, review.",
     "videosEmpty": "No videos yet.",
@@ -2650,7 +2651,7 @@
     "actorTagsHint": "What kind of photos you want for this actor — e.g. \"portrait\", \"red carpet\", a role name. Tags are appended to the name when searching, and only you can see them.",
     "actorTagsPlaceholder": "Type a word and press Enter…",
     "quotaTitle": "Web search quota",
-    "quotaHint": "The limit belongs to the key: with your own key the budget is yours, with the shared one it is the installation’s. Images and videos spend the same budget. Opening this block does not spend a search.",
+    "quotaHint": "The limit belongs to your SerpApi key — images and videos spend the same budget. Opening this block does not spend a search.",
     "quotaUsed": "Used",
     "quotaRemaining": "Left",
     "quotaOurs": "Our counter",
@@ -2689,7 +2690,8 @@
     "pagesOnlySerper": "Only Google Images (Serper) has pages.",
     "pagesCostWarn": "Each page costs one credit.",
     "importQuotaStopped": "Storage ran out — {{count}} photos were not downloaded",
-    "importProgress": "Downloading {{done}} / {{total}}"
+    "importProgress": "Downloading {{done}} / {{total}}",
+    "missingKeys": "{{names}} — these sources turn on with your own key."
   },
   "empty": {
     "filteredHint": "A filter or the search is cutting the list — clear it and the records come back.",
@@ -2803,7 +2805,7 @@
     "stepPickHint": "Not in the list — TMDB does not answer Georgian names — add them by hand.",
     "stepSearch": "Who are you looking for",
     "stepSearchHint": "The library is searched first, then TMDB. Searching only happens on the button.",
-    "tmdbMissingKey": "No TMDB key is configured — the search covers the library only.",
+    "tmdbMissingKey": "You have no TMDB key (“Credentials”) — the search covers your library only.",
     "tmdbOffline": "TMDB did not answer — the list holds library results only. Adding by hand still works.",
     "namePlaceholderKa": "ნინო ქასრაძე",
     "namePlaceholderEn": "Nino Kasradze",
@@ -2852,13 +2854,10 @@
   },
   "credentials": {
     "title": "Credentials",
-    "subtitle": "API keys and limits for external sources",
-    "intro": "Here you enter your own keys. While a field is empty the app uses the installation's shared key, which means everyone spends the same quota. As soon as you add your own key the limit becomes yours, and other people's requests no longer touch it.",
+    "intro": "These are your keys. External sources — TMDB, Gemini, RAWG and the rest — work only with your own key: without one, that source stays off for you. Keys are stored encrypted, and the limit and the spend are yours — nobody else's requests touch them.",
     "getKey": "Get a key",
-    "usingShared": "using the shared key",
     "empty": "not set",
-    "noLimit": "no limit",
-    "limitHint": "empty — the default; 0 — no limit is checked",
+    "limitHint": "empty — the default ({{n}}); 0 — no limit is checked",
     "usage": "Used",
     "remaining": "{{n}} left",
     "usageHint": "This is our own accounting, not the provider's — a call made by another program is invisible here.",
@@ -2870,15 +2869,9 @@
     "testOk": "The key works",
     "testFailed": "The key was rejected",
     "verifiedAt": "checked {{date}}",
-    "useMine": "Use my key",
     "clear": "Remove",
     "clearTitle": "Remove the key",
-    "clearHint": "Your {{name}} key will be removed and the app will fall back to the shared one.",
-    "source": {
-      "user": "your key",
-      "shared": "shared key",
-      "none": "no key"
-    },
+    "clearHint": "Your {{name}} key will be removed and this source will stop working for you until you enter a new one.",
     "field": {
       "key": "API key",
       "model": "Model",
@@ -2900,7 +2893,7 @@
       "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
       "youtube": "Video duration and tags. Without a key the title and main photo still arrive.",
-      "telegram": "Sending reminders to Telegram (the notes module). The bot is personal — there is no shared key here."
+      "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot."
     },
     "error": {
       "rejected": "the source rejected the key",
@@ -2933,7 +2926,37 @@
     },
     "installation": "Installation settings",
     "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env.",
-    "undecryptable": "This key was encrypted with a different APP_KEY (most likely on another machine), so it cannot be read — the app is falling back to the shared key. Enter it again, or restore the old APP_KEY."
+    "undecryptable": "This key was encrypted with a different APP_KEY (most likely on another machine), so it cannot be read and this source does not work for you. Enter it again, or restore the old APP_KEY.",
+    "connected": "{{count}} of {{total}} connected",
+    "group": {
+      "media": "Media sources",
+      "translation": "Translation",
+      "web": "Web search",
+      "notify": "Notifications"
+    },
+    "state": {
+      "mine": "Your key",
+      "off": "Switched off",
+      "partial": "Incomplete",
+      "none": "No key",
+      "undecryptable": "Cannot be decrypted"
+    },
+    "cta": {
+      "none": "Add a key",
+      "partial": "Fill in the remaining field",
+      "off": "Switch it on or remove it",
+      "undecryptable": "Enter it again"
+    },
+    "editTitle": "{{name}} — edit the key",
+    "neverChecked": "not checked yet",
+    "usageDay": "Today",
+    "usageMonth": "This month",
+    "usageNoLimit": "{{used}} — no limit",
+    "enabled": "Key switched on",
+    "enabledHint": "When switched off the key stays saved, but the source does not work for you until you switch it back on.",
+    "limitHintNoDefault": "empty or 0 — no limit is checked",
+    "testAfterSave": "Save first — the check tests the saved key.",
+    "open": "Open Credentials"
   },
   "backups": {
     "title": "Database backup",

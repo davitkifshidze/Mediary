@@ -45,6 +45,11 @@ class BatchQueueTest extends TestCase
         $this->alice = $this->makeUser('alice');
         $this->bob = $this->makeUser('bob');
 
+        /* Tasks §30.6 — ⚠️ პარტია **გასაღების გარეშე აღარ იწყება** (`credential_missing`
+           დისპეჩამდე), ე.ი. ორივეს TMDB-ის პირადი გასაღები სჭირდება. */
+        $this->giveCredential($this->alice, 'tmdb');
+        $this->giveCredential($this->bob, 'tmdb');
+
         // ⚠️ ნამდვილი პროცესი ტესტში არ ეშვება — `queue:work` მანქანაზე დაიწყებდა
         $this->fakeWorker(true);
 
@@ -109,6 +114,45 @@ class BatchQueueTest extends TestCase
         ])->assertStatus(202);
 
         Bus::assertBatched(fn ($batch) => $batch->jobs->count() === 2 && $batch->name === 'sync');
+    }
+
+    /**
+     * Tasks §30.6 — ⚠️ **გასაღების გარეშე პარტია საერთოდ არ იქმნება.** §30-იდან
+     * გასაღები ანგარიშისაა, ე.ი. მის გარეშე 300-ერთეულიანი პარტია 300-ჯერ
+     * ერთსა და იმავე მიზეზზე ჩავარდებოდა და ეს მხოლოდ ბოლოს გამოჩნდებოდა.
+     */
+    public function test_a_batch_without_the_owners_key_is_refused_before_dispatch(): void
+    {
+        Bus::fake();
+        $this->takeCredential($this->alice, 'tmdb');
+        $movie = $this->makeMovie($this->alice, 'A');
+
+        $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [['type' => 'movie', 'id' => $movie->id]],
+        ])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'credential_missing')
+            ->assertJsonPath('provider', 'tmdb');
+
+        Bus::assertNothingBatched();
+    }
+
+    /** თარგმანს ერთი წყაროც ჰყოფნის — მაგრამ მხოლოდ Gemini-ს არჩევისას Gemini სახელდება */
+    public function test_a_translate_batch_needs_a_key_for_one_chosen_source(): void
+    {
+        Bus::fake();
+        $movie = $this->makeMovie($this->alice, 'A');
+        $items = [['type' => 'movie', 'id' => $movie->id]];
+
+        $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'translate', 'items' => $items, 'options' => ['sources' => ['gemini']],
+        ])->assertStatus(409)->assertJsonPath('provider', 'gemini');
+
+        // TMDB-ის გასაღები აქვს — ორივე წყაროს არჩევისას ეს საკმარისია
+        $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'translate', 'items' => $items, 'options' => ['sources' => ['tmdb', 'gemini']],
+        ])->assertStatus(202);
     }
 
     /**

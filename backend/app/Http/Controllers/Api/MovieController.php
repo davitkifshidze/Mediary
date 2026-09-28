@@ -12,7 +12,9 @@ use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
+use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MissingCredential;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -173,7 +175,7 @@ class MovieController extends Controller
         $data = $request->validate(['tmdb_id' => ['required', 'integer']]);
 
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         $existing = Movie::where('tmdb_id', $data['tmdb_id'])->first();

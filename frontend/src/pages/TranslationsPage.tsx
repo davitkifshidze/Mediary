@@ -6,6 +6,7 @@ import { ArrowLeft, Languages, Sparkles } from 'lucide-react'
 import { fetchTranslationSummary, fetchTranslationUsage } from '@/api/translations'
 import { TRANSLATE_DELAY_OPTIONS, useSettings } from '@/lib/settings'
 import { useDateFormat } from '@/lib/dates'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { TranslateDialog } from '@/components/TranslateDialog'
 import { NumberSelect, SettingRow } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
@@ -109,15 +110,16 @@ export function TranslationsPage() {
           <li>{t('translate.sourceNever')}</li>
           <li>{t('translate.sourceReview')}</li>
         </ul>
+        {/* Tasks §30.6 — გასაღები ანგარიშისაა: შეტყობინებას „მონაცემების" ბმულიც ახლავს */}
         {data && !data.translator_configured && (
-          <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-400">
+          <CredentialMissingNotice provider="gemini" className="mt-3">
             {t('translate.noKey')}
-          </p>
+          </CredentialMissingNotice>
         )}
         {data && !data.tmdb_configured && (
-          <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-400">
+          <CredentialMissingNotice provider="tmdb" className="mt-3">
             {t('translate.noTmdbKey')}
-          </p>
+          </CredentialMissingNotice>
         )}
       </section>
 

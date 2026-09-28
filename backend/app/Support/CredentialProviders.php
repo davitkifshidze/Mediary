@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * **გარე წყაროების რეესტრი — „მონაცემები" (Tasks §21).**
+ * **გარე წყაროების რეესტრი — „მონაცემები" (Tasks §21 → §30).**
  *
  * აქამდე შვიდივე გასაღები `backend/.env`-ში იდო, ე.ი. **ერთი იყო მთელ
  * ინსტალაციაზე**. მრავალმომხმარებლიან აპში ეს ორ რამეს ნიშნავდა: თავისი
@@ -11,18 +11,23 @@ namespace App\Support;
  * (Gemini-ის დღიური, SerpApi-ის თვიური) ხარჯი **საერთო** იყო, ე.ი. ერთი
  * მომხმარებელი მეორეს დღეს ახარჯავდა.
  *
+ * ⚠️ **§30-იდან (Q38) საერთო ფენა აღარ არსებობს**: „ტელეგრამის, TMDB-ისა და
+ * ნებისმიერი პაროლი მომხმარებელს თავისი უნდა ჰქონდეს — `.env`-ში მსგავსი
+ * არაფერი უნდა იყოს". გასაღები **მხოლოდ** `user_credentials`-იდან იკითხება;
+ * `config('services.*')` შვიდ წყაროს აღარ იცნობს. ფასი ცხადია: ვისაც თავისი
+ * გასაღები არ აქვს, მისთვის ის წყარო არ მუშაობს (`credential_missing`).
+ *
+ * ⚠️ **ნაგულისხმევი მნიშვნელობა მხოლოდ იმას აქვს, რაც საიდუმლო არაა** —
+ * Gemini-ის მოდელს და ლიმიტებს (`default`). ისინი **კოდშია** და არა `.env`-ში:
+ * ეს ინსტალაციის არჩევანი კი არაა, წყაროს დოკუმენტირებული უფასო დონეა.
+ * პირადი მნიშვნელობა მათ გადაფარავს (`null` = ნაგულისხმევი, `0` = ულიმიტო).
+ *
  * ⚠️ **ეს `modules` ცხრილის რიგი განზრახ არ არის.** ამ პროექტში „მოდული"
  * კონტენტის ბიბლიოთეკაა: `RegistryConsistencyTest` ყოველ `modules` რიგს
  * purge-ის სამიზნეს, დეშბორდის მრიცხველსა და `AuditRegistry`-ს ჩანაწერს
  * სთხოვს — გასაღებს კი „ჩანაწერები" არ აქვს. გარდა ამისა მოდულის გამორთვა
  * **ყველა** ანგარიშზე მოქმედებს, ე.ი. ადმინი ერთი გადამრთველით ყველას
- * თარგმანს გათიშავდა. სექცია `/dictionaries`-ის წესით იგება: თავისი გვერდი,
- * თავისი ცხრილი, `modules`-თან შეხების გარეშე.
- *
- * ⚠️ **`config('services.*')` რჩება ნაგულისხმევად და არა წაშლილად.** ასე
- * დღევანდელი, ერთმომხმარებლიანი ინსტალაცია უცვლელად მუშაობს (`.env`-ის
- * გასაღები „საერთოა"), ხოლო ვინც თავისას ჩადებს — თავისით მუშაობს და
- * თავის კვოტას ხარჯავს. ინტერფეისი ცხადად წერს, რომელს იყენებ.
+ * თარგმანს გათიშავდა.
  *
  * ⚠️ **რომელი ველი საიდუმლოა, აქ წყდება და არა კონტროლერში.** `secret: true`
  * ველი პასუხში **არასდროს** ბრუნდება — მხოლოდ ნიღბიანი კუდი (`••••a1b2`) —
@@ -48,19 +53,15 @@ final class CredentialProviders
     public const TELEGRAM = 'telegram';
 
     /**
-     * ⚠️ `config` თითო ველზე **სრული** გასაღებია `config/services.php`-ში:
-     * ე.ი. რეესტრი თვითონ ამბობს, საიდან მოდის საერთო მნიშვნელობა და
-     * `CredentialStore`-ს მეორე რუკა აღარ სჭირდება.
-     *
-     * `limits` — მხოლოდ ორ წყაროს აქვს; `null` ლიმიტი „ინსტალაციის
-     * ნაგულისხმევს" ნიშნავს, `0` კი „ლიმიტი არ მაქვს"-ს (ეს ორი სხვადასხვა
-     * ფაქტია და `Translator`-ის დღევანდელი კოდი ისედაც ასე კითხულობს).
+     * `limits` — მხოლოდ ორ წყაროს აქვს. ⚠️ `default` **კოდის** ნაგულისხმევია:
+     * ცარიელი პირადი მნიშვნელობა მას ნიშნავს, `0` კი „ლიმიტი არ მაქვს"-ს
+     * (ეს ორი სხვადასხვა ფაქტია და `Translator` ისედაც ასე კითხულობს).
      */
     public const PROVIDERS = [
         self::TMDB => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.tmdb.key'],
+                'key' => ['secret' => true],
             ],
             'limits' => [],
             'docs' => 'https://www.themoviedb.org/settings/api',
@@ -71,12 +72,21 @@ final class CredentialProviders
         self::GEMINI => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.gemini.key'],
-                'model' => ['secret' => false, 'config' => 'services.gemini.model'],
+                'key' => ['secret' => true],
+                /* ⚠️ **დაპინული ვერსია და არა `gemini-flash-latest` alias.**
+                   ცოცხალი გაზომვა 2026-09-14: alias იმ დღეს 90 წამის timeout-სა და
+                   503-ს აძლევდა, `gemini-3.5-flash` კი იმავე ტექსტს **1.3 წამში**
+                   თარგმნიდა. ⚠️ `*-flash-lite` მოდელები `thinkingBudget`-ს 400-ით
+                   უარყოფენ — `Translator` ამას თვითონ ხვდება, ე.ი. აქ ნებისმიერი
+                   მოდელის ჩაწერა უსაფრთხოა. */
+                'model' => ['secret' => false, 'default' => 'gemini-3.5-flash'],
             ],
             'limits' => [
-                'daily' => ['config' => 'services.gemini.daily_limit'],
-                'rpm' => ['config' => 'services.gemini.rpm_limit'],
+                /* უფასო დონე — **ჩვენი აღრიცხვის ჭერი** და არა Google-ისა:
+                   Gemini-ს „რამდენი დავხარჯე" API არ აქვს, ე.ი. ერთადერთი
+                   მრიცხველი `translation_usages`-ია და ინტერფეისი ამას წერს. */
+                'daily' => ['default' => 1500],
+                'rpm' => ['default' => 15],
             ],
             'docs' => 'https://aistudio.google.com/apikey',
             'modules' => [],
@@ -85,7 +95,7 @@ final class CredentialProviders
         self::RAWG => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.rawg.key'],
+                'key' => ['secret' => true],
             ],
             'limits' => [],
             'docs' => 'https://rawg.io/apidocs',
@@ -96,8 +106,8 @@ final class CredentialProviders
             // ⚠️ ორივე სავალდებულოა: Twitch-ის OAuth ერთით არ მუშაობს
             'required' => ['client_id', 'client_secret'],
             'fields' => [
-                'client_id' => ['secret' => false, 'config' => 'services.igdb.client_id'],
-                'client_secret' => ['secret' => true, 'config' => 'services.igdb.client_secret'],
+                'client_id' => ['secret' => false],
+                'client_secret' => ['secret' => true],
             ],
             'limits' => [],
             'docs' => 'https://dev.twitch.tv/console/apps',
@@ -107,10 +117,13 @@ final class CredentialProviders
         self::SERPAPI => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.serpapi.key'],
+                'key' => ['secret' => true],
             ],
             'limits' => [
-                'monthly' => ['config' => 'services.serpapi.monthly_limit'],
+                /* ⚠️ მხოლოდ **ჩვენი** აღრიცხვის ჭერი — ნამდვილი რიცხვი
+                   `GET https://serpapi.com/account`-იდან მოდის და ის გამოძახება
+                   კვოტას **არ ხარჯავს**. 250 უფასო გეგმის თვიური ბიუჯეტია. */
+                'monthly' => ['default' => 250],
             ],
             'docs' => 'https://serpapi.com/manage-api-key',
             'modules' => ['gallery'],
@@ -119,7 +132,7 @@ final class CredentialProviders
         self::SERPER => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.serper.key'],
+                'key' => ['secret' => true],
             ],
             'limits' => [],
             'docs' => 'https://serper.dev/api-key',
@@ -129,7 +142,7 @@ final class CredentialProviders
         self::YOUTUBE => [
             'required' => ['key'],
             'fields' => [
-                'key' => ['secret' => true, 'config' => 'services.youtube.key'],
+                'key' => ['secret' => true],
             ],
             'limits' => [],
             'docs' => 'https://console.cloud.google.com/apis/library/youtube.googleapis.com',
@@ -137,28 +150,51 @@ final class CredentialProviders
         ],
 
         /*
-         | **ტელეგრამის ბოტი (§21.9, შენი მითითება 2026-09-15).**
-         |
-         | ⚠️ **`.env`-ში არასდროს ყოფილა და ვერც იქნება** — ბოტი *პირადია*:
-         | ერთი საერთო ტოკენი იმას ნიშნავდა, რომ ყველას შეხსენება ერთი და
-         | იმავე ბოტიდან წავიდოდა, `chat_id` კი ისედაც თითო ადამიანისაა.
-         | ამიტომ `config` აქ არცერთ ველს არ აქვს: `shared()` `null`-ს
-         | აბრუნებს და მდგომარეობა ან „ჩემია", ან „არაა".
-         |
-         | ⚠️ **`chat_id` საიდუმლო არაა** — ის უბრალო რიცხვია და მისი დამალვა
-         | მხოლოდ გამართვას გაართულებდა; საიდუმლო ტოკენია, რომელიც ბოტზე
-         | სრულ წვდომას იძლევა.
+         | **ტელეგრამის ბოტი (§21.9).** ⚠️ **`chat_id` საიდუმლო არაა** — ის უბრალო
+         | რიცხვია და მისი დამალვა მხოლოდ გამართვას გაართულებდა; საიდუმლო
+         | ტოკენია, რომელიც ბოტზე სრულ წვდომას იძლევა.
          */
         self::TELEGRAM => [
             'required' => ['bot_token', 'chat_id'],
             'fields' => [
-                'bot_token' => ['secret' => true, 'config' => null],
-                'chat_id' => ['secret' => false, 'config' => null],
+                'bot_token' => ['secret' => true],
+                'chat_id' => ['secret' => false],
             ],
             'limits' => [],
             'docs' => 'https://t.me/BotFather',
             'modules' => ['note'],
         ],
+    ];
+
+    /**
+     * **ძველი `.env`-ის ცვლადები — წყარო, ველი და „გასაღების ნაწილია თუ არა"**
+     * (Tasks §30).
+     *
+     * ⚠️ აპი მათ **აღარ კითხულობს**. სია სამ ადგილს სჭირდება და ერთ ადგილას
+     * წერია: გადატანის მიგრაციას (რისი და ვისთან), `mediary:doctor`-ს და
+     * `RegistryConsistencyTest`-ს (`.env.example` მათ აღარ უნდა შეიცავდეს —
+     * ცარიელი ხაზი შევსებას იწვევს).
+     *
+     * ⚠️ ბოლო ელემენტი `true` = **გასაღების ნაწილია** (`doctor`-ზე FAIL):
+     * IGDB-ის `client_id` თვითონ საიდუმლო არაა, მაგრამ წყვილის ნახევარია და
+     * ისიც ადამიანისაა. `false` — პარამეტრია (მოდელი, ლიმიტი): `.env`-ში ის
+     * უბრალოდ აღარ მოქმედებს (WARN).
+     *
+     * @var array<string, array{0: string, 1: 'field'|'limit', 2: string, 3: bool}>
+     */
+    public const LEGACY_ENV = [
+        'TMDB_API_KEY' => [self::TMDB, 'field', 'key', true],
+        'GEMINI_API_KEY' => [self::GEMINI, 'field', 'key', true],
+        'GEMINI_MODEL' => [self::GEMINI, 'field', 'model', false],
+        'GEMINI_DAILY_LIMIT' => [self::GEMINI, 'limit', 'daily', false],
+        'GEMINI_RPM_LIMIT' => [self::GEMINI, 'limit', 'rpm', false],
+        'RAWG_API_KEY' => [self::RAWG, 'field', 'key', true],
+        'IGDB_CLIENT_ID' => [self::IGDB, 'field', 'client_id', true],
+        'IGDB_CLIENT_SECRET' => [self::IGDB, 'field', 'client_secret', true],
+        'SERPAPI_KEY' => [self::SERPAPI, 'field', 'key', true],
+        'SERPAPI_MONTHLY_LIMIT' => [self::SERPAPI, 'limit', 'monthly', false],
+        'SERPER_API_KEY' => [self::SERPER, 'field', 'key', true],
+        'YOUTUBE_API_KEY' => [self::YOUTUBE, 'field', 'key', true],
     ];
 
     /** @return array<int, string> */
@@ -201,14 +237,20 @@ final class CredentialProviders
         return (bool) (self::PROVIDERS[$provider]['fields'][$field]['secret'] ?? false);
     }
 
-    /** ამ ველის **საერთო** (ინსტალაციის) მნიშვნელობა `config/services.php`-იდან */
-    public static function shared(string $provider, string $field): mixed
+    /**
+     * ველის ან ლიმიტის **კოდის** ნაგულისხმევი მნიშვნელობა; `null` — არ აქვს.
+     *
+     * ⚠️ საიდუმლოს ნაგულისხმევი არასდროს აქვს — სწორედ ეს იყო §30-ის საგანი.
+     */
+    public static function default(string $provider, string $name): mixed
     {
-        $key = self::PROVIDERS[$provider]['fields'][$field]['config']
-            ?? self::PROVIDERS[$provider]['limits'][$field]['config']
-            ?? null;
+        if (self::isSecret($provider, $name)) {
+            return null;
+        }
 
-        return $key === null ? null : config($key);
+        return self::PROVIDERS[$provider]['fields'][$name]['default']
+            ?? self::PROVIDERS[$provider]['limits'][$name]['default']
+            ?? null;
     }
 
     /**

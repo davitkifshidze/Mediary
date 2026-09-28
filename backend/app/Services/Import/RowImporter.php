@@ -62,7 +62,7 @@ class RowImporter
     private function movie(User $user, array $row): array
     {
         if (! $this->enricher->configured()) {
-            return $this->fail('tmdb_not_configured');
+            return $this->fail('credential_missing');
         }
 
         /* ⚠️ ჯერ `imdb_id` და მერე ძებნა: პირველი **ზუსტია**, მეორე
@@ -155,8 +155,10 @@ class RowImporter
 
     private function game(User $user, array $row): array
     {
+        /* ⚠️ გასაღების არქონა ≠ მკვდარი წყარო (Tasks §30.6): პირველზე სწორი
+           ქმედება „ჩაწერე შენი RAWG-ის გასაღები"-ა და არა „სცადე მოგვიანებით". */
         if (! $this->rawg->configured()) {
-            return $this->fail('rawg_unavailable');
+            return $this->fail('credential_missing');
         }
 
         /* ⚠️ **`appid` აქ არ იძებნება და ეს RAWG-ის უფასო API-ის შეზღუდვაა** —

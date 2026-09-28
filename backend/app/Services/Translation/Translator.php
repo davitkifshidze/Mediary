@@ -15,7 +15,8 @@ use Throwable;
 /**
  * ორმხრივი თარგმანი EN↔KA (Tasks 7).
  *
- * ერთი წყარო — **Google Gemini** (`GEMINI_API_KEY`, უფასო დონე, ბარათის გარეშე).
+ * ერთი წყარო — **Google Gemini** (უფასო დონე, ბარათის გარეშე). ⚠️ გასაღები
+ * **მომხმარებლისაა** („მონაცემები", Tasks §30) და არა `.env`-ისა.
  *
  * ⚠️ **Claude აქედან ამოღებულია 2026-09-14-ს** (მომხმარებლის მითითებით):
  * `ANTHROPIC_API_KEY` მხოლოდ Console-ის კრედიტებზე მუშაობს — Claude Code-ის
@@ -48,13 +49,6 @@ class Translator
        `ConnectionException`-ით მთავრდებოდა, ე.ი. ჩანაწერი უთარგმნელი რჩებოდა. */
     private const TIMEOUT = 90;
 
-    /* ⚠️ **დაპინული ვერსია და არა `gemini-flash-latest` alias.** ცოცხალი
-       გაზომვა 2026-09-14: alias იმ დღეს 90 წამის timeout-სა და 503-ს აძლევდა,
-       `gemini-3.5-flash` კი იმავე ტექსტს **1.3 წამში** თარგმნიდა. alias იმას
-       მიჰყვება, რასაც Google დღეს მიუთითებს — თარგმანს კი სტაბილურობა უნდა.
-       სხვა მოდელზე გადასვლა ერთი `.env` ხაზია (`GEMINI_MODEL`). */
-    private const DEFAULT_MODEL = 'gemini-3.5-flash';
-
     /**
      * ბოლო გამოძახების მიზეზი, როცა თარგმანი არ მოვიდა.
      *
@@ -84,9 +78,12 @@ class Translator
      */
     private function model(): string
     {
-        $model = trim((string) CredentialStore::value(CredentialProviders::GEMINI, 'model'));
-
-        return $model === '' ? self::DEFAULT_MODEL : $model;
+        /* ⚠️ ნაგულისხმევი (დაპინული `gemini-3.5-flash`) **რეესტრშია** —
+           `CredentialProviders::PROVIDERS` — და `value()` მას თვითონ აბრუნებს,
+           როცა მომხმარებელს თავისი მოდელი არ ჩაუწერია. მეორე ასლი აქ იმ დღეს
+           აცდებოდა, როცა ნაგულისხმევი შეიცვლებოდა. */
+        return trim((string) CredentialStore::value(CredentialProviders::GEMINI, 'model'))
+            ?: (string) CredentialProviders::default(CredentialProviders::GEMINI, 'model');
     }
 
     /**
@@ -98,16 +95,16 @@ class Translator
      * აბრუნებს), ე.ი. ერთადერთი წყარო `translation_usages`-ია — და ინტერფეისი
      * ამას ცხადად უნდა ამბობდეს, თორემ რიცხვი ავტორიტეტულად წაიკითხებოდა.
      *
-     * @return array{provider:string, model:?string, configured:bool, used:int, limit:int, remaining:?int, rpm_used:int, rpm_limit:int, exhausted:bool}
+     * @return array{provider:string, model:?string, configured:bool, used:int, limit:int, remaining:?int, rpm_used:int, rpm_limit:int, exhausted:bool, source:string, period:string}
      */
     public function usage(): array
     {
         $limit = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'daily');
         $rpm = (int) CredentialStore::limit(CredentialProviders::GEMINI, 'rpm');
-        /* §21.4 — თავისი გასაღებით მრიცხველიც თავისია. `null` = საერთო
-           გასაღები, ე.ი. ძველებურად მთელი ინსტალაციის ჯამი. */
-        $owner = CredentialStore::quotaOwner(CredentialProviders::GEMINI);
-        $used = TranslationUsage::usedToday(TranslationUsage::PROVIDER_GEMINI, $owner);
+        /* §30 — გასაღები ყოველთვის მომხმარებლისაა, ე.ი. მრიცხველიც: სხვისი
+           თარგმანი ჩემს კვოტას არ ეხება (`null` — CLI, სადაც გასაღებიც არაა). */
+        $owner = CredentialStore::quotaOwner();
+        $used = TranslationUsage::usedToday($owner);
 
         return [
             'provider' => TranslationUsage::PROVIDER_GEMINI,
@@ -117,12 +114,12 @@ class Translator
             'limit' => $limit,
             // ⚠️ `null` = ლიმიტი გამორთულია; `0` = ამოიწურა — სხვადასხვა ფაქტია
             'remaining' => $limit > 0 ? max(0, $limit - $used) : null,
-            'rpm_used' => TranslationUsage::usedThisMinute(TranslationUsage::PROVIDER_GEMINI, $owner),
+            'rpm_used' => TranslationUsage::usedThisMinute($owner),
             'rpm_limit' => $rpm,
             'exhausted' => $limit > 0 && $used >= $limit,
-            // §21 — „ჩემი გასაღებია თუ საერთო": ლიმიტის რიცხვი ამის გარეშე
-            // ორაზროვანია (ჩემი 1500 თუ ყველასი?)
+            // §30 — `user` | `none`; ფანჯარა კი დღეა (Google-ის Pacific-ის შუაღამე)
             'source' => CredentialStore::source(CredentialProviders::GEMINI),
+            'period' => 'day',
         ];
     }
 
@@ -276,7 +273,7 @@ class Translator
         } catch (RequestException $e) {
             /* ⚠️ **`thinkingBudget` ყველა მოდელს არ აქვს.** `*-flash-lite` მას
                **400-ით** უარყოფს (ცოცხლად შემოწმებული 2026-09-14-ს), ე.ი.
-               `.env`-ში lite-მოდელის ჩაწერა თარგმანს სრულიად კლავდა — ჩუმად,
+               lite-მოდელის ჩაწერა (ახლა — „მონაცემებში") თარგმანს სრულიად კლავდა — ჩუმად,
                რადგან 400 დროებითი არაა და `translate()` null-ს აბრუნებს.
                ერთხელ ვიმეორებთ ფიქრის პარამეტრის გარეშე: lite ისედაც არ ფიქრობს,
                ე.ი. შედეგი იგივეა. ეს **მოდელების სია არ არის** — სია დაძველდებოდა. */

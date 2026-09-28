@@ -10,7 +10,9 @@ use App\Services\Games\IgdbClient;
 use App\Services\Games\RawgClient;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
+use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MissingCredential;
 use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
@@ -206,6 +208,14 @@ class GameController extends Controller
     {
         $data = $request->validate(['query' => ['required', 'string', 'max:255']]);
 
+        /* ⚠️ **ორივე გასაღების არქონა სხვა ფაქტია, ვიდრე ორივე წყაროს
+           ჩავარდნა** (Tasks §30.6): §30-იდან ეს ყოველდღიური მდგომარეობაა
+           ყველასთვის, ვისაც თავისი გასაღები არ ჩაუწერია, და სწორი ქმედება
+           „მონაცემებში" ჩაწერაა — არა „სცადე მოგვიანებით". */
+        if (! $this->configured()) {
+            return MissingCredential::response(CredentialProviders::RAWG);
+        }
+
         $results = $this->rawg->search($data['query']);
 
         // RAWG-მა ვერაფერი მოიტანა → IGDB (თუ ისიც გამართულია)
@@ -238,6 +248,11 @@ class GameController extends Controller
 
         $useIgdb = ! empty($data['igdb_id']);
         $id = (int) ($useIgdb ? $data['igdb_id'] : $data['rawg_id']);
+
+        // §30.6 — არჩეული წყაროს გასაღები არ მაქვს → ეს ცხადად ითქმის
+        if (! ($useIgdb ? $this->igdb->configured() : $this->rawg->configured())) {
+            return MissingCredential::response($useIgdb ? CredentialProviders::IGDB : CredentialProviders::RAWG);
+        }
 
         $draft = $useIgdb ? $this->igdb->details($id) : $this->rawg->details($id);
 

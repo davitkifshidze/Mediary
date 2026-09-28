@@ -35,10 +35,13 @@ class EpisodeTest extends TestCase
     {
         parent::setUp();
         $this->seed(ModulesSeeder::class);
-        config()->set('services.tmdb.key', 'test-key');
 
         $this->me = $this->makeUser('epi');
         $this->other = $this->makeUser('epo');
+
+        // Tasks §30 — გასაღები ანგარიშისაა: ორივეს თავისი
+        $this->giveCredential($this->me, 'tmdb');
+        $this->giveCredential($this->other, 'tmdb');
 
         $this->series = Series::create(['user_id' => $this->me->id, 'tmdb_id' => 1396, 'year' => 2008]);
     }

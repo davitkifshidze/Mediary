@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Episodes\EpisodeProgress;
 use App\Services\Episodes\EpisodeSync;
+use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -53,6 +55,11 @@ class EpisodeController extends Controller
         $result = $this->sync->sync($record);
 
         if (! $result['ok']) {
+            // §30.6 — „შენი გასაღები არ გაქვს" თავისი კოდითა და წყაროთი მიდის
+            if ($result['error'] === MissingCredential::CODE) {
+                return MissingCredential::response(CredentialProviders::TMDB);
+            }
+
             return response()->json(
                 ['message' => $result['error']],
                 $result['error'] === 'no_tmdb_id' ? 422 : 503,

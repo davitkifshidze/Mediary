@@ -9,7 +9,9 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
 use App\Services\Cast\CastPool;
 use App\Support\AppTime;
+use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
+use App\Support\MissingCredential;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -163,7 +165,7 @@ class CastSyncController extends Controller
         ]);
 
         if (! $enricher->configured()) {
-            return response()->json(['message' => 'tmdb_not_configured'], 503);
+            return MissingCredential::response(CredentialProviders::TMDB);
         }
 
         $result = $audit->suppress(fn () => $enricher->run(

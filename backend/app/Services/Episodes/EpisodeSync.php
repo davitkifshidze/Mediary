@@ -56,7 +56,7 @@ class EpisodeSync
         }
 
         if (! $this->configured()) {
-            return ['ok' => false, 'seasons' => 0, 'episodes' => 0, 'error' => 'tmdb_not_configured'];
+            return ['ok' => false, 'seasons' => 0, 'episodes' => 0, 'error' => 'credential_missing'];
         }
 
         try {
