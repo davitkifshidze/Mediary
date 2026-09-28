@@ -247,10 +247,12 @@ export function PublicProfilePage() {
             {/* ---------- ბადე ----------
                 ⚠️ **გალერეის ჩანართი ბარათებს არ ხატავს** (Tasks §7.4): მისი
                 ჩანაწერი ალბომია (საქაღალდე), ჩვენება კი ფოტოებია — ბარათებად
-                „3 ალბომი" ეწერებოდა იქ, სადაც ორასი ფოტოა. */}
+                „3 ალბომი" ეწერებოდა იქ, სადაც ორასი ფოტოა. §32-იდან შიგნით
+                მფლობელის გალერეის ჭრილებია; ბიბლიოთეკის დომენების სახელი და
+                ფერი ამ პროფილის `modules`-იდან მოდის (სტუმარს `useModules()` არ აქვს). */}
             {domain === 'gallery_album' ? (
               <div className="pt-1">
-                <PublicGalleryTab username={profile.profile.username} />
+                <PublicGalleryTab username={profile.profile.username} profile={profile} />
               </div>
             ) : itemsQuery.isLoading && items.length === 0 ? (
               <div className="grid place-items-center py-16">

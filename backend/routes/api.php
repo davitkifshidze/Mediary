@@ -137,19 +137,22 @@ Route::middleware('throttle:login')->group(function () {
 });
 
 /* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
-   ⚠️ **ეს ხუთი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
+   ⚠️ **ეს რვა endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
    ზედაპირი**; მის გარეთ ღიაა კიდევ ხუთი — `/health`, `register`, `login`
    და FEAT-16-ის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
    `throttle:login`-ის უკან). ეს ყველაზე სენსიტიური სიაა პროექტში —
    შემდეგმა reviewer-მა ზუსტად უნდა იცოდეს, რამდენია:
 
      1. `GET  /public/profiles/{username}`                           — პროფილის თავი
-     2. `GET  /public/profiles/{username}/gallery-photos`            — ფოტოების გვერდი
-     3. `GET  /public/profiles/{username}/gallery-photos/{image}/file` — ერთი ფაილი
-     4. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
-     5. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
+     2. `GET  /public/profiles/{username}/gallery-summary`           — გალერეის ჭრილების მთვლელები (§32)
+     3. `GET  /public/profiles/{username}/gallery-groups`            — ჯგუფები: ჩანაწერი · მსახიობი · ალბომი (§32)
+     4. `GET  /public/profiles/{username}/gallery-photos`            — ფოტოების გვერდი, ჭრილის ფილტრებით
+     5. `GET  /public/profiles/{username}/gallery-photos/{image}/file` — ერთი ფაილი
+     6. `GET  /public/profiles/{username}/gallery-videos`            — ვიდეო-ბმულები (§32)
+     7. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
+     8. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
 
-   ⚠️ **ოთხი read-only-ია, მეხუთე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
+   ⚠️ **შვიდი read-only-ია, მერვე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
    read-only-ია"-ს ამბობდა, რაც ორმაგად მცდარი იყო). `unlockAlbum` პაროლს
    ამოწმებს და **სერვერის სესიას ცვლის**; მისი ორი დამცავია
    `throttle:album-unlock` (ანონიმზე გასაღები IP + ალბომი) და ცხადი შემოწმება,
@@ -157,15 +160,20 @@ Route::middleware('throttle:login')->group(function () {
    პირადი ალბომის პაროლის გამოცნობის კარი იქნებოდა. სესიის გარეშე პაროლი
    საერთოდ არ იცდება (BUG-02, 409 `session_required`).
 
-   ხუთივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
-   default-ით `private`, და ხუთივე `PublicProfileService::resolve()`-ზე გადის —
+   რვავე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
+   default-ით `private`, და რვავე `PublicProfileService::resolve()`-ზე გადის —
    ე.ი. მთელი მექანიზმი ერთი ცვლადით ითიშება: `PUBLIC_PROFILES=false`.
+   ⚠️ §32-ის სამი ახალი endpoint ხილვადობას **ერთ სერვისში** ითვლის
+   (`PublicGallery`) — ოთხი გალერეის მარშრუტი ერთსა და იმავე სამ წესს კითხულობს.
    დეტალები `PublicProfileController`-ში. */
 Route::get('/public/profiles/{username}', [PublicProfileController::class, 'show']);
 
-/* ⚠️ **ორივე `{domain}`-ზე ზემოთ დგას** (Tasks §7.4/§7.12), თორემ
-   „gallery-photos" და „albums" დომენებად წაიკითხება — იგივე წესი, რაც
-   `/gallery/{type}/{id}`-ს აქვს. */
+/* ⚠️ **ყველა `{domain}`-ზე ზემოთ დგას** (Tasks §7.4/§7.12/§32), თორემ
+   „gallery-photos", „gallery-groups", „albums"… დომენებად წაიკითხება —
+   იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს. */
+Route::get('/public/profiles/{username}/gallery-summary', [PublicProfileController::class, 'gallerySummary']);
+Route::get('/public/profiles/{username}/gallery-groups', [PublicProfileController::class, 'galleryGroups']);
+Route::get('/public/profiles/{username}/gallery-videos', [PublicProfileController::class, 'galleryVideos']);
 Route::get('/public/profiles/{username}/gallery-photos', [PublicProfileController::class, 'photos']);
 /* 2026-09-17 — გახსნილი ჩაკეტილი ალბომის ფოტო პირად დისკზეა და მხოლოდ აქედან
    გამოდის: შიდა `/gallery/images/{id}/file` უცხოსთვის `auth:sanctum`-ის უკანაა. */

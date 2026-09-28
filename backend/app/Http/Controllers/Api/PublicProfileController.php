@@ -4,15 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
+use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
 use App\Support\AlbumLock;
+use App\Support\GalleryParent;
+use App\Support\GallerySort;
+use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 /**
  * **Tasks §16.1 — საჯარო პროფილი `/u/{username}`.**
@@ -24,9 +29,10 @@ use Illuminate\Support\Facades\Storage;
  * (პროფილი → მოდული → ჩანაწერი), ყველა default-ით `private`, და მთელი მექანიზმი
  * ერთი გადამრთველით ითიშება: `PUBLIC_PROFILES=false` (`config/mediary.php`).
  *
- * ⚠️ **ხუთი მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
- * კომენტარი „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა). ოთხი GET-ია —
- * პროფილის თავი, ფოტოების გვერდი, ერთი ფაილი და დომენის ბარათები — ხოლო
+ * ⚠️ **რვა მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
+ * კომენტარი „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; §32-მა კიდევ
+ * სამი დაამატა). შვიდი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
+ * ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები და დომენის ბარათები — ხოლო
  * `unlockAlbum()` პაროლს ამოწმებს და **სერვერის სესიას ცვლის**. სწორედ
  * ამიტომ აქვს მას `throttle:album-unlock` (ანონიმზე IP + ალბომი) და ცხადი
  * შემოწმება, რომ ალბომი **ამ** პროფილისაა და საჯაროა — თორემ საჯარო კარი
@@ -86,11 +92,9 @@ class PublicProfileController extends Controller
         /* ⚠️ **ქვედა ზღვარიც აუცილებელია და არა მარტო ჭერი** (აუდიტი
            2026-09-14, §B4). `Builder::limit()` **უარყოფით** მნიშვნელობას
            ჩუმად უგულებელყოფს, ე.ი. `?per_page=-1` `LIMIT`-ს საერთოდ
-           აშორებდა და ეს endpoint — **ავტორიზაციის გარეშე ერთადერთი
-           დომენური** — მთელ საჯარო ბიბლიოთეკას ერთ პასუხში აბრუნებდა. */
-        $perPage = min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
-
-        $page = $this->profiles->query($user, $domain)->paginate($perPage);
+           აშორებდა და ეს endpoint — **ავტორიზაციის გარეშე** — მთელ საჯარო
+           ბიბლიოთეკას ერთ პასუხში აბრუნებდა. წესი `perPage()`-შია, ერთხელ. */
+        $page = $this->profiles->query($user, $domain)->paginate($this->perPage($request));
 
         /* §6 ფაზა 4 — რომელი ველი დამალა **მფლობელმა** საჯარო ბარათზე.
            ერთხელ ითვლება რექვესთზე და არა თითო ჩანაწერზე. */
@@ -110,7 +114,7 @@ class PublicProfileController extends Controller
     }
 
     /**
-     * **საჯარო გალერეა (Tasks §7.4)** — `GET /public/profiles/{username}/gallery-photos`.
+     * **საჯარო გალერეა (Tasks §7.4 → §32)** — `GET /public/profiles/{username}/gallery-photos`.
      *
      * ⚠️ **ცალკე endpoint-ია და არა `{domain}`-ის კიდევ ერთი მნიშვნელობა**:
      * აქ ჩანაწერის ბარათი კი არა, ფოტოს რიგი ბრუნდება — სხვა ფორმა, ე.ი.
@@ -118,8 +122,101 @@ class PublicProfileController extends Controller
      *
      * ⚠️ **მარშრუტი `{domain}`-ზე ზემოთ უნდა იდგეს**, თორემ „gallery-photos"
      * დომენად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აქვს).
+     *
+     * **§32.1 — ჭრილის ფილტრები.** `owner` ერთი ჯგუფია (`movie:12` ·
+     * `actor:5` · `album:3` — მფლობელის გალერეის იგივე გრამატიკა);
+     * `parent` ირჩევს ხილვადობის წესს (`record` · `actor`), `type`/`from`
+     * მას ერთ დომენზე ჭრის, `album=any` — საჯარო ალბომების ფოტოები.
+     *
+     * ⚠️ **ურთიერთგამომრიცხავი ფილტრი 422-ია და არა ჩუმი არჩევანი**:
+     * `parent=actor&type=movie` ორ სხვადასხვა კითხვას სვამს, და ერთ-ერთის
+     * უხმაუროდ გადაგდება ზუსტად ის „ფილტრი, რომელიც არაფერს აკეთებს"
+     * იქნებოდა, რასაც პროექტი არ ხატავს.
+     *
+     * ⚠️ საჯარო არ მყოფი ჯგუფი (პირადი ფილმი, სხვისი ალბომი) **404-ია** —
+     * „ეს ფილმი არსებობს, უბრალოდ პირადია" თვითონაც ინფორმაციაა.
      */
     public function photos(Request $request, string $username)
+    {
+        $user = $this->galleryOwner($username);
+
+        $owners = implode('|', [...GalleryParent::recordKeys(), 'actor', 'album']);
+
+        $filters = $request->validate([
+            'owner' => ['nullable', 'string', 'regex:/^('.$owners.'):\d+$/', 'prohibits:parent,album,type,from'],
+            'parent' => ['nullable', Rule::in([PublicGallery::RULE_RECORD, PublicGallery::RULE_ACTOR])],
+            // `type` ჩანაწერის წესს ჭრის, `from` — მსახიობისას; სხვა წესთან აზრი არ აქვთ
+            'type' => ['nullable', GalleryParent::recordRule(), 'prohibited_unless:parent,'.PublicGallery::RULE_RECORD],
+            'from' => ['nullable', MediaDomain::rule(), 'prohibited_unless:parent,'.PublicGallery::RULE_ACTOR],
+            'album' => ['nullable', 'in:any', 'prohibits:parent'],
+            'category' => ['nullable', 'in:backdrop,poster,logo,actor'],
+            'sort' => ['nullable', Rule::in(GallerySort::VALUES)],
+            'seed' => ['nullable', 'integer', 'min:0', 'max:999999'],
+        ]);
+
+        $page = $this->gallery->photosPage($user, $filters, $this->perPage($request), $this->page($request));
+        abort_unless($page !== null, 404);
+
+        return response()->json($page);
+    }
+
+    /**
+     * **ჭრილების მთვლელები (Tasks §32.2)** — `GET /public/profiles/{username}/gallery-summary`.
+     *
+     * ⚠️ ცალკე endpoint-ია და არა პროფილის თავის ველი — იხ. `PublicGallery::summary()`.
+     */
+    public function gallerySummary(string $username)
+    {
+        return response()->json($this->gallery->summary($this->galleryOwner($username)));
+    }
+
+    /**
+     * **ჯგუფები (Tasks §32.1)** — `GET /public/profiles/{username}/gallery-groups`.
+     *
+     * `by=record` (ჩანაწერები, `type` — ერთი დომენი) · `by=actor` (`from` —
+     * ვინც ამ დომენის საჯარო ჩანაწერებში თამაშობს, `gender`) · `by=album`.
+     */
+    public function galleryGroups(Request $request, string $username)
+    {
+        $user = $this->galleryOwner($username);
+
+        $data = $request->validate([
+            'by' => ['nullable', 'in:record,actor,album'],
+            'type' => ['nullable', GalleryParent::recordRule()],
+            'from' => ['nullable', MediaDomain::rule()],
+            'gender' => ['nullable', 'in:female,male'],
+            'previews' => ['nullable', 'integer', 'min:0', 'max:'.PublicGallery::MAX_PREVIEWS],
+        ]);
+
+        return response()->json($this->gallery->groups(
+            $user,
+            $data['by'] ?? 'record',
+            $data,
+            (int) ($data['previews'] ?? PublicGallery::DEFAULT_PREVIEWS),
+        ));
+    }
+
+    /**
+     * **ვიდეო-ბმულები (Tasks §32.1)** — `GET /public/profiles/{username}/gallery-videos`.
+     *
+     * ⚠️ ვიდეოს ხილვადობა მისი მშობლისაა (ჩანაწერი ან მსახიობი) — ფოტოს
+     * იგივე მემკვიდრეობა; ცალკე სვეტი არ არსებობს.
+     */
+    public function galleryVideos(Request $request, string $username)
+    {
+        $user = $this->galleryOwner($username);
+
+        return response()->json($this->gallery->videosPage($user, $this->perPage($request), $this->page($request)));
+    }
+
+    /**
+     * პროფილი, რომლის გალერეა საჯაროა — თორემ 404.
+     *
+     * ⚠️ **ერთი ფუნქცია ყველა გალერეის endpoint-ისთვის**: „პროფილი საჯაროა
+     * და გალერეის მოდულიც" ოთხ ადგილას ხელით რომ ეწერა, ერთ მათგანს ერთ
+     * დღეს დაავიწყდებოდა მეორე ფენა.
+     */
+    private function galleryOwner(string $username): User
     {
         $user = $this->profiles->resolve($username);
         abort_unless($user, 404);
@@ -127,10 +224,22 @@ class PublicProfileController extends Controller
         // მოდული საჯარო არაა → გალერეა ამ პროფილისთვის არ არსებობს
         abort_unless(in_array('gallery_album', $this->profiles->domains($user), true), 404);
 
-        // ⚠️ ქვედა ზღვარიც (§B4): `?per_page=-1` `LIMIT`-ს ჩუმად აშორებს
-        $perPage = min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
+        return $user;
+    }
 
-        return response()->json($this->gallery->page($user, $perPage, max(1, (int) $request->integer('page', 1))));
+    /**
+     * ⚠️ **ქვედა ზღვარიც აუცილებელია** (აუდიტი 2026-09-14, §B4):
+     * `?per_page=-1` `LIMIT`-ს ჩუმად აშორებს, ხოლო ეს ავტორიზაციის გარეშე
+     * endpoint-ებია.
+     */
+    private function perPage(Request $request): int
+    {
+        return min(max((int) $request->integer('per_page', PublicProfileService::PER_PAGE), 1), 100);
+    }
+
+    private function page(Request $request): int
+    {
+        return max(1, (int) $request->integer('page', 1));
     }
 
     /**
@@ -150,9 +259,7 @@ class PublicProfileController extends Controller
      */
     public function photoFile(string $username, int $image)
     {
-        $user = $this->profiles->resolve($username);
-        abort_unless($user, 404);
-        abort_unless(in_array('gallery_album', $this->profiles->domains($user), true), 404);
+        $user = $this->galleryOwner($username);
 
         $galleryImage = $this->gallery->visible($user, $image);
         abort_unless($galleryImage, 404);

@@ -824,7 +824,15 @@
     "records": "Records",
     "manage": "Manage",
     "modulesCount": "{{count}} of {{total}} public",
-    "profilePrivateNotice": "While the profile itself is private these switches change nothing — open the profile first."
+    "profilePrivateNotice": "While the profile itself is private these switches change nothing — open the profile first.",
+    "gallery": {
+      "empty": "No public photos here yet.",
+      "emptyLibrary": "This profile has no public record with photos yet.",
+      "emptyAlbums": "No public albums yet.",
+      "emptyVideos": "No public video links yet.",
+      "libraryHint": "A group holds the record’s own photos; its actors are in the “Actors” tab.",
+      "watch": "Watch"
+    }
   },
   "matches": {
     "title": "Matches",

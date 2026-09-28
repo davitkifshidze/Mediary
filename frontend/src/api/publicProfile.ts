@@ -1,5 +1,8 @@
 import { api } from '@/lib/api'
 import type { Status } from '@/api/types'
+import type { GalleryParentKind, GallerySort } from '@/api/gallery'
+import type { StackPreview } from '@/components/ui/photo-stack'
+import type { MediaType } from '@/lib/media'
 
 /* ============================================================
    საჯარო პროფილი (Tasks §16.1).
@@ -318,6 +321,21 @@ export interface PublicOpenPhoto extends PublicGalleryPhotoBase {
   /** ფაქტი სერვერისაა (§17.5) — `PRIVATE_ROOTS`-ის ასლი SPA-ში ერთ დღეს დაშორდებოდა */
   private: boolean
   category: string | null
+  /**
+   * ვისია ფოტო (§32) — **მხოლოდ საჯარო მშობელზე**.
+   *
+   * ⚠️ `null` ნორმაა: საჯარო ალბომში შეიძლება პირადი ფილმის კადრი იდოს და
+   * მისი სათაური ალბომით არ უნდა გაჟონოს. ძველ პასუხს ეს ველი საერთოდ არ აქვს.
+   */
+  owner?: PublicGalleryOwner | null
+}
+
+/** ფოტოს/ვიდეოს მშობელი საჯარო პროფილზე — ჩანაწერი ან მსახიობი (§32) */
+export interface PublicGalleryOwner {
+  kind: GalleryParentKind | 'actor'
+  id: number
+  title: string | null
+  title_ka: string | null
 }
 
 /**
@@ -330,16 +348,161 @@ export interface PublicOpenPhoto extends PublicGalleryPhotoBase {
  */
 export type PublicGalleryPhoto = PublicLockedPhoto | PublicOpenPhoto
 
+export interface PublicGalleryMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+/**
+ * ერთი ალბომის თავი (§32) — მხოლოდ `owner=album:N`-ზე მოდის.
+ *
+ * ⚠️ **ორი ცალკე ფაქტი**: `locked` — პაროლი ადევს, `unlocked` — ამ სესიაში
+ * უკვე გახსნეს. მარტო პირველით გახსნილ ალბომზე „პაროლის შეყვანა" დარჩებოდა.
+ */
+export interface PublicGalleryAlbumMeta {
+  id: number
+  name: string
+  description: string | null
+  locked: boolean
+  unlocked: boolean
+}
+
 export interface PublicGalleryPage {
   data: PublicGalleryPhoto[]
-  meta: { current_page: number; last_page: number; per_page: number; total: number }
+  meta: PublicGalleryMeta
+  album?: PublicGalleryAlbumMeta
+}
+
+/**
+ * **ფოტოების ფილტრი — მფლობელის გალერეის გრამატიკა** (Tasks §32.1).
+ *
+ * `owner` — ერთი ჯგუფი (`movie:12` · `actor:5` · `album:3`); `parent` —
+ * ხილვადობის წესი, `type`/`from` მას ერთ დომენზე ჭრის; `album: 'any'` —
+ * საჯარო ალბომების ფოტოები.
+ *
+ * ⚠️ **ურთიერთგამომრიცხავი კომბინაცია 422-ია** (`type` მხოლოდ
+ * `parent: 'record'`-თან, `from` — `parent: 'actor'`-თან, `owner` — მარტო).
+ */
+export interface PublicGalleryPhotoFilters {
+  owner?: string
+  parent?: 'record' | 'actor'
+  type?: GalleryParentKind
+  from?: MediaType
+  album?: 'any'
+  category?: string
+  sort?: GallerySort
+  seed?: number
 }
 
 export async function fetchPublicGalleryPhotos(
   username: string,
-  page = 1,
+  filters: PublicGalleryPhotoFilters & { page?: number; per_page?: number } = {},
 ): Promise<PublicGalleryPage> {
-  const { data } = await api.get(`/public/profiles/${username}/gallery-photos`, { params: { page } })
+  const { data } = await api.get(`/public/profiles/${encodeURIComponent(username)}/gallery-photos`, {
+    params: filters,
+  })
+  return data
+}
+
+/* ---------- §32 — ჭრილები, ჯგუფები, ვიდეოები ---------- */
+
+/**
+ * ჭრილების მთვლელები — **ერთი გამოძახება**.
+ *
+ * ⚠️ თითო რიცხვი იმავე წყაროდანაა, რასაც მისი ჭრილი ხატავს (`PublicGallery`):
+ * „ბიბლიოთეკა" ჩანაწერების ჯგუფების რაოდენობაა, „ალბომები" — არაცარიელი
+ * საჯარო ალბომებისა.
+ */
+export interface PublicGallerySummary {
+  photos: number
+  records: number
+  actors: number
+  albums: number
+  videos: number
+  /** `{backdrop: 14, poster: 4, actor: 103}` — ნულიანი კატეგორია არ მოდის */
+  categories: Partial<Record<string, number>>
+}
+
+export async function fetchPublicGallerySummary(username: string): Promise<PublicGallerySummary> {
+  const { data } = await api.get(`/public/profiles/${encodeURIComponent(username)}/gallery-summary`)
+  return data
+}
+
+export type PublicGalleryGroupBy = 'record' | 'actor' | 'album'
+
+export interface PublicGalleryGroup {
+  kind: GalleryParentKind | 'actor' | 'album'
+  id: number
+  title: string | null
+  title_ka: string | null
+  /** ალბომის აღწერა */
+  subtitle?: string | null
+  /** ⚠️ `null`, თუ მფლობელმა საჯარო ბარათზე წელი დამალა */
+  year?: number | null
+  photos: number
+  gender?: number | null
+  /** ალბომს პაროლი ადევს */
+  locked?: boolean
+  /** ამ სესიაში უკვე გახსნეს */
+  unlocked?: boolean
+}
+
+export interface PublicGalleryGroups {
+  by: PublicGalleryGroupBy
+  groups: PublicGalleryGroup[]
+  /** ⚠️ ფასეტური — ჭრილი საკუთარ თავს არ ითვლის (§24-ის წესი) */
+  facets?: {
+    types?: Partial<Record<string, number>>
+    gender?: { all: number; female: number; male: number }
+  }
+  /** `kind:id` → ესკიზები; ⚠️ ჩაკეტილ ალბომს ესკიზი არ ახლავს */
+  previews: Record<string, StackPreview[]>
+}
+
+export async function fetchPublicGalleryGroups(
+  username: string,
+  by: PublicGalleryGroupBy,
+  query: { type?: GalleryParentKind; from?: MediaType; gender?: 'female' | 'male'; previews?: number } = {},
+): Promise<PublicGalleryGroups> {
+  const { data } = await api.get(`/public/profiles/${encodeURIComponent(username)}/gallery-groups`, {
+    params: { by, ...query },
+  })
+  return data
+}
+
+/**
+ * **ვიდეო-ბმული — ვიწრო ფორმა.** `source`/`source_url` (სად იპოვა ძებნამ)
+ * განზრახ არ მოდის — `PublicDomain::card()`-ის წესი.
+ */
+export interface PublicGalleryVideo {
+  id: number
+  url: string
+  platform: string | null
+  /** backend-ის allowlist-იდან; ფრონტი ჰოსტს მაინც ხელახლა ამოწმებს (`lib/embed.ts`) */
+  embed_url: string | null
+  title: string | null
+  channel: string | null
+  duration: number | null
+  published_at: string | null
+  /** ⚠️ დაშორებული მისამართი — `storageUrl()` არ სჭირდება */
+  thumbnail_url: string | null
+  owner: PublicGalleryOwner | null
+}
+
+export interface PublicGalleryVideoPage {
+  data: PublicGalleryVideo[]
+  meta: PublicGalleryMeta
+}
+
+export async function fetchPublicGalleryVideos(
+  username: string,
+  page = 1,
+): Promise<PublicGalleryVideoPage> {
+  const { data } = await api.get(`/public/profiles/${encodeURIComponent(username)}/gallery-videos`, {
+    params: { page },
+  })
   return data
 }
 
@@ -350,7 +513,7 @@ export async function fetchPublicGalleryPhotos(
  * სესიაშია** და არა კლიენტის ტოკენში.
  */
 export async function unlockPublicAlbum(username: string, albumId: number, password: string) {
-  const { data } = await api.post(`/public/profiles/${username}/albums/${albumId}/unlock`, {
+  const { data } = await api.post(`/public/profiles/${encodeURIComponent(username)}/albums/${albumId}/unlock`, {
     password,
   })
   return data as { id: number; unlocked: boolean }

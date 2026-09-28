@@ -20,6 +20,7 @@ use App\Support\AlbumLock;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
 use App\Support\GalleryParent;
+use App\Support\GallerySort;
 use App\Support\Like;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
@@ -979,7 +980,7 @@ class GalleryController extends Controller
             'from' => ['nullable', MediaDomain::rule()],
             // §8.3 — წყაროს ჭრილში შესვლა (`tmdb` · `wikimedia` · `serpapi:*`)
             'provider' => ['nullable', 'string', 'max:40'],
-            'sort' => ['nullable', 'in:new,old,random'],
+            'sort' => ['nullable', Rule::in(GallerySort::VALUES)],
             'seed' => ['nullable', 'integer', 'min:0', 'max:999999'],
             /* ⚠️ ჭერი 100-იდან `MAX_PER_PAGE`-ზე ავიდა: „რამდენი გამოჩნდეს"
                არჩევანს („ყველა"-ს ჩათვლით) 100 არ ჰყოფნიდა და lightbox-ის
@@ -1103,34 +1104,13 @@ class GalleryController extends Controller
     /**
      * „არეული / ახალი / ძველი" — ერთი ადგილი, სადაც რიგი წყდება (§8.3).
      *
-     * ⚠️ **sqlite-ს `RAND(seed)` არ აქვს** (ტესტები იქ გადიან), ამიტომ იქ
-     * იგივე მდგრადი არევა არითმეტიკით კეთდება. მთავარია **მდგრადობა**:
-     * გვერდებს შორის რიგი არ უნდა იცვლებოდეს, თორემ მე-2 გვერდი პირველზე
-     * უკვე ნანახ ფოტოებს გამოიტანდა.
+     * ⚠️ **თვითონ რიგი `GallerySort`-შია** (Tasks §32): საჯარო პროფილის
+     * გალერეასაც იგივე სჭირდება, ხოლო სიდიანი არევის ორი ასლი ერთ დღეს
+     * გაშორდებოდა. აქ მხოლოდ მფლობელის ნაგულისხმევი რჩება.
      */
     private function applySort($query, ?string $sort, int $seed): void
     {
-        if ($sort === 'random') {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $query->orderByRaw('RAND(?)', [$seed]);
-
-                return;
-            }
-
-            $query->orderByRaw('(id * ? + ?) % 9973', [($seed % 97) + 3, $seed]);
-
-            return;
-        }
-
-        if ($sort === 'old') {
-            $query->orderBy('id');
-
-            return;
-        }
-
-        if ($sort === 'new') {
-            $query->orderByDesc('id');
-
+        if (GallerySort::apply($query, $sort, $seed)) {
             return;
         }
 

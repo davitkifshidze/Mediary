@@ -15,6 +15,7 @@ import {
   Download,
   FileText,
   Film,
+  Folders,
   Frame,
   Globe,
   Image,
@@ -88,6 +89,11 @@ const CUT_STYLE: Record<string, CutStyle> = {
   record: { icon: Film, color: 'var(--tool-bulk)' },
   actors: { icon: Users, color: 'var(--tool-people)' },
   module: { icon: Boxes, color: 'var(--tool-modules)' },
+  /* ---- გალერეის ჭრილები საჯარო პროფილზე (Tasks §32) ----
+     ⚠️ ხატულას გამომძახებელი `GALLERY_CUTS`-იდან აწვდის — იგივე, რასაც
+     მფლობელის გალერეის ქვე-მენიუ ხატავს; აქ ფერია მთავარი. */
+  albums: { icon: Folders, color: 'var(--gold)' },
+  videos: { icon: Video, color: 'var(--tool-translations)' },
 
   /* ---- მოთხოვნების მდგომარეობა (`RequestsPage`-იდან გადმოვიდა) ----
      ⚠️ ფერი მდგომარეობისაა: რიგი — „ჯერ არ გადაწყვეტილა", დამტკიცებული —
