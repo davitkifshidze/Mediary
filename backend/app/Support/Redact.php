@@ -9,8 +9,8 @@ namespace App\Support;
  * ჩავარდნაზე (timeout, DNS, TLS) Guzzle გამონაკლისს **სრულ URL-ს** უწერს:
  * `cURL error 28: … for https://api.themoviedb.org/3/search/movie?api_key=<გასაღები>&query=…`.
  * მისი `redactUserInfo()` მხოლოდ `user:pass@`-ს ფარავს, query-ს არა — ე.ი.
- * ერთი timeout საერთო (`.env`) გასაღებს ან პასუხის `message`-ში, ან
- * `sources.log`-ში ტოვებდა.
+ * ერთი timeout გასაღებს (მაშინ — საერთოს `.env`-იდან, Tasks §30-იდან —
+ * მომხმარებლის პირადს) ან პასუხის `message`-ში, ან `sources.log`-ში ტოვებდა.
  *
  * ⚠️ **ნიღბვა ერთ ადგილას წერია და არა თითო კლიენტში.** გარე წყარო ცხრაა,
  * გამონაკლისის ტექსტს კი ცხრავე ერთნაირად აწარმოებს — თითო კლიენტში ჩაწერილი

@@ -17,8 +17,9 @@ use Illuminate\Support\Facades\Log;
  *   · Vimeo oEmbed    → სათაური, thumbnail, აღწერა, **ხანგრძლივობა**
  *   · Dailymotion     → სათაური, thumbnail, **ხანგრძლივობა**
  *
- * `YOUTUBE_API_KEY`-ის დამატებისთანავე YouTube-ზეც ჩაირთვება ხანგრძლივობა და ტეგები
- * (Data API v3) — კოდის შეცვლა აღარ სჭირდება.
+ * მომხმარებელი YouTube-ის **საკუთარ** გასაღებს „მონაცემებში" რომ ჩაწერს (Tasks §30 —
+ * `.env`-ის `YOUTUBE_API_KEY` აღარ იკითხება), YouTube-ზეც ჩაირთვება ხანგრძლივობა და
+ * ტეგები (Data API v3) — კოდის შეცვლა არ სჭირდება.
  *
  * ⚠️ PHP cURL-ს Windows-ზე CA bundle არ აქვს → ყველა გამოძახება `verify`-ით მიდის
  * (იხ. CLAUDE.md gotcha).

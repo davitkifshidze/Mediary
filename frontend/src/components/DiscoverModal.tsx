@@ -15,7 +15,9 @@ import { useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
 import { PosterImage } from './PosterImage'
 import { AddCardHover } from './AddCardHover'
+import { CredentialMissingNotice } from './CredentialMissingNotice'
 import { genreName, tmdbSubtitle, tmdbTitle } from '@/lib/display'
+import { errorMessage, isApiCode } from '@/lib/errors'
 import { useContentLang, useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -87,7 +89,15 @@ export function DiscoverModal({
     queryKey: ['discover', type, filters],
     queryFn: () => discover(filters, type),
     enabled: open,
+    // ⚠️ გასაღების არქონა მეორე ცდაზე არ გამოსწორდება — ხელახლა კითხვა ზედმეტია
+    retry: (count, e) => count < 1 && !isApiCode(e, 'credential_missing'),
   })
+
+  /* Tasks §30.6 — **ჩემი TMDB-ის გასაღები არ მაქვს** (409 `credential_missing`).
+     ⚠️ ადრე შეცდომა საერთოდ არ იკითხებოდა: ცარიელი `q.data` „ვერაფერი
+     მოიძებნა"-დ იხატებოდა, ე.ი. გასაღების არქონა და მკვდარი წყარო
+     კატალოგის სიცარიელედ ეჩვენებოდა — ზუსტად ის, რასაც §30.6 კრძალავს. */
+  const noKey = isApiCode(q.error, 'credential_missing')
 
   // ხელახალი წამოღება TMDB-დან (ქეშის გვერდის ავლით)
   const refreshMut = useMutation({
@@ -96,7 +106,7 @@ export function DiscoverModal({
       qc.setQueryData(['discover', type, filters], data)
       toast({ title: t('discover.refreshed'), variant: 'success' })
     },
-    onError: () => toast({ title: t('toast.error'), variant: 'error' }),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   return (
@@ -125,7 +135,7 @@ export function DiscoverModal({
             variant="outline"
             size="icon"
             onClick={() => refreshMut.mutate()}
-            disabled={refreshMut.isPending || q.isLoading}
+            disabled={refreshMut.isPending || q.isLoading || noKey}
             title={t('discover.refresh')}
             aria-label={t('discover.refresh')}
           >
@@ -237,6 +247,11 @@ export function DiscoverModal({
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {q.isLoading ? (
             <div className="py-12 text-center text-muted-foreground">{t('api.loading')}</div>
+          ) : noKey ? (
+            <CredentialMissingNotice provider="tmdb" className="my-6" />
+          ) : q.isError ? (
+            // წყარო არ პასუხობს (`tmdb_error`…) — ესეც „ვერაფერი მოიძებნა" არ არის
+            <div className="py-12 text-center text-destructive">{errorMessage(q.error)}</div>
           ) : !q.data?.results.length ? (
             <div className="py-12 text-center text-muted-foreground">{t('discover.empty')}</div>
           ) : (

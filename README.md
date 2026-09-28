@@ -104,7 +104,9 @@ cd frontend && npm run dev
 php artisan media:redownload --missing
 ```
 
-ორივე შენახულ `tmdb_id`-ებს მიჰყვება. საჭიროა `TMDB_API_KEY` (`.env`-ში ან `/credentials`-ზე).
+ორივე შენახულ `tmdb_id`-ებს მიჰყვება. საჭიროა **ჩანაწერის მფლობელის** TMDB-ის გასაღები
+(`/credentials` — „მონაცემები"): CLI თითო ჩანაწერზე მის მფლობელზე გადაირთვება, ვისაც გასაღები
+არ აქვს, მისი ჩანაწერები ცხადად გამოტოვდება.
 
 ---
 
@@ -123,12 +125,14 @@ php artisan media:redownload --missing
 
 ## კონფიგურაცია
 
-- `backend/.env` — `TMDB_API_KEY` **ცარიელია და შენ უნდა ჩასვა** (Tasks SEC-06: ცოცხალი
-  გასაღები `.env.example`-ში იდგა და ისტორიიდანაც ამოღებულია). უფასო გასაღები:
-  https://www.themoviedb.org/settings/api
-  ⚠️ გასაღებები **per-user-იცაა**: `/credentials` გვერდზე ყოველი ანგარიში თავისას
-  ჩაწერს (TMDB · Gemini · RAWG · IGDB · SerpApi · Serper · YouTube · Telegram), `.env` კი
-  მთელი ინსტალაციის ნაგულისხმევი რჩება.
+- ⚠️ **გარე წყაროების გასაღებები `.env`-ში არ იწერება** (Tasks §30). TMDB · Gemini · RAWG ·
+  IGDB · SerpApi · Serper · YouTube · Telegram — ყოველი ანგარიში თავისას **`/credentials`**
+  გვერდზე („მონაცემები") ჩაწერს; გასაღები დაშიფრულად ინახება (`APP_KEY`-ით), ლიმიტიც და ხარჯიც
+  მისია. ვისაც გასაღები არ აქვს, მისთვის ის წყარო არ მუშაობს და აპი ამას ცხადად ამბობს.
+  `backend/.env`-ში ჩაწერილს აპი **აღარ კითხულობს** — `php artisan mediary:doctor` ამაზე
+  FAIL-ს აბრუნებს. უფასო TMDB-ის გასაღები: https://www.themoviedb.org/settings/api
+- ⚠️ `APP_KEY` ინსტალაციისაა და მანქანებს შორის ბაზასთან **ერთად** გადადის — სხვა `APP_KEY`-ით
+  შენახული გასაღებები ვეღარ გაიშიფრება („მონაცემებში" ეს ცხადად ჩანს).
 - ⚠️ `.env.example` **უსაფრთხო default-ებზეა** (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`
   — Tasks SEC-11); `setup.sh`/`setup.ps1` ლოკალურ ინსტალაციაზე ორივეს ცხადად აბრუნებს,
   რადგან ლოკალურად `http://`-ზე secure-ქუქი საერთოდ არ იგზავნება.

@@ -635,8 +635,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* ---------- წიგნები (module: book) — Tasks §12 ----------
-       გამამდიდრებელი წყარო Open Library-ია: კლავიშს არ ითხოვს, ე.ი. `.env`-ში
-       არაფერი ემატება. ნაკადი TMDB-ის იდენტურია — ჯერ კანდიდატები, მერე დრაფტი. */
+       გამამდიდრებელი წყარო Open Library-ია: გასაღებს არ ითხოვს — არც `.env`-ში,
+       არც „მონაცემებში". ნაკადი TMDB-ის იდენტურია — ჯერ კანდიდატები, მერე დრაფტი. */
     Route::middleware(['module:book', 'permission:book'])->group(function () {
         /* წიგნის ჟანრები — per-user ლექსიკონი */
         Route::get('/book-genres', [BookGenreController::class, 'index']);

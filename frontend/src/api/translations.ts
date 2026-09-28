@@ -23,7 +23,7 @@ export interface TranslationSummary {
    * სამუდამოდ აანთებდა.
    */
   reviewable: number
-  /** `GEMINI_API_KEY` არის თუ არა — უამისოდ მხოლოდ TMDB-ის ტექსტი მოვა */
+  /** შენი Gemini-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა — უამისოდ მხოლოდ TMDB-ის ტექსტი მოვა */
   translator_configured: boolean
   tmdb_configured: boolean
 }

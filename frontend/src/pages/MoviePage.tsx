@@ -35,6 +35,7 @@ import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
 import { genreName, movieSubtitle, movieTitle } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
+import { errorMessage } from '@/lib/errors'
 
 
 /** Tasks §8.1 — ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
@@ -78,7 +79,14 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(Number(id), s), onSuccess: onMutated })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(Number(id)), onSuccess: onMutated })
-  const resyncMut = useMutation({ mutationFn: () => api.resync(Number(id)), onSuccess: onMutated })
+  /* Tasks §30.6 — `onError` აქ არ იყო, ე.ი. გასაღების გარეშე (409
+     `credential_missing`) „სინქრონიზაცია" ჩუმად არაფერს აკეთებდა. ტექსტი
+     წყაროს სახელს ამბობს („TMDB-ის გასაღები არ გაქვს — ჩაწერე „მონაცემებში""). */
+  const resyncMut = useMutation({
+    mutationFn: () => api.resync(Number(id)),
+    onSuccess: onMutated,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
   const delMut = useMutation({
     mutationFn: () => api.remove(Number(id)),
     onSuccess: () => {

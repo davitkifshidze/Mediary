@@ -242,7 +242,7 @@ export interface VideoMetadata {
   author: string | null
   /** საიდან წამოვიდა: oembed | youtube_api | null */
   source: 'oembed' | 'youtube_api' | null
-  /** დაყენებულია თუ არა YOUTUBE_API_KEY (ხანგრძლივობა/ტეგებისთვის) */
+  /** შენი YouTube-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა (ხანგრძლივობა/ტეგებისთვის) */
   youtube_key: boolean
   /**
    * FEAT-17 — ამ ბმულის ჩანაწერი უკვე გაქვს?

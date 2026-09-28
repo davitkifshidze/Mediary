@@ -39,6 +39,8 @@ import { hiddenPicks, missingPicks } from '@/lib/requiredPicks'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { errorMessage, isApiCode } from '@/lib/errors'
+import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 
 /** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
@@ -84,6 +86,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const [lookupInput, setLookupInput] = useState('')
   const [lookupTmdbId, setLookupTmdbId] = useState<number | null>(null)
   const [lookupErr, setLookupErr] = useState<string | null>(null)
+  // Tasks §30.6 — ჩემი TMDB-ის გასაღები არ მაქვს (≠ „ვერ მოიძებნა" და ≠ „წყარო არ პასუხობს")
+  const [lookupNoKey, setLookupNoKey] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
 
   // §6 — რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
@@ -170,16 +174,34 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     if (d.poster) setPreview(d.poster)
   }
 
+  /* Tasks §30.6 — სწრაფი შევსების ჩავარდნა სამი სხვადასხვა ფაქტია და
+     სამნაირად ითქმის: გასაღები არ მაქვს (409 `credential_missing` →
+     „მონაცემების" ბმული), ვერ მოიძებნა (404 `tmdb_not_found`) და წყარო არ
+     პასუხობს (502 `tmdb_error`).
+     ⚠️ **`message` მანქანური კოდია** (GAP-01) — ადრე ის პირდაპირ იწერებოდა
+     ეკრანზე, ე.ი. გასაღების გარეშე ფორმაში ნედლი „credential_missing" ჩანდა.
+     ამიტომ ტექსტი `errorMessage()`-ით ითარგმნება. */
+  const onLookupError = (e: unknown) => {
+    const noKey = isApiCode(e, 'credential_missing')
+    setLookupNoKey(noKey)
+    setLookupErr(
+      noKey
+        ? null
+        : isApiCode(e, 'tmdb_not_found')
+          ? tm('lookupNotFound')
+          : errorMessage(e, tm('lookupNotFound')),
+    )
+  }
+
   const pickMut = useMutation({
     mutationFn: (tmdbId: number) => lookupDraft({ tmdb_id: tmdbId }, type),
     onSuccess: (d) => {
       setCandidates([])
       setLookupErr(null)
+      setLookupNoKey(false)
       fillFromDraft(d)
     },
-    onError: (e: { response?: { data?: { message?: string } } }) => {
-      setLookupErr(e?.response?.data?.message ?? tm('lookupNotFound'))
-    },
+    onError: onLookupError,
   })
 
   const candidatesMut = useMutation({
@@ -195,6 +217,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     },
     onSuccess: (list) => {
       setLookupErr(null)
+      setLookupNoKey(false)
       if (!list.length) {
         setCandidates([])
         setLookupErr(tm('lookupNotFound'))
@@ -207,9 +230,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       }
       setCandidates(list)
     },
-    onError: (e: { response?: { data?: { message?: string } } }) => {
-      setLookupErr(e?.response?.data?.message ?? tm('lookupNotFound'))
-    },
+    onError: onLookupError,
   })
 
   const lookupBusy = candidatesMut.isPending || pickMut.isPending
@@ -293,6 +314,9 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         setRemovePoster(false)
       }
     },
+    /* Tasks §30.6 — `onError` აქ საერთოდ არ იყო, ე.ი. გასაღების გარეშე
+       (409 `credential_missing`) ღილაკი ჩუმად არაფერს აკეთებდა. */
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
   return (
@@ -349,6 +373,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             buttonLabel={t('form.lookupBtn')}
           />
           {lookupErr && <QuickFillMessage tone="error">{lookupErr}</QuickFillMessage>}
+          {lookupNoKey && <CredentialMissingNotice provider="tmdb" />}
 
           {candidates.length > 0 && (
             <QuickFillResults label={tm('lookupPick')}>
