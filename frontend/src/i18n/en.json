@@ -791,6 +791,7 @@
     "nowPrivate": "Record is now private",
     "manageTitle": "Which records are visible",
     "manageHint": "The third layer: pick a module and make its records public or private right here. The record page now only shows a badge.",
+    "playlistRevealsSongs": "A public playlist shows all of its songs — private ones too. The “Songs” tab still lists only songs that are public themselves.",
     "searchPlaceholder": "Search by title…",
     "empty": "No records in this section.",
     "selected": "{{count}} selected",

@@ -29,10 +29,11 @@ use Illuminate\Validation\Rule;
  * (პროფილი → მოდული → ჩანაწერი), ყველა default-ით `private`, და მთელი მექანიზმი
  * ერთი გადამრთველით ითიშება: `PUBLIC_PROFILES=false` (`config/mediary.php`).
  *
- * ⚠️ **რვა მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
+ * ⚠️ **ცხრა მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
  * კომენტარი „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; §32-მა კიდევ
- * სამი დაამატა). შვიდი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
- * ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები და დომენის ბარათები — ხოლო
+ * სამი დაამატა, §33-მა — ფლეილისტის შიგთავსი). რვა GET-ია — პროფილის თავი,
+ * გალერეის შეჯამება, ჯგუფები, ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები,
+ * ფლეილისტის შიგთავსი და დომენის ბარათები — ხოლო
  * `unlockAlbum()` პაროლს ამოწმებს და **სერვერის სესიას ცვლის**. სწორედ
  * ამიტომ აქვს მას `throttle:album-unlock` (ანონიმზე IP + ალბომი) და ცხადი
  * შემოწმება, რომ ალბომი **ამ** პროფილისაა და საჯაროა — თორემ საჯარო კარი
@@ -103,6 +104,57 @@ class PublicProfileController extends Controller
         return response()->json([
             'data' => $page->getCollection()
                 ->map(fn ($record) => PublicDomain::card($domain, $record, $hidden))
+                ->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * **საჯარო ფლეილისტის შიგთავსი (Tasks §33.1)** —
+     * `GET /public/profiles/{username}/playlists/{playlist}`.
+     *
+     * ფლეილისტის ბარათი და მისი სიმღერები, ფლეილისტის რიგით. ⚠️ **პირადი
+     * სიმღერაც ჩანს** (Q24 — მშობლის ხილვადობას იღებს); „სიმღერების" ჩანართი კი
+     * მხოლოდ თავად საჯაროს აჩვენებს — იხ. `PublicProfileService::playlistSongs()`.
+     *
+     * ⚠️ **სიმღერა ვიწრო ბარათით მოდის** (`PublicDomain::card('song')`) და
+     * **მფლობელის** დამალული ველებით — ზუსტად ის, რასაც „სიმღერების" ჩანართი
+     * ხატავს. სიმღერის სრული რესურსი (`play_count`, ტეგები, რჩეული…) აქ
+     * არასდროს გამოდის.
+     *
+     * ⚠️ **მოდელი როუტში არ იბმება** (`unlockAlbum`-ის მიზეზი):
+     * `EnsureRecordOwnership` ანონიმს ვერაფრის მფლობელად ჩათვლის. პირადი,
+     * ურნაში მყოფი ან სხვისი ფლეილისტი **404-ია** — „ასეთი არსებობს" თვითონაც
+     * ინფორმაციაა.
+     *
+     * ⚠️ **გვერდებადაა** და `per_page` ქვემოდანაც იზღუდება (§B4): ფლეილისტში
+     * მთელი ბიბლიოთეკა შეიძლება იდოს, ეს კი ავტორიზაციის გარეშე endpoint-ია.
+     */
+    public function playlist(Request $request, string $username, int $playlist)
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+
+        // `song` მოდული საჯარო არაა → ფლეილისტი ამ პროფილისთვის არ არსებობს
+        abort_unless(in_array('playlist', $this->profiles->domains($user), true), 404);
+
+        $record = $this->profiles->playlist($user, $playlist);
+        abort_unless($record, 404);
+
+        $page = $this->profiles->playlistSongs($user, $record)->paginate($this->perPage($request));
+
+        // `playlist` და `song` ერთ მოდულს ეკუთვნის — ერთი ველების კონფიგი ორივესთვის
+        $hidden = $this->fields->hiddenOnPublic($user, PublicDomain::module('song'));
+
+        return response()->json([
+            'playlist' => PublicDomain::card('playlist', $record, $hidden),
+            'data' => $page->getCollection()
+                ->map(fn ($song) => PublicDomain::card('song', $song, $hidden))
                 ->all(),
             'meta' => [
                 'current_page' => $page->currentPage(),

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Globe, Loader2, Lock, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Globe, Loader2, Lock, Search, TriangleAlert } from 'lucide-react'
 import {
   DOMAIN_MODULE,
   PUBLIC_DOMAINS,
@@ -231,6 +231,17 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
           layout="inline"
         />
       </div>
+
+      {/* Tasks §33.4 (Q24) — **ფლეილისტის გასაჯაროება მის სიმღერებსაც აჩენს**,
+          პირადებსაც (შიგნით სიმღერა მშობლის ხილვადობას იღებს). ⚠️ ტექსტია და
+          არა აიქონი: ის მხოლოდ ამ ჩანართზე ჩნდება (§8-ის პირობითი ტექსტის წესი),
+          წითელია კი იმიტომ, რომ გამოტოვება პირადს ამხელს. */}
+      {domain === 'playlist' && (
+        <p className="mb-3 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+          {t('visibility.playlistRevealsSongs')}
+        </p>
+      )}
 
       {/* ---------- ძებნა + ჭრილი ---------- */}
       <div className="mb-3 flex flex-wrap items-center gap-2">

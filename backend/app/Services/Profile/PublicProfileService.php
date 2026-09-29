@@ -3,10 +3,12 @@
 namespace App\Services\Profile;
 
 use App\Models\Module;
+use App\Models\Playlist;
 use App\Models\User;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -199,9 +201,16 @@ class PublicProfileService
         $q->where($q->getModel()->getTable().'.user_id', $user->id)
             ->where('visibility', 'public');
 
-        // პლეილისტის ბარათი სიმღერების რაოდენობით ცოცხლობს
+        /* პლეილისტის ბარათი სიმღერების რაოდენობით ცოცხლობს.
+
+           ⚠️ **რიცხვი `owner`-ის გარეშე და მფლობელის ცხადი id-ით იზომება**
+           (Tasks §33.3) — ალბომის რიცხვის (§1.2) ზუსტი ტყუპი: `Song`-ის `owner`
+           scope შესულ უცხოს `user_id = <მისი id>`-ით ჭრიდა და ბარათი „0
+           სიმღერას" წერდა, ანონიმს კი — სწორ რიცხვს. ⚠️ რიცხვიც და სიაც
+           (`playlistSongs()`) ერთი განსაზღვრიდან დგება (`ownSongs()`), ე.ი.
+           ბარათზე რაც წერია, შიგნითაც ის არის. */
         if ($domain === 'playlist') {
-            $q->withCount('songs');
+            $q->withCount(['songs' => fn (Builder $songs) => $this->ownSongs($songs, $user)]);
         }
 
         /* ⚠️ **ალბომის რიცხვი ლოკის მიღმა იზომება** (Tasks §7.5): scope-ს
@@ -221,6 +230,55 @@ class PublicProfileService
         }
 
         return $q->orderByDesc('id');
+    }
+
+    /**
+     * ერთი საჯარო ფლეილისტი (Tasks §33.1) — იგივე სამი ფენა, რაც ბარათების
+     * სიას (`query()`), სიმღერების რიცხვიანად. ურნაში მყოფი `null`-ია.
+     */
+    public function playlist(User $user, int $id): ?Playlist
+    {
+        /** @var ?Playlist */
+        return $this->query($user, 'playlist')->find($id);
+    }
+
+    /**
+     * **საჯარო ფლეილისტის სიმღერები, მისივე რიგით (Tasks §33.1).**
+     *
+     * ⚠️ **პირადი სიმღერაც ჩანს** (Q24): ფლეილისტის შიგნით სიმღერა მშობლის
+     * ხილვადობას იღებს — გალერეის ფოტოს იგივე წესი. „სიმღერების" ჩანართი კი
+     * (`query($user, 'song')`) ისევ მხოლოდ თავად საჯაროს აჩვენებს, ე.ი. ერთი
+     * ფლეილისტის გაზიარება მთელ მუსიკალურ ბიბლიოთეკას არ ხსნის.
+     *
+     * ⚠️ **დამთხვევებში (§16.2) ეს სია არ მონაწილეობს**: `MatchService`
+     * `query()`-ს კითხულობს, ე.ი. ფლეილისტით გამჟღავნებული პირადი სიმღერა
+     * „ორივეს გვაქვს"-ში არ ითვლება.
+     *
+     * რიგი `Playlist::songs()`-ისაა (pivot-ის `sort_order`) — ერთი და იგივე
+     * სიმღერა სხვადასხვა ფლეილისტში სხვა ადგილზე დგას.
+     */
+    public function playlistSongs(User $user, Playlist $playlist): BelongsToMany
+    {
+        return $this->ownSongs($playlist->songs(), $user);
+    }
+
+    /**
+     * მფლობელის სიმღერები — **რიცხვისა და სიის ერთი განსაზღვრა**.
+     *
+     * ⚠️ `owner` იხსნება (კლასის docblock-ის ორმხრივი მიზეზი) და მფლობელი
+     * ცხადად იწერება; `trash` კი რჩება — ურნაში გადატანილი სიმღერა არც ჩანს და
+     * არც ითვლება. ⚠️ `songs.user_id` თავდაცვის მეორე ფენაა: pivot-ში სხვისი
+     * სიმღერა `PlaylistController::orderedPivot()`-ის გამო ვერ ხვდება, მაგრამ
+     * ავტორიზაციის გარეშე მდგომი პასუხი ამ დაშვებაზე არ უნდა იდგეს.
+     *
+     * @template T of Builder|BelongsToMany
+     *
+     * @param  T  $songs
+     * @return T
+     */
+    private function ownSongs(Builder|BelongsToMany $songs, User $user): Builder|BelongsToMany
+    {
+        return $songs->withoutGlobalScope('owner')->where('songs.user_id', $user->id);
     }
 
     /**

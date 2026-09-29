@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ExternalLink, Loader2, Lock, MessageSquare, Star, User as UserIcon } from 'lucide-react'
+import { ExternalLink, ListMusic, Loader2, Lock, MessageSquare, Star, User as UserIcon } from 'lucide-react'
 import {
   fetchPublicItems,
   fetchPublicProfile,
@@ -20,6 +20,7 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { MatchPanel } from '@/components/MatchPanel'
 import { PublicGalleryTab } from '@/components/PublicGalleryTab'
+import { PublicPlaylistDialog } from '@/components/PublicPlaylistDialog'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -56,6 +57,8 @@ export function PublicProfilePage() {
   const [items, setItems] = useState<PublicCard[]>([])
   // §16.2 — „ჩანაწერები" vs „დამთხვევები"; მეორე მხოლოდ შესულ სტუმარს აქვს
   const [view, setView] = useState<'records' | 'matches'>('records')
+  // Tasks §33 — გახსნილი ფლეილისტი (მისი შიგთავსი და დაკვრა ფანჯარაშია)
+  const [openPlaylist, setOpenPlaylist] = useState<PublicCard | null>(null)
 
   const profileQuery = useQuery({
     queryKey: ['public-profile', username],
@@ -264,10 +267,26 @@ export function PublicProfilePage() {
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-4 pb-10 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-                {items.map((card) => (
-                  <PublicCardTile key={`${card.domain}-${card.id}`} card={card} lang={lang} />
-                ))}
+                {items.map((card) =>
+                  card.domain === 'playlist' ? (
+                    <PublicPlaylistTile
+                      key={`${card.domain}-${card.id}`}
+                      card={card}
+                      onOpen={() => setOpenPlaylist(card)}
+                    />
+                  ) : (
+                    <PublicCardTile key={`${card.domain}-${card.id}`} card={card} lang={lang} />
+                  ),
+                )}
               </div>
+            )}
+
+            {openPlaylist && (
+              <PublicPlaylistDialog
+                username={profile.profile.username}
+                playlist={openPlaylist}
+                onClose={() => setOpenPlaylist(null)}
+              />
             )}
 
             {hasMore && domain !== 'gallery_album' && (
@@ -289,6 +308,35 @@ export function PublicProfilePage() {
   )
 }
 
+/**
+ * **ფლეილისტის ბარათი იხსნება** (Tasks §33.2) — აქამდე ის მხოლოდ სახელსა და
+ * რიცხვს ხატავდა და არაფერს აკეთებდა. შიგნით: სიმღერები რიგით, დაკვრა და
+ * წყაროს ბმული (`PublicPlaylistDialog`).
+ *
+ * ⚠️ რიცხვი ყველა სტუმარს ერთნაირად ეწერება — შესულ უცხოს აქამდე „0" ჩანდა
+ * (`PublicProfileService::query()`-ის `withCount`, §33.3).
+ */
+function PublicPlaylistTile({ card, onOpen }: { card: PublicCard; onOpen: () => void }) {
+  const { t } = useTranslation()
+  const title = card.title_en || card.title_ka || '—'
+
+  return (
+    <button type="button" onClick={onOpen} className="group block w-full cursor-pointer text-left">
+      <div className="grid aspect-[2/3] w-full place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-primary/50">
+        <div className="px-2 text-center">
+          <ListMusic className="mx-auto size-8 text-muted-foreground transition-colors group-hover:text-primary" />
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t('playlists.songCount', { count: card.songs_count ?? 0 })}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2 truncate text-sm font-medium" title={title}>
+        {title}
+      </p>
+    </button>
+  )
+}
+
 /** ერთი ბარათი — განზრახ მინიმალური: სათაური, ქვესათაური, ქულა */
 function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' }) {
   const title =
@@ -306,9 +354,7 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
         {image ? (
           <img src={image} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
-          <div className="grid size-full place-items-center text-xs text-muted-foreground">
-            {card.songs_count !== undefined ? `${card.songs_count}` : '—'}
-          </div>
+          <div className="grid size-full place-items-center text-xs text-muted-foreground">—</div>
         )}
       </div>
       <div className="mt-2 min-w-0">

@@ -304,6 +304,13 @@ final class PublicDomain
                 'image' => $record->thumbnail_path ?: $record->thumbnail_url,
                 'rating' => $record->rating,
                 'url' => $record->url,
+                /* Tasks §33.2 — საჯარო ფლეილისტი სიმღერას **აქვე** უკრავს.
+                   `embed_url` backend-ის allowlist-ით (`VideoUrl`) ნაშენია და
+                   ნედლი HTML არაა; SPA ჰოსტს ხელახლა ამოწმებს (`lib/embed.ts`).
+                   ⚠️ ბმულიდანაა აგებული, ამიტომ მასთან ერთად იმალება (`DERIVED`). */
+                'platform' => $record->platform,
+                'embed_url' => $record->embed_url,
+                'duration' => $record->duration,
             ],
             'playlist' => [
                 'title_en' => $record->name,
@@ -355,8 +362,25 @@ final class PublicDomain
            მხოლოდ შიგთავსის ველებს ეხება. */
         foreach ($hidden as $key) {
             unset($card[$key]);
+
+            foreach (self::DERIVED[$key] ?? [] as $derived) {
+                unset($card[$derived]);
+            }
         }
 
         return $card;
     }
+
+    /**
+     * **ველი, რომელიც სხვა ველიდან გამოდის, მასთან ერთად იმალება** (Tasks §33).
+     *
+     * ⚠️ `embed_url` ბმულიდანაა აგებული (`VideoUrl`): დამალული `url` რომ
+     * დარჩენოდა, ბმულს ჩაშენების მისამართი ხელახლა გაამხელდა — ე.ი.
+     * მფლობელის გადამრთველი ჩუმად არაფერს იზამდა.
+     *
+     * @var array<string, list<string>>
+     */
+    private const DERIVED = [
+        'url' => ['embed_url'],
+    ];
 }

@@ -84,6 +84,15 @@ export interface PublicCard {
   rating?: number | string | null
   url?: string | null
   songs_count?: number
+  /**
+   * სიმღერის დაკვრა (Tasks §33.2) — `embed_url` backend-ის allowlist-ით ნაშენია,
+   * ფრონტი ჰოსტს მაინც ხელახლა ამოწმებს (`lib/embed.ts`). ⚠️ დამალულ ბმულთან
+   * ერთად ისიც ქრება (`PublicDomain::DERIVED`), ე.ი. ორივე არჩევითია.
+   */
+  platform?: string | null
+  embed_url?: string | null
+  /** წამებში */
+  duration?: number | null
 }
 
 export interface PublicProfile {
@@ -119,6 +128,35 @@ export async function fetchPublicItems(
   const { data } = await api.get(
     `/public/profiles/${encodeURIComponent(username)}/${domain}`,
     { params: { page } },
+  )
+  return data
+}
+
+/* ---------- საჯარო ფლეილისტის შიგთავსი (Tasks §33) ---------- */
+
+/**
+ * ფლეილისტი და მისი სიმღერები, ფლეილისტისავე რიგით.
+ *
+ * ⚠️ **პირადი სიმღერაც აქაა** (Q24 — ფლეილისტის შიგნით სიმღერა მშობლის
+ * ხილვადობას იღებს); „სიმღერების" ჩანართში კი მხოლოდ თავად საჯარო ჩანს.
+ * სიმღერა **ვიწრო ბარათია** — იგივე, რასაც „სიმღერების" ჩანართი ხატავს.
+ */
+export interface PublicPlaylistPage {
+  playlist: PublicCard
+  data: PublicCard[]
+  meta: PublicItems['meta']
+}
+
+/** ⚠️ ავტორიზაციის გარეშეც მუშაობს; პირადი ან სხვისი ფლეილისტი 404-ია */
+export async function fetchPublicPlaylist(
+  username: string,
+  playlistId: number,
+  page = 1,
+  perPage = 100,
+): Promise<PublicPlaylistPage> {
+  const { data } = await api.get(
+    `/public/profiles/${encodeURIComponent(username)}/playlists/${playlistId}`,
+    { params: { page, per_page: perPage } },
   )
   return data
 }
