@@ -893,10 +893,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     <QueueContext.Provider value={api}>
       {children}
 
-      {/* ⚠️ `--player-h` — დამკვრელის ზოლი (§7.2) ქვემოთ დგას; ცვლადი მხოლოდ
-          მაშინ არსებობს, როცა რამე უკრავს, სხვა დროს `bottom-4` რჩება. */}
+      {/* ⚠️ `--player-h` — დამკვრელის ზოლი (§7.2) ქვემოთ დგას, `--player-w` —
+          მისი გვერდითა პანელი მარჯვნივ (§35); ცვლადი მხოლოდ მაშინ არსებობს,
+          როცა რამე უკრავს (და მხოლოდ ერთი — ან ზოლი, ან პანელი), სხვა დროს
+          `bottom-4`/`right-4` რჩება. */}
       {total > 0 && (
-        <div className="fb-toast pointer-events-auto fixed bottom-[calc(1rem+var(--player-h,0px))] right-4 z-[70] w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        <div className="fb-toast pointer-events-auto fixed bottom-[calc(1rem+var(--player-h,0px))] right-[calc(1rem+var(--player-w,0px))] z-[70] w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-lg">
           {/* header — ერთ ხაზზე; მთელი ზოლი ჩაკეცვა/ამოკეცვის ტოგლია */}
           <div className="flex items-center gap-2 pr-2">
             <button

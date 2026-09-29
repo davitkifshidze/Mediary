@@ -175,8 +175,10 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
 
-        {/* Toasts */}
-        <div className="pointer-events-none fixed top-4 right-4 z-[70] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2">
+        {/* Toasts — ⚠️ `--player-w` (Tasks §35): გვერდითა დამკვრელი მარჯვენა
+            კიდეზე დგას და შეტყობინება მას არ უნდა ფარავდეს; პანელის გარეშე
+            ცვლადი არ არის და `right-4` რჩება. */}
+        <div className="pointer-events-none fixed top-4 right-[calc(1rem+var(--player-w,0px))] z-[70] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2">
           {/* ⚠️ **`dismiss` პირდაპირ და არა `() => dismiss(t.id)`** (Tasks BUG-10):
               ისრიანი ფუნქცია პროვაიდერის **ყოველ** რენდერზე ახალია, ე.ი.
               `ToastCard`-ის ეფექტი ტაიმერს თავიდან აწყობდა ყოველ ახალ toast-ზე,

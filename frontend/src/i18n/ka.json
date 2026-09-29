@@ -2779,7 +2779,20 @@
     "playFromHere": "აქედან დაკვრა",
     "openSource": "წყაროზე გახსნა",
     "position": "{{index}} / {{total}}",
-    "noEmbed": "ეს წყარო აპში არ ჩაირთვება — გახსენი ორიგინალზე"
+    "noEmbed": "ეს წყარო აპში არ ჩაირთვება — გახსენი ორიგინალზე",
+    "player": "დამკვრელი",
+    "nowPlaying": "ახლა უკრავს",
+    "paused": "პაუზაზეა",
+    "upNext": "შემდეგი",
+    "itemActions": "მოქმედებები",
+    "moveEarlier": "ერთით წინ",
+    "moveLater": "ერთით უკან",
+    "removeFromQueue": "რიგიდან ამოღება",
+    "toSide": "გვერდითა პანელად გაშლა",
+    "toBar": "ზოლად ჩაკეცვა",
+    "playInPlayer": "დამკვრელში დაკვრა",
+    "playingInPlayer": "ახლა დამკვრელში უკრავს",
+    "resumeInPlayer": "დამკვრელში გაგრძელება"
   },
   "statuses": {
     "titleMovie": "ფილმის სტატუსები",

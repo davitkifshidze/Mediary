@@ -434,8 +434,9 @@ export function RolePage() {
         )}
       </section>
 
-      {/* ---------- შენახვა ---------- */}
-      <div className="sticky bottom-4 z-30 mt-6">
+      {/* ---------- შენახვა ----------
+          ⚠️ `--player-h` — ქვედა დამკვრელი ამ ზოლს ფარავდა (Tasks §35.4) */}
+      <div className="sticky bottom-[calc(1rem+var(--player-h,0px))] z-30 mt-6">
         <div
           className={cn(
             'flex flex-wrap items-center gap-3 rounded-xl border bg-card/95 px-4 py-3 shadow-lg backdrop-blur',

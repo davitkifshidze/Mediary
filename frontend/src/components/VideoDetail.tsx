@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Download, FileText, Play, Plus, Trash2, Tv, Upload } from 'lucide-react'
+import { AudioLines, CalendarDays, Download, FileText, Play, Plus, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoFile,
@@ -17,7 +17,9 @@ import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
 import { useDateFormat } from '@/lib/dates'
+import { isAllowedEmbed } from '@/lib/embed'
 import { errorMessage } from '@/lib/errors'
+import { usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -33,6 +35,13 @@ import { useToast } from '@/components/ui/feedback'
    ⚠️ Tasks §26.4 — ჩანართების რიგი ყველა დეტალის ფანჯრის რიგს მიჰყვება
    (ფოტოები ზემოთ, მერე … დოკუმენტები, ჩანიშვნები); ჩანართები თვითონ რჩება —
    ეს შენი გადაწყვეტილებაა (ბარათები შიგთავსს ეკრანის ქვემოთ ჩაწევდა).
+
+   ⚠️ **Tasks §35.6 — საკუთარი ჩაშენება აღარ აქვს.** აქ `VideoEmbed` იდგა და
+   გლობალურ დამკვრელთან ერთად **ორივე ჟღერდა**. ახლა ვიდეოს ჩანართში ესკიზია
+   და „დამკვრელში დაკვრა": ვიდეო რიგს გადაეცემა (გვერდი წყვეტს, რომელ
+   რიგს — `onPlay`) და ფანჯარა **იხურება**, რადგან მოდალი დამკვრელს ფარავს
+   (`lib/layers.ts`) — ღია ფანჯრის ქვეშ ვიდეო არ ჩანდა. „ნანახად" ჩათვლა
+   ახლა დამკვრელშია (ჩართვაზე) და არა ფანჯრის გახსნაზე: გახსნა ყურება არაა.
    ============================================================ */
 
 type Tab = 'video' | 'images' | 'notes' | 'docs'
@@ -48,11 +57,17 @@ export function VideoDetail({
   video,
   onClose,
   onOpen,
+  onPlay,
 }: {
   video: Video
   onClose: () => void
   /** „მსგავს ვიდეოზე" გადასვლა (K4) — მშობელი წყვეტს, რას აკეთებს */
   onOpen?: (video: Video) => void
+  /**
+   * დამკვრელისთვის გადაცემა (§35.6) — გვერდი წყვეტს რიგს: სიაში მყოფი
+   * ვიდეო **გაფილტრულ სიას** აქედან უშვებს, სიის გარეთა — მარტო საკუთარ თავს.
+   */
+  onPlay: (video: Video) => void
 }) {
   const { t } = useTranslation()
   const { date } = useDateFormat()
@@ -129,7 +144,14 @@ export function VideoDetail({
       <div className="mt-4">
         {tab === 'video' && (
           <>
-            <VideoEmbed video={video} />
+            <PlayInPlayer
+              video={video}
+              onPlay={() => {
+                onPlay(video)
+                onClose()
+              }}
+              onShow={onClose}
+            />
             {/* Q52 — ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
             {(video.channel || video.published_at) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -257,6 +279,59 @@ export function VideoDetail({
       {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
       {viewer.node}
     </ModalShell>
+  )
+}
+
+/* ---------- დამკვრელში დაკვრა (§35.6) ---------- */
+
+/**
+ * ესკიზი დიდი „დაკვრით" — ვიდეო გლობალურ დამკვრელს გადაეცემა.
+ *
+ * ⚠️ **ეს ვიდეო თუ უკვე დამკვრელშია**, თავიდან არ ირთვება (რიგიც არ
+ * იცვლება): ღილაკი ამბობს „ახლა დამკვრელში უკრავს" და დაჭერაზე ფანჯარას
+ * ხურავს — პაუზაზე თუ იყო, აგრძელებს.
+ *
+ * ⚠️ ჩაუშენებელი წყარო (`platform = other`) ძველებურად ბმულია —
+ * `VideoEmbed`-ის მესამე შტო ფრეიმს არ ხატავს, ე.ი. მეორე ხმა არ ჩნდება.
+ */
+function PlayInPlayer({ video, onPlay, onShow }: { video: Video; onPlay: () => void; onShow: () => void }) {
+  const { t } = useTranslation()
+  const player = usePlayer()
+
+  if (video.platform !== 'file' && !isAllowedEmbed(video.embed_url)) return <VideoEmbed video={video} />
+
+  const thumb = storageUrl(video.thumbnail)
+  const here = player.current?.kind === 'video' && player.current.id === video.id
+  const label = here
+    ? t(player.playing ? 'playback.playingInPlayer' : 'playback.resumeInPlayer')
+    : t('playback.playInPlayer')
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!here) return onPlay()
+        if (!player.playing) player.toggle()
+        onShow()
+      }}
+      className="group relative block aspect-video w-full cursor-pointer overflow-hidden rounded-lg bg-black"
+    >
+      {thumb && (
+        <img
+          src={thumb}
+          alt=""
+          className="size-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
+        />
+      )}
+      <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 text-white">
+        {here && player.playing ? (
+          <AudioLines className="size-12 drop-shadow" />
+        ) : (
+          <Play className="size-12 fill-current drop-shadow" />
+        )}
+        <span className="rounded-md bg-black/60 px-3 py-1.5 text-sm font-medium">{label}</span>
+      </span>
+    </button>
   )
 }
 

@@ -1,20 +1,38 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { markSongPlayed, type Song } from '@/api/songs'
 import { markVideoWatched, type Video, type VideoPlatform } from '@/api/videos'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { EmbedEvent } from '@/lib/embed'
+import { removeEntry, reorderEntries } from '@/lib/playerQueue'
+import { safeGet, safeSet } from '@/lib/storage'
 
 /* ============================================================
-   ერთიანი დამკვრელი — მუსიკაც და ვიდეოც (Tasks §7.2).
+   ერთიანი დამკვრელი — მუსიკაც და ვიდეოც (Tasks §7.2 → §35).
 
    ⚠️ **რატომ არის გლობალური.** ამოცანის არსი „პლეილისტში ერთი დამთავრდება →
    შემდეგი ჩაირთოს"-ია, ე.ი. დაკვრა გვერდის გადართვას უნდა გადაურჩეს.
    მოდალში მჯდომი პლეერი (ძველი `SongPlayer`) ამას ვერ შეძლებდა — ამიტომ
-   მდგომარეობა `AppShell`-ის დონეზეა და სცენა ეკრანის ქვედა ზოლშია.
+   მდგომარეობა `AppShell`-ის დონეზეა, სცენა კი `components/Player.tsx`-შია.
 
    ⚠️ **ერთი წყარო უკრავს.** ორი ერთდროული embed ერთმანეთს ხმას აფარებს,
-   ამიტომ `VideoDetail`/სიმღერის მოდალი დაკვრას აღარ შეიცავს — ისინი
-   ჩანაწერს ამ რიგში აგდებენ.
+   ამიტომ `VideoDetail`-ს საკუთარი ჩაშენება აღარ აქვს (§35.6) — ის ჩანაწერს
+   ამ რიგს გადასცემს.
+
+   §35 — **ორი განლაგება, ერთი სცენა.** ფართო ეკრანზე დამკვრელი მარჯვენა
+   პანელია (ზემოთ ვიდეო 16:9, ქვემოთ რიგი — YouTube-ის ფლეილისტივით) და
+   გვერდს **აწვება** (`--player-w`); ვიწრო ეკრანზე და ჩაკეცილზე — ქვედა ზოლი
+   (`--player-h`). განლაგებას აქ ვითვლით და მხოლოდ CSS იცვლება — იხ.
+   `components/Player.tsx`.
    ============================================================ */
 
 export interface PlayerItem {
@@ -38,22 +56,81 @@ export interface PlayerItem {
   duration: number | null
 }
 
+/**
+ * რიგის ერთეული — `uid` **რიგში ჩასმისას** იბადება.
+ * ⚠️ `kind-id` გასაღებად არ კმარა: ერთი ჩანაწერი რიგში ორჯერაც შეიძლება
+ * იყოს, მიმდინარე კი `uid`-ით იცნობა (იხ. `lib/playerQueue.ts`).
+ */
+export interface QueueEntry extends PlayerItem {
+  uid: number
+}
+
+/** სად დგას დამკვრელი: მარჯვენა პანელად თუ ქვედა ზოლად */
+export type PlayerLayout = 'side' | 'bar'
+
+/**
+ * საიდან ჩნდება გვერდითა პანელი (px).
+ *
+ * ⚠️ **ზღვარი დათვლილია და არა შერჩეული** (Q26): პანელი გვერდს აწვება, ე.ი.
+ * შევიწროებული გვერდი არ უნდა იყოს იმაზე ვიწრო, ვიდრე დღევანდელი ყველაზე
+ * ვიწრო `xl`-განლაგებაა — 1280px ეკრანი, სადაც ბადეები უკვე 6/3/5 სვეტზეა
+ * და ფილტრის პანელიც დგას. ⚠️ ბადეები **ეკრანის** სიგანეს კითხულობენ და არა
+ * საკუთარს, ე.ი. პანელით შევიწროებულ გვერდზე სვეტების რიცხვი თავისით არ
+ * იკლებს — ზღვარი სწორედ ამიტომაა მაღალი: 1280 + პანელის უმცირესი სიგანე
+ * (24rem = 384px) = **1664px**. ზემოთ გვერდი ≥ 1040px რჩება (1280-ის ტოლი).
+ */
+export const PANEL_MIN_VIEWPORT = 1664
+
+/**
+ * პანელის სიგანე — `--player-w`-ის მნიშვნელობა; `<main>`-ის `padding`-იც ამას
+ * კითხულობს, ე.ი. ორი სიგანე ვერასდროს დაშორდება ერთმანეთს.
+ * ⚠️ `22vw` 1745px-მდე 24rem-ზე ნაკლებია — იქ ქვედა ზღვარი მოქმედებს და
+ * ზემოთა გამოთვლა ზუსტია; ფართო ეკრანზე ვიდეო იზრდება (30rem-მდე).
+ */
+export const PANEL_WIDTH = 'clamp(24rem, 22vw, 30rem)'
+
+/** ქვედა ზოლის სიმაღლე — `--player-h` (ჩვეულებრივი · გადიდებული სცენით) */
+const BAR_HEIGHT = { compact: '5.5rem', expanded: '11rem' } as const
+
+/**
+ * ფართო ეკრანზე მომხმარებლის არჩევანი — პანელი თუ ზოლი (Q26: „ახსოვს").
+ * ⚠️ `localStorage` და არა `users.settings`: ეს **მოწყობილობის** განლაგებაა
+ * (ლეპტოპზე ზოლი, დიდ ეკრანზე პანელი), და იქ შენახვა პარამეტრების
+ * გვერდის „შესანახ" ზოლს აანთებდა.
+ */
+const DOCK_KEY = 'player.dock'
+
+let nextUid = 1
+
 interface PlayerApi {
-  queue: PlayerItem[]
+  queue: QueueEntry[]
+  /** მიმდინარის ადგილი რიგში (`-1` — არაფერი უკრავს) */
   index: number
-  current: PlayerItem | null
+  current: QueueEntry | null
   /** ჩვენი რწმენა — სცენიდან მოსული მოვლენებით სწორდება */
   playing: boolean
+  /** ქვედა ზოლის დიდი სცენა (ვიწრო ეკრანზე) */
   expanded: boolean
-  /** რიგის სახელი ბარისთვის („პლეილისტი X", „სიმღერები") */
+  /** რიგის სახელი („პლეილისტი X", „სიმღერები") */
   source: string | null
+  /** სად დგას ახლა (`null` — არაფერი უკრავს) */
+  layout: PlayerLayout | null
+  /** ეკრანი საკმარისად ფართოა პანელისთვის */
+  wide: boolean
+  /** ფართო ეკრანზე არჩეული განლაგება */
+  dock: PlayerLayout
   play: (items: PlayerItem[], startAt?: number, source?: string | null) => void
   toggle: () => void
   next: () => void
   prev: () => void
   jumpTo: (index: number) => void
+  /** რიგიდან ამოღება; მიმდინარეს ადგილს შემდეგი იკავებს */
+  remove: (uid: number) => void
+  /** მთელი რიგი ახალი თანმიმდევრობით (`useDragReorder`) */
+  reorder: (uids: number[]) => void
   close: () => void
   setExpanded: (value: boolean) => void
+  setDock: (value: PlayerLayout) => void
   /** სცენის ანგარიში (`ended` → შემდეგზე გადასვლა) */
   report: (event: EmbedEvent) => void
 }
@@ -97,16 +174,18 @@ export function videoItem(video: Video, subtitle: string | null = null): PlayerI
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient()
 
-  const [queue, setQueue] = useState<PlayerItem[]>([])
-  const [index, setIndex] = useState(0)
+  const [queue, setQueue] = useState<QueueEntry[]>([])
+  const [currentUid, setCurrentUid] = useState<number | null>(null)
   const [playing, setPlaying] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [source, setSource] = useState<string | null>(null)
+  const [dock, setDockState] = useState<PlayerLayout>(() => (safeGet(DOCK_KEY) === 'bar' ? 'bar' : 'side'))
+  const wide = useMediaQuery(`(min-width: ${PANEL_MIN_VIEWPORT}px)`)
 
   /**
    * მრიცხველი, რომელიც **ყოველ ჩართვაზე** იზრდება.
    * ⚠️ საჭიროა იმიტომ, რომ „ჩართული ჩანაწერი" და „ჩართვის ფაქტი" სხვადასხვაა:
-   * ერთი და იმავე სიმღერის ხელახლა ჩართვა `index`-ს არ ცვლის, დათვლა კი უნდა.
+   * ერთი და იმავე სიმღერის ხელახლა ჩართვა მიმდინარეს არ ცვლის, დათვლა კი უნდა.
    */
   const [seq, setSeq] = useState(0)
 
@@ -116,10 +195,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
    */
   const endedSeq = useRef(-1)
 
-  const current = queue[index] ?? null
+  const index = useMemo(() => queue.findIndex((entry) => entry.uid === currentUid), [queue, currentUid])
+  const current = index >= 0 ? queue[index] : null
+  const layout: PlayerLayout | null = current ? (wide && dock === 'side' ? 'side' : 'bar') : null
 
-  const start = useCallback((at: number) => {
-    setIndex(at)
+  const start = useCallback((uid: number) => {
+    setCurrentUid(uid)
     setPlaying(true)
     setSeq((n) => n + 1)
   }, [])
@@ -127,45 +208,83 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const play = useCallback(
     (items: PlayerItem[], startAt = 0, label: string | null = null) => {
       if (!items.length) return
-      setQueue(items)
+      const entries = items.map((item) => ({ ...item, uid: nextUid++ }))
+      setQueue(entries)
       setSource(label)
-      start(Math.min(Math.max(startAt, 0), items.length - 1))
+      start(entries[Math.min(Math.max(startAt, 0), entries.length - 1)].uid)
     },
     [start],
   )
 
   const jumpTo = useCallback(
     (to: number) => {
-      if (to < 0 || to >= queue.length) return
-      start(to)
+      const entry = queue[to]
+      if (entry) start(entry.uid)
     },
-    [queue.length, start],
+    [queue, start],
   )
 
   /**
-   * ⚠️ `setIndex(i => …)`-ის შიგნით `setPlaying`/`setSeq` განზრახ **არ იწერება**:
+   * ⚠️ state-ის updater-ის შიგნით `setPlaying`/`setSeq` განზრახ **არ იწერება**:
    * updater სუფთა უნდა იყოს და StrictMode მას ორჯერ იძახებს, ე.ი. მრიცხველი
-   * ორჯერ გაიზრდებოდა. ამიტომ მიმდინარე `index` პირდაპირ იკითხება.
+   * ორჯერ გაიზრდებოდა. ამიტომ მიმდინარე ადგილი პირდაპირ იკითხება.
    */
   const next = useCallback(() => {
-    // რიგის ბოლო — ვჩერდებით, ბარი ღია რჩება (თავიდან ჩართვა ერთ დაწკაპუნებაშია)
-    if (index + 1 >= queue.length) {
+    // რიგის ბოლო — ვჩერდებით, დამკვრელი ღია რჩება (თავიდან ჩართვა ერთ დაწკაპუნებაშია)
+    const entry = index >= 0 ? queue[index + 1] : undefined
+    if (!entry) {
       setPlaying(false)
       return
     }
-    start(index + 1)
-  }, [index, queue.length, start])
+    start(entry.uid)
+  }, [index, queue, start])
 
   const prev = useCallback(() => {
-    if (index > 0) start(index - 1)
-  }, [index, start])
+    const entry = index > 0 ? queue[index - 1] : undefined
+    if (entry) start(entry.uid)
+  }, [index, queue, start])
 
   const close = useCallback(() => {
     setQueue([])
-    setIndex(0)
+    setCurrentUid(null)
     setPlaying(false)
     setExpanded(false)
     setSource(null)
+  }, [])
+
+  const remove = useCallback(
+    (uid: number) => {
+      const out = removeEntry(queue, uid, currentUid)
+      if (out.queue === queue) return
+      if (!out.queue.length) {
+        close()
+        return
+      }
+
+      setQueue(out.queue)
+      if (out.restart && out.current !== null) start(out.current)
+      else if (out.current !== currentUid) {
+        /* ⚠️ ბოლო უკრავდა და ის ამოიღეს — რიგი დამთავრდა: წინაზე ვდგებით
+           **პაუზაზე**. სცენა ახალ ფრეიმს `playing = false`-ით ქმნის, ე.ი.
+           ავტოდაკვრის გარეშე (`PlayerStage`) — უკვე მოსმენილი თავიდან არ იწყება. */
+        setCurrentUid(out.current)
+        setPlaying(false)
+      }
+    },
+    [queue, currentUid, close, start],
+  )
+
+  const reorder = useCallback(
+    (uids: number[]) => {
+      const ordered = reorderEntries(queue, uids)
+      if (ordered) setQueue(ordered)
+    },
+    [queue],
+  )
+
+  const setDock = useCallback((value: PlayerLayout) => {
+    setDockState(value)
+    safeSet(DOCK_KEY, value)
   }, [])
 
   const toggle = useCallback(() => setPlaying((v) => !v), [])
@@ -200,19 +319,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seq])
 
-  /* ---------- ბარის სიმაღლე გვერდისთვის ----------
-     ⚠️ `--player-h` **ერთადერთი** გზაა, რომლითაც დანარჩენი გვერდი გებულობს,
-     რომ ქვემოთ ზოლი დგას: `AppShell` მას ქვედა padding-ად კითხულობს, რიგის
-     ტოსტი კი საკუთარ `bottom`-ს ამით ზრდის. კომპონენტების პირდაპირი ცოდნა
-     ერთმანეთზე აქ სულ ორ მიმართულებას გააჩენდა. */
-  useEffect(() => {
-    const root = document.documentElement
-    if (!current) root.style.removeProperty('--player-h')
-    else root.style.setProperty('--player-h', expanded ? '11rem' : '5.5rem')
+  /* ---------- დამკვრელის ადგილი გვერდისთვის ----------
+     ⚠️ `--player-w` / `--player-h` **ერთადერთი** გზაა, რომლითაც დანარჩენი გვერდი
+     გებულობს, სად დგას დამკვრელი: `<main>` და ჰედერი მარჯვენა `padding`-ად
+     კითხულობენ (პანელი გვერდს აწვება და არაფერს ფარავს — Q26), ტოსტები
+     საკუთარ `right`/`bottom`-ს ამით წევენ. ორივე ერთდროულად არასდროს დგას.
+     ⚠️ `useLayoutEffect` და არა `useEffect`: პანელის სიგანეც ამ ცვლადიდანაა,
+     ე.ი. დახატვის შემდეგ რომ ჩაწერილიყო, ერთი კადრი ნულოვანი სიგანით გამოჩნდებოდა. */
+  useLayoutEffect(() => {
+    const style = document.documentElement.style
+    style.removeProperty('--player-w')
+    style.removeProperty('--player-h')
+    if (layout === 'side') style.setProperty('--player-w', PANEL_WIDTH)
+    if (layout === 'bar') style.setProperty('--player-h', expanded ? BAR_HEIGHT.expanded : BAR_HEIGHT.compact)
+
     return () => {
-      root.style.removeProperty('--player-h')
+      style.removeProperty('--player-w')
+      style.removeProperty('--player-h')
     }
-  }, [current, expanded])
+  }, [layout, expanded])
 
   const value = useMemo<PlayerApi>(
     () => ({
@@ -222,13 +347,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playing,
       expanded,
       source,
+      layout,
+      wide,
+      dock,
       play,
       toggle,
       next,
       prev,
       jumpTo,
+      remove,
+      reorder,
       close,
       setExpanded,
+      setDock,
       report,
     }),
     [
@@ -238,12 +369,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playing,
       expanded,
       source,
+      layout,
+      wide,
+      dock,
       play,
       toggle,
       next,
       prev,
       jumpTo,
+      remove,
+      reorder,
       close,
+      setDock,
       report,
     ],
   )

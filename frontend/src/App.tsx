@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
-import { PlayerBar } from '@/components/PlayerBar'
+import { Player } from '@/components/Player'
 import { DICTIONARIES } from '@/lib/dictionaries'
 import { useAuth } from '@/lib/auth'
 import { useVisitTracker } from '@/lib/audit'
@@ -197,9 +197,12 @@ function AppShell() {
       <Header onMenu={() => setDrawerOpen(true)} />
       <div className="flex flex-1 flex-col lg:flex-row">
         <Sidebar drawerOpen={drawerOpen} onDrawerChange={setDrawerOpen} />
-        {/* §7.2 — ქვედა ზოლი გვერდს არ უნდა ფარავდეს; სიმაღლეს თვითონ
-            დამკვრელი წერს `--player-h`-ში (დახურულზე ცვლადი საერთოდ არ არის) */}
-        <main className="min-w-0 flex-1 pb-[var(--player-h,0px)]">
+        {/* §7.2/§35 — დამკვრელი გვერდს არ უნდა ფარავდეს: ქვედა ზოლის სიმაღლეს
+            (`--player-h`) და გვერდითა პანელის სიგანეს (`--player-w`) თვითონ
+            დამკვრელი წერს; დახურულზე ცვლადები საერთოდ არ არის. ⚠️ `padding`
+            და არა `margin`: ფონი ბოლომდე უნდა ჩანდეს, შიგთავსი კი პანელის
+            მარცხნივ ცენტრდებოდეს — ზუსტად ისე, როგორც ჰედერის ძებნა (Q26). */}
+        <main className="min-w-0 flex-1 pb-[var(--player-h,0px)] pr-[var(--player-w,0px)]">
         {/* ⚠️ ზღვარი `Suspense`-ზე **გარეთაა**: ჩანქის ჩატვირთვის ჩავარდნას
             `lazy()` რენდერის დროს აგდებს, ე.ი. შიგნიდან ვერ დაიჭირებოდა.
             `resetKey` მისამართია — სხვა სექციაზე გადასვლა ეკრანს ასუფთავებს. */}
@@ -342,9 +345,10 @@ function AppShell() {
         </ErrorBoundary>
         </main>
       </div>
-      {/* §7.2 — ერთი დამკვრელი მთელ აპზე. მარშრუტების **გარეთაა**: გვერდის
-          შეცვლა დაკვრას არ წყვეტს, ე.ი. პლეილისტი ბოლომდე ჟღერს. */}
-      <PlayerBar />
+      {/* §7.2/§35 — ერთი დამკვრელი მთელ აპზე (გვერდითა პანელი ან ქვედა ზოლი).
+          მარშრუტების **გარეთაა**: გვერდის შეცვლა დაკვრას არ წყვეტს, ე.ი.
+          პლეილისტი ბოლომდე ჟღერს. */}
+      <Player />
     </div>
   )
 }

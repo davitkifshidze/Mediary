@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ExternalLink } from 'lucide-react'
 import {
   embedCommand,
   embedEventFrom,
   embedHandshake,
+  isAllowedEmbed,
   playableEmbedSrc,
   type EmbedEvent,
 } from '@/lib/embed'
@@ -23,6 +24,15 @@ import { cn } from '@/lib/utils'
 
    ⚠️ **ნედლი HTML აქ არ შემოდის** — `src` მხოლოდ `playableEmbedSrc`-იდან
    მოდის, ე.ი. backend-ის allowlist-ზე გავლილი ბმულია.
+
+   ⚠️ **ავტოდაკვრა ფრეიმის დაბადების მომენტის `playing`-ს მიჰყვება** (§35):
+   ჩვეულებრივ ჩართვაზე ის ყოველთვის `true`-ა, ე.ი. არაფერი იცვლება; `false`
+   მხოლოდ მაშინაა, როცა რიგიდან ბოლო მიმდინარე ამოიღეს და სცენა წინაზე
+   პაუზით დგება — იქ უკვე მოსმენილი თავისით თავიდან არ უნდა დაიწყოს.
+
+   ⚠️ **ზომას მშობელი წყვეტს და მხოლოდ `className`-ით** (§35.3): დამკვრელი
+   გვერდითა პანელიდან ქვედა ზოლზე ისე გადადის, რომ ეს კომპონენტი ხეში
+   ადგილს არ იცვლის — სხვა კონტეინერში გადატანა ფრეიმს თავიდან შექმნიდა.
    ============================================================ */
 
 export function PlayerStage({
@@ -51,13 +61,11 @@ export function PlayerStage({
     )
   }
 
-  const src = playableEmbedSrc(item.embedUrl, item.platform)
-  if (src) {
+  if (isAllowedEmbed(item.embedUrl)) {
     return (
       <FrameStage
         key={`${item.kind}-${item.id}`}
         item={item}
-        src={src}
         playing={playing}
         onEvent={onEvent}
         className={className}
@@ -114,6 +122,8 @@ function FileStage({
 }) {
   const ref = useRef<HTMLVideoElement>(null)
   const report = useLatest(onEvent)
+  // ⚠️ დაბადების მომენტის `playing` — იხ. ფაილის თავი (§35)
+  const [autoPlay] = useState(playing)
 
   // ჩვენი „ვუკრავ/პაუზა" ელემენტზე გადააქვს; ჩავარდნა (ავტოდაკვრის აკრძალვა)
   // პაუზად ითვლება — ბარი მაშინ სიმართლეს აჩვენებს და არა „ვუკრავ"-ს.
@@ -130,7 +140,7 @@ function FileStage({
       ref={ref}
       src={item.url}
       controls
-      autoPlay
+      autoPlay={autoPlay}
       className={cn('rounded-lg bg-black', className)}
       onPlay={() => onEvent('playing')}
       onPause={() => onEvent('paused')}
@@ -149,19 +159,22 @@ const HANDSHAKE_STEP = 600
 
 function FrameStage({
   item,
-  src,
   playing,
   onEvent,
   className,
 }: {
   item: PlayerItem
-  src: string
   playing: boolean
   onEvent: (event: EmbedEvent) => void
   className?: string
 }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const report = useLatest(onEvent)
+  /* ⚠️ `src` **ერთხელ** ითვლება — ფრეიმის დაბადებისას. `playing`-ის
+     შემდგომ ცვლილებას ბრძანება ატარებს (ქვემოთ); `src`-ის შეცვლა ფრეიმს
+     თავიდან ჩატვირთავდა და დაკვრა თავიდან დაიწყებოდა. PlayerStage ჰოსტს
+     უკვე შეამოწმა, ე.ი. `null` აქ ვერ მოვა — `?? ''` მხოლოდ ტიპისთვისაა. */
+  const [src] = useState(() => playableEmbedSrc(item.embedUrl, item.platform, playing) ?? '')
   const origin = new URL(src).origin
 
   /* ---------- მოვლენების მოსმენა ----------

@@ -2779,7 +2779,20 @@
     "playFromHere": "Play from here",
     "openSource": "Open the source",
     "position": "{{index}} / {{total}}",
-    "noEmbed": "This source cannot play inside the app — open the original"
+    "noEmbed": "This source cannot play inside the app — open the original",
+    "player": "Player",
+    "nowPlaying": "Now playing",
+    "paused": "Paused",
+    "upNext": "Up next",
+    "itemActions": "Actions",
+    "moveEarlier": "Move up",
+    "moveLater": "Move down",
+    "removeFromQueue": "Remove from queue",
+    "toSide": "Open as a side panel",
+    "toBar": "Collapse to a bar",
+    "playInPlayer": "Play in the player",
+    "playingInPlayer": "Playing in the player now",
+    "resumeInPlayer": "Resume in the player"
   },
   "statuses": {
     "titleMovie": "Movie statuses",

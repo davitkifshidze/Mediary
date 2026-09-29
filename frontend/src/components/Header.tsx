@@ -57,7 +57,14 @@ export function Header({ onMenu }: { onMenu: () => void }) {
     'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card/80 backdrop-blur">
+    /* ⚠️ Tasks §35 — მარჯვენა padding `--player-w`-ით: გვერდითა დამკვრელი გვერდს აწვება
+       და `<main>` იმავე ცვლადს კითხულობს. ჰედერს რომ არ ჰქონოდა, შუა ბლოკი
+       მთელ სიგანეზე დაცენტრდებოდა და ძებნა გვერდის სათაურს პანელის ნახევარი
+       სიგანით დაშორდებოდა — სწორედ ის, რასაც ქვემოთა ჩანაწერი იცავს.
+       მოქმედებები აბსოლუტურია (`right-0`, padding-ის ყუთის კიდე), ე.ი. ისინი
+       კუთხეში რჩება — პანელის თავზე. ცვლადი მხოლოდ პანელის დროს არსებობს
+       (`PANEL_MIN_VIEWPORT` > 1520px), სხვა დროს ეს 0-ია. */
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card/80 pr-[var(--player-w,0px)] backdrop-blur">
       {/* ჰამბურგერი + ლოგო — საიდბარის სვეტი (`w-60`), რომ მისი მარჯვენა
           კიდე ზუსტად საიდბარის კიდეს დაემთხვეს */}
       <div className="flex shrink-0 items-center gap-3 px-4 lg:w-60">

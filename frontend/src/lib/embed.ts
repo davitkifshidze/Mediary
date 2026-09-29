@@ -34,15 +34,21 @@ export function isAllowedEmbed(url: string | null | undefined): boolean {
  * ⚠️ `enablejsapi`/`origin` YouTube-ისთვის **სავალდებულოა** — მათ გარეშე
  * ფრეიმი `postMessage`-ს არც აგზავნის და არც იღებს, ე.ი. „დამთავრდა" ვერ
  * გავიგებთ და ავტომატური გადასვლა (§7.2-ის არსი) არ იმუშავებდა.
+ *
+ * ⚠️ `autoplay = false` — ფრეიმი **პაუზაზე** იბადება (Tasks §35): რიგიდან
+ * ბოლო, მიმდინარე ჩანაწერი რომ ამოიღო, სცენა წინაზე დგება და უკვე
+ * მოსმენილი თავისით თავიდან არ უნდა დაიწყოს. დაკვრის ბრძანება მერეც
+ * მუშაობს (`embedCommand`), ე.ი. „დაკვრაზე" დაჭერა მაინც რთავს.
  */
 export function playableEmbedSrc(
   embedUrl: string | null | undefined,
   platform: VideoPlatform,
+  autoplay = true,
 ): string | null {
   if (!isAllowedEmbed(embedUrl)) return null
 
   const url = new URL(embedUrl as string)
-  url.searchParams.set('autoplay', '1')
+  if (autoplay) url.searchParams.set('autoplay', '1')
 
   if (platform === 'youtube') {
     url.searchParams.set('enablejsapi', '1')

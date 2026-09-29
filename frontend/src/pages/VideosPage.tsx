@@ -37,7 +37,6 @@ import {
   fetchVideoMetadata,
   fetchVideoTypes,
   fetchVideos,
-  markVideoWatched,
   startVideoDownload,
   toggleVideoFavorite,
   updateVideo,
@@ -134,8 +133,9 @@ export function VideosPage() {
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Video | 'new' | null>(null)
-  // ⚠️ სახელი „detail"-ია და არა „playing": §7.2-ის შემდეგ **დაკვრა ქვედა
-  // ზოლშია**, მოდალი კი აღწერა/ფაილები/ჩანიშვნები/მსგავსებია.
+  // ⚠️ სახელი „detail"-ია და არა „playing": §7.2-ის შემდეგ **დაკვრა
+  // დამკვრელშია** (§35: გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
+  // აღწერა/ფაილები/ჩანიშვნები/მსგავსებია და ვიდეოს დამკვრელს გადასცემს.
   const [detail, setDetail] = useState<Video | null>(null)
   const player = usePlayer()
 
@@ -230,7 +230,6 @@ export function VideosPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleVideoFavorite, onSuccess: invalidate, onError: fail })
-  const watched = useMutation({ mutationFn: markVideoWatched, onSuccess: invalidate, onError: fail })
   const remove = useMutation({ mutationFn: deleteVideo, onSuccess: invalidate, onError: fail })
 
   /* ---------- §7.1 — ლოკალური ჩამოწერა ----------
@@ -436,11 +435,10 @@ export function VideosPage() {
               const thumb = storageUrl(v.thumbnail)
               return (
                 <div key={v.id} className="overflow-hidden rounded-xl border border-border bg-card">
+                  {/* ⚠️ §35.6 — ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ფანჯარაში
+                      ვიდეო აღარ იკვრება, ნახვას დამკვრელი ითვლის ჩართვაზე */}
                   <button
-                    onClick={() => {
-                      setDetail(v)
-                      watched.mutate(v.id)
-                    }}
+                    onClick={() => setDetail(v)}
                     className="relative block aspect-video w-full cursor-pointer overflow-hidden bg-muted"
                   >
                     {thumb ? (
@@ -718,9 +716,14 @@ export function VideosPage() {
           video={detail}
           onClose={() => setDetail(null)}
           // „მსგავსი ვიდეოზე" დაჭერა იმავე მოდალში გადაინაცვლებს (K4)
-          onOpen={(v) => {
-            setDetail(v)
-            watched.mutate(v.id)
+          onOpen={setDetail}
+          /* §35.6 — სიაში მყოფი ვიდეო **გაფილტრულ სიას** აქედან უშვებს (ისევე,
+             როგორც ბარათის „აქედან დაკვრა"); სიის გარეთა — `?open=`, დუბლის
+             „გახსნა", „მსგავსი" — მარტო საკუთარ თავს, რიგის ჩანაცვლებით. */
+          onPlay={(v) => {
+            const at = videos.findIndex((x) => x.id === v.id)
+            if (at >= 0) void playFrom(at)
+            else player.play([videoItem(v, v.type ? videoTypeName(v.type, lang) : null)], 0, t('videos.title'))
           }}
         />
       )}
