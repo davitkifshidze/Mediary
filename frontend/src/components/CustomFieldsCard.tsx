@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Check, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, Check, Loader2, Paperclip, SlidersHorizontal, Trash2, Upload } from 'lucide-react'
 import {
   CUSTOM_FIELD_MAX_FILES,
   deleteCustomFieldFile,
@@ -14,12 +14,13 @@ import {
   type CustomFieldValues,
 } from '@/api/account'
 import { errorMessage } from '@/lib/errors'
-import { formatBytes } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import type { CustomFieldDraft } from '@/lib/customFieldDraft'
 import type { PendingUpload } from '@/lib/pendingUploads'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FormField, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormGrid } from '@/components/ui/form-layout'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PrivateFileLink, PrivateImage } from '@/components/PrivateFile'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,9 +39,10 @@ import { useToast } from '@/components/ui/feedback'
    `draft.flush(id)`-ს დაუძახებს. ⚠️ ამ რეჟიმში საკუთარი „შენახვა" არ
    არის — ორი ღილაკი ერთი ჩანაწერისთვის ორ ცალკე მოქმედებად წაიკითხებოდა.
 
-   ⚠️ **ფორმის სექციაა** (§26.1) და არა ცალკე ბარათი: იგივე სათაური, ბადე
-   და ლეიბლი, რაც დანარჩენ ველებს აქვს — სავალდებულოს ნიშანიც `FieldLabel`-
-   იდან მოდის და ხელით დაწერილი `*` აღარ არის.
+   ⚠️ **ცალკე თეთრი ბარათია, ჩარჩოთი** — §26-მა ის ჩარჩოს გარეშე სექციად
+   აქცია და ფორმა ერთ უწყვეტ სივრცედ იკითხებოდა; 2026-09-28-ს ძველი სახე
+   დაბრუნდა (შენი მოთხოვნა). ლეიბლი და სავალდებულოს ნიშანი მაინც `FormField`/
+   `FieldLabel`-იდან მოდის (ხელით დაწერილი `*` აღარ არის), ბადე — `FormGrid`.
 
    ⚠️ **ბარათი ქრება, თუ ველი არ არის** — ცარიელი სექცია ყველა ფორმაზე
    ხმაური იქნებოდა.
@@ -123,101 +125,107 @@ export function CustomFieldsCard({
   }
 
   return (
-    <FormSection
-      className={className}
-      title={t('customFields.title')}
-      hint={drafting ? t('customFields.draftHint') : undefined}
-      aside={
-        existing && (
-          <>
-            {dirty && <span className="text-xs text-muted-foreground">{t('customFields.unsaved')}</span>}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!dirty || save.isPending}
-              onClick={() => save.mutate()}
-            >
-              {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-              {save.isPending ? t('actions.saving') : t('actions.save')}
-            </Button>
-          </>
-        )
-      }
-    >
-      {drafting && draft.error && (
-        <p className="col-span-12 flex items-center gap-1.5 text-xs text-destructive">
-          <AlertCircle className="size-3.5 shrink-0" />
-          {draft.error}
-        </p>
-      )}
+    <section className={cn('rounded-xl border border-border bg-card p-4', className)}>
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+        <SlidersHorizontal className="size-4 text-muted-foreground" />
+        {t('customFields.title')}
+        <InfoHint info={drafting ? t('customFields.draftHint') : undefined} />
+      </h3>
 
-      {fields.map((f) => (
-        <FormField
-          key={f.key}
-          size={f.type === 'list' || f.type === 'file' ? 'full' : 'half'}
-          label={label(f)}
-          htmlFor={`cf-${f.key}`}
-          required={f.required}
-        >
-          {f.type === 'file' ? (
-            drafting ? (
-              <PendingFileField fieldKey={f.key} items={draft.files.of(f.key)} draft={draft} />
-            ) : (
-              /* ⚠️ ატვირთვა `values`-ს გვერდს უვლის — იხ. ფაილის შენიშვნა ქვემოთ */
-              <FileField
-                module={module}
-                recordId={recordId!}
-                fieldKey={f.key}
-                /* §7.3 — ⚠️ backend ყოველთვის **სიას** აბრუნებს, ერთ ფაილზეც.
-                   `?? []` მაინც რჩება: ველი შეიძლება საერთოდ არ იყოს შევსებული. */
-                value={(values[f.key] as CustomFieldFile[] | undefined) ?? []}
-                onChange={(next) => {
-                  // ⚠️ ქეშიც ერთდროულად — თორემ მომდევნო refetch ატვირთულს
-                  // ან წაშლილს უკან დააბრუნებდა (`dirty` აქ არ ირთვება)
-                  setValues((v) => ({ ...v, [f.key]: next }))
-                  qc.setQueryData<CustomFieldValues>(['custom-field-values', module, recordId], (prev) => ({
-                    ...(prev ?? {}),
-                    [f.key]: next,
-                  }))
-                }}
+      <FormGrid className="gap-3">
+        {drafting && draft.error && (
+          <p className="col-span-12 flex items-center gap-1.5 text-xs text-destructive">
+            <AlertCircle className="size-3.5 shrink-0" />
+            {draft.error}
+          </p>
+        )}
+
+        {fields.map((f) => (
+          <FormField
+            key={f.key}
+            size={f.type === 'list' || f.type === 'file' ? 'full' : 'half'}
+            label={label(f)}
+            htmlFor={`cf-${f.key}`}
+            required={f.required}
+          >
+            {f.type === 'file' ? (
+              drafting ? (
+                <PendingFileField fieldKey={f.key} items={draft.files.of(f.key)} draft={draft} />
+              ) : (
+                /* ⚠️ ატვირთვა `values`-ს გვერდს უვლის — იხ. ფაილის შენიშვნა ქვემოთ */
+                <FileField
+                  module={module}
+                  recordId={recordId!}
+                  fieldKey={f.key}
+                  /* §7.3 — ⚠️ backend ყოველთვის **სიას** აბრუნებს, ერთ ფაილზეც.
+                     `?? []` მაინც რჩება: ველი შეიძლება საერთოდ არ იყოს შევსებული. */
+                  value={(values[f.key] as CustomFieldFile[] | undefined) ?? []}
+                  onChange={(next) => {
+                    // ⚠️ ქეშიც ერთდროულად — თორემ მომდევნო refetch ატვირთულს
+                    // ან წაშლილს უკან დააბრუნებდა (`dirty` აქ არ ირთვება)
+                    setValues((v) => ({ ...v, [f.key]: next }))
+                    qc.setQueryData<CustomFieldValues>(['custom-field-values', module, recordId], (prev) => ({
+                      ...(prev ?? {}),
+                      [f.key]: next,
+                    }))
+                  }}
+                />
+              )
+            ) : f.type === 'switch' ? (
+              <div className="flex h-10 items-center">
+                <Switch id={`cf-${f.key}`} checked={Boolean(current[f.key])} onCheckedChange={(v) => set(f.key, v)} />
+              </div>
+            ) : f.type === 'list' ? (
+              /* სია — თითო ხაზი ერთი ელემენტი. ⚠️ მძიმით გაყოფა განზრახ
+                 არაა: მნიშვნელობაში მძიმე ხშირია („გია, ნინო"). */
+              <Textarea
+                id={`cf-${f.key}`}
+                rows={2}
+                placeholder={placeholder(f) ?? t('customFields.listHint')}
+                value={Array.isArray(current[f.key]) ? (current[f.key] as string[]).join('\n') : ''}
+                onChange={(e) =>
+                  set(
+                    f.key,
+                    e.target.value
+                      .split('\n')
+                      .map((v) => v.trim())
+                      .filter(Boolean),
+                  )
+                }
               />
-            )
-          ) : f.type === 'switch' ? (
-            <div className="flex h-10 items-center">
-              <Switch id={`cf-${f.key}`} checked={Boolean(current[f.key])} onCheckedChange={(v) => set(f.key, v)} />
-            </div>
-          ) : f.type === 'list' ? (
-            /* სია — თითო ხაზი ერთი ელემენტი. ⚠️ მძიმით გაყოფა განზრახ
-               არაა: მნიშვნელობაში მძიმე ხშირია („გია, ნინო"). */
-            <Textarea
-              id={`cf-${f.key}`}
-              rows={2}
-              placeholder={placeholder(f) ?? t('customFields.listHint')}
-              value={Array.isArray(current[f.key]) ? (current[f.key] as string[]).join('\n') : ''}
-              onChange={(e) =>
-                set(
-                  f.key,
-                  e.target.value
-                    .split('\n')
-                    .map((v) => v.trim())
-                    .filter(Boolean),
-                )
-              }
-            />
-          ) : (
-            <Input
-              id={`cf-${f.key}`}
-              type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
-              inputMode={f.type === 'number' ? 'decimal' : undefined}
-              placeholder={placeholder(f)}
-              value={current[f.key] == null ? '' : String(current[f.key])}
-              onChange={(e) => set(f.key, e.target.value)}
-            />
-          )}
-        </FormField>
-      ))}
-    </FormSection>
+            ) : (
+              <Input
+                id={`cf-${f.key}`}
+                type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                inputMode={f.type === 'number' ? 'decimal' : undefined}
+                placeholder={placeholder(f)}
+                value={current[f.key] == null ? '' : String(current[f.key])}
+                onChange={(e) => set(f.key, e.target.value)}
+              />
+            )}
+          </FormField>
+        ))}
+      </FormGrid>
+
+      {/* ⚠️ არსებულ ჩანაწერზე ბარათი თვითონ ინახავს თავს — ღილაკი ბოლოს,
+          მარჯვნივ (როგორც §26-მდე). მონახაზზე ღილაკი არ არის: მნიშვნელობები
+          ჩანაწერთან ერთად ინახება. */}
+      {existing && (
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {dirty && <span className="text-xs text-muted-foreground">{t('customFields.unsaved')}</span>}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!dirty || save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+            {save.isPending ? t('actions.saving') : t('actions.save')}
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }
 

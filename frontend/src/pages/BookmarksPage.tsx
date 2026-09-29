@@ -465,7 +465,7 @@ export function BookmarksPage() {
                         )}
                       />
                     </button>
-                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(bookmark)}>
+                    <Button variant="edit" size="sm" onClick={() => setEditing(bookmark)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>

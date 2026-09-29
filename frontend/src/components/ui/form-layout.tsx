@@ -200,7 +200,6 @@ export function FormFooter({
   onCancel,
   saving,
   savingLabel,
-  page,
   children,
 }: {
   formId: string
@@ -208,19 +207,17 @@ export function FormFooter({
   saving?: boolean
   /** შენახვის მიმდინარე ეტაპი (მაგ. „ფაილი 2 / 5") — ნაგულისხმევად „ინახება…" */
   savingLabel?: string
-  /**
-   * ფორმა გვერდზეა და არა მოდალში (ფილმი/სერიალი/ანიმე). ⚠️ ზოლი იქაც
-   * მიმაგრებულია — ფანჯრის ქვედა კიდეზე, **დამკვრელის ზოლის ზემოთ**
-   * (`--player-h`, `<main>`-ის იგივე ცვლადი), თორემ მის ქვეშ დაიმალებოდა.
-   */
-  page?: boolean
   /** დამატებითი მოქმედებები მარცხნივ (მაგ. „სინქრონიზაცია") */
   children?: ReactNode
 }) {
   const { t } = useTranslation()
 
-  const body = (
-    <>
+  /* ⚠️ **მხოლოდ მოდალისაა.** გვერდის ფორმას (ფილმი/სერიალი/ანიმე) აქ
+     `page` რეჟიმი ჰქონდა — ფანჯრის ქვედა კიდეზე მიმაგრებული ზოლი; 2026-09-28-ს
+     იქ §26-მდელი სახე დაბრუნდა (ჩვეულებრივი ღილაკების რიგი ბოლოს) და
+     რეჟიმი წაიშალა. */
+  return (
+    <ModalFooter>
       {children && <div className="mr-auto flex flex-wrap items-center gap-2">{children}</div>}
       <Button type="button" variant="ghost" onClick={onCancel}>
         {t('actions.cancel')}
@@ -229,16 +226,6 @@ export function FormFooter({
         {saving && <Loader2 className="size-4 animate-spin" />}
         {saving ? (savingLabel ?? t('actions.saving')) : t('actions.save')}
       </Button>
-    </>
+    </ModalFooter>
   )
-
-  if (page) {
-    return (
-      <div className="sticky bottom-[var(--player-h,0px)] z-10 mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background py-4">
-        {body}
-      </div>
-    )
-  }
-
-  return <ModalFooter>{body}</ModalFooter>
 }

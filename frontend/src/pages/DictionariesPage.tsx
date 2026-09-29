@@ -485,7 +485,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
                   {item && (
                     <>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(item)}>
+                      <Button variant="edit" size="sm" onClick={() => setEditing(item)}>
                         <SquarePen className="size-3.5" />
                         {t('actions.edit')}
                       </Button>

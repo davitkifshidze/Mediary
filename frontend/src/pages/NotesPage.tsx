@@ -428,7 +428,7 @@ export function NotesPage() {
                       {(note.reminders_count ?? 0) > 0 ? note.reminders_count : ''}
                     </span>
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(note)}>
+                  <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
                     <SquarePen className="size-3.5" />
                     {t('actions.edit')}
                   </Button>

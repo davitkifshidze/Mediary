@@ -393,7 +393,7 @@ export function GamesPage() {
                     >
                       <Star className={cn('size-4', game.is_favorite && 'fill-current text-[var(--favorite)]')} />
                     </button>
-                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(game)}>
+                    <Button variant="edit" size="sm" onClick={() => setEditing(game)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>

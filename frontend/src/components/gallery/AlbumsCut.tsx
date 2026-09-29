@@ -287,7 +287,7 @@ export function AlbumsCut() {
                             </Button>
                           )}
                           <Button
-                            variant="ghost"
+                            variant="edit"
                             size="sm"
                             className="h-7 px-2 text-xs"
                             onClick={() => setEditing({ album })}

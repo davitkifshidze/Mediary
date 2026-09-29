@@ -628,7 +628,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
               </span>
 
               <span className="flex shrink-0 items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setOpen(editing ? null : field.key)}>
+                <Button variant="edit" size="sm" onClick={() => setOpen(editing ? null : field.key)}>
                   <SquarePen className="size-3.5" />
                   {t('fields.edit')}
                 </Button>

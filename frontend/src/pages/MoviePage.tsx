@@ -272,7 +272,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   {resyncMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
                 </Button>
-                <Link to={`${detailBase}/${m.id}/edit`} className={cn(buttonVariants({ variant: 'outline' }), 'text-[var(--icon-info)] hover:text-[var(--icon-info)]')}>
+                <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'edit' })}>
                   <SquarePen className="size-4" />
                   {t('actions.edit')}
                 </Link>

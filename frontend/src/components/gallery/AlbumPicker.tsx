@@ -252,7 +252,7 @@ export function AlbumPicker({
 
           {/* §17.2 — არჩეული ალბომის პარამეტრები აქვე, გადატანის შუაგულში */}
           {picked && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(picked)}>
+            <Button type="button" variant="edit" size="sm" onClick={() => setEditing(picked)}>
               <SquarePen className="size-4" />
               {t('gallery.albumEdit')}
             </Button>

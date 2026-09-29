@@ -401,7 +401,7 @@ export function BooksPage() {
                         <ExternalLink className="size-4" />
                       </a>
                     )}
-                    <Button variant="ghost" size="sm" className="text-[var(--icon-info)] hover:text-[var(--icon-info)]" onClick={() => setEditing(book)}>
+                    <Button variant="edit" size="sm" onClick={() => setEditing(book)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}
                     </Button>

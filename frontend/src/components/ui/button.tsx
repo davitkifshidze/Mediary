@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,opacity] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background,border-color,opacity] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -15,6 +15,13 @@ const buttonVariants = cva(
         // „გასუფთავება"/„მოხსნა" ტიპის ქმედებები — მოწითალო კონტური, არა სავსე წითელი
         destructiveOutline:
           'border border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive',
+        /* **რედაქტირება** (2026-09-28, შენი არჩევანი) — სტაფილოსფერი ჩარჩო და
+           ტექსტი, ჰოვერზე სავსე სტაფილოსფერი ღილაკი. ერთი ვარიანტი ყველგან:
+           ჩანაწერის გვერდი, სიების რიგები, ლექსიკონები, ველები, ალბომები.
+           ⚠️ `fb-edit` Tailwind-ის კლასი არაა — `index.css`-ის სახელურია,
+           რომლითაც აიქონი ტექსტის ფერს მიჰყვება (ზოგადი ჰოვერის წესი მას
+           სრულ სტაფილოსფრად შეღებავდა და სავსე ფონზე გააქრობდა). */
+        edit: 'fb-edit border border-edit/60 bg-transparent text-edit hover:border-edit hover:bg-edit hover:text-edit-foreground',
       },
       size: {
         default: 'h-10 px-4 py-2',

@@ -14,13 +14,14 @@ import {
 import { useModuleFields } from '@/lib/fields'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { useSettings } from '@/lib/settings'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FORM_TEXT_ROWS, FormField } from '@/components/ui/form-layout'
 import {
   QuickFill,
   QuickFillCandidate,
@@ -42,8 +43,14 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 
-/** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
+/** ⚠️ ღილაკების რიგი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
+
+/* ⚠️ **გვერდის ფორმა თეთრ ბარათებადაა** (§26-მდელი სახე, დაბრუნდა
+   2026-09-28): ქაღალდის ფონზე თეთრი ფილა ველებს აჯგუფებს. მოდალის ფორმებს
+   ეს არ სჭირდებათ — იქ თვითონ მოდალია თეთრი ბარათი. */
+const FORM_CARD = 'rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6'
+const CARD_TITLE = 'font-mono text-[11px] uppercase tracking-wider text-muted-foreground'
 
 const EMPTY = {
   title_ka: '',
@@ -391,132 +398,113 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           )}
         </QuickFill>
 
-        {/* --- §26 — პოსტერი ზემოთაა, სათაურთან და აღწერასთან ერთად --- */}
-        <FormSection
-          title={t('form.sections.basic')}
-          media={
-            fields.shows('poster') && (
-              <>
-                <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
-                  {fields.label('poster')}
-                </FieldLabel>
-                <PosterUploader
-                  preview={preview}
-                  onSelect={(f) => {
-                    setPoster(f)
-                    setPreview(URL.createObjectURL(f))
-                    setRemovePoster(false)
-                  }}
-                  onClear={() => {
-                    setPoster(null)
-                    setPreview(null)
-                    setRemovePoster(true)
-                  }}
-                />
-              </>
-            )
-          }
-        >
+        {/* --- თარგმანადი შიგთავსი — თეთრი ბარათი ---
+            ⚠️ **ბარათები დაბრუნდა (2026-09-28, შენი მოთხოვნა).** §26-მა სექციები
+            ფონზე, მხოლოდ სათაურის ხაზით დაალაგა — თეთრი ფონი გაქრა და გვერდი
+            ერთ უწყვეტ სივრცედ იკითხებოდა. ბარათი ველებს აჯგუფებს: ერთი თეთრი
+            ფილა = ერთი თემა, ქაღალდის ფონი მათ შორის = საზღვარი. */}
+        <section className={FORM_CARD}>
+          <div className={cn(CARD_TITLE, 'mb-4')}>
+            {t('detail.content')} · {t(`lang.${i18n.language === 'en' ? 'en' : 'ka'}`)}
+          </div>
+
           {/* ⚠️ სათაური `locked`-ია (§6.5): ერთი ენა ყოველთვის სავალდებულოა.
               ⚠️ **`shows()` მაინც ისმის (Tasks §4.5)** — ჩაკეტვა ახლა
               სუპერ-ადმინს ცხადად ეხსნება, ე.ი. „აზრი არ აქვს" აღარ მართლდება:
               ჩამრთველი, რომელიც ფორმაზე არაფერს ცვლის, ღილაკის არარსებობაზე
               უარესია. ⚠️ ენა მხოლოდ იმას წყვეტს, რომელი `Input` დაიხატება —
               თარგმანადი შიგთავსი ინტერფეისის ენაზეა. */}
-          <FormField
-            show={fields.shows('title')}
-            label={fields.label('title')}
-            htmlFor="m-title"
-            required
-            hint={t('form.requiredEitherLang')}
-            error={(i18n.language === 'ka' ? errors.title_ka : errors.title_en)?.[0]}
-          >
-            <Input
-              id="m-title"
-              value={i18n.language === 'ka' ? form.title_ka : form.title_en}
-              placeholder={fields.placeholder('title')}
-              onChange={(e) => set(i18n.language === 'ka' ? 'title_ka' : 'title_en', e.target.value)}
-            />
-          </FormField>
+          <div className="space-y-4">
+            <FormField
+              show={fields.shows('title')}
+              label={fields.label('title')}
+              htmlFor="m-title"
+              required
+              hint={t('form.requiredEitherLang')}
+              error={(i18n.language === 'ka' ? errors.title_ka : errors.title_en)?.[0]}
+            >
+              <Input
+                id="m-title"
+                value={i18n.language === 'ka' ? form.title_ka : form.title_en}
+                placeholder={fields.placeholder('title')}
+                onChange={(e) => set(i18n.language === 'ka' ? 'title_ka' : 'title_en', e.target.value)}
+              />
+            </FormField>
 
-          <FormField {...fields.field('description')} htmlFor="m-desc">
-            <Textarea
-              id="m-desc"
-              rows={FORM_TEXT_ROWS}
-              value={i18n.language === 'ka' ? form.description_ka : form.description_en}
-              placeholder={fields.placeholder('description')}
-              onChange={(e) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', e.target.value)}
-            />
-          </FormField>
+            <FormField {...fields.field('description')} htmlFor="m-desc">
+              <Textarea
+                id="m-desc"
+                rows={FORM_TEXT_ROWS}
+                value={i18n.language === 'ka' ? form.description_ka : form.description_en}
+                placeholder={fields.placeholder('description')}
+                onChange={(e) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', e.target.value)}
+              />
+            </FormField>
+          </div>
+        </section>
 
-          <FormField size="half" {...fields.field('year')} htmlFor="m-year" error={errors.year?.[0]}>
-            <Input
-              id="m-year"
-              type="number"
-              value={form.year}
-              placeholder={fields.placeholder('year')}
-              onChange={(e) => set('year', e.target.value)}
-            />
-          </FormField>
+        {/* --- დეტალები — მეორე თეთრი ბარათი: პოსტერი წლითა და შეფასებით,
+            ხანგრძლივობა, ბმულები, ჟანრები, სტატუსი და რჩეული --- */}
+        <section className={cn(FORM_CARD, 'space-y-4')}>
+          <div className={CARD_TITLE}>{t('form.details')}</div>
 
-          <FormField size="half" {...fields.field('rating')} htmlFor="m-rating" error={errors.rating?.[0]}>
-            <Input
-              id="m-rating"
-              type="number"
-              step="0.1"
-              min="0"
-              max="10"
-              placeholder={fields.placeholder('rating')}
-              value={form.rating}
-              onChange={(e) => set('rating', e.target.value)}
-            />
-          </FormField>
-        </FormSection>
-
-        {/* --- კლასიფიკაცია: ჟანრები, სტატუსი, რჩეული --- */}
-        <FormSection title={t('form.sections.classification')}>
-          {/* ⚠️ `GenreSelect` react-select-ია — ჩარჩოს მას თავისი სტილები ხატავს,
-              ამიტომ წითელდება მისი გარსა ედება და არა `className`-ით */}
-          <FormField {...fields.field('genres')} error={errors.genres?.[0]}>
-            <div className={cn(errors.genres && 'rounded-md ring-1 ring-destructive')}>
-              <GenreSelect
-                genres={genresQ.data ?? []}
-                value={form.genres}
-                onChange={(v) => setForm((f) => ({ ...f, genres: v }))}
+          <div className="flex flex-col gap-5 sm:flex-row">
+            <div className={fields.shows('poster') ? 'shrink-0' : 'hidden'}>
+              <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
+                {fields.label('poster')}
+              </FieldLabel>
+              <PosterUploader
+                preview={preview}
+                onSelect={(f) => {
+                  setPoster(f)
+                  setPreview(URL.createObjectURL(f))
+                  setRemovePoster(false)
+                }}
+                onClear={() => {
+                  setPoster(null)
+                  setPreview(null)
+                  setRemovePoster(true)
+                }}
               />
             </div>
-          </FormField>
 
-          <FormField size="half" {...fields.field('status')} error={errors.status?.[0]}>
-            <div
-              className={cn('flex flex-wrap gap-1.5', errors.status && 'rounded-md border border-destructive p-1.5')}
-            >
-              {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
-              {statuses.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => set('status', s.key)}
-                  className={cn(
-                    'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                    form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
-                  )}
-                >
-                  {statusName(s, lang)}
-                </button>
-              ))}
+            <div className="grid flex-1 grid-cols-2 gap-4">
+              {fields.shows('year') && (
+                <div>
+                  <FieldLabel htmlFor="m-year" required={fields.required('year')} hint={fields.hint('year')}>
+                    {fields.label('year')}
+                  </FieldLabel>
+                  <Input
+                    id="m-year"
+                    type="number"
+                    value={form.year}
+                    placeholder={fields.placeholder('year')}
+                    onChange={(e) => set('year', e.target.value)}
+                  />
+                  {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year[0]}</p>}
+                </div>
+              )}
+              {fields.shows('rating') && (
+                <div>
+                  <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+                    {fields.label('rating')}
+                  </FieldLabel>
+                  <Input
+                    id="m-rating"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    placeholder={fields.placeholder('rating')}
+                    value={form.rating}
+                    onChange={(e) => set('rating', e.target.value)}
+                  />
+                  {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating[0]}</p>}
+                </div>
+              )}
             </div>
-          </FormField>
+          </div>
 
-          <FormField size="half" {...fields.field('is_favorite')} htmlFor="fav">
-            <div className="flex h-10 items-center">
-              <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
-            </div>
-          </FormField>
-        </FormSection>
-
-        {/* --- დეტალები: ხანგრძლივობა, ბმულები --- */}
-        <FormSection title={t('form.sections.details')}>
           {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
           <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
             <DurationInput
@@ -556,12 +544,57 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
               placeholder={fields.placeholder('trailer_url') ?? 'https://www.youtube.com/watch?v=…'}
             />
           </FormField>
-        </FormSection>
+
+          {/* ⚠️ `GenreSelect` react-select-ია — ჩარჩოს მას თავისი სტილები ხატავს,
+              ამიტომ წითელდება მისი გარსა ედება და არა `className`-ით */}
+          <FormField {...fields.field('genres')} error={errors.genres?.[0]}>
+            <div className={cn(errors.genres && 'rounded-md ring-1 ring-destructive')}>
+              <GenreSelect
+                genres={genresQ.data ?? []}
+                value={form.genres}
+                onChange={(v) => setForm((f) => ({ ...f, genres: v }))}
+              />
+            </div>
+          </FormField>
+
+          <div className="flex flex-wrap items-center gap-6">
+            <FormField {...fields.field('status')} error={errors.status?.[0]}>
+              <div
+                className={cn('flex flex-wrap gap-1.5', errors.status && 'rounded-md border border-destructive p-1.5')}
+              >
+                {/* §6.4 — სია ლექსიკონიდან. ⚠️ ნაგულისხმები აღარ იდება — არცევა სავალდებულოა */}
+                {statuses.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => set('status', s.key)}
+                    className={cn(
+                      'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
+                    )}
+                  >
+                    {statusName(s, lang)}
+                  </button>
+                ))}
+              </div>
+            </FormField>
+
+            {fields.shows('is_favorite') && (
+              <div className="flex items-center gap-2 pt-6">
+                <Switch id="fav" checked={form.is_favorite} onCheckedChange={(v) => set('is_favorite', v)} />
+                <Label htmlFor="fav" className="mb-0 cursor-pointer text-sm">
+                  {fields.label('is_favorite')}
+                </Label>
+              </div>
+            )}
+          </div>
+        </section>
       </form>
 
-      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები. ⚠️ `<form>`-ის **გარეთაა**:
-          არსებულ ჩანაწერზე ბარათი თვითონ ინახავს თავს (მნიშვნელობები ცალკე
-          ცხრილშია), ახალზე — მონახაზია და ჩანაწერთან ერთად ინახება. */}
+      {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები (თავისი თეთრი ბარათი).
+          ⚠️ `<form>`-ის **გარეთაა**: არსებულ ჩანაწერზე ბარათი თვითონ ინახავს
+          თავს (მნიშვნელობები ცალკე ცხრილშია), ახალზე — მონახაზია და ჩანაწერთან
+          ერთად ინახება; მის ველში Enter-მა ჩანაწერი არ უნდა შეინახოს. */}
       <CustomFieldsCard
         module={type}
         recordId={extras.current?.id ?? null}
@@ -569,8 +602,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         className="mt-6"
       />
 
-      {/* ⚠️ §26.1 — მიმაგრებული ზოლი გვერდზეც: ფანჯრის ქვედა კიდეზე */}
-      <FormFooter page formId={FORM_ID} onCancel={() => nav(backTo)} saving={mut.isPending}>
+      {/* ⚠️ ღილაკების რიგი ბოლოშია, როგორც §26-მდე — `<form>`-ის გარეთ
+          (დამატებითი ველების ქვემოთ), ამიტომ „შენახვა" ფორმას `form="…"`-ით უშვებს */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button type="submit" form={FORM_ID} disabled={mut.isPending}>
+          {mut.isPending && <Loader2 className="size-4 animate-spin" />}
+          {mut.isPending ? t('actions.saving') : t('actions.save')}
+        </Button>
         {editing && (
           <Button
             type="button"
@@ -582,7 +620,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             {t('detail.sync')}
           </Button>
         )}
-      </FormFooter>
+        <Link to={backTo} className={buttonVariants({ variant: 'outline' })}>
+          {t('actions.cancel')}
+        </Link>
+      </div>
     </PageContainer>
   )
 }

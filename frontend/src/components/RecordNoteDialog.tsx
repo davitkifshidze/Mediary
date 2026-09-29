@@ -191,7 +191,7 @@ export function RecordNoteDialog({
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={() => setEditing(true)}>
+              <Button variant="edit" onClick={() => setEditing(true)}>
                 <SquarePen className="size-4" />
                 {t('actions.edit')}
               </Button>

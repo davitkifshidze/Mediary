@@ -413,9 +413,8 @@ export function PlacesPage() {
                         />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="edit"
                         size="sm"
-                        className="text-[var(--icon-info)] hover:text-[var(--icon-info)]"
                         onClick={() => setEditing(place)}
                       >
                         <SquarePen className="size-3.5" />

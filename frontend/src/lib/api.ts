@@ -1,8 +1,15 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
 import i18n from '@/i18n'
+import { apiBaseFor } from '@/lib/apiUrl'
 
-/** Backend API-ს ბაზისო URL (.env: VITE_API_URL) */
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+/**
+ * Backend API-ს ბაზისო URL (.env: VITE_API_URL).
+ * ⚠️ `localhost` ↔ `127.0.0.1` გვერდის სახელს მიჰყვება — რატომ, `lib/apiUrl.ts`-შია.
+ */
+export const API_URL = apiBaseFor(
+  import.meta.env.VITE_API_URL ?? 'http://localhost:8000',
+  typeof window === 'undefined' ? '' : window.location.hostname,
+)
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
