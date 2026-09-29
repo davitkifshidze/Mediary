@@ -122,6 +122,10 @@ export interface TrashRetention {
   saved_days: number
   default_days: number
   max_days: number
+  /** §34.1 — ზედა ზღვარი სუპერადმინის ცვლილების გარეშე (`TRASH_MAX_DAYS`) */
+  default_max_days: number
+  /** სუპერადმინი ამაზე მეტს ვერ დააწესებს (`TrashDomain::MAX_DAYS_CEILING`) */
+  max_days_ceiling: number
   /** გასუფთავების დრო (`HH:mm`) — `config('mediary.trash.prune_at')` */
   prune_at: string
   expiring: number
@@ -129,6 +133,17 @@ export interface TrashRetention {
 
 export async function fetchTrashRetention(days: number): Promise<TrashRetention> {
   const res = await api.get('/trash/retention', { params: { days } })
+  return res.data
+}
+
+/**
+ * **ურნის ზედა ზღვარი ყველასთვის** (Tasks §29.6 → §34.1) — მხოლოდ სუპერადმინი.
+ * `null` — ნაგულისხმევზე დაბრუნება.
+ */
+export async function updateTrashMaxDays(
+  maxDays: number | null,
+): Promise<{ max_days: number; default_max_days: number }> {
+  const res = await api.put('/admin/settings/trash', { max_days: maxDays })
   return res.data
 }
 

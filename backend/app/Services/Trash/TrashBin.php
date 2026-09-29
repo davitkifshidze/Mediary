@@ -215,6 +215,9 @@ final class TrashBin
             'saved_days' => $saved,
             'default_days' => TrashDomain::defaultDays(),
             'max_days' => TrashDomain::maxDays(),
+            // §34.1 — სუპერადმინის რედაქტორისთვის: რა იქნება, თუ ცვლილებას მოხსნის
+            'default_max_days' => TrashDomain::configMaxDays(),
+            'max_days_ceiling' => TrashDomain::MAX_DAYS_CEILING,
             'prune_at' => (string) config('mediary.trash.prune_at', '03:30'),
             'expiring' => $expiring,
         ];

@@ -52,13 +52,18 @@ class DatabaseBackupController extends Controller
                 'restore_available' => $dumper->restoreAvailable(),
                 'driver' => $dumper->driver(),
                 'database' => (string) config('database.connections.'.config('database.default').'.database'),
-                'max_upload_kb' => UploadLimits::effectiveKb('doc'),
+                /* ⚠️ **PHP-ის ჭერი და არა `doc`-ის ლიმიტი** (Tasks §34): დოკუმენტის
+                   ზომა ახლა სუპერადმინის ხელშია, ე.ი. „დოკუმენტები 5 MB"
+                   ბაზის 20 MB-იან ასლს შეუმჩნევლად დაბლოკავდა. ასლს მხოლოდ
+                   სუპერადმინი ტვირთავს და კვოტა ისედაც მოქმედებს. */
+                'max_upload_kb' => UploadLimits::serverMaxKb(),
 
                 /* ⚠️ **დაგეგმილი ასლი მხოლოდ *ჩანს* და არ ირთვება აქედან**
                    (FEAT-12). ეს ინსტალაციის პარამეტრია და არა მომხმარებლის:
                    ორი სუპერ-ადმინის შემთხვევაში „ვისი გადამრთველია" კითხვას
-                   პასუხი არ აქვს. იგივე წესი, რაც `UploadLimitsCard`-ს და
-                   `/credentials`-ის `meta.installation`-ს აქვს.
+                   პასუხი არ აქვს. იგივე წესი, რაც `/credentials`-ის
+                   `meta.installation`-ს აქვს (ატვირთვის ლიმიტები კი §34-იდან
+                   უკვე ცვლადია — `app_settings`-ით).
                    ⚠️ **ბოლო გაშვება ნამდვილი რიგიდან იკითხება და არა
                    scheduler-იდან**: სწორედ ეს არის ის ფაქტი, რომელსაც გარე
                    ტასკის ისტორია ასწავლის — „ტასკი არსებობს" და „ასლი
@@ -164,7 +169,7 @@ class DatabaseBackupController extends Controller
     public function import(Request $request, StorageMeter $meter): JsonResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'max:'.UploadLimits::effectiveKb('doc')],
+            'file' => ['required', 'file', 'max:'.UploadLimits::serverMaxKb()],
             'note' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 

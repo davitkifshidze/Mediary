@@ -54,11 +54,15 @@ export function uploadProblem(
   if (!limit) return null
   if (file.size > limit.max_bytes) return 'too_large'
 
-  if (limit.mimes.length) {
+  /* ⚠️ §34.4 — სია **ყოველთვის ნამდვილია** (სურათსაც აქვს), ხოლო
+     `extensions` ფსევდონიმებსაც შეიცავს (`jpeg`, `prc`…) — `.jpeg` ფაილი
+     `jpg`-ის ჩართვით უნდა გადიოდეს, ისევე როგორც სერვერზე. */
+  const allowed = limit.extensions?.length ? limit.extensions : limit.mimes
+
+  if (allowed.length) {
     const ext = file.name.includes('.') ? (file.name.split('.').pop() ?? '').toLowerCase() : ''
-    if (!limit.mimes.includes(ext)) return 'wrong_type'
+    if (!allowed.includes(ext)) return 'wrong_type'
   } else if (kind === 'image' && file.type && !file.type.startsWith('image/')) {
-    // `image`-ს გაფართოებების სია არ აქვს — მას სერვერის `image` წესი იცავს
     return 'wrong_type'
   }
 
@@ -70,7 +74,8 @@ export function uploadProblem(
  * დოკუმენტებს `accept` საერთოდ არ ჰქონდა).
  */
 export function acceptFor(kind: string, limit: UploadKindLimit | undefined): string | undefined {
-  if (limit?.mimes.length) return limit.mimes.map((ext) => `.${ext}`).join(',')
+  const allowed = limit ? (limit.extensions?.length ? limit.extensions : limit.mimes) : []
+  if (allowed.length) return allowed.map((ext) => `.${ext}`).join(',')
   if (kind === 'image') return 'image/*'
   if (kind === 'video') return 'video/*'
 

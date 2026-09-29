@@ -34,8 +34,8 @@ class VideoFileController extends Controller
             'kind' => ['required', 'in:image,doc'],
             'files' => ['required', 'array', 'max:50'],
             'files.*' => $request->input('kind') === 'doc'
-                ? UploadLimits::rule('doc')
-                : UploadLimits::rule('image'),
+                ? UploadLimits::rule('doc', $request->user())
+                : UploadLimits::rule('image', $request->user()),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** მოწმდება ჩაწერამდე, რომ ატვირთვა

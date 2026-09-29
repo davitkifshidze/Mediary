@@ -199,7 +199,8 @@
     "type": {
       "module_access": "Module access",
       "storage_increase": "Quota increase",
-      "genre_delete": "Genre deletion"
+      "genre_delete": "Genre deletion",
+      "upload_limit": "Upload limit"
     },
     "col": {
       "type": "Type",
@@ -216,7 +217,14 @@
     "reviewedBy": "Reviewed by {{name}}",
     "noteLabel": "Note",
     "grantLabel": "Amount granted",
-    "grantHint": "Empty = exactly what was requested."
+    "grantHint": "Empty = exactly what was requested.",
+    "scopeTitle": "Who it applies to",
+    "scopeUser": "Only them",
+    "scopeUserHint": "A personal exception — nobody else changes; visible and removable on their page.",
+    "scopeAll": "Everyone",
+    "scopeAllHint": "Changes the installation limit — affects every account.",
+    "scopeAllSuper": "Only a super admin changes the installation limit.",
+    "uploadContext": "Has now: {{size}} · {{formats}}"
   },
   "admin": {
     "userDeleted": "User deleted",
@@ -288,7 +296,8 @@
       "warn": "The link will not be shown again: if you lose it, generate a new one.",
       "expires": "Valid until {{date}}",
       "create": "Generate the link"
-    }
+    },
+    "wantsUpload": "Wants uploads — {{kind}}: {{what}}"
   },
   "nav": {
     "movies": "Movies",
@@ -627,7 +636,15 @@
     "trashDays": "Days deleted items are kept",
     "trashDaysHint": "1–{{max}} days. When it runs out, an item is deleted from the trash for good.",
     "trashDaysCapped": "This installation allows at most {{max}} days — {{max}} applies.",
-    "trashDaysExpiring": "After saving, the next nightly cleanup (at {{time}}) deletes {{count}} items from the trash for good."
+    "trashDaysExpiring": "After saving, the next nightly cleanup (at {{time}}) deletes {{count}} items from the trash for good.",
+    "trashCeiling": "Ceiling for everyone: {{max}} days",
+    "trashCeilingHint": "Applies to every account: nobody can keep the trash longer than this.",
+    "trashCeilingWarn": "Lowering it cuts longer retentions down to the ceiling — items already in the trash are deleted for good at the next cleanup.",
+    "trashCeilingTitle": "Trash retention ceiling",
+    "trashCeilingUnit": "days",
+    "trashCeilingDefault": "Default: {{days}}",
+    "trashCeilingInvalid": "1–{{max}} days.",
+    "trashCeilingSaved": "Ceiling saved — it applies to everyone."
   },
   "sync": {
     "title": "Sync",
@@ -1065,7 +1082,13 @@
     "already_present": "Already in place — nothing to restore.",
     "permission_missing": "You no longer have the right needed for this.",
     "credential_missing": "You have no key for this source — add your own under “Credentials”.",
-    "credential_missing_for": "You have no {{provider}} key — add your own under “Credentials”."
+    "credential_missing_for": "You have no {{provider}} key — add your own under “Credentials”.",
+    "upload_request_nothing_new": "Nothing new — you already have this format and size.",
+    "upload_request_pending": "A request for this kind is already pending.",
+    "upload_format_not_allowed": "This format can't be enabled for this kind.",
+    "upload_formats_locked": "This kind's format is fixed — you can only request a bigger size.",
+    "upload_kind_unknown": "Unknown upload kind.",
+    "upload_scope_invalid": "Choose who it applies to — “only them” or “everyone”."
   },
   "fields": {
     "title": "Fields",
@@ -2608,7 +2631,8 @@
       "course_file": "Course file",
       "place": "Place",
       "place_category": "Place category",
-      "place_file": "Place file"
+      "place_file": "Place file",
+      "app_setting": "Installation setting"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -2837,7 +2861,7 @@
   },
   "uploads": {
     "title": "Upload limits",
-    "hint": "What the server accepts, by size and format.",
+    "hint": "What size and format the server accepts from you. Need something else? Request it or message an admin.",
     "moreFormats": "+{{count}}",
     "perFile": "per file",
     "perRequest": "per request",
@@ -2848,12 +2872,78 @@
       "doc": "Documents",
       "video": "Videos",
       "book": "E-books",
-      "rules": "Rules (PDF)"
+      "rules": "Rules (PDF)",
+      "primary": "Main photo & avatar",
+      "field": "Extra field file",
+      "chat": "Chat file",
+      "import": "CSV import"
     },
-    "anyFormat": "any format",
-    "hintWarn": "Decided by the app's rule and PHP's `php.ini` together — raising the ceiling means editing `php.ini`.",
+    "hintWarn": "The real ceiling is the app limit and PHP's `php.ini` together — a limit above `php.ini` can't take effect, and raising that means editing the server file.",
     "tooLarge": "“{{name}}” is too large — the maximum is {{max}}.",
-    "wrongType": "“{{name}}” — this format is not accepted here."
+    "wrongType": "“{{name}}” — this format is not accepted here.",
+    "hintAdmin": "You set these limits for everyone (“Edit”). A single account may also have a personal exception — from an approved request.",
+    "where": {
+      "image": "Images attached in sections and chat photos.",
+      "primary": "A record's main photo (posters too) in every module, and the account avatar.",
+      "video": "Videos uploaded to a note and chat videos.",
+      "doc": "Documents attached in sections.",
+      "book": "A book's file (e-book).",
+      "rules": "A board game's rules.",
+      "field": "The “file” type of an extra field.",
+      "chat": "A file sent in chat (other than photos and videos).",
+      "import": "The CSV file of “Export & import” — the format is fixed."
+    },
+    "family": {
+      "image": "Image",
+      "document": "Document",
+      "archive": "Archive",
+      "video": "Video",
+      "audio": "Audio",
+      "ebook": "E-book"
+    },
+    "personal": "Personal",
+    "personalHint": "Enabled just for you: {{what}}",
+    "request": "Request",
+    "requestPending": "Request pending",
+    "requestTitle": "Upload limit request — {{kind}}",
+    "requestHint": "Pick what you need — a format, a bigger size or both. On approval the admin decides whether it applies to you only (the default) or to everyone.",
+    "current": "Now: {{size}} · {{formats}}",
+    "requestFormats": "Which format do you need",
+    "requestAllOn": "Every possible format for this kind is already enabled.",
+    "requestSize": "Bigger size",
+    "requestSizeHint": "Empty — the size stays. Now: {{current}}.",
+    "requestServerCap": "The server's ceiling is {{max}} — above it the admin will have to change `php.ini`.",
+    "requestNote": "Note for the admin",
+    "requestSend": "Send",
+    "requestSent": "Request sent — the admin will see it in “Requests”.",
+    "requestNothing": "Pick a format or enter a bigger size.",
+    "editorTitle": "Upload limits — for everyone",
+    "editorHint": "Changes apply to every account. A size can't exceed the `php.ini` ceiling; active content (SVG, HTML, scripts) isn't on the list at all and can't be enabled.",
+    "sizeLabel": "Size",
+    "sizeServer": "The server won't accept more: {{max}} ({{ini}})",
+    "sizeInvalid": "Size must be {{min}}–{{max}} MB.",
+    "formatsRequired": "Keep at least one format.",
+    "locked": "the format is fixed — import only reads CSV",
+    "resetKind": "Default",
+    "customized": "Changed",
+    "saved": "Limits saved — they apply to everyone.",
+    "writeAdmin": "Message an admin",
+    "writeAdminHint": "You can message an admin even with a private profile.",
+    "writeAdminPick": "Who to message",
+    "scope": {
+      "user": "personal exception",
+      "all": "for everyone"
+    },
+    "overrides": {
+      "title": "Upload exceptions",
+      "hint": "Formats and size enabled just for this account — from an approved request. Once removed, the installation limit applies again.",
+      "empty": "No personal exceptions.",
+      "removeOne": "Remove: {{what}}",
+      "removeAll": "Remove all",
+      "removeAllTitle": "Remove the exception — {{kind}}?",
+      "removeAllHint": "The installation limit will apply to this account again for this kind. A new request can bring it back.",
+      "removed": "Exception updated."
+    }
   },
   "files": {
     "viewerTitle": "File",
@@ -3390,7 +3480,8 @@
       "note": "Note: {{note}}",
       "storage": "{{percent}}% used (the {{threshold}}% mark was crossed).",
       "backup": "Backup: {{name}}",
-      "batch": "{{total}} items, {{failed}} failed."
+      "batch": "{{total}} items, {{failed}} failed.",
+      "upload": "{{kind}}: {{what}}"
     }
   },
   "pick": {

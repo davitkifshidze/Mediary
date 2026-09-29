@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserCredential;
 use App\Services\Credentials\CredentialStore;
 use App\Support\AlbumLock;
+use App\Support\AppSettings;
 use App\Support\CredentialProviders;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -30,6 +31,10 @@ abstract class TestCase extends BaseTestCase
         // (Tasks GAP-11) — წინა ტესტის `user 1 : telegram` მომდევნოს
         // გაფრთხილებას ჩუმად ჩაყლაპავდა
         UserCredential::flushWarnings();
+        // ⚠️ მეოთხე (Tasks §34.1): ინსტალაციის პარამეტრების ქეში მოთხოვნისაა,
+        // მაგრამ ტესტის სხეული ერთსა და იმავე `Request`-ს ხედავს — ბაზის
+        // პირდაპირ ჩასწორების შემდეგ ძველი მნიშვნელობა დარჩებოდა
+        AppSettings::flush();
     }
 
     /**

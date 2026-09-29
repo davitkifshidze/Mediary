@@ -134,6 +134,12 @@ export interface ChatThread {
    */
   meta: { has_more: boolean; oldest_id: number | null; newest_id: number | null }
   profile: Profile | null
+  /**
+   * Tasks §34.5 — მეორე მხარის პროფილი საჯაროა თუ არა. სუპერადმინთან საუბარი
+   * დახურული პროფილითაც შეიძლება, `/u/{username}` კი მაშინ 404-ია — ამიტომ
+   * `false`-ზე სახელი ბმულად არ იხატება.
+   */
+  profile_public?: boolean
   /** §10.3 — მეორე მხარემ სად წაიკითხა; „ნანახია" ნიშანი ამაზე დგას */
   other_read_at: string | null
   muted: boolean
@@ -282,6 +288,23 @@ export type RemovalScope = (typeof REMOVAL_SCOPES)[number]
  */
 export async function deleteMessage(messageId: number, scope: RemovalScope): Promise<void> {
   await api.delete(`/chat/messages/${messageId}`, { data: { scope } })
+}
+
+/* ---------- „მიწერე ადმინს" (Tasks §34.5) ---------- */
+
+export interface ChatAdmin {
+  username: string
+  display_name: string
+  avatar_path: string | null
+}
+
+/**
+ * აქტიური სუპერადმინები, ჩემს გარდა — მათთან მიწერა **ყოველთვის** შეიძლება,
+ * პროფილის საჯაროობის მიუხედავად (დაბლოკვა მაინც მოქმედებს).
+ */
+export async function fetchChatAdmins(): Promise<ChatAdmin[]> {
+  const { data } = await api.get('/chat/admins')
+  return data.data
 }
 
 /** ფაილიდან შეტყობინების ტიპი — backend იმავე სამ ჯგუფს იცნობს */

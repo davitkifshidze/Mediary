@@ -10,6 +10,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -223,7 +224,7 @@ class PlaceController extends Controller
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'visited_at' => ['nullable', 'date'],
-            'photo' => ['nullable', 'image', 'max:4096'],
+            'photo' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_photo' => ['nullable', 'boolean'],
         ]);
     }

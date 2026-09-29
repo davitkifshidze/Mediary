@@ -8,6 +8,7 @@ use App\Services\Modules\CustomFieldService;
 use App\Support\CustomFields;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -123,7 +124,10 @@ class CustomFieldController extends Controller
     {
         $this->guardRecord($request, $module, $id);
 
-        $rules = ['file', 'max:'.CustomFields::FILE_MAX_KB, 'mimes:'.CustomFields::FILE_MIMES];
+        /* Tasks §34.3 — ზომა და ფორმატი `UploadLimits`-ის `field` სახეობიდან
+           (ადრე `CustomFields::FILE_MAX_KB`/`FILE_MIMES` — ხელით ჩაწერილი მეხუთე ლიმიტი).
+           ⚠️ SVG და სხვა აქტიური შიგთავსი `UploadLimits::NEVER`-ითაა გარიცხული (SEC-05). */
+        $rules = UploadLimits::rule('field', $request->user());
 
         $data = $request->validate([
             'key' => ['required', 'string', 'max:60'],

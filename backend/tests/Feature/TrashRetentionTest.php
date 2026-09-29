@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\User;
 use App\Services\Trash\TrashBin;
+use App\Support\AppSettings;
 use App\Support\TrashDomain;
 use App\Support\UserSettings;
 use Database\Seeders\ModulesSeeder;
@@ -155,6 +156,44 @@ class TrashRetentionTest extends TestCase
         // ვადის გარეშე — შენახული; დიაპაზონის გარეთ — ზღვარი
         $this->actingAs($me)->getJson('/api/trash/retention')->assertJsonPath('days', TrashDomain::KEEP_DAYS);
         $this->actingAs($me)->getJson('/api/trash/retention?days=0')->assertJsonPath('days', 1);
+    }
+
+    /**
+     * **ზედა ზღვარს სუპერადმინი აწესებს** (Tasks §29.6 → §34.1) — ინსტალაციის
+     * პარამეტრებში, და ის `config`-ს სჯობს. `null` ნაგულისხმევზე აბრუნებს.
+     */
+    public function test_a_super_admin_sets_the_ceiling_for_everyone(): void
+    {
+        $root = tap($this->user('root'), fn (User $u) => $u->assignRole('super_admin')->save())->refresh();
+        $me = $this->user('me', 200);
+
+        $this->actingAs($root)->putJson('/api/admin/settings/trash', ['max_days' => 60])
+            ->assertOk()
+            ->assertJsonPath('max_days', 60)
+            ->assertJsonPath('default_max_days', 365);
+
+        // ⚠️ უფრო გრძელი პირადი ვადა ზღვრამდე იკვეცება — ნაგულისხმევიც მას ემორჩილება
+        $this->assertSame(60, UserSettings::trashDays($me));
+        $this->actingAs($me)->getJson('/api/trash/retention')
+            ->assertJsonPath('max_days', 60)
+            ->assertJsonPath('days', 60);
+
+        $this->actingAs($root)->putJson('/api/admin/settings/trash', ['max_days' => null])
+            ->assertOk()
+            ->assertJsonPath('max_days', 365);
+        $this->assertFalse(AppSettings::has(TrashDomain::MAX_DAYS_SETTING));
+
+        // ჭერი და ქვედა ზღვარი
+        $this->actingAs($root)->putJson('/api/admin/settings/trash', ['max_days' => 0])->assertStatus(422);
+        $this->actingAs($root)->putJson('/api/admin/settings/trash', ['max_days' => TrashDomain::MAX_DAYS_CEILING + 1])->assertStatus(422);
+    }
+
+    /** ⚠️ ყველა ანგარიშს ეხება — ჩვეულებრივ მომხმარებელს 403 */
+    public function test_only_a_super_admin_changes_the_ceiling(): void
+    {
+        $this->actingAs($this->user('me'))->putJson('/api/admin/settings/trash', ['max_days' => 5])->assertStatus(403);
+
+        $this->assertSame(365, TrashDomain::maxDays());
     }
 
     /** 03:30-ის შემდეგ მომდევნო გასუფთავება ხვალაა, მანამდე — დღეს */

@@ -18,8 +18,22 @@ const DOC: UploadKindLimit = {
   max_bytes: 1000,
   capped_by_server: false,
   mimes: ['pdf', 'docx'],
+  extensions: ['pdf', 'docx'],
+  locked: false,
+  selectable: ['pdf', 'docx', 'txt'],
+  installation: { max_kb: 20480, formats: ['pdf', 'docx'] },
+  personal: null,
+  default: { max_kb: 20480, formats: ['pdf', 'docx'] },
 }
-const IMAGE: UploadKindLimit = { ...DOC, kind: 'image', mimes: [] }
+/* ⚠️ §34.4 — სურათსაც **ნამდვილი სია** აქვს; `extensions` ფსევდონიმებსაც
+   შეიცავს (`jpg` → `jpeg`), ისევე როგორც სერვერის `mimes:` */
+const IMAGE: UploadKindLimit = {
+  ...DOC,
+  kind: 'image',
+  mimes: ['jpg', 'png'],
+  extensions: ['jpg', 'png', 'jpeg'],
+  selectable: ['jpg', 'png', 'gif'],
+}
 
 const file = (name: string, size = 10, type = '') => new File(['x'.repeat(size)], name, { type })
 
@@ -30,10 +44,13 @@ describe('uploadProblem', () => {
     expect(uploadProblem(file('A.PDF'), 'doc', DOC)).toBeNull()
   })
 
-  /** ⚠️ `image`-ს გაფართოებების სია არ აქვს — ტიპი ამოწმებს */
-  it('სურათს ტიპი ამოწმებს და არა გაფართოება', () => {
+  /** ⚠️ §34.4 — სურათიც სიით მოწმდება; `.jpeg` `jpg`-ის ფსევდონიმით გადის */
+  it('სურათი — ნამდვილი სიით და ფსევდონიმით', () => {
     expect(uploadProblem(file('a.txt', 10, 'text/plain'), 'image', IMAGE)).toBe('wrong_type')
     expect(uploadProblem(file('a.jpg', 10, 'image/jpeg'), 'image', IMAGE)).toBeNull()
+    expect(uploadProblem(file('photo.JPEG', 10, 'image/jpeg'), 'image', IMAGE)).toBeNull()
+    // სიაში არ წერია — თუნდაც ბრაუზერი `image/*`-ს ამბობდეს
+    expect(uploadProblem(file('a.gif', 10, 'image/gif'), 'image', IMAGE)).toBe('wrong_type')
   })
 
   it('ლიმიტის გარეშე — სერვერი გადაწყვეტს', () => {
@@ -44,7 +61,9 @@ describe('uploadProblem', () => {
 describe('acceptFor', () => {
   it('დოკუმენტსაც აქვს `accept` (§23.4)', () => {
     expect(acceptFor('doc', DOC)).toBe('.pdf,.docx')
-    expect(acceptFor('image', IMAGE)).toBe('image/*')
+    // ⚠️ §34.4 — სურათიც ნამდვილი სიით, ფსევდონიმებიანად; ლიმიტის გარეშე — `image/*`
+    expect(acceptFor('image', IMAGE)).toBe('.jpg,.png,.jpeg')
+    expect(acceptFor('image', undefined)).toBe('image/*')
     expect(acceptFor('video', undefined)).toBe('video/*')
     expect(acceptFor('doc', undefined)).toBeUndefined()
   })

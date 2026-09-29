@@ -7,6 +7,7 @@ use App\Models\TrashedFile;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\Storage\StorageMeter;
+use App\Support\AppSettings;
 use App\Support\CustomFields;
 use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
@@ -512,25 +513,56 @@ class CustomFieldTest extends TestCase
     /**
      * SEC-05 — ⚠️ **აპის არც ერთი ატვირთვის წესი აქტიურ კონტენტს არ იღებს.**
      * ფორმატი, რომელსაც ბრაუზერი დოკუმენტად ხატავს და სკრიპტს ასრულებს,
-     * საჯარო დისკზე stored XSS-ია. სია ზოგადია, და ერთ სტრიქონის დამატება
-     * `FILE_MIMES`-ში ან `UploadLimits::KINDS`-ში ამ ტესტს აწითლებს.
+     * საჯარო დისკზე stored XSS-ია. სია ზოგადია და **ტესტისაა** (და არა აპის
+     * `UploadLimits::NEVER` — ის აქ დამოუკიდებელ მოწმედ არ გამოდგებოდა).
+     *
+     * ⚠️ **Tasks §34-იდან ლიმიტი სამ წყაროდან მოდის** (კოდის ნაგულისხმევი,
+     * სუპერადმინის ინსტალაციის მნიშვნელობა, პირადი გამონაკლისი) და სამივე
+     * მოწმდება — ბაზაში **ხელით ჩაწერილი** აქტიური შიგთავსითაც, რომელიც
+     * რედაქტორის ვალიდაციას გვერდს უვლის. ყოველი წესი `mimes:`-ის **საბოლოო**
+     * სიით მოწმდება (ფსევდონიმებიანად), და კატალოგიც.
      */
     public function test_no_upload_rule_accepts_active_content(): void
     {
         $active = ['svg', 'svgz', 'html', 'htm', 'xhtml', 'xht', 'xml', 'xsl', 'xslt', 'js', 'mjs', 'php', 'phtml', 'phar', 'shtml', 'swf'];
 
-        $lists = ['CustomFields::FILE_MIMES' => CustomFields::FILE_MIMES];
+        $lists = [];
 
-        foreach (UploadLimits::KINDS as $kind => $limit) {
-            if ($limit['mimes'] !== null) {
-                $lists["UploadLimits::KINDS[{$kind}]"] = $limit['mimes'];
-            }
+        foreach (UploadLimits::CATALOG as $family => $formats) {
+            $lists["UploadLimits::CATALOG[{$family}]"] = $formats;
         }
 
-        foreach ($lists as $name => $mimes) {
+        foreach (UploadLimits::ALIASES as $format => $aliases) {
+            $lists["UploadLimits::ALIASES[{$format}]"] = $aliases;
+        }
+
+        foreach (UploadLimits::KINDS as $kind => $limit) {
+            $lists["UploadLimits::KINDS[{$kind}]"] = $limit['formats'];
+            $lists["selectable({$kind})"] = UploadLimits::selectable($kind);
+        }
+
+        /* ⚠️ ინსტალაციისა და პირადი მნიშვნელობა **ვალიდაციის გვერდის ავლით** —
+           ისე, როგორც ხელით ჩასწორებული ბაზა ან ძველი/გატეხილი კლიენტი ჩაწერდა */
+        $everywhere = array_fill_keys(array_keys(UploadLimits::KINDS), ['max_kb' => 4096, 'formats' => [...$active, 'pdf', 'jpg']]);
+        AppSettings::put(UploadLimits::SETTING, ['kinds' => $everywhere]);
+        $this->user->forceFill(['upload_overrides' => $everywhere])->save();
+        $user = $this->user->refresh();
+
+        foreach (array_keys(UploadLimits::KINDS) as $kind) {
+            foreach (['installation' => null, 'personal' => $user] as $source => $who) {
+                $rule = collect(UploadLimits::rule($kind, $who))->first(fn ($r) => is_string($r) && str_starts_with($r, 'mimes:'));
+                $this->assertNotNull($rule, "{$kind}: `mimes:` წესი აკლია");
+                $lists["rule({$kind}, {$source})"] = explode(',', substr($rule, 6));
+            }
+
+            $lists["effective({$kind})"] = UploadLimits::effective($kind, $user)['formats'];
+            $lists["personal({$kind})"] = UploadLimits::personal($kind, $user)['formats'] ?? [];
+        }
+
+        foreach ($lists as $name => $formats) {
             $this->assertSame(
                 [],
-                array_values(array_intersect($active, explode(',', $mimes))),
+                array_values(array_intersect($active, $formats)),
                 "{$name} accepts active content",
             );
         }
@@ -825,7 +857,8 @@ class CustomFieldTest extends TestCase
      * **ძველი SVG/HTML ფაილი `attachment`-ით ბრუნდება** (Tasks SEC-08).
      *
      * ⚠️ **რიგი ხელით იწერება და არა endpoint-ით, და ეს განზრახია**: SEC-05-მა
-     * `svg` `FILE_MIMES`-იდან ამოიღო, ე.ი. **ახალი** ატვირთვა უკვე 422-ია.
+     * `svg` `FILE_MIMES`-იდან ამოიღო (ახლა `UploadLimits::KINDS['field']` + `NEVER`),
+     * ე.ი. **ახალი** ატვირთვა უკვე 422-ია.
      * ხვრელი ძველ რიგებზეა — ისინი დისკზე დარჩნენ და `value_mime`-ად კლიენტის
      * ნათქვამს ატარებენ, `showFile()` კი სწორედ იმ სვეტს აბრუნებდა
      * `Content-Type`-ად, `inline`-ით. ატვირთვის გზით მათი აღდგენა შეუძლებელია,

@@ -37,8 +37,8 @@ final class ImportSource
      */
     public const MAX_ROWS = 5000;
 
-    /** ატვირთვის ჭერი კილობაიტებში — `php.ini`-ს საკუთარი ლიმიტი ამას ისედაც ჭრის */
-    public const MAX_KB = 10240;
+    /* ⚠️ ატვირთვის ჭერი აქ აღარ წერია (Tasks §34.3) — ის `UploadLimits::KINDS['import']`-ია
+       (10 MB; ფორმატი ფიქსირებულია — csv, txt) და სუპერადმინი `/settings`-ზე ცვლის. */
 
     /**
      * წყარო → აღწერა.

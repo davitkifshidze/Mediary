@@ -8,6 +8,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Import\ImportPlanner;
 use App\Services\Import\RowImporter;
 use App\Support\ImportSource;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
@@ -61,7 +62,8 @@ class ImportController extends Controller
     public function plan(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:'.ImportSource::MAX_KB],
+            // Tasks §34.3 — ზომა `UploadLimits`-ის `import` სახეობიდან (ფორმატი ფიქსირებულია: csv, txt)
+            'file' => ['required', ...UploadLimits::rule('import', $request->user())],
             'source' => ['nullable', ImportSource::rule()],
             'mapping' => ['nullable', 'array'],
             'mapping.*' => ['nullable', 'string', 'max:200'],

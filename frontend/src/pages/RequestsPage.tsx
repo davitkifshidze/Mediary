@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Boxes, Check, HardDrive, Inbox, Tags, X } from 'lucide-react'
+import { Boxes, Check, HardDrive, HardDriveUpload, Inbox, Tags, X } from 'lucide-react'
 import {
   approveRequest,
   cancelRequest,
@@ -10,6 +10,7 @@ import {
   fetchMyRequests,
   rejectRequest,
   type ApprovalRequestItem,
+  type UploadScope,
 } from '@/api/account'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { DataTable, type DataColumn } from '@/components/ui/data-table'
@@ -17,6 +18,7 @@ import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { grantedQuota, requestLabel, requestedQuota } from '@/lib/display'
+import { formatList, kbLabel } from '@/lib/uploadLimits'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -25,6 +27,8 @@ import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RadioGroup } from '@/components/ui/radio-group'
+import { ScopeRow } from '@/components/ui/scope-row'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
@@ -68,6 +72,8 @@ const TYPE_ICON = {
   module_access: Boxes,
   storage_increase: HardDrive,
   genre_delete: Tags,
+  // Tasks §34.5 — ატვირთვის ლიმიტი (ფორმატი ან ზომა)
+  upload_limit: HardDriveUpload,
 } as const
 
 export function RequestsPage() {
@@ -101,11 +107,13 @@ export function RequestsPage() {
     qc.invalidateQueries({ queryKey: ['genres'] })
     // 17.4 — დამტკიცება კვოტას ცვლის, ე.ი. საცავის ხედიც უნდა განახლდეს
     qc.invalidateQueries({ queryKey: ['storage'] })
+    // §34.5 — „ყველასთვის" ინსტალაციის ლიმიტს ცვლის (ჩემსაც)
+    qc.invalidateQueries({ queryKey: ['upload-limits'] })
   }
 
   const approve = useMutation({
-    mutationFn: ({ id, note, granted }: { id: number; note?: string; granted?: number }) =>
-      approveRequest(id, note, granted),
+    mutationFn: ({ id, note, granted, scope }: { id: number; note?: string; granted?: number; scope?: UploadScope }) =>
+      approveRequest(id, note, granted, scope),
     onSuccess: () => {
       invalidate()
       setOpen(null)
@@ -343,7 +351,7 @@ export function RequestsPage() {
           request={open}
           onClose={() => setOpen(null)}
           busy={approve.isPending || reject.isPending}
-          onApprove={(note, granted) => approve.mutate({ id: open.id, note, granted })}
+          onApprove={(note, granted, scope) => approve.mutate({ id: open.id, note, granted, scope })}
           onReject={(note) => reject.mutate({ id: open.id, note })}
         />
       )}
@@ -366,12 +374,17 @@ function ReviewDialog({
 }: {
   request: ApprovalRequestItem
   onClose: () => void
-  onApprove: (note: string | undefined, granted: number | undefined) => void
+  onApprove: (note: string | undefined, granted: number | undefined, scope: UploadScope | undefined) => void
   onReject: (note: string | undefined) => void
   busy: boolean
 }) {
   const { t, i18n } = useTranslation()
   const fmt = useDateFormat()
+  const { user: me } = useAuth()
+  /* §34.5 (Q42) — ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა.
+     ⚠️ **„მხოლოდ მას" ნაგულისხმევია** — „ყველასთვის" ინსტალაციის ლიმიტს
+     ცვლის და მხოლოდ სუპერადმინს შეუძლია (სერვერი სხვას 403-ს უბრუნებს). */
+  const [scope, setScope] = useState<UploadScope>('user')
 
   const [note, setNote] = useState('')
   // 17.4 — რამდენს ვაძლევთ სინამდვილეში (MB). ცარიელი = მოთხოვნილი ზუსტად.
@@ -449,8 +462,35 @@ function ReviewDialog({
           </p>
         )}
 
+        {/* §34.5 — ატვირთვის მოთხოვნის კონტექსტი: რა აქვს ახლა */}
+        {r.type === 'upload_limit' && (
+          <p className="text-xs text-muted-foreground">
+            {t('requests.uploadContext', {
+              size: kbLabel(Number(r.payload?.current_max_kb ?? 0)),
+              formats: formatList((r.payload?.current_formats as string[] | undefined) ?? []),
+            })}
+          </p>
+        )}
+
         {pending ? (
           <>
+            {/* §34.5 (Q42) — ვისზე გავრცელდეს; არჩევანი დამტკიცების ღილაკის ზემოთაა */}
+            {r.type === 'upload_limit' && (
+              <section>
+                <h3 className="mb-2 text-sm font-medium">{t('requests.scopeTitle')}</h3>
+                <RadioGroup value={scope} onValueChange={(v) => setScope(v as UploadScope)}>
+                  <ScopeRow value="user" active={scope} label={t('requests.scopeUser')} hint={t('requests.scopeUserHint')} />
+                  <ScopeRow
+                    value="all"
+                    active={scope}
+                    label={t('requests.scopeAll')}
+                    hint={me?.is_super_admin ? t('requests.scopeAllHint') : t('requests.scopeAllSuper')}
+                    disabled={!me?.is_super_admin}
+                  />
+                </RadioGroup>
+              </section>
+            )}
+
             {/* მოთხოვნილზე ნაკლების მიცემა უარი არაა (17.4) */}
             {r.type === 'storage_increase' && (
               <label className="block">
@@ -489,7 +529,12 @@ function ReviewDialog({
                 <X className="size-4" />
                 {t('admin.reject')}
               </Button>
-              <Button disabled={busy} onClick={() => onApprove(note || undefined, grantBytes())}>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  onApprove(note || undefined, grantBytes(), r.type === 'upload_limit' ? scope : undefined)
+                }
+              >
                 <Check className="size-4" />
                 {t('admin.approve')}
               </Button>

@@ -14,6 +14,7 @@ use App\Support\CredentialProviders;
 use App\Support\Like;
 use App\Support\MissingCredential;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -354,7 +355,7 @@ class GameController extends Controller
             'igdb_slug' => ['nullable', 'string', 'max:255'],
 
             'cover_url' => ['nullable', 'string', 'max:1000', 'url'],
-            'cover' => ['nullable', 'image', 'max:4096'],
+            'cover' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_cover' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
         ]);

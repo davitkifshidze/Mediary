@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Anime;
 use App\Models\AnimeTranslation;
 use App\Models\ApprovalRequest;
+use App\Models\AppSetting;
 use App\Models\AuditLog;
 use App\Models\BatchItem;
 use App\Models\BoardGame;
@@ -189,6 +190,9 @@ class AuditRegistry
         User::class => 'account',
         Role::class => 'admin',
         Module::class => 'admin',
+        /* Tasks §34.1 — ინსტალაციის პარამეტრი (ატვირთვის ლიმიტები, ურნის
+           ზედა ზღვარი): „ვინ შეცვალა ლიმიტი ყველასთვის" ადმინის ჭრილში ჩანს */
+        AppSetting::class => 'admin',
         ApprovalRequest::class => 'admin',
         Conversation::class => 'chat',
         Message::class => 'chat',

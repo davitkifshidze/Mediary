@@ -19,6 +19,7 @@ export function ScopeRow<T extends string>({
   active,
   label,
   hint,
+  disabled,
   children,
 }: {
   value: T
@@ -26,6 +27,12 @@ export function ScopeRow<T extends string>({
   label: string
   /** ვარიანტის საკუთარი ქვეხაზი — ვარიანტი თავის ახსნას თვითონ ამბობს (§8-ის წესი) */
   hint?: string
+  /**
+   * Tasks §34.5 — ვარიანტი ჩანს, მაგრამ არ ირჩევა (მაგ. „ყველასთვის" მხოლოდ
+   * სუპერადმინისაა). ⚠️ **დამალვის ნაცვლად** — რომ ადამიანმა იცოდეს, რომ ასეთი
+   * გზაც არსებობს და ვის შეუძლია; მიზეზს `hint` ამბობს.
+   */
+  disabled?: boolean
   children?: ReactNode
 }) {
   const selected = active === value
@@ -38,8 +45,14 @@ export function ScopeRow<T extends string>({
       )}
     >
       {/* select/multi-select <label>-ში ვერ ჯდება — მასზე დაჭერა radio-ს ააქტიურებდა */}
-      <label className={cn('flex cursor-pointer gap-3', hint ? 'items-start' : 'items-center')}>
-        <RadioGroupItem value={value} className={hint ? 'mt-0.5' : undefined} />
+      <label
+        className={cn(
+          'flex gap-3',
+          disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+          hint ? 'items-start' : 'items-center',
+        )}
+      >
+        <RadioGroupItem value={value} disabled={disabled} className={hint ? 'mt-0.5' : undefined} />
         <span className="min-w-0">
           <span className="text-sm font-medium">{label}</span>
           {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}

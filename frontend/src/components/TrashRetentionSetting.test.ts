@@ -23,10 +23,17 @@ const mocks = vi.hoisted(() => ({
     saved_days: 30,
     default_days: 30,
     max_days: 365,
+    default_max_days: 365,
+    max_days_ceiling: 3650,
     prune_at: '03:30',
     expiring: 3,
   })),
+  // §34.1 — ზედა ზღვარს მხოლოდ სუპერადმინი ცვლის
+  auth: { value: { user: null } as Record<string, unknown> },
+  updateMax: vi.fn(async (days: number | null) => ({ max_days: days ?? 365, default_max_days: 365 })),
 }))
+
+vi.mock('@/lib/auth', () => ({ useAuth: () => mocks.auth.value }))
 
 vi.mock('@/lib/settings', async (original) => ({
   ...(await original<typeof import('@/lib/settings')>()),
@@ -36,6 +43,7 @@ vi.mock('@/lib/settings', async (original) => ({
 vi.mock('@/api/trash', async (original) => ({
   ...(await original<typeof import('@/api/trash')>()),
   fetchTrashRetention: mocks.fetch,
+  updateTrashMaxDays: mocks.updateMax,
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -50,6 +58,8 @@ afterEach(() => {
   container = null
   mocks.dirty.value = true
   mocks.settings.trashDays = 7
+  mocks.auth.value = { user: null }
+  document.body.innerHTML = ''
   vi.clearAllMocks()
 })
 
@@ -99,6 +109,35 @@ describe('TrashRetentionSetting', () => {
     })
 
     expect(mocks.set).toHaveBeenCalledWith('trashDays', 365)
+  })
+
+  /** §34.1 — ზედა ზღვარი ყველასთვის: ხაზი და რედაქტორი მხოლოდ სუპერადმინს */
+  it('lets only a super admin change the ceiling for everyone', async () => {
+    await mount()
+    expect(container!.textContent).not.toContain(i18n.t('settings.trashCeiling', { max: 365 }))
+
+    act(() => root?.unmount())
+    container?.remove()
+    mocks.auth.value = { user: { id: 1, is_super_admin: true } }
+    await mount()
+    expect(container!.textContent).toContain(i18n.t('settings.trashCeiling', { max: 365 }))
+
+    const edit = [...container!.querySelectorAll('button')].find((b) => b.textContent === i18n.t('actions.edit'))!
+    await act(async () => edit.click())
+    await flush()
+
+    const input = document.body.querySelector(`input[aria-label="${i18n.t('settings.trashCeilingTitle')}"]`) as HTMLInputElement
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    await act(async () => {
+      setValue.call(input, '60')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const save = [...document.body.querySelectorAll('button')].find((b) => b.textContent === i18n.t('actions.save'))!
+    await act(async () => save.click())
+    await flush()
+
+    expect(mocks.updateMax).toHaveBeenCalledWith(60)
   })
 
   it('says so when a saved period is above the cap', async () => {

@@ -199,10 +199,28 @@ final class TrashDomain
     /** ვადის ქვედა ზღვარი — 0 დღე ურნას საერთოდ გააუქმებდა */
     public const MIN_DAYS = 1;
 
-    /** ზედა ზღვარი — ინსტალაციისაა (§34.1-მდე `config('mediary.trash.max_days')`) */
+    /** ზედა ზღვრის ჭერი — სუპერადმინი მეტს ვერ დააწესებს (ათი წელი) */
+    public const MAX_DAYS_CEILING = 3650;
+
+    /** `app_settings`-ის გასაღები (Tasks §34.1) */
+    public const MAX_DAYS_SETTING = 'trash.max_days';
+
+    /**
+     * **ზედა ზღვარი — ინსტალაციისაა** (Tasks §29.6 → §34.1): სუპერადმინი
+     * `/settings`-ზე ცვლის (`app_settings`), ნაგულისხმევი კი ისევ
+     * `config('mediary.trash.max_days')`-ია (`TRASH_MAX_DAYS`, 365).
+     */
     public static function maxDays(): int
     {
-        return max(self::MIN_DAYS, (int) config('mediary.trash.max_days', 365));
+        $days = AppSettings::get(self::MAX_DAYS_SETTING, self::configMaxDays());
+
+        return min(max(self::MIN_DAYS, (int) $days), self::MAX_DAYS_CEILING);
+    }
+
+    /** ნაგულისხმევი ზედა ზღვარი — `config`-იდან (სუპერადმინის ცვლილების გარეშე) */
+    public static function configMaxDays(): int
+    {
+        return min(max(self::MIN_DAYS, (int) config('mediary.trash.max_days', 365)), self::MAX_DAYS_CEILING);
     }
 
     /** ნაგულისხმევი ვადა — `KEEP_DAYS`, ზედა ზღვრით შეკვეცილი */

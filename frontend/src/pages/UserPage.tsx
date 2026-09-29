@@ -38,6 +38,7 @@ import { formatBytes } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { StorageBar } from '@/components/StorageBar'
 import { StorageLibrary } from '@/components/StorageLibrary'
+import { UploadOverridesSection } from '@/components/uploads/UploadOverridesSection'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -390,6 +391,11 @@ export function UserPage() {
             ადმინის მხარეს წაშლა განზრახ არ არის: სხვისი ფაილი მას არ ეკუთვნის. */}
         <StorageLibrary files={files} total={storage.files} bytes={storage.bytes} />
       </section>
+
+      {/* ---------- ატვირთვის პირადი გამონაკლისები (Tasks §34.6) ----------
+          ⚠️ აქ ჩანს და იხსნება — თორემ დამტკიცებით მიცემული ნებართვა
+          სამუდამოდ უხილავი დარჩებოდა. */}
+      <UploadOverridesSection userId={userId} overrides={data.upload_overrides ?? {}} />
 
       {/* ---------- მოთხოვნები (Tasks 1.3 — აქვე დამტკიცება, არა მხოლოდ ისტორია) ---------- */}
       {requests.length > 0 && (

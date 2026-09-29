@@ -8,10 +8,12 @@ use App\Models\ApprovalRequest;
 use App\Services\Genres\GenreRemover;
 use App\Services\Notify\Notifier;
 use App\Support\NotificationType;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 
 /**
- * მოთხოვნების განხილვა (I4): მოდულის ჩართვა და გლობალური ჟანრის წაშლა.
+ * მოთხოვნების განხილვა (I4): მოდულის ჩართვა, გლობალური ჟანრის წაშლა,
+ * საცავის ლიმიტი (17.4) და ატვირთვის ლიმიტი (§34.5).
  */
 class AdminRequestController extends Controller
 {
@@ -67,11 +69,14 @@ class AdminRequestController extends Controller
             ApprovalRequest::TYPE_MODULE => $this->approveModule($approvalRequest),
             ApprovalRequest::TYPE_GENRE_DELETE => $this->approveGenreDelete($approvalRequest, $remover),
             ApprovalRequest::TYPE_STORAGE => $this->approveStorage($approvalRequest, $request),
+            ApprovalRequest::TYPE_UPLOAD => $this->approveUpload($approvalRequest, $request),
             default => ['ok' => false, 'reason' => 'unknown_type'],
         };
 
         if (! $result['ok']) {
-            /* ⚠️ `*_count` ყველა დომენზე და არა ორ ხელით ჩაწერილზე (Tasks BUG-19) */
+            /* ⚠️ `*_count` ყველა დომენზე და არა ორ ხელით ჩაწერილზე (Tasks BUG-19).
+               ⚠️ სტატუსი handler-ს შეუძლია თქვას (§34.5 — `role_escalation` 403-ია,
+               არა 422: „ეს ნებართვა არ გაქვს" და „მოთხოვნა არასწორია" სხვადასხვაა). */
             return response()->json([
                 'message' => $result['reason'],
                 ...array_filter(
@@ -79,7 +84,7 @@ class AdminRequestController extends Controller
                     fn (string $key) => str_ends_with($key, '_count'),
                     ARRAY_FILTER_USE_KEY,
                 ),
-            ], 422);
+            ], $result['status'] ?? 422);
         }
 
         $approvalRequest->forceFill([
@@ -126,11 +131,20 @@ class AdminRequestController extends Controller
      */
     private function tell(ApprovalRequest $req, string $type, ?string $note): void
     {
+        $upload = $req->type === ApprovalRequest::TYPE_UPLOAD ? ($req->payload ?? []) : [];
+
         app(Notifier::class)->send($req->user, $type, array_filter([
             'request_type' => $req->type,
             'module' => $req->module?->key,
             'module_ka' => $req->module?->name_ka,
             'module_en' => $req->module?->name_en,
+            /* §34.5 — ატვირთვის მოთხოვნა: **ვისზე გავრცელდა** შეტყობინებამ უნდა
+               თქვას (`upload_scope`), და რა — სახეობა, ფორმატები, ზომა. ტექსტი
+               ისევ ინტერფეისში იწერება. */
+            'upload_kind' => $upload['kind'] ?? null,
+            'upload_formats' => ($upload['formats'] ?? []) ?: null,
+            'upload_max_kb' => $upload['max_kb'] ?? null,
+            'upload_scope' => $upload['granted_scope'] ?? null,
             'note' => $note,
         ], fn ($v) => $v !== null && $v !== ''));
     }
@@ -171,6 +185,60 @@ class AdminRequestController extends Controller
 
         $req->user->forceFill(['storage_quota_bytes' => $granted])->save();
         $req->payload = [...$payload, 'granted_bytes' => $granted];
+
+        return ['ok' => true];
+    }
+
+    /**
+     * **Tasks §34.5 — ატვირთვის ლიმიტი.** ადმინი ირჩევს, ვისზე ვრცელდება (Q42):
+     * `user` — **პირადი გამონაკლისი** (ნაგულისხმევი), `all` — ინსტალაციის
+     * ლიმიტი იცვლება ყველასთვის. არჩევანი მოთხოვნაზე ინახება (`granted_scope`),
+     * ე.ი. სიაც და მთხოვნელის შეტყობინებაც ამბობს, ვისზე გავრცელდა.
+     *
+     * ⚠️ **„ყველასთვის" მხოლოდ სუპერადმინს შეუძლია** — ეს ინსტალაციის
+     * ლიმიტის შეცვლაა (§34.2-ის რედაქტორი `super_admin`-ზეა), `admin:requests`
+     * კი ერთი სექციის უფლებაა: SEC-02-ის წესით ის ძალაუფლების გაცემის
+     * ლიცენზია ვერ იქნება → **403 `role_escalation`**.
+     *
+     * ⚠️ **ფორმატები ხელახლა იფილტრება** — მოთხოვნის შემდეგ კატალოგი შეიძლება
+     * შეიცვალა, და ძველი payload აქტიურ შიგთავსს ვერც ამ გზით ჩართავს.
+     */
+    private function approveUpload(ApprovalRequest $req, Request $request): array
+    {
+        if (! $req->user) {
+            return ['ok' => false, 'reason' => 'user_missing'];
+        }
+
+        $scope = (string) ($request->input('scope') ?: 'user');
+
+        if (! in_array($scope, ApprovalRequest::UPLOAD_SCOPES, true)) {
+            return ['ok' => false, 'reason' => 'upload_scope_invalid'];
+        }
+
+        if ($scope === 'all' && ! $request->user()->isSuperAdmin()) {
+            return ['ok' => false, 'reason' => 'role_escalation', 'status' => 403];
+        }
+
+        $payload = $req->payload ?? [];
+        $kind = (string) ($payload['kind'] ?? '');
+
+        if (! array_key_exists($kind, UploadLimits::KINDS)) {
+            return ['ok' => false, 'reason' => 'upload_kind_unknown'];
+        }
+
+        $formats = array_values(array_intersect(
+            UploadLimits::selectable($kind),
+            array_map('strval', (array) ($payload['formats'] ?? [])),
+        ));
+        $maxKb = isset($payload['max_kb']) ? (int) $payload['max_kb'] : null;
+
+        if ($scope === 'all') {
+            UploadLimits::widenInstallation($kind, $formats, $maxKb, $request->user());
+        } else {
+            UploadLimits::widenPersonal($req->user, $kind, $formats, $maxKb);
+        }
+
+        $req->payload = [...$payload, 'granted_scope' => $scope];
 
         return ['ok' => true];
     }

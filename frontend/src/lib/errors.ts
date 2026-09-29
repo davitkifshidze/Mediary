@@ -22,6 +22,13 @@ export const CODES = [
   'upload_too_large',
   // 17.4 — ლიმიტის გაზრდის მოთხოვნის უარყოფის მიზეზები
   'storage_request_pending',
+  // Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა და სუპერადმინის რედაქტორი
+  'upload_request_nothing_new',
+  'upload_request_pending',
+  'upload_format_not_allowed',
+  'upload_formats_locked',
+  'upload_kind_unknown',
+  'upload_scope_invalid',
   'storage_request_not_an_increase',
   'storage_request_out_of_range',
   // §17.2 — მოდულის ცალკე ლიმიტი; საერთო კვოტისგან **განზრახ** ცალკეა,

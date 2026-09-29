@@ -12,6 +12,7 @@ use App\Services\Video\VideoSearch;
 use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -204,7 +205,7 @@ class VideoController extends Controller
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
             'is_favorite' => ['nullable', 'boolean'],
-            'thumbnail' => ['nullable', 'image', 'max:4096'],
+            'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
         ]);
     }

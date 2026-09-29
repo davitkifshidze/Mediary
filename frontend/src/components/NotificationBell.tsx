@@ -21,7 +21,7 @@ import {
 } from '@/api/notifications'
 import { useDateFormat } from '@/lib/dates'
 import { LAYER_POPUP } from '@/lib/layers'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/feedback'
 
@@ -92,6 +92,20 @@ export function NotificationBell() {
     }
     if (n.type === 'batch_done') {
       return t('notifications.detail.batch', { total: d.total ?? 0, failed: d.failed ?? 0 })
+    }
+    /* §34.5 — ატვირთვის მოთხოვნა: რა ჩაირთო და **ვისზე** (Q42 — შეტყობინებამ
+       უნდა თქვას, მხოლოდ მისთვის გავრცელდა თუ ყველასთვის) */
+    if (d.request_type === 'upload_limit' && d.upload_kind) {
+      const formats = Array.isArray(n.data.upload_formats) ? (n.data.upload_formats as string[]) : []
+      const what = [
+        formats.length ? formats.map((f) => f.toUpperCase()).join(', ') : null,
+        d.upload_max_kb ? `≤ ${formatBytes(Number(d.upload_max_kb) * 1024)}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      const line = t('notifications.detail.upload', { kind: t(`uploads.kind.${d.upload_kind}`), what })
+
+      return d.upload_scope ? `${line} · ${t(`uploads.scope.${d.upload_scope}`)}` : line
     }
     // ⚠️ მოდულის სახელი **ორივე ენაზე მოდის** — ინტერფეისის ენა წყვეტს, რომელი
     const name = i18n.language === 'en' ? d.module_en : d.module_ka

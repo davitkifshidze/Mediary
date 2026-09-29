@@ -11,6 +11,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -255,7 +256,7 @@ class BoardGameController extends Controller
             'links.*.currency' => ['nullable', 'string', 'max:8'],
 
             'image_url' => ['nullable', 'string', 'max:1000', 'url'],
-            'image' => ['nullable', 'image', 'max:4096'],
+            'image' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_image' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
         ]);

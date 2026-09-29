@@ -29,6 +29,11 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'settings' => 'array',
+            /* Tasks §34.6 — ატვირთვის პირადი გამონაკლისი. ⚠️ **ცალკე სვეტია და
+               არა `settings`-ის გასაღები**: `PUT /auth/settings` ბლობს მთლიანად
+               იღებს, ე.ი. იქ ჩაწერილ ნებართვას მომხმარებელი თავისთავს მისცემდა.
+               წერს მხოლოდ `UploadLimits` (დამტკიცება ან ადმინის `/users/{id}`). */
+            'upload_overrides' => 'array',
             // FEAT-16 — ორივე `APP_KEY`-ით იშიფრება (იხ. მიგრაციის შენიშვნა)
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',

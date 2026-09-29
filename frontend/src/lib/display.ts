@@ -99,6 +99,39 @@ export function requestLabel(
     })
   }
 
+  if (r.type === 'upload_limit') {
+    return uploadRequestLabel(r, t)
+  }
+
   const name = (lang === 'ka' ? r.genre?.name_ka : r.genre?.name_en) ?? '—'
   return t('admin.wantsGenreDelete', { name })
+}
+
+/**
+ * **ატვირთვის ლიმიტის მოთხოვნა (Tasks §34.5)** — „ითხოვს ატვირთვას — დოკუმენტები:
+ * MP3, FLAC · ≤ 50 MB".
+ *
+ * ⚠️ **დამტკიცებულზე ამბობს, ვისზე გავრცელდა** (`granted_scope`) — სიამაც და
+ * მთხოვნელის შეტყობინებამაც ეს უნდა თქვას (Q42). „პირადი გამონაკლისი" ორივე
+ * მხრიდან ერთნაირად იკითხება — ადმინის სიაშიც და „ჩემს მოთხოვნებშიც".
+ */
+function uploadRequestLabel(
+  r: ApprovalRequestItem,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const p = r.payload ?? {}
+  const formats = Array.isArray(p.formats) ? (p.formats as string[]) : []
+  const maxKb = p.max_kb == null ? null : Number(p.max_kb)
+
+  const what = [
+    formats.length ? formats.map((f) => f.toUpperCase()).join(', ') : null,
+    maxKb ? `≤ ${formatBytes(maxKb * 1024)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const base = t('admin.wantsUpload', { kind: t(`uploads.kind.${String(p.kind ?? 'doc')}`), what })
+  const scope = typeof p.granted_scope === 'string' ? p.granted_scope : null
+
+  return scope ? `${base} · ${t(`uploads.scope.${scope}`)}` : base
 }

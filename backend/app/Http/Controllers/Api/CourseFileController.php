@@ -40,7 +40,7 @@ class CourseFileController extends Controller
         $data = $request->validate([
             'kind' => ['required', 'in:certificate,image,doc'],
             'files' => ['required', 'array', 'max:20'],
-            'files.*' => $kind === 'image' ? UploadLimits::rule('image') : UploadLimits::rule('doc'),
+            'files.*' => $kind === 'image' ? UploadLimits::rule('image', $request->user()) : UploadLimits::rule('doc', $request->user()),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე: ნახევრად გასული ატვირთვა

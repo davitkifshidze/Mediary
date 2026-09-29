@@ -246,7 +246,8 @@ export interface ModuleInfo {
 
 export interface ApprovalRequestItem {
   id: number
-  type: 'module_access' | 'genre_delete' | 'storage_increase'
+  /** `upload_limit` — Tasks §34.5 (ფორმატი ან ზომა; `payload.granted_scope` დამტკიცებისას) */
+  type: 'module_access' | 'genre_delete' | 'storage_increase' | 'upload_limit'
   status: 'pending' | 'approved' | 'rejected'
   message: string | null
   payload: Record<string, unknown> | null
@@ -412,6 +413,21 @@ export async function requestStorageIncrease(
     requested_bytes: requestedBytes,
     message,
   })
+  return data.data
+}
+
+/**
+ * **ატვირთვის ლიმიტის მოთხოვნა (Tasks §34.5).** ფორმატი **სიიდან** — ის,
+ * რაც ამ სახეობის `selectable`-შია და ჯერ არ აქვს; ზომა კილობაიტებში
+ * (მხოლოდ ზრდა). არაფერი ახალი → 422 `upload_request_nothing_new`.
+ */
+export async function requestUploadLimit(input: {
+  kind: UploadKind
+  formats?: string[]
+  max_kb?: number
+  message?: string
+}): Promise<ApprovalRequestItem> {
+  const { data } = await api.post('/requests/upload', input)
   return data.data
 }
 
@@ -765,6 +781,8 @@ export interface UserDetail {
     hidden_by_user: boolean
     enabled_at: string | null
   }[]
+  /** Tasks §34.6 — ატვირთვის პირადი გამონაკლისები (ცარიელი რუკა — არცერთი) */
+  upload_overrides: UploadOverrides
   requests: ApprovalRequestItem[]
 }
 
@@ -851,6 +869,15 @@ export async function deleteRole(id: number): Promise<void> {
   await api.delete(`/admin/roles/${id}`)
 }
 
+/**
+ * **პირადი გამონაკლისების ჩასწორება (Tasks §34.6)** — მთელი რუკა (`PUT`);
+ * ერთი სახეობის ან ერთი ფორმატის მოხსნაც ამ გზით ხდება.
+ */
+export async function updateUserUploadOverrides(id: number, overrides: UploadOverrides): Promise<UploadOverrides> {
+  const { data } = await api.put(`/admin/users/${id}/upload-overrides`, { overrides })
+  return data.upload_overrides as UploadOverrides
+}
+
 export async function syncUserModules(id: number, moduleKeys: string[]): Promise<User> {
   const { data } = await api.put(`/admin/users/${id}/modules`, { module_keys: moduleKeys })
   return data.data
@@ -909,10 +936,16 @@ export async function approveRequest(
   id: number,
   note?: string,
   grantedBytes?: number,
+  /**
+   * Tasks §34.5 — ატვირთვის მოთხოვნაზე: ვისზე ვრცელდება. `user` (ნაგულისხმევი)
+   * — პირადი გამონაკლისი; `all` — ინსტალაციის ლიმიტი (მხოლოდ სუპერადმინს).
+   */
+  scope?: UploadScope,
 ): Promise<ApprovalRequestItem> {
   const { data } = await api.post(`/admin/requests/${id}/approve`, {
     review_note: note,
     granted_bytes: grantedBytes,
+    scope,
   })
   return data.data
 }
@@ -1137,27 +1170,79 @@ export async function purgeItem(
   return data
 }
 
-/* ---------- ატვირთვის ლიმიტები (2026-09-14) ---------- */
+/* ---------- ატვირთვის ლიმიტები (2026-09-14 → Tasks §34) ---------- */
+
+/**
+ * ⚠️ **სარკეა backend-ის `UploadLimits::KINDS`-ისა** —
+ * `RegistryConsistencyTest::test_the_spa_upload_kinds_mirror_the_backend`
+ * ამ სიას წყაროდან კითხულობს, ე.ი. ახალი სახეობა სახელისა და აიქონის
+ * გარეშე ვერ გავა.
+ */
+export const UPLOAD_KINDS = ['image', 'primary', 'video', 'doc', 'book', 'rules', 'field', 'chat', 'import'] as const
+export type UploadKind = (typeof UPLOAD_KINDS)[number]
+
+/** ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა (§34.5, Q42) */
+export type UploadScope = 'user' | 'all'
+
+export interface UploadLimitValues {
+  max_kb: number
+  formats: string[]
+}
+
+/** პირადი გამონაკლისი — `max_kb: null` = ზომა ინსტალაციისაა */
+export interface UploadOverride {
+  max_kb: number | null
+  formats: string[]
+}
+
+export type UploadOverrides = Partial<Record<UploadKind, UploadOverride>>
 
 export interface UploadKindLimit {
-  kind: 'image' | 'doc' | 'video' | 'book' | 'rules'
-  /** აპის წესი (KB) — რაც კოდში წერია */
+  kind: UploadKind
+  /** აპის წესი (KB) **ამ მომხმარებლისთვის** — ინსტალაციისა და პირადის მაქსიმუმი */
   max_kb: number
   /** **ნამდვილი** ჭერი ბაიტებში — აპისა და PHP-ის მინიმუმი */
   max_bytes: number
   /** ⚠️ `true` = ჭერი PHP-მ ჩამოწია (`php.ini`), და არა აპმა */
   capped_by_server: boolean
-  /** ცარიელი `image`-ზე: მას Laravel-ის `image` წესი იცავს და არა გაფართოება */
+  /** ⚠️ **ნამდვილი სია**, არასდროს ცარიელი (§34.4 — „ნებისმიერი ფორმატი" ტყუილი იყო) */
   mimes: string[]
+  /** `mimes` + ფსევდონიმები (`jpeg`, `prc`…) — ბრაუზერის შემოწმებისა და `accept`-ისთვის */
+  extensions: string[]
+  /** ფორმატი ფიქსირებულია (იმპორტი მხოლოდ CSV-ს კითხულობს) — იცვლება მხოლოდ ზომა */
+  locked: boolean
+  /** რომელი ფორმატის ჩართვა შეიძლება ამ სახეობაზე — კატალოგის რიგით */
+  selectable: string[]
+  installation: UploadLimitValues
+  personal: UploadOverride | null
+  default: UploadLimitValues
 }
 
 export interface UploadLimits {
   kinds: UploadKindLimit[]
+  /** ოჯახი → ფორმატები (რედაქტორისა და მოთხოვნის ფანჯრის დაჯგუფებისთვის) */
+  catalog: Record<string, string[]>
   max_files: number
+  min_kb: number
+  ceiling_kb: number
   server: { upload_max_filesize: string; post_max_size: string; max_bytes: number }
+  /** სუპერადმინი — რედაქტორი; სხვები — კითხვა და მოთხოვნა */
+  can_edit: boolean
 }
 
 export async function fetchUploadLimits(): Promise<UploadLimits> {
   const { data } = await api.get('/uploads/limits')
+  return data.data
+}
+
+/**
+ * **სუპერადმინის რედაქტორი (Tasks §34.2)** — მხოლოდ გაგზავნილი სახეობები
+ * იცვლება; ნაგულისხმევის ტოლი მნიშვნელობა ბაზიდან იშლება (ცალკე „დაბრუნების"
+ * endpoint არ სჭირდება).
+ */
+export async function saveInstallationUploadLimits(
+  kinds: Partial<Record<UploadKind, UploadLimitValues>>,
+): Promise<UploadLimits> {
+  const { data } = await api.put('/admin/uploads/limits', { kinds })
   return data.data
 }

@@ -15,6 +15,7 @@ use App\Services\Storage\StorageMeter;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,7 +27,9 @@ use Illuminate\Support\Facades\DB;
  * ⚠️ **მიწერა მხოლოდ ორ საჯარო პროფილს შორის შეიძლება** (§16.3) — იგივე
  * კარიბჭე, რაც დამთხვევებს (§16.2). არასაჯარო მხარეზე პასუხი
  * **409 `profile_not_public`**-ია და არა 404: მდგომარეობა გამოსწორებადია
- * და user-მა უნდა იცოდეს, რა შეცვალოს.
+ * და user-მა უნდა იცოდეს, რა შეცვალოს. ⚠️ **ერთი გამონაკლისი — სუპერადმინი**
+ * (Tasks §34.5): მასთან მიწერა ორივე მიმართულებით ყოველთვის შეიძლება
+ * (`staffPair()`), დაბლოკვა კი მაშინაც მოქმედებს.
  *
  * ⚠️ **დაბლოკვა ორივე მიმართულებით კრძალავს წერას.** დაბლოკვა ცალმხრივი
  * ფაქტია (A-მ B დაბლოკა), მაგრამ თუ მხოლოდ A-ს შევუზღუდავდით, B
@@ -594,13 +597,49 @@ class ChatService
             $this->fail('cannot_chat_with_self', 422);
         }
 
-        if ($me->profile_visibility !== 'public' || $other->profile_visibility !== 'public') {
+        /* ⚠️ **სუპერადმინთან მიწერა ყოველთვის შეიძლება** (Tasks §34.5, Q25) —
+           „მინდა ავტვირთო JPG და არ მაქვს — ჩამირთე" დახურული პროფილითაც უნდა
+           ითქვას. **ორივე მიმართულებით**, თორემ ადმინი ვერ უპასუხებდა.
+           ⚠️ როლი **გაგზავნის მომენტში** მოწმდება (`isSuperAdmin()` — და არა
+           `$user->is_super_admin`, რომელიც მოდელზე არ არსებობს): როლს თუ
+           დაკარგავს, ახალი წერილი ჩვეულებრივ წესს ემორჩილება, ძველი კი
+           ისევ იკითხება. ⚠️ **დაბლოკვა მაინც მოქმედებს** — ქვემოთ. */
+        if (! $this->staffPair($me, $other)
+            && ($me->profile_visibility !== 'public' || $other->profile_visibility !== 'public')) {
             $this->fail('profile_not_public', 409);
         }
 
         if ($this->blockedBetween($me, $other)) {
             $this->fail('chat_blocked', 403);
         }
+    }
+
+    /**
+     * **„მომხმარებელი ↔ სუპერადმინი" წყვილი** (Tasks §34.5) — საჯარო პროფილის
+     * კარიბჭე მას არ ეხება. საჯაროობა სოციალური ფენის წესია; ადმინთან
+     * მიწერა კი დახმარების არხია და პროფილის გახსნას არ უნდა ითხოვდეს.
+     */
+    public function staffPair(User $a, User $b): bool
+    {
+        return $a->isSuperAdmin() || $b->isSuperAdmin();
+    }
+
+    /**
+     * **ვის მივწერო ადმინისტრაციის საკითხზე** — აქტიური სუპერადმინები, ჩემს
+     * გარდა (`GET /chat/admins`). ⚠️ username-ის გარეშე ანგარიში გამოტოვებულია:
+     * საუბარი username-ით იხსნება (`POST /chat/with/{username}`).
+     *
+     * @return Collection<int, User>
+     */
+    public function admins(User $me)
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereNotNull('username')
+            ->whereKeyNot($me->getKey())
+            ->whereHas('role', fn ($q) => $q->where('key', 'super_admin'))
+            ->orderBy('id')
+            ->get();
     }
 
     /** მეორე მხარის მოძებნა username-ით — არააქტიური/არარსებული 404-ია */

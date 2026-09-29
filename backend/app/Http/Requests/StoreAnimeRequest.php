@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Status;
 use App\Support\PublicDomain;
+use App\Support\UploadLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -46,7 +47,8 @@ class StoreAnimeRequest extends FormRequest
             'is_favorite' => ['nullable', 'boolean'],
             'genres' => ['required', 'array', 'min:1'],
             'genres.*' => ['string', 'max:100'],
-            'poster' => ['nullable', 'image', 'max:8192'],
+            // Tasks §34.3 — ზომა და ფორმატი ერთი წყაროდან (`primary`: მთავარი ფოტო, პოსტერი, ავატარი)
+            'poster' => ['nullable', ...UploadLimits::rule('primary', $this->user())],
             'visibility' => ['nullable', Rule::in(PublicDomain::VALUES)],
         ];
     }

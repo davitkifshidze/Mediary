@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ადმინთან გასაგზავნი მოთხოვნა — მოდულის ჩართვა, გლობალური ჟანრის წაშლა
- * ან საცავის ლიმიტის გაზრდა (17.4).
+ * ადმინთან გასაგზავნი მოთხოვნა — მოდულის ჩართვა, გლობალური ჟანრის წაშლა,
+ * საცავის ლიმიტის გაზრდა (17.4) ან ატვირთვის ლიმიტი (§34.5).
  *
  * ტიპების ნაკრები **აქ ცხოვრობს** და არა ბაზის enum-ში: ახალი ტიპი =
  * ერთი კონსტანტა + ერთი handler `AdminRequestController::approve()`-ში.
@@ -21,6 +21,18 @@ class ApprovalRequest extends Model
 
     /** 17.4 — `payload.requested_bytes` = **სასურველი სრული ლიმიტი** და არა მატება */
     public const TYPE_STORAGE = 'storage_increase';
+
+    /**
+     * Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა: `payload` = `kind`, `formats`
+     * (**მხოლოდ ახალი** — ის, რაც მოთხოვნის მომენტში არ ჰქონდა), `max_kb`
+     * (`null` = ზომა არ იცვლება) და მომენტის კონტექსტი (`current_*`).
+     * დამტკიცებისას ადმინი ირჩევს, ვისზე ვრცელდება — `granted_scope`
+     * (`user` ნაგულისხმევი — პირადი გამონაკლისი · `all` — ინსტალაციის ლიმიტი).
+     */
+    public const TYPE_UPLOAD = 'upload_limit';
+
+    /** @var list<string> — `granted_scope`-ის მნიშვნელობები */
+    public const UPLOAD_SCOPES = ['user', 'all'];
 
     protected $guarded = ['id'];
 

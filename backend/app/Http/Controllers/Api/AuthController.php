@@ -13,6 +13,7 @@ use App\Support\ColumnTrash;
 use App\Support\PublicDomain;
 use App\Support\ResetLink;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -234,7 +235,7 @@ class AuthController extends Controller
             'last_name' => ['nullable', 'string', 'max:255'],
             'username' => ['sometimes', 'required', 'string', 'max:255', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'avatar' => ['nullable', 'image', 'max:4096'],
+            'avatar' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_avatar' => ['nullable', 'boolean'],
             // Tasks 16.1 — საჯარო პროფილი. `bio` და გადამრთველი აქვეა, რადგან
             // ორივე „ჩემი პროფილია" და ერთსა და იმავე ფორმაში ივსება.

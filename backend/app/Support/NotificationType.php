@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\ApprovalRequest;
+
 /**
  * **შეტყობინების სახეები (FEAT-19) — ერთი რეესტრი.**
  *
@@ -18,7 +20,7 @@ namespace App\Support;
  */
 final class NotificationType
 {
-    /** მოდულის/კვოტის მოთხოვნა დაამტკიცეს */
+    /** მოდულის/კვოტის/ატვირთვის ლიმიტის მოთხოვნა დაამტკიცეს */
     public const REQUEST_APPROVED = 'request_approved';
 
     /** მოთხოვნა უარყვეს */
@@ -51,10 +53,23 @@ final class NotificationType
      * საპირისპირო მიმართულებით: იქ მარშრუტი `modules.route_base`-იდან
      * გამოითვლება, აქ გამოსათვლელი არაფერია).
      */
-    public static function route(string $type): ?string
+    public static function route(string $type, array $data = []): ?string
     {
+        /* ⚠️ მოთხოვნის შედეგი **თავისი სახლის** გვერდზე მიდის (Tasks §34.5):
+           ატვირთვის ლიმიტი `/settings`-ზე ჩანს, საცავი — `/profile`-ზე, ჟანრი —
+           `/genres`-ზე; ყველა
+           მოთხოვნის `/modules`-ზე გაგზავნა ადამიანს იქ მიიყვანდა, სადაც ეს
+           ფაქტი საერთოდ არ წერია. */
+        if ($type === self::REQUEST_APPROVED || $type === self::REQUEST_REJECTED) {
+            return match ($data['request_type'] ?? null) {
+                ApprovalRequest::TYPE_UPLOAD => '/settings',
+                ApprovalRequest::TYPE_STORAGE => '/profile',
+                ApprovalRequest::TYPE_GENRE_DELETE => '/genres',
+                default => '/modules',
+            };
+        }
+
         return match ($type) {
-            self::REQUEST_APPROVED, self::REQUEST_REJECTED => '/modules',
             self::STORAGE_WARNING => '/profile',
             self::BACKUP_FAILED => '/backups',
             default => null,

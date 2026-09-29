@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApprovalRequestResource;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * მომხმარებლის მხარე: მოდულის ჩართვის მოთხოვნა და საკუთარი მოთხოვნების სია.
+ * მომხმარებლის მხარე: მოდულის ჩართვის, საცავისა და ატვირთვის ლიმიტის (§34.5)
+ * მოთხოვნები და საკუთარი მოთხოვნების სია.
  * ჟანრის წაშლის მოთხოვნა GenreController::destroy()-იდან იქმნება.
  */
 class ApprovalRequestController extends Controller
@@ -108,6 +111,86 @@ class ApprovalRequestController extends Controller
                 'requested_bytes' => (int) $data['requested_bytes'],
                 'current_bytes' => $current,
                 'used_bytes' => (int) $user->storage_used_bytes,
+            ],
+            'message' => $data['message'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        return (new ApprovalRequestResource($req))->response()->setStatusCode(201);
+    }
+
+    /**
+     * **Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა** („მინდა ავტვირთო JPG და არ
+     * მაქვს — ჩამირთე").
+     *
+     * ⚠️ **ფორმატი სიიდან ირჩევა** (`UploadLimits::selectable()`): აქტიური
+     * შიგთავსი (svg, html, xml, js, php…) **ვერც შეიქმნება** — 422
+     * მოთხოვნამდე, და არა დამტკიცებისას: უსაფრთხოების წესი ადმინის
+     * ყურადღებაზე არ უნდა ეკიდოს.
+     *
+     * ⚠️ **payload-ში მხოლოდ ახალი ფორმატი იწერება** — ის, რაც უკვე აქვს,
+     * ადმინს „ჩართვად" არ უნდა ეჩვენოს. ზომაც მხოლოდ ზრდაა; არაფერი ახალი
+     * → **422 `upload_request_nothing_new`** (კვოტის `not_an_increase`-ის წესი).
+     *
+     * ⚠️ **ერთ სახეობაზე ერთი ღია მოთხოვნა** — მეორე ადმინის რიგს უაზროდ
+     * გაზრდიდა; სხვადასხვა სახეობაზე კი ერთდროულად შეიძლება.
+     */
+    public function storeUploadRequest(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'kind' => ['required', 'string', Rule::in(array_keys(UploadLimits::KINDS))],
+            'formats' => ['nullable', 'array', 'max:60'],
+            'formats.*' => ['string', 'max:10'],
+            'max_kb' => ['nullable', 'integer', 'min:'.UploadLimits::MIN_KB, 'max:'.UploadLimits::CEILING_KB],
+            'message' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $kind = $data['kind'];
+        $wanted = $data['formats'] ?? [];
+
+        if ($wanted !== [] && UploadLimits::isLocked($kind)) {
+            return response()->json(['message' => 'upload_formats_locked'], 422);
+        }
+
+        $bad = UploadLimits::outside($kind, $wanted);
+
+        if ($bad !== []) {
+            return response()->json(['message' => 'upload_format_not_allowed', 'kind' => $kind, 'formats' => $bad], 422);
+        }
+
+        $current = UploadLimits::effective($kind, $user);
+        $formats = array_values(array_diff(
+            array_intersect(UploadLimits::selectable($kind), array_map('strtolower', $wanted)),
+            $current['formats'],
+        ));
+        $maxKb = isset($data['max_kb']) && (int) $data['max_kb'] > $current['max_kb'] ? (int) $data['max_kb'] : null;
+
+        if ($formats === [] && $maxKb === null) {
+            return response()->json(['message' => 'upload_request_nothing_new'], 422);
+        }
+
+        $pending = ApprovalRequest::where('user_id', $user->id)
+            ->where('type', ApprovalRequest::TYPE_UPLOAD)
+            ->pending()
+            ->get()
+            ->contains(fn (ApprovalRequest $r) => ($r->payload['kind'] ?? null) === $kind);
+
+        if ($pending) {
+            return response()->json(['message' => 'upload_request_pending'], 422);
+        }
+
+        $req = ApprovalRequest::create([
+            'user_id' => $user->id,
+            'type' => ApprovalRequest::TYPE_UPLOAD,
+            // კონტექსტი მოთხოვნის მომენტისთვის — ადმინი ხედავს, რას ეყრდნობოდა
+            'payload' => [
+                'kind' => $kind,
+                'formats' => $formats,
+                'max_kb' => $maxKb,
+                'current_max_kb' => $current['max_kb'],
+                'current_formats' => $current['formats'],
             ],
             'message' => $data['message'] ?? null,
             'status' => 'pending',

@@ -317,15 +317,35 @@ class ChatParityTest extends TestCase
      * ⚠️ **SEC-04 (High, 2026-09-17).** HTML-ფაილი `text/html`-ით `inline`
      * ბრუნდებოდა, ე.ი. ბობის ბრაუზერში აპის origin-ზე, ბობის ქუქით
      * სრულდებოდა. ახლა — `octet-stream` + `attachment` + `nosniff`.
+     *
+     * ⚠️ **Tasks §34.4-იდან ახალი HTML ატვირთვამდე ცვივა** — ჩატის ფაილს
+     * ნამდვილი სია აქვს და აქტიური შიგთავსი მასში ვერასდროს მოხვდება. გაცემის
+     * წესი მაინც ჩამაგრებულია: **ძველი** რიგი (სიამდე ატვირთული) ისევ
+     * არსებობს, ამიტომ ის პირდაპირ იწერება — SEC-08-ის იგივე ხერხი.
      */
     public function test_an_html_attachment_is_downloaded_never_rendered(): void
     {
         Storage::fake('private');
 
-        $id = $this->aliceSends(UploadedFile::fake()->createWithContent(
-            'page.html',
-            '<!doctype html><html><body><script>fetch("/api/auth/me")</script></body></html>',
-        ));
+        $html = '<!doctype html><html><body><script>fetch("/api/auth/me")</script></body></html>';
+
+        $this->actingAs($this->alice)
+            ->post("/api/chat/{$this->conversation}", [
+                'type' => 'file',
+                'file' => UploadedFile::fake()->createWithContent('page.html', $html),
+            ])
+            ->assertStatus(422);
+
+        Storage::disk('private')->put('chat/files/docs/legacy.html', $html);
+        $id = Message::create([
+            'conversation_id' => $this->conversation,
+            'user_id' => $this->alice->id,
+            'type' => 'file',
+            'attachment_path' => 'chat/files/docs/legacy.html',
+            'attachment_name' => 'page.html',
+            'attachment_mime' => 'text/html',
+            'attachment_size' => strlen($html),
+        ])->id;
 
         $response = $this->actingAs($this->bob)->get("/api/chat/files/{$id}")->assertOk();
 

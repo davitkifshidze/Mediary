@@ -469,12 +469,18 @@ function Thread({ id }: { id: number }) {
         <Link to="/chat" className="lg:hidden">
           <ArrowLeft className="size-4 text-muted-foreground" />
         </Link>
-        <Link
-          to={`/u/${profile?.username}`}
-          className="min-w-0 flex-1 truncate font-medium transition-colors hover:text-primary"
-        >
-          {name}
-        </Link>
+        {/* ⚠️ §34.5 — სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო იყოს:
+            მისი პროფილი 404-ია, ე.ი. სახელი ბმული აღარაა */}
+        {data.profile_public === false ? (
+          <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+        ) : (
+          <Link
+            to={`/u/${profile?.username}`}
+            className="min-w-0 flex-1 truncate font-medium transition-colors hover:text-primary"
+          >
+            {name}
+          </Link>
+        )}
         {data.muted && <BellOff className="size-4 shrink-0 text-muted-foreground" />}
         <Button variant="ghost" size="icon" aria-label={t('chat.search')} title={t('chat.search')} onClick={() => setPanel('search')}>
           <Search className="size-4" />

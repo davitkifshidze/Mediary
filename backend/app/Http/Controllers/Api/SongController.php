@@ -11,6 +11,7 @@ use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\Like;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use App\Support\VideoUrl;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -190,7 +191,7 @@ class SongController extends Controller
             'rating' => ['nullable', 'integer', 'min:1', 'max:'.Song::MAX_RATING],
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
-            'thumbnail' => ['nullable', 'image', 'max:4096'],
+            'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
         ]);
     }

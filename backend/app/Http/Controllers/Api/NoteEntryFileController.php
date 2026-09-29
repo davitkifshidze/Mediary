@@ -48,7 +48,7 @@ class NoteEntryFileController extends Controller
             'files' => ['required', 'array', 'max:'.UploadLimits::MAX_FILES],
             // ⚠️ ზომა/ფორმატი **ერთი რუკიდან** მოდის (`UploadLimits`) — შვიდი
             // კონტროლერი ერთსა და იმავეს იმეორებდა და ინტერფეისში არსად ეწერა
-            'files.*' => UploadLimits::rule($kind === 'image' || $kind === 'video' ? $kind : 'doc'),
+            'files.*' => UploadLimits::rule($kind === 'image' || $kind === 'video' ? $kind : 'doc', $request->user()),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე

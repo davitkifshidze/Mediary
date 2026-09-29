@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminAuditController;
+use App\Http\Controllers\Api\Admin\AdminInstallationController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
 use App\Http\Controllers\Api\Admin\AdminPurgeController;
 use App\Http\Controllers\Api\Admin\AdminRequestController;
@@ -84,6 +85,7 @@ use App\Http\Controllers\Api\TranslationController;
 use App\Http\Controllers\Api\TrashController;
 use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UpcomingController;
+use App\Http\Controllers\Api\UploadLimitController;
 use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
 use App\Http\Controllers\Api\VideoDownloadController;
@@ -97,7 +99,6 @@ use App\Support\CustomFields;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
-use App\Support\UploadLimits;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -312,7 +313,8 @@ Route::middleware('auth:sanctum')->group(function () {
        რასაც სერვერი მიიღებს. ⚠️ მოდულზე დამოკიდებული არაა: ლიმიტი აპისა და
        PHP-ის წესია და არა ბიბლიოთეკის შიგთავსისა, ე.ი. `module:` ჯგუფს
        მიღმა დგას (პარამეტრების გვერდსაც სჭირდება, ჩართული მოდულის გარეშეც). */
-    Route::get('/uploads/limits', fn () => response()->json(['data' => UploadLimits::all()]));
+    /* ⚠️ Tasks §34.6 — **შესულის ეფექტური** ლიმიტი (ინსტალაციის ∪ პირადი გამონაკლისი) */
+    Route::get('/uploads/limits', [UploadLimitController::class, 'index']);
 
     Route::get('/modules', [ModuleController::class, 'index']);
     Route::put('/modules/{key}/settings', [ModuleController::class, 'updateSettings']);
@@ -352,6 +354,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/requests/module', [ApprovalRequestController::class, 'storeModuleRequest']);
     // 17.4 — ლიმიტის გაზრდის მოთხოვნა (იმავე ცხრილში, ახალი ტიპით)
     Route::post('/requests/storage', [ApprovalRequestController::class, 'storeStorageRequest']);
+    // Tasks §34.5 — ატვირთვის ლიმიტის მოთხოვნა (ფორმატი ან ზომა); ფორმატი სიიდან
+    Route::post('/requests/upload', [ApprovalRequestController::class, 'storeUploadRequest']);
     Route::delete('/requests/{approvalRequest}', [ApprovalRequestController::class, 'destroy']);
 
     /* ---------- ჩემი მონაცემების ექსპორტი (FEAT-06) ----------
@@ -1006,6 +1010,9 @@ Route::middleware('auth:sanctum')->group(function () {
        ორივე პროფილი საჯარო + არავინ არავინ დაუბლოკავს. */
     Route::get('/chat', [ChatController::class, 'index']);
     Route::get('/chat/unread', [ChatController::class, 'unread']);
+    /* Tasks §34.5 — „მიწერე ადმინს“: ვის შეიძლება მიწერა ყოველთვის (სუპერადმინები).
+       ⚠️ `{conversation}`-ზე ზემოთ — „admins“ id-ად არ უნდა წაიკითხებოდეს. */
+    Route::get('/chat/admins', [ChatController::class, 'admins']);
     // `{conversation}`-ზე ზემოთ, თორემ „unread"/„with" id-ად წაიკითხება
     Route::post('/chat/with/{username}', [ChatController::class, 'open']);
     Route::put('/chat/block/{username}', [ChatController::class, 'block']);
@@ -1135,6 +1142,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/users/{user}', [AdminUserController::class, 'show']);
             Route::patch('/users/{user}', [AdminUserController::class, 'update']);
             Route::put('/users/{user}/modules', [AdminUserController::class, 'syncModules']);
+            /* Tasks §34.6 — ატვირთვის პირადი გამონაკლისები. ⚠️ `PUT` მთელი რუკით:
+               `DELETE`-ს `EnsureAdminAccess` `delete`-ად წაიკითხავდა, არადა ეს
+               ანგარიშის რედაქტირებაა. */
+            Route::put('/users/{user}/upload-overrides', [AdminUserController::class, 'updateUploadOverrides']);
             Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
             /* FEAT-16 — ერთჯერადი აღდგენის ბმული. ⚠️ `POST`, რადგან ყოველი
                გამოძახება ახალ ტოკენს ქმნის და ძველს კლავს. */
@@ -1177,6 +1188,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/modules', [AdminModuleController::class, 'index']);
         Route::patch('/modules/{module}', [AdminModuleController::class, 'update']);
+
+        /* **ინსტალაციის პარამეტრები (Tasks §34.1)** — ყველა ანგარიშს ეხება,
+           ე.ი. `super_admin` და არა ერთი სექციის უფლება: ატვირთვის ლიმიტები
+           (§34.2) და ურნის ზედა ზღვარი (§29.6). */
+        Route::put('/uploads/limits', [AdminInstallationController::class, 'updateUploads']);
+        Route::put('/settings/trash', [AdminInstallationController::class, 'updateTrash']);
 
         /* მასობრივი წაშლა (Tasks 20) — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
         Route::post('/purge/plan', [AdminPurgeController::class, 'plan']);

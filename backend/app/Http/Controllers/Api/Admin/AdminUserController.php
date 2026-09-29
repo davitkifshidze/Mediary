@@ -16,6 +16,7 @@ use App\Services\Users\AccountEraser;
 use App\Support\AppTime;
 use App\Support\PublicDomain;
 use App\Support\ResetLink;
+use App\Support\UploadLimits;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -160,6 +161,10 @@ class AdminUserController extends Controller
                 ->all(),
             'last_activity' => $lastActivity ? Carbon::createFromTimestamp($lastActivity)->toIso8601String() : null,
             'modules' => $modules,
+            /* Tasks §34.6 — ატვირთვის **პირადი გამონაკლისები**. ⚠️ აქ ჩანს და
+               იხსნება — თორემ ერთხელ მიცემული ნებართვა სამუდამოდ უხილავი
+               დარჩებოდა. `(object)`, რომ ცარიელი რუკა JSON-ში `{}` იყოს და არა `[]`. */
+            'upload_overrides' => (object) (UploadLimits::cleanOverrides($user->upload_overrides) ?? []),
             'requests' => ApprovalRequestResource::collection(
                 ApprovalRequest::where('user_id', $user->id)
                     ->with(['module', 'genre', 'reviewer'])
@@ -284,6 +289,50 @@ class AdminUserController extends Controller
         }
 
         return new UserResource($user->load('modules', 'role'));
+    }
+
+    /**
+     * **ატვირთვის პირადი გამონაკლისების ჩასწორება (Tasks §34.6)** — `/users/{id}`.
+     *
+     * ⚠️ **მთელი რუკა მოდის** (`PUT`), და არა ერთი სახეობის `DELETE`: ერთი
+     * ფორმატის მოხსნაც ამ გზით ხდება, `DELETE`-ს კი `EnsureAdminAccess`
+     * `delete` მოქმედებად წაიკითხავდა — `admin:users.update`-ის მქონე
+     * ადმინი ცრუ 403-ს მიიღებდა.
+     *
+     * ⚠️ **SEC-02-ის იგივე კარი** (`outranks()`), და ფორმატი ისევ სიიდანაა —
+     * აქტიური შიგთავსი ამ გზითაც ვერ ჩაირთვება (422).
+     */
+    public function updateUploadOverrides(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'overrides' => ['present', 'array'],
+            'overrides.*' => ['array'],
+            'overrides.*.max_kb' => ['nullable', 'integer', 'min:'.UploadLimits::MIN_KB, 'max:'.UploadLimits::CEILING_KB],
+            'overrides.*.formats' => ['sometimes', 'array'],
+            'overrides.*.formats.*' => ['string', 'max:10'],
+        ]);
+
+        if ($this->outranks($user->effectiveRole(), $request->user())) {
+            return response()->json(['message' => 'role_escalation'], 403);
+        }
+
+        foreach ($data['overrides'] as $kind => $values) {
+            if (! array_key_exists($kind, UploadLimits::KINDS)) {
+                return response()->json(['message' => 'upload_kind_unknown', 'kind' => $kind], 422);
+            }
+
+            $bad = UploadLimits::outside($kind, $values['formats'] ?? []);
+
+            if ($bad !== []) {
+                return response()->json(['message' => 'upload_format_not_allowed', 'kind' => $kind, 'formats' => $bad], 422);
+            }
+        }
+
+        $user->forceFill(['upload_overrides' => UploadLimits::cleanOverrides($data['overrides'])])->save();
+
+        return response()->json([
+            'upload_overrides' => (object) (UploadLimits::cleanOverrides($user->upload_overrides) ?? []),
+        ]);
     }
 
     /**

@@ -26,6 +26,7 @@ use App\Support\PublicDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
+use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -370,6 +371,30 @@ class RegistryConsistencyTest extends TestCase
     public function test_the_spa_import_source_list_mirrors_the_backend(): void
     {
         $this->assertSame(ImportSource::keys(), $this->tsConstList('api/import.ts', 'IMPORT_SOURCES'));
+    }
+
+    /**
+     * Tasks §34 — **ატვირთვის სახეობები SPA-ში სერვერის რიგითაა.** სახეობის
+     * სახელი, „სად გამოიყენება" და ოჯახი i18n-ში `uploads.kind.*` /
+     * `uploads.where.*` / `uploads.family.*`-ია; ახალი სახეობა (ან ოჯახი)
+     * სარკის გარეშე ნედლ გასაღებს დახატავდა, ამიტომ ორივე ლოკალიც მოწმდება.
+     */
+    public function test_the_spa_upload_kinds_mirror_the_backend(): void
+    {
+        $this->assertSame(array_keys(UploadLimits::KINDS), $this->tsConstList('api/account.ts', 'UPLOAD_KINDS'));
+
+        foreach (['ka', 'en'] as $locale) {
+            $uploads = json_decode((string) file_get_contents(base_path("../frontend/src/i18n/{$locale}.json")), true)['uploads'] ?? [];
+
+            foreach (array_keys(UploadLimits::KINDS) as $kind) {
+                $this->assertArrayHasKey($kind, $uploads['kind'] ?? [], "{$locale}: uploads.kind.{$kind}");
+                $this->assertArrayHasKey($kind, $uploads['where'] ?? [], "{$locale}: uploads.where.{$kind}");
+            }
+
+            foreach (array_keys(UploadLimits::CATALOG) as $family) {
+                $this->assertArrayHasKey($family, $uploads['family'] ?? [], "{$locale}: uploads.family.{$family}");
+            }
+        }
     }
 
     /**

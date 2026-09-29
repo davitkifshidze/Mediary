@@ -11,6 +11,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -183,7 +184,7 @@ class BookmarkController extends Controller
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'image_url' => ['nullable', 'string', 'max:1000', 'url'],
             'favicon_url' => ['nullable', 'string', 'max:500', 'url'],
-            'thumbnail' => ['nullable', 'image', 'max:4096'],
+            'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
         ]);
     }

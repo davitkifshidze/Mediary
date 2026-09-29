@@ -39,7 +39,7 @@ class NotificationController extends Controller
                 'type' => $n->type,
                 'data' => $n->data,
                 // ⚠️ მარშრუტი სერვერისაა (იხ. `NotificationType::route()`)
-                'route' => NotificationType::route($n->type),
+                'route' => NotificationType::route($n->type, (array) $n->data),
                 'read_at' => $n->read_at?->toIso8601String(),
                 'created_at' => $n->created_at?->toIso8601String(),
             ]),

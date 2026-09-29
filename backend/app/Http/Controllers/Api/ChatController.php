@@ -127,6 +127,27 @@ class ChatController extends Controller
         return response()->json(['unread' => $this->chat->unreadTotal($request->user())]);
     }
 
+    /**
+     * **ვის მივწერო ადმინისტრაციის საკითხზე** (Tasks §34.5) — აქტიური
+     * სუპერადმინები, ჩემს გარდა. SPA `UploadLimitsCard`-ის „მიწერე ადმინს"
+     * ღილაკით ხსნის; რამდენიმე ადმინის შემთხვევაში — სიიდან.
+     *
+     * ⚠️ **ვიწრო ფორმა** — `PublicProfileService::header()`-ის ველები და მეტი
+     * არაფერი: ეს ყველა შესულს უჩანს, ე.ი. ელფოსტა ან როლის დეტალი აქ არ გადის.
+     */
+    public function admins(Request $request)
+    {
+        return response()->json([
+            'data' => $this->chat->admins($request->user())
+                ->map(fn ($u) => [
+                    'username' => $u->username,
+                    'display_name' => $u->displayName(),
+                    'avatar_path' => $u->avatar_path,
+                ])
+                ->values(),
+        ]);
+    }
+
     /** საუბრის გახსნა username-ით (დამთხვევების გვერდიდანაც) */
     public function open(Request $request, string $username)
     {
@@ -216,6 +237,10 @@ class ChatController extends Controller
                 'newest_id' => $items->max('id'),
             ],
             'profile' => $other ? $this->profiles->header($other) : null,
+            /* Tasks §34.5 — სუპერადმინთან საუბარში მეორე მხარე შეიძლება არასაჯარო
+               იყოს; მისი `/u/{username}` 404-ია, ე.ი. სახელი ბმულად არ უნდა
+               დაიხატოს (ბმული „პროფილი არ მოიძებნა"-ზე მიიყვანდა). */
+            'profile_public' => $other !== null && $other->profile_visibility === 'public',
             'blocked_by_me' => $other ? $this->chat->iBlocked($me, $other) : false,
             // ⚠️ „საერთოდ დაბლოკილია" ≠ „მე დავბლოკე" — UI-ს ორივე სჭირდება
             'blocked' => $other ? $this->chat->blockedBetween($me, $other) : false,
@@ -444,11 +469,14 @@ class ChatController extends Controller
             'type' => ['nullable', Rule::in(Message::MEDIA_TYPES)],
             'body' => ['nullable', 'string', 'max:4000'],
             'file' => match ($type) {
-                'image' => UploadLimits::rule('image'),
-                'video' => UploadLimits::rule('video'),
-                // ⚠️ ჩატში დოკუმენტს **ფორმატი არ ეზღუდება** — მიმოწერაა და
-                // არა ბიბლიოთეკა; მხოლოდ ზომა მოქმედებს
-                default => ['file', 'max:'.UploadLimits::effectiveKb('doc')],
+                'image' => UploadLimits::rule('image', $me),
+                'video' => UploadLimits::rule('video', $me),
+                /* ⚠️ **ჩატის ფაილს ახლა ნამდვილი სია აქვს** (Tasks §34.3/§34.4) —
+                   აქამდე ფორმატი საერთოდ არ მოწმდებოდა და ზომაც `doc`-ისას
+                   სესხულობდა. ნაგულისხმევი მთელი კატალოგია (აქტიური შიგთავსის
+                   გარეშე), ე.ი. ჩვეულებრივი ფაილი ისევ იგზავნება; სხვა ფორმატი
+                   სუპერადმინს მოთხოვნით ერთვება. */
+                default => UploadLimits::rule('chat', $me),
             },
         ]);
 

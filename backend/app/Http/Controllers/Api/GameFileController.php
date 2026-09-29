@@ -40,8 +40,8 @@ class GameFileController extends Controller
             'kind' => ['required', 'in:image,doc'],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => $kind === 'doc'
-                ? UploadLimits::rule('doc')
-                : UploadLimits::rule('image'),
+                ? UploadLimits::rule('doc', $request->user())
+                : UploadLimits::rule('image', $request->user()),
         ]);
 
         // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე

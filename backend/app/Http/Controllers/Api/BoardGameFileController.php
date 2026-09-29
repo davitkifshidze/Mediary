@@ -41,9 +41,9 @@ class BoardGameFileController extends Controller
             'kind' => ['required', 'in:rules,image,doc'],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => match ($kind) {
-                'image' => UploadLimits::rule('image'),
-                'doc' => UploadLimits::rule('doc'),
-                default => UploadLimits::rule('rules'),
+                'image' => UploadLimits::rule('image', $request->user()),
+                'doc' => UploadLimits::rule('doc', $request->user()),
+                default => UploadLimits::rule('rules', $request->user()),
             },
         ]);
 
