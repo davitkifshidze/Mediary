@@ -324,6 +324,34 @@ export async function deleteCustomModule(key: string): Promise<{ trashed: boolea
   return data
 }
 
+/**
+ * §37.8 — სუპერადმინის ზედამხედველობა (Q41): **აგრეგატები და არა შიგთავსი** —
+ * სახელი, მფლობელი, ჩანაწერების რაოდენობა და დაკავებული ადგილი.
+ */
+export interface CustomModuleOverview {
+  id: number
+  key: string
+  name_ka: string
+  name_en: string
+  icon: string | null
+  color: string | null
+  is_active: boolean
+  owner: { id: number; username: string | null; name: string } | null
+  records: number
+  bytes: number
+  created_at: string | null
+}
+
+export async function fetchCustomModulesOverview(): Promise<CustomModuleOverview[]> {
+  const { data } = await api.get('/admin/modules/custom')
+  return data.data
+}
+
+/** §37.8 — გლობალური გამორთვა (`modules.is_active`); მფლობელი შეტყობინებას იღებს */
+export async function setCustomModuleActive(id: number, isActive: boolean): Promise<CustomModuleOverview> {
+  const { data } = await api.patch(`/admin/modules/custom/${id}`, { is_active: isActive })
+  return data.data
+}
 
 export interface ApprovalRequestItem {
   id: number

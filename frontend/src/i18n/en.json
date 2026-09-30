@@ -3831,6 +3831,22 @@
     "deleteTitle": "Delete “{{name}}”?",
     "deleteHint": "The module and its records ({{count}}) will go to the trash, files included ({{size}}). You can restore it within {{days}} days — after that everything is deleted for good.",
     "deleteConfirm": "Move to trash",
-    "deleted": "The module and its records ({{count}}) are in the trash — restore them from there"
+    "deleted": "The module and its records ({{count}}) are in the trash — restore them from there",
+    "oversightTitle": "Users' modules",
+    "oversightHint": "Every account's private modules — name, owner, record count and space taken; never their content. Disabling hides the module from its owner (who can no longer turn it back on); the data stays untouched and the owner is notified. Only the owner can delete it.",
+    "oversightModule": "Module",
+    "oversightOwner": "Owner",
+    "oversightRecords": "Records",
+    "oversightSpace": "Space",
+    "oversightCreated": "Created",
+    "oversightActive": "Active",
+    "oversightOff": "Disabled",
+    "oversightSearch": "Search a module or owner",
+    "oversightEmpty": "Nobody has created a module yet",
+    "oversightEnabled": "Module enabled",
+    "oversightDisabled": "Module disabled — its owner has been notified",
+    "disableTitle": "Disable “{{name}}”?",
+    "disableHint": "The module is hidden from its owner ({{owner}}), who can no longer turn it back on; the data stays untouched. The owner is notified.",
+    "disableConfirm": "Disable"
   }
 }

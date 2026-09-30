@@ -60,6 +60,8 @@ vi.mock('@/api/account', async (original) => ({
   fetchModules: async () => mocks.server.list,
   fetchAdminModules: async () => mocks.server.admin,
   fetchMyRequests: async () => [],
+  // §37.8 — სუპერადმინს „მომხმარებლების მოდულები“-ც ეხატება
+  fetchCustomModulesOverview: async () => [],
   saveModuleOrder: mocks.saveOrder,
   resetModuleOrder: mocks.resetOrder,
   saveDefaultModuleOrder: mocks.saveDefault,

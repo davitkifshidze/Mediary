@@ -1260,6 +1260,11 @@ Route::middleware('auth:sanctum')->group(function () {
         /* Tasks §36.3 — საერთო რიგი („ყველასთვის ნაგულისხმევად"). ⚠️ `{module}`-ზე
            ზემოთ: მომავალი `PUT /modules/{module}` „order"-ს id-ად წაიკითხავდა. */
         Route::put('/modules/order', [AdminModuleController::class, 'saveDefaultOrder']);
+        /* Tasks §37.8 — „მომხმარებლების მოდულები" (Q41): აგრეგატები და გამორთვა,
+           შიგთავსი და წაშლა არა. ⚠️ `{module}`-ზე ზემოთ, რომ „custom" id-ად არ
+           წაიკითხოს (`GET`-ზე დღეს არაფერი ეჯახება — მომავალი ცვლილების დაცვაა). */
+        Route::get('/modules/custom', [AdminModuleController::class, 'customIndex']);
+        Route::patch('/modules/custom/{module}', [AdminModuleController::class, 'setCustomActive'])->whereNumber('module');
         Route::patch('/modules/{module}', [AdminModuleController::class, 'update']);
 
         /* **ინსტალაციის პარამეტრები (Tasks §34.1)** — ყველა ანგარიშს ეხება,

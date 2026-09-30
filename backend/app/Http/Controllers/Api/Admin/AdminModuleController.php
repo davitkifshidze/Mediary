@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ModuleResource;
 use App\Models\AuditLog;
+use App\Models\CustomRecord;
 use App\Models\Module;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Notify\Notifier;
+use App\Services\Storage\StorageMeter;
+use App\Support\CustomModules;
 use App\Support\ModuleOrder;
+use App\Support\NotificationType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -75,8 +80,127 @@ class AdminModuleController extends Controller
         return ModuleResource::collection($modules);
     }
 
+    /**
+     * **„მომხმარებლების მოდულები" — სუპერადმინის ზედამხედველობა (Tasks §37.8, Q41).**
+     *
+     * ⚠️ **აგრეგატები და არა შიგთავსი**: სახელი, მფლობელი, ჩანაწერების
+     * რაოდენობა და დაკავებული ადგილი. ჩანაწერები სუპერადმინისთვისაც 404-ია
+     * (`User::hasPermission()`-ის პირადი შტო), ე.ი. აქ არც სათაური მოდის და
+     * არც ბმული.
+     *
+     * ⚠️ **ორი დაჯგუფებული წაკითხვა და არა თითო მოდულზე**: რაოდენობა ერთი
+     * `group by`-ითაა, ადგილი — თითო **მფლობელზე** ერთი ინვენტარით
+     * (`StorageMeter::files()`, „რა ითვლება"-ს ერთადერთი განმარტება — ურნაში
+     * მყოფიც, ის ხომ ადგილს იკავებს). ⚠️ ურნაში მყოფი **მოდული** აქ არ ჩანს
+     * (`trash` scope): ის მფლობელის ურნაშია და მისი ბედი მფლობელისაა.
+     */
+    public function customIndex(StorageMeter $meter)
+    {
+        $modules = Module::query()->whereNotNull('owner_id')->with('owner')->orderBy('id')->get();
+
+        $records = CustomRecord::withoutGlobalScopes()
+            ->whereIn('module', $modules->pluck('key'))
+            ->whereNull('trashed_at')
+            ->selectRaw('module, count(*) as total')
+            ->groupBy('module')
+            ->pluck('total', 'module');
+
+        $bytes = [];
+
+        foreach ($modules->groupBy('owner_id') as $group) {
+            $owner = $group->first()->owner;
+
+            if (! $owner) {
+                continue;
+            }
+
+            $files = $meter->files($owner);
+
+            foreach ($group as $module) {
+                $bytes[$module->key] = (int) $files->where('module', $module->key)->sum('size');
+            }
+        }
+
+        return response()->json([
+            'data' => $modules->map(fn (Module $m) => $this->overview(
+                $m,
+                (int) ($records[$m->key] ?? 0),
+                $bytes[$m->key] ?? 0,
+            ))->values(),
+        ]);
+    }
+
+    /**
+     * **პირადი მოდულის გამორთვა/ჩართვა (Tasks §37.8)** — გლობალური `is_active`.
+     *
+     * ⚠️ **მფლობელის საკუთარ გადამრთველზე მაღლა დგას**: `PATCH /modules/{key}`
+     * მხოლოდ აქტიურ მოდულს პოულობს, ე.ი. მფლობელი მას თვითონ ვეღარ ჩართავს;
+     * მონაცემები ხელუხლებელია. ⚠️ **გამორთვისას მფლობელი შეტყობინებას იღებს**
+     * (`module_disabled`) — თორემ მენიუდან ჩუმად გამქრალი მოდული მონაცემების
+     * დაკარგვად წაიკითხებოდა; საკუთარ მოდულზე — არა (ხმაურია). ⚠️ ჟურნალს
+     * `AuditObserver` წერს (`save()` და არა `saveQuietly()`): „ვინ გამორთო
+     * ჩემი მოდული" სწორედ ის კითხვაა, რისთვისაც ჟურნალი არსებობს.
+     */
+    public function setCustomActive(Request $request, Module $module, Notifier $notifier, StorageMeter $meter)
+    {
+        abort_if($module->owner_id === null, 404);
+
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+
+        $was = (bool) $module->is_active;
+        $module->forceFill(['is_active' => (bool) $data['is_active']])->save();
+
+        CustomModules::flush();
+
+        $module->load('owner');
+
+        if ($was && ! $module->is_active && (int) $module->owner_id !== (int) $request->user()->getKey()) {
+            $notifier->send($module->owner, NotificationType::MODULE_DISABLED, [
+                'module_key' => $module->key,
+                'module_name_ka' => $module->name_ka,
+                'module_name_en' => $module->name_en,
+            ]);
+        }
+
+        $records = CustomRecord::withoutGlobalScopes()->where('module', $module->key)->whereNull('trashed_at')->count();
+        $bytes = $module->owner ? $meter->usedByModule($module->owner, $module->key) : 0;
+
+        return response()->json(['data' => $this->overview($module, $records, $bytes)]);
+    }
+
+    /** ზედამხედველობის ერთი რიგი — ⚠️ მხოლოდ აგრეგატები (Q41) */
+    private function overview(Module $module, int $records, int $bytes): array
+    {
+        $owner = $module->owner;
+
+        return [
+            'id' => (int) $module->id,
+            'key' => $module->key,
+            'name_ka' => $module->name_ka,
+            'name_en' => $module->name_en,
+            'icon' => $module->icon,
+            'color' => $module->color,
+            'is_active' => (bool) $module->is_active,
+            'owner' => $owner ? [
+                'id' => (int) $owner->id,
+                'username' => $owner->username,
+                'name' => $owner->displayName(),
+            ] : null,
+            'records' => $records,
+            'bytes' => $bytes,
+            'created_at' => $module->created_at?->toIso8601String(),
+        ];
+    }
+
     public function update(Request $request, Module $module)
     {
+        /* ⚠️ §37.8 — **პირადი მოდული აქ არ იცვლება**: სახელი, იერსახე და
+           ნაგულისხმევობა მფლობელისაა (`PUT /modules/{key}/details`), ხოლო
+           სუპერადმინის ერთადერთი მოქმედება — გამორთვა — ცალკე გზით მიდის
+           (`setCustomActive()`, შეტყობინებით). სხვაგვარად ამ კარით ვინმეს
+           პირად მოდულს გადაარქმევდა ან `enabled_by_default`-ს ჩაურთავდა. */
+        abort_if($module->owner_id !== null, 404);
+
         $data = $request->validate([
             'name_ka' => ['sometimes', 'required', 'string', 'max:255'],
             'name_en' => ['sometimes', 'required', 'string', 'max:255'],

@@ -24,6 +24,7 @@ import { errorMessage } from '@/lib/errors'
 import { arrangeByKeys, isCustomOrder } from '@/lib/moduleOrder'
 import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
 import { CustomModuleDialog } from '@/components/CustomModuleDialog'
+import { CustomModulesOversight } from '@/components/CustomModulesOversight'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
@@ -336,6 +337,9 @@ export function ModulesPage() {
           )
         })}
       </div>
+
+      {/* §37.8 — სხვების პირადი მოდულები: აგრეგატები და გამორთვა, შიგთავსი არა (Q41) */}
+      {isAdmin && <CustomModulesOversight />}
 
       {creating && <CustomModuleDialog onClose={() => setCreating(false)} />}
     </PageContainer>
