@@ -18,6 +18,8 @@ use App\Models\CourseCategory;
 use App\Models\CourseFile;
 use App\Models\CustomCategory;
 use App\Models\CustomRecord;
+use App\Models\CustomRecordFile;
+use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
@@ -148,6 +150,10 @@ final class TrashDomain
         /* Tasks §37 — პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
            ერთი სახე ყველა პირად მოდულზე (სტატუსის იგივე ფორმა). */
         'custom_category' => ['model' => CustomCategory::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],
+        /* Tasks §37.5 — პირადი მოდულის ჩანაწერის ფაილი და ჩანიშვნა. ⚠️ მოდული
+           რიგშია და მშობელიც მისი გასაღებით იკითხება (`TrashBin::parentRef()`). */
+        'custom_record_file' => ['model' => CustomRecordFile::class, 'module' => null, 'module_column' => 'module', 'parent' => 'record', 'size' => true],
+        'custom_record_note' => ['model' => CustomRecordNote::class, 'module' => null, 'module_column' => 'module', 'parent' => 'record', 'size' => false],
     ];
 
     /**

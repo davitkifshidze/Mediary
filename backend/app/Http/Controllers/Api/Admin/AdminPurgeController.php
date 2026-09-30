@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomCategory;
 use App\Models\User;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
+use App\Support\CustomModules;
 use App\Support\MediaDomain;
 use App\Support\Redact;
 use Illuminate\Http\Request;
@@ -61,12 +63,13 @@ class AdminPurgeController extends Controller
     public function records(Request $request)
     {
         $data = $request->validate([
-            'target' => ['required', Rule::in(PurgeService::TARGETS)],
+            'target' => ['required', 'string', 'max:40'],
             'media_type' => ['nullable', MediaDomain::rule()],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ]);
 
         $user = $this->targetUser($request, $data);
+        $this->assertTarget($user, $data['target']);
 
         return response()->json([
             'items' => $this->purge->records($user, $data['target'], $data['media_type'] ?? null),
@@ -97,7 +100,7 @@ class AdminPurgeController extends Controller
     public function item(Request $request)
     {
         $data = $request->validate([
-            'target' => ['required', Rule::in(PurgeService::TARGETS)],
+            'target' => ['required', 'string', 'max:40'],
             'media_type' => ['nullable', MediaDomain::rule()],
             'id' => ['required', 'integer'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
@@ -110,6 +113,7 @@ class AdminPurgeController extends Controller
         ]);
 
         $user = $this->targetUser($request, $data);
+        $this->assertTarget($user, $data['target']);
 
         try {
             $result = $this->purge->runOne($user, $data, (int) $data['id'], PurgeService::TO_TRASH);
@@ -136,7 +140,8 @@ class AdminPurgeController extends Controller
     private function validated(Request $request, bool $withConfirm = false): array
     {
         $rules = [
-            'target' => ['required', Rule::in(PurgeService::TARGETS)],
+            // ⚠️ §37.5 — სია სამიზნე ანგარიშისაა (მისი პირადი მოდულებით), ქვემოთ მოწმდება
+            'target' => ['required', 'string', 'max:40'],
             'mode' => ['required', Rule::in(PurgeService::MODES)],
             // `target = gallery`-ზე რომელ დომენის ჩანაწერებს ვასუფთავებთ
             'media_type' => ['nullable', MediaDomain::rule()],
@@ -164,6 +169,8 @@ class AdminPurgeController extends Controller
 
         $data = $request->validate($rules);
 
+        $this->assertTarget($this->targetUser($request, $data), $data['target']);
+
         // სკოუპის სავალდებულო პარამეტრები — ცარიელი ფილტრი „ყველად" არ იქცევა
         $missing = match ($data['mode']) {
             'ids' => empty($data['ids']),
@@ -179,7 +186,7 @@ class AdminPurgeController extends Controller
         // რეჟიმი სამიზნეს უნდა შეესაბამებოდეს — ერთი წყარო `TARGET_MODES`,
         // იმავეს ხატავს ფრონტიც (`PURGE_TARGET_MODES`)
         abort_unless(
-            in_array($data['mode'], PurgeService::TARGET_MODES[$data['target']] ?? [], true),
+            in_array($data['mode'], PurgeService::modesFor($data['target']), true),
             422,
             'mode_not_supported_for_target',
         );
@@ -204,6 +211,63 @@ class AdminPurgeController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * **სამიზნე ანგარიშის პირადი მოდულები (Tasks §37.5)** —
+     * `GET /admin/purge/targets?user_id=`.
+     *
+     * ⚠️ ცალკე endpoint-ია, რადგან სხვისი პირადი მოდული ყველა ჩვეულებრივ კარზე
+     * 404-ია (Q28) — `/modules` მხოლოდ **ჩემსას** აბრუნებს. აქ მხოლოდ ის ჩანს,
+     * რაც სუპერადმინს Q41-ით ისედაც ეკუთვნის: სახელი, ხატულა, ფერი და
+     * რომელი სკოუპები აქვს; ჩანაწერების შიგთავსი — არა.
+     */
+    public function targets(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+        ]);
+
+        $user = $this->targetUser($request, $data);
+
+        return response()->json([
+            'items' => CustomModules::of($user)->values()->map(fn ($module) => [
+                'key' => $module->key,
+                'name_ka' => $module->name_ka,
+                'name_en' => $module->name_en,
+                'icon' => $module->icon,
+                'color' => $module->color,
+                'modes' => PurgeService::modesFor($module->key),
+                /* `type` სკოუპის ჩამონათვალი — **სამიზნის** კლასიფიკატორი.
+                   ⚠️ მოდულის თავისი `/custom/{key}/categories` მფლობელისაა და
+                   ადმინს 404-ს უბრუნებს, ე.ი. სია მხოლოდ აქედან მოდის. */
+                'categories' => CustomModules::classifies($module->key)
+                    ? CustomCategory::withoutGlobalScope('owner')
+                        ->where('user_id', $user->getKey())
+                        ->where('module', $module->key)
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get(['id', 'name_ka', 'name_en', 'icon'])
+                        ->all()
+                    : [],
+            ])->all(),
+        ]);
+    }
+
+    /**
+     * სამიზნე **ამ ანგარიშისაა** — საბაზისო მოდული ან მისი პირადი (§37.5).
+     *
+     * ⚠️ სხვა ანგარიშის პირადი გასაღები 422-ია — იგივე, რაც უცნობ სამიზნეზე:
+     * „ასეთი მოდული სხვასთან არსებობს" არ ჟონავს.
+     */
+    private function assertTarget(User $user, string $target): void
+    {
+        if (! in_array($target, PurgeService::targets($user), true)) {
+            abort(response()->json([
+                'message' => 'invalid_target',
+                'errors' => ['target' => ['invalid_target']],
+            ], 422));
+        }
     }
 
     private function targetUser(Request $request, array $data): User

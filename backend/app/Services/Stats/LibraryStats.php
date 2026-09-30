@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
@@ -18,6 +19,7 @@ use App\Models\Song;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
+use App\Support\CustomModules;
 use App\Support\MediaDomain;
 use App\Support\SqlDate;
 use App\Support\StatusDomain;
@@ -105,7 +107,58 @@ class LibraryStats
 
     public static function has(string $module): bool
     {
-        return isset(self::MODULES[$module]);
+        return isset(self::MODULES[$module]) || CustomModules::exists($module);
+    }
+
+    /**
+     * **მოდულის რუკა** — საბაზისოზე `MODULES`-იდან, პირად მოდულზე (Tasks §37.5)
+     * მისი აღწერიდან.
+     *
+     * ⚠️ პირადი მოდული რუკაში ვერ ჩაიწერება (გასაღები ინტერფეისიდან იქმნება),
+     * მაგრამ მისი ფორმა ყოველთვის ერთია: დასრულების თარიღი `finished_at`-ია
+     * (FEAT-21-ის წესი — მიზანი და თვეების ჭრილი ნამდვილ თარიღს ითვლის),
+     * კლასიფიკაცია — ზოგადი კლასიფიკატორის სვეტი, თუ მოდულს ის აქვს; წელი და
+     * ქულა მას არ აქვს.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function map(string $module): ?array
+    {
+        if (isset(self::MODULES[$module])) {
+            return self::MODULES[$module];
+        }
+
+        if (! CustomModules::isKey($module)) {
+            return null;
+        }
+
+        return [
+            'model' => CustomRecord::class,
+            'year' => null,
+            'done_at' => 'finished_at',
+            'genres' => CustomModules::classifies($module)
+                ? ['kind' => 'column', 'column' => 'category_id', 'table' => 'custom_categories']
+                : null,
+            'rating' => false,
+            'custom' => true,
+        ];
+    }
+
+    /**
+     * ერთი მოდულის ჩანაწერების ფაბრიკა (`$base`).
+     *
+     * ⚠️ **პირად მოდულზე მოდულითაც იჭრება** — ერთი ცხრილი ყველა პირად მოდულს
+     * ემსახურება, ე.ი. `user_id` მარტო მეზობელი მოდულის ჩანაწერებსაც დათვლიდა.
+     *
+     * @param  array<string, mixed>  $map
+     */
+    private function base(User $user, string $module, array $map): callable
+    {
+        $model = $map['model'];
+
+        return fn () => $model::withoutGlobalScope('owner')
+            ->where('user_id', $user->getKey())
+            ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module));
     }
 
     /**
@@ -121,10 +174,8 @@ class LibraryStats
      */
     public function forModule(User $user, string $module, ?int $year = null): array
     {
-        $map = self::MODULES[$module];
-        $model = $map['model'];
-
-        $base = fn () => $model::withoutGlobalScope('owner')->where('user_id', $user->getKey());
+        $map = self::map($module);
+        $base = $this->base($user, $module, $map);
 
         return [
             'module' => $module,
@@ -357,17 +408,15 @@ class LibraryStats
         $years = [];
 
         foreach ($modules as $module) {
-            $map = self::MODULES[$module] ?? null;
+            $map = self::map($module);
 
             if (! $map || ! $map['done_at']) {
                 continue;
             }
 
-            $model = $map['model'];
             $column = $map['done_at'];
 
-            $found = $model::withoutGlobalScope('owner')
-                ->where('user_id', $user->getKey())
+            $found = $this->base($user, $module, $map)()
                 ->whereNotNull($column)
                 ->toBase()
                 ->distinct()
@@ -425,14 +474,13 @@ class LibraryStats
         $doneByModule = [];
 
         foreach ($modules as $module) {
-            $map = self::MODULES[$module] ?? null;
+            $map = self::map($module);
 
             if (! $map) {
                 continue;
             }
 
-            $model = $map['model'];
-            $base = fn () => $model::withoutGlobalScope('owner')->where('user_id', $user->getKey());
+            $base = $this->base($user, $module, $map);
 
             /* ⚠️ ორი რიცხვი — ერთი query. `sum(case when …)` ორივე დრაივერზე
                ერთნაირად მუშაობს (boolean ორივეგან 0/1-ია), `count()`-ის და
@@ -527,7 +575,7 @@ class LibraryStats
     {
         return array_values(array_filter(
             $modules,
-            fn (string $module) => ! empty(self::MODULES[$module]['done_at']),
+            fn (string $module) => ! empty(self::map($module)['done_at'] ?? null),
         ));
     }
 
@@ -549,7 +597,7 @@ class LibraryStats
     private function byStatus(callable $base, string $module): array
     {
         if (! StatusDomain::usesDictionary($module)) {
-            $model = self::MODULES[$module]['model'];
+            $model = self::map($module)['model'];
             $table = (new $model)->getTable();
 
             if (! Schema::hasColumn($table, 'status')) {

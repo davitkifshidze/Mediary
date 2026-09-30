@@ -28,6 +28,8 @@ use App\Models\CourseCategory;
 use App\Models\CourseFile;
 use App\Models\CustomCategory;
 use App\Models\CustomRecord;
+use App\Models\CustomRecordFile;
+use App\Models\CustomRecordNote;
 use App\Models\DatabaseBackup;
 use App\Models\EpisodeWatch;
 use App\Models\GalleryAlbum;
@@ -172,6 +174,9 @@ class AuditRegistry
            (`Status`-ის იგივე წესი). */
         CustomRecord::class => 'account',
         CustomCategory::class => 'account',
+        // §37.5 — ჩანაწერის საკუთარი ფაილი და ჩანიშვნა
+        CustomRecordFile::class => 'account',
+        CustomRecordNote::class => 'account',
 
         // ---- გალერეა
         GalleryAlbum::class => 'gallery',

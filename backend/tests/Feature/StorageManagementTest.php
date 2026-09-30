@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Concerns\StoredFile;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\Game;
@@ -800,6 +801,22 @@ class StorageManagementTest extends TestCase
             'user_id' => $u->id, 'record_id' => $video->id, 'field_key' => 'f', 'sort_order' => 0,
             'value_path' => 'videos/fields/f.pdf', 'value_size' => 4,
             'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        /* Tasks §37 — პირადი მოდული: ჩანაწერის მთავარი ფოტო და (§37.5) მიმაგრებული
+           ფაილი. ⚠️ მოდული `forceFill()`-ით — `fill()` ახალ სვეტებს ჩუმად აგდებდა. */
+        (new Module)->forceFill([
+            'key' => 'c'.$u->id.'-inv', 'name_ka' => 'ინვ', 'name_en' => 'Inv', 'icon' => 'Box',
+            'route_base' => '/c/c'.$u->id.'-inv', 'api_base' => '/custom/c'.$u->id.'-inv',
+            'owner_id' => $u->id, 'is_active' => true, 'enabled_by_default' => false, 'sort_order' => 900,
+        ])->save();
+        $custom = CustomRecord::create([
+            'user_id' => $u->id, 'module' => 'c'.$u->id.'-inv', 'title' => 'cr',
+            'photo_path' => 'custom/c'.$u->id.'-inv/photos/cr.jpg',
+        ]);
+        $custom->files()->create([
+            'user_id' => $u->id, 'module' => 'c'.$u->id.'-inv', 'kind' => 'doc',
+            'path' => 'custom/c'.$u->id.'-inv/files/docs/cr.pdf', 'original_name' => 'cr.pdf', 'size' => 20,
         ]);
 
         /* Tasks §29 — **ურნაში მყოფიც ინვენტარშია**: ის დისკზეა და კვოტაში

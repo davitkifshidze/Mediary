@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
+import { fetchStatuses, isStatusDomain, type StatusDomain, type StatusDomainKey } from '@/api/statuses'
+import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 import { ENUM_STATUS_NS, statusName } from '@/lib/statuses'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,6 +8,7 @@ import { AlertTriangle, Trash2 } from 'lucide-react'
 import {
   fetchPurgePlan,
   fetchPurgeRecords,
+  fetchPurgeTargets,
   fetchUsers,
   purgeItem,
   PURGE_TARGETS,
@@ -15,6 +17,7 @@ import {
   type PurgeInput,
   type PurgeMode,
   type PurgeTarget,
+  type PurgeTargetKey,
   type PurgeTargetWithStatus,
   type PurgeTargetWithType,
 } from '@/api/account'
@@ -66,7 +69,7 @@ import { PurgeItemList } from '@/components/purge/PurgeItemList'
 const CONFIRM_WORD = 'DELETE'
 
 /** ჩანაწერის დომენი — გალერეა ჩანაწერს არ შლის, ე.ი. თავისი დომენი არ აქვს */
-type PurgeDomain = Exclude<PurgeTarget, 'gallery'>
+type PurgeDomain = Exclude<PurgeTarget, 'gallery'> | CustomModuleKey
 
 /** ლექსიკონის ერთეული — სამივე წყაროს ერთი და იგივე ფორმა აქვს */
 type DictionaryItem = { id: number; name_ka: string; name_en: string; icon?: string | null }
@@ -135,7 +138,7 @@ export function PurgePage() {
   const { has, all: allModules } = useModules()
   const { enqueuePurge, isBusy } = useQueue()
 
-  const [target, setTarget] = useState<PurgeTarget>('movie')
+  const [target, setTarget] = useState<PurgeTargetKey>('movie')
   const [mediaType, setMediaType] = useState<'movie' | 'series'>('movie')
   const [mode, setMode] = useState<PurgeMode>('ids')
   const [ids, setIds] = useState<number[]>([])
@@ -158,6 +161,17 @@ export function PurgePage() {
   /** რომელი ერთეული იშლება ცალკე ახლა */
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
+  /* **§37.5 — სამიზნე ანგარიშის პირადი მოდულები** (სახელი, სკოუპები,
+     კლასიფიკატორი). ⚠️ სხვისი პირადი მოდული `/modules`-ში არ ჩანს (Q28), ე.ი.
+     ბარათები მხოლოდ აქედან მოდის — და **ანგარიშს მიჰყვება**. */
+  const customQ = useQuery({
+    queryKey: ['purge-targets', userId ?? 'me'],
+    queryFn: () => fetchPurgeTargets(userId),
+    enabled: !!me?.is_super_admin,
+  })
+  const customTargets = customQ.data ?? []
+  const customTarget = isCustomModuleKey(target) ? customTargets.find((c) => c.key === target) : undefined
+
   /** რომელ დომენზე მუშაობს არჩეული სამიზნე */
   const domain: PurgeDomain = target === 'gallery' ? mediaType : target
   const isVideo = domain === 'video'
@@ -169,7 +183,8 @@ export function PurgePage() {
   const isPlace = domain === 'place'
   /** per-user ლექსიკონიანი დომენი (იხ. `DICTIONARIES`) vs გლობალური `genres` */
   const dict = dictionaryFor(domain)
-  const byDictionary = !!dict
+  // §37.5 — პირადი მოდულის კლასიფიკატორი სამიზნის სიიდან მოდის (`customTarget`)
+  const byDictionary = !!dict || isCustomModuleKey(domain)
 
   /**
    * რეჟიმების სია სამიზნეს მიჰყვება (სარკე `PurgeService::TARGET_MODES`-ისა).
@@ -179,15 +194,18 @@ export function PurgePage() {
    * უნდა წაგეშალა ან არაფერი.
    * ⚠️ `readonly` — სია `as const`-ია, რომ ტიპებმა ლიტერალები დაინახონ.
    */
-  const modes: readonly PurgeMode[] = PURGE_TARGET_MODES[target]
+  const modes: readonly PurgeMode[] = isCustomModuleKey(target)
+    ? (customTarget?.modes ?? ['all'])
+    : PURGE_TARGET_MODES[target]
   /* §6.4 — ორი მექანიზმი ერთდროულად: ექვს დომენს per-user ლექსიკონი აქვს
      (და სია **სამიზნე ანგარიშიდან** მოდის, რადგან `/purge` სხვისას შლის),
      წიგნს/თამაშს/ბორდგეიმს კი `enum`. ორივე მხარე გასაღებებით მუშაობს,
      ე.ი. ქვემოთ განსხვავება მხოლოდ ლეიბლშია. */
-  const dictionaryStatuses = isStatusDomain(domain)
+  // §37.5 — პირად მოდულსაც ლექსიკონი აქვს (და ის **სამიზნისაა**)
+  const dictionaryStatuses = isStatusDomain(domain) || isCustomModuleKey(domain)
   const statusQ = useQuery({
     queryKey: ['statuses', domain, userId ?? 'me'],
-    queryFn: () => fetchStatuses(domain as StatusDomain, userId),
+    queryFn: () => fetchStatuses(domain as StatusDomain | StatusDomainKey, userId),
     enabled: dictionaryStatuses,
   })
   const statuses = dictionaryStatuses
@@ -234,9 +252,9 @@ export function PurgePage() {
   const dictQ = useQuery({
     queryKey: [dict?.key ?? 'no-dictionary'],
     queryFn: () => dict!.load(),
-    enabled: byDictionary,
+    enabled: !!dict,
   })
-  const dictionary = dictQ.data ?? []
+  const dictionary = isCustomModuleKey(domain) ? (customTarget?.categories ?? []) : (dictQ.data ?? [])
   /* **„კონკრეტული ჩანაწერები" — თერთმეტივე სამიზნეზე ერთი წყარო** (§25.2).
 
      ⚠️ **აქამდე სია `mediaApi(domain).list()`-იდან მოდიოდა და ორმაგად
@@ -423,6 +441,21 @@ export function PurgePage() {
   // სამიზნე = მოდული, ე.ი. გამორთული მოდული სიაშიც არ ჩანს
   const targets = PURGE_TARGETS.filter((tg) => has(tg))
 
+  /** სამიზნის შეცვლა — რეჟიმი, სტატუსი და არჩეული id-ები დომენს ეკუთვნის */
+  const selectTarget = (tg: PurgeTargetKey, firstMode: PurgeMode) => {
+    setTarget(tg)
+    // რეჟიმი ვალიდური უნდა დარჩეს — თითო სამიზნეს თავისი სია აქვს
+    setMode(firstMode)
+    // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
+    setStatus('')
+    /* ⚠️ **არჩეული id-ები დომენს ეკუთვნის და არა გვერდს** (§25.1):
+       ისინი რომ დარჩნენ, ფილმის id ბუკმარკის სკოუპში გადავიდოდა
+       და სულ სხვა ჩანაწერს წაშლიდა. */
+    setIds([])
+    setTypeIds([])
+    setTags([])
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -458,24 +491,25 @@ export function PurgePage() {
                 color={mod?.color ?? null}
                 icon={<ModuleIcon name={mod?.icon} className="size-4 text-[var(--mod)]" />}
                 label={t(`purge.targetOption.${tg}`)}
-                onClick={() => {
-                  setTarget(tg)
-                  // რეჟიმი ვალიდური უნდა დარჩეს — თითო სამიზნეს თავისი სია აქვს
-                  setMode(PURGE_TARGET_MODES[tg][0])
-                  // ⚠️ სტატუსების ლექსიკონი დომენზეა: `read` ფილმზე 422-ს იძლევა
-                  setStatus('')
-                  /* ⚠️ **არჩეული id-ები დომენს ეკუთვნის და არა გვერდს** (§25.1):
-                     ისინი რომ დარჩნენ, ფილმის id ბუკმარკის სკოუპში გადავიდოდა
-                     და სულ სხვა ჩანაწერს წაშლიდა. */
-                  setIds([])
-                  setTypeIds([])
-                  setTags([])
-                }}
+                onClick={() => selectTarget(tg, PURGE_TARGET_MODES[tg][0])}
               />
             )
           })}
+          {/* §37.5 — სამიზნე ანგარიშის პირადი მოდულები, თავისი სახელით და ფერით */}
+          {customTargets.map((c) => (
+            <ScopeCard
+              key={c.key}
+              active={target === c.key}
+              color={c.color}
+              icon={<ModuleIcon name={c.icon} className="size-4 text-[var(--mod)]" />}
+              label={lang === 'ka' ? c.name_ka : c.name_en}
+              onClick={() => selectTarget(c.key, c.modes[0] ?? 'all')}
+            />
+          ))}
         </ScopeGroup>
-        <p className="mt-2 text-xs text-muted-foreground">{t(`purge.targetHint.${target}`)}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {isCustomModuleKey(target) ? t('purge.targetHint.custom') : t(`purge.targetHint.${target}`)}
+        </p>
 
         {target === 'gallery' && (
           <div className="mt-3 border-t border-border pt-3">
@@ -612,7 +646,11 @@ export function PurgePage() {
           <Label className="mb-2 block">{t('purge.account')}</Label>
           <Select
             value={String(userId ?? me.id)}
-            onValueChange={(v) => setUserId(Number(v) === me.id ? undefined : Number(v))}
+            onValueChange={(v) => {
+              setUserId(Number(v) === me.id ? undefined : Number(v))
+              // ⚠️ §37.5 — პირადი მოდული **წინა** ანგარიშისაა; ახალში ის არ არსებობს
+              if (isCustomModuleKey(target)) selectTarget('movie', PURGE_TARGET_MODES.movie[0])
+            }}
           >
             <SelectTrigger className="sm:max-w-xs">
               <SelectValue />

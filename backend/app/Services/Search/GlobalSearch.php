@@ -367,6 +367,11 @@ class GlobalSearch
                     'url' => ['url'],
                 ],
                 'json' => ['tags' => 'tags'],
+                // §37.5 — ჩანიშვნები და ატვირთული ფაილის სახელი (საბაზისო მოდულის ფორმა)
+                'relations' => [
+                    ['relation' => 'notes', 'fields' => ['note' => ['body']]],
+                    ['relation' => 'files', 'fields' => ['file' => ['original_name']]],
+                ],
                 'image' => 'photo_path',
                 'image_url' => 'image_url',
                 'scope' => fn (Builder $q) => $q->where('custom_records.module', $key),

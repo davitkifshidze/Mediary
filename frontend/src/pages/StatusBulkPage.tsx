@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { fetchDashboard } from '@/api/dashboard'
-import { mediaApi } from '@/api/media'
+import { bulkCustomStatus, fetchCustomRecords } from '@/api/customRecords'
+import { mediaApi, type BulkStatusInput } from '@/api/media'
+import type { StatusDomainKey } from '@/api/statuses'
+import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
+import { movieTitle } from '@/lib/display'
 import { mediaKey, type MediaType } from '@/lib/media'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
@@ -15,7 +19,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { MovieMultiSelect } from '@/components/MovieMultiSelect'
+import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 import { VideoBulkPanel } from '@/components/VideoBulkPanel'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -24,8 +28,11 @@ import { statusName, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
 
 type Mode = 'by_status' | 'specific'
-/** დომენი: მედია-ტიპი ან ვიდეოები (ვიდეოს თავისი პანელი აქვს — ტიპი და ტეგებიც) */
-type Domain = MediaType | 'video'
+/**
+ * დომენი: მედია-ტიპი, ვიდეოები (ვიდეოს თავისი პანელი აქვს — ტიპი და ტეგებიც)
+ * ან (Tasks §37.5) **პირადი მოდული**.
+ */
+type Domain = MediaType | 'video' | CustomModuleKey
 
 /* ============================================================
    მასობრივი ოპერაციები (Tasks 4).
@@ -36,7 +43,7 @@ type Domain = MediaType | 'video'
 
 export function StatusBulkPage() {
   const { t, i18n } = useTranslation()
-  const { mediaModules, enabled } = useModules()
+  const { mediaModules, enabled, customModules } = useModules()
 
   // ჩართული დომენები; ერთის შემთხვევაში გადამრთველი არ ჩანს
   const domains = useMemo(
@@ -45,8 +52,10 @@ export function StatusBulkPage() {
       ...enabled
         .filter((m) => m.key === 'video')
         .map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: 'video' as Domain })),
+      // §37.5 — პირადი მოდულიც: სტატუსი მისი ლექსიკონიდან, ჩანაწერები — მისი ცხრილიდან
+      ...customModules.map((m) => ({ ...m, label: moduleName(m, i18n.language), domain: m.key as Domain })),
     ],
-    [mediaModules, enabled, i18n.language],
+    [mediaModules, enabled, customModules, i18n.language],
   )
 
   /* ⚠️ **რიცხვი დეშბორდის იმავე endpoint-იდან მოდის და არა ცალკე დათვლიდან**:
@@ -74,7 +83,17 @@ export function StatusBulkPage() {
       <PageHeader
         tool="bulk"
         title={t('bulkStatus.title')}
-        hint={<InfoHint info={t(active === 'video' ? 'bulkVideo.subtitle' : mediaKey('bulkStatus.subtitle', active))} />}
+        hint={
+          <InfoHint
+            info={t(
+              active === 'video'
+                ? 'bulkVideo.subtitle'
+                : isCustomModuleKey(active)
+                  ? 'bulkStatus.subtitleRecords'
+                  : mediaKey('bulkStatus.subtitle', active),
+            )}
+          />
+        }
       />
 
       {/* ---------- დომენის არჩევა — ყველა ჩართული მოდული ერთ გვერდზეა (Tasks 4) ----------
@@ -101,25 +120,136 @@ export function StatusBulkPage() {
         </div>
       )}
 
-      {active === 'video' ? <VideoBulkPanel /> : <MediaBulkPanel type={active} />}
+      {active === 'video' ? (
+        <VideoBulkPanel />
+      ) : isCustomModuleKey(active) ? (
+        <CustomBulkPanel moduleKey={active} key={active} />
+      ) : (
+        <MediaBulkPanel type={active} key={active} />
+      )}
     </PageContainer>
   )
 }
 
-/** სტატუსის მასობრივი შეცვლა — ფილმები და სერიალები */
+/** ერთი ჩანაწერი ამრჩევისთვის — სახელი ეკრანის ენაზე და მისი სტატუსი */
+interface BulkItem {
+  id: number
+  label: string
+  statusId: number | null
+  statusKey: string | null
+}
+
+/** სტატუსის მასობრივი შეცვლა — ფილმები, სერიალები, ანიმე */
 function MediaBulkPanel({ type }: { type: MediaType }) {
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  // §6.4 — სია ლექსიკონიდან; ორივე გადამრჩევი (საიდან/სად) იმავეს ხატავს
-  const { data: statuses = [] } = useStatuses(type)
   const qc = useQueryClient()
-  const { toast } = useToast()
-  const confirm = useConfirm()
   const api = mediaApi(type)
 
   // ⚠️ `all` — მასობრივი სტატუსი მთელ სიაზე მოქმედებს
   const moviesQ = useQuery({ queryKey: [type, 'bulk'], queryFn: () => api.list({ all: true }).then((p) => p.items) })
-  const movies = useMemo(() => moviesQ.data ?? [], [moviesQ.data])
+  const items = useMemo(
+    () =>
+      (moviesQ.data ?? []).map((m) => {
+        const title = movieTitle(m, lang)
+        return { id: m.id, label: m.year ? `${title} (${m.year})` : title, statusId: m.status?.id ?? null, statusKey: m.status?.key ?? null }
+      }),
+    [moviesQ.data, lang],
+  )
+
+  return (
+    <BulkStatusPanel
+      domain={type}
+      items={items}
+      loading={moviesQ.isLoading}
+      apply={api.bulkStatus}
+      onApplied={() => {
+        qc.invalidateQueries({ queryKey: [type] })
+        qc.invalidateQueries({ queryKey: ['dashboard'] })
+      }}
+      text={(base) => mediaKey(base, type)}
+    />
+  )
+}
+
+/**
+ * პირადი მოდულის ტექსტები — „ჩანაწერებს" ამბობს და არა „ფილმებს".
+ * ⚠️ გასაღებები **ცხადადაა** და არა `${base}Records`-ით აწყობილი: i18n-ის
+ * აუდიტი ლიტერალს ხედავს, შაბლონს — არა, ე.ი. აწყობილი გასაღები „გამოუყენებლად"
+ * ჩაითვლებოდა.
+ */
+const RECORD_TEXT: Record<string, string> = {
+  'bulkStatus.whichLabel': 'bulkStatus.whichLabelRecords',
+  'bulkStatus.modeSpecific': 'bulkStatus.modeSpecificRecords',
+  'bulkStatus.moviesPick': 'bulkStatus.moviesPickRecords',
+  'bulkStatus.affected': 'bulkStatus.affectedRecords',
+  'bulkStatus.confirmDesc': 'bulkStatus.confirmDescRecords',
+  'bulkStatus.done': 'bulkStatus.doneRecords',
+}
+
+/**
+ * **პირადი მოდული (Tasks §37.5)** — იგივე პანელი, თავისი წყაროთი.
+ * ⚠️ ტექსტი „ჩანაწერებს" ამბობს (`…Records`) — „ფილმები" აქ ტყუილი იქნებოდა.
+ */
+function CustomBulkPanel({ moduleKey }: { moduleKey: CustomModuleKey }) {
+  const qc = useQueryClient()
+
+  const recordsQ = useQuery({
+    queryKey: ['custom-records', moduleKey, 'bulk'],
+    queryFn: () => fetchCustomRecords(moduleKey, { all: true }).then((p) => p.items),
+  })
+  const items = useMemo(
+    () =>
+      (recordsQ.data ?? []).map((r) => ({
+        id: r.id,
+        label: r.title,
+        statusId: r.status?.id ?? null,
+        statusKey: r.status?.key ?? null,
+      })),
+    [recordsQ.data],
+  )
+
+  return (
+    <BulkStatusPanel
+      domain={moduleKey}
+      items={items}
+      loading={recordsQ.isLoading}
+      apply={(input) => bulkCustomStatus(moduleKey, input)}
+      onApplied={() => {
+        qc.invalidateQueries({ queryKey: ['custom-records', moduleKey] })
+        qc.invalidateQueries({ queryKey: ['dashboard'] })
+      }}
+      text={(base) => RECORD_TEXT[base] ?? base}
+    />
+  )
+}
+
+/**
+ * **ერთი სხეული ყველა დომენზე** — „რომლებს" (ერთი სტატუსის ყველა ან კონკრეტულები)
+ * და „რა გახდეს". ⚠️ ტექსტის გასაღებს გამომძახებელი არჩევს (`text`): მედიაზე
+ * `mediaKey()`, პირად მოდულზე `…Records` — ერთი პანელი, სწორი სიტყვით.
+ */
+function BulkStatusPanel({
+  domain,
+  items,
+  loading,
+  apply: send,
+  onApplied,
+  text,
+}: {
+  domain: StatusDomainKey
+  items: BulkItem[]
+  loading: boolean
+  apply: (input: BulkStatusInput) => Promise<number>
+  onApplied: () => void
+  text: (base: string) => string
+}) {
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+  // §6.4 — სია ლექსიკონიდან; ორივე გადამრჩევი (საიდან/სად) იმავეს ხატავს
+  const { data: statuses = [] } = useStatuses(domain)
+  const { toast } = useToast()
+  const confirm = useConfirm()
 
   const [mode, setMode] = useState<Mode>('by_status')
   const [fromStatus, setFromStatus] = useState('')
@@ -129,7 +259,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
   const affectedCount =
     mode === 'by_status'
       ? fromStatus
-        ? movies.filter((m) => m.status?.key === fromStatus).length
+        ? items.filter((m) => m.statusKey === fromStatus).length
         : 0
       : ids.length
 
@@ -140,15 +270,14 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
 
   const mut = useMutation({
     mutationFn: () =>
-      api.bulkStatus(
+      send(
         mode === 'by_status'
           ? { status: target, from_status: fromStatus }
           : { status: target, ids },
       ),
     onSuccess: (updated) => {
-      qc.invalidateQueries({ queryKey: [type] })
-      qc.invalidateQueries({ queryKey: ['dashboard'] })
-      toast({ title: t(mediaKey('bulkStatus.done', type), { count: updated }), variant: 'success' })
+      onApplied()
+      toast({ title: t(text('bulkStatus.done'), { count: updated }), variant: 'success' })
       setIds([])
       setFromStatus('')
       setTarget('')
@@ -163,7 +292,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
       /* §9.7 — ⚠️ ტექსტები სიტყვასიტყვით „ფილმს" ამბობდა იმ პანელზე,
          რომელიც სერიალსაც და ანიმესაც ემსახურება. `mediaKey()` სწორედ
          ამისთვის არსებობს (`lib/media.ts`). */
-      description: t(mediaKey('bulkStatus.confirmDesc', type), {
+      description: t(text('bulkStatus.confirmDesc'), {
         count: affectedCount,
         status: statusName(statuses.find((s) => s.key === target), lang),
       }),
@@ -177,7 +306,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
     <div className="space-y-6 rounded-xl border border-border bg-card p-5">
       {/* რას ვცვლით */}
       <div>
-        <Label className="mb-2 block">{t(mediaKey('bulkStatus.whichLabel', type))}</Label>
+        <Label className="mb-2 block">{t(text('bulkStatus.whichLabel'))}</Label>
         <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="gap-3">
           <div
             className={cn(
@@ -198,7 +327,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
                   <SelectContent>
                     {statuses.map((s) => (
                       <SelectItem key={s.id} value={s.key}>
-                        {statusName(s, lang)} ({movies.filter((m) => m.status?.id === s.id).length})
+                        {statusName(s, lang)} ({items.filter((m) => m.statusId === s.id).length})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -215,16 +344,15 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
           >
             <label className="flex cursor-pointer items-center gap-3">
               <RadioGroupItem value="specific" />
-              <span className="text-sm font-medium">{t(mediaKey('bulkStatus.modeSpecific', type))}</span>
+              <span className="text-sm font-medium">{t(text('bulkStatus.modeSpecific'))}</span>
             </label>
             {mode === 'specific' && (
               <div className="mt-3 pl-8">
-                <MovieMultiSelect
-                  movies={movies}
+                <IdMultiSelect
+                  items={items}
                   value={ids}
                   onChange={setIds}
-                  placeholder={moviesQ.isLoading ? t('api.loading') : t(mediaKey('bulkStatus.moviesPick', type))}
-                  key={type}
+                  placeholder={loading ? t('api.loading') : t(text('bulkStatus.moviesPick'))}
                 />
               </div>
             )}
@@ -251,7 +379,7 @@ function MediaBulkPanel({ type }: { type: MediaType }) {
 
       <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
         <span className="text-sm text-muted-foreground">
-          {t(mediaKey('bulkStatus.affected', type), { count: affectedCount })}
+          {t(text('bulkStatus.affected'), { count: affectedCount })}
         </span>
         <Button onClick={apply} disabled={!canApply || mut.isPending}>
           {mut.isPending ? t('actions.saving') : t('bulkStatus.apply')}

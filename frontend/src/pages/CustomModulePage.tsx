@@ -7,7 +7,9 @@ import {
   ChevronDown,
   ExternalLink,
   Link2,
+  ListVideo,
   Loader2,
+  Play,
   Plus,
   Search,
   SquarePen,
@@ -35,6 +37,7 @@ import {
 } from '@/api/customRecords'
 import type { StatusDomainKey } from '@/api/statuses'
 import { storageUrl } from '@/lib/api'
+import { customRecordItem, isPlayableRecord, usePlayer } from '@/lib/player'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { errorMessage, fieldErrors } from '@/lib/errors'
@@ -236,6 +239,34 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
     qc.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
+  const moduleTitle = (lang === 'ka' ? module.name_ka : module.name_en) || module.name_en || module.name_ka
+
+  /* **§37.5 — ბმულიდან დაკვრა გლობალურ ფლეერში.** ⚠️ რიგი **მთელი გაფილტრული
+     სიაა** და არა ჩატვირთული გვერდი (ვიდეოების წესი, §7.2) — მოთხოვნა მხოლოდ
+     ცხად დაჭერაზეა; დასაკრავად ამოცნობილი ბმულის გარეშე ჩანაწერი რიგში არ ჯდება.
+     წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ. */
+  const player = usePlayer()
+  const hasPlayable = records.some(isPlayableRecord)
+
+  const playFrom = async (recordId?: number) => {
+    let list = records
+
+    try {
+      const full = await qc.fetchQuery({
+        queryKey: ['custom-records', module.key, filters, 'queue'],
+        queryFn: () => fetchCustomRecords(module.key, { ...filters, all: true }),
+      })
+      list = full.items
+    } catch {
+      // ჩატვირთული სია რჩება
+    }
+
+    const playable = list.filter(isPlayableRecord)
+    const index = recordId === undefined ? 0 : Math.max(0, playable.findIndex((r) => r.id === recordId))
+
+    if (playable.length) player.play(playable.map(customRecordItem), index, moduleTitle)
+  }
+
   const favorite = useMutation({
     mutationFn: (id: number) => toggleCustomRecordFavorite(module.key, id),
     onSuccess: invalidate,
@@ -299,8 +330,6 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   const onlyCategory =
     categories.length === 1 ? allCategories.find((x) => String(x.id) === categories[0]) : undefined
 
-  const moduleTitle = (lang === 'ka' ? module.name_ka : module.name_en) || module.name_en || module.name_ka
-
   const heading =
     view === 'favorite'
       ? t('filter.favorite')
@@ -346,6 +375,13 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
+            {/* §37.5 — მთელი (გაფილტრული) სიის დასაკრავი ბმულები რიგში */}
+            {hasPlayable && (
+              <Button variant="outline" onClick={() => playFrom()}>
+                <ListVideo className="size-4" />
+                {t('playback.playAll')}
+              </Button>
+            )}
             {classifies && (
               <Link
                 to={`/dictionaries/${module.key}-categories`}
@@ -440,6 +476,17 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1">
+                        {isPlayableRecord(record) && (
+                          <button
+                            type="button"
+                            onClick={() => playFrom(record.id)}
+                            aria-label={t('playback.play')}
+                            title={t('playback.play')}
+                            className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-primary"
+                          >
+                            <Play className="size-4" />
+                          </button>
+                        )}
                         {record.url && (
                           <a
                             href={record.url}
@@ -518,6 +565,12 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                       <ModuleIcon name={module.icon} className="size-3.5" />
                       {t('customModules.open')}
                     </ContextMenuItem>
+                    {isPlayableRecord(record) && (
+                      <ContextMenuItem onSelect={() => playFrom(record.id)}>
+                        <Play className="size-3.5" />
+                        {t('playback.play')}
+                      </ContextMenuItem>
+                    )}
                     {record.url && (
                       <ContextMenuItem onSelect={() => window.open(record.url ?? '', '_blank', 'noopener,noreferrer')}>
                         <ExternalLink className="size-3.5" />
@@ -607,6 +660,15 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
           module={module}
           record={viewing}
           onClose={() => setViewing(null)}
+          // §37.5 — ფანჯარა იკეტება: მოდალის ქვეშ ჩართული ვიდეო არ ჩანდა (VideoDetail-ის წესი, §35.6)
+          onPlay={
+            isPlayableRecord(viewing)
+              ? () => {
+                  playFrom(viewing.id)
+                  setViewing(null)
+                }
+              : undefined
+          }
           onEdit={() => {
             setEditing(viewing)
             setViewing(null)

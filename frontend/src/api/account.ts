@@ -1,4 +1,4 @@
-import { isCustomModuleKey } from '@/lib/customModules'
+import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 import { api, ensureCsrfCookie } from '@/lib/api'
 import { formatDate } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
@@ -1076,6 +1076,12 @@ export const PURGE_TARGETS = [
   'gallery',
 ] as const
 export type PurgeTarget = (typeof PURGE_TARGETS)[number]
+/**
+ * სამიზნე — საბაზისო ან (Tasks §37.5) **სამიზნე ანგარიშის პირადი მოდული**.
+ * ⚠️ `PURGE_TARGETS` მხოლოდ საბაზისოებს ჩამოთვლის; პირადები ანგარიშისაა და
+ * `fetchPurgeTargets()`-ით მოდის (სხვისი პირადი მოდული `/modules`-ში არ ჩანს).
+ */
+export type PurgeTargetKey = PurgeTarget | CustomModuleKey
 
 export const PURGE_MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'] as const
 export type PurgeMode = (typeof PURGE_MODES)[number]
@@ -1151,7 +1157,7 @@ export const PURGE_TARGET_STATUSES: Record<string, string[]> = {
 }
 
 export interface PurgeInput {
-  target: PurgeTarget
+  target: PurgeTargetKey
   mode: PurgeMode
   /** `target = 'gallery'`-ზე რომელი დომენის ჩანაწერებს ვასუფთავებთ */
   media_type?: 'movie' | 'series'
@@ -1176,7 +1182,7 @@ export interface PurgeInput {
 /** რიგის ერთი ერთეული (20.2) — `SyncPlanItem`-ის ანალოგი */
 export interface PurgePlanItem {
   /** დომენი (გალერეაზეც ჩანაწერის დომენია და არა `gallery`) */
-  type: Exclude<PurgeTarget, 'gallery'>
+  type: Exclude<PurgeTarget, 'gallery'> | CustomModuleKey
   id: number
   title: string
   year: number | null
@@ -1184,7 +1190,7 @@ export interface PurgePlanItem {
 
 export interface PurgePlan {
   plan: {
-    target: PurgeTarget
+    target: PurgeTargetKey
     mode: PurgeMode
     records: number
     photos: number
@@ -1212,7 +1218,7 @@ export interface PurgeItemResult {
   /** ჩანაწერი უკვე აღარ იყო */
   skipped?: boolean
   error?: string | null
-  result?: { target: PurgeTarget; records: number; photos: number; bytes: number; title: string | null }
+  result?: { target: PurgeTargetKey; records: number; photos: number; bytes: number; title: string | null }
   storage?: StorageUsage
 }
 
@@ -1236,7 +1242,7 @@ export type PurgeRecord = { id: number; title: string; year: number | null }
  * ზოგს `title_ka`/`title_en` — ერთი რუკა ორ მხარეს გაშორდებოდა.
  */
 export async function fetchPurgeRecords(opts: {
-  target: PurgeTarget
+  target: PurgeTargetKey
   media_type?: string
   user_id?: number
 }): Promise<PurgeRecord[]> {
@@ -1253,7 +1259,7 @@ export async function fetchPurgeRecords(opts: {
  */
 export async function purgeItem(
   opts: {
-    target: PurgeTarget
+    target: PurgeTargetKey
     media_type?: 'movie' | 'series'
     user_id?: number
     /** §25.5 — რიგის **ყოველ** ნაბიჯს უნდა მოჰყვეს, თორემ პირველის
@@ -1269,6 +1275,25 @@ export async function purgeItem(
     { signal },
   )
   return data
+}
+
+/**
+ * **სამიზნე ანგარიშის პირადი მოდული (Tasks §37.5)** — სახელი, სკოუპები და
+ * (`type`-ისთვის) მისი კლასიფიკატორი. შიგთავსი აქ არ მოდის (Q41).
+ */
+export interface PurgeCustomTarget {
+  key: CustomModuleKey
+  name_ka: string
+  name_en: string
+  icon: string | null
+  color: string | null
+  modes: PurgeMode[]
+  categories: { id: number; name_ka: string; name_en: string; icon?: string | null }[]
+}
+
+export async function fetchPurgeTargets(userId?: number): Promise<PurgeCustomTarget[]> {
+  const { data } = await api.get('/admin/purge/targets', { params: userId ? { user_id: userId } : {} })
+  return data.items ?? []
 }
 
 /* ---------- ატვირთვის ლიმიტები (2026-09-14 → Tasks §34) ---------- */

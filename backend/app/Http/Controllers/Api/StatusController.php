@@ -44,8 +44,6 @@ class StatusController extends Controller
      */
     public function index(Request $request, string $domain)
     {
-        $this->guard($request, $domain, 'view');
-
         $data = $request->validate([
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ]);
@@ -53,6 +51,16 @@ class StatusController extends Controller
         $userId = (int) ($data['user_id'] ?? $request->user()->id);
 
         abort_unless($userId === (int) $request->user()->id || $request->user()->isSuperAdmin(), 403);
+
+        /* §37.5 — `/purge` **სამიზნე ანგარიშის** პირადი მოდულის სტატუსებს
+           კითხულობს (super_admin + `user_id`). ⚠️ მოდული **სამიზნისა** უნდა
+           იყოს — სხვაგვარად ისევ 404 (Q28); საკუთარ მოთხოვნაზე კი ჩვეულებრივი
+           კარია (`guard()` — მოდული, უფლება, მფლობელი). */
+        if ($userId !== (int) $request->user()->id && CustomModules::isKey($domain)) {
+            abort_unless(CustomModules::owns(User::find($userId), $domain), 404);
+        } else {
+            $this->guard($request, $domain, 'view');
+        }
 
         return StatusResource::collection($this->ordered($domain, $userId));
     }

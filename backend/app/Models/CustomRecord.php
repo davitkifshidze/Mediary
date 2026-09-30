@@ -15,6 +15,7 @@ use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * **ინტერფეისიდან შექმნილი მოდულის ჩანაწერი (Tasks §37).**
@@ -76,6 +77,17 @@ class CustomRecord extends Model
             $record->deletePhoto();
             // §37.4 — `morphs()` FK-cascade-ს არ ქმნის (`HasGallery`-ის წესი)
             $record->deleteGalleryMedia();
+
+            /* §37.5 — საკუთარი ფაილები **სათითაოდ** (`StoredFile` დისკიდანაც შლის
+               და კვოტასაც ათავისუფლებს — SQL-კასკადი ივენთს არ ისვრის).
+               ⚠️ `owner`-ის გარეშე (BUG-21): ანგარიშის წაშლისას და `/purge`-ზე
+               სესია სხვისია და კავშირი ცარიელს დააბრუნებდა; `trash`-ის გარეშე —
+               ურნაში მყოფი ფაილი დისკზე ობლად დარჩებოდა. */
+            foreach ($record->files()->withoutGlobalScopes(['owner', 'trash'])->cursor() as $file) {
+                $file->delete();
+            }
+
+            $record->notes()->withoutGlobalScopes(['owner', 'trash'])->delete();
         });
     }
 
@@ -158,6 +170,18 @@ class CustomRecord extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(CustomCategory::class, 'category_id');
+    }
+
+    /** §37.5 — ჩემი ატვირთული ფოტოები და დოკუმენტები */
+    public function files(): HasMany
+    {
+        return $this->hasMany(CustomRecordFile::class, 'custom_record_id')->orderBy('id');
+    }
+
+    /** §37.5 — ჩანიშვნები, უახლესი პირველი */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(CustomRecordNote::class, 'custom_record_id')->latest('id');
     }
 
     /* ---------- scopes ---------- */

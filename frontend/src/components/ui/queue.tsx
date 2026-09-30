@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
-import { purgeItem, type PurgePlanItem, type PurgeTarget } from '@/api/account'
+import { purgeItem, type PurgePlanItem, type PurgeTargetKey } from '@/api/account'
 import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
 import { errorMessage, isApiCode, translateCode } from '@/lib/errors'
 import { useToast } from '@/components/ui/feedback'
@@ -56,7 +56,8 @@ type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import' | 'ca
 
 /** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
 export interface PurgeQueueOptions {
-  target: PurgeTarget
+  // §37.5 — სამიზნე ანგარიშის პირადი მოდულიც
+  target: PurgeTargetKey
   media_type?: 'movie' | 'series'
   user_id?: number
   /** §25.5 — ფოტოები უკატეგორიოში გადავიდეს და არა წაიშალოს */
@@ -557,7 +558,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           'translations',
           // წაშლა ყველა მოდულს ეხება და დეშბორდის მრიცხველებსაც (20.2)
           ...(next.kind === 'purge'
-            ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan']
+            ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan', 'custom-records']
             : []),
           /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს,
              ე.ი. სამივე შესაძლო სია და დეშბორდის მრიცხველი ერთად ახლდება */

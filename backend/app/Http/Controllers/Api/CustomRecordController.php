@@ -144,6 +144,48 @@ class CustomRecordController extends Controller
         return new CustomRecordResource($record->load('category'));
     }
 
+    /**
+     * **მასობრივი სტატუსი (Tasks §37.5)** — `POST /custom/{key}/bulk-status`,
+     * `RecordStatusController::bulkUpdate()`-ის ფორმა: ან კონკრეტული `ids`, ან
+     * `from_status`-ის მქონე ყველა; ცარიელი სკოუპი 422-ია და არასდროს „ყველა".
+     *
+     * ⚠️ **ციკლი მოდელით და არა `update()` query-ზე**: `finished_at`-ის ერთადერთი
+     * მწერალი `applyStatus()`-ია (BUG-05-ის გაკვეთილი), აუდიტ-ლოგიც მოდელის
+     * ივენთზე დგას. ⚠️ **მოდულით ჭრილი** — სხვა პირადი მოდულის id `ids`-ში
+     * ჩუმად გამოტოვდება (`queryFor()`).
+     */
+    public function bulkStatus(Request $request, string $type)
+    {
+        $data = $request->validate([
+            'status' => ['required', 'string', Status::rule($type)],
+            'ids' => ['array', 'max:2000'],
+            'ids.*' => ['integer'],
+            'from_status' => ['nullable', 'string', Status::rule($type)],
+        ]);
+
+        $query = CustomRecord::queryFor($type);
+
+        if (! empty($data['ids'])) {
+            $query->whereIn('id', $data['ids']);
+        } elseif (! empty($data['from_status'])) {
+            $query->statusKey($data['from_status']);
+        } else {
+            return response()->json(['message' => 'scope_required'], 422);
+        }
+
+        // სამიზნე ერთხელ იკითხება — თითო ჩანაწერზე ერთი query იქნებოდა
+        $target = Status::forDomain($type)->where('key', $data['status'])->firstOrFail();
+
+        $updated = 0;
+        foreach ($query->get() as $record) {
+            $record->applyStatus($target);
+            $record->save();
+            $updated++;
+        }
+
+        return response()->json(['updated' => $updated]);
+    }
+
     /* ---------- დამხმარეები ---------- */
 
     /**

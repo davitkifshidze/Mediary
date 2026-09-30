@@ -194,3 +194,86 @@ export async function reorderCustomCategories(key: string, ids: number[]): Promi
   const { data } = await api.post(`/custom/${key}/categories/reorder`, { ids })
   return data.data
 }
+
+/* ---------- მასობრივი სტატუსი (Tasks §37.5) ---------- */
+
+/** ⚠️ `ids` ან `from_status` — ცარიელი სკოუპი სერვერზე 422-ია და არასდროს „ყველა" */
+export interface CustomBulkStatusInput {
+  status: string
+  ids?: number[]
+  from_status?: string
+}
+
+export async function bulkCustomStatus(key: string, input: CustomBulkStatusInput): Promise<number> {
+  const { data } = await api.post(`/custom/${key}/bulk-status`, input)
+  return data.updated
+}
+
+/* ---------- ჩანაწერის საკუთარი ფაილები და ჩანიშვნები (Tasks §37.5) ---------- */
+
+/** `image` = ჩემი ფოტო (ვიტრინა) · `doc` = თანმხლები დოკუმენტი */
+export interface CustomRecordFile {
+  id: number
+  kind: 'image' | 'doc'
+  path: string
+  url: string
+  original_name: string | null
+  mime: string | null
+  size: number
+  created_at: string | null
+}
+
+export const customRecordFilesKey = (key: string, id: number) => ['custom-record-files', key, id] as const
+
+export async function fetchCustomRecordFiles(
+  key: string,
+  id: number,
+  kind?: CustomRecordFile['kind'],
+): Promise<CustomRecordFile[]> {
+  const { data } = await api.get(`/custom/${key}/${id}/files`, { params: kind ? { kind } : {} })
+  return data.data
+}
+
+export async function uploadCustomRecordFiles(
+  key: string,
+  id: number,
+  kind: CustomRecordFile['kind'],
+  files: File[],
+): Promise<CustomRecordFile[]> {
+  const fd = new FormData()
+  fd.append('kind', kind)
+  files.forEach((file) => fd.append('files[]', file))
+  const { data } = await api.post(`/custom/${key}/${id}/files`, fd)
+  return data.data
+}
+
+/** ⚠️ ურნაში (Tasks §29) — ფაილი დისკზე და კვოტაში რჩება, სანამ საბოლოოდ არ წაიშლება */
+export async function deleteCustomRecordFile(key: string, fileId: number): Promise<void> {
+  await api.delete(`/custom/${key}/files/${fileId}`)
+}
+
+export interface CustomRecordNote {
+  id: number
+  body: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+export async function fetchCustomRecordNotes(key: string, id: number): Promise<CustomRecordNote[]> {
+  const { data } = await api.get(`/custom/${key}/${id}/notes`)
+  return data.data
+}
+
+export async function createCustomRecordNote(key: string, id: number, body: string): Promise<CustomRecordNote> {
+  const { data } = await api.post(`/custom/${key}/${id}/notes`, { body })
+  return data.data
+}
+
+export async function updateCustomRecordNote(key: string, noteId: number, body: string): Promise<CustomRecordNote> {
+  const { data } = await api.patch(`/custom/${key}/notes/${noteId}`, { body })
+  return data.data
+}
+
+export async function deleteCustomRecordNote(key: string, noteId: number): Promise<void> {
+  await api.delete(`/custom/${key}/notes/${noteId}`)
+}

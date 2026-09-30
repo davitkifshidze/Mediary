@@ -7,6 +7,7 @@ use App\Models\BoardGameGenre;
 use App\Models\Book;
 use App\Models\BookGenre;
 use App\Models\Bookmark;
+use App\Models\BookmarkCategory;
 use App\Models\BookNote;
 use App\Models\CastMember;
 use App\Models\Course;
@@ -871,6 +872,34 @@ class PurgeTest extends TestCase
 
         $left = Bookmark::withoutGlobalScope('owner')->orderBy('id')->pluck('id')->all();
         $this->assertSame([$keep->id, $other->id], $left);
+    }
+
+    /**
+     * **ბუკმარკს, კურსსა და ადგილს „ტიპი" `category_id`-ია** (ნაპოვნია §37.5-ზე).
+     *
+     * ⚠️ `recordIds()` მათზე `genre_id`-ს ეძებდა. MySQL-ზე ეს `Unknown column`
+     * — 500 — იყო, sqlite-ზე კი **ჩუმად ცარიელი** სკოუპი: ორმაგ ბრჭყალებში
+     * დაწერილ უცნობ სვეტს sqlite სტრიქონად კითხულობს (`"genre_id" in (1)` →
+     * ყოველთვის `false`), ამიტომ `test_every_target_and_mode_pair_matches_the_registry`
+     * მწვანე რჩებოდა. აქ ნამდვილი კატეგორია და ნამდვილი რიცხვი მოწმდება.
+     */
+    public function test_type_scope_reads_the_category_column(): void
+    {
+        $category = BookmarkCategory::create([
+            'user_id' => $this->admin->id, 'key' => 'docs', 'name_ka' => 'დოკუმენტაცია', 'name_en' => 'Docs',
+        ]);
+        Bookmark::create(['user_id' => $this->admin->id, 'title' => 'ერთი', 'url' => 'https://a.example/c1', 'category_id' => $category->id]);
+        Bookmark::create(['user_id' => $this->admin->id, 'title' => 'სხვა', 'url' => 'https://a.example/c2']);
+
+        $this->actingAs($this->admin->refresh())
+            ->postJson('/api/admin/purge/plan', [
+                'target' => 'bookmark',
+                'mode' => 'type',
+                'type_ids' => [$category->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('plan.records', 1)
+            ->assertJsonPath('plan.items.0.title', 'ერთი');
     }
 
     /**

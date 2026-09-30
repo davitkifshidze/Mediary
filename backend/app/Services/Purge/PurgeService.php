@@ -12,6 +12,9 @@ use App\Models\Bookmark;
 use App\Models\BookNote;
 use App\Models\Course;
 use App\Models\CourseFile;
+use App\Models\CustomRecord;
+use App\Models\CustomRecordFile;
+use App\Models\CustomRecordNote;
 use App\Models\GalleryImage;
 use App\Models\Game;
 use App\Models\GameFile;
@@ -30,6 +33,7 @@ use App\Models\VideoFile;
 use App\Models\VideoNote;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
+use App\Support\CustomModules;
 use App\Support\MediaDomain;
 use App\Support\StatusDomain;
 use App\Support\UserSettings;
@@ -177,7 +181,77 @@ class PurgeService
      */
     public static function supportsTag(string $target): bool
     {
-        return in_array('tag', self::TARGET_MODES[$target] ?? [], true);
+        return in_array('tag', self::modesFor($target), true);
+    }
+
+    /**
+     * **სამიზნეები ამ ანგარიშზე** — საბაზისოები და (Tasks §37.5) **მისი** პირადი
+     * მოდულები.
+     *
+     * ⚠️ ანგარიში **სამიზნისაა** (`user_id`) და არა ადმინის: `/purge` სხვისი
+     * ბიბლიოთეკიდან შლის, ე.ი. ჩამოთვლა იმ ანგარიშის მოდულებია, რომელსაც
+     * ვასუფთავებთ — ადმინის პირადი მოდული სხვის ანგარიშზე ვერ „მოიძებნება".
+     *
+     * @return list<string>
+     */
+    public static function targets(?User $for): array
+    {
+        return [...self::TARGETS, ...CustomModules::keysOf($for)];
+    }
+
+    /**
+     * რომელი სკოუპი რომელ სამიზნეს — `TARGET_MODES` და პირადი მოდულის ფორმა.
+     *
+     * ⚠️ პირად მოდულზე `type` (კლასიფიკატორი, `category_id`) მხოლოდ მაშინ,
+     * როცა მოდულს კლასიფიკაცია აქვს; `genre` (გლობალური ჟანრები) — არასდროს.
+     *
+     * @return list<string>
+     */
+    public static function modesFor(string $target): array
+    {
+        if (isset(self::TARGET_MODES[$target])) {
+            return self::TARGET_MODES[$target];
+        }
+
+        if (! CustomModules::isKey($target)) {
+            return [];
+        }
+
+        return CustomModules::classifies($target)
+            ? ['ids', 'type', 'tag', 'status', 'all']
+            : ['ids', 'tag', 'status', 'all'];
+    }
+
+    /**
+     * სექციის ცხრილები სამიზნეზე — `SECTION_TABLES` და (§37.5) პირადი მოდულის
+     * საერთო წყვილი (`custom_record_files` · `custom_record_notes`).
+     *
+     * @return array{0: class-string|null, 1: class-string|null, 2: string|null}
+     */
+    private static function sectionTables(string $target): array
+    {
+        if (isset(self::SECTION_TABLES[$target])) {
+            return self::SECTION_TABLES[$target];
+        }
+
+        return CustomModules::isKey($target)
+            ? [CustomRecordFile::class, CustomRecordNote::class, 'custom_record_id']
+            : [null, null, null];
+    }
+
+    /**
+     * ჩანაწერის საკუთარი ატვირთვის სვეტი — `UPLOAD_COLUMNS` და (§37.5) პირადი
+     * მოდულის მთავარი ფოტო (წყაროს სვეტი არ აქვს — ადგილის ფორმა).
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private static function uploadColumns(string $target): array
+    {
+        if (isset(self::UPLOAD_COLUMNS[$target])) {
+            return self::UPLOAD_COLUMNS[$target];
+        }
+
+        return CustomModules::isKey($target) ? ['photo_path', null] : [null, null];
     }
 
     /**
@@ -486,7 +560,7 @@ class PurgeService
             ->get(['id', 'size']);
 
         // მიმაგრებული ფაილები/ჩანიშვნები — მხოლოდ იმ სექციებს, ვისაც თავისი ცხრილი აქვს
-        [$fileModel, $noteModel, $foreignKey] = self::SECTION_TABLES[$target] ?? [null, null, null];
+        [$fileModel, $noteModel, $foreignKey] = self::sectionTables($target);
 
         $files = $fileModel
             ? $fileModel::withoutGlobalScopes(['owner', 'trash'])
@@ -609,11 +683,18 @@ class PurgeService
      */
     private function titleOf($record, string $type): string
     {
-        if (in_array($type, ['video', 'song', 'board_game', 'note', 'bookmark'], true)) {
-            return $record->title ?: '#'.$record->id;
+        /* ⚠️ **ერთი წესი ყველა სქემაზე** (ნაპოვნია §37.5-ზე): დომენების ხელით
+           დაწერილ სიას კურსი და ადგილი აკლდა, ე.ი. მათ რიგში სათაურის ნაცვლად
+           „#12" იხატებოდა (კურსს `title` აქვს, ადგილს — `name`). */
+        foreach (['title_ka', 'title_en', 'title', 'name'] as $column) {
+            $value = $record->{$column} ?? null;
+
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
         }
 
-        return $record->title_ka ?: ($record->title_en ?: '#'.$record->id);
+        return '#'.$record->id;
     }
 
     /**
@@ -683,9 +764,14 @@ class PurgeService
                     array_map('intval', $input['type_ids'] ?? []),
                 ))
                 : $query->whereIn(
-                    match ($type) {
-                        'video' => 'type_id',
-                        'note' => 'category_id',
+                    /* ⚠️ **ბუკმარკს, კურსსა და ადგილს `category_id` აქვს და არა
+                       `genre_id`** (ნაპოვნია §37.5-ზე): ცარიელი სიით `whereIn`
+                       სვეტს საერთოდ არ ახსენებს (`0 = 1`), ე.ი. ტესტი ჩუმად
+                       გადიოდა, ნამდვილი კატეგორიით კი SQL-ის შეცდომა — 500. */
+                    match (true) {
+                        $type === 'video' => 'type_id',
+                        in_array($type, ['note', 'bookmark', 'course', 'place'], true),
+                        CustomModules::isKey($type) => 'category_id',
                         default => 'genre_id',
                     },
                     array_map('intval', $input['type_ids'] ?? []),
@@ -743,6 +829,15 @@ class PurgeService
      */
     private function modelQuery(User $user, string $type, ?string $how = null): Builder
     {
+        /* §37.5 — პირადი მოდული: ერთი ცხრილი ყველასთვის, ე.ი. **მოდულითაც**
+           იჭრება (`queryFor()`); `owner`/`trash` იგივე მიზეზით იხსნება. */
+        if (CustomModules::isKey($type)) {
+            return CustomRecord::queryFor($type)
+                ->withoutGlobalScopes(['owner', 'trash'])
+                ->where('custom_records.user_id', $user->getKey())
+                ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull('custom_records.trashed_at'));
+        }
+
         $model = match ($type) {
             'series' => Series::class,
             'anime' => Anime::class,
@@ -782,6 +877,11 @@ class PurgeService
 
     private function morphAlias(string $target): string
     {
+        // §37.4 — პირადი ჩანაწერის morph-კლასი მოდულის გასაღებია
+        if (CustomModules::isKey($target)) {
+            return $target;
+        }
+
         return match ($target) {
             'series' => 'series',
             'anime' => 'anime',
@@ -866,15 +966,19 @@ class PurgeService
      */
     private function ownUploadBytes(User $user, string $target, array $ids): int
     {
-        [$column, $sourceColumn] = self::UPLOAD_COLUMNS[$target] ?? [null, null];
+        [$column, $sourceColumn] = self::uploadColumns($target);
 
         if (! $column) {
             return 0;
         }
 
+        /* ⚠️ გალერეიდან „მთავარად დაყენებული" ფოტო აქ არ ითვლება — ის
+           გალერეის ფოტოა და `recordTotals()`-ის `photos`-ში უკვე ზის
+           (ადგილი და პირადი მოდული: წყაროს სვეტი არ აქვთ). */
         $query = $this->modelQuery($user, $target)
             ->whereIn('id', $ids)
-            ->whereNotNull($column);
+            ->whereNotNull($column)
+            ->where($column, 'not like', 'gallery/%');
 
         if ($sourceColumn) {
             $query->where($sourceColumn, 'upload');

@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import type { CustomRecord } from '@/api/customRecords'
 import { markSongPlayed, type Song } from '@/api/songs'
 import { markVideoWatched, type Video, type VideoPlatform } from '@/api/videos'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -169,6 +170,33 @@ export function videoItem(video: Video, subtitle: string | null = null): PlayerI
     thumbnail: video.thumbnail,
     duration: video.duration,
   }
+}
+
+/**
+ * **პირადი მოდულის ჩანაწერი (Tasks §37.5)** — ბმული, რომელიც `VideoUrl`-მა
+ * ამოიცნო (`platform` არა-`null`; `file` — პირდაპირი ფაილი `<video>`-ით).
+ *
+ * ⚠️ `kind: 'link'` — მრიცხველი არ არსებობს: „ნანახად ჩათვლა" ვიდეოს/სიმღერის
+ * მოდულის ცნებაა, და პირადი ჩანაწერის id `videos`-ში არ დევს (გალერეის
+ * ვიდეოს იგივე წესი, §8.4).
+ */
+export function customRecordItem(record: CustomRecord): PlayerItem {
+  return {
+    kind: 'link',
+    id: record.id,
+    title: record.title,
+    subtitle: record.domain,
+    url: record.url ?? '',
+    embedUrl: record.embed_url,
+    platform: (record.platform ?? 'other') as VideoPlatform,
+    thumbnail: record.image,
+    duration: null,
+  }
+}
+
+/** დასაკრავია? — `applyUrl()` პლატფორმას მხოლოდ ამოცნობილ ბმულს უწერს */
+export function isPlayableRecord(record: Pick<CustomRecord, 'platform' | 'url'>): boolean {
+  return !!record.platform && !!record.url
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {

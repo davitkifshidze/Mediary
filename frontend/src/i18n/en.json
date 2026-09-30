@@ -801,7 +801,14 @@
     "confirmDescSeries": "{{count}} series will get the status “{{status}}”. Continue?",
     "confirmDescAnime": "{{count}} anime will get the status “{{status}}”. Continue?",
     "doneSeries": "The status changed on {{count}} series",
-    "doneAnime": "The status changed on {{count}} anime"
+    "doneAnime": "The status changed on {{count}} anime",
+    "subtitleRecords": "Change the status of a whole group or of specific records at once.",
+    "whichLabelRecords": "Which records?",
+    "modeSpecificRecords": "Specific records",
+    "moviesPickRecords": "Pick records…",
+    "affectedRecords": "{{count}} records will change",
+    "confirmDescRecords": "{{count}} records will get the status “{{status}}”. Continue?",
+    "doneRecords": "The status changed on {{count}} records"
   },
   "toast": {
     "deleted": "Movie removed from your collection",
@@ -1109,7 +1116,8 @@
     "upload_formats_locked": "This kind's format is fixed — you can only request a bigger size.",
     "upload_kind_unknown": "Unknown upload kind.",
     "upload_scope_invalid": "Choose who it applies to — “only them” or “everyone”.",
-    "custom_module_limit": "An account can create at most {{max}} personal modules."
+    "custom_module_limit": "An account can create at most {{max}} personal modules.",
+    "invalid_target": "This account has no such module."
   },
   "fields": {
     "title": "Fields",
@@ -1428,7 +1436,8 @@
       "bookmark": "The bookmark together with its uploaded image.",
       "anime": "Anime records — poster, genres, cast and gallery.",
       "course": "The course together with its certificate and attached files.",
-      "place": "The place together with its photos and files."
+      "place": "The place together with its photos and files.",
+      "custom": "A personal module of this account — its records, with their files and notes, go to the owner's trash; the statuses and the classifier stay."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -2664,7 +2673,9 @@
       "place_file": "Place file",
       "app_setting": "Installation setting",
       "custom_record": "Custom module record",
-      "custom_category": "Custom module classifier"
+      "custom_category": "Custom module classifier",
+      "custom_record_file": "Custom module file",
+      "custom_record_note": "Custom module note"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -3427,7 +3438,9 @@
       "avatar": "Avatar",
       "chat_message": "Chat messages",
       "audit_log": "Audit log clean-ups",
-      "custom_category": "Personal module classifier"
+      "custom_category": "Personal module classifier",
+      "custom_record_file": "Custom module files",
+      "custom_record_note": "Custom module notes"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3799,6 +3812,17 @@
     "no": "No",
     "file": "File",
     "statusesTitle": "Statuses",
-    "gallery": "Gallery"
+    "gallery": "Gallery",
+    "photosTitle": "Photos",
+    "photosHint": "Photos you uploaded yourself. The ones found on the web are in the record's gallery.",
+    "addPhotos": "Upload photos",
+    "photosEmpty": "No photos yet.",
+    "photoDeleteTitle": "Delete this photo?",
+    "docsTitle": "Documents",
+    "addDocs": "Upload document",
+    "docsEmpty": "No documents yet.",
+    "notesTitle": "Notes",
+    "notePlaceholder": "e.g. “add the salt last”",
+    "notesEmpty": "No notes yet."
   }
 }

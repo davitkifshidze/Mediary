@@ -219,6 +219,8 @@ export const CODES = [
   'not_the_author',
   'invalid_status',
   'mode_not_supported_for_target',
+  // §37.5 — `/purge`-ის სამიზნე სამიზნე ანგარიშის მოდული არ არის
+  'invalid_target',
   'backup_file_missing',
   /* Tasks §29 — ურნიდან აღდგენის უარი (`TrashBin::blocked()`, 409).
      ⚠️ `error-codes.mjs` მათ ვერ ხედავს — სერვერი მათ ცვლადიდან აბრუნებს

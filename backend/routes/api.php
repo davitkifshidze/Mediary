@@ -36,6 +36,8 @@ use App\Http\Controllers\Api\CustomCategoryController;
 use App\Http\Controllers\Api\CustomFieldController;
 use App\Http\Controllers\Api\CustomModuleController;
 use App\Http\Controllers\Api\CustomRecordController;
+use App\Http\Controllers\Api\CustomRecordFileController;
+use App\Http\Controllers\Api\CustomRecordNoteController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
@@ -847,12 +849,25 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [CustomRecordController::class, 'index']);
             // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — ეს ბმულის probe-ია და არა შექმნა
             Route::post('/metadata', [CustomRecordController::class, 'metadata']);
+            // §37.5 — უფლება `update`-ია (`bulk-status` `UPDATE_ENDPOINTS`-შია)
+            Route::post('/bulk-status', [CustomRecordController::class, 'bulkStatus']);
             Route::post('/', [CustomRecordController::class, 'store']);
             Route::get('/{record}', [CustomRecordController::class, 'show'])->whereNumber('record');
             Route::match(['put', 'patch'], '/{record}', [CustomRecordController::class, 'update'])->whereNumber('record');
             Route::delete('/{record}', [CustomRecordController::class, 'destroy'])->whereNumber('record');
             Route::patch('/{record}/favorite', [CustomRecordController::class, 'toggleFavorite'])->whereNumber('record');
             Route::patch('/{record}/status', [CustomRecordController::class, 'setStatus'])->whereNumber('record');
+
+            /* §37.5 — ჩანაწერის საკუთარი ფაილები და ჩანიშვნები. ⚠️ `files/{file}` და
+               `notes/{note}` `whereNumber`-ით — „files"/„notes" `{record}`-ად არ
+               წაიკითხება (ის ისედაც რიცხვითია). */
+            Route::get('/{record}/files', [CustomRecordFileController::class, 'index'])->whereNumber('record');
+            Route::post('/{record}/files', [CustomRecordFileController::class, 'store'])->whereNumber('record');
+            Route::delete('/files/{file}', [CustomRecordFileController::class, 'destroy'])->whereNumber('file');
+            Route::get('/{record}/notes', [CustomRecordNoteController::class, 'index'])->whereNumber('record');
+            Route::post('/{record}/notes', [CustomRecordNoteController::class, 'store'])->whereNumber('record');
+            Route::match(['put', 'patch'], '/notes/{note}', [CustomRecordNoteController::class, 'update'])->whereNumber('note');
+            Route::delete('/notes/{note}', [CustomRecordNoteController::class, 'destroy'])->whereNumber('note');
         });
 
     /* ---------- გალერეა (module: gallery, Tasks 10) ----------
@@ -1254,6 +1269,9 @@ Route::middleware('auth:sanctum')->group(function () {
         /* `ids` სკოუპის ამრჩევი (§25.2) — **სამიზნე ანგარიშის** ჩანაწერები;
            მოდულის თავისი `index()` ყოველთვის მოვალის სიას აბრუნებს. */
         Route::get('/purge/records', [AdminPurgeController::class, 'records']);
+        /* §37.5 — სამიზნე ანგარიშის **პირადი მოდულები** (სახელი და სკოუპები);
+           სხვისი პირადი მოდული `/modules`-ში არ ჩანს, ე.ი. სხვაგან ვერ მოიძებნება. */
+        Route::get('/purge/targets', [AdminPurgeController::class, 'targets']);
 
         /* **ბაზის დამპი და აღდგენა (Tasks §22)**.
            ⚠️ `super_admin` და არა `admin_access:` — დამპი მთელი ბაზაა

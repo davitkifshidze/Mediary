@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Services\Stats\LibraryStats;
+use App\Support\CustomModules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -99,8 +100,12 @@ class StatsController extends Controller
     {
         $user = $request->user();
 
+        /* §37.5 — **ამ ანგარიშის პირადი მოდულებიც** (სხვისი `hasModule()`-ზე ისედაც
+           ჩამოვარდებოდა, მაგრამ მას ბაზიდან არც ვკითხულობთ). */
         return Module::where('is_active', true)
-            ->whereIn('key', LibraryStats::modules())
+            ->where(fn ($q) => $q
+                ->whereIn('key', LibraryStats::modules())
+                ->orWhereIn('key', CustomModules::keysOf($user)))
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()

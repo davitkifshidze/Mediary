@@ -11,6 +11,7 @@ use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CourseFile;
 use App\Models\CustomRecord;
+use App\Models\CustomRecordFile;
 use App\Models\Game;
 use App\Models\GameFile;
 use App\Models\Movie;
@@ -213,12 +214,17 @@ class ModuleImages
             }
         }
 
-        if ($source = self::FILE_SOURCES[$module] ?? null) {
-            [$fileModel, $foreignKey, $parentModel, $privateRoute] = $source;
+        // §37.5 — პირადი მოდულის ატვირთული ფოტოები (`custom_record_files`, მოდულით ჭრილი)
+        $fileSource = self::FILE_SOURCES[$module]
+            ?? ($custom ? [CustomRecordFile::class, 'custom_record_id', CustomRecord::class, null] : null);
+
+        if ($fileSource) {
+            [$fileModel, $foreignKey, $parentModel, $privateRoute] = $fileSource;
 
             $files = $fileModel::query()
                 ->withoutGlobalScope('owner')
                 ->where('user_id', $user->getKey())
+                ->when($custom, fn ($q) => $q->where('module', $module))
                 ->where('kind', 'image')
                 ->orderByDesc('id')
                 ->limit(self::MAX_ROWS)

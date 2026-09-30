@@ -357,7 +357,7 @@ final class TrashBin
         return match ($kind) {
             // §37 — პირადი მოდულის სტატუსიც იმავე ცხრილშია, თავისი გასაღებით
             'status' => [...array_keys(StatusDomain::DOMAINS), ...CustomModules::keys()],
-            'custom_category' => CustomModules::keys(),
+            'custom_category', 'custom_record_file', 'custom_record_note' => CustomModules::keys(),
             default => MediaDomain::TYPES,
         };
     }
@@ -973,7 +973,13 @@ final class TrashBin
             return [$type, (int) $row->getAttribute($link->getForeignKeyName())];
         }
 
-        return [TrashDomain::ITEMS[$kind]['module'], (int) $row->getAttribute($link->getForeignKeyName())];
+        /* §37.5 — მრავალმოდულიანი სახე (პირადი მოდულის ფაილი/ჩანიშვნა): მშობლის
+           ტიპი **რიგის** მოდულია და არა სახის — `ITEMS`-ში ის `null`-ია. */
+        $type = isset(TrashDomain::ITEMS[$kind]['module_column'])
+            ? (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column'])
+            : TrashDomain::ITEMS[$kind]['module'];
+
+        return [$type, (int) $row->getAttribute($link->getForeignKeyName())];
     }
 
     /**

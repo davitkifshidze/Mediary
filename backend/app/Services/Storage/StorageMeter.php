@@ -7,6 +7,7 @@ use App\Models\BookFile;
 use App\Models\Course;
 use App\Models\CourseFile;
 use App\Models\CustomRecord;
+use App\Models\CustomRecordFile;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\GameFile;
@@ -708,6 +709,29 @@ class StorageMeter
                     'parent' => [(string) $row->module, (int) $row->record_id],
                 ]);
             }
+
+            /* §37.5 — ჩანაწერზე მიმაგრებული ფოტოები და დოკუმენტები
+               (`custom_record_files`); ურნაში მყოფიც — დისკზეა და კვოტაში ითვლება. */
+            $customFiles = CustomRecordFile::withoutGlobalScopes(['owner', 'trash'])
+                ->where('user_id', $user->getKey())
+                ->when($only !== null, fn ($q) => $q->where('module', $only))
+                ->get(['id', 'module', 'custom_record_id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at']);
+
+            foreach ($customFiles as $f) {
+                $add([
+                    'kind' => $f->kind === 'image' ? 'image' : 'doc',
+                    'module' => (string) $f->module,
+                    'owner_type' => 'custom_record_file',
+                    'owner_id' => (int) $f->id,
+                    'path' => $f->path,
+                    'name' => $f->original_name,
+                    'size' => $f->size,
+                    'mime' => $f->mime,
+                    'created_at' => $f->created_at,
+                    'trashed' => $f->trashed_at !== null,
+                    'parent' => [(string) $f->module, (int) $f->custom_record_id],
+                ]);
+            }
         }
 
         /* **ურნაში მყოფი ფაილები, რომელთაც წყაროს რიგი აღარ ატარებს** (Tasks §29):
@@ -827,8 +851,8 @@ class StorageMeter
         'course_file', 'place_file', 'gallery_image', 'database_backup', 'field_value', 'message',
         // ეტაპი 4 — სვეტის ფაილი: მთავარი ფოტო და ავატარი
         'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
-        // Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო
-        'custom_record',
+        // Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო და (§37.5) მიმაგრებული ფაილი
+        'custom_record', 'custom_record_file',
     ];
 
     /**
@@ -955,6 +979,7 @@ class StorageMeter
             'note_entry_file' => NoteEntryFile::class,
             'course_file' => CourseFile::class,
             'place_file' => PlaceFile::class,
+            'custom_record_file' => CustomRecordFile::class,
             'gallery_image' => GalleryImage::class,
             /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
                ბიბლიოთეკაში ფაილი ჩანდა, „წაშლა" კი ჩუმად აბრუნებდა `false`-ს
@@ -1385,6 +1410,7 @@ class StorageMeter
             'places.photo_path',
             // Tasks §37 — პირადი მოდულის ჩანაწერი (ველის ფაილები `CustomFields::TABLES`-იდან მოდის)
             'custom_records.photo_path',
+            'custom_record_files.path',
             'books.cover_path',
             'board_games.image_path',
             'games.cover_path',
