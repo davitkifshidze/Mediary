@@ -39,9 +39,18 @@ import {
   deleteStatus,
   fetchStatuses,
   reorderStatuses,
-  type StatusDomain,
+  type StatusDomainKey,
 } from '@/api/statuses'
 import type { DictionaryRemoval, DictionaryRemoved } from '@/api/dictionary'
+import type { ModuleInfo } from '@/api/account'
+import {
+  customCategoriesKey,
+  deleteCustomCategory,
+  fetchCustomCategories,
+  reorderCustomCategories,
+} from '@/api/customRecords'
+import { CustomCategoryDialog } from '@/components/CustomCategoryDialog'
+import { classifierKey, isCustomModule } from '@/lib/customModules'
 import { statusesQueryKey } from '@/lib/statuses'
 import { MEDIA } from '@/lib/media'
 import type { Status } from '@/api/types'
@@ -110,8 +119,24 @@ export interface DictionaryDef {
   /**
    * სტატუსის ლექსიკონი — ინდექსზე „სტატუსების" ჯგუფშია, შიგნით კი
    * „ყველა"/„რჩეული" რიგებადაც ჩანს და საიდბარის განლაგებაც იქ იმართება.
+   * ⚠️ §37 — პირადი მოდულის გასაღებიც (`StatusDomainKey`).
    */
-  statusDomain?: StatusDomain
+  statusDomain?: StatusDomainKey
+  /**
+   * **კლასიფიკაციის ველის გასაღები კატალოგში** (Tasks §37, Q30) — ვიდეოზე
+   * `type_id`, ჟანრიანზე `genre`/`genres`, კატეგორიანზე `category`.
+   *
+   * ⚠️ ამ ველის სახელი `/modules/{key}`-ზე **ერთ ადგილას** იცვლება და
+   * ლექსიკონის ბარათიც მას კითხულობს (`useDictionaryTitle()`) — თორემ ფორმაზე
+   * „ფორმატი" დაიწერებოდა, კლასიფიკატორების გვერდზე კი ისევ „ვიდეოს ტიპები".
+   */
+  fieldKey?: string
+  /**
+   * **უკვე აწყობილი სათაური** — პირადი მოდულის (§37) ლექსიკონს სახელი
+   * ბაზიდან აქვს და i18n-ის გასაღებში ვერ ჩაიწერება. მაშინ `titleKey` —
+   * მხოლოდ ნაცვალი.
+   */
+  title?: string
   /**
    * ⚠️ **pivot-ია** (სიმღერა/თამაში რამდენიმე ჟანრით) — „ჩანაწერების წაშლა"
    * ისეთ ჩანაწერსაც შლის, რომელსაც სხვა ჟანრიც აქვს, და დიალოგი ამას ცხადად ამბობს.
@@ -130,6 +155,7 @@ const num = (value: unknown) => (typeof value === 'number' ? value : 0)
 export const DICTIONARIES: DictionaryDef[] = [
   {
     key: 'video-types',
+    fieldKey: 'type_id',
     module: 'video',
     titleKey: 'videoTypes.title',
     recordsRoute: '/videos',
@@ -144,6 +170,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'song-genres',
+    fieldKey: 'genres',
     module: 'song',
     titleKey: 'songGenres.title',
     recordsRoute: '/songs',
@@ -159,6 +186,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'book-genres',
+    fieldKey: 'genre',
     module: 'book',
     titleKey: 'bookGenres.title',
     recordsRoute: '/books',
@@ -173,6 +201,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'board-game-genres',
+    fieldKey: 'genre',
     module: 'board_game',
     titleKey: 'boardGameGenres.title',
     recordsRoute: '/board-games',
@@ -187,6 +216,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'game-genres',
+    fieldKey: 'genres',
     module: 'game',
     titleKey: 'gameGenres.title',
     recordsRoute: '/games',
@@ -202,6 +232,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'note-categories',
+    fieldKey: 'category',
     module: 'note',
     titleKey: 'noteCategories.title',
     recordsRoute: '/notes',
@@ -216,6 +247,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   },
   {
     key: 'bookmark-categories',
+    fieldKey: 'category',
     module: 'bookmark',
     titleKey: 'bookmarkCategories.title',
     recordsRoute: '/bookmarks',
@@ -233,6 +265,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   {
     // FEAT-25 — კურსის კატეგორიები (ბუკმარკის ზუსტი რიგი)
     key: 'course-categories',
+    fieldKey: 'category',
     module: 'course',
     titleKey: 'courseCategories.title',
     recordsRoute: '/courses',
@@ -248,6 +281,7 @@ export const DICTIONARIES: DictionaryDef[] = [
   {
     // FEAT-26 — ადგილის კატეგორიები (ბუკმარკის/კურსის ზუსტი რიგი)
     key: 'place-categories',
+    fieldKey: 'category',
     module: 'place',
     titleKey: 'placeCategories.title',
     recordsRoute: '/places',
@@ -350,3 +384,59 @@ for (const domain of STATUS_DOMAINS) {
   })
 }
 
+/**
+ * **პირადი მოდულების ლექსიკონები (Tasks §37)** — სტატუსები და, თუ მოდულს
+ * კლასიფიკაცია აქვს, მისი კლასიფიკატორი (ჟანრი · ტიპი · კატეგორია).
+ *
+ * ⚠️ **დინამიკურია და `DICTIONARIES`-ში არ ემატება**: მოდული ბაზაშია და თითო
+ * ანგარიშისაა — სტატიკურ სიაში ჩაწერილი ერთი ანგარიშის მოდულები სხვა
+ * ანგარიშზე შესვლის შემდეგაც დარჩებოდა. გვერდი მას `useModules()`-იდან აწყობს.
+ */
+export function customDictionaries(modules: ModuleInfo[]): DictionaryDef[] {
+  return modules.filter(isCustomModule).flatMap((m) => {
+    const key = m.key as StatusDomainKey
+    const kind = m.definition?.classification ?? null
+
+    const defs: DictionaryDef[] = [
+      {
+        key: `${m.key}-statuses`,
+        module: m.key,
+        titleKey: 'customModules.statusesTitle',
+        recordsRoute: m.route_base,
+        queryKey: statusesQueryKey(key),
+        recordsQueryKey: 'custom-records',
+        countKey: 'customModules.count',
+        statusDomain: key,
+        list: (() => fetchStatuses(key)) as never,
+        reorder: ((ids: number[]) => reorderStatuses(key, ids)) as never,
+        remove: (id, removal) => deleteStatus(key, id, removal),
+        count: (item) => num(item.records_count),
+        dialog: (item, onClose) => (
+          <StatusDialog domain={key} status={item as unknown as Status | null} onClose={onClose} />
+        ),
+      },
+    ]
+
+    if (kind) {
+      defs.push({
+        key: `${m.key}-categories`,
+        module: m.key,
+        fieldKey: 'category',
+        titleKey: classifierKey(kind),
+        recordsRoute: m.route_base,
+        queryKey: customCategoriesKey(m.key),
+        recordsQueryKey: 'custom-records',
+        countKey: 'customModules.count',
+        list: (() => fetchCustomCategories(m.key)) as never,
+        reorder: ((ids: number[]) => reorderCustomCategories(m.key, ids)) as never,
+        remove: (id, removal) => deleteCustomCategory(m.key, id, removal),
+        count: (item) => num(item.records_count),
+        dialog: (item, onClose) => (
+          <CustomCategoryDialog moduleKey={m.key} category={item as never} onClose={onClose} />
+        ),
+      })
+    }
+
+    return defs
+  })
+}

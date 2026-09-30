@@ -72,6 +72,12 @@ describe('resultPath', () => {
     expect(resultPath(item({ domain: 'gallery', module: 'gallery' }), '/gallery')).toBe('/gallery/videos')
   })
 
+  /* §37 — პირად მოდულში ერთნაირი სათაური ხშირია, ე.ი. `?q=` სწორ ჩანაწერს ვერ ხსნიდა */
+  it('პირადი მოდულის ჩანაწერს id-ით ხსნის (`?open=`)', () => {
+    expect(resultPath(item({ domain: 'c5-recipes', module: 'c5-recipes', id: 9 }), '/c/c5-recipes'))
+      .toBe('/c/c5-recipes?open=9')
+  })
+
   it('უცნობ (გამორთულ) მოდულზე ბმულს არ აგენერირებს', () => {
     expect(resultPath(item({ domain: 'game', module: 'game' }), undefined)).toBeNull()
   })

@@ -69,6 +69,10 @@ const NoteRemindersPage = lazy(() =>
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ default: m.CoursesPage })))
 const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
+// Tasks §37 — ინტერფეისიდან შექმნილი მოდულების **ერთი** ზოგადი გვერდი
+const CustomModulePage = lazy(() =>
+  import('@/pages/CustomModulePage').then((m) => ({ default: m.CustomModulePage })),
+)
 const DictionariesPage = lazy(() => import('@/pages/DictionariesPage').then((m) => ({ default: m.DictionariesPage })))
 const PlaylistsPage = lazy(() => import('@/pages/PlaylistsPage').then((m) => ({ default: m.PlaylistsPage })))
 const PlaylistPage = lazy(() => import('@/pages/PlaylistPage').then((m) => ({ default: m.PlaylistPage })))
@@ -218,6 +222,11 @@ function AppShell() {
           {pageModules.map((m) => (
             <Route key={m.key} path={m.route_base.replace(/^\//, '')} element={MODULE_PAGES[m.key]} />
           ))}
+
+          {/* Tasks §37 — პირადი მოდულები: **ერთი** მარშრუტი ყველასთვის, `/c/{key}`.
+              ⚠️ ჩართულობას გვერდი თვითონ ამოწმებს (`useModules().customModules`) —
+              ადმინის მიერ გამორთული მოდული მიზეზს ამბობს და ცარიელ 404-ს არა. */}
+          <Route path="c/:key" element={<CustomModulePage />} />
 
           {/* ეტაპი 11.2 — შეხსენებებს **თავისი სექცია** აქვს და არა ჩანაწერის
               ფორმის ნაწილი. მოდულის ჩართვაზეა დამოკიდებული, როგორც პლეილისტები. */}

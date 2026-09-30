@@ -6,6 +6,7 @@ use App\Models\BoardGameFile;
 use App\Models\BookFile;
 use App\Models\Course;
 use App\Models\CourseFile;
+use App\Models\CustomRecord;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryImage;
 use App\Models\GameFile;
@@ -21,6 +22,7 @@ use App\Services\Modules\CustomFieldService;
 use App\Services\Notify\Notifier;
 use App\Support\ColumnTrash;
 use App\Support\CustomFields;
+use App\Support\CustomModules;
 use App\Support\GalleryParent;
 use App\Support\NotificationType;
 use App\Support\StorageFolder;
@@ -655,6 +657,55 @@ class StorageMeter
             }
         }
 
+        /* **Tasks §37 — პირადი მოდულები**: ჩანაწერის მთავარი ფოტო და დამატებითი
+           ველის ფაილი. ⚠️ მოდული **რიგისაა** (`module` სვეტი — ერთი ცხრილი ყველა
+           პირად მოდულზე) და საქაღალდეც იმავე გასაღებს ატარებს (`custom/{key}/…`,
+           `StorageFolder::moduleFor()`), ე.ი. §17.2-ის ლიმიტი და აქაური ჯამი
+           ერთსა და იმავე მოდულს აწერს. ⚠️ `$only` აქ მინიშნებაა (PERF-03):
+           საბაზისო მოდულის კითხვაზე ეს ბლოკი საერთოდ არ ეშვება. */
+        if ($only === null || CustomModules::isKey($only)) {
+            $customRecords = CustomRecord::withoutGlobalScopes(['owner', 'trash'])
+                ->where('user_id', $user->getKey())
+                ->when($only !== null, fn ($q) => $q->where('module', $only))
+                ->whereNotNull('photo_path')
+                ->get(['id', 'module', 'title', 'photo_path', 'created_at']);
+
+            foreach ($customRecords as $record) {
+                $add([
+                    'kind' => 'primary',
+                    'module' => (string) $record->module,
+                    'owner_type' => 'custom_record',
+                    'owner_id' => (int) $record->id,
+                    'path' => $record->photo_path,
+                    'name' => $record->title,
+                    'created_at' => $record->created_at,
+                    // ⚠️ ურნის მშობელი — მოდულის გასაღები (`TrashDomain`-ის ჩანაწერის სახე)
+                    'parent' => [(string) $record->module, (int) $record->id],
+                ]);
+            }
+
+            $customValues = DB::table(CustomModules::VALUES_TABLE)
+                ->where('user_id', $user->getKey())
+                ->when($only !== null, fn ($q) => $q->where('module', $only))
+                ->whereNotNull('value_path')
+                ->get(['id', 'module', 'record_id', 'value_path', 'value_name', 'value_mime', 'value_size', 'created_at']);
+
+            foreach ($customValues as $row) {
+                $add([
+                    'kind' => 'field',
+                    'module' => (string) $row->module,
+                    'owner_type' => 'field_value',
+                    'owner_id' => (int) $row->id,
+                    'path' => $row->value_path,
+                    'name' => $row->value_name,
+                    'size' => (int) $row->value_size,
+                    'mime' => $row->value_mime,
+                    'created_at' => $row->created_at ? Carbon::parse($row->created_at) : null,
+                    'parent' => [(string) $row->module, (int) $row->record_id],
+                ]);
+            }
+        }
+
         /* **ურნაში მყოფი ფაილები, რომელთაც წყაროს რიგი აღარ ატარებს** (Tasks §29):
            ჩატის მიმაგრება და დამატებითი ველის ფაილი. ⚠️ **აქ ყოფნა სავალდებულოა**:
            ფაილი დისკზეა და კვოტაში ითვლება, ე.ი. `recalculate()`-ს ის უნდა
@@ -772,6 +823,8 @@ class StorageMeter
         'course_file', 'place_file', 'gallery_image', 'database_backup', 'field_value', 'message',
         // ეტაპი 4 — სვეტის ფაილი: მთავარი ფოტო და ავატარი
         'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
+        // Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო
+        'custom_record',
     ];
 
     /**
@@ -1026,6 +1079,32 @@ class StorageMeter
                 'attachment_mime' => null,
                 'attachment_size' => null,
             ])->save();
+
+            return true;
+        }
+
+        /* Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო. ⚠️ `$user->…()`
+           ურთიერთობა აქ არ არსებობს (ერთი ცხრილი ყველა მოდულზე), ე.ი. ცალკე
+           შტოა და არა ქვემოთა რუკის რიგი. */
+        if ($file['owner_type'] === 'custom_record') {
+            $record = CustomRecord::withoutGlobalScopes(['owner', 'trash'])
+                ->where('user_id', $user->getKey())
+                ->whereKey($ownerId)
+                ->first();
+
+            if (! $record) {
+                return false;
+            }
+
+            if (! $permanent) {
+                ColumnTrash::capture($record, 'photo_path');
+            }
+
+            $record->forceFill(['photo_path' => null])->save();
+
+            if ($permanent) {
+                $this->deleteUpload((int) $user->getKey(), $path);
+            }
 
             return true;
         }
@@ -1300,6 +1379,8 @@ class StorageMeter
             'bookmarks.thumbnail_path',
             'courses.thumbnail_path',
             'places.photo_path',
+            // Tasks §37 — პირადი მოდულის ჩანაწერი (ველის ფაილები `CustomFields::TABLES`-იდან მოდის)
+            'custom_records.photo_path',
             'books.cover_path',
             'board_games.image_path',
             'games.cover_path',
@@ -1399,7 +1480,8 @@ class StorageMeter
 
         $trashed = [];
         foreach ($domains as $domain) {
-            $trashed[$domain] = TrashDomain::model($domain)::trashOf((int) $user->getKey())
+            // ⚠️ §37 — პირადი მოდული მოდულითაც იჭრება (`TrashDomain::trashOf()`)
+            $trashed[$domain] = TrashDomain::trashOf($domain, (int) $user->getKey())
                 ->pluck('id')
                 ->mapWithKeys(fn ($id) => [(int) $id => true])
                 ->all();

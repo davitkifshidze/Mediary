@@ -32,7 +32,10 @@ use App\Http\Controllers\Api\CourseCategoryController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\CourseFileController;
 use App\Http\Controllers\Api\CredentialController;
+use App\Http\Controllers\Api\CustomCategoryController;
 use App\Http\Controllers\Api\CustomFieldController;
+use App\Http\Controllers\Api\CustomModuleController;
+use App\Http\Controllers\Api\CustomRecordController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
@@ -96,6 +99,7 @@ use App\Http\Controllers\Api\VideoTypeController;
 use App\Http\Controllers\Api\VisibilityController;
 use App\Http\Controllers\Api\WebSearchController;
 use App\Support\CustomFields;
+use App\Support\CustomModules;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
@@ -317,6 +321,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/uploads/limits', [UploadLimitController::class, 'index']);
 
     Route::get('/modules', [ModuleController::class, 'index']);
+    /* Tasks §37 — **ახალი მოდული ინტერფეისიდან** (Q28: ყოველი მომხმარებელი —
+       თავისთვის; სხვას არ უჩანს). ⚠️ `module:`/`permission:` middleware აქ არ
+       დგას: მოდული ჯერ არ არსებობს, ხოლო რედაქტირებისას მფლობელობას
+       კონტროლერი ამოწმებს (სხვისი — 404). */
+    Route::post('/modules', [CustomModuleController::class, 'store']);
+    Route::put('/modules/{key}/details', [CustomModuleController::class, 'update']);
     /* Tasks §36 — **პირადი** რიგი (მთელი სია ერთი `PUT`-ით; `DELETE` = საერთოზე
        დაბრუნება). ⚠️ `{key}`-იან მარშრუტებზე ზემოთ დგას, რომ „order" მოდულის
        გასაღებად არასდროს წაიკითხოს — `PATCH /modules/{key}` სხვა მეთოდია,
@@ -335,22 +345,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/modules/{key}/custom-fields', [CustomFieldController::class, 'index']);
     Route::put('/modules/{key}/custom-fields', [CustomFieldController::class, 'update']);
     Route::get('/custom-fields/{module}/{id}', [CustomFieldController::class, 'values'])
-        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+        ->where('module', CustomFields::routePattern())->whereNumber('id');
     Route::put('/custom-fields/{module}/{id}', [CustomFieldController::class, 'setValues'])
-        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+        ->where('module', CustomFields::routePattern())->whereNumber('id');
     /* §6 (ფაზა 4b) — `ფაილი` ტიპის ველი. ⚠️ **ატვირთვა ცალკე endpoint-ია**:
        მნიშვნელობების `PUT` მთელ მონახაზს იღებს და ფაილს ცარიელ მნიშვნელობად
        წაშლიდა. გაცემა **მხოლოდ აქედან** ხდება — `notes/fields` პრივატულ
        დისკზეა (§17.5) და `/storage/*` მას ვერ ხედავს. */
     Route::post('/custom-fields/{module}/{id}/file', [CustomFieldController::class, 'storeFile'])
-        ->whereIn('module', CustomFields::modules())->whereNumber('id');
+        ->where('module', CustomFields::routePattern())->whereNumber('id');
     /* §7.3 — ⚠️ **`{file}` არჩევითია**: ერთ ველზე ახლა რამდენიმე ფაილი ჯდება,
        მისი გარეშე მისამართი კი ძველებურად მუშაობს (გაცემაზე — პირველი,
        წაშლაზე — ველის ყველა ფაილი). */
     Route::get('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'showFile'])
-        ->whereIn('module', CustomFields::modules())->whereNumber('id')->whereNumber('file');
+        ->where('module', CustomFields::routePattern())->whereNumber('id')->whereNumber('file');
     Route::delete('/custom-fields/{module}/{id}/file/{key}/{file?}', [CustomFieldController::class, 'destroyFile'])
-        ->whereIn('module', CustomFields::modules())->whereNumber('id')->whereNumber('file');
+        ->where('module', CustomFields::routePattern())->whereNumber('id')->whereNumber('file');
     // 16.1 — ჩანს თუ არა მოდული ჩემს საჯარო პროფილზე (`PUT`: POST-ს
     // `permission:` middleware `create`-ად წაიკითხავდა)
     Route::put('/modules/{key}/public', [ModuleController::class, 'setPublic']);
@@ -815,6 +825,36 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/place-files/{placeFile}', [PlaceFileController::class, 'destroy']);
     });
 
+    /* ---------- ინტერფეისიდან შექმნილი მოდულები (Tasks §37) ----------
+       **ერთი ჯგუფი ყველა პირად მოდულზე** — `{type}` მოდულის გასაღებია
+       (`c{owner}-{slug}`), ე.ი. `module:@type`/`permission:@type` ჩვეულებრივად
+       მუშაობს: სხვისი მოდული 404-ია (`EnsureModuleEnabled`), უფლება კი
+       მფლობელის წესით მოწმდება (`User::hasPermission()` — როლი საერთოა და
+       პირად გასაღებს არ ატარებს).
+       ⚠️ `{record}`/`{category}` `whereNumber`-ით — თორემ „categories" და
+       „metadata" id-ად წაიკითხებოდა. ⚠️ ჩანაწერი **მოდულზეც** მოწმდება
+       კონტროლერში: `owner` scope ერთი ანგარიშის ორ პირად მოდულს ვერ არჩევს. */
+    Route::prefix('custom/{type}')
+        ->where(['type' => CustomModules::PATTERN])
+        ->middleware(['module:@type', 'permission:@type'])
+        ->group(function () {
+            Route::get('/categories', [CustomCategoryController::class, 'index']);
+            Route::post('/categories', [CustomCategoryController::class, 'store']);
+            Route::post('/categories/reorder', [CustomCategoryController::class, 'reorder']);
+            Route::match(['put', 'patch'], '/categories/{category}', [CustomCategoryController::class, 'update'])->whereNumber('category');
+            Route::delete('/categories/{category}', [CustomCategoryController::class, 'destroy'])->whereNumber('category');
+
+            Route::get('/', [CustomRecordController::class, 'index']);
+            // ⚠️ უფლება `view`-ია (`VIEW_ENDPOINTS`) — ეს ბმულის probe-ია და არა შექმნა
+            Route::post('/metadata', [CustomRecordController::class, 'metadata']);
+            Route::post('/', [CustomRecordController::class, 'store']);
+            Route::get('/{record}', [CustomRecordController::class, 'show'])->whereNumber('record');
+            Route::match(['put', 'patch'], '/{record}', [CustomRecordController::class, 'update'])->whereNumber('record');
+            Route::delete('/{record}', [CustomRecordController::class, 'destroy'])->whereNumber('record');
+            Route::patch('/{record}/favorite', [CustomRecordController::class, 'toggleFavorite'])->whereNumber('record');
+            Route::patch('/{record}/status', [CustomRecordController::class, 'setStatus'])->whereNumber('record');
+        });
+
     /* ---------- გალერეა (module: gallery, Tasks 10) ----------
        ფოტოები ფილმებსა და სერიალებს ჰკიდია, ამიტომ კონტროლერი დამატებით
        `hasModule($type)`-საც ამოწმებს — გალერეა ჩართული, ფილმები კი არა,
@@ -1076,18 +1116,18 @@ Route::middleware('auth:sanctum')->group(function () {
        ცხადად აკეთებს `StatusDomain`-ის რუკით.
        ⚠️ `reorder` **`{id}`-ზე ზემოთაა**, თორემ „reorder" id-ად წაიკითხება. */
     Route::get('/statuses/{domain}', [StatusController::class, 'index'])
-        ->whereIn('domain', StatusDomain::keys());
+        ->where('domain', StatusDomain::pattern());
     Route::post('/statuses/{domain}/reorder', [StatusController::class, 'reorder'])
-        ->whereIn('domain', StatusDomain::keys());
+        ->where('domain', StatusDomain::pattern());
     // ეტაპი 8 — საიდბარის განლაგება (დამალვა + „ყველა"/„რჩეული"-ს ადგილი)
     Route::put('/statuses/{domain}/sections', [StatusController::class, 'sections'])
-        ->whereIn('domain', StatusDomain::keys());
+        ->where('domain', StatusDomain::pattern());
     Route::post('/statuses/{domain}', [StatusController::class, 'store'])
-        ->whereIn('domain', StatusDomain::keys());
+        ->where('domain', StatusDomain::pattern());
     Route::match(['put', 'patch'], '/statuses/{domain}/{id}', [StatusController::class, 'update'])
-        ->whereIn('domain', StatusDomain::keys())->whereNumber('id');
+        ->where('domain', StatusDomain::pattern())->whereNumber('id');
     Route::delete('/statuses/{domain}/{id}', [StatusController::class, 'destroy'])
-        ->whereIn('domain', StatusDomain::keys())->whereNumber('id');
+        ->where('domain', StatusDomain::pattern())->whereNumber('id');
 
     /* ---------- გაზიარებული ლექსიკონები ---------- */
     Route::get('/genres', [GenreController::class, 'index']);

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Module;
 use App\Services\Audit\AuditLogger;
 use App\Services\Export\RecordExporter;
+use App\Support\CustomModules;
 use App\Support\ExportDomain;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -53,12 +54,14 @@ class ExportController extends Controller
     {
         $user = $request->user();
 
+        /* ⚠️ §37 — საკუთარი პირადი მოდულიც (`visibleTo`), ე.ი. `whereIn(keys())`
+           აქ აღარ გამოდგება: პირადის გასაღები ბაზაშია და არა რუკაში. */
         $modules = Module::where('is_active', true)
-            ->whereIn('key', ExportDomain::keys())
+            ->visibleTo($user)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->filter(fn (Module $m) => $user->hasModule($m->key) && $user->hasPermission($m->key, 'view'))
+            ->filter(fn (Module $m) => ExportDomain::has($m->key) && $user->hasModule($m->key) && $user->hasPermission($m->key, 'view'))
             ->map(fn (Module $m) => [
                 'key' => $m->key,
                 'name_ka' => $m->name_ka,
@@ -90,6 +93,8 @@ class ExportController extends Controller
         $user = $request->user();
 
         abort_unless(ExportDomain::has($module), 404);
+        // ⚠️ §37 — სხვისი პირადი მოდული 404-ია და არა 403 (არსებობა თავად ინფორმაციაა)
+        abort_if(CustomModules::isKey($module) && ! CustomModules::owns($user, $module), 404);
         abort_unless($user->hasModule($module), 403, 'module_disabled');
         abort_unless($user->hasPermission($module, 'view'), 403, 'forbidden');
 

@@ -4,7 +4,13 @@ import type { BookStatus } from '@/api/books'
 import type { CourseStatus } from '@/api/courses'
 import type { GameStatus } from '@/api/games'
 import type { PlaceStatus } from '@/api/places'
-import { STATUS_DOMAINS, fetchStatuses, isStatusDomain, type StatusDomain } from '@/api/statuses'
+import {
+  STATUS_DOMAINS,
+  fetchStatuses,
+  isStatusDomain,
+  type StatusDomain,
+  type StatusDomainKey,
+} from '@/api/statuses'
 import type { Status, StatusRole } from '@/api/types'
 import { STATUS_FILL } from '@/lib/statusStyles'
 
@@ -16,9 +22,10 @@ import { STATUS_FILL } from '@/lib/statusStyles'
    ნიშნავს, რომ სტატუსის დამატება ყველგან ერთდროულად ჩნდება.
    ============================================================ */
 
-export const statusesQueryKey = (domain: StatusDomain) => ['statuses', domain] as const
+export const statusesQueryKey = (domain: StatusDomainKey) => ['statuses', domain] as const
 
-export function useStatuses(domain: StatusDomain, enabled = true) {
+/** ⚠️ `StatusDomainKey` — პირადი მოდულის (§37) გასაღებიც, იგივე ქეშით */
+export function useStatuses(domain: StatusDomainKey, enabled = true) {
   return useQuery({
     queryKey: statusesQueryKey(domain),
     queryFn: () => fetchStatuses(domain),
@@ -48,6 +55,27 @@ export function useStatusMap(enabledDomains: readonly string[]): Record<StatusDo
   return Object.fromEntries(
     STATUS_DOMAINS.map((domain, i) => [domain, results[i].data ?? []]),
   ) as Record<StatusDomain, Status[]>
+}
+
+/**
+ * **პირადი მოდულების ლექსიკონები** (Tasks §37) — საიდბარის სექციებისთვის.
+ *
+ * ⚠️ `useStatusMap()`-ის ფიქსირებული ექვსი query აქ არ გამოდგება: პირადი
+ * მოდულების რიცხვი ბაზაშია და იცვლება. `useQueries` ცვალებად სიას
+ * იტანს (hook-ების რიგი ერთია — ერთი `useQueries`), ქეშის გასაღები კი
+ * იგივეა, რაც `useStatuses()`-ისა, ე.ი. ფორმაში დამატებული სტატუსი
+ * საიდბარშიც იმავე წამს ჩნდება.
+ */
+export function useCustomStatusMap(keys: readonly StatusDomainKey[]): Record<string, Status[]> {
+  const results = useQueries({
+    queries: keys.map((domain) => ({
+      queryKey: statusesQueryKey(domain),
+      queryFn: () => fetchStatuses(domain),
+      staleTime: 5 * 60_000,
+    })),
+  })
+
+  return Object.fromEntries(keys.map((domain, i) => [domain, results[i]?.data ?? []]))
 }
 
 /**

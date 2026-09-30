@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import {
+  Ban,
   Bell,
+  Blocks,
   CheckCheck,
   CircleAlert,
   DatabaseBackup,
@@ -48,6 +50,10 @@ const ICONS: Record<string, typeof Bell> = {
   storage_warning: HardDrive,
   backup_failed: DatabaseBackup,
   batch_done: ListChecks,
+  // Tasks §37 — ინტერფეისიდან შექმნილი მოდული
+  module_created: Blocks,
+  module_deleted: Trash2,
+  module_disabled: Ban,
 }
 
 export function NotificationBell() {
@@ -107,6 +113,15 @@ export function NotificationBell() {
 
       return d.upload_scope ? `${line} · ${t(`uploads.scope.${d.upload_scope}`)}` : line
     }
+    /* §37 — პირადი მოდული: სახელი ორივე ენაზე და (სუპერადმინისთვის) მფლობელი.
+       ⚠️ ტექსტი ბაზაში არ ინახება (FEAT-19) — მხოლოდ ფაქტები და აქ იწყობა. */
+    if (n.type === 'module_created' || n.type === 'module_deleted' || n.type === 'module_disabled') {
+      const moduleName = (i18n.language === 'en' ? d.module_name_en : d.module_name_ka) ?? d.module_key
+      return d.owner_name && n.type !== 'module_disabled'
+        ? t('notifications.detail.customModule', { name: moduleName, owner: d.owner_name })
+        : t('notifications.detail.module', { name: moduleName })
+    }
+
     // ⚠️ მოდულის სახელი **ორივე ენაზე მოდის** — ინტერფეისის ენა წყვეტს, რომელი
     const name = i18n.language === 'en' ? d.module_en : d.module_ka
     if (name) return t('notifications.detail.module', { name })

@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Role;
 use App\Services\Storage\StorageMeter;
+use App\Support\CustomModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,9 +34,15 @@ class UserResource extends JsonResource
             'role_name_en' => $this->role?->name_en,
             'is_super_admin' => $this->isSuperAdmin(),
             // მოდულის შიდა უფლებები (19.8) — ფრონტი ღილაკებს ამით მალავს
+            /* ⚠️ §37 — საკუთარ პირად მოდულზე მფლობელს სრული CRUD აქვს
+               (`User::hasPermission()`) და როლში ის არ იწერება — ამიტომ
+               რუკაში აქვე ემატება, თორემ ფრონტის `can()` ღილაკებს დამალავდა. */
             'permissions' => $this->when(
                 (bool) $this->relationLoaded('role'),
-                fn () => $this->isSuperAdmin() ? null : ($this->role?->permissions ?? []),
+                fn () => $this->isSuperAdmin() ? null : [
+                    ...($this->role?->permissions ?? []),
+                    ...CustomModules::of($this->resource)->map(fn () => Role::ACTIONS)->all(),
+                ],
             ),
             /*
              * Tasks 1.6 — რომელ ადმინის სექციას ხედავს (`users`/`roles`/`requests`).

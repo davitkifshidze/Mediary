@@ -167,7 +167,7 @@ return new class extends Migration
 
         $this->seedCategories();
 
-        Module::updateOrCreate(['key' => 'course'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'course'], [
             'name_ka' => 'კურსები',
             'name_en' => 'Courses',
             'description_ka' => 'ონლაინ-კურსები — გაკვეთილების პროგრესი, სერტიფიკატი და კატეგორიები.',
@@ -202,7 +202,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'course')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'course')->delete();
 
         Schema::dropIfExists(CustomFields::TABLE_BY_MODULE['course']);
         Schema::dropIfExists('course_files');

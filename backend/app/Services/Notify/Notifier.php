@@ -48,14 +48,17 @@ class Notifier
      * წესი აქ არ მუშაობს): ჩავარდნილი ასლი ყველა პასუხისმგებელს ეხება, და
      * თუ სწორედ ის ერთი ადამიანი არაა შესული, შეტყობინება არავის მისდის.
      */
-    public function toAdmins(string $type, array $data = []): void
+    public function toAdmins(string $type, array $data = [], ?User $except = null): void
     {
         if (! $this->tableExists()) {
             return;
         }
 
+        /* ⚠️ `$except` — Tasks §37: მოდულს სუპერადმინიც ქმნის, და „შენ შექმენი
+           მოდული" საკუთარ თავთან ხმაურია და არა ინფორმაცია. */
         User::query()
             ->where('is_active', true)
+            ->when($except, fn ($q) => $q->whereKeyNot($except->getKey()))
             ->with('role')
             ->get()
             ->filter(fn (User $u) => $u->isSuperAdmin())

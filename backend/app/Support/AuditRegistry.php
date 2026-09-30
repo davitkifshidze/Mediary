@@ -26,6 +26,8 @@ use App\Models\ConversationNickname;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseFile;
+use App\Models\CustomCategory;
+use App\Models\CustomRecord;
 use App\Models\DatabaseBackup;
 use App\Models\EpisodeWatch;
 use App\Models\GalleryAlbum;
@@ -163,6 +165,13 @@ class AuditRegistry
         Place::class => 'place',
         PlaceCategory::class => 'place',
         PlaceFile::class => 'place',
+
+        /* ---- Tasks §37 — ინტერფეისიდან შექმნილი მოდულები.
+           ⚠️ **მოდული რიგშია** (`module` — პირადი მოდულის გასაღები), ე.ი. აქ
+           ჩაწერილი მხოლოდ საწყისია: ნამდვილს `auditModule()` აბრუნებს
+           (`Status`-ის იგივე წესი). */
+        CustomRecord::class => 'account',
+        CustomCategory::class => 'account',
 
         // ---- გალერეა
         GalleryAlbum::class => 'gallery',

@@ -137,7 +137,7 @@ return new class extends Migration
 
         $this->seedCategories();
 
-        Module::updateOrCreate(['key' => 'bookmark'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'bookmark'], [
             'name_ka' => 'ბუკმარკები',
             'name_en' => 'Bookmarks',
             'description_ka' => 'საიტებისა და რესურსების ბმულები — კატეგორიები, ტეგები და „წასაკითხი" სია.',
@@ -171,7 +171,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'bookmark')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'bookmark')->delete();
 
         Schema::dropIfExists(CustomFields::TABLE_BY_MODULE['bookmark']);
         Schema::dropIfExists('bookmarks');

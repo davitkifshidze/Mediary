@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 import type { Status, StatusRole } from '@/api/types'
+import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 
 /* ============================================================
    **სტატუსების ლექსიკონი (Tasks §6.2/§6.4).**
@@ -16,10 +17,27 @@ import type { Status, StatusRole } from '@/api/types'
 /** ვისაც მართვადი სტატუსი აქვს — სარკე `App\Support\StatusDomain::DOMAINS`-ისა */
 export const STATUS_DOMAINS = ['movie', 'series', 'anime', 'video', 'note', 'bookmark'] as const
 
+/**
+ * **საბაზისო** დომენები — სტატიკური რუკების გასაღები (`PSEUDO_SECTIONS`,
+ * სათაურები, მარშრუტები). ⚠️ პირადი მოდული (§37) აქ **არ** არის: მისი
+ * გასაღები ბაზაშია — `StatusDomainKey` მასაც იღებს.
+ */
 export type StatusDomain = (typeof STATUS_DOMAINS)[number]
+
+/**
+ * **ნებისმიერი დომენი, რომელსაც სტატუსის ლექსიკონი აქვს** — საბაზისო ან
+ * პირადი მოდული (Tasks §37). API-ის ფუნქციები ამას იღებენ; სტატიკური რუკები
+ * კი `StatusDomain`-ს, რომ პირად გასაღებზე ჩუმად `undefined` არ დაიბრუნონ.
+ */
+export type StatusDomainKey = StatusDomain | CustomModuleKey
 
 export function isStatusDomain(value: string): value is StatusDomain {
   return (STATUS_DOMAINS as readonly string[]).includes(value)
+}
+
+/** საბაზისო დომენი ან პირადი მოდული — `/statuses/{domain}` ორივეს იღებს */
+export function isStatusDomainKey(value: string): value is StatusDomainKey {
+  return isStatusDomain(value) || isCustomModuleKey(value)
 }
 
 export interface StatusInput {
@@ -36,20 +54,20 @@ export interface StatusInput {
  * @param userId მხოლოდ `super_admin`-ს — `/purge` სხვისი ბიბლიოთეკიდან შლის,
  *               ე.ი. სტატუსების სიაც **მისი** ლექსიკონიდან უნდა დაიხატოს.
  */
-export async function fetchStatuses(domain: StatusDomain, userId?: number): Promise<Status[]> {
+export async function fetchStatuses(domain: StatusDomainKey, userId?: number): Promise<Status[]> {
   const { data } = await api.get(`/statuses/${domain}`, {
     params: userId ? { user_id: userId } : undefined,
   })
   return data.data
 }
 
-export async function createStatus(domain: StatusDomain, input: StatusInput): Promise<Status> {
+export async function createStatus(domain: StatusDomainKey, input: StatusInput): Promise<Status> {
   const { data } = await api.post(`/statuses/${domain}`, input)
   return data.data
 }
 
 export async function updateStatus(
-  domain: StatusDomain,
+  domain: StatusDomainKey,
   id: number,
   input: StatusInput,
 ): Promise<Status> {
@@ -62,7 +80,7 @@ export async function updateStatus(
  * ტანი `api/dictionary.ts`-ში იწყობა, რვავე ლექსიკონის ერთ ფორმით.
  */
 export async function deleteStatus(
-  domain: StatusDomain,
+  domain: StatusDomainKey,
   id: number,
   removal?: DictionaryRemoval,
 ): Promise<DictionaryRemoved> {
@@ -70,7 +88,7 @@ export async function deleteStatus(
   return readRemoved(data)
 }
 
-export async function reorderStatuses(domain: StatusDomain, ids: number[]): Promise<Status[]> {
+export async function reorderStatuses(domain: StatusDomainKey, ids: number[]): Promise<Status[]> {
   const { data } = await api.post(`/statuses/${domain}/reorder`, { ids })
   return data.data
 }
@@ -91,7 +109,7 @@ export interface SectionsLayout {
 
 /** ⚠️ `PUT` — `module_user.settings.status_sections`-ში ჯდება (იხ. `lib/statusSections.ts`) */
 export async function saveStatusSections(
-  domain: StatusDomain,
+  domain: StatusDomainKey,
   layout: SectionsLayout,
 ): Promise<SectionsLayout> {
   const { data } = await api.put(`/statuses/${domain}/sections`, layout)

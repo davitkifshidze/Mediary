@@ -47,12 +47,13 @@ import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
 import { GALLERY_CUTS } from '@/lib/galleryCuts'
 import { cn } from '@/lib/utils'
-import { statusName, useStatusMap } from '@/lib/statuses'
-import { PSEUDO_SECTIONS, arrangeSections, layoutFor, sectionSearch } from '@/lib/statusSections'
+import { statusName, useCustomStatusMap, useStatusMap } from '@/lib/statuses'
+import { arrangeSections, layoutFor, pseudoSectionsFor, sectionSearch } from '@/lib/statusSections'
 // ⚠️ `App.tsx` ამას ისედაც სტატიკურად აიმპორტებს — ე.ი. საწყის chunk-ს არაფერი ემატება
 import { DICTIONARIES } from '@/lib/dictionaries'
 import { useContentLang } from '@/lib/settings'
-import type { StatusDomain } from '@/api/statuses'
+import { isStatusDomain, type StatusDomainKey } from '@/api/statuses'
+import { isCustomModule } from '@/lib/customModules'
 
 
 /**
@@ -209,13 +210,16 @@ export function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const { mediaModules, pageModules, enabled, has } = useModules()
+  const { mediaModules, pageModules, customModules, enabled, has } = useModules()
   const { settings } = useSettings()
   const lang = useContentLang(i18n.language)
   /* §6.4 — სტატუსები per-user ლექსიკონია, ე.ი. სექციები აქედან იგება.
      ⚠️ `useStatusMap` ყოველთვის ექვს query-ს ქმნის და მხოლოდ `enabled`-ს ცვლის —
      ციკლის შიგნით პირობითი hook რიგს გატეხდა. */
   const statusMap = useStatusMap(enabled.map((m) => m.key))
+  /* §37 — პირადი მოდულების ლექსიკონები: მათი რიცხვი ცვალებადია, ამიტომ ცალკე
+     (`useQueries`), იმავე ქეშის გასაღებით, რასაც ფორმა და კლასიფიკატორი კითხულობს */
+  const customStatusMap = useCustomStatusMap(customModules.map((m) => m.key as StatusDomainKey))
   const { isAdmin, canAdmin } = useAuth()
   const setDrawerOpen = onDrawerChange
   // პირველ შესვლაზე ყველა სექცია ჩაკეცილია
@@ -288,11 +292,12 @@ export function Sidebar({
     // პლეილისტები სიმღერების ქვე-სექციაა, გალერეას კი `route_base`-ს მიღმა ჭრილები აქვს
     if (location.pathname.startsWith('/playlists')) return 'song'
     if (location.pathname.startsWith('/gallery')) return 'gallery'
-    const m = pageModules.find(
+    // §37 — პირადი მოდულიც (`/c/{key}`) თავის განყოფილებას ხსნის
+    const m = [...pageModules, ...customModules].find(
       (x) => location.pathname === x.route_base || location.pathname.startsWith(`${x.route_base}/`),
     )
     return m?.key ?? null
-  }, [location.pathname, pageModules])
+  }, [location.pathname, pageModules, customModules])
 
   useEffect(() => {
     if (!routeSection) return
@@ -327,8 +332,13 @@ export function Sidebar({
    * ⚠️ **სექციები რჩება და ეს არ არის შეუსაბამობა**: ისინი ფილტრია
    * („ნანახი", „რჩეული"), და არა მართვა — ე.ი. სიას ჭრიან და არა ლექსიკონს.
    */
-  const sectionsFor = (domain: StatusDomain): VideoSection[] =>
-    arrangeSections(statusMap[domain] ?? [], PSEUDO_SECTIONS[domain], layoutFor(enabled, domain))
+  const sectionsFor = (domain: StatusDomainKey): VideoSection[] =>
+    arrangeSections(
+      (isStatusDomain(domain) ? statusMap[domain] : customStatusMap[domain]) ?? [],
+      // ⚠️ §37 — პირად გასაღებზე `PSEUDO_SECTIONS[domain]` `undefined` იქნებოდა
+      pseudoSectionsFor(domain),
+      layoutFor(enabled, domain),
+    )
       .filter((row) => !row.hidden)
       .map((row) =>
         row.kind === 'status'
@@ -641,8 +651,16 @@ export function Sidebar({
             ამიტომ ფილმს სიმღერის შემდეგ ვერანაირი რიგი ვერ დააყენებდა.
             ⚠️ გვერდის გარეშე მოდული (ვერც მედიაა, ვერც `PAGE_MODULE_KEYS`-შია)
             არ იხატება — მისი მარშრუტი `App.tsx`-ში არ არსებობს. */}
+        {/* ⚠️ §37 — პირადი მოდული „ყველა · სტატუსები · რჩეული · დამატება"-ს იღებს
+            (ჩანაწერისა და ბუკმარკის წესი), სექციები — მისივე ლექსიკონიდან. */}
         {enabled.map((m) =>
-          isMediaKey(m.key) ? mediaSection(m, m.key) : PAGE_KEYS.has(m.key) ? pageSection(m) : null,
+          isMediaKey(m.key)
+            ? mediaSection(m, m.key)
+            : PAGE_KEYS.has(m.key)
+              ? pageSection(m)
+              : isCustomModule(m)
+                ? moduleSection(m, sectionsFor(m.key as StatusDomainKey))
+                : null,
         )}
 
         <div className="my-2 border-t border-border" />
@@ -658,7 +676,7 @@ export function Sidebar({
             იმ წესს, რომელსაც მენიუ ეყრდნობა — რიგი ერთი ხაზია. განმარტება
             თავის ადგილას, ინდექსის გვერდის ქვესათაურში რჩება (`navHint`),
             სადაც წაკითხვა უფასოა და მენიუს სიმაღლეს არ ზრდის. */}
-        {DICTIONARIES.some((d) => has(d.module)) && (
+        {(DICTIONARIES.some((d) => has(d.module)) || customModules.length > 0) && (
           <Link
             to="/dictionaries"
             onClick={() => setDrawerOpen(false)}

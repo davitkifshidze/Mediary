@@ -1101,7 +1101,8 @@
     "upload_format_not_allowed": "This format can't be enabled for this kind.",
     "upload_formats_locked": "This kind's format is fixed — you can only request a bigger size.",
     "upload_kind_unknown": "Unknown upload kind.",
-    "upload_scope_invalid": "Choose who it applies to — “only them” or “everyone”."
+    "upload_scope_invalid": "Choose who it applies to — “only them” or “everyone”.",
+    "custom_module_limit": "An account can create at most {{max}} personal modules."
   },
   "fields": {
     "title": "Fields",
@@ -1244,6 +1245,15 @@
         "coords": "Coordinates",
         "rating": "My rating",
         "visited_at": "Visit date",
+        "photo": "Main photo",
+        "description": "Description",
+        "tags": "Tags"
+      },
+      "custom": {
+        "title": "Title",
+        "url": "Link",
+        "status": "Status",
+        "category": "Classification",
         "photo": "Main photo",
         "description": "Description",
         "tags": "Tags"
@@ -2645,7 +2655,9 @@
       "place": "Place",
       "place_category": "Place category",
       "place_file": "Place file",
-      "app_setting": "Installation setting"
+      "app_setting": "Installation setting",
+      "custom_record": "Custom module record",
+      "custom_category": "Custom module classifier"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -3407,7 +3419,8 @@
       "record_photo": "Main photos of records",
       "avatar": "Avatar",
       "chat_message": "Chat messages",
-      "audit_log": "Audit log clean-ups"
+      "audit_log": "Audit log clean-ups",
+      "custom_category": "Personal module classifier"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3499,7 +3512,10 @@
       "request_rejected": "Your request was rejected",
       "storage_warning": "Storage is filling up",
       "backup_failed": "The database backup failed",
-      "batch_done": "A background run has finished"
+      "batch_done": "A background run has finished",
+      "module_created": "A new module was created",
+      "module_deleted": "A module was deleted",
+      "module_disabled": "An admin disabled your module"
     },
     "detail": {
       "module": "Module: {{name}}",
@@ -3507,7 +3523,8 @@
       "storage": "{{percent}}% used (the {{threshold}}% mark was crossed).",
       "backup": "Backup: {{name}}",
       "batch": "{{total}} items, {{failed}} failed.",
-      "upload": "{{kind}}: {{what}}"
+      "upload": "{{kind}}: {{what}}",
+      "customModule": "{{name}} · {{owner}}"
     }
   },
   "pick": {
@@ -3689,5 +3706,91 @@
       "unchanged": "Unchanged {{count}}",
       "empty": "Nothing on TMDB {{count}}"
     }
+  },
+  "customModules": {
+    "new": "New module",
+    "personal": "Personal",
+    "createTitle": "New module",
+    "createHint": "The module is yours — nobody else can see it. Its name, icon and colour appear in the menu, and you build the record's fields yourself.",
+    "editTitle": "Module settings",
+    "editHint": "Name, description, icon, colour and classification. Fields are in this page's field editor, statuses on the classifiers page.",
+    "created": "Module created",
+    "saved": "Module saved",
+    "create": "Create",
+    "stepLook": "Name and look",
+    "stepLookHint": "One language is enough — the other gets the same. The key is made from the name and never changes.",
+    "nameKa": "Name (Georgian)",
+    "nameEn": "Name (English)",
+    "descriptionKa": "Description (Georgian)",
+    "descriptionEn": "Description (English)",
+    "color": "Colour",
+    "colorCustom": "Custom colour",
+    "stepClassification": "Classification",
+    "stepClassificationHint": "A record gets one genre, type or category — the kind only changes the name. You can edit the list later on the classifiers page.",
+    "classificationNone": "No classification",
+    "classificationNoneHint": "Records get a status and tags, but no genre or type.",
+    "classification": {
+      "category": "Category",
+      "genre": "Genre",
+      "type": "Type"
+    },
+    "classifier": {
+      "category": "Categories",
+      "genre": "Genres",
+      "type": "Types"
+    },
+    "initialEntries": "Initial list",
+    "initialEntriesPlaceholder": "Type and press Enter",
+    "classificationEditNote": "Removing the classification doesn't touch records — turning it back on shows the old values again.",
+    "stepStatuses": "Statuses",
+    "stepStatusesHint": "Statuses become the sidebar sub-menu. You can change the set later on the classifiers page.",
+    "statusesDefault": "Default set",
+    "statusesDefaultHint": "Planned · In progress · Done",
+    "statusesNone": "Empty",
+    "statusesNoneHint": "You add statuses yourself — until then records are saved without one.",
+    "stepFields": "Extra fields",
+    "stepFieldsHint": "Every record has a title, description, link, main photo and tags. Add what this module needs here — a price, a date, a file. You can change fields later too.",
+    "fieldsEmpty": "No extra fields yet.",
+    "openModule": "Open module",
+    "disabledByAdmin": "Disabled by an admin",
+    "disabledByAdminTitle": "An admin disabled this module",
+    "disabledByAdminHint": "Your records are untouched, but only an admin can turn it back on.",
+    "count": "{{count}} records",
+    "searchPlaceholder": "Search titles, descriptions and tags",
+    "sortLabel": "Sort",
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "updated": "Recently changed",
+      "title": "By title",
+      "finished": "By completion date"
+    },
+    "manageClassifier": "Classifier",
+    "noResults": "Nothing found for “{{q}}”",
+    "empty": "No records yet",
+    "open": "Open",
+    "openLink": "Open link",
+    "statusChange": "Change status",
+    "noStatus": "No status",
+    "status": "Status",
+    "recordDeleted": "Record moved to the trash",
+    "recordDeleteTitle": "Delete record",
+    "recordDeleteHint": "“{{name}}” goes to the trash and can be restored until it expires.",
+    "recordSaved": "Record saved",
+    "recordAdd": "Add record",
+    "recordEdit": "Edit record",
+    "titleOrLink": "A title or a link — at least one",
+    "urlHint": "Pasting a link fills the title, description and image from the page itself — empty fields only.",
+    "classifierEmpty": "The list is empty — add one with +",
+    "categoryAdd": "New: {{noun}}",
+    "categoryEdit": "Edit: {{noun}}",
+    "categorySaved": "Saved",
+    "finishedAt": "Finished",
+    "addedAt": "Added",
+    "extraFields": "Extra fields",
+    "yes": "Yes",
+    "no": "No",
+    "file": "File",
+    "statusesTitle": "Statuses"
   }
 }

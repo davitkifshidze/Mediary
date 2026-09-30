@@ -35,6 +35,15 @@ final class NotificationType
     /** ფონური პარტია დასრულდა (სინქრონი · გალერეა · თარგმანი) */
     public const BATCH_DONE = 'batch_done';
 
+    /** Tasks §37 — მომხმარებელმა ახალი მოდული შექმნა (ყველა სუპერადმინს, გარდა საკუთარი თავისა) */
+    public const MODULE_CREATED = 'module_created';
+
+    /** Tasks §37.7 — მომხმარებელმა თავისი მოდული წაშალა (ურნაში) */
+    public const MODULE_DELETED = 'module_deleted';
+
+    /** Tasks §37.8 — სუპერადმინმა პირადი მოდული გამორთო (მფლობელს) */
+    public const MODULE_DISABLED = 'module_disabled';
+
     /** @var list<string> */
     public const ALL = [
         self::REQUEST_APPROVED,
@@ -42,6 +51,9 @@ final class NotificationType
         self::STORAGE_WARNING,
         self::BACKUP_FAILED,
         self::BATCH_DONE,
+        self::MODULE_CREATED,
+        self::MODULE_DELETED,
+        self::MODULE_DISABLED,
     ];
 
     /**
@@ -72,6 +84,11 @@ final class NotificationType
         return match ($type) {
             self::STORAGE_WARNING => '/profile',
             self::BACKUP_FAILED => '/backups',
+            /* ⚠️ §37 — სუპერადმინი **სიას** ხედავს და არა მოდულს: სხვისი
+               პირადი მოდულის გვერდი მისთვისაც 404-ია (Q41), ზედამხედველობის
+               ჯგუფი კი `/modules`-ზეა. მფლობელი კი თავის მოდულზე მიდის. */
+            self::MODULE_CREATED, self::MODULE_DELETED => '/modules',
+            self::MODULE_DISABLED => isset($data['module_key']) ? '/modules/'.$data['module_key'] : '/modules',
             default => null,
         };
     }

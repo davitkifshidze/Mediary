@@ -1,5 +1,11 @@
 import type { ModuleInfo } from '@/api/account'
-import type { SectionPlacement, SectionsLayout, StatusDomain } from '@/api/statuses'
+import {
+  isStatusDomain,
+  type SectionPlacement,
+  type SectionsLayout,
+  type StatusDomain,
+  type StatusDomainKey,
+} from '@/api/statuses'
 import type { Status } from '@/api/types'
 
 /* ============================================================
@@ -53,6 +59,16 @@ export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
   bookmark: [ALL, FAVORITE],
 }
 
+/**
+ * დომენის ფსევდო-განყოფილებები — **პირად მოდულზეც** (Tasks §37): „ყველა" ·
+ * „რჩეული" (ჩანაწერისა და ბუკმარკის ნაკრები). ⚠️ `PSEUDO_SECTIONS[key]`
+ * პირად გასაღებზე `undefined`-ს დააბრუნებდა და ტიპი ამას ვერ დაინახავდა —
+ * ამიტომ ყოველი ცვალებადი დომენი ამ ფუნქციაზე გადის.
+ */
+export function pseudoSectionsFor(domain: StatusDomainKey): PseudoSection[] {
+  return isStatusDomain(domain) ? PSEUDO_SECTIONS[domain] : [ALL, FAVORITE]
+}
+
 /** `module_user.settings`-ის გასაღები — `StatusController::SECTIONS_KEY` */
 export const SECTIONS_SETTING = 'status_sections'
 
@@ -80,7 +96,7 @@ export function readLayout(settings: Record<string, unknown> | undefined): Secti
 }
 
 /** ამ დომენის განლაგება — `GET /api/modules`-ის `user_settings`-იდან */
-export function layoutFor(modules: ModuleInfo[], domain: StatusDomain): SectionsLayout {
+export function layoutFor(modules: ModuleInfo[], domain: StatusDomainKey): SectionsLayout {
   return readLayout(modules.find((m) => m.key === domain)?.user_settings)
 }
 

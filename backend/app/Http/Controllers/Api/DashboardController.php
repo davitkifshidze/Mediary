@@ -8,6 +8,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Game;
@@ -18,6 +19,7 @@ use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
+use App\Support\CustomModules;
 use App\Support\ModuleOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +70,8 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // Tasks §36.2 — ბარათები მენიუსა და `/modules`-ის რიგით (თითო მომხმარებლის)
-        $modules = ModuleOrder::sort(Module::where('is_active', true)->get(), $user);
+        // ⚠️ §37 — სხვისი პირადი მოდული ბარათადაც არ ჩანს (`visibleTo`)
+        $modules = ModuleOrder::sort(Module::where('is_active', true)->visibleTo($user)->get(), $user);
 
         // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
         $mine = $modules->filter(fn (Module $module) => $user->hasModule($module->key));
@@ -116,6 +119,17 @@ class DashboardController extends Controller
         $query = DB::query();
 
         foreach ($keys as $key) {
+            /* ⚠️ §37 — პირადი მოდულის ჩანაწერები ერთ ცხრილშია, ე.ი. მთვლელი
+               **მოდულით იჭრება** — თორემ ყველა პირადი მოდულის ბარათი
+               მფლობელის ყველა პირადი ჩანაწერის ჯამს აჩვენებდა. */
+            if (CustomModules::isKey($key)) {
+                $alias = 'c'.count($owner);
+                $owner[$alias] = $key;
+                $query->selectSub(CustomRecord::query()->forModule($key)->toBase()->selectRaw('count(*)'), $alias);
+
+                continue;
+            }
+
             $models = self::COUNTERS[$key] ?? null;
             if ($models === null) {
                 continue;

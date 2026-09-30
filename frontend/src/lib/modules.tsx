@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchModules, type ModuleInfo } from '@/api/account'
 import { MEDIA, type MediaType } from '@/lib/media'
 import { useAuth } from '@/lib/auth'
+import { isCustomModule } from '@/lib/customModules'
 
 /* ============================================================
    მოდულების კონტექსტი (I2/I3).
@@ -26,6 +27,11 @@ interface ModulesApi {
   mediaModules: (ModuleInfo & { type: MediaType })[]
   /** ჩართული არა-მედია მოდულები საკუთარი გვერდით (მაგ. ვიდეოები) */
   pageModules: ModuleInfo[]
+  /**
+   * Tasks §37 — ჩართული **პირადი** მოდულები (ინტერფეისიდან შექმნილი). ⚠️ ერთი
+   * ზოგადი გვერდი ყველასთვის (`/c/:key`), ამიტომ `PAGE_MODULE_KEYS`-ში არ წერია.
+   */
+  customModules: ModuleInfo[]
   has: (key: string) => boolean
   loading: boolean
 }
@@ -38,6 +44,7 @@ const ModulesContext = React.createContext<ModulesApi>({
   enabled: [],
   mediaModules: [],
   pageModules: [],
+  customModules: [],
   has: () => false,
   loading: true,
 })
@@ -68,6 +75,7 @@ export function ModulesProvider({ children }: { children: React.ReactNode }) {
       enabled,
       mediaModules,
       pageModules: enabled.filter((m) => (PAGE_MODULE_KEYS as readonly string[]).includes(m.key)),
+      customModules: enabled.filter((m) => isCustomModule(m)),
       has: (key: string) => enabled.some((m) => m.key === key),
       loading: isLoading,
     }

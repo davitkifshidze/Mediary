@@ -37,7 +37,7 @@ return new class extends Migration
             $table->index(['attachable_type', 'attachable_id', 'collection'], 'attachments_gallery_index');
         });
 
-        Module::updateOrCreate(['key' => 'gallery'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'gallery'], [
             'name_ka' => 'გალერეა',
             'name_en' => 'Gallery',
             'description_ka' => 'ოფიციალური კადრები და მსახიობების ფოტოები ფილმებსა და სერიალებზე.',
@@ -54,7 +54,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'gallery')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'gallery')->delete();
 
         Schema::table('attachments', function (Blueprint $table) {
             $table->dropIndex('attachments_gallery_index');

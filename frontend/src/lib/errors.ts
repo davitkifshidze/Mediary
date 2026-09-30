@@ -127,6 +127,8 @@ export const CODES = [
   'module_inactive',
   'module_already_enabled',
   'module_not_shareable',
+  // Tasks §37 — ერთ ანგარიშზე პირადი მოდულების ჭერი (`CustomModules::MAX_PER_USER`)
+  'custom_module_limit',
   'registration_disabled',
   // ადმინ-ზონა: მომხმარებლები, როლები, მოთხოვნები
   'cannot_delete_self',

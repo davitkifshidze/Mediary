@@ -157,7 +157,7 @@ return new class extends Migration
 
         $this->seedCategories();
 
-        Module::updateOrCreate(['key' => 'place'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'place'], [
             'name_ka' => 'ადგილები',
             'name_en' => 'Places',
             'description_ka' => 'სანახავი და ნანახი ადგილები — რუკის კოორდინატი, ფოტოები და შეფასება.',
@@ -191,7 +191,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'place')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'place')->delete();
 
         Schema::dropIfExists(CustomFields::TABLE_BY_MODULE['place']);
         Schema::dropIfExists('place_files');

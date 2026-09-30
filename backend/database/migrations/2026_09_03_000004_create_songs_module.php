@@ -113,7 +113,7 @@ return new class extends Migration
 
         Schema::dropIfExists('playlist_video');
 
-        Module::updateOrCreate(['key' => 'song'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'song'], [
             'name_ka' => 'სიმღერები',
             'name_en' => 'Songs',
             'description_ka' => 'მუსიკის პირადი ბაზა — შემსრულებელი, ალბომი, ჟანრი და პლეილისტები.',
@@ -211,7 +211,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'song')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'song')->delete();
 
         Schema::create('playlist_video', function (Blueprint $table) {
             $table->id();

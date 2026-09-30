@@ -139,7 +139,8 @@ class CustomFieldService
                `trashRows()` ყველა შერჩეულ რიგს შლის, უფაილოსაც: ტიპშეცვლილი
                ველის „გასუფთავებული" რიგი არავის სჭირდება (`file` ველზე
                ტექსტი/რიცხვი არასდროს იწერება). */
-            $this->trashRows($module, $table, DB::table($table)
+            // ⚠️ §37 — საერთო ცხრილში **მოდულით დაჭრილი** (`CustomFields::scope()`)
+            $this->trashRows($module, $table, CustomFields::scope(DB::table($table), $module)
                 ->where('user_id', $user->getKey())
                 ->whereIn('field_key', $orphaned));
         }
@@ -165,7 +166,7 @@ class CustomFieldService
 
         $types = array_column($this->definitions($user, $module), 'type', 'key');
 
-        $rows = DB::table($table)
+        $rows = CustomFields::scope(DB::table($table), $module)
             ->where('user_id', $user->getKey())
             ->where('record_id', $recordId)
             ->orderBy('sort_order')
@@ -233,7 +234,7 @@ class CustomFieldService
             $columns = $this->write_columns($type, $value);
 
             if ($columns === null) {
-                DB::table($table)
+                CustomFields::scope(DB::table($table), $module)
                     ->where('user_id', $user->getKey())
                     ->where('record_id', $recordId)
                     ->where('field_key', $key)
@@ -259,6 +260,8 @@ class CustomFieldService
                 ['record_id' => $recordId, 'field_key' => $key, 'sort_order' => 0],
                 fn (bool $exists) => [
                     'user_id' => $user->getKey(),
+                    // §37 — საერთო ცხრილში მოდულის გასაღებიც
+                    ...CustomFields::rowAttributes($module),
                     ...$columns,
                     'updated_at' => now(),
                     ...($exists ? [] : ['created_at' => now()]),
@@ -301,7 +304,7 @@ class CustomFieldService
     {
         $table = CustomFields::table($module);
 
-        $rows = DB::table($table)
+        $rows = CustomFields::scope(DB::table($table), $module)
             ->where('record_id', $recordId)
             ->where('field_key', $key)
             ->whereNotNull('value_path');
@@ -317,6 +320,7 @@ class CustomFieldService
 
         DB::table($table)->insert([
             'user_id' => $user->getKey(),
+            ...CustomFields::rowAttributes($module),
             'record_id' => $recordId,
             'field_key' => $key,
             'value_text' => null,
@@ -351,7 +355,7 @@ class CustomFieldService
     {
         $table = CustomFields::table($module);
 
-        $query = DB::table($table)
+        $query = CustomFields::scope(DB::table($table), $module)
             ->where('user_id', $user->getKey())
             ->where('record_id', $recordId)
             ->where('field_key', $key)
@@ -413,7 +417,7 @@ class CustomFieldService
             return 'field_missing';
         }
 
-        $rows = DB::table($table)
+        $rows = CustomFields::scope(DB::table($table), $module)
             ->where('record_id', $file->record_id)
             ->where('field_key', $file->slot)
             ->whereNotNull('value_path');
@@ -422,9 +426,10 @@ class CustomFieldService
             return 'field_full';
         }
 
-        DB::transaction(function () use ($table, $file, $rows) {
+        DB::transaction(function () use ($table, $module, $file, $rows) {
             DB::table($table)->insert([
                 'user_id' => $file->user_id,
+                ...CustomFields::rowAttributes($module),
                 'record_id' => $file->record_id,
                 'field_key' => $file->slot,
                 'value_text' => null,

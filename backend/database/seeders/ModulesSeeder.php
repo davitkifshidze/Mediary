@@ -287,7 +287,8 @@ class ModulesSeeder extends Seeder
         }
 
         $role->forceFill([
-            'permissions' => Module::pluck('key')
+            // ⚠️ §37 — მხოლოდ საბაზისო: პირადი მოდულის უფლება როლში არ იწერება (მფლობელის წესი)
+            'permissions' => Module::base()->pluck('key')
                 ->mapWithKeys(fn (string $key) => [$key => Role::ACTIONS])
                 ->all(),
         ])->save();

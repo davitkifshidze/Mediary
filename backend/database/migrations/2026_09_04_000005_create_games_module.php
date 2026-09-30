@@ -205,7 +205,7 @@ return new class extends Migration
 
         $this->seedGenres();
 
-        Module::updateOrCreate(['key' => 'game'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'game'], [
             'name_ka' => 'თამაშები',
             'name_en' => 'Games',
             'description_ka' => 'ვიდეოთამაშების კოლექცია — პლატფორმები, გავლის დრო, ქულები, walkthrough-ები და სქრინშოტები.',
@@ -239,7 +239,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'game')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'game')->delete();
 
         Schema::dropIfExists('game_notes');
         Schema::dropIfExists('game_files');

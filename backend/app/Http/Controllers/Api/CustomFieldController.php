@@ -179,7 +179,7 @@ class CustomFieldController extends Controller
     {
         $this->guardRecord($request, $module, $id);
 
-        $row = DB::table(CustomFields::table($module))
+        $row = CustomFields::scope(DB::table(CustomFields::table($module)), $module)
             ->where('user_id', $request->user()->getKey())
             ->where('record_id', $id)
             ->where('field_key', $key)
@@ -228,7 +228,8 @@ class CustomFieldController extends Controller
     {
         abort_unless(CustomFields::supports($key), 404);
 
-        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        // ⚠️ §37 — სხვისი პირადი მოდული 404-ია და არა 403 (`visibleTo`)
+        Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         abort_unless($request->user()->hasModule($key), 403);
     }
 
@@ -236,8 +237,11 @@ class CustomFieldController extends Controller
     {
         $this->guardModule($request, $module);
 
-        $model = CustomFields::model($module);
-        // `owner` global scope-ის გამო სხვისი ჩანაწერი აქ **არ იძებნება**
-        abort_unless($model && $model::whereKey($id)->exists(), 404);
+        /* `owner` global scope-ის გამო სხვისი ჩანაწერი აქ **არ იძებნება**.
+           ⚠️ §37 — პირად მოდულზე query მოდულითაც იჭრება (`recordQuery()`):
+           იმავე ანგარიშის **სხვა** პირადი მოდულის ჩანაწერი ამ მოდულის
+           ველებით არ უნდა იკითხებოდეს. */
+        $query = CustomFields::recordQuery($module);
+        abort_unless($query && $query->whereKey($id)->exists(), 404);
     }
 }

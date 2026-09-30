@@ -1,6 +1,38 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { fetchModuleFields, type ModuleField } from '@/api/account'
+import type { TFunction } from 'i18next'
+import { fetchModuleFields, type CustomClassification, type ModuleField } from '@/api/account'
+import { classificationKey, isCustomModuleKey } from '@/lib/customModules'
+import { useModules } from '@/lib/modules'
+
+/**
+ * **i18n-ის სივრცე მოდულზე** — პირად მოდულს (§37) გასაღები ბაზაშია და
+ * ლოკალიზაციაში ვერ ჩაიწერება, ამიტომ მისი ჩაშენებული ველები ერთ საერთო
+ * სივრცეშია (`fields.name.custom.*`).
+ */
+export function fieldNamespace(moduleKey: string): string {
+  return isCustomModuleKey(moduleKey) ? 'custom' : moduleKey
+}
+
+/**
+ * **ველის ნაგულისხმევი სახელი** — მფლობელის გადარქმევის გარეშე.
+ *
+ * ⚠️ პირადი მოდულის **კლასიფიკაციის ველს** (`category`) სახელი მოდულის
+ * სტრუქტურიდან ეძლევა („ჟანრი" · „ტიპი" · „კატეგორია", 37.2); გადარქმევა კი
+ * (Q30) ჩვეულებრივი ლეიბლის გადახრაა — ერთი ადგილი ყველა მოდულზე.
+ */
+export function defaultFieldLabel(
+  t: TFunction,
+  moduleKey: string,
+  fieldKey: string,
+  classification?: CustomClassification | null,
+): string {
+  if (isCustomModuleKey(moduleKey) && fieldKey === 'category') {
+    return t(classificationKey(classification))
+  }
+
+  return t(`fields.name.${fieldNamespace(moduleKey)}.${fieldKey}`, { defaultValue: fieldKey })
+}
 
 /* ============================================================
    ველების კონსტრუქტორი — ფორმის მხარე (Tasks §6, ფაზა 2).
@@ -48,6 +80,9 @@ export function useModuleFields(moduleKey: string): FieldsApi {
     queryFn: () => fetchModuleFields(moduleKey),
   })
 
+  const { all } = useModules()
+  const classification = all.find((m) => m.key === moduleKey)?.definition?.classification ?? null
+
   const ka = i18n.language === 'ka'
   const find = (key: string) => fields.find((f) => f.key === key)
 
@@ -58,10 +93,10 @@ export function useModuleFields(moduleKey: string): FieldsApi {
   const label = (key: string) => {
     const field = find(key)
     const own = ka ? field?.label_ka : field?.label_en
-    return own ?? t(`fields.name.${moduleKey}.${key}`, { defaultValue: key })
+    return own ?? defaultFieldLabel(t, moduleKey, key, classification)
   }
   const hint = (key: string) => {
-    const text = t(`fields.desc.${moduleKey}.${key}`, { defaultValue: '' })
+    const text = t(`fields.desc.${fieldNamespace(moduleKey)}.${key}`, { defaultValue: '' })
     return text || undefined
   }
 

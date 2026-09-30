@@ -4,9 +4,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   createStatus,
   updateStatus,
-  type StatusDomain,
+  type StatusDomainKey,
   type StatusInput,
 } from '@/api/statuses'
+import { isCustomModuleKey } from '@/lib/customModules'
 import { statusesQueryKey } from '@/lib/statuses'
 import type { Status, StatusRole } from '@/api/types'
 import { errorMessage, fieldErrors } from '@/lib/errors'
@@ -41,7 +42,8 @@ export function StatusDialog({
   onClose,
   onSaved,
 }: {
-  domain: StatusDomain
+  /** §37 — პირადი მოდულის გასაღებიც */
+  domain: StatusDomainKey
   /** null = ახალი სტატუსი */
   status: Status | null
   onClose: () => void
@@ -67,6 +69,8 @@ export function StatusDialog({
       qc.invalidateQueries({ queryKey: statusesQueryKey(domain) })
       // ჩანაწერების სიაც — ბეჯი და სექციები იმავე სახელს ხატავს
       qc.invalidateQueries({ queryKey: [domain] })
+      // §37 — პირადი მოდულის სია სხვა გასაღებზეა (`CustomModulePage`)
+      if (isCustomModuleKey(domain)) qc.invalidateQueries({ queryKey: ['custom-records', domain] })
       toast({ title: t('statuses.saved'), variant: 'success' })
       onSaved?.(saved)
       onClose()

@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => ({
     enabled: [] as unknown[],
     mediaModules: [] as unknown[],
     pageModules: [] as unknown[],
+    customModules: [] as unknown[],
     has: () => true,
     loading: false,
   },
@@ -114,7 +115,9 @@ async function mount(path = '/', enabled: ModuleInfo[] = PAGE_ROWS) {
   mocks.modules.mediaModules = enabled
     .filter((m) => ['movie', 'series', 'anime'].includes(m.key))
     .map((m) => ({ ...m, type: m.key }))
-  mocks.modules.pageModules = enabled.filter((m) => !['movie', 'series', 'anime'].includes(m.key))
+  mocks.modules.pageModules = enabled.filter((m) => !['movie', 'series', 'anime'].includes(m.key) && !m.is_custom)
+  // §37 — პირადი მოდული (`ModulesProvider`-ის იგივე გამიჯვნა)
+  mocks.modules.customModules = enabled.filter((m) => m.is_custom)
 
   const { Sidebar } = await import('@/components/Sidebar')
 
@@ -220,6 +223,26 @@ describe('Sidebar module order', () => {
       b.textContent?.trim(),
     )
     expect(rows).toEqual(['song', 'movie', 'book', 'series'])
+  })
+
+  /* Tasks §37 — ინტერფეისიდან შექმნილი მოდული `PAGE_MODULE_KEYS`-ში არ წერია
+     (გასაღები ბაზაშია), მაგრამ ერთ ზოგად გვერდს ფლობს — ე.ი. მენიუშიც ჩანს,
+     თავისი სექციებით: „ყველა · (სტატუსები) · რჩეული · დამატება". ⚠️ ამ
+     ტესტის გარეშე ციკლი მას „გვერდის გარეშე მოდულად" ჩუმად გამოტოვებდა. */
+  it('draws a personal module with all · favourite · add', async () => {
+    const custom = { ...moduleRow('c7-recipes', '/c/c7-recipes', 2), is_custom: true, morph_alias: null }
+    const el = await mount('/', [moduleRow('song', '/songs', 1), custom])
+
+    const button = moduleButton(el, 'c7-recipes')!
+    expect(button, 'personal module row').toBeTruthy()
+
+    await act(async () => button.click())
+
+    expect(subItems(button)).toEqual([
+      { text: i18n.t('filter.all'), href: null },
+      { text: i18n.t('filter.favorite'), href: null },
+      { text: i18n.t('actions.addShort'), href: '/c/c7-recipes?new=1' },
+    ])
   })
 
   it('skips a module that has no page of its own', async () => {

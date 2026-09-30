@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\CustomModules;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,14 @@ class EnsureModuleEnabled
         }
 
         if (! $user || ! $user->hasModule($key)) {
+            /* ⚠️ §37 — **სხვისი პირადი მოდული 404-ია და არა 403**: „ჩართული
+               არ გაქვს" ნიშნავს, რომ ასეთი მოდული არსებობს, ეს კი თავად
+               ინფორმაციაა (Q28). საკუთარი, ადმინის მიერ გამორთული კი ისევ
+               403-ია — მფლობელმა იცის, რომ ის არსებობს (37.8). */
+            if (CustomModules::isKey($key) && ! CustomModules::owns($user, $key)) {
+                return response()->json(['message' => 'not_found'], 404);
+            }
+
             return response()->json([
                 'message' => 'module_not_enabled',
                 'module' => $key,

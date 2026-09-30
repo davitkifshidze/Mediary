@@ -16,6 +16,8 @@ use App\Models\BookNote;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseFile;
+use App\Models\CustomCategory;
+use App\Models\CustomRecord;
 use App\Models\DatabaseBackup;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
@@ -43,6 +45,8 @@ use App\Models\Video;
 use App\Models\VideoFile;
 use App\Models\VideoNote;
 use App\Models\VideoType;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -141,6 +145,9 @@ final class TrashDomain
         'bookmark_category' => ['model' => BookmarkCategory::class, 'module' => 'bookmark', 'parent' => null, 'size' => false],
         'course_category' => ['model' => CourseCategory::class, 'module' => 'course', 'parent' => null, 'size' => false],
         'place_category' => ['model' => PlaceCategory::class, 'module' => 'place', 'parent' => null, 'size' => false],
+        /* Tasks §37 — პირადი მოდულის კლასიფიკატორი; მოდული რიგშია (`module`),
+           ერთი სახე ყველა პირად მოდულზე (სტატუსის იგივე ფორმა). */
+        'custom_category' => ['model' => CustomCategory::class, 'module' => null, 'module_column' => 'module', 'parent' => null, 'size' => false],
     ];
 
     /**
@@ -235,10 +242,45 @@ final class TrashDomain
         return min(max($days, self::MIN_DAYS), self::maxDays());
     }
 
-    /** @return list<string> */
+    /**
+     * ჩანაწერის სახეები — საბაზისო მოდულები **და პირადი მოდულები** (Tasks §37).
+     *
+     * ⚠️ პირადი მოდული **თავისი გასაღებით** არის სახე: ურნაში ის ცალკე ჯგუფად
+     * ჩანს თავისი სახელით, ფერით და აიქონით — ზუსტად ისე, როგორც ფილმი ან
+     * წიგნი. ყველა ერთ ცხრილშია (`custom_records`), ამიტომ ყოველი query
+     * მოდულით იჭრება (`trashOf()` · `trashedBefore()`).
+     *
+     * @return list<string>
+     */
     public static function domains(): array
     {
-        return array_keys(self::MODELS);
+        return [...array_keys(self::MODELS), ...CustomModules::keys()];
+    }
+
+    /**
+     * ერთი ანგარიშის ურნაში მყოფი ჩანაწერები ამ სახეზე — **პირად მოდულზე
+     * მოდულითაც დაჭრილი**. ⚠️ `model($kind)::trashOf()` პირად მოდულზე ყველა
+     * პირადი მოდულის ჩანაწერს დააბრუნებდა ერთ ჯგუფში.
+     */
+    public static function trashOf(string $kind, int $userId): Builder
+    {
+        $query = self::model($kind)::trashOf($userId);
+
+        return self::isCustom($kind) ? $query->where(CustomModules::TABLE.'.module', $kind) : $query;
+    }
+
+    /** ვადაგასული ამ სახეზე (ყველა ანგარიშის) — იგივე მოდულის ჭრით */
+    public static function trashedBefore(string $kind, CarbonInterface $before): Builder
+    {
+        $query = self::model($kind)::trashedBefore($before);
+
+        return self::isCustom($kind) ? $query->where(CustomModules::TABLE.'.module', $kind) : $query;
+    }
+
+    /** პირადი მოდულის ჩანაწერის სახეა? */
+    public static function isCustom(string $kind): bool
+    {
+        return ! isset(self::MODELS[$kind]) && CustomModules::exists($kind);
     }
 
     /**
@@ -249,7 +291,7 @@ final class TrashDomain
     public static function kinds(): array
     {
         return [
-            ...array_keys(self::MODELS),
+            ...self::domains(),
             ...array_keys(self::ITEMS),
             ...array_keys(self::FILES),
             ...array_keys(self::ENTRIES),
@@ -261,7 +303,7 @@ final class TrashDomain
     public static function category(string $kind): ?string
     {
         return match (true) {
-            isset(self::MODELS[$kind]) => 'record',
+            isset(self::MODELS[$kind]), self::isCustom($kind) => 'record',
             isset(self::ITEMS[$kind]) => 'item',
             isset(self::FILES[$kind]) => 'file',
             isset(self::ENTRIES[$kind]) => 'entry',
@@ -285,13 +327,13 @@ final class TrashDomain
 
     public static function has(string $domain): bool
     {
-        return isset(self::MODELS[$domain]);
+        return isset(self::MODELS[$domain]) || self::isCustom($domain);
     }
 
     /** @return class-string<Model> */
     public static function model(string $domain): string
     {
-        return self::MODELS[$domain];
+        return self::MODELS[$domain] ?? CustomRecord::class;
     }
 
     /**
@@ -301,10 +343,14 @@ final class TrashDomain
      */
     public static function tables(): array
     {
-        return array_values(array_map(
-            fn (string $model) => (new $model)->getTable(),
-            self::MODELS,
-        ));
+        return [
+            ...array_values(array_map(
+                fn (string $model) => (new $model)->getTable(),
+                self::MODELS,
+            )),
+            // Tasks §37 — პირადი მოდულის ჩანაწერები (სახე = მოდულის გასაღები, `domains()`)
+            CustomModules::TABLE,
+        ];
     }
 
     /**

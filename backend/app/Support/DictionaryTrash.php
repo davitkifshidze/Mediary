@@ -6,6 +6,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\NoteEntry;
 use App\Models\Place;
 use App\Models\Status;
@@ -53,6 +54,8 @@ final class DictionaryTrash
         'bookmark_category' => ['records' => Bookmark::class, 'column' => 'category_id'],
         'course_category' => ['records' => Course::class, 'column' => 'category_id'],
         'place_category' => ['records' => Place::class, 'column' => 'category_id'],
+        // Tasks §37 — პირადი მოდულის კლასიფიკატორი (ერთი სვეტი, ბუკმარკის ფორმა)
+        'custom_category' => ['records' => CustomRecord::class, 'column' => 'category_id'],
     ];
 
     public static function has(string $kind): bool

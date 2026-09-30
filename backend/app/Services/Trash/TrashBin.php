@@ -20,6 +20,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\AlbumLock;
 use App\Support\AuditLogTrash;
 use App\Support\ColumnTrash;
+use App\Support\CustomModules;
 use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
 use App\Support\SafeMime;
@@ -314,7 +315,8 @@ final class TrashBin
         $userId = (int) $user->getKey();
 
         return match (TrashDomain::category($kind)) {
-            'record' => TrashDomain::model($kind)::trashOf($userId),
+            // ⚠️ §37 — პირადი მოდულის სახე მოდულითაც იჭრება (`TrashDomain::trashOf()`)
+            'record' => TrashDomain::trashOf($kind, $userId),
             'item' => TrashDomain::ITEMS[$kind]['model']::trashOf($userId)
                 ->when(isset(TrashDomain::ITEMS[$kind]['module_column']), fn (Builder $q) => $q->whereIn(
                     TrashDomain::ITEMS[$kind]['module_column'],
@@ -352,7 +354,12 @@ final class TrashBin
      */
     private function columnModules(string $kind): array
     {
-        return $kind === 'status' ? array_keys(StatusDomain::DOMAINS) : MediaDomain::TYPES;
+        return match ($kind) {
+            // §37 — პირადი მოდულის სტატუსიც იმავე ცხრილშია, თავისი გასაღებით
+            'status' => [...array_keys(StatusDomain::DOMAINS), ...CustomModules::keys()],
+            'custom_category' => CustomModules::keys(),
+            default => MediaDomain::TYPES,
+        };
     }
 
     /**
@@ -398,7 +405,7 @@ final class TrashBin
 
         DB::transaction(function () use ($user, $kind, $row, $parent, $withRecords, $replace, &$withParent, &$records) {
             if ($parent && $parent['trashed']) {
-                TrashDomain::model($parent['kind'])::trashOf((int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
+                TrashDomain::trashOf($parent['kind'], (int) $user->getKey())->find($parent['id'])?->restoreFromTrash();
                 $withParent = true;
             }
 
@@ -618,7 +625,7 @@ final class TrashBin
     private static function expiredQuery(string $kind, CarbonInterface $before): Builder
     {
         return match (TrashDomain::category($kind)) {
-            'record' => TrashDomain::model($kind)::trashedBefore($before),
+            'record' => TrashDomain::trashedBefore($kind, $before),
             'item' => TrashDomain::ITEMS[$kind]['model']::trashedBefore($before),
             'file' => TrashedFile::withoutGlobalScope('owner')->where('kind', $kind)->where('trashed_at', '<=', $before),
             // ⚠️ მხოლოდ ურნის რიგი იშლება — წერილი დამალული რჩება
@@ -1059,12 +1066,15 @@ final class TrashBin
         $category = TrashDomain::category($kind);
 
         if ($category === 'record') {
+            // ⚠️ §37 — პირადი მოდულის ჩანაწერი: ატვირთული ფოტო, მერე გვერდის og:image
+            $spec = self::RECORD_PREVIEW[$kind] ?? (TrashDomain::isCustom($kind) ? ['photo_path', 'image_url'] : null);
+
             // ⚠️ ჩანაწერს (`note`) მთავარი ფოტო შეიძლება საერთოდ არ ჰქონდეს
-            if (! isset(self::RECORD_PREVIEW[$kind])) {
+            if ($spec === null) {
                 return null;
             }
 
-            [$column, $remote] = self::RECORD_PREVIEW[$kind] + [1 => null];
+            [$column, $remote] = $spec + [1 => null];
 
             $path = $row->getAttribute($column);
             if (is_string($path) && $path !== '') {

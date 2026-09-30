@@ -137,7 +137,7 @@ return new class extends Migration
 
         $this->seedGenres();
 
-        Module::updateOrCreate(['key' => 'board_game'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'board_game'], [
             'name_ka' => 'ბორდგეიმები',
             'name_en' => 'Board games',
             'description_ka' => 'სამაგიდო თამაშების კოლექცია — მოთამაშეები, სირთულე, BGG-ის რეიტინგი და წესები.',
@@ -171,7 +171,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'board_game')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'board_game')->delete();
 
         Schema::dropIfExists('board_game_notes');
         Schema::dropIfExists('board_game_files');

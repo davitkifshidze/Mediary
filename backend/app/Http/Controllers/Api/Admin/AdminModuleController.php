@@ -45,7 +45,12 @@ class AdminModuleController extends Controller
         /* Tasks §36 — სუპერადმინის **პირადი** რიგით: `/modules` ამ სიას ხატავს,
            ე.ი. საერთო რიგით დალაგებული მის გადათრევას ყოველ ჩატვირთვაზე
            „უკან დააბრუნებდა". საერთო რიგი `sort_order`-ის ველში რჩება. */
-        $modules = ModuleOrder::sort(Module::all(), $request->user())->each(function (Module $m) use ($users) {
+        /* ⚠️ §37 — **საბაზისო და საკუთარი პირადი** (`visibleTo`) — ზუსტად ის,
+           რასაც `/modules` ხატავს, თორემ სუპერადმინის საკუთარი მოდული ამ
+           სიიდან ამოვარდებოდა და მისი რიგი (§36) ორ სიას შორის გაიყოფოდა.
+           **სხვისი** პირადი მოდული აქ არასდროს ჩანს — ზედამხედველობა ცალკე
+           სიაა (37.8), აგრეგატებით და არა შიგთავსით. */
+        $modules = ModuleOrder::sort(Module::visibleTo($request->user())->get(), $request->user())->each(function (Module $m) use ($users) {
             $holders = $users->filter(fn (User $u) => $u->isGrantedModule($m->key));
 
             $m->users_count = $holders->filter(fn (User $u) => $u->hasModule($m->key))->count();
@@ -111,7 +116,8 @@ class AdminModuleController extends Controller
      */
     public function saveDefaultOrder(Request $request, AuditLogger $audit)
     {
-        $current = Module::orderBy('sort_order')->orderBy('id')->pluck('key')->all();
+        // ⚠️ §37 — საერთო რიგი საბაზისო მოდულებისაა; პირადს თავისი მფლობელი ალაგებს
+        $current = Module::base()->orderBy('sort_order')->orderBy('id')->pluck('key')->all();
 
         $data = $request->validate([
             'keys' => ['required', 'array', 'max:'.ModuleOrder::MAX_KEYS],

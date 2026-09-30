@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Lock, RotateCcw, UsersRound } from 'lucide-react'
+import { ArrowRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Lock, Plus, RotateCcw, UserRound, UsersRound } from 'lucide-react'
 import {
   fetchAdminModules,
   fetchMyRequests,
@@ -22,6 +22,8 @@ import { useAuth } from '@/lib/auth'
 import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
 import { errorMessage } from '@/lib/errors'
 import { arrangeByKeys, isCustomOrder } from '@/lib/moduleOrder'
+import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
+import { CustomModuleDialog } from '@/components/CustomModuleDialog'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
@@ -88,6 +90,8 @@ export function ModulesPage() {
   const confirm = useConfirm()
 
   const { data: requests = [] } = useQuery({ queryKey: ['my-requests'], queryFn: fetchMyRequests })
+  // Tasks §37.2 — ახალი მოდულის ოსტატი
+  const [creating, setCreating] = useState(false)
 
   /**
    * `GET /modules` მხოლოდ **აქტიურ** მოდულებს აბრუნებს და `users_count`-ს არ იცის.
@@ -172,7 +176,9 @@ export function ModulesPage() {
       description: t('modules.setDefaultOrderHint'),
       confirmText: t('modules.setDefaultOrder'),
     })
-    if (ok) makeDefault.mutate(keys)
+    /* ⚠️ §37 — საერთო რიგი **საბაზისო** მოდულებისაა: პირადი მოდული სხვას არ
+       უჩანს, და backend მის გასაღებს უცნობად (422) წაიკითხავდა */
+    if (ok) makeDefault.mutate(keys.filter((k) => !isCustomModuleKey(k)))
   }
 
   const pendingFor = (m: ModuleInfo) =>
@@ -180,6 +186,8 @@ export function ModulesPage() {
 
   /** ჩემი მდგომარეობა ამ მოდულზე — ქარდის მთავარი ინფორმაცია */
   const state = (m: ModuleInfo) => {
+    // §37.8 — ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები რჩება
+    if (m.disabled_by_admin) return { label: t('customModules.disabledByAdmin'), icon: Ban, tone: 'text-destructive' }
     if (m.enabled) return { label: t('modules.enabled'), icon: Check, tone: 'text-gold' }
     if (m.granted) return { label: t('modules.disabledByMe'), icon: Lock, tone: 'text-muted-foreground' }
     if (pendingFor(m)) return { label: t('modules.pending'), icon: Clock, tone: 'text-muted-foreground' }
@@ -197,21 +205,28 @@ export function ModulesPage() {
         title={t('modules.title')}
         hint={<InfoHint info={hint} />}
         actions={
-          custom && (
-            <>
-              <Button variant="outline" onClick={askReset} disabled={reset.isPending || order.isPending}>
-                <RotateCcw className="size-4" />
-                {t('modules.resetOrder')}
-              </Button>
-              {/* ⚠️ მხოლოდ super_admin — საერთო რიგი ყველა ანგარიშს ეხება */}
-              {isAdmin && (
-                <Button onClick={askMakeDefault} disabled={makeDefault.isPending || order.isPending}>
-                  <UsersRound className="size-4" />
-                  {t('modules.setDefaultOrder')}
+          <>
+            {custom && (
+              <>
+                <Button variant="outline" onClick={askReset} disabled={reset.isPending || order.isPending}>
+                  <RotateCcw className="size-4" />
+                  {t('modules.resetOrder')}
                 </Button>
-              )}
-            </>
-          )
+                {/* ⚠️ მხოლოდ super_admin — საერთო რიგი ყველა ანგარიშს ეხება */}
+                {isAdmin && (
+                  <Button variant="outline" onClick={askMakeDefault} disabled={makeDefault.isPending || order.isPending}>
+                    <UsersRound className="size-4" />
+                    {t('modules.setDefaultOrder')}
+                  </Button>
+                )}
+              </>
+            )}
+            {/* Tasks §37 — ყოველი მომხმარებელი თავისთვის ქმნის (Q28) */}
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" />
+              {t('customModules.new')}
+            </Button>
+          </>
         }
       />
 
@@ -248,6 +263,13 @@ export function ModulesPage() {
                     <ModuleIcon name={m.icon} className="size-5 text-[var(--mod)]" />
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+                  {/* §37 — პირადი მოდული: სხვას არ უჩანს */}
+                  {isCustomModule(m) && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <UserRound className="size-3" />
+                      {t('customModules.personal')}
+                    </span>
+                  )}
                   <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>
 
@@ -262,8 +284,8 @@ export function ModulesPage() {
                   {s.label}
                 </span>
 
-                {/* ადმინის ინფო — გლობალური მდგომარეობა */}
-                {isAdmin && (
+                {/* ადმინის ინფო — გლობალური მდგომარეობა (პირად მოდულზე უაზროა — ერთი მფლობელია) */}
+                {isAdmin && !isCustomModule(m) && (
                   <span className="flex flex-wrap items-center gap-1.5">
                     {!m.is_active && (
                       <span className="rounded-md border border-destructive/40 px-2 py-0.5 leading-relaxed text-destructive">
@@ -314,6 +336,8 @@ export function ModulesPage() {
           )
         })}
       </div>
+
+      {creating && <CustomModuleDialog onClose={() => setCreating(false)} />}
     </PageContainer>
   )
 }

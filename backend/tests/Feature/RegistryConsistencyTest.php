@@ -270,7 +270,9 @@ class RegistryConsistencyTest extends TestCase
             array_values(PublicDomain::DOMAINS),
         );
 
-        $excluded = ['note_entries'];
+        /* ⚠️ `custom_records` — **დროებითი** (Tasks §37.4): პირადი მოდულის
+           საჯარო პროფილი მეორე ეტაპია და იქ ეს რიგი მოიხსნება. */
+        $excluded = ['note_entries', 'custom_records'];
         $missing = [];
 
         foreach ($this->tablesWithColumn('visibility') as $table) {
@@ -322,6 +324,19 @@ class RegistryConsistencyTest extends TestCase
     public function test_the_spa_public_domain_list_mirrors_the_backend(): void
     {
         $this->assertSame(PublicDomain::keys(), $this->tsConstList('api/publicProfile.ts', 'PUBLIC_DOMAINS'));
+    }
+
+    /**
+     * ⚠️ **დამატებითი ველების მოდულების სარკე SPA-ში** (ნაპოვნია Tasks §37-ზე).
+     *
+     * `CUSTOM_FIELD_MODULES`-ს ანიმე, კურსი და ადგილი აკლდა, ე.ი. მათ
+     * `/modules/{key}`-ზე დამატებითი ველების რედაქტორი **საერთოდ არ იხატებოდა**
+     * — backend ველებს იღებდა, ინტერფეისი კი მათ შექმნის გზას არ აჩვენებდა.
+     * ხარვეზი ჩუმი იყო: არც ტიპი, არც lint, არც სხვა ტესტი მას ვერ ხედავდა.
+     */
+    public function test_the_spa_custom_field_modules_mirror_the_backend(): void
+    {
+        $this->assertSame(CustomFields::modules(), $this->tsConstList('api/account.ts', 'CUSTOM_FIELD_MODULES'));
     }
 
     /**
@@ -530,6 +545,8 @@ class RegistryConsistencyTest extends TestCase
         'bookmark_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'course_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
+        // Tasks §37 — ყველა პირადი მოდულის ველების საერთო ცხრილი; იგივე წესი
+        'custom_record_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
         // §29.10 ეტაპი 5 — წერილი არასდროს იშლება (§4.6); ურნა მის წაშლას `trashed_messages`-ით აჩვენებს
         'messages' => 'წერილი ბაზაში რჩება (§4.6) — მისი წაშლა ურნაში `trashed_messages`-ითაა, მიმაგრება `trashed_files`-ით',

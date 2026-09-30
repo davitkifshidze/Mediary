@@ -8,6 +8,7 @@ use App\Services\Credentials\CredentialStore;
 use App\Support\AlbumLock;
 use App\Support\AppSettings;
 use App\Support\CredentialProviders;
+use App\Support\CustomModules;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -35,6 +36,8 @@ abstract class TestCase extends BaseTestCase
         // მაგრამ ტესტის სხეული ერთსა და იმავე `Request`-ს ხედავს — ბაზის
         // პირდაპირ ჩასწორების შემდეგ ძველი მნიშვნელობა დარჩებოდა
         AppSettings::flush();
+        // ⚠️ მეხუთე (Tasks §37): პირადი მოდულების სია — იგივე მოთხოვნის ქეში
+        CustomModules::flush();
     }
 
     /**

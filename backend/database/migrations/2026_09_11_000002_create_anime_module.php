@@ -129,7 +129,7 @@ return new class extends Migration
         }
 
         // ⚠️ `sort_order` სერიალის (20) მომდევნოა — მენიუში „სერიალების ქვემოთ"
-        Module::updateOrCreate(['key' => 'anime'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'anime'], [
             'name_ka' => 'ანიმეები',
             'name_en' => 'Anime',
             'description_ka' => 'ანიმეების ბიბლიოთეკა — TMDB-ის მონაცემები, ჟანრები, ხმის მსახიობები და გალერეა.',
@@ -145,7 +145,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'anime')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'anime')->delete();
 
         Schema::dropIfExists(CustomFields::TABLE_BY_MODULE['anime']);
         Schema::dropIfExists('anime_translations');

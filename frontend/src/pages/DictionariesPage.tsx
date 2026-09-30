@@ -17,14 +17,15 @@ import {
 import type { ModuleInfo } from '@/api/account'
 import { saveStatusSections, type SectionsLayout } from '@/api/statuses'
 import type { Status } from '@/api/types'
-import { DICTIONARIES, type DictionaryDef, type DictionaryItem } from '@/lib/dictionaries'
+import { fetchModuleFields } from '@/api/account'
+import { DICTIONARIES, customDictionaries, type DictionaryDef, type DictionaryItem } from '@/lib/dictionaries'
 import { errorMessage } from '@/lib/errors'
 import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { moduleName, useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
 import {
-  PSEUDO_SECTIONS,
+  pseudoSectionsFor,
   SECTIONS_SETTING,
   arrangeSections,
   layoutFor,
@@ -73,10 +74,14 @@ export function DictionariesPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { key } = useParams()
-  const { has, loading } = useModules()
+  const { has, loading, customModules } = useModules()
 
-  /** ⚠️ გამორთული მოდული ინდექსშიც არ ჩანს და მისი ლექსიკონიც არ იხსნება */
-  const available = useMemo(() => DICTIONARIES.filter((d) => has(d.module)), [has])
+  /** ⚠️ გამორთული მოდული ინდექსშიც არ ჩანს და მისი ლექსიკონიც არ იხსნება.
+      §37 — პირადი მოდულის ლექსიკონები `useModules()`-იდან იწყობა (ბაზაშია). */
+  const available = useMemo(
+    () => [...DICTIONARIES.filter((d) => has(d.module)), ...customDictionaries(customModules)],
+    [has, customModules],
+  )
 
   if (!available.length) {
     return (
@@ -169,7 +174,7 @@ function DictionaryIndex({ available, lang }: { available: DictionaryDef[]; lang
                 const hiddenCount = def.statusDomain
                   ? arrangeSections(
                       items as unknown as Status[],
-                      PSEUDO_SECTIONS[def.statusDomain],
+                      pseudoSectionsFor(def.statusDomain),
                       layoutFor(all, def.statusDomain),
                     ).filter((row) => row.hidden).length
                   : 0
@@ -213,6 +218,8 @@ function DictionaryCard({
   lang: string
 }) {
   const { t, i18n } = useTranslation()
+  // §37 / Q30 — კლასიფიკაციის ველის გადარქმეული სახელი, თუ არსებობს
+  const title = useDictionaryTitle(def)
   // მოდულის ფერი — `PageHeader`-ის იგივე წყარო (`modules.color`), ე.ი. ბარათი და შიდა გვერდი ერთ ტონშია
   const color = module?.color ?? null
 
@@ -234,7 +241,7 @@ function DictionaryCard({
               {moduleName(module, i18n.language)}
             </span>
           )}
-          <span className="block truncate font-medium">{t(def.titleKey)}</span>
+          <span className="block truncate font-medium">{title}</span>
         </span>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
       </div>
@@ -275,6 +282,7 @@ type ListRow = SectionRow | { kind: 'item'; id: number; item: DictionaryItem; hi
 
 function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
   const { t } = useTranslation()
+  const title = useDictionaryTitle(def)
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { toast } = useToast()
@@ -293,7 +301,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
   const rows: ListRow[] =
     domain && layout
-      ? arrangeSections(items as unknown as Status[], PSEUDO_SECTIONS[domain], layout)
+      ? arrangeSections(items as unknown as Status[], pseudoSectionsFor(domain), layout)
       : items.map((item) => ({ kind: 'item', id: item.id, item, hidden: false }))
 
   const reorder = useMutation({
@@ -367,7 +375,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
       <PageHeader
         tool="dictionaries"
         module={def.module}
-        title={t(def.titleKey)}
+        title={title}
         hint={<InfoHint info={t(domain ? 'dictionaries.subtitleStatuses' : 'dictionaries.subtitle')} />}
         actions={
           <>
@@ -703,4 +711,27 @@ function DeleteDictionaryEntry({
       </ModalFooter>
     </ModalShell>
   )
+}
+
+/**
+ * **ლექსიკონის სათაური** — კლასიფიკაციის ველის გადარქმეული სახელი (Tasks §37, Q30)
+ * ან ნაგულისხმევი.
+ *
+ * ⚠️ **ერთი ადგილი ყველა მოდულზე**: ველის სახელი `/modules/{key}`-ზე
+ * იცვლება (ველების კონსტრუქტორის ლეიბლი), და ბარათიც **იმავეს** კითხულობს —
+ * იმავე ქეშიდან (`['module-fields', key]`), რასაც ფორმა (`useModuleFields`).
+ */
+function useDictionaryTitle(def: DictionaryDef): string {
+  const { t, i18n } = useTranslation()
+  const { data: fields } = useQuery({
+    queryKey: ['module-fields', def.module],
+    queryFn: () => fetchModuleFields(def.module),
+    enabled: !!def.fieldKey,
+    staleTime: 5 * 60_000,
+  })
+
+  const field = def.fieldKey ? fields?.find((f) => f.key === def.fieldKey) : undefined
+  const own = i18n.language === 'ka' ? field?.label_ka : field?.label_en
+
+  return own || def.title || t(def.titleKey)
 }

@@ -110,8 +110,14 @@ final class ModuleOrder
      */
     public static function visibleKeys(User $user): array
     {
+        /* ⚠️ §37 — საკუთარი პირადი მოდული **ყოველთვის** ჩანს (გამორთულიც —
+           `/modules`-ზე ის „ადმინმა გამორთო"-თი დგას), სხვისი კი **არასდროს**,
+           სუპერადმინისთვისაც: მისი ზედამხედველობის სია ცალკეა (37.8). */
         return Module::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('is_active', true))
+            ->where(fn ($q) => $q
+                ->where(fn ($base) => $base->whereNull('owner_id')
+                    ->when(! $user->isSuperAdmin(), fn ($active) => $active->where('is_active', true)))
+                ->orWhere('owner_id', $user->getKey()))
             ->pluck('key')
             ->all();
     }

@@ -7,6 +7,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -14,7 +15,9 @@ use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder;
 
 /**
  * **მორგებული ველების რუკა (Tasks §6, ფაზა 3).**
@@ -83,9 +86,13 @@ final class CustomFields
         'bookmark_field_values' => 'bookmarks',
         'course_field_values' => 'courses',
         'place_field_values' => 'places',
+        /* Tasks §37 — **ერთი ცხრილი ყველა პირად მოდულზე**. ⚠️ ის მოდულის
+           გასაღებს ატარებს (`module`), რადგან ველის წაშლა მნიშვნელობებს
+           `field_key`-ით შლის — იხ. `scope()`. */
+        CustomModules::VALUES_TABLE => CustomModules::TABLE,
     ];
 
-    /** მოდულის key → მნიშვნელობების ცხრილი */
+    /** მოდულის key → მნიშვნელობების ცხრილი (საბაზისო; პირადი — `table()`) */
     public const TABLE_BY_MODULE = [
         'movie' => 'movie_field_values',
         'series' => 'series_field_values',
@@ -123,8 +130,65 @@ final class CustomFields
             'bookmark' => Bookmark::class,
             'course' => Course::class,
             'place' => Place::class,
-            default => null,
+            // §37 — პირადი მოდულის ჩანაწერი; მოდულს `recordQuery()` ჭრის
+            default => CustomModules::exists($module) ? CustomRecord::class : null,
         };
+    }
+
+    /**
+     * ჩანაწერების query ამ მოდულზე — **პირად მოდულზე მოდულითაც დაჭრილი**.
+     *
+     * ⚠️ `model($module)::whereKey($id)` პირად მოდულზე საკმარისი არაა: ერთი
+     * ანგარიშის ორი პირადი მოდულის ჩანაწერი ერთ ცხრილშია, ე.ი. მოდულის
+     * გარეშე მეორე მოდულის ჩანაწერს ამ მოდულის ველებით წაიკითხავდა.
+     *
+     * @return EloquentBuilder<Model>|null
+     */
+    public static function recordQuery(string $module): ?EloquentBuilder
+    {
+        $model = self::model($module);
+
+        if (! $model) {
+            return null;
+        }
+
+        return $model === CustomRecord::class
+            ? CustomRecord::query()->forModule($module)
+            : $model::query();
+    }
+
+    /**
+     * მნიშვნელობების რიგები ამ მოდულზე — საერთო ცხრილში მოდულით დაჭრილი.
+     *
+     * ⚠️ **ველის წაშლა `field_key`-ით შლის** (`CustomFieldService::saveDefinitions()`):
+     * საერთო ცხრილში ამ შეზღუდვის გარეშე ერთი ანგარიშის **სხვა** პირადი
+     * მოდულის იმავე სახელის ველიც წაიშლებოდა.
+     */
+    public static function scope(Builder $query, string $module): Builder
+    {
+        return self::isShared($module) ? $query->where('module', $module) : $query;
+    }
+
+    /** ჩასაწერი დამატებითი სვეტი — საერთო ცხრილში მოდულის გასაღები */
+    public static function rowAttributes(string $module): array
+    {
+        return self::isShared($module) ? ['module' => $module] : [];
+    }
+
+    /** მნიშვნელობები საერთო (§37) ცხრილშია? */
+    public static function isShared(string $module): bool
+    {
+        return ! isset(self::TABLE_BY_MODULE[$module]) && CustomModules::isKey($module);
+    }
+
+    /**
+     * მარშრუტის `where()` — საბაზისო მოდულები **ან** პირადის ფორმა
+     * (`StatusDomain::pattern()`-ის წესი: ბაზაში მცხოვრები გასაღები
+     * route-ის რეგისტრაციისას ვერ ჩაიწერება; არსებობას კონტროლერი ამოწმებს).
+     */
+    public static function routePattern(): string
+    {
+        return implode('|', self::modules()).'|'.CustomModules::PATTERN;
     }
 
     /**
@@ -138,6 +202,11 @@ final class CustomFields
      */
     public static function moduleOf(Model|string $model): ?string
     {
+        // §37 — პირადი მოდულის ჩანაწერის მოდული **რიგშია** და არა კლასში
+        if ($model instanceof CustomRecord) {
+            return $model->module ? (string) $model->module : null;
+        }
+
         $class = is_string($model) ? $model : $model::class;
 
         foreach (array_keys(self::TABLE_BY_MODULE) as $module) {
@@ -151,15 +220,19 @@ final class CustomFields
 
     public static function supports(string $module): bool
     {
-        return isset(self::TABLE_BY_MODULE[$module]);
+        return isset(self::TABLE_BY_MODULE[$module]) || CustomModules::exists($module);
     }
 
     public static function table(string $module): ?string
     {
-        return self::TABLE_BY_MODULE[$module] ?? null;
+        if (isset(self::TABLE_BY_MODULE[$module])) {
+            return self::TABLE_BY_MODULE[$module];
+        }
+
+        return CustomModules::exists($module) ? CustomModules::VALUES_TABLE : null;
     }
 
-    /** მოდულები, რომლებსაც მორგებული ველები აქვთ — route-ის `whereIn`-ისთვის */
+    /** **საბაზისო** მოდულები, რომლებსაც მორგებული ველები აქვთ (პირადი — `supports()`) */
     public static function modules(): array
     {
         return array_keys(self::TABLE_BY_MODULE);

@@ -1,3 +1,4 @@
+import { isCustomModuleKey } from '@/lib/customModules'
 import { api, ensureCsrfCookie } from '@/lib/api'
 import { formatDate } from '@/lib/dates'
 import type { Settings } from '@/lib/settings'
@@ -242,6 +243,67 @@ export interface ModuleInfo {
   is_public?: boolean
   /** შეიძლება თუ არა საერთოდ გასაჯაროება — `note`-ზე **არასდროს** (16.5) */
   shareable?: boolean
+  /**
+   * Tasks §37 — ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ `GET /modules`
+   * მხოლოდ **საკუთარს** აბრუნებს — სხვისი პირადი მოდული აქ არასდროს ჩანს.
+   */
+  is_custom?: boolean
+  /** §37 — მოდულის სტრუქტურა (კლასიფიკაცია, სტატუსების საწყისი ნაკრები) */
+  definition?: CustomModuleDefinition
+  /** §37.8 — სუპერადმინმა გამორთო: მფლობელი ვეღარ ჩართავს, მონაცემები ხელუხლებელია */
+  disabled_by_admin?: boolean
+}
+
+/* ---------- Tasks §37 — ინტერფეისიდან შექმნილი მოდული ---------- */
+
+/** კლასიფიკაციის სახე — **სახელია და არა მექანიზმი** (ერთი ზოგადი კლასიფიკატორი) */
+export const CUSTOM_CLASSIFICATIONS = ['category', 'genre', 'type'] as const
+export type CustomClassification = (typeof CUSTOM_CLASSIFICATIONS)[number]
+
+/** სტატუსების საწყისი ნაკრები — სარკე `CustomModules::STATUS_PRESETS`-ისა */
+export const CUSTOM_STATUS_PRESETS = ['default', 'none'] as const
+export type CustomStatusPreset = (typeof CUSTOM_STATUS_PRESETS)[number]
+
+export interface CustomModuleDefinition {
+  classification: CustomClassification | null
+  statuses: CustomStatusPreset
+}
+
+/** დამატებითი ველის აღწერა შექმნისას (`CustomFieldController`-ის ფორმა) */
+export interface CustomFieldDraft {
+  type: CustomFieldType
+  label_ka: string | null
+  label_en: string | null
+  required?: boolean
+}
+
+export interface CustomModuleInput {
+  name_ka: string
+  name_en: string
+  description_ka?: string | null
+  description_en?: string | null
+  icon: string
+  color: string | null
+  classification: CustomClassification | null
+  statuses: CustomStatusPreset
+  categories?: string[]
+  fields?: CustomFieldDraft[]
+}
+
+export type CustomModuleDetails = Partial<
+  Pick<CustomModuleInput, 'name_ka' | 'name_en' | 'description_ka' | 'description_en' | 'icon' | 'color' | 'classification'>
+>
+
+/** ახალი მოდული — ყოველი მომხმარებელი თავისთვის (Q28) */
+export async function createCustomModule(input: CustomModuleInput): Promise<ModuleInfo> {
+  const { data } = await api.post('/modules', input)
+  return data.data
+}
+
+/** მფლობელის რედაქტირება — სახელი, აღწერა, აიქონი, ფერი, კლასიფიკაცია */
+export async function updateCustomModule(key: string, input: CustomModuleDetails): Promise<ModuleInfo> {
+  const { data } = await api.put(`/modules/${key}/details`, input)
+  return data.data
 }
 
 export interface ApprovalRequestItem {
@@ -533,10 +595,19 @@ export const CUSTOM_FIELD_TYPES = [
 ] as const
 export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number]
 
-/** მოდულები, რომლებსაც მორგებული ველები აქვთ — backend-ის იგივე სია */
+/**
+ * მოდულები, რომლებსაც მორგებული ველები აქვთ — სარკე `CustomFields::modules()`-ისა
+ * (`RegistryConsistencyTest` რიგითაც ამოწმებს).
+ *
+ * ⚠️ **ანიმე, კურსი და ადგილი აქ აკლდა** (ნაპოვნია Tasks §37-ზე): მათ
+ * `/modules/{key}`-ზე დამატებითი ველების რედაქტორი საერთოდ არ იხატებოდა.
+ * ⚠️ პირადი მოდული (§37) აქ **არ** წერია — მისი გასაღები ბაზაშია;
+ * `supportsCustomFields()` ორივეს ცნობს.
+ */
 export const CUSTOM_FIELD_MODULES = [
   'movie',
   'series',
+  'anime',
   'video',
   'song',
   'book',
@@ -544,7 +615,14 @@ export const CUSTOM_FIELD_MODULES = [
   'game',
   'note',
   'bookmark',
+  'course',
+  'place',
 ] as const
+
+/** აქვს თუ არა მოდულს დამატებითი ველები — საბაზისო სიიდან ან პირადი მოდულის ფორმით */
+export function supportsCustomFields(moduleKey: string): boolean {
+  return (CUSTOM_FIELD_MODULES as readonly string[]).includes(moduleKey) || isCustomModuleKey(moduleKey)
+}
 
 export interface CustomFieldDefinition {
   /** ცარიელი = ახალი ველი; key-ს backend სახელიდან ქმნის და აღარ ცვლის */

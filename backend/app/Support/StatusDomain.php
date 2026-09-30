@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Anime;
 use App\Models\Bookmark;
+use App\Models\CustomRecord;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\Series;
@@ -93,33 +94,66 @@ final class StatusDomain
         'bookmarks' => 'bookmark',
     ];
 
-    /** @return list<string> */
+    /**
+     * **საბაზისო** დომენები — კოდში აღწერილი ექვსი.
+     *
+     * ⚠️ §37-ის პირადი მოდულები აქ **არ** არის: ისინი ბაზაშია და თითო
+     * ანგარიშისაა, ეს სია კი სტატიკური ფაქტებისთვისაა (ტესტი, საწყისი
+     * ნაკრები, `/dictionaries`-ის რიგი). პირადი მოდულის გასაღებს ქვემოთ
+     * მოცემული მეთოდები ცალკე ცნობენ (`CustomModules`), მარშრუტი კი
+     * `pattern()`-ს კითხულობს.
+     *
+     * @return list<string>
+     */
     public static function keys(): array
     {
         return array_keys(self::DOMAINS);
     }
 
+    /**
+     * მარშრუტის `where()` — საბაზისო გასაღებები **ან** პირადი მოდულის ფორმა.
+     *
+     * ⚠️ `whereIn(keys())` ბაზის გარეშეა და route-ის რეგისტრაციისას
+     * გამოითვლება, ე.ი. მასში ბაზაში მცხოვრები გასაღები ვერ ჩაიწერებოდა;
+     * ფორმა კი საკმარისია — არსებობას და მფლობელობას კონტროლერი ამოწმებს.
+     */
+    public static function pattern(): string
+    {
+        return implode('|', self::keys()).'|'.CustomModules::PATTERN;
+    }
+
     /** ამ დომენს მართვადი სტატუსი აქვს? (წიგნი/თამაში/ბორდგეიმი — არა) */
     public static function usesDictionary(?string $domain): bool
     {
-        return $domain !== null && isset(self::DOMAINS[$domain]);
+        if ($domain === null) {
+            return false;
+        }
+
+        // §37 — პირადი მოდულის სტატუსი იმავე `statuses` ცხრილშია, მისი გასაღებით
+        return isset(self::DOMAINS[$domain]) || CustomModules::exists($domain);
     }
 
     /** @return class-string<Model> */
     public static function model(string $domain): string
     {
-        return self::DOMAINS[$domain]['model'];
+        return self::DOMAINS[$domain]['model'] ?? CustomRecord::class;
     }
 
+    /** დომენის მოდული — პირად მოდულზე ის თვითონ არის დომენი */
     public static function module(string $domain): string
     {
-        return self::DOMAINS[$domain]['module'];
+        return self::DOMAINS[$domain]['module'] ?? $domain;
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * საწყისი ნაკრები. პირად მოდულზე — შექმნისას არჩეული (ნაგულისხმევი
+     * ან ცარიელი, 37.2).
+     *
+     * @return list<array<string, mixed>>
+     */
     public static function defaults(string $domain): array
     {
-        return self::DOMAINS[$domain]['defaults'];
+        return self::DOMAINS[$domain]['defaults'] ?? CustomModules::statusDefaults($domain);
     }
 
     /** საწყისი ნაკრების გასაღებები — `PurgeService::TARGET_STATUSES`-ის წყარო */

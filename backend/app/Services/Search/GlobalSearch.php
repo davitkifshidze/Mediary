@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
@@ -19,6 +20,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Support\CustomFields;
+use App\Support\CustomModules;
 use App\Support\Like;
 use App\Support\Snippet;
 use Illuminate\Database\Eloquent\Builder;
@@ -348,6 +350,29 @@ class GlobalSearch
             ],
         ];
 
+        /* **Tasks §37 — ინტერფეისიდან შექმნილი მოდულები**: თითო მოდული თავისი
+           ჯგუფია (სახელი, ფერი, აიქონი — მისი), ჩანაწერები კი ერთ ცხრილში.
+           ⚠️ `scope` მოდულით ჭრის — თორემ ყველა პირადი მოდულის ჩანაწერი
+           თითოეულ ჯგუფში გამოჩნდებოდა. ⚠️ მხოლოდ **საკუთარი** (`of()`) —
+           სხვისი პირადი მოდული ძებნაშიც არ არსებობს. */
+        foreach (CustomModules::of($user) as $key => $module) {
+            $sources[$key] = [
+                'module' => $key,
+                'model' => CustomRecord::class,
+                'custom' => $key,
+                'title_rank' => ['columns' => ['title']],
+                'columns' => [
+                    'title' => ['title'],
+                    'description' => ['description'],
+                    'url' => ['url'],
+                ],
+                'json' => ['tags' => 'tags'],
+                'image' => 'photo_path',
+                'image_url' => 'image_url',
+                'scope' => fn (Builder $q) => $q->where('custom_records.module', $key),
+            ];
+        }
+
         // ⚠️ გამორთული მოდული ბაზას საერთოდ არ ეკითხება — და არა „იკითხება და იფილტრება"
         return array_filter($sources, fn (array $spec) => $this->allowed($user, $spec));
     }
@@ -505,13 +530,14 @@ class GlobalSearch
      */
     private function customWhere(Builder $query, string $module, string $like): void
     {
-        $table = CustomFields::TABLE_BY_MODULE[$module] ?? null;
+        // ⚠️ §37 — `table()` და არა `TABLE_BY_MODULE`: პირადი მოდულის ცხრილი საერთოა
+        $table = CustomFields::table($module);
         if (! $table) {
             return;
         }
 
-        $query->orWhereIn($query->getModel()->getTable().'.id', function ($sub) use ($table, $like) {
-            $sub->select('record_id')->from($table)
+        $query->orWhereIn($query->getModel()->getTable().'.id', function ($sub) use ($table, $module, $like) {
+            CustomFields::scope($sub->select('record_id')->from($table), $module)
                 ->where(fn ($w) => $w->where('value_text', 'like', $like)->orWhere('value_name', 'like', $like));
         });
     }
@@ -638,7 +664,7 @@ class GlobalSearch
     /** ერთი მოთხოვნა გვერდზე მოხვედრილი ჩანაწერების მორგებულ ველებზე */
     private function customValues(array $spec, array $ids, string $term): array
     {
-        $table = isset($spec['custom']) ? (CustomFields::TABLE_BY_MODULE[$spec['custom']] ?? null) : null;
+        $table = isset($spec['custom']) ? CustomFields::table($spec['custom']) : null;
         if (! $table || ! $ids) {
             return [];
         }
@@ -687,6 +713,11 @@ class GlobalSearch
 
     private function subtitleOf(string $domain, Model $record): ?string
     {
+        // §37 — პირადი მოდულის ჩანაწერი: ბმულის ჰოსტი (ბუკმარკის წესი)
+        if ($record instanceof CustomRecord) {
+            return $record->domain();
+        }
+
         $value = match ($domain) {
             'movie', 'series', 'anime', 'game' => $record->year ? (string) $record->year : null,
             'song' => $record->artist,

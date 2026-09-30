@@ -7,6 +7,7 @@ use App\Http\Resources\StatusResource;
 use App\Models\Module;
 use App\Models\Status;
 use App\Models\User;
+use App\Support\CustomModules;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
 use App\Support\ModuleSettings;
@@ -260,6 +261,11 @@ class StatusController extends Controller
 
         $module = StatusDomain::module($domain);
         $user = $request->user();
+
+        /* ⚠️ §37 — **სხვისი პირადი მოდული 404-ია** (და არა 403 — არსებობა
+           თავად ინფორმაციაა). `StatusDomain::usesDictionary()` ბაზას
+           მხოლოდ არსებობაზე ეკითხება და მფლობელს არ იცნობს. */
+        abort_if(CustomModules::isKey($module) && ! CustomModules::owns($user, $module), 404);
 
         abort_unless($user?->hasModule($module), 403, 'module_not_enabled');
 

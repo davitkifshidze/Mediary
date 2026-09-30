@@ -4,6 +4,7 @@ namespace App\Services\Export;
 
 use App\Models\User;
 use App\Support\AppTime;
+use App\Support\CustomModules;
 use App\Support\ExportDomain;
 use App\Support\StatusDomain;
 use DateTimeInterface;
@@ -69,6 +70,8 @@ class RecordExporter
 
         return $model::withoutGlobalScope('owner')
             ->where('user_id', $user->getKey())
+            // ⚠️ §37 — პირადი მოდულის ჩანაწერები ერთ ცხრილშია: მოდულით ჭრა სავალდებულოა
+            ->when(CustomModules::isKey($module), fn (Builder $q) => $q->where('module', $module))
             ->with(ExportDomain::with($module))
             ->orderBy('id');
     }

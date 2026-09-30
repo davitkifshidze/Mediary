@@ -233,6 +233,26 @@ final class FieldCatalog
         ],
     ];
 
+    /**
+     * **Tasks §37 — ინტერფეისიდან შექმნილი მოდულის ჩაშენებული ველები.**
+     *
+     * ⚠️ ერთი სია ყველა პირად მოდულზე — ჩანაწერის სვეტები ერთია
+     * (`custom_records`); მოდულის სპეციფიკას მფლობელი **დამატებითი ველებით**
+     * აწყობს. ⚠️ `category` მხოლოდ კლასიფიკაციის მქონე მოდულზე ჩანს
+     * (`customFields()`) — გადამრთველი, რომელიც არაფერს ცვლის, ტყუილია.
+     * ⚠️ `url` **არ არის** `locked` (კურსის წესი): ბმულის გარეშე ჩანაწერიც
+     * სრულფასოვანია.
+     */
+    private const CUSTOM_FIELDS = [
+        ['key' => 'title', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
+        ['key' => 'url', 'type' => 'link', 'sort_order' => 20],
+        ['key' => 'status', 'type' => 'select', 'sort_order' => 30],
+        ['key' => 'category', 'type' => 'select', 'sort_order' => 40],
+        ['key' => 'photo', 'type' => 'file', 'sort_order' => 50],
+        ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
+        ['key' => 'tags', 'type' => 'list', 'sort_order' => 70],
+    ];
+
     /** გადახრებში დაშვებული ტექსტური ატრიბუტები */
     public const TEXT_ATTRS = ['label_ka', 'label_en', 'placeholder_ka', 'placeholder_en'];
 
@@ -255,7 +275,7 @@ final class FieldCatalog
     {
         $out = [];
 
-        foreach (self::FIELDS[$module] ?? [] as $field) {
+        foreach (self::fieldsOf($module) as $field) {
             $field = self::defaults($field);
             $override = (array) ($overrides[$field['key']] ?? []);
 
@@ -317,13 +337,36 @@ final class FieldCatalog
     /** აქვს თუ არა ამ მოდულს კონფიგურირებადი ველები (UI სექციას მალავს) */
     public static function has(string $module): bool
     {
-        return ! empty(self::FIELDS[$module]);
+        return self::fieldsOf($module) !== [];
+    }
+
+    /**
+     * მოდულის ველების წყარო — საბაზისოზე კოდის სია, პირადზე `CUSTOM_FIELDS`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function fieldsOf(string $module): array
+    {
+        if (isset(self::FIELDS[$module])) {
+            return self::FIELDS[$module];
+        }
+
+        if (! CustomModules::isKey($module)) {
+            return [];
+        }
+
+        $classifies = CustomModules::classifies($module);
+
+        return array_values(array_filter(
+            self::CUSTOM_FIELDS,
+            fn (array $f) => $f['key'] !== 'category' || $classifies,
+        ));
     }
 
     /** ცნობს თუ არა კატალოგი ამ ველს — უცნობი გადახრა ჩუმად იგნორირდება */
     public static function knows(string $module, string $key): bool
     {
-        foreach (self::FIELDS[$module] ?? [] as $field) {
+        foreach (self::fieldsOf($module) as $field) {
             if ($field['key'] === $key) {
                 return true;
             }
@@ -338,7 +381,7 @@ final class FieldCatalog
      */
     public static function isLocked(string $module, string $key): bool
     {
-        foreach (self::FIELDS[$module] ?? [] as $field) {
+        foreach (self::fieldsOf($module) as $field) {
             if ($field['key'] === $key) {
                 return (bool) ($field['locked'] ?? false);
             }

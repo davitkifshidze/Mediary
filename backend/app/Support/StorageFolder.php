@@ -150,6 +150,8 @@ final class StorageFolder
      */
     public const ROOTS = [
         'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'places', 'gallery', 'chat', 'cast', 'backups',
+        // Tasks §37 — ყველა პირადი მოდული ერთ ფესვში, `custom/{key}/…`
+        CustomModules::ROOT,
     ];
 
     /**
@@ -225,9 +227,17 @@ final class StorageFolder
     /** გზა/საქაღალდე → მოდულის key; `null` — უცნობი ფესვი (მაგ. legacy) */
     public static function moduleFor(string $pathOrFolder): ?string
     {
-        $root = explode('/', ltrim($pathOrFolder, '/'), 2)[0];
+        $parts = explode('/', ltrim($pathOrFolder, '/'), 3);
 
-        return self::MODULE_BY_ROOT[$root] ?? null;
+        /* ⚠️ Tasks §37 — **პირადი მოდული მეორე სეგმენტშია** (`custom/{key}/…`):
+           ერთი ფესვი ყველასთვის, რომ ობოლების სკანერს ახალი ფესვი არ
+           სჭირდებოდეს, ხოლო მოდულის ლიმიტი (§17.2) ისევ თავის მოდულს
+           ითვლიდეს. უცნობ გასაღებს მოდული არ ეძლევა. */
+        if ($parts[0] === CustomModules::ROOT) {
+            return isset($parts[1]) && CustomModules::isKey($parts[1]) ? $parts[1] : null;
+        }
+
+        return self::MODULE_BY_ROOT[$parts[0]] ?? null;
     }
 
     /**
@@ -353,11 +363,28 @@ final class StorageFolder
      */
     public static function customFields(string $module): string
     {
+        // §37 — პირადი მოდულის ველი თავის ქვესაქაღალდეშია (`custom/{key}/fields`)
+        if (CustomModules::isKey($module)) {
+            return CustomModules::folder($module, 'fields');
+        }
+
         $root = array_search($module, self::MODULE_BY_ROOT, true);
 
         // უცნობ მოდულს (მაგ. კატალოგიდან ამოღებულს) ცალკე ფესვი არ ეძლევა —
         // `account` საერთო აუზშია და ლიმიტს ისედაც ვერ იღებს
         return ($root === false ? 'account' : $root).'/fields';
+    }
+
+    /** Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო */
+    public static function customPhotos(string $module): string
+    {
+        return CustomModules::folder($module, 'photos');
+    }
+
+    /** Tasks §37.5 — პირადი მოდულის ჩანაწერის ფაილი სახის მიხედვით */
+    public static function customFiles(string $module, string $kind): string
+    {
+        return CustomModules::folder($module, $kind === 'doc' ? 'files/docs' : 'files/images');
     }
 
     /**

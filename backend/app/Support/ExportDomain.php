@@ -7,6 +7,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -210,6 +211,18 @@ final class ExportDomain
     ];
 
     /** @return list<string> */
+    /**
+     * **Tasks §37 — ინტერფეისიდან შექმნილი მოდულის ველები.** ერთი სია ყველა
+     * პირად მოდულზე — ჩანაწერის სვეტები ერთია (`custom_records`).
+     * ⚠️ დამატებითი ველები აქ **არ** შედის — არც ერთ საბაზისო მოდულზე არ
+     * შედის (ისინი ცალკე ცხრილშია და ფორმა მფლობელზეა დამოკიდებული).
+     */
+    public const CUSTOM_FIELDS = [
+        'id', 'title', 'url', 'platform', 'category', 'status', 'status_name', 'tags',
+        'description', 'is_favorite', 'finished_at', 'photo_path', 'image_url', 'visibility', 'created_at',
+    ];
+
+    /** **საბაზისო** მოდულები (პირადს `has()` ცალკე ცნობს) */
     public static function keys(): array
     {
         return array_keys(self::MODULES);
@@ -217,7 +230,7 @@ final class ExportDomain
 
     public static function has(string $module): bool
     {
-        return isset(self::MODULES[$module]);
+        return isset(self::MODULES[$module]) || CustomModules::exists($module);
     }
 
     /** ვალიდაციის წესი — `in:movie,series,…` */
@@ -229,18 +242,18 @@ final class ExportDomain
     /** @return class-string<Model> */
     public static function model(string $module): string
     {
-        return self::MODULES[$module]['model'];
+        return self::MODULES[$module]['model'] ?? CustomRecord::class;
     }
 
     /** @return list<string> */
     public static function fields(string $module): array
     {
-        return self::MODULES[$module]['fields'];
+        return self::MODULES[$module]['fields'] ?? self::CUSTOM_FIELDS;
     }
 
     /** @return list<string> */
     public static function with(string $module): array
     {
-        return self::MODULES[$module]['with'] ?? [];
+        return self::MODULES[$module]['with'] ?? (CustomModules::isKey($module) ? ['status', 'category'] : []);
     }
 }

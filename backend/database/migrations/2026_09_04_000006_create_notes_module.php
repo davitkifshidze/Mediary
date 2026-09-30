@@ -162,7 +162,7 @@ return new class extends Migration
 
         $this->seedCategories();
 
-        Module::updateOrCreate(['key' => 'note'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'note'], [
             'name_ka' => 'ჩანაწერები',
             'name_en' => 'Notes',
             'description_ka' => 'საჭირო ინფორმაცია ერთ ადგილას — ბმულები, ფაილები, ვადები და შეხსენებები.',
@@ -196,7 +196,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'note')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'note')->delete();
 
         Schema::dropIfExists('note_notifications');
         Schema::dropIfExists('note_reminders');

@@ -1,3 +1,4 @@
+import { isCustomModuleKey } from '@/lib/customModules'
 import type { SearchItem } from '@/api/search'
 
 /* ============================================================
@@ -74,6 +75,11 @@ export function resultPath(item: SearchItem, routeBase: string | undefined): str
   if (!routeBase) return null
 
   if (MEDIA_DOMAINS.includes(item.domain)) return `${routeBase}/${item.id}`
+
+  /* §37 — პირადი მოდულის ჩანაწერი **id-ით** იხსნება (`?open=`): ერთ მოდულში
+     ერთნაირი სათაური ხშირია (რეცეპტები, ნივთები), ე.ი. `?q=`-ით ძებნა სწორ
+     ჩანაწერს ვერ დაგანახებდა. გვერდი პარამეტრს მაშინვე შლის. */
+  if (isCustomModuleKey(item.domain)) return `${routeBase}?open=${item.id}`
 
   return `${routeBase}?q=${encodeURIComponent(item.title)}`
 }

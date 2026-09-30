@@ -35,8 +35,18 @@ class ModuleController extends Controller
             ->get()
             ->groupBy('module_id');
 
-        // Tasks §36 — რიგი თითო მომხმარებლისაა; ამ სიას საიდბარიც და `/modules`-იც კითხულობს
-        $modules = ModuleOrder::sort(Module::where('is_active', true)->get(), $user)
+        /* Tasks §36 — რიგი თითო მომხმარებლისაა; ამ სიას საიდბარიც და `/modules`-იც კითხულობს.
+           ⚠️ §37 — **საბაზისო აქტიური და საკუთარი პირადი** მოდულები. სხვისი
+           პირადი მოდული აქ არასდროს ჩანს (Q28); საკუთარი კი **გამორთულიც**
+           ჩანს — ადმინმა რომ გამორთო, მენიუდან ჩუმად გაქრობა მონაცემების
+           დაკარგვად წაიკითხებოდა (37.8), ამიტომ ის `disabled_by_admin`-ით მოდის. */
+        $visible = Module::query()
+            ->where(fn ($q) => $q
+                ->where(fn ($base) => $base->whereNull('owner_id')->where('is_active', true))
+                ->orWhere('owner_id', $user->getKey()))
+            ->get();
+
+        $modules = ModuleOrder::sort($visible, $user)
             ->each(function (Module $m) use ($enabledIds, $requests, $pivots, $user) {
                 $m->enabled = isset($enabledIds[$m->id]);
                 // `granted` — ადმინმა ჩართო (ან super_admin-ია); `enabled` — ამჟამად ჩანს.
@@ -95,7 +105,7 @@ class ModuleController extends Controller
      */
     public function setEnabled(Request $request, string $key)
     {
-        $module = Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        $module = Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         $user = $request->user();
 
         abort_unless($user->isGrantedModule($key), 403, 'module_not_granted');
@@ -125,7 +135,7 @@ class ModuleController extends Controller
      */
     public function setPublic(Request $request, string $key)
     {
-        $module = Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        $module = Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         $user = $request->user();
 
         abort_unless($user->hasModule($key), 403, 'module_disabled');
@@ -171,7 +181,7 @@ class ModuleController extends Controller
      */
     public function updateSettings(Request $request, string $key)
     {
-        $module = Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        $module = Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
 
         abort_unless($request->user()->hasModule($key), 403);
 
@@ -191,7 +201,7 @@ class ModuleController extends Controller
      */
     public function fields(Request $request, string $key, FieldSettings $fields)
     {
-        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         abort_unless($request->user()->hasModule($key), 403);
 
         return response()->json(['fields' => $fields->for($request->user(), $key)]);
@@ -204,7 +214,7 @@ class ModuleController extends Controller
      */
     public function updateFields(Request $request, string $key, FieldSettings $fields)
     {
-        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         abort_unless($request->user()->hasModule($key), 403);
 
         $data = $request->validate([
@@ -258,7 +268,7 @@ class ModuleController extends Controller
      */
     public function resetFields(Request $request, string $key, FieldSettings $fields)
     {
-        Module::where('key', $key)->where('is_active', true)->firstOrFail();
+        Module::visibleTo($request->user())->where('key', $key)->where('is_active', true)->firstOrFail();
         abort_unless($request->user()->hasModule($key), 403);
 
         return response()->json(['fields' => $fields->reset($request->user(), $key)]);

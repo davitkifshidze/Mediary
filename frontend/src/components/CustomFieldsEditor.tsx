@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import {
-  CUSTOM_FIELD_MODULES,
   CUSTOM_FIELD_TYPES,
   fetchCustomFields,
   saveCustomFields,
+  supportsCustomFields,
   type CustomFieldDefinition,
   type CustomFieldType,
 } from '@/api/account'
@@ -51,7 +51,8 @@ export function CustomFieldsEditor({
   const qc = useQueryClient()
   const { toast } = useToast()
 
-  const supported = (CUSTOM_FIELD_MODULES as readonly string[]).includes(moduleKey)
+  // ⚠️ §37 — პირადი მოდულიც (`supportsCustomFields`); საბაზისო სია backend-ის სარკეა
+  const supported = supportsCustomFields(moduleKey)
 
   const { data: fields = [] } = useQuery({
     queryKey: ['custom-fields', moduleKey],

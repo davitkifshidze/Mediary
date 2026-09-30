@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\CustomModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,6 +26,13 @@ class ModuleResource extends JsonResource
             'is_active' => $this->is_active,
             'enabled_by_default' => $this->enabled_by_default,
             'sort_order' => $this->sort_order,
+            /* Tasks §37 — ინტერფეისიდან შექმნილი (პირადი) მოდული. ⚠️ ეს რესურსი
+               სხვის პირად მოდულს **არასდროს** აჩვენებს — `GET /modules` მხოლოდ
+               საკუთარს აბრუნებს, ადმინის ზედამხედველობა კი ცალკე ფორმითაა. */
+            'is_custom' => $this->owner_id !== null,
+            'definition' => $this->when($this->owner_id !== null, fn () => CustomModules::definition($this->resource)),
+            // 37.8 — ადმინმა გამორთო: მფლობელი თვითონ ვეღარ ჩართავს, მონაცემები ხელუხლებელია
+            'disabled_by_admin' => $this->when($this->owner_id !== null, fn () => ! $this->is_active),
             'users_count' => $this->when(isset($this->users_count), fn () => (int) $this->users_count),
             // ვის აქვს ჩართული (ადმინის ტაბი, K14)
             'users' => $this->when(isset($this->users_list), fn () => $this->users_list),

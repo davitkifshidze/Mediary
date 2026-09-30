@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CustomModules;
 use App\Support\Totp;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -195,6 +196,16 @@ class User extends Authenticatable
      */
     public function hasPermission(string $module, string $action): bool
     {
+        /* ⚠️ **§37 — პირადი მოდული როლს არ ეკითხება, და ეს წესი სუპერადმინზე
+           მაღლა დგას.** როლის `permissions` მოდულის გასაღებით იწერება და როლი
+           **საერთოა**, ე.ი. მასში ჩაწერა ყველას მიანიჭებდა — ამიტომ მფლობელს
+           საკუთარ მოდულზე სრული CRUD ავტომატურად აქვს (2026-09-15-იდან `*`
+           აღარ არსებობს — ეს წესი მის ადგილს პირად მოდულზე იკავებს), სხვას კი
+           არაფერი: სუპერადმინის ზედამხედველობა აგრეგატებია და არა შიგთავსი. */
+        if (CustomModules::isKey($module)) {
+            return CustomModules::owns($this, $module) && in_array($action, Role::ACTIONS, true);
+        }
+
         if ($this->isSuperAdmin()) {
             return true;
         }
@@ -238,7 +249,10 @@ class User extends Authenticatable
 
     private function activeModuleKeys(): array
     {
-        return $this->activeModuleKeys ??= Module::where('is_active', true)->pluck('key')->all();
+        /* ⚠️ §37 — **საბაზისო და საკუთარი** აქტიური მოდულები: `where('is_active')`
+           მარტო სუპერადმინს ყველა ანგარიშის პირად მოდულს ავტომატურად მისცემდა,
+           და მისი ჩანაწერები 404-ის ნაცვლად გაიხსნებოდა. */
+        return $this->activeModuleKeys ??= Module::where('is_active', true)->visibleTo($this)->pluck('key')->all();
     }
 
     /**
@@ -308,7 +322,9 @@ class User extends Authenticatable
         $pivots = $this->modules()->get()->keyBy('id');
 
         if ($this->isSuperAdmin()) {
+            // ⚠️ §37 — სხვისი პირადი მოდული სუპერადმინსაც არ ერგება (იხ. `activeModuleKeys()`)
             return Module::where('is_active', true)
+                ->visibleTo($this)
                 ->orderBy('sort_order')->orderBy('id')
                 ->get()
                 ->reject(fn (Module $m) => (bool) $pivots->get($m->id)?->pivot?->is_hidden)

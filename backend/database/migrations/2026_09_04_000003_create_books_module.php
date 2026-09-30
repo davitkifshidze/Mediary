@@ -145,7 +145,7 @@ return new class extends Migration
 
         $this->seedGenres();
 
-        Module::updateOrCreate(['key' => 'book'], [
+        Module::withoutGlobalScope('trash')->updateOrCreate(['key' => 'book'], [
             'name_ka' => 'წიგნები',
             'name_en' => 'Books',
             'description_ka' => 'წიგნების პირადი ბიბლიოთეკა — ავტორი, სერია, პროგრესი, ციტატები და ფაილები.',
@@ -180,7 +180,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Module::where('key', 'book')->delete();
+        Module::withoutGlobalScope('trash')->where('key', 'book')->delete();
 
         Schema::dropIfExists('book_notes');
         Schema::dropIfExists('book_files');

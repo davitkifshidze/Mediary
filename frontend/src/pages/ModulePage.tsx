@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Ban, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, UserRound, Users, X } from 'lucide-react'
 import {
   cancelRequest,
   fetchAdminModules,
@@ -22,16 +22,19 @@ import {
 } from '@/api/account'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
+import { defaultFieldLabel, fieldNamespace } from '@/lib/fields'
 import { errorMessage } from '@/lib/errors'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleDescription, moduleName, useModules } from '@/lib/modules'
 import { roleName } from '@/lib/display'
 import { CustomFieldsEditor } from '@/components/CustomFieldsEditor'
+import { CustomModuleDialog } from '@/components/CustomModuleDialog'
+import { isCustomModule } from '@/lib/customModules'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { DataTable, type DataColumn } from '@/components/ui/data-table'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { UserAvatar } from '@/components/UserAvatar'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -61,6 +64,8 @@ export function ModulePage() {
   const [message, setMessage] = useState('')
   // §6.4 — მფლობელების სია მოდალშია და აღარ ინლაინ
   const [holdersOpen, setHoldersOpen] = useState(false)
+  // §37 — პირადი მოდულის სახელი/იერსახე/კლასიფიკაცია
+  const [editingDetails, setEditingDetails] = useState(false)
 
   const { data: adminModules } = useQuery({
     queryKey: ['admin-modules'],
@@ -129,6 +134,9 @@ export function ModulePage() {
     (r) => r.type === 'module_access' && r.module?.id === module.id && r.status === 'pending',
   )
   const holders = module.users ?? []
+  /* §37 — პირადი მოდული: მფლობელი ერთია (ის ხარ შენ), ე.ი. „ვის აქვს ჩართული",
+     „ყველასთვის ნაგულისხმევად" და მოთხოვნები აქ უაზროა */
+  const custom = isCustomModule(module)
   const enabledCount = users.filter(
     (u) => u.is_super_admin || (u.modules ?? []).includes(key),
   ).length
@@ -160,11 +168,47 @@ export function ModulePage() {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {moduleDescription(module, i18n.language)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            <code>{module.key}</code> · {module.route_base}
+          <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              <code>{module.key}</code> · {module.route_base}
+            </span>
+            {custom && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[11px]">
+                <UserRound className="size-3" />
+                {t('customModules.personal')}
+              </span>
+            )}
           </p>
         </div>
+
+        {/* §37 — მფლობელის მოქმედებები */}
+        {custom && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {module.enabled && (
+              <Link to={module.route_base} className={buttonVariants({ variant: 'outline' })}>
+                {t('customModules.openModule')}
+                <ArrowRight className="size-4" />
+              </Link>
+            )}
+            <Button variant="edit" onClick={() => setEditingDetails(true)}>
+              <SquarePen className="size-4" />
+              {t('customModules.editTitle')}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* §37.8 — ადმინმა გამორთო: მიზეზი ცხადად, თორემ მენიუდან ჩუმად გამქრალი
+          მოდული მონაცემების დაკარგვად წაიკითხებოდა */}
+      {custom && module.disabled_by_admin && (
+        <section className="mb-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+          <Ban className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">{t('customModules.disabledByAdminTitle')}</span>
+            <span className="block text-xs text-muted-foreground">{t('customModules.disabledByAdminHint')}</span>
+          </span>
+        </section>
+      )}
 
       {/* ---------- ჩემი წვდომა ---------- */}
       <section className="mb-4 rounded-xl border border-border bg-card p-5">
@@ -232,8 +276,8 @@ export function ModulePage() {
       {/* §6 ფაზა 3 — user-ის საკუთარი ველები */}
       <CustomFieldsEditor moduleKey={module.key} enabled={!!module.enabled} />
 
-      {/* ---------- ადმინის ნაწილი ---------- */}
-      {isAdmin && (
+      {/* ---------- ადმინის ნაწილი ---------- (პირად მოდულზე უაზროა — მფლობელი ერთია) */}
+      {isAdmin && !custom && (
         <>
           <section className="mb-4 space-y-3 rounded-xl border border-border bg-card p-5">
             <h2 className="font-display text-lg font-semibold tracking-tight">
@@ -329,6 +373,8 @@ export function ModulePage() {
           )}
         </>
       )}
+
+      {editingDetails && <CustomModuleDialog module={module} onClose={() => setEditingDetails(false)} />}
     </PageContainer>
   )
 }
@@ -503,6 +549,8 @@ function ModuleHolders({
  */
 function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: boolean }) {
   const { t, i18n } = useTranslation()
+  const { all: modules } = useModules()
+  const classification = modules.find((m) => m.key === moduleKey)?.definition?.classification ?? null
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
@@ -587,7 +635,8 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
       {fields.map((field) => {
         /* ⚠️ ნაგულისხმევი ლეიბლი ლოკალიზაციიდან მოდის (`fields.name.*`) — backend
            გადაწერილს `null`-ად აბრუნებს, სანამ user არ შეცვლის. */
-        const fallback = t(`fields.name.${moduleKey}.${field.key}`, { defaultValue: field.key })
+        // §37 — პირად მოდულზე საერთო სივრცე და კლასიფიკაციის სახელი (`defaultFieldLabel`)
+        const fallback = defaultFieldLabel(t, moduleKey, field.key, classification)
         const own = i18n.language === 'ka' ? field.label_ka : field.label_en
         const editing = open === field.key
 
@@ -623,7 +672,7 @@ function ModuleFields({ moduleKey, enabled }: { moduleKey: string; enabled: bool
                     ? t('fields.unlockedHint')
                     : field.locked
                       ? t('fields.lockedHint')
-                      : t(`fields.desc.${moduleKey}.${field.key}`, { defaultValue: '' })}
+                      : t(`fields.desc.${fieldNamespace(moduleKey)}.${field.key}`, { defaultValue: '' })}
                 </span>
               </span>
 
