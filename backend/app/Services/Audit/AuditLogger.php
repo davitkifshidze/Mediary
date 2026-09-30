@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Status;
 use App\Support\AuditRegistry;
+use App\Support\CustomModules;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -126,6 +127,13 @@ class AuditLogger
             return null;
         }
 
+        /* ⚠️ §37.6 — სხვისი პირადი მოდულის გასაღები ლოგში არ იწერება: გასაღები
+           კლიენტიდან მოდის, და „ამ ანგარიშმა X-ის მოდულში შეიხედა" ფაქტი არ არის —
+           ის გვერდი მისთვის 404-ია. საკუთარი ჩვეულებრივად იწერება. */
+        if (CustomModules::isKey($module) && ! CustomModules::owns(Auth::user(), $module)) {
+            $module = null;
+        }
+
         return $this->log(AuditLog::ACTION_VISIT, [
             'module' => $module ?? $this->moduleForPath($path),
             'route' => $path,
@@ -153,10 +161,22 @@ class AuditLogger
      */
     private function moduleForPath(string $path): ?string
     {
-        $first = explode('/', trim($path, '/'))[0] ?? '';
+        $parts = explode('/', trim($path, '/'));
+        $first = $parts[0] ?? '';
 
         if ($first === '') {
             return null;
+        }
+
+        /* ⚠️ **§37.6 — პირადი მოდულის მისამართი ორსეგმენტიანია** (`/c/{key}`):
+           `route_base`-ის რუკა პირველ სეგმენტს ეძებს, ე.ი. `c`-ს ვერასდროს
+           იპოვიდა და ყველა ასეთი შესვლა „მოდულის გარეშე" ჩაიწერებოდა. ⚠️ მხოლოდ
+           **საკუთარი** — სხვისი მისამართი მისთვის 404-ია და მისი გასაღები ლოგში
+           ფაქტს არ აღწერს. */
+        if ($first === 'c') {
+            $key = $parts[1] ?? null;
+
+            return CustomModules::owns(Auth::user(), $key) ? $key : null;
         }
 
         $this->routeBases ??= Module::query()->get(['key', 'route_base'])

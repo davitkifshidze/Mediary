@@ -31,13 +31,19 @@ class ApprovalRequestController extends Controller
     /** მოდულის ჩართვის თხოვნა ადმინთან */
     public function storeModuleRequest(Request $request)
     {
+        /* ⚠️ §37.6 — **პირადი მოდულის მოთხოვნა არ არსებობს**, და მისი გასაღები
+           უცნობის პასუხს იღებს (422). აქამდე `exists:modules,key` ნებისმიერ
+           გასაღებს უშვებდა: სხვისი პირადი მოდულის გასაღები 201-ს აბრუნებდა,
+           უცნობი კი 422-ს — ე.ი. endpoint ნებისმიერი ანგარიშისთვის არსებობის
+           ორაკული იყო (Q28), ადმინი კი `/requests`-ზე სხვისი მოდულის სახელს
+           ხედავდა და დამტკიცებით მას მესამე პირს მიაბამდა. */
         $data = $request->validate([
-            'module_key' => ['required', 'string', 'exists:modules,key'],
+            'module_key' => ['required', 'string', Rule::exists('modules', 'key')->whereNull('owner_id')],
             'message' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $user = $request->user();
-        $module = Module::where('key', $data['module_key'])->firstOrFail();
+        $module = Module::base()->where('key', $data['module_key'])->firstOrFail();
 
         if (! $module->is_active) {
             return response()->json(['message' => 'module_inactive'], 422);

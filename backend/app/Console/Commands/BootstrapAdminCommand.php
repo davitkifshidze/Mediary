@@ -89,7 +89,8 @@ class BootstrapAdminCommand extends Command
             return;
         }
 
-        $ids = Module::pluck('id')->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])->all();
+        // ⚠️ §37.6 — მხოლოდ საბაზისო: `--promote`-ზე სხვისი პირადი მოდულიც მიებმებოდა
+        $ids = Module::base()->pluck('id')->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])->all();
         $user->modules()->syncWithoutDetaching($ids);
     }
 }

@@ -125,7 +125,11 @@ class AdminUserController extends Controller
         $pivots = $user->modules()->get()->keyBy('id');
         $enabled = $user->enabledModules()->pluck('id')->flip();
 
-        $modules = Module::orderBy('sort_order')->orderBy('id')->get()->map(fn (Module $m) => [
+        /* ⚠️ §37.6 — **მხოლოდ საბაზისო მოდულები**: სია მინიჭებისთვისაა, პირადი
+           მოდული კი არავის ენიჭება (მფლობელს ავტომატურად აქვს). `Module::`-ის
+           უფილტრო სია ყველა ანგარიშის პირად მოდულს სახელით ჩამოთვლიდა —
+           ზედამხედველობა აგრეგატებია და `/modules`-ის ცალკე ჯგუფშია (37.8). */
+        $modules = Module::base()->orderBy('sort_order')->orderBy('id')->get()->map(fn (Module $m) => [
             'id' => $m->id,
             'key' => $m->key,
             'name_ka' => $m->name_ka,
@@ -255,9 +259,11 @@ class AdminUserController extends Controller
     /** მოდულების ჩართვა/გამორთვა კონკრეტულ user-ზე */
     public function syncModules(Request $request, User $user)
     {
+        /* ⚠️ §37.6 — პირადი მოდულის გასაღები **უცნობის** პასუხს იღებს (422): ის
+           არავის ენიჭება, და სხვაგვარი პასუხი მის არსებობას გაამხელდა. */
         $data = $request->validate([
             'module_keys' => ['present', 'array'],
-            'module_keys.*' => ['string', 'exists:modules,key'],
+            'module_keys.*' => ['string', Rule::exists('modules', 'key')->whereNull('owner_id')],
         ]);
 
         // SEC-02 — საკუთარ უფლებებზე მაღლა მდგომ ანგარიშს არ ეხება
@@ -279,8 +285,12 @@ class AdminUserController extends Controller
 
            ამიტომ ნამდვილი სხვაობა ითვლება: **მოხსნა მხოლოდ მოხსნილს**,
            **მიბმა მხოლოდ ახალს**; უცვლელ რიგს ხელი საერთოდ არ ეხება. */
-        $wanted = Module::whereIn('key', $data['module_keys'])->pluck('id')->all();
-        $current = $user->modules()->pluck('modules.id')->all();
+        /* ⚠️ **§37.6 — „ახლანდელიც" მხოლოდ საბაზისოა**, და ეს აუცილებელია და არა
+           სისუფთავე: SPA საბაზისო სიას აგზავნის, ე.ი. მფლობელის საკუთარი
+           პირადი მოდულის პივოტი `array_diff`-ში „მოხსნილად" ჩაითვლებოდა —
+           ადმინის ერთი შენახვა მომხმარებელს საკუთარ მოდულს ჩუმად წაართმევდა. */
+        $wanted = Module::base()->whereIn('key', $data['module_keys'])->pluck('id')->all();
+        $current = $user->modules()->whereNull('modules.owner_id')->pluck('modules.id')->all();
 
         $user->modules()->detach(array_values(array_diff($current, $wanted)));
 

@@ -125,7 +125,9 @@ class SeedDemoCommand extends Command
 
     private function attachModules(User $user): void
     {
-        $ids = Module::where('is_active', true)
+        // ⚠️ §37.6 — მხოლოდ საბაზისო: დემო ანგარიშს სხვისი პირადი მოდული არ ებმება
+        $ids = Module::base()
+            ->where('is_active', true)
             ->pluck('id')
             ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])
             ->all();

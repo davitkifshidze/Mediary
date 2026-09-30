@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
+use App\Models\Module;
 use App\Models\User;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
@@ -60,16 +61,37 @@ class AccountEraser
      */
     private function purgeModules(User $user): void
     {
-        foreach (array_keys(PurgeService::TARGET_MODES) as $target) {
-            if ($target === 'gallery') {
-                continue;
-            }
-
+        foreach ($this->targetsOf($user) as $target) {
             /* ⚠️ `FOR_GOOD` ცხადად (Tasks §29.8): `/purge` იმავე სერვისით ურნაში
                აგზავნის, ურნა კი ანგარიშისაა და `user_id`-ის SQL-კასკადით —
                მოვლენების გარეშე — გაქრებოდა: ფაილები დისკზე ობლად დარჩებოდა. */
             $this->purge->run($user, ['target' => $target, 'mode' => 'all'], PurgeService::FOR_GOOD);
         }
+    }
+
+    /**
+     * **საბაზისო სამიზნეები და ამ ანგარიშის ყველა პირადი მოდული** (Tasks §37.6).
+     *
+     * ⚠️ აქამდე სია სტატიკური იყო (`TARGET_MODES`), ე.ი. პირადი მოდულის
+     * ჩანაწერები მხოლოდ `user_id`-ის SQL-კასკადით ქრებოდა — მოვლენების გარეშე:
+     * აუდიტში წაშლა არ ჩანდა და ფაილები მხოლოდ მეორე ფენის წყალობით (`files()`)
+     * გადარჩა. მიგრაციის docblock-ი დაპირებას იძლეოდა („`AccountEraser`
+     * ჩანაწერებს მოდელით შლის"), რომელსაც კოდი არ ასრულებდა.
+     *
+     * ⚠️ **ურნაში მყოფი მოდულიც** (`withoutGlobalScope('trash')`, 37.7): მისი
+     * ჩანაწერები ბაზაშია და ფაილები დისკზე — `keysOf()` მას ვერ დაინახავდა.
+     *
+     * @return list<string>
+     */
+    private function targetsOf(User $user): array
+    {
+        $custom = Module::withoutGlobalScope('trash')
+            ->where('owner_id', $user->getKey())
+            ->orderBy('id')
+            ->pluck('key')
+            ->all();
+
+        return [...array_values(array_diff(PurgeService::TARGETS, ['gallery'])), ...$custom];
     }
 
     /**

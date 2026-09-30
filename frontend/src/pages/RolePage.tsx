@@ -76,7 +76,11 @@ export function RolePage() {
      წესიც ეს არის: სექციის ბმულს, მარშრუტსა და გვერდის შიდა დამცავს
      `canAdmin()` წყვეტს და არა `is_super_admin`. */
   const { user: me, isAdmin, canAdmin } = useAuth()
-  const { all: modules } = useModules()
+  /* ⚠️ §37.6 — **პირადი მოდული მატრიცაში არ ჩანს**: როლი საერთოა, პირად
+     მოდულზე კი უფლება მხოლოდ მფლობელს აქვს და როლს საერთოდ არ ეკითხება —
+     backend მის გასაღებს შენახვისას ისედაც აგდებს (`cleanPermissions()`). */
+  const { all } = useModules()
+  const modules = useMemo(() => all.filter((m) => !m.is_custom), [all])
 
   const roleId = Number(id)
 

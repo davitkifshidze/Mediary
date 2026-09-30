@@ -283,13 +283,26 @@ class User extends Authenticatable
 
         // ⚠️ არააქტიური მოდულის pivot-ი `null`-ია და არა `false` — ქვემოთ
         // super_admin-ის შტო მასაც ისევე უარყოფს, როგორც ადრე
-        $row = $this->modules->first(fn (Module $m) => $m->key === $key && $m->is_active);
+        $row = $this->modules->first(fn (Module $m) => $m->key === $key && $m->is_active && $this->mayHold($m));
 
         if ($row) {
             return ! $row->pivot->is_hidden;
         }
 
         return $this->isSuperAdmin() && in_array($key, $this->activeModuleKeys(), true);
+    }
+
+    /**
+     * **§37.6 — პირადი მოდული მხოლოდ მფლობელისაა, პივოტის რიგის მიუხედავად.**
+     *
+     * ⚠️ პივოტი წვდომის ერთადერთი საბუთი იყო, ე.ი. ნებისმიერი გზა, რომელიც
+     * სხვის პირად მოდულს მიაბამდა (ადმინის მინიჭება, `--promote`, დემო-სიდერი,
+     * `enabled_by_default` რეგისტრაციაზე — ყველა დაიხურა), მას წვდომას
+     * მისცემდა. ეს მეორე ფენაა: მოდულის მონაცემიდან იკითხება და ბაზას არ ეკითხება.
+     */
+    private function mayHold(Module $module): bool
+    {
+        return $module->owner_id === null || (int) $module->owner_id === (int) $this->getKey();
     }
 
     /**
@@ -300,7 +313,7 @@ class User extends Authenticatable
     {
         $this->loadMissing('modules');
 
-        if ($this->modules->contains(fn (Module $m) => $m->key === $key)) {
+        if ($this->modules->contains(fn (Module $m) => $m->key === $key && $this->mayHold($m))) {
             return true;
         }
 
@@ -332,7 +345,7 @@ class User extends Authenticatable
         }
 
         return $pivots
-            ->filter(fn (Module $m) => $m->is_active && ! $m->pivot->is_hidden)
+            ->filter(fn (Module $m) => $m->is_active && ! $m->pivot->is_hidden && $this->mayHold($m))
             ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
             ->values();
     }

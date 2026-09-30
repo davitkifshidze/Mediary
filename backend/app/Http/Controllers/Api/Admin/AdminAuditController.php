@@ -77,17 +77,28 @@ class AdminAuditController extends Controller
         return response()->json([
             'actions' => AuditLog::ACTIONS,
             'protected_actions' => AuditLog::PROTECTED_ACTIONS,
+            /* ⚠️ §37.6 — **პირადი მოდული მფლობელის სახელით** (`owner`): ორ ადამიანს
+               ერთი სახელის („რეცეპტები") მოდული შეიძლება ჰქონდეს და ორი ერთნაირი
+               ბარათი ვერაფერს იტყოდა. ⚠️ **ურნაში მყოფიც** (`trash` scope-ის
+               გარეშე, 37.7) — ლოგი ისტორიაა და მისი რიგები ნედლ გასაღებად
+               დარჩებოდა. SPA სხვის პირად მოდულს ბარათად მხოლოდ მაშინ ხატავს,
+               როცა ლოგში რიგი აქვს — ნულოვანი ბარათების კედელი არაფერს ამბობს. */
             'modules' => [
-                ...Module::orderBy('id')->get(['key', 'name_ka', 'name_en'])
+                ...Module::withoutGlobalScope('trash')
+                    ->with('owner:id,username')
+                    ->orderBy('id')
+                    ->get(['id', 'key', 'name_ka', 'name_en', 'owner_id'])
                     ->map(fn (Module $m) => [
                         'key' => $m->key,
                         'name_ka' => $m->name_ka,
                         'name_en' => $m->name_en,
+                        'owner' => $m->owner?->username,
                     ])->all(),
                 ...array_map(fn (string $key) => [
                     'key' => $key,
                     'name_ka' => null,
                     'name_en' => null,
+                    'owner' => null,
                 ], [...AuditRegistry::PSEUDO_MODULES, self::MODULE_NONE]),
             ],
             'users' => User::orderBy('name')->get(['id', 'name', 'username'])->all(),

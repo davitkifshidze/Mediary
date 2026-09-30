@@ -56,7 +56,8 @@ export interface AuditPage {
 export interface AuditMeta {
   actions: string[]
   protected_actions: string[]
-  modules: { key: string; name_ka: string | null; name_en: string | null }[]
+  /** `owner` — პირადი მოდულის მფლობელი (§37.6); საბაზისოსა და ფსევდო-მოდულზე `null` */
+  modules: { key: string; name_ka: string | null; name_en: string | null; owner?: string | null }[]
   users: { id: number; name: string; username: string }[]
 }
 

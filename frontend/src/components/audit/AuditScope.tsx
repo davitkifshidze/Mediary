@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { AuditFilters, AuditMeta, AuditSummary } from '@/api/audit'
 import { actionStyle } from '@/lib/actionStyle'
+import { useAuth } from '@/lib/auth'
 import { moduleName, useModules } from '@/lib/modules'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
@@ -71,6 +72,7 @@ export function AuditScope({
 }) {
   const { t, i18n } = useTranslation()
   const { all: modules } = useModules()
+  const { user: me } = useAuth()
 
   const total = summary?.total ?? 0
   const moduleCounts = new Map((summary?.modules ?? []).map((f) => [f.key, f.total]))
@@ -79,11 +81,27 @@ export function AuditScope({
   const activeModule = filters.modules?.[0] ?? null
   const activeAction = filters.actions?.[0] ?? ALL
 
-  /** მოდულის სახელი — ჯერ `modules` ცხრილიდან, მერე i18n (ფსევდო-მოდულები) */
-  const nameOf = (key: string) => {
-    const found = modules.find((m) => m.key === key)
-    return found ? moduleName(found, i18n.language) : t(`audit.modules.${key}`, key)
+  /**
+   * მოდულის სახელი — ჯერ ჩემი მოდულებიდან, მერე ლოგის მეტამონაცემიდან (სხვისი
+   * პირადი მოდული, §37.6 — მფლობელით), ბოლოს i18n (ფსევდო-მოდულები).
+   */
+  const nameOf = (m: AuditMeta['modules'][number]) => {
+    const found = modules.find((x) => x.key === m.key)
+    if (found) return moduleName(found, i18n.language)
+
+    const own = i18n.language === 'ka' ? m.name_ka : m.name_en
+    if (own && m.owner) return `${own} · @${m.owner}`
+
+    return own || t(`audit.modules.${m.key}`, m.key)
   }
+
+  /* ⚠️ §37.6 — **სხვისი პირადი მოდული ბარათად მხოლოდ მაშინ, როცა ლოგში რიგი
+     აქვს**: სია ყველა ანგარიშის პირად მოდულს შეიცავს, და ნულოვანი ბარათების
+     კედელი (ოცი მოდული × ანგარიში) ჭრილს დამარხავდა. საბაზისო ნულოვანი
+     ბარათი კი რჩება — „აქ არაფერი მომხდარა" პასუხია (ეტაპი 10-ის წესი). */
+  const shownModules = (meta?.modules ?? []).filter(
+    (m) => !m.owner || m.owner === me?.username || (moduleCounts.get(m.key) ?? 0) > 0,
+  )
 
   return (
     <div className="mb-5 space-y-4">
@@ -123,7 +141,7 @@ export function AuditScope({
           count={total}
           onClick={() => onChange({ modules: [] })}
         />
-        {(meta?.modules ?? []).map((m) => {
+        {shownModules.map((m) => {
           const found = modules.find((x) => x.key === m.key)
           const Pseudo = PSEUDO_ICONS[m.key]
           return (
@@ -138,7 +156,7 @@ export function AuditScope({
                   <ModuleIcon name={found?.icon} className="size-4 text-[var(--mod)]" />
                 )
               }
-              label={nameOf(m.key)}
+              label={nameOf(m)}
               count={moduleCounts.get(m.key) ?? 0}
               onClick={() =>
                 // ხელახალი დაჭერა „ყველაზე" აბრუნებს — ჭრილს გასვლის გზა უნდა ჰქონდეს

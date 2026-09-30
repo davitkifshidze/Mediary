@@ -66,7 +66,7 @@ const ACTION_TONE: Record<string, string> = {
 
 export function AuditPage() {
   const { t, i18n } = useTranslation()
-  const { canAdmin } = useAuth()
+  const { canAdmin, user: me } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const fmt = useDateFormat()
@@ -143,6 +143,8 @@ export function AuditPage() {
     if (!found) return key
     // ფსევდო-მოდულს (`account`, `chat`…) `modules` რიგი არ აქვს — სახელი i18n-იდან
     const localised = i18n.language === 'ka' ? found.name_ka : found.name_en
+    // §37.6 — სხვისი პირადი მოდული მფლობელით: ორ ადამიანს ერთი სახელი შეიძლება ჰქონდეს
+    if (localised && found.owner && found.owner !== me?.username) return `${localised} · @${found.owner}`
     return localised || t(`audit.modules.${key}`, key)
   }
 

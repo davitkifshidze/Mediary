@@ -72,7 +72,9 @@ class AuthController extends Controller
             $user->is_active = true;
             $user->save();
 
-            $defaults = Module::where('is_active', true)
+            // ⚠️ §37.6 — მხოლოდ საბაზისო: სხვისი პირადი მოდული ახალ ანგარიშს არასდროს ებმება
+            $defaults = Module::base()
+                ->where('is_active', true)
                 ->when(! $isFirst, fn ($q) => $q->where('enabled_by_default', true))
                 ->pluck('id')
                 ->mapWithKeys(fn ($id) => [$id => ['enabled_at' => now()]])

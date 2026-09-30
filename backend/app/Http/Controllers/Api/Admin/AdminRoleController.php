@@ -209,7 +209,12 @@ class AdminRoleController extends Controller
      */
     private function cleanPermissions(array $input): array
     {
-        $allowed = Module::pluck('key')
+        /* ⚠️ **§37.6 — მხოლოდ საბაზისო მოდულები.** პირადი მოდულის უფლება როლში
+           არ იწერება: როლი საერთოა და `hasPermission()` პირად გასაღებზე როლს
+           საერთოდ არ ეკითხება (მფლობელს სრული CRUD ავტომატურად აქვს) — ე.ი.
+           შენახული გასაღები მკვდარი იქნებოდა და როლის მატრიცაში სხვისი
+           მოდულის არსებობას გაამხელდა. */
+        $allowed = Module::base()->pluck('key')
             ->merge(array_map(
                 fn (string $resource) => Role::ADMIN_PREFIX.$resource,
                 Role::ADMIN_RESOURCES,
