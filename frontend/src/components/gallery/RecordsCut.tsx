@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
   fetchGalleryGroups,
-  GALLERY_PARENTS,
+  galleryParentsOf,
   type GalleryGroup,
   type GalleryParentKind,
 } from '@/api/gallery'
@@ -58,12 +58,14 @@ export function RecordsCut({
   const [domain, setDomain] = useState<GalleryParentKind | 'all'>('all')
   const [tab, setTab] = useState<'records' | 'actors'>('records')
 
+  /* §37.4 — პირადი მოდულიც ტაბია, თავისი სახელით, ფერითა და ხატულით
+     (`galleryParentsOf()` — იგივე სია, რასაც გადატანის ფანჯარა კითხულობს). */
   const parents = useMemo(
     () =>
-      GALLERY_PARENTS.filter((key) => enabled.some((m) => m.key === key)).map((key) => ({
+      galleryParentsOf(enabled).map(({ key, module }) => ({
         key,
-        module: enabled.find((m) => m.key === key)!,
-        label: moduleName(enabled.find((m) => m.key === key)!, i18n.language),
+        module,
+        label: moduleName(module, i18n.language),
       })),
     [enabled, i18n.language],
   )

@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
-import type { StorageUsage } from './account'
+import type { ModuleInfo, StorageUsage } from './account'
 import type { Status } from './types'
+import { isCustomModule, type CustomModuleKey } from '@/lib/customModules'
 import type { StackPreview } from '@/components/ui/photo-stack'
 import type { MediaType } from '@/lib/media'
 
@@ -211,7 +212,32 @@ export function readGalleryDefaults(raw?: Record<string, unknown> | null): Galle
    `RegistryConsistencyTest`-ით `GalleryParent::recordKeys()`-ს ედარება. */
 // Tasks §11 — `song` გავიდა (Q9)
 export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'book', 'game', 'place'] as const
-export type GalleryParentKind = (typeof GALLERY_PARENTS)[number]
+/**
+ * მშობლის სახე — საბაზისოები და (§37.4) **პირადი მოდულები, თავისი გასაღებით**.
+ * ⚠️ `GALLERY_PARENTS` მხოლოდ საბაზისოებს ჩამოთვლის (ტესტი მას ადარებს);
+ * პირადი მოდულები ანგარიშისაა და `galleryParentsOf()`-ით ემატება.
+ */
+export type GalleryParentKind = (typeof GALLERY_PARENTS)[number] | CustomModuleKey
+
+/**
+ * **ამ ანგარიშის გალერეის მშობლები** — ჩართული საბაზისოები (`GALLERY_PARENTS`-ის
+ * რიგით) და ჩართული პირადი მოდულები (Tasks §37.4).
+ *
+ * ⚠️ ერთი ფუნქცია ორ ადგილს ემსახურება (ბიბლიოთეკის ჭრილი და გადატანის
+ * ფანჯარა): ორ ასლში პირადი მოდული ერთგან გამოჩნდებოდა, მეორეგან — არა,
+ * ე.ი. ფოტოს ჩანაწერზე გადაიტანდი, მერე კი მის ტაბს ვერ იპოვიდი.
+ */
+export function galleryParentsOf(enabled: ModuleInfo[]): { key: GalleryParentKind; module: ModuleInfo }[] {
+  const base = GALLERY_PARENTS.flatMap((key) => {
+    const module = enabled.find((m) => m.key === key)
+    return module ? [{ key: key as GalleryParentKind, module }] : []
+  })
+
+  return [
+    ...base,
+    ...enabled.filter((m) => isCustomModule(m)).map((m) => ({ key: m.key as GalleryParentKind, module: m })),
+  ]
+}
 /** ბადეში მშობელი ან ჩანაწერია, ან მსახიობი */
 export type GalleryOwnerKind = GalleryParentKind | 'actor'
 

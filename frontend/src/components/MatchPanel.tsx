@@ -15,7 +15,8 @@ import { storageUrl } from '@/lib/api'
 import { isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
-import { InfoHint } from '@/components/ui/info-hint'
+
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    დამთხვევები ორ საჯარო პროფილს შორის (Tasks §16.2).
@@ -70,6 +71,8 @@ export function MatchPanel({ username }: { username: string }) {
   // შედარებად დომენებზე key = მოდულის key (`playlist` ერთადერთი გამონაკლისი
   // იყო და ის შედარებადი არაა) — ე.ი. რუკა აქ არ სჭირდება
   const label = (row: MatchRow) => {
+    // §37.4 — ფსევდო-დომენი: მოდულის რიგი არ აქვს, ყველა პირადი მოდული ერთადაა
+    if (row.domain === 'custom') return t('matches.customModules')
     const m = modules[row.domain]
     return m ? (lang === 'ka' ? m.name_ka : m.name_en) : row.domain
   }
@@ -176,7 +179,10 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
 
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{title}</span>
-              {card.year && <span className="text-xs text-muted-foreground">{card.year}</span>}
+              {/* წელი, ან — წლის გარეშე დომენზე (ბუკმარკი, პირადი მოდული) — ბმულის ჰოსტი */}
+              {(card.year || card.subtitle) && (
+                <span className="block truncate text-xs text-muted-foreground">{card.year || card.subtitle}</span>
+              )}
             </span>
 
             {card.both_done && <Check className="size-4 shrink-0 text-primary" />}

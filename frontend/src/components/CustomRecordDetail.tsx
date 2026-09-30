@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Check, ExternalLink, FileText, SquarePen, Star, X } from 'lucide-react'
+import { Check, ExternalLink, FileText, Images, SquarePen, Star, X } from 'lucide-react'
 import {
   fetchCustomFieldValues,
   fetchCustomFields,
@@ -13,6 +14,7 @@ import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useModuleFields } from '@/lib/fields'
+import { useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
 import { statusName, statusTone } from '@/lib/statuses'
 import { STATUS_BADGE } from '@/lib/statusStyles'
@@ -21,7 +23,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { PrivateFileLink } from '@/components/PrivateFile'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +52,7 @@ export function CustomRecordDetail({
   const lang = useContentLang(i18n.language)
   const fields = useModuleFields(module.key)
   const fmt = useDateFormat()
+  const { has } = useModules()
 
   const definitions = useQuery({
     queryKey: ['custom-fields', module.key],
@@ -160,6 +163,18 @@ export function CustomRecordDetail({
         <Button type="button" variant="ghost" onClick={onClose}>
           {t('actions.close')}
         </Button>
+        {/* §37.4 — ჩანაწერი გალერეის მშობელია: ვებიდან ფოტო/ვიდეო და გადატანილი
+            ფოტოები მის გალერეის გვერდზეა (წიგნის/ადგილის იგივე გვერდი) */}
+        {has('gallery') && (
+          <Link
+            to={`/gallery/records/${module.key}/${record.id}`}
+            state={{ title: record.title }}
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            <Images className="size-4" />
+            {t('customModules.gallery')}
+          </Link>
+        )}
         <Button type="button" variant="edit" onClick={onEdit}>
           <SquarePen className="size-4" />
           {t('actions.edit')}

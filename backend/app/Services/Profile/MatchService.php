@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Support\Like;
 use App\Support\PublicDomain;
-use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -86,8 +85,10 @@ class MatchService
      */
     public function domains(User $a, User $b): array
     {
-        $mine = $this->profiles->domains($a);
-        $theirs = $this->profiles->domains($b);
+        /* §37.4 — პირადი მოდულები `custom`-ად ერთიანდება: ორი ადამიანის მოდულს
+           სხვადასხვა გასაღები აქვს, ე.ი. გასაღებით ისინი ვერასდროს შეხვდებოდნენ. */
+        $mine = PublicDomain::matchDomainsOf($this->profiles->domains($a));
+        $theirs = PublicDomain::matchDomainsOf($this->profiles->domains($b));
 
         return array_values(array_filter(
             PublicDomain::matchable(),
@@ -160,8 +161,15 @@ class MatchService
         $theirs = $this->records($b, $domain)->keyBy(fn (Model $r) => $this->keyOf($r, $columns));
 
         /* §6 ფაზა 4 — ბარათი **მეორე მხარისაა**, ე.ი. მისი არჩევანი წყვეტს,
-           რომელი ველი ჩანს. ჩემი კონფიგი აქ არაფერს ნიშნავს. */
-        $hidden = $this->fields->hiddenOnPublic($b, PublicDomain::module($domain));
+           რომელი ველი ჩანს. ჩემი კონფიგი აქ არაფერს ნიშნავს.
+           ⚠️ §37.4 — მოდული **ჩანაწერისაა** (`custom` ფსევდო-დომენში სხვადასხვა
+           მოდულის ჩანაწერი ერთ სიაშია), ე.ი. კონფიგი თითო მოდულზე ერთხელ იკითხება. */
+        $hiddenBy = [];
+        $hidden = function (Model $record) use ($b, $domain, &$hiddenBy): array {
+            $module = PublicDomain::recordModule($domain, $record);
+
+            return $hiddenBy[$module] ??= $this->fields->hiddenOnPublic($b, $module);
+        };
 
         $out = [];
 
@@ -173,7 +181,7 @@ class MatchService
 
             // ⚠️ ბარათის `status`/`rating` **მეორე მხარისაა** — ცალკე
             // `their_status`/`their_rating` იმავე ფაქტს ორ ველში გაიმეორებდა
-            $out[] = PublicDomain::card($domain, $record, $hidden) + [
+            $out[] = PublicDomain::card($domain, $record, $hidden($record)) + [
                 'mine' => [
                     'id' => $own->id,
                     /* §6.4 — ჩემი სტატუსი **ჩემი** ლექსიკონიდან; სწორედ ამიტომ
@@ -342,8 +350,9 @@ class MatchService
 
         $columns = ['id', 'user_id', ...PublicDomain::matchColumns($domain)];
 
-        // §6.4 — ექვს დომენს ლექსიკონი აქვს (`status_id`), სამს — `enum`
-        $columns[] = StatusDomain::usesDictionary($domain) ? 'status_id' : 'status';
+        // §6.4 — ექვს დომენს ლექსიკონი აქვს (`status_id`), სამს — `enum`;
+        // §37.4 — პირად მოდულებსაც ლექსიკონი აქვს, `custom` ფსევდო-დომენის ჩათვლით
+        $columns[] = PublicDomain::usesRoles($domain) ? 'status_id' : 'status';
 
         return $this->columnMemo[$memo] = array_map(
             fn (string $c) => "{$table}.{$c}",

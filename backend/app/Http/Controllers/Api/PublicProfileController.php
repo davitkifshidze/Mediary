@@ -192,13 +192,15 @@ class PublicProfileController extends Controller
     {
         $user = $this->galleryOwner($username);
 
-        $owners = implode('|', [...GalleryParent::recordKeys(), 'actor', 'album']);
+        /* §37.4 — ⚠️ ჩამოთვლა **მფლობელისაა** (`$user`) და არა სტუმრისა:
+           `recordKeys()` უპარამეტროდ შესული მნახველის პირად მოდულებს დაამატებდა. */
+        $owners = implode('|', [...GalleryParent::recordKeys($user), 'actor', 'album']);
 
         $filters = $request->validate([
             'owner' => ['nullable', 'string', 'regex:/^('.$owners.'):\d+$/', 'prohibits:parent,album,type,from'],
             'parent' => ['nullable', Rule::in([PublicGallery::RULE_RECORD, PublicGallery::RULE_ACTOR])],
             // `type` ჩანაწერის წესს ჭრის, `from` — მსახიობისას; სხვა წესთან აზრი არ აქვთ
-            'type' => ['nullable', GalleryParent::recordRule(), 'prohibited_unless:parent,'.PublicGallery::RULE_RECORD],
+            'type' => ['nullable', GalleryParent::recordRule($user), 'prohibited_unless:parent,'.PublicGallery::RULE_RECORD],
             'from' => ['nullable', MediaDomain::rule(), 'prohibited_unless:parent,'.PublicGallery::RULE_ACTOR],
             'album' => ['nullable', 'in:any', 'prohibits:parent'],
             'category' => ['nullable', 'in:backdrop,poster,logo,actor'],
@@ -234,7 +236,7 @@ class PublicProfileController extends Controller
 
         $data = $request->validate([
             'by' => ['nullable', 'in:record,actor,album'],
-            'type' => ['nullable', GalleryParent::recordRule()],
+            'type' => ['nullable', GalleryParent::recordRule($user)],
             'from' => ['nullable', MediaDomain::rule()],
             'gender' => ['nullable', 'in:female,male'],
             'previews' => ['nullable', 'integer', 'min:0', 'max:'.PublicGallery::MAX_PREVIEWS],

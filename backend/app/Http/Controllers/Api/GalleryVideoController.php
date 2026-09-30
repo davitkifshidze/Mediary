@@ -169,14 +169,8 @@ class GalleryVideoController extends Controller
     /** მშობელი + მფლობელობის შემოწმება */
     private function parent(Request $request, string $target, int $id): ?Model
     {
-        /** @var class-string<Model>|null $model */
-        $model = GalleryParent::model($target);
-
-        if (! $model) {
-            return null;
-        }
-
-        $parent = $model::find($id);
+        // §37.4 — `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+        $parent = GalleryParent::query($target)?->find($id);
 
         if (! $parent) {
             return null;
@@ -219,13 +213,13 @@ class GalleryVideoController extends Controller
         $names = [];
 
         foreach ($videos->groupBy('videoable_type') as $type => $rows) {
-            $model = GalleryParent::model((string) $type);
+            $parents = GalleryParent::query((string) $type);
 
-            if (! $model) {
+            if (! $parents) {
                 continue;
             }
 
-            foreach ($model::query()->whereIn('id', $rows->pluck('videoable_id')->unique())->get() as $record) {
+            foreach ($parents->whereIn('id', $rows->pluck('videoable_id')->unique())->get() as $record) {
                 $names[$type.':'.$record->getKey()] = $record instanceof CastMember
                     ? ($record->name_ka ?: $record->name)
                     : ($record->title_ka ?? $record->title_en ?? $record->title ?? null);

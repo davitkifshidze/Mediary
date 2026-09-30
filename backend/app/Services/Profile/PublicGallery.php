@@ -400,7 +400,9 @@ class PublicGallery
      */
     private function recordDomains(User $user, ?string $only = null): array
     {
-        $domains = array_values(array_intersect(GalleryParent::recordKeys(), $this->profiles->domains($user)));
+        /* §37.4 — ⚠️ `recordKeys($user)`: პირადი მოდულები **მფლობელისაა** —
+           უპარამეტრო გამოძახება შესული სტუმრის მოდულებს ჩაითვლიდა. */
+        $domains = array_values(array_intersect(GalleryParent::recordKeys($user), $this->profiles->domains($user)));
 
         return $only === null ? $domains : array_values(array_intersect($domains, [$only]));
     }

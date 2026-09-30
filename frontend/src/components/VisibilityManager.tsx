@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Globe, Loader2, Lock, Search, TriangleAlert } from 'lucide-react'
 import {
-  DOMAIN_MODULE,
   PUBLIC_DOMAINS,
+  domainModule,
   fetchVisibilityList,
   setDomainVisibility,
   setRecordVisibility,
@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/lib/auth'
 import { useContentLang } from '@/lib/settings'
 import { errorMessage } from '@/lib/errors'
+import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
 import { moduleName, useModules } from '@/lib/modules'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
@@ -67,12 +68,16 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
    * გამოჩნდება — ერთი წყარო, ორი ადგილას გამეორების გარეშე.
    */
   const domains = useMemo(
-    () =>
-      PUBLIC_DOMAINS.filter((d) => {
-        const key = DOMAIN_MODULE[d]
+    (): PublicDomainKey[] => [
+      ...PUBLIC_DOMAINS.filter((d) => {
+        const key = domainModule(d)
         const module = enabled.find((m) => m.key === key)
         return !!module?.shareable && can(key, 'view')
       }),
+      /* §37.4 — პირადი მოდული თავისი დომენია (გასაღებით); გასაჯაროებადია და
+         უფლებაც მფლობელისაა, ე.ი. `shareable`-ის შემოწმება საკმარისია. */
+      ...enabled.filter((m) => isCustomModule(m) && m.shareable).map((m) => m.key as PublicDomainKey),
+    ],
     [enabled, can],
   )
 
@@ -88,7 +93,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const domainIdentity = (d: PublicDomainKey) => {
     if (d === 'playlist') return {}
 
-    const module = enabled.find((m) => m.key === DOMAIN_MODULE[d])
+    const module = enabled.find((m) => m.key === domainModule(d))
 
     return module
       ? {
@@ -101,7 +106,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const domainLabel = (d: PublicDomainKey) => {
     // `playlist` და `song` ერთ მოდულს ეკუთვნის — დომენს საკუთარი სახელი სჭირდება
     if (d === 'playlist') return t('playlists.title')
-    const module = enabled.find((m) => m.key === DOMAIN_MODULE[d])
+    const module = enabled.find((m) => m.key === domainModule(d))
     return module ? moduleName(module, i18n.language) : d
   }
 
@@ -121,6 +126,8 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
     qc.invalidateQueries({ queryKey: ['visibility-list'] })
     // ბარათებზე ბეჯი ჩანს — მოდულის სიაც უნდა განახლდეს
     if (domain) qc.invalidateQueries({ queryKey: [domain] })
+    // §37.4 — პირადი მოდულის სია თავის გასაღებზე ზის (ბეჯი ბარათზე იქაც ჩანს)
+    if (domain && isCustomModuleKey(domain)) qc.invalidateQueries({ queryKey: ['custom-records', domain] })
   }
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
@@ -192,7 +199,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const rows = listQ.data?.data ?? []
   const meta = listQ.data?.meta
   const busy = one.isPending || many.isPending
-  const canEdit = !!domain && can(DOMAIN_MODULE[domain], 'update')
+  const canEdit = !!domain && can(domainModule(domain), 'update')
 
   const title = (card: VisibilityCard) =>
     (lang === 'ka' ? card.title_ka : card.title_en) ||

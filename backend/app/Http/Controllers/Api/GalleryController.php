@@ -376,7 +376,11 @@ class GalleryController extends Controller
                ესკიზები ქვემოთ, `previews()`-ში, scope-ს ისევ ემორჩილება. */
             $unlocked = fn ($q) => $q->withoutGlobalScope('album_lock');
 
-            $query = $model::query()
+            /* §37.4 — ⚠️ `GalleryParent::query()` და არა `$model::query()`:
+               პირადი მოდულის ჩანაწერები ერთ ცხრილშია (მოდულის ფილტრი) და
+               მათი morph-კლასი მოდულის გასაღებია — ცარიელი ინსტანციის
+               `custom_record`-ით ქვემოთ ყველა ჯგუფი „0 ფოტოს" იტყოდა. */
+            $query = GalleryParent::query($type)
                 ->withCount(['galleryImages as photos' => $unlocked])
                 ->withSum(['galleryImages as photo_bytes' => $unlocked], 'size');
 
@@ -527,10 +531,15 @@ class GalleryController extends Controller
         });
     }
 
-    /** ჩანაწერის ყდა — სვეტი მოდულზეა დამოკიდებული */
+    /**
+     * ჩანაწერის ყდა — სვეტი მოდულზეა დამოკიდებული.
+     *
+     * ⚠️ `photo_path` §37.4-მა დაამატა (პირადი მოდული) — და იგივე სვეტი
+     * ადგილსაც აქვს, რომლის ჯგუფიც აქამდე ყდის გარეშე იხატებოდა.
+     */
     private function coverOf(Model $record): ?string
     {
-        foreach (['poster_path', 'cover_path', 'image_path', 'thumbnail_path'] as $column) {
+        foreach (['poster_path', 'cover_path', 'image_path', 'thumbnail_path', 'photo_path'] as $column) {
             $value = $record->{$column} ?? null;
 
             if (is_string($value) && $value !== '') {
@@ -1135,14 +1144,15 @@ class GalleryController extends Controller
             $ids = $rows->pluck('imageable_id')->unique();
 
             // ⚠️ მშობლების სია `GalleryParent`-იდან მოდის და ხელით აღარ ითვლება —
-            // ანიმეს (და მერე სიმღერის/წიგნის) ფოტოებს მშობლის სახელი აკლდა
-            $model = GalleryParent::model((string) $type);
+            // ანიმეს (და მერე სიმღერის/წიგნის) ფოტოებს მშობლის სახელი აკლდა.
+            // §37.4 — `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+            $parents = GalleryParent::query((string) $type);
 
-            if (! $model) {
+            if (! $parents) {
                 continue;
             }
 
-            foreach ($model::query()->whereIn('id', $ids)->get() as $record) {
+            foreach ($parents->whereIn('id', $ids)->get() as $record) {
                 $names[$type.':'.$record->getKey()] = [
                     'kind' => $type === GalleryParent::ACTOR ? 'actor' : $type,
                     'id' => $record->getKey(),
@@ -1738,10 +1748,20 @@ class GalleryController extends Controller
            კვოტიდან საბოლოო წაშლისას თავისუფლდება. `ColumnTrash` TMDB-ის და
            გალერეის ფაილს თვითონ გამოტოვებს. */
         $source = $columns['source'];
+        $current = $parent->{$columns['path']};
+
         if ($source
             && $parent->{$source} === 'upload'
-            && $parent->{$columns['path']} !== $galleryImage->path) {
+            && $current !== $galleryImage->path) {
             ColumnTrash::capture($parent, $columns['path'], $source);
+        }
+
+        /* §37.4 — ⚠️ **წყაროს სვეტის გარეშე მშობელზეც** (ადგილი, პირადი მოდული):
+           იქ ყოველი არა-გალერეის ფოტო ატვირთვაა, ხოლო ზემოთა პირობა მას ვერ
+           ხედავდა — სვეტი გადაიწერებოდა და ძველი ფაილი დისკზე ობლად, კვოტაში
+           კი სამუდამოდ რჩებოდა. გალერეის ფაილს `capture()` თვითონ გამოტოვებს. */
+        if ($source === null && is_string($current) && $current !== '' && $current !== $galleryImage->path) {
+            ColumnTrash::capture($parent, $columns['path']);
         }
 
         /* ⚠️ სვეტები ცალ-ცალკე ეწერება და არა ერთი ლიტერალით: `null` გასაღები
@@ -1816,11 +1836,9 @@ class GalleryController extends Controller
         return MediaDomain::model($type)::find($id);
     }
 
-    /** ნებისმიერი გალერეის მშობელი (მედია-დომენი, სიმღერა, წიგნი, თამაში) */
+    /** ნებისმიერი გალერეის მშობელი (მედია-დომენი, წიგნი, თამაში, ადგილი, პირადი მოდული) */
     private function findParent(string $type, int $id): ?Model
     {
-        $model = GalleryParent::model($type);
-
-        return $model ? $model::find($id) : null;
+        return GalleryParent::query($type)?->find($id);
     }
 }

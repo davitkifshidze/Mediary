@@ -8,6 +8,7 @@ import {
   type PublicProfile,
 } from '@/api/publicProfile'
 import { GALLERY_PARENTS, type GalleryParentKind } from '@/api/gallery'
+import { isCustomModuleKey } from '@/lib/customModules'
 import { isMediaKey } from '@/lib/modules'
 import type { MediaType } from '@/lib/media'
 import { useContentLang } from '@/lib/settings'
@@ -63,10 +64,17 @@ export function PublicLibrary({
   const [layout, setLayout] = useState<GalleryLayout>('grouped')
   const [open, setOpen] = useState<PublicGalleryGroup | null>(null)
 
-  /** ამ პროფილზე საჯარო ჩანაწერის დომენები — `GalleryParent`-ის რიგით */
+  /**
+   * ამ პროფილზე საჯარო ჩანაწერის დომენები — `GalleryParent`-ის რიგით, ბოლოს
+   * კი (§37.4) **მფლობელის პირადი მოდულები**. ⚠️ სია პროფილიდან მოდის და არა
+   * `useModules()`-იდან — სტუმარს ეს მოდულები არ ჰყავს.
+   */
   const parents = useMemo(
     () =>
-      GALLERY_PARENTS.filter((key) => profile.domains.includes(key)).map((key) => {
+      [
+        ...GALLERY_PARENTS.filter((key) => profile.domains.includes(key)),
+        ...profile.domains.filter(isCustomModuleKey),
+      ].map((key: GalleryParentKind) => {
         const module = profile.modules[profile.domain_modules[key] ?? key]
         return {
           key,

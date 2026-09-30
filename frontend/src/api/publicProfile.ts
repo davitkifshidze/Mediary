@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 import type { Status } from '@/api/types'
 import type { GalleryParentKind, GallerySort } from '@/api/gallery'
 import type { StackPreview } from '@/components/ui/photo-stack'
@@ -42,7 +43,13 @@ export const PUBLIC_DOMAINS = [
      ერთადერთი, რითიც ის შეიძლება გაზიარდეს, ალბომია. */
   'gallery_album',
 ] as const
-export type PublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
+type BasePublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
+/**
+ * დომენი — საბაზისოები და (§37.4) **პირადი მოდული, თავისი გასაღებით**.
+ * ⚠️ `PUBLIC_DOMAINS` მხოლოდ საბაზისოებს ჩამოთვლის (ტესტი მას ადარებს):
+ * პირადი მოდულები ანგარიშისაა და პროფილის `domains`-ით / `useModules()`-ით მოდის.
+ */
+export type PublicDomainKey = BasePublicDomainKey | CustomModuleKey
 
 /**
  * დომენი → **რომელი მოდულის ჩართვა სჭირდება**.
@@ -50,7 +57,7 @@ export type PublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
  * არსებობს ეს რუკა და არა `domain === module` დაშვება. სარკეა backend-ის
  * `PublicDomain::DOMAINS[...]['module']`-ისა.
  */
-export const DOMAIN_MODULE: Record<PublicDomainKey, string> = {
+export const DOMAIN_MODULE: Record<BasePublicDomainKey, string> = {
   movie: 'movie',
   series: 'series',
   anime: 'anime',
@@ -64,6 +71,11 @@ export const DOMAIN_MODULE: Record<PublicDomainKey, string> = {
   course: 'course',
   place: 'place',
   gallery_album: 'gallery',
+}
+
+/** დომენის მოდული — პირადი მოდულის დომენი თვითონ მოდულის გასაღებია (§37.4) */
+export function domainModule(domain: PublicDomainKey): string {
+  return isCustomModuleKey(domain) ? domain : DOMAIN_MODULE[domain]
 }
 
 /** ვიწრო ბარათი — backend განზრახ **არ** აბრუნებს ჩანაწერის სრულ რესურსს */
@@ -93,6 +105,8 @@ export interface PublicCard {
   embed_url?: string | null
   /** წამებში */
   duration?: number | null
+  /** §37.4 — პირადი მოდულის ბარათი: რომელ მოდულს ეკუთვნის (დამთხვევაში სხვადასხვა მოდულიდან მოდის) */
+  module?: string | null
 }
 
 export interface PublicProfile {
@@ -180,6 +194,12 @@ export const MATCH_DOMAINS = [
   'song',
   // §18 — იდენტობა თვითონ ბმულია, ე.ი. ერთი გვერდი ორივესთან ერთი და იგივეა
   'bookmark',
+  // FEAT-25/26 — backend-ში დიდი ხანია დგას, აქ აკლდა (ტესტი ახლა ადარებს)
+  'course',
+  'place',
+  /* §37.4 — **ყველა პირადი მოდული ერთად**: ორი ადამიანის მოდულს სხვადასხვა
+     გასაღები აქვს, ე.ი. ერთმანეთს მხოლოდ აქ ხვდება; იდენტობა ბმულია. */
+  'custom',
 ] as const
 export type MatchDomainKey = (typeof MATCH_DOMAINS)[number]
 

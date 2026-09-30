@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Support\CustomModules;
 use App\Support\Like;
 use App\Support\PublicDomain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -57,7 +59,7 @@ class VisibilityController extends Controller
      */
     public function index(Request $request, string $domain)
     {
-        [, $model] = $this->guard($request, $domain, 'view');
+        [, $records] = $this->guard($request, $domain, 'view');
 
         $data = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
@@ -71,11 +73,11 @@ class VisibilityController extends Controller
 
         // ხილვადობის ჯამები **გაფილტვრამდე** — ჩიპების რიცხვები ძებნაზე არ უნდა ხტუნავდეს
         $counts = [
-            'public' => $model::query()->where('visibility', 'public')->count(),
-            'private' => $model::query()->where('visibility', '!=', 'public')->count(),
+            'public' => $records()->where('visibility', 'public')->count(),
+            'private' => $records()->where('visibility', '!=', 'public')->count(),
         ];
 
-        $query = $this->search($model::query(), $domain, $data['q'] ?? null);
+        $query = $this->search($records(), $domain, $data['q'] ?? null);
         $only = $data['only'] ?? 'all';
 
         if ($only === 'public') {
@@ -116,7 +118,7 @@ class VisibilityController extends Controller
      */
     public function bulk(Request $request, string $domain)
     {
-        [$user, $model] = $this->guard($request, $domain, 'update');
+        [$user, $records] = $this->guard($request, $domain, 'update');
 
         $data = $request->validate([
             'visibility' => ['required', Rule::in(PublicDomain::VALUES)],
@@ -125,7 +127,7 @@ class VisibilityController extends Controller
             'ids.*' => ['integer'],
         ]);
 
-        $query = $model::query();
+        $query = $records();
         $all = (bool) ($data['all'] ?? false);
         $ids = [];
 
@@ -182,25 +184,16 @@ class VisibilityController extends Controller
 
     public function update(Request $request, string $domain, int $id)
     {
-        abort_unless(PublicDomain::has($domain), 404);
-
-        $user = $request->user();
-        $module = PublicDomain::module($domain);
-
-        abort_unless($user->hasModule($module), 403, 'module_disabled');
-        abort_unless($user->hasPermission($module, 'update'), 403, 'forbidden');
+        [$user, $records] = $this->guard($request, $domain, 'update');
 
         $data = $request->validate([
             'visibility' => ['required', Rule::in(PublicDomain::VALUES)],
         ]);
 
-        /** @var class-string<Model> $model */
-        $model = PublicDomain::model($domain);
-
         // `owner` global scope ჩართულია → სხვისი ჩანაწერი ისედაც 404-ია.
         // ცხადი შემოწმება მაინც რჩება: scope `Auth::id()`-ზეა დამოკიდებული და
         // მისი ჩუმად გამორთვა (მაგ. CLI-კონტექსტი) აქ 404-ს არ უნდა შლიდეს.
-        $record = $model::findOrFail($id);
+        $record = $records()->findOrFail($id);
         abort_unless($record->user_id === $user->id, 404);
 
         $record->visibility = $data['visibility'];
@@ -219,19 +212,28 @@ class VisibilityController extends Controller
      * დომენის ცნობა + მოდულის წვდომა + უფლება — სამივე ერთ ადგილას, რომ
      * სამი endpoint ერთმანეთს არ დაშორდეს.
      *
-     * @return array{0: User, 1: class-string<Model>}
+     * ⚠️ **მეორე ელემენტი query-ს ქარხანაა და არა კლასი** (§37.4): პირადი
+     * მოდულის ჩანაწერები ერთ ცხრილშია, ე.ი. `$model::query()` ყველა პირადი
+     * მოდულის ჩანაწერს დათვლიდა და გადართავდა — `PublicDomain::query()` მოდულით ჭრის.
+     *
+     * ⚠️ **სხვისი პირადი მოდული 404-ია და არა 403** (Q28): `module_disabled`
+     * იტყოდა, რომ ასეთი მოდული არსებობს.
+     *
+     * @return array{0: User, 1: callable(): Builder}
      */
     private function guard(Request $request, string $domain, string $action): array
     {
-        abort_unless(PublicDomain::has($domain), 404);
-
         $user = $request->user();
+
+        abort_unless(PublicDomain::has($domain), 404);
+        abort_if(PublicDomain::isCustom($domain) && ! CustomModules::owns($user, $domain), 404);
+
         $module = PublicDomain::module($domain);
 
         abort_unless($user->hasModule($module), 403, 'module_disabled');
         abort_unless($user->hasPermission($module, $action), 403, 'forbidden');
 
-        return [$user, PublicDomain::model($domain)];
+        return [$user, fn (): Builder => PublicDomain::query($domain)];
     }
 
     /**
@@ -249,7 +251,7 @@ class VisibilityController extends Controller
             return $query;
         }
 
-        $map = PublicDomain::SEARCH[$domain] ?? ['relation' => null, 'columns' => []];
+        $map = PublicDomain::search($domain);
 
         if ($map['relation']) {
             return $query->whereHas($map['relation'], fn ($q) => $q->where(

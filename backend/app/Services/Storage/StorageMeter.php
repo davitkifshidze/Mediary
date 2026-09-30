@@ -664,10 +664,14 @@ class StorageMeter
            ერთსა და იმავე მოდულს აწერს. ⚠️ `$only` აქ მინიშნებაა (PERF-03):
            საბაზისო მოდულის კითხვაზე ეს ბლოკი საერთოდ არ ეშვება. */
         if ($only === null || CustomModules::isKey($only)) {
+            /* ⚠️ §37.4 — გალერეიდან „მთავარად დაყენებული" ფოტო აქ **არ** ითვლება
+               (ადგილის წესი): წყაროს სვეტი არ არსებობს, სვეტი კი გალერეის ფაილზეც
+               მიუთითებს — მას გალერეის რიგი უკვე ითვლის და ჯამში ორჯერ ჩაჯდებოდა. */
             $customRecords = CustomRecord::withoutGlobalScopes(['owner', 'trash'])
                 ->where('user_id', $user->getKey())
                 ->when($only !== null, fn ($q) => $q->where('module', $only))
                 ->whereNotNull('photo_path')
+                ->where('photo_path', 'not like', 'gallery/%')
                 ->get(['id', 'module', 'title', 'photo_path', 'created_at']);
 
             foreach ($customRecords as $record) {

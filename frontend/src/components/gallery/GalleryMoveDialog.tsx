@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Inbox, MoveRight } from 'lucide-react'
 import {
   fetchGalleryGroups,
+  galleryParentsOf,
   moveGalleryImages,
-  GALLERY_PARENTS,
   type GalleryParentKind,
 } from '@/api/gallery'
 import { searchCastMembers } from '@/api/cast'
@@ -81,18 +81,24 @@ export function GalleryMoveDialog({
   /** `''` = ალბომი არ იცვლება · `none` = ალბომიდან ამოღება · რიცხვი = ალბომი */
   const [album, setAlbum] = useState<string>('')
 
+  // §37.4 — პირადი მოდულის ჩანაწერზეც შეიძლება გადატანა
   const parents = useMemo(
     () =>
-      GALLERY_PARENTS.filter((key) => enabled.some((m) => m.key === key)).map((key) => ({
+      galleryParentsOf(enabled).map(({ key, module }) => ({
         key,
-        label: moduleName(enabled.find((m) => m.key === key)!, i18n.language),
+        label: moduleName(module, i18n.language),
       })),
     [enabled, i18n.language],
   )
 
+  /* ⚠️ არჩეული მშობელი სიაში უნდა იყოს — ნაგულისხმევი `movie` იმ ანგარიშზე,
+     სადაც ფილმები გამორთულია (მაგ. მხოლოდ პირადი მოდული აქვს, §37.4),
+     ცარიელ ჩამონათვალს და არარსებულ ტიპს გაგზავნიდა. */
+  const current: GalleryParentKind = parents.some((p) => p.key === domain) ? domain : (parents[0]?.key ?? domain)
+
   const recordsQ = useQuery({
-    queryKey: ['gallery-groups', 'record', { type: domain, have: 'all', previews: 0 }],
-    queryFn: () => fetchGalleryGroups('record', { type: domain, have: 'all', previews: 0 }),
+    queryKey: ['gallery-groups', 'record', { type: current, have: 'all', previews: 0 }],
+    queryFn: () => fetchGalleryGroups('record', { type: current, have: 'all', previews: 0 }),
     enabled: target === 'record',
   })
 
@@ -112,7 +118,7 @@ export function GalleryMoveDialog({
           target === 'none'
             ? 'none'
             : target === 'record' && recordId[0]
-              ? `${domain}:${recordId[0]}`
+              ? `${current}:${recordId[0]}`
               : target === 'actor' && actorId[0]
                 ? `cast_member:${actorId[0]}`
                 : undefined,
@@ -156,7 +162,7 @@ export function GalleryMoveDialog({
         <Row value="record" active={target === 'record'} label={t('gallery.moveToRecord')}>
           {target === 'record' && (
             <div className="mt-2 space-y-2">
-              <Select value={domain} onValueChange={(v) => { setDomain(v as GalleryParentKind); setRecordId([]) }}>
+              <Select value={current} onValueChange={(v) => { setDomain(v as GalleryParentKind); setRecordId([]) }}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>

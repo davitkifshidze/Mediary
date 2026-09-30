@@ -8,6 +8,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
+use App\Models\CustomRecord;
 use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
@@ -16,6 +17,7 @@ use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -147,27 +149,123 @@ final class PublicDomain
         'gallery_album' => ['relation' => null, 'columns' => ['name']],
     ];
 
-    /** @return list<string> */
+    /**
+     * **Tasks §37.4 — პირადი მოდულები დამთხვევაში ერთ „დომენად" ერთიანდება.**
+     *
+     * პირადი მოდული ყოველ ანგარიშზე **სხვა გასაღებითაა** (`c5-recipes` ·
+     * `c7-cooking`), ე.ი. დომენ-დომენ შედარებაში ორი ადამიანის მოდული
+     * ერთმანეთს ვერასდროს შეხვდებოდა. ამიტომ დამთხვევისთვის ყველა საჯარო
+     * პირადი მოდული ერთ ფსევდო-დომენშია — `custom` — და იდენტობა **ბმულია**
+     * (ბუკმარკის წესი): ერთი და იგივე გვერდი ორივესთან ერთი და იგივეა,
+     * რომელ მოდულშიც არ უნდა ედოს. ბმულის გარეშე ჩანაწერი არ მონაწილეობს.
+     *
+     * ⚠️ **`MATCH`-ში განზრახ არ წერია** — `SharedRecord` (ჩატის გაზიარება) ამ
+     * კონსტანტას პირდაპირ კითხულობს, `custom`-ს კი „ჩემსაში დამატება" არ
+     * აქვს: მიმღებს ეს მოდული საერთოდ არ ჰყავს.
+     */
+    public const CUSTOM = 'custom';
+
+    /** პირადი მოდულის იდენტობა — ბმული; „გაკეთებული" როლით იკითხება (`usesRoles()`) */
+    private const CUSTOM_MATCH = ['columns' => ['url'], 'done' => null];
+
+    /** პირადი მოდულის ხილვადობის სიის ძებნა */
+    private const CUSTOM_SEARCH = ['relation' => null, 'columns' => ['title', 'url']];
+
+    /**
+     * საბაზისო დომენები.
+     *
+     * ⚠️ **პირადი მოდულები აქ არ არის** — ისინი ანგარიშისაა და ინტერფეისიდან
+     * იქმნება, ე.ი. ჩამოთვლა მფლობელს ეკითხება (`PublicProfileService::domains()`),
+     * ხოლო ცნობა — ფორმას (`isCustom()`).
+     *
+     * @return list<string>
+     */
     public static function keys(): array
     {
         return array_keys(self::DOMAINS);
     }
 
-    /** დომენები, რომლებზეც დამთხვევა ითვლება (`playlist` — არა) */
+    /** პირადი მოდულის დომენია? (გასაღები = მოდულის გასაღები) */
+    public static function isCustom(string $domain): bool
+    {
+        return CustomModules::isKey($domain);
+    }
+
+    /**
+     * მარშრუტის `where()`-ის რეგულარული — საბაზისოები **და** პირადი მოდულის ფორმა.
+     *
+     * ⚠️ `whereIn(keys())` მარშრუტის დარეგისტრირებისას ითვლება, როცა პირადი
+     * მოდულები ჯერ არ ვიცით — ფორმა კი ცნობილია (`StatusDomain::pattern()`-ის წესი).
+     */
+    public static function pattern(): string
+    {
+        return implode('|', [...self::keys(), CustomModules::PATTERN]);
+    }
+
+    /**
+     * ცხრილები, რომელთა ჩანაწერიც საჯარო შეიძლება გახდეს — `RegistryConsistencyTest`-ისთვის.
+     *
+     * ⚠️ `custom_records` რუკაში ვერ ჩაიწერება (დომენები ინტერფეისიდან იქმნება),
+     * მაგრამ ის მაინც საჯარო დომენების ცხრილია — თორემ `visibility` სვეტი
+     * „დავიწყებულად" გამოჩნდებოდა.
+     *
+     * @return list<string>
+     */
+    public static function tables(): array
+    {
+        return [
+            ...array_map(fn (array $d) => (new $d['model'])->getTable(), array_values(self::DOMAINS)),
+            CustomModules::TABLE,
+        ];
+    }
+
+    /** დომენები, რომლებზეც დამთხვევა ითვლება (`playlist` — არა; პირადი მოდულები — `custom`-ად) */
     public static function matchable(): array
     {
-        return array_keys(self::MATCH);
+        return [...array_keys(self::MATCH), self::CUSTOM];
     }
 
     public static function isMatchable(string $domain): bool
     {
-        return isset(self::MATCH[$domain]);
+        return isset(self::MATCH[$domain]) || $domain === self::CUSTOM;
+    }
+
+    /**
+     * პროფილის დომენები → დამთხვევის დომენები: პირადი მოდულები `custom`-ად
+     * ერთიანდება (იხ. `CUSTOM`).
+     *
+     * @param  list<string>  $domains
+     * @return list<string>
+     */
+    public static function matchDomainsOf(array $domains): array
+    {
+        $out = [];
+
+        foreach ($domains as $domain) {
+            $key = self::isCustom($domain) ? self::CUSTOM : $domain;
+
+            if (self::isMatchable($key)) {
+                $out[$key] = $key;
+            }
+        }
+
+        return array_values($out);
     }
 
     /** იდენტობის სვეტები; `[]` — დომენი არ ედარება */
     public static function matchColumns(string $domain): array
     {
-        return self::MATCH[$domain]['columns'] ?? [];
+        return self::MATCH[$domain]['columns'] ?? ($domain === self::CUSTOM ? self::CUSTOM_MATCH['columns'] : []);
+    }
+
+    /**
+     * სტატუსი ლექსიკონის **როლით** იკითხება? — ექვსი საბაზისო დომენი,
+     * ყოველი პირადი მოდული და `custom` ფსევდო-დომენიც (§37.4: სხვადასხვა
+     * მოდულის ჩანაწერს სხვადასხვა ლექსიკონი აქვს, საერთო მხოლოდ როლია).
+     */
+    public static function usesRoles(string $domain): bool
+    {
+        return $domain === self::CUSTOM || StatusDomain::usesDictionary($domain);
     }
 
     /**
@@ -186,7 +284,7 @@ final class PublicDomain
     /** ითვლება თუ არა ამ დომენზე „ორივემ გავაკეთეთ" (ვიდეო/სიმღერა — არა) */
     public static function countsDone(string $domain): bool
     {
-        return self::doneStatus($domain) !== null || StatusDomain::usesDictionary($domain);
+        return self::doneStatus($domain) !== null || self::usesRoles($domain);
     }
 
     /**
@@ -199,7 +297,7 @@ final class PublicDomain
      */
     public static function isDone(Model $record, string $domain): bool
     {
-        if (StatusDomain::usesDictionary($domain)) {
+        if (self::usesRoles($domain)) {
             return $record->status_role === 'done';
         }
 
@@ -208,30 +306,81 @@ final class PublicDomain
         return $done !== null && $record->status === $done;
     }
 
+    /**
+     * ⚠️ პირად გასაღებზე — **არსებობს თუ არა**. ვისია, ამას გამომძახებელი
+     * ამოწმებს: საჯარო პროფილზე მფლობელის საჯარო დომენების სია, ავტორიზებულ
+     * კარზე — `CustomModules::owns()`.
+     */
     public static function has(string $domain): bool
     {
-        return isset(self::DOMAINS[$domain]);
+        return isset(self::DOMAINS[$domain]) || CustomModules::exists($domain);
     }
 
     /** @return class-string<Model> */
     public static function model(string $domain): string
     {
+        if (self::isCustom($domain) || $domain === self::CUSTOM) {
+            return CustomRecord::class;
+        }
+
         return self::DOMAINS[$domain]['model'];
     }
 
-    /** რომელი მოდულის ჩართვა სჭირდება ამ დომენს (`playlist` → `song`) */
+    /**
+     * რომელი მოდულის ჩართვა სჭირდება ამ დომენს (`playlist` → `song`).
+     * პირადი მოდულის დომენი თვითონ მოდულის გასაღებია; `custom` — `custom`
+     * (მოდულის რიგი არ აქვს, ე.ი. `moduleMeta()`-ში უბრალოდ არ ჩანს).
+     */
     public static function module(string $domain): string
     {
-        return self::DOMAINS[$domain]['module'];
+        return self::DOMAINS[$domain]['module'] ?? $domain;
+    }
+
+    /**
+     * ჩანაწერის მოდული — `custom` ფსევდო-დომენზე **რიგისაა** (სხვადასხვა
+     * მოდულის ჩანაწერი ერთ სიაშია), დანარჩენზე დომენისა.
+     */
+    public static function recordModule(string $domain, Model $record): string
+    {
+        return $domain === self::CUSTOM ? (string) $record->getAttribute('module') : self::module($domain);
     }
 
     /** ერთი მოდულის დომენები — პროფილზე მოდულის ჩართვა რამდენიმეს აჩენს */
     public static function forModule(string $module): array
     {
+        // §37.4 — პირადი მოდული თავისი ერთადერთი დომენია
+        if (self::isCustom($module)) {
+            return CustomModules::exists($module) ? [$module] : [];
+        }
+
         return array_keys(array_filter(
             self::DOMAINS,
             fn (array $d) => $d['module'] === $module,
         ));
+    }
+
+    /**
+     * **დომენის ჩანაწერების query** (§37.4).
+     *
+     * ⚠️ `model($domain)::query()` პირად მოდულზე **ყველა** პირადი მოდულის
+     * ჩანაწერს დააბრუნებდა — ერთი ცხრილია. `custom` ფსევდო-დომენზე კი
+     * მოდულის ფილტრი გამომძახებლისაა (`PublicProfileService::query()` —
+     * მხოლოდ **საჯარო** პირადი მოდულები).
+     */
+    public static function query(string $domain): Builder
+    {
+        return match (true) {
+            self::isCustom($domain) => CustomRecord::queryFor($domain),
+            $domain === self::CUSTOM => CustomRecord::query(),
+            default => self::model($domain)::query(),
+        };
+    }
+
+    /** ხილვადობის სიის ძებნის რუკა (`SEARCH` + პირადი მოდული) */
+    public static function search(string $domain): array
+    {
+        return self::SEARCH[$domain]
+            ?? (self::isCustom($domain) ? self::CUSTOM_SEARCH : ['relation' => null, 'columns' => []]);
     }
 
     /**
@@ -252,6 +401,14 @@ final class PublicDomain
             'id' => $record->id,
             'domain' => $domain,
         ];
+
+        /* §37.4 — პირადი მოდული `match`-ში ვერ ჩაიწერება (გასაღები ინტერფეისიდან
+           იქმნება). ⚠️ **ეს `default` არ არის**: შტო მხოლოდ პირადი მოდულის
+           ფორმას და `custom` ფსევდო-დომენს ემსახურება, ე.ი. უცნობი დომენი ისევ
+           500-ია და არა „ცარიელი ბარათი" (`RegistryConsistencyTest`-ის წესი). */
+        if (self::isCustom($domain) || $domain === self::CUSTOM) {
+            return $base + self::customCard($record, $hidden);
+        }
 
         $card = $base + match ($domain) {
             'movie', 'series', 'anime' => [
@@ -365,6 +522,46 @@ final class PublicDomain
 
             foreach (self::DERIVED[$key] ?? [] as $derived) {
                 unset($card[$derived]);
+            }
+        }
+
+        return $card;
+    }
+
+    /**
+     * **პირადი მოდულის ბარათი (Tasks §37.4)** — ბუკმარკის ფორმა: სათაური,
+     * ბმულის ჰოსტი, მთავარი ფოტო (ან გვერდის og:image), სტატუსი და ბმული.
+     *
+     * ⚠️ **დამალვა აქვე ითარგმნება ბარათის გასაღებზე.** კატალოგის გასაღებია
+     * `photo`, ბარათისა — `image`; ჰოსტი კი ბმულიდან გამოდის, ე.ი. დამალულ
+     * ბმულთან ერთად ისიც ქრება (`DERIVED`-ის წესი). საბაზისო დომენებზე ეს
+     * შეუსაბამობა ცალკე ამოცანაა (§33-ის შენიშვნა) — აქ ის თავიდანვე არ ჩნდება.
+     *
+     * ⚠️ `module` — რომელ მოდულს ეკუთვნის: `custom` ფსევდო-დომენში (დამთხვევა)
+     * ბარათები სხვადასხვა მოდულიდან მოდის.
+     *
+     * @param  list<string>  $hidden
+     */
+    private static function customCard(Model $record, array $hidden): array
+    {
+        $card = [
+            'title_en' => $record->title,
+            'subtitle' => $record->domain(),
+            'image' => $record->photo_path ?: $record->image_url,
+            'status' => StatusResource::brief($record->status),
+            'url' => $record->url,
+            'module' => $record->module,
+        ];
+
+        $drop = [
+            'url' => ['url', 'subtitle'],
+            'photo' => ['image'],
+            'status' => ['status'],
+        ];
+
+        foreach ($hidden as $key) {
+            foreach ($drop[$key] ?? [] as $field) {
+                unset($card[$field]);
             }
         }
 

@@ -4,10 +4,13 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
+use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
 use App\Services\Storage\StorageMeter;
+use App\Support\CustomModules;
+use App\Support\StorageFolder;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +37,9 @@ class CustomRecord extends Model
     /** §6 ფაზა 4b — დამატებით ველზე ატვირთული ფაილები (წაშლა → დისკი + კვოტა) */
     use HasCustomFields;
 
+    /** §37.4 — გალერეის მშობელი (`GalleryParent`): ვებიდან მოტანილი ფოტო და ვიდეო-ბმული */
+    use HasGallery;
+
     /** სტატუსი — `statuses` ლექსიკონი, დომენი = მოდულის გასაღები */
     use HasStatus;
 
@@ -42,6 +48,9 @@ class CustomRecord extends Model
 
     /** FEAT-11 → Tasks §29 — წაშლა ურნაშია (`moveToTrash()`) */
     use HasTrash;
+
+    /** morph alias, როცა მოდული ჯერ არ ვიცით (ცარიელი ინსტანცია) */
+    public const MORPH = 'custom_record';
 
     protected $guarded = ['id'];
 
@@ -63,7 +72,57 @@ class CustomRecord extends Model
      */
     protected static function booted(): void
     {
-        static::deleting(fn (CustomRecord $record) => $record->deletePhoto());
+        static::deleting(function (CustomRecord $record) {
+            $record->deletePhoto();
+            // §37.4 — `morphs()` FK-cascade-ს არ ქმნის (`HasGallery`-ის წესი)
+            $record->deleteGalleryMedia();
+        });
+    }
+
+    /**
+     * **ჩანაწერის query, რომლის მოდელმაც თავისი მოდული იცის** (Tasks §37.4).
+     *
+     * ⚠️ `forModule()` აქ არ კმარა. `withCount('galleryImages')`/`whereHas()`
+     * კავშირს **builder-ის მოდელზე** აგებს (`getRelationWithoutConstraints()`),
+     * ხოლო `CustomRecord::query()`-ის მოდელი ცარიელი ინსტანციაა — მისი
+     * `getMorphClass()` `custom_record`-ია და არა მოდულის გასაღები, ე.ი.
+     * ქვე-query `imageable_type = 'custom_record'`-ს ეძებდა და ყოველი ჯგუფი
+     * „0 ფოტოს" იტყოდა. ინსტანციის `newQuery()` builder-ს **ამ** ინსტანციას
+     * უკავშირებს — მოდულიანს.
+     */
+    public static function queryFor(string $module): Builder
+    {
+        return (new static)->setAttribute('module', $module)->newQuery()->forModule($module);
+    }
+
+    /**
+     * **morph alias — მოდულის გასაღები** (Tasks §37.4).
+     *
+     * ⚠️ `custom_record` ერთადერთი alias რომ ყოფილიყო, „ვისია ეს ფოტო" ყოველ
+     * გამოძახებაზე `custom_records`-თან join-ს მოითხოვდა, ხოლო მთელი პროექტი
+     * სხვაგვარად ფიქრობს: `imageable_type`, `trashed_files.record_type`,
+     * `trash_entries.record_type` — **მოდულის გასაღებია** (საბაზისო მოდულზე
+     * alias და key ერთი და იგივეა). ურნა ამ გასაღებით ეძებს უფლებას,
+     * საცავი — მოდულს (`StorageMeter::files()`), ჩანაწერის საბოლოო წაშლა —
+     * ურნაში მყოფ მთავარ ფოტოს (`CustomFieldService::purgeRecordFiles()`).
+     * `custom_record`-ით ეს სამივე ჩუმად ცდებოდა: ჩანაცვლებული ფოტო ურნაში
+     * არ ჩანდა და მოდულის ლიმიტში არ ითვლებოდა.
+     *
+     * ⚠️ **ცარიელ ინსტანციაზე `custom_record`-ია** — მოდული ჯერ უცნობია;
+     * ამიტომ არსებობს `queryFor()`. რუკაში გასაღები `CustomModules::registerMorph()`-ით
+     * ჯდება, რომ `MorphTo`-მ ის უკან ამოიცნოს.
+     */
+    public function getMorphClass()
+    {
+        $module = $this->getAttribute('module');
+
+        if (! CustomModules::isKey($module)) {
+            return self::MORPH;
+        }
+
+        CustomModules::registerMorph($module);
+
+        return $module;
     }
 
     /* ---------- რეესტრების კითხვები ---------- */
@@ -144,9 +203,16 @@ class CustomRecord extends Model
     /**
      * ატვირთული ფოტოს წაშლა დისკიდან — ზომა კვოტიდან აქვე მოიხსნება
      * (`StorageMeter::deleteUpload()`).
+     *
+     * ⚠️ **გალერეის ფაილი აქ არ იშლება** (§37.4, `Place::deletePhoto()`-ის წესი):
+     * „მთავარად დაყენება" სვეტს `gallery_images`-ის ფაილზე მიუთითებს და ის
+     * ფოტოს რიგს ეკუთვნის — აქ წაშლა მის ფაილს წაშლიდა, კვოტას კი ორჯერ
+     * დააბრუნებდა. წყაროს სვეტი არ არსებობს, ე.ი. ფესვით ვარჩევთ.
      */
     public function deletePhoto(): void
     {
-        app(StorageMeter::class)->deleteUpload($this->user_id, $this->photo_path);
+        if ($this->photo_path && ! StorageFolder::inGallery($this->photo_path)) {
+            app(StorageMeter::class)->deleteUpload($this->user_id, $this->photo_path);
+        }
     }
 }

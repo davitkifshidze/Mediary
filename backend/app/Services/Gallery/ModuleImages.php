@@ -10,6 +10,7 @@ use App\Models\BookFile;
 use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CourseFile;
+use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\GameFile;
 use App\Models\Movie;
@@ -22,6 +23,7 @@ use App\Models\Song;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoFile;
+use App\Support\CustomModules;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -111,13 +113,17 @@ class ModuleImages
     /**
      * ჯგუფები — თითო მოდული ერთი ბარათი (რაოდენობა, მოცულობა, ესკიზები).
      *
+     * ⚠️ §37.4 — **ამ ანგარიშის პირადი მოდულებიც** (ჩანაწერის მთავარი ფოტო):
+     * ისინი რუკაში ვერ ჩაიწერება (გასაღები ინტერფეისიდან იქმნება), ე.ი.
+     * ჩამოთვლას მფლობელის სია ავსებს.
+     *
      * @return list<array<string, mixed>>
      */
     public function groups(User $user, int $previews = 5): array
     {
         $out = [];
 
-        foreach (self::modules() as $module) {
+        foreach ([...self::modules(), ...CustomModules::keysOf($user)] as $module) {
             if (! $user->hasModule($module)) {
                 continue;
             }
@@ -176,10 +182,14 @@ class ModuleImages
     {
         $rows = [];
 
-        if ($source = self::RECORD_SOURCES[$module] ?? null) {
+        // §37.4 — პირადი მოდული: ერთი ცხრილი ყველასთვის, ე.ი. მოდულითაც იჭრება
+        $custom = CustomModules::isKey($module);
+        $source = self::RECORD_SOURCES[$module] ?? ($custom ? [CustomRecord::class, 'photo_path'] : null);
+
+        if ($source) {
             [$model, $column] = $source;
 
-            $records = $model::query()
+            $records = ($custom ? CustomRecord::queryFor($module) : $model::query())
                 ->withoutGlobalScope('owner')
                 ->where('user_id', $user->getKey())
                 ->whereNotNull($column)

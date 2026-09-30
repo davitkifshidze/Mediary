@@ -7,7 +7,6 @@ use App\Models\Playlist;
 use App\Models\User;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 
@@ -179,10 +178,16 @@ class PublicProfileService
      */
     private function domainsOf(array $publicModules): array
     {
-        return array_values(array_filter(
-            PublicDomain::keys(),
-            fn (string $d) => in_array(PublicDomain::module($d), $publicModules, true),
-        ));
+        return [
+            ...array_values(array_filter(
+                PublicDomain::keys(),
+                fn (string $d) => in_array(PublicDomain::module($d), $publicModules, true),
+            )),
+            /* §37.4 — პირადი მოდული თავისი დომენია (გასაღებით), საბაზისოების
+               შემდეგ. ⚠️ ფორმით და არა რუკით: მფლობელის `module_user`-ის რიგი
+               უკვე ამბობს, რომ მოდული მისია და საჯაროა. */
+            ...array_values(array_filter($publicModules, PublicDomain::isCustom(...))),
+        ];
     }
 
     /**
@@ -191,15 +196,23 @@ class PublicProfileService
      */
     public function query(User $user, string $domain): Builder
     {
-        /** @var class-string<Model> $model */
-        $model = PublicDomain::model($domain);
-
-        $q = $model::query()->withoutGlobalScope('owner');
+        // §37.4 — `PublicDomain::query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+        $q = PublicDomain::query($domain)->withoutGlobalScope('owner');
 
         // ცხრილის პრეფიქსი განზრახ: `series`-ს სხვა ცხრილი აქვს, ვიდრე კლასის სახელი,
         // და join-ის დამატება მოგვიანებით ორაზროვან `user_id`-ს გააჩენდა
         $q->where($q->getModel()->getTable().'.user_id', $user->id)
             ->where('visibility', 'public');
+
+        /* §37.4 — `custom` ფსევდო-დომენი (დამთხვევა): ყველა **საჯარო** პირადი
+           მოდული ერთად. ⚠️ მოდულის ფენა (`module_user.is_public`) აქ ამ სიით
+           მოწმდება — საჯარო ჩანაწერი დამალულ მოდულში ისევ არ ჩანს. */
+        if ($domain === PublicDomain::CUSTOM) {
+            $q->whereIn(
+                $q->getModel()->getTable().'.module',
+                array_values(array_filter($this->domains($user), PublicDomain::isCustom(...))),
+            );
+        }
 
         /* პლეილისტის ბარათი სიმღერების რაოდენობით ცოცხლობს.
 

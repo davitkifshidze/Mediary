@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\CustomRecord;
 use App\Models\Module;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use WeakMap;
 
@@ -149,6 +151,46 @@ final class CustomModules
     public static function of(User $user): Collection
     {
         return self::all()->filter(fn (Module $m) => (int) $m->owner_id === (int) $user->getKey());
+    }
+
+    /**
+     * ამ ანგარიშის პირადი მოდულების გასაღებები; სტუმარზე და CLI-ზე — ცარიელი.
+     *
+     * @return list<string>
+     */
+    public static function keysOf(?User $user): array
+    {
+        return $user ? self::of($user)->keys()->all() : [];
+    }
+
+    /**
+     * **მოდულის გასაღები morph alias-ადაც (Tasks §37.4).**
+     *
+     * პირადი ჩანაწერის `getMorphClass()` მისი მოდულის გასაღებია (`c5-recipes`)
+     * და არა `custom_record` — იხ. `CustomRecord::getMorphClass()`. გალერეის
+     * ფოტოს `imageable_type`-იდან ჩანაწერის აღდგენას (`MorphTo`) კი Laravel
+     * `Relation::morphMap()`-ს ეკითხება, სადაც ასეთი გასაღები ჯერ არ წერია.
+     *
+     * ⚠️ **ყველა პირადი გასაღები ერთსა და იმავე კლასზე მიდის**, ე.ი. დარეგისტრირება
+     * არასდროს ცდება — მოძველებული ჩანაწერიც სწორ კლასს ასახელებს. ამიტომ
+     * ბაზა აქ არ იკითხება: ფორმა (`isKey()`) საკმარისია.
+     *
+     * ⚠️ **`custom_record` რუკაში წინ რჩება.** `morphMap()` ახალ რუკას **წინ**
+     * სვამს (`$map + $old`), ე.ი. მის გარეშე `array_search(CustomRecord::class)`
+     * მოდულის გასაღებს დააბრუნებდა — აუდიტის `subject_type` გამოძახებების
+     * რიგზე დამოკიდებული გახდებოდა.
+     *
+     * ⚠️ **შემოწმება რუკას ეკითხება და არა სტატიკურ მემოს**:
+     * `enforceMorphMap()` ყოველ ჩატვირთვაზე რუკას **თავიდან წერს** (ტესტებში —
+     * ყოველ ტესტზე), ე.ი. „უკვე დავარეგისტრირე" მემო მომდევნო ტესტში იცრუებდა.
+     */
+    public static function registerMorph(?string $type): void
+    {
+        if (! self::isKey($type) || isset(Relation::morphMap()[$type])) {
+            return;
+        }
+
+        Relation::morphMap(['custom_record' => CustomRecord::class, $type => CustomRecord::class]);
     }
 
     /**

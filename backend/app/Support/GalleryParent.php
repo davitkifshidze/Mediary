@@ -5,11 +5,15 @@ namespace App\Support;
 use App\Models\Anime;
 use App\Models\Book;
 use App\Models\CastMember;
+use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\Place;
 use App\Models\Series;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * **ვის შეიძლება ეკიდოს გალერეის ფოტო/ვიდეო (Tasks §8.3).**
@@ -102,10 +106,31 @@ final class GalleryParent
     /** მსახიობის morph alias — ერთ ადგილას, რომ ლიტერალად აღარ ეწეროს */
     public const ACTOR = 'cast_member';
 
-    /** @return list<string> ყველა შესაძლო მშობელი */
-    public static function keys(): array
+    /**
+     * **პირადი მოდულის ჩანაწერის მთავარი ფოტო (Tasks §37.4)** — ადგილის ფორმა:
+     * წყაროს სვეტი არ არსებობს, ე.ი. გალერეიდან არჩეული ფოტო კვოტაში მეორედ
+     * არ ითვლება (`StorageMeter::files()` გალერეის ფესვს გამოტოვებს).
+     */
+    private const CUSTOM_PRIMARY = ['path' => 'photo_path', 'source' => null, 'value' => null];
+
+    /**
+     * ყველა შესაძლო მშობელი — საბაზისოები და **ამ ანგარიშის** პირადი მოდულები (§37.4).
+     *
+     * ⚠️ **პირადი მოდული გასაღებითვეა მშობელი** (`c5-recipes`) და არა ერთი
+     * `custom_record` ტიპით: გალერეის ჭრილს თითო მოდული ცალკე ტაბად სჭირდება
+     * თავისი სახელით, ფერით და ხატულით — ერთ „პირად" კალათაში ორი მოდულის
+     * ჩანაწერები ერთმანეთში აირეოდა (იხ. `CustomRecord::getMorphClass()`).
+     *
+     * ⚠️ **ჩამოთვლა მხოლოდ საკუთარ მოდულებს შეიცავს** — ვალიდაციის წესიც
+     * აქედან იგება (`rule()`), ე.ი. სხვისი პირადი გასაღები და უცნობი
+     * გასაღები ერთნაირ 422-ს იღებს: „ასეთი მოდული არსებობს" არ ჟონავს (Q28).
+     * `$for` საჯარო პროფილისთვისაა — იქ ჩამოთვლა **მფლობელისაა** და არა სტუმრის.
+     *
+     * @return list<string>
+     */
+    public static function keys(?User $for = null): array
     {
-        return array_keys(self::PARENTS);
+        return [...array_keys(self::PARENTS), ...self::customKeys($for)];
     }
 
     /**
@@ -113,25 +138,59 @@ final class GalleryParent
      *
      * @return list<string>
      */
-    public static function recordKeys(): array
+    public static function recordKeys(?User $for = null): array
     {
-        return array_values(array_diff(self::keys(), [self::ACTOR]));
+        return array_values(array_diff(self::keys($for), [self::ACTOR]));
     }
 
     public static function has(string $key): bool
     {
-        return isset(self::PARENTS[$key]);
+        return isset(self::PARENTS[$key]) || CustomModules::exists($key);
     }
 
-    /** @return class-string<Model>|null */
+    /**
+     * ⚠️ პირად გასაღებზე მოდელი **ფორმით** ბრუნდება და არა არსებობით —
+     * ჩანაწერს `query()` ეძებს მოდულის ფილტრით, ე.ი. უცნობი მოდული უბრალოდ
+     * ვერაფერს იპოვის (404).
+     *
+     * @return class-string<Model>|null
+     */
     public static function model(string $key): ?string
     {
-        return self::PARENTS[$key]['model'] ?? null;
+        return self::PARENTS[$key]['model'] ?? (CustomModules::isKey($key) ? CustomRecord::class : null);
     }
 
+    /** პირადი მოდულის მოდული თვითონ მისი გასაღებია */
     public static function module(string $key): ?string
     {
-        return self::PARENTS[$key]['module'] ?? null;
+        return self::PARENTS[$key]['module'] ?? (CustomModules::isKey($key) ? $key : null);
+    }
+
+    /**
+     * **მშობლის query — ერთადერთი გზა ჩანაწერამდე** (§37.4).
+     *
+     * ⚠️ `model($key)::query()` პირად მოდულზე ორ რამეს ცდებოდა: ერთი ცხრილი
+     * ყველა პირად მოდულს ემსახურება (მოდულის ფილტრი უნდა), ხოლო
+     * `withCount('galleryImages')` ცარიელი ინსტანციის morph-კლასს იყენებდა —
+     * იხ. `CustomRecord::queryFor()`.
+     */
+    public static function query(string $key): ?Builder
+    {
+        if (CustomModules::isKey($key)) {
+            return CustomRecord::queryFor($key);
+        }
+
+        $model = self::model($key);
+
+        return $model ? $model::query() : null;
+    }
+
+    /** @return list<string> */
+    private static function customKeys(?User $for): array
+    {
+        $user = $for ?? Auth::user();
+
+        return $user instanceof User ? CustomModules::keysOf($user) : [];
     }
 
     public static function category(string $key): string
@@ -146,7 +205,11 @@ final class GalleryParent
      */
     public static function primary(string $key): ?array
     {
-        return self::PARENTS[$key]['primary'] ?? null;
+        if (isset(self::PARENTS[$key])) {
+            return self::PARENTS[$key]['primary'];
+        }
+
+        return CustomModules::isKey($key) ? self::CUSTOM_PRIMARY : null;
     }
 
     /** ხატავს თუ არა ინტერფეისი „მთავარად დაყენების" ღილაკს */
@@ -186,10 +249,10 @@ final class GalleryParent
         return true;
     }
 
-    /** ვალიდაციის წესი — `in:cast_member,movie,series,…` */
-    public static function rule(): string
+    /** ვალიდაციის წესი — `in:cast_member,movie,series,…` (+ ამ ანგარიშის პირადი მოდულები) */
+    public static function rule(?User $for = null): string
     {
-        return 'in:'.implode(',', self::keys());
+        return 'in:'.implode(',', self::keys($for));
     }
 
     /**
@@ -199,8 +262,8 @@ final class GalleryParent
      * `MediaDomain::rule()`-ზე იყო მიბმული — ე.ი. სიმღერის ან წიგნის ტაბი
      * **422-ს** აბრუნებდა, თუმცა თვითონ სია ამ მშობლებს ისედაც ხატავდა.
      */
-    public static function recordRule(): string
+    public static function recordRule(?User $for = null): string
     {
-        return 'in:'.implode(',', self::recordKeys());
+        return 'in:'.implode(',', self::recordKeys($for));
     }
 }

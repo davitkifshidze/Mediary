@@ -16,7 +16,6 @@ use App\Support\DuplicateLink;
 use App\Support\GalleryParent;
 use App\Support\MissingCredential;
 use App\Support\VideoUrl;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -250,9 +249,8 @@ class WebSearchController extends Controller
         abort_unless($user->hasModule(GalleryParent::module($targetKey)), 403, 'module_disabled');
         abort_unless($user->hasPermission(GalleryParent::module($targetKey), 'update'), 403, 'forbidden');
 
-        /** @var class-string<Model> $model */
-        $model = GalleryParent::model($targetKey);
-        $parent = $model::findOrFail($data['id']);
+        // §37.4 — `query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
+        $parent = GalleryParent::query($targetKey)->findOrFail($data['id']);
 
         // ⚠️ `cast_member` **გლობალური ლექსიკონია** (მფლობელი არ აქვს) — ფოტო
         // კი ყოველთვის მომხმარებლისაა (`gallery_images.user_id`). დანარჩენ

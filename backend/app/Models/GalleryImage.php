@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\StoredFile;
 use App\Support\AlbumLock;
+use App\Support\CustomModules;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -69,6 +70,13 @@ class GalleryImage extends Model
                 ->whereNull($table.'.album_id')
                 ->orWhereNotIn($table.'.album_id', $hidden));
         });
+
+        /* §37.4 — პირადი მოდულის ჩანაწერზე მიბმული ფოტოს `imageable_type`
+           მოდულის გასაღებია (`CustomRecord::getMorphClass()`). ⚠️ `retrieved`
+           და არა `imageable()`-ში: eager-load (`with('imageable')`) კავშირს
+           ცარიელ ინსტანციაზე აგებს და მერე `Model::getActualClassNameForMorph()`-ს
+           ეკითხება — იქამდე რიგები უკვე ჩატვირთულია, ე.ი. რუკაც მზადაა. */
+        static::retrieved(fn (GalleryImage $image) => CustomModules::registerMorph($image->imageable_type));
     }
 
     public function imageable(): MorphTo

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
+use App\Support\CustomModules;
 use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -37,6 +38,12 @@ class GalleryVideo extends Model
         'sort_order' => 'integer',
         'published_at' => 'date',
     ];
+
+    /** §37.4 — პირადი მოდულის გასაღები morph-რუკაში (იხ. `GalleryImage::booted()`) */
+    protected static function booted(): void
+    {
+        static::retrieved(fn (GalleryVideo $video) => CustomModules::registerMorph($video->videoable_type));
+    }
 
     public function videoable(): MorphTo
     {

@@ -879,8 +879,15 @@
       "series": "both watched {{count}}",
       "game": "both finished {{count}}",
       "book": "both read {{count}}",
-      "board_game": "both own {{count}}"
-    }
+      "board_game": "both own {{count}}",
+      "anime": "both watched {{count}}",
+      "video": "both watched {{count}}",
+      "bookmark": "both read {{count}}",
+      "course": "both completed {{count}}",
+      "place": "both visited {{count}}",
+      "custom": "both done {{count}}"
+    },
+    "customModules": "Personal modules"
   },
   "people": {
     "title": "Similar taste",
@@ -3791,6 +3798,7 @@
     "yes": "Yes",
     "no": "No",
     "file": "File",
-    "statusesTitle": "Statuses"
+    "statusesTitle": "Statuses",
+    "gallery": "Gallery"
   }
 }

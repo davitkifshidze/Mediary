@@ -264,15 +264,12 @@ class RegistryConsistencyTest extends TestCase
      */
     public function test_every_visibility_table_is_a_public_domain_or_deliberately_excluded(): void
     {
-        // ცხრილს **მოდელს** ვეკითხებით — რუკაში მხოლოდ კლასი წერია
-        $tables = array_map(
-            fn (array $domain) => (new $domain['model'])->getTable(),
-            array_values(PublicDomain::DOMAINS),
-        );
+        /* ცხრილს **მოდელს** ვეკითხებით — რუკაში მხოლოდ კლასი წერია.
+           ⚠️ §37.4 — `tables()` პირადი მოდულების ცხრილსაც შეიცავს (`custom_records`):
+           მისი დომენები ინტერფეისიდან იქმნება და რუკაში ვერ ჩაიწერება. */
+        $tables = PublicDomain::tables();
 
-        /* ⚠️ `custom_records` — **დროებითი** (Tasks §37.4): პირადი მოდულის
-           საჯარო პროფილი მეორე ეტაპია და იქ ეს რიგი მოიხსნება. */
-        $excluded = ['note_entries', 'custom_records'];
+        $excluded = ['note_entries'];
         $missing = [];
 
         foreach ($this->tablesWithColumn('visibility') as $table) {
@@ -324,6 +321,18 @@ class RegistryConsistencyTest extends TestCase
     public function test_the_spa_public_domain_list_mirrors_the_backend(): void
     {
         $this->assertSame(PublicDomain::keys(), $this->tsConstList('api/publicProfile.ts', 'PUBLIC_DOMAINS'));
+    }
+
+    /**
+     * ⚠️ **SPA-ის `MATCH_DOMAINS` `PublicDomain::matchable()`-ის სარკეა** (ნაპოვნია §37.4-ზე).
+     *
+     * კურსი და ადგილი backend-ის დამთხვევაში FEAT-25/26-იდან იდგა, SPA-ის
+     * სიაში კი არა — ტიპი ამბობდა, რომ ასეთი დომენი არ არსებობს, სერვერი
+     * კი მათ რიგებს აბრუნებდა. §37.4-მა `custom` ფსევდო-დომენი დაამატა.
+     */
+    public function test_the_spa_match_domain_list_mirrors_the_backend(): void
+    {
+        $this->assertSame(PublicDomain::matchable(), $this->tsConstList('api/publicProfile.ts', 'MATCH_DOMAINS'));
     }
 
     /**

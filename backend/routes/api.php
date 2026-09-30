@@ -1096,8 +1096,10 @@ Route::middleware('auth:sanctum')->group(function () {
        განზრახ არ ეწერება — `playlist` მოდული არაა (ის `song`-ის შიგნითაა),
        ამიტომ ორივე შემოწმებას კონტროლერი თვითონ აკეთებს `PublicDomain`-ის
        რუკით. `PATCH`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა. */
+    /* §37.4 — `pattern()` და არა `whereIn(keys())`: პირადი მოდულის დომენი
+       მისი გასაღებია და მარშრუტის დარეგისტრირებისას ჯერ არ ვიცით. */
     Route::patch('/visibility/{domain}/{id}', [VisibilityController::class, 'update'])
-        ->whereIn('domain', PublicDomain::keys())->whereNumber('id');
+        ->where('domain', PublicDomain::pattern())->whereNumber('id');
 
     /* §6.1 — ხილვადობა **პროფილიდან** იმართება და აღარ ჩანაწერიდან, ე.ი.
        სია და მასობრივი გადართვა სჭირდება. ⚠️ `PATCH /{domain}` (მასობრივი) და
@@ -1105,9 +1107,9 @@ Route::middleware('auth:sanctum')->group(function () {
        ერთმანეთში — მაგრამ **ორივე `PATCH`-ია** იმავე მიზეზით: `POST`-იდან
        `EnsureModulePermission` `create`-ს გამოიყვანდა. */
     Route::get('/visibility/{domain}', [VisibilityController::class, 'index'])
-        ->whereIn('domain', PublicDomain::keys());
+        ->where('domain', PublicDomain::pattern());
     Route::patch('/visibility/{domain}', [VisibilityController::class, 'bulk'])
-        ->whereIn('domain', PublicDomain::keys());
+        ->where('domain', PublicDomain::pattern());
 
     /* ---------- სტატუსების ლექსიკონი (Tasks §6.2/§6.4) ----------
        ერთი endpoint ექვსივე დომენზე — `/visibility/{domain}`-ის ნიმუში.

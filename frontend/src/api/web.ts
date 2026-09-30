@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import type { CustomModuleKey } from '@/lib/customModules'
 
 /* ============================================================
    ძებნა ვებში (Tasks §7.5/§7.6).
@@ -237,7 +238,8 @@ export const SERP_IMPORT_TARGETS = [
   // Tasks §4.10 — ადგილი `GalleryParent`-ში FEAT-26-იდან დგას
   'place',
 ] as const
-export type SerpImportTarget = (typeof SERP_IMPORT_TARGETS)[number]
+/** §37.4 — პირადი მოდულის ჩანაწერიც სამიზნეა, მოდულის გასაღებით */
+export type SerpImportTarget = (typeof SERP_IMPORT_TARGETS)[number] | CustomModuleKey
 
 export interface SerpImportResult {
   added: number

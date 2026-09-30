@@ -162,7 +162,15 @@ function ProfileRow({
               {row.domains.map((d) => {
                 // შედარებად დომენებზე key მოდულის key-ს ემთხვევა (`playlist` აქ არ არის)
                 const m = modules[d.domain]
-                const name = m ? (lang === 'ka' ? m.name_ka : m.name_en) : d.domain
+                // §37.4 — `custom` ფსევდო-დომენია: ყველა პირადი მოდული ერთად
+                const name =
+                  d.domain === 'custom'
+                    ? t('matches.customModules')
+                    : m
+                      ? lang === 'ka'
+                        ? m.name_ka
+                        : m.name_en
+                      : d.domain
                 return (
                   <span key={d.domain} className="rounded bg-muted px-1.5 py-0.5">
                     {name} · {d.shared}
