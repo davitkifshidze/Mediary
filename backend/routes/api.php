@@ -328,7 +328,14 @@ Route::middleware('auth:sanctum')->group(function () {
        დგას: მოდული ჯერ არ არსებობს, ხოლო რედაქტირებისას მფლობელობას
        კონტროლერი ამოწმებს (სხვისი — 404). */
     Route::post('/modules', [CustomModuleController::class, 'store']);
+    Route::get('/modules/{key}/details', [CustomModuleController::class, 'details'])
+        ->where('key', CustomModules::PATTERN);
     Route::put('/modules/{key}/details', [CustomModuleController::class, 'update']);
+    /* §37.7 — პირადი მოდულის წაშლა (ურნაში, ჩანაწერებით). ⚠️ `where()` მხოლოდ
+       პირადის ფორმას უშვებს: „order" (`DELETE /modules/order`) და ნებისმიერი
+       საბაზისო გასაღები აქ ვერასდროს მოხვდება — საბაზისო მოდული არ იშლება. */
+    Route::delete('/modules/{key}', [CustomModuleController::class, 'destroy'])
+        ->where('key', CustomModules::PATTERN);
     /* Tasks §36 — **პირადი** რიგი (მთელი სია ერთი `PUT`-ით; `DELETE` = საერთოზე
        დაბრუნება). ⚠️ `{key}`-იან მარშრუტებზე ზემოთ დგას, რომ „order" მოდულის
        გასაღებად არასდროს წაიკითხოს — `PATCH /modules/{key}` სხვა მეთოდია,

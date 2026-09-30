@@ -21,6 +21,7 @@ use App\Support\AlbumLock;
 use App\Support\AuditLogTrash;
 use App\Support\ColumnTrash;
 use App\Support\CustomModules;
+use App\Support\CustomModuleTrash;
 use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
 use App\Support\SafeMime;
@@ -137,7 +138,8 @@ final class TrashBin
 
             $category = TrashDomain::category($kind);
             $groupBytes = match (true) {
-                $category === 'record' => array_sum(array_map(
+                // §37.7 — მოდულის ელემენტი: მისი ყველა ჩანაწერის ფაილები (`markTrash()`)
+                $category === 'record', $kind === CustomModuleTrash::KIND => array_sum(array_map(
                     fn (int $id) => $recordSizes["{$kind}:{$id}"] ?? 0,
                     (clone $query)->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 )),
@@ -253,6 +255,8 @@ final class TrashBin
             'title' => match (true) {
                 $chat => $this->messageTitle($row->message),
                 $byParent => $parent['title'],
+                // §37.7 — მოდულის სახელი ინტერფეისის ენაზე (ორივე `payload`-შია)
+                $kind === CustomModuleTrash::KIND => CustomModuleTrash::title($row),
                 default => $this->titleOf($kind, $row),
             },
             // ⚠️ ჩატის წერილზე — ვისთან იყო მიმოწერა (ის სერვერმა იცის, ენას არ ეკითხება)
@@ -267,7 +271,7 @@ final class TrashBin
                კლიენტში მისი ასლი პირველივე შეცვლაზე დაშორდებოდა. */
             'expires_in_days' => max(0, $days - (int) $row->trashed_at?->diffInDays(now())),
             'size' => match (true) {
-                $category === 'record' => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
+                $category === 'record', $kind === CustomModuleTrash::KIND => $recordSizes["{$kind}:{$row->getKey()}"] ?? 0,
                 $this->sized($kind) => (int) $row->getAttribute('size'),
                 default => 0,
             },
@@ -288,6 +292,8 @@ final class TrashBin
                 $kind === 'gallery_album' => count($row->trashed_photo_ids['ids'] ?? []),
                 // ეტაპი 7 — რამდენი ლოგის რიგი დაბრუნდება (სათაურს კლიენტი აწყობს — ენა)
                 $kind === AuditLogTrash::KIND => AuditLogTrash::count($row),
+                // §37.7 — რამდენი ჩანაწერი გადავიდა მოდულთან ერთად
+                $kind === CustomModuleTrash::KIND => CustomModuleTrash::count($row),
                 DictionaryTrash::has($kind) => DictionaryTrash::remembered($row),
                 default => null,
             },
@@ -339,8 +345,9 @@ final class TrashBin
             default => TrashEntry::withoutGlobalScope('owner')
                 ->where('user_id', $userId)
                 ->where('kind', $kind)
-                // ⚠️ აუდიტის ელემენტს მოდული არ აქვს — ის გამწმენდისაა (`AuditLogTrash`)
-                ->when($kind !== AuditLogTrash::KIND, fn (Builder $q) => $q->whereIn(
+                /* ⚠️ აუდიტის ელემენტს მოდული არ აქვს — ის გამწმენდისაა (`AuditLogTrash`);
+                   §37.7 — პირადი მოდულის ელემენტი კი თვითონ მოდულია და მფლობელისაა */
+                ->when(! in_array($kind, [AuditLogTrash::KIND, CustomModuleTrash::KIND], true), fn (Builder $q) => $q->whereIn(
                     'record_type',
                     $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']),
                 )),
@@ -419,6 +426,17 @@ final class TrashBin
                     'subject_label' => (string) $count,
                     'new_values' => ['rows' => $count, 'trashed' => false],
                 ]);
+
+                return;
+            }
+
+            // §37.7 — პირადი მოდული ბრუნდება ჩანაწერებთან ერთად; ელემენტი ქრება
+            if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
+                $reason = CustomModuleTrash::restore($row);
+
+                if ($reason) {
+                    $this->fail($reason, 409);
+                }
 
                 return;
             }
@@ -692,6 +710,8 @@ final class TrashBin
             $category === 'file', $category === 'message' => true,
             // ⚠️ აუდიტის ელემენტი ყოველთვის ჩანს — უფლება მხოლოდ აღდგენას ეკითხება (29.8)
             $kind === AuditLogTrash::KIND => true,
+            // §37.7 — საკუთარი მოდული; უფლება მფლობელობაა (`query()`-ის `user_id`)
+            $kind === CustomModuleTrash::KIND => true,
             $category === 'entry' => $this->permitted($user, MediaDomain::TYPES, (string) TrashDomain::ENTRIES[$kind]['permission']) !== [],
             $category === 'item' && isset(TrashDomain::ITEMS[$kind]['module_column']) => $this->permitted($user, $this->columnModules($kind), 'delete') !== [],
             default => ($module = $this->moduleOf($kind)) !== null && $user->hasPermission($module, 'delete'),
@@ -712,6 +732,9 @@ final class TrashBin
     private function rowModule(string $kind, Model $row): ?string
     {
         return match (true) {
+            /* §37.7 — მოდულის ელემენტს „მოდულის ჩართულობა" არ ეკითხება: ის თვითონ
+               ურნაში მყოფი მოდულია, ე.ი. `hasModule()` ყოველთვის `false` იქნებოდა */
+            $row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND => null,
             $row instanceof TrashEntry => $row->record_type,
             $row instanceof TrashedFile => in_array($row->kind, ['field_file', 'record_photo'], true) ? $row->record_type : null,
             isset(TrashDomain::ITEMS[$kind]['module_column']) => (string) $row->getAttribute(TrashDomain::ITEMS[$kind]['module_column']),
@@ -800,6 +823,13 @@ final class TrashBin
         // ⚠️ ეტაპი 7 — როლი რომ დაკარგოს, ელემენტი ჩანს, მაგრამ აღდგენა `admin:audit`-ს ითხოვს
         if ($row instanceof TrashEntry && $row->kind === AuditLogTrash::KIND) {
             return $user->hasAdminAccess('audit', 'delete') ? null : 'permission_missing';
+        }
+
+        // §37.7 — მოდული ისევ უნდა არსებობდეს და ურნაში იყოს
+        if ($row instanceof TrashEntry && $row->kind === CustomModuleTrash::KIND) {
+            return Module::withoutGlobalScope('trash')->whereKey($row->record_id)->whereNotNull('trashed_at')->exists()
+                ? null
+                : 'parent_missing';
         }
 
         if ($row instanceof TrashEntry) {
@@ -1137,7 +1167,9 @@ final class TrashBin
         foreach ($this->meter->markTrash($user, $this->meter->files($user)) as $file) {
             $key = $file['trash'] ?? null;
 
-            if ($key && TrashDomain::category(strstr($key, ':', true)) === 'record') {
+            $kind = $key ? strstr($key, ':', true) : null;
+
+            if ($key && (TrashDomain::category($kind) === 'record' || $kind === CustomModuleTrash::KIND)) {
                 $sizes[$key] = ($sizes[$key] ?? 0) + (int) $file['size'];
             }
         }

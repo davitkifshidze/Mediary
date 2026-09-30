@@ -232,6 +232,21 @@ final class CustomFields
         return CustomModules::exists($module) ? CustomModules::VALUES_TABLE : null;
     }
 
+    /**
+     * **მნიშვნელობების ცხრილი — არსებობის შემოწმების გარეშე (Tasks §37.7).**
+     *
+     * ⚠️ `table()` პირად მოდულზე მხოლოდ **ხილულ** მოდულს პასუხობს — ურნაში
+     * მყოფი მოდული „არ არსებობს". წაშლისა და აღრიცხვის გზებს კი სწორედ ასეთი
+     * მოდული ხვდებათ: ჩანაწერის საბოლოო წაშლა (`purgeRecordFiles()`), ანგარიშის
+     * წაშლის მეორე ფენა და გეგმის ბაიტები. `table()`-ით ველის ფაილები **ჩუმად**
+     * გამოტოვდებოდა — დისკზე დარჩებოდა და კვოტა არასდროს დაბრუნდებოდა.
+     * ⚠️ API-ს კარი ისევ `table()`/`supports()`-ია: იქ უცნობი გასაღები 404-ია.
+     */
+    public static function storageTable(string $module): ?string
+    {
+        return self::TABLE_BY_MODULE[$module] ?? (CustomModules::isKey($module) ? CustomModules::VALUES_TABLE : null);
+    }
+
     /** **საბაზისო** მოდულები, რომლებსაც მორგებული ველები აქვთ (პირადი — `supports()`) */
     public static function modules(): array
     {

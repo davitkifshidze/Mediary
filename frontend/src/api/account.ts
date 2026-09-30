@@ -306,6 +306,25 @@ export async function updateCustomModule(key: string, input: CustomModuleDetails
   return data.data
 }
 
+/** §37.7 — წაშლის დადასტურების რიცხვები: ცოცხალი ჩანაწერები, დაკავებული ადგილი, ურნის ვადა */
+export interface CustomModuleCounts {
+  records: number
+  bytes: number
+  keep_days: number
+}
+
+export async function fetchCustomModuleCounts(key: string): Promise<CustomModuleCounts> {
+  const { data } = await api.get(`/modules/${key}/details`)
+  return data
+}
+
+/** §37.7 — მოდული ურნაში, ჩანაწერებთან ერთად (აღდგება ურნის ვადაში) */
+export async function deleteCustomModule(key: string): Promise<{ trashed: boolean; records: number; trash_id: number }> {
+  const { data } = await api.delete(`/modules/${key}`)
+  return data
+}
+
+
 export interface ApprovalRequestItem {
   id: number
   /** `upload_limit` — Tasks §34.5 (ფორმატი ან ზომა; `payload.granted_scope` დამტკიცებისას) */

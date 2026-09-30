@@ -998,7 +998,8 @@ class PurgeService
      */
     private function customFieldBytes(User $user, string $target, array $ids): int
     {
-        $table = CustomFields::table($target);
+        // ⚠️ §37.7 — `storageTable()`: ანგარიშის წაშლა ურნაში მყოფ მოდულსაც ასუფთავებს
+        $table = CustomFields::storageTable($target);
 
         if (! $table) {
             return 0;

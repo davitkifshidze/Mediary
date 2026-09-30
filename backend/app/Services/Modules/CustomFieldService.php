@@ -463,7 +463,8 @@ class CustomFieldService
     public function purgeRecordFiles(Model $record): void
     {
         $module = CustomFields::moduleOf($record);
-        $table = $module ? CustomFields::table($module) : null;
+        // ⚠️ §37.7 — `storageTable()`: ურნაში მყოფი მოდულის ჩანაწერიც აქ იშლება
+        $table = $module ? CustomFields::storageTable($module) : null;
 
         if (! $table) {
             return;

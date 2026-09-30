@@ -135,6 +135,25 @@ const payload: TrashPayload = {
         },
       ],
     },
+    // Tasks §37.7 — პირადი მოდული ჩანაწერებთან ერთად, ერთ ელემენტად
+    {
+      kind: 'custom_module',
+      category: 'entry',
+      module: null,
+      name_ka: null,
+      name_en: null,
+      icon: null,
+      color: null,
+      total: 1,
+      bytes: 4096,
+      items: [
+        {
+          id: 31, title: 'Recipes', subtitle: null, trashed_at: '2026-09-30T10:00:00+04:00',
+          expires_in_days: 30, size: 4096, preview: null, locked: false, when: null, count: 3, module: null,
+          offers_records: false, replaceable: false, scope: null, parent: null, restorable: true, blocked: null,
+        },
+      ],
+    },
   ],
 }
 
@@ -251,6 +270,28 @@ describe('TrashPage', () => {
     expect(li.textContent).not.toContain(i18n.t('trash.recordsMoved', { count: 42 }))
     expect(li.textContent).toContain(i18n.t('trash.blocked.permission_missing'))
     expect(restoreButton(li).disabled).toBe(true)
+  })
+
+  /* ⚠️ §37.7 — მოდული ერთი ელემენტია: „რამდენი ჩანაწერით" მისი ხაზია
+     (კლასიფიკატორის „წაშლამ გადაიტანა" აქ ტყუილი იქნებოდა), და საბოლოო
+     წაშლის დადასტურება ფაილებსაც ასახელებს */
+  it('shows a trashed module as one element with its records', async () => {
+    await mount()
+
+    const headings = [...document.querySelectorAll('h2')].map((h2) => h2.textContent)
+    expect(headings).toContain(i18n.t('trash.kinds.custom_module'))
+
+    const li = row('Recipes')
+    expect(li.textContent).toContain(i18n.t('trash.moduleRecords', { count: 3 }))
+    expect(li.textContent).not.toContain(i18n.t('trash.recordsMoved', { count: 3 }))
+
+    const remove = [...li.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('trash.deleteNow'))) as HTMLButtonElement
+    await act(async () => remove.click())
+    await flush()
+
+    expect(document.body.textContent).toContain(
+      i18n.t('trash.deleteModuleHint', { name: 'Recipes', count: 3, size: formatBytes(4096) }),
+    )
   })
 
   it('restores by kind and id', async () => {

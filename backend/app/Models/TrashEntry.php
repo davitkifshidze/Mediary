@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Support\CustomModuleTrash;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -27,4 +28,20 @@ class TrashEntry extends Model
         'payload' => 'array',
         'trashed_at' => 'datetime',
     ];
+
+    /**
+     * ⚠️ **§37.7 — პირადი მოდულის ელემენტის წაშლა მოდულის საბოლოო წაშლაა.**
+     * მოვლენაზეა და არა `TrashBin`-ის სამ გზაზე (ხელით წაშლა, დაცლა, ვადის
+     * გასვლა) ცალ-ცალკე — მეოთხე გზა ერთ დღეს დაივიწყებდა და ჩანაწერები
+     * FK-კასკადით, ფაილების გარეშე გაქრებოდა. აღდგენის წაშლას `erase()`
+     * თვითონ ცნობს (მოდული ურნაში აღარაა) და არაფერს ეხება.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (TrashEntry $entry) {
+            if ($entry->kind === CustomModuleTrash::KIND) {
+                CustomModuleTrash::erase($entry);
+            }
+        });
+    }
 }

@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Ban, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, UserRound, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Ban, Clock, Loader2, Lock, LockOpen, RotateCcw, SquarePen, Send, Trash2, UserRound, Users, X } from 'lucide-react'
 import {
   cancelRequest,
+  deleteCustomModule,
   fetchAdminModules,
+  fetchCustomModuleCounts,
   fetchModuleFields,
   fetchMyRequests,
   fetchUsers,
@@ -42,7 +44,7 @@ import { PageContainer } from '@/components/ui/page'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
    მოდულის შიდა გვერდი (Tasks 1.4) — მოდალის ჩამნაცვლებელი.
@@ -57,6 +59,8 @@ export function ModulePage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const confirm = useConfirm()
+  const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { all } = useModules()
 
@@ -121,6 +125,44 @@ export function ModulePage() {
   })
 
   const cancel = useMutation({ mutationFn: cancelRequest, onSuccess: done, onError: fail })
+
+  /* §37.7 — **მოდულის წაშლა ურნაში** (Q31): ჩვეულებრივი დადასტურება, რომელიც
+     რაოდენობას ასახელებს — წაშლა შექცევადია, აკრეფილი სიტყვა კი შეუქცევადისთვისაა.
+     ⚠️ რიცხვი წაშლის წინ იკითხება (`/details`): ჩანაწერების სია ადმინის მიერ
+     გამორთულ მოდულზე 403-ია და მისგან ვერ წაიკითხებოდა. */
+  const remove = useMutation({
+    mutationFn: () => deleteCustomModule(key),
+    onSuccess: (res) => {
+      done()
+      qc.invalidateQueries({ queryKey: ['trash'] })
+      toast({ title: t('customModules.deleted', { count: res.records }), variant: 'success' })
+      navigate('/modules')
+    },
+    onError: fail,
+  })
+
+  const askDelete = async () => {
+    let counts
+    try {
+      counts = await fetchCustomModuleCounts(key)
+    } catch (e) {
+      fail(e)
+      return
+    }
+
+    const ok = await confirm({
+      title: t('customModules.deleteTitle', { name: module ? moduleName(module, i18n.language) : key }),
+      description: t('customModules.deleteHint', {
+        count: counts.records,
+        size: formatBytes(counts.bytes),
+        days: counts.keep_days,
+      }),
+      confirmText: t('customModules.deleteConfirm'),
+      variant: 'destructive',
+    })
+
+    if (ok) remove.mutate()
+  }
 
   if (!module) {
     return (
@@ -193,6 +235,10 @@ export function ModulePage() {
             <Button variant="edit" onClick={() => setEditingDetails(true)}>
               <SquarePen className="size-4" />
               {t('customModules.editTitle')}
+            </Button>
+            <Button variant="destructive" disabled={remove.isPending} onClick={askDelete}>
+              <Trash2 className="size-4" />
+              {t('customModules.delete')}
             </Button>
           </div>
         )}

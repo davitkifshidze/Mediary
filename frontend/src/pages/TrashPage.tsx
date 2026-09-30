@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArchiveRestore,
   BellRing,
+  Blocks,
   DatabaseBackup,
   Eye,
   Folder,
@@ -87,6 +88,8 @@ function kindIcon(kind: string): ReactNode {
   if (kind === 'chat_file') return <MessageSquare />
   if (kind === 'chat_message') return <MessageSquareText />
   if (kind === 'audit_log') return <ScrollText />
+  // §37.7 — პირადი მოდული, ჩანაწერებთან ერთად
+  if (kind === 'custom_module') return <Blocks />
   if (kind === 'field_file') return <FormInput />
   if (kind.endsWith('_note')) return <StickyNote />
   if (kind === 'playlist') return <ListMusic />
@@ -189,7 +192,9 @@ export function TrashPage() {
             ? t('trash.deleteMessageHint', { name: item.title })
             : group.kind === 'audit_log'
               ? t('trash.deleteAuditHint', { count: item.count ?? 0 })
-              : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
+              : group.kind === 'custom_module'
+                ? t('trash.deleteModuleHint', { name: item.title, count: item.count ?? 0, size: formatBytes(item.size) })
+                : t('trash.deleteFileHint', { name: item.title, size: formatBytes(item.size) }),
       confirmText: t('confirm.delete'),
       variant: 'destructive',
     })
@@ -291,7 +296,9 @@ export function TrashPage() {
                           <span className="block text-xs text-muted-foreground">
                             {group.kind === 'gallery_album'
                               ? t('trash.albumPhotos', { count: item.count })
-                              : t('trash.recordsMoved', { count: item.count })}
+                              : group.kind === 'custom_module'
+                                ? t('trash.moduleRecords', { count: item.count })
+                                : t('trash.recordsMoved', { count: item.count })}
                           </span>
                         )}
                         <Expiry item={item} />

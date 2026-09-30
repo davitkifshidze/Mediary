@@ -3440,7 +3440,8 @@
       "audit_log": "Audit log clean-ups",
       "custom_category": "Personal module classifier",
       "custom_record_file": "Custom module files",
-      "custom_record_note": "Custom module notes"
+      "custom_record_note": "Custom module notes",
+      "custom_module": "Modules"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3459,7 +3460,9 @@
     },
     "deleteMessageHint": "“{{name}}” leaves the trash and can no longer be restored. The message stays out of the chat but remains in the database, like every deleted chat message.",
     "auditTitle": "Audit log: {{count}} entries",
-    "deleteAuditHint": "{{count}} log entries are deleted for good — nothing stays in the trash."
+    "deleteAuditHint": "{{count}} log entries are deleted for good — nothing stays in the trash.",
+    "moduleRecords": "With its records: {{count}}",
+    "deleteModuleHint": "“{{name}}” and its records ({{count}}) will be deleted for good, files included — {{size}} will be freed. This cannot be undone."
   },
   "watchLog": {
     "title": "Watches",
@@ -3823,6 +3826,11 @@
     "docsEmpty": "No documents yet.",
     "notesTitle": "Notes",
     "notePlaceholder": "e.g. “add the salt last”",
-    "notesEmpty": "No notes yet."
+    "notesEmpty": "No notes yet.",
+    "delete": "Delete module",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteHint": "The module and its records ({{count}}) will go to the trash, files included ({{size}}). You can restore it within {{days}} days — after that everything is deleted for good.",
+    "deleteConfirm": "Move to trash",
+    "deleted": "The module and its records ({{count}}) are in the trash — restore them from there"
   }
 }

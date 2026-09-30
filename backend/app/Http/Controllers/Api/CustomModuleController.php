@@ -9,9 +9,12 @@ use App\Models\Module;
 use App\Models\Status;
 use App\Services\Modules\CustomFieldService;
 use App\Services\Notify\Notifier;
+use App\Services\Storage\StorageMeter;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
+use App\Support\CustomModuleTrash;
 use App\Support\NotificationType;
+use App\Support\UserSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -162,6 +165,51 @@ class CustomModuleController extends Controller
         CustomModules::flush();
 
         return new ModuleResource($this->decorate($module, $request->user()));
+    }
+
+    /**
+     * **წაშლის დადასტურების რიცხვები (§37.7)** — „მოდული და მისი N ჩანაწერი
+     * ურნაში გადავა".
+     *
+     * ⚠️ ცალკე endpoint-ი და არა `GET /modules`-ის ველი: სია ყოველ გვერდზე
+     * იკითხება, რიცხვი კი მხოლოდ წაშლის ღილაკს სჭირდება. ⚠️ ადმინის მიერ
+     * გამორთულ მოდულზეც მუშაობს — ჩანაწერების სია მაშინ 403-ია და რიცხვი
+     * იქიდან ვერ წაიკითხებოდა.
+     */
+    public function details(Request $request, string $key, StorageMeter $meter)
+    {
+        $module = $this->owned($request, $key);
+
+        return response()->json([
+            'records' => CustomModuleTrash::liveRecords($module),
+            'bytes' => $meter->usedByModule($request->user(), $key),
+            'keep_days' => UserSettings::trashDays($request->user()),
+        ]);
+    }
+
+    /**
+     * **მოდულის წაშლა — ურნაში, ჩანაწერებთან ერთად (§37.7, Q31).**
+     *
+     * ⚠️ **მხოლოდ მფლობელი და მხოლოდ პირადი** — `owned()` საბაზისოსაც და
+     * სხვისასაც 404-ით პასუხობს, მარშრუტის `where()` კი საბაზისო გასაღებს აქ
+     * საერთოდ ვერ უშვებს. ⚠️ **აკრეფილი სიტყვა არ სჭირდება** — წაშლა
+     * შექცევადია (ურნა), აკრეფილი სიტყვა კი შეუქცევადისთვისაა.
+     * ⚠️ **სუპერადმინი შეტყობინებას იღებს** (`module_deleted`) — შექმნის
+     * იგივე წესით: ყველა აქტიური, გარდა თვითონ წამშლელისა.
+     */
+    public function destroy(Request $request, string $key, Notifier $notifier)
+    {
+        $user = $request->user();
+        $module = $this->owned($request, $key);
+
+        $entry = CustomModuleTrash::trash($user, $module);
+        $records = CustomModuleTrash::count($entry);
+
+        $user->unsetRelation('modules');
+
+        $notifier->toAdmins(NotificationType::MODULE_DELETED, [...$this->notice($module, $user), 'records' => $records], except: $user);
+
+        return response()->json(['trashed' => true, 'records' => $records, 'trash_id' => $entry->getKey()]);
     }
 
     /* ---------- დამხმარეები ---------- */

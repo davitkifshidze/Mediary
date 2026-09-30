@@ -24,6 +24,7 @@ use App\Services\Notify\Notifier;
 use App\Support\ColumnTrash;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
+use App\Support\CustomModuleTrash;
 use App\Support\GalleryParent;
 use App\Support\NotificationType;
 use App\Support\StorageFolder;
@@ -1013,7 +1014,8 @@ class StorageMeter
            `CustomFieldService::clearFile()`-ს აქვს — საცავის გვერდი და
            ბარათი ვერ უნდა დაშორდნენ ერთმანეთს. */
         if ($file['owner_type'] === 'field_value') {
-            $table = CustomFields::table($file['module']);
+            // ⚠️ §37.7 — `storageTable()`: ურნაში მყოფი მოდულის ველის ფაილიც აქ იშლება
+            $table = CustomFields::storageTable($file['module']);
             $row = DB::table($table)->where('user_id', $user->getKey())->where('id', $ownerId)->first();
 
             if (! $row) {
@@ -1517,10 +1519,20 @@ class StorageMeter
                 ->all();
         }
 
-        return $files->map(function (array $f) use ($parentOf, $trashed) {
+        /* ⚠️ **§37.7 — ურნაში მყოფი პირადი მოდულის ყველა ფაილი მის ელემენტს
+           ეკუთვნის** (`custom_module:{id}`), თვითონ ურნაში მყოფი ფაილიც: მოდული
+           ერთ ელემენტად გადავიდა, ე.ი. „რა თავისუფლდება" მთელ მოდულს ეხება, და
+           ბიბლიოთეკა მის ფაილებს ჩვეულებრივად აღარ აჩვენებს. გალერეის ფოტო
+           მოდულის ჩანაწერზე მშობლით იცნობა (`_parent`). */
+        $trashedModules = CustomModuleTrash::entriesOf($user);
+
+        return $files->map(function (array $f) use ($parentOf, $trashed, $trashedModules) {
             $parent = $parentOf($f);
+            $moduleEntry = $trashedModules[(string) ($f['module'] ?? '')]
+                ?? ($parent !== null ? ($trashedModules[$parent[0]] ?? null) : null);
 
             $f['trash'] = match (true) {
+                $moduleEntry !== null => CustomModuleTrash::KIND.':'.$moduleEntry,
                 (bool) ($f['_trashed'] ?? false) => ($f['_trash_kind'] ?? $f['owner_type']).':'.$f['owner_id'],
                 $parent !== null && isset($trashed[$parent[0]][$parent[1]]) => $parent[0].':'.$parent[1],
                 default => null,

@@ -9,6 +9,7 @@ use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
+use WeakMap;
 
 /**
  * **Tasks §16.1 — საჯარო პროფილის ერთადერთი წყარო.**
@@ -36,14 +37,24 @@ class PublicProfileService
     /**
      * `user_id` => მისი საჯარო დომენები (ერთი რექვესთის სიცოცხლე, Tasks PERF-06).
      *
-     * ⚠️ **ინსტანციისაა და არა სტატიკური** — სერვისი რექვესთზე ერთხელ იქმნება,
-     * ე.ი. მემო თავისით ცხრება; სტატიკური კი ტესტებში (და Octane-ზე) შემდეგ
-     * მოთხოვნაზე გადაყვებოდა, ზუსტად ის ხაფანგი, რაც `AlbumLock`-ს ერთხელ
-     * დაემართა.
+     * ⚠️ **გასაღები მიმდინარე `Request`-ია და არა ეს ინსტანცია** (Tasks §37.7,
+     * `PublicGallery::remember()`-ის §32-ის გაკვეთილი). აქამდე docblock ამბობდა
+     * „სერვისი რექვესთზე ერთხელ იქმნება, ე.ი. მემო თავისით ცხრება" — ეს
+     * სიმართლე არ არის: `Route::getController()` კონტროლერს **მარშრუტზე**
+     * იმახსოვრებს, ე.ი. ტესტში (და Octane-ზე) მომდევნო მოთხოვნა იმავე სერვისს და
+     * იმავე მემოს იღებდა. ურნაში გადატანილი საჯარო მოდული ამიტომ მეორე
+     * მოთხოვნაზე ისევ პროფილზე ჩანდა. ⚠️ სტატიკური კი არასდროს — ის პროცესს
+     * მთლიანად გადაყვებოდა (`AlbumLock`-ის ძველი ხაფანგი).
      *
-     * @var array<int, list<string>>
+     * @var WeakMap<object, array<int, list<string>>>|null
      */
-    private array $domainsMemo = [];
+    private ?WeakMap $domainsMemo = null;
+
+    /** მემოს მიმდინარე ნაწილი — მოთხოვნით (CLI-ზე ინსტანციით) */
+    private function domainsScope(): object
+    {
+        return app()->bound('request') ? app('request') : $this;
+    }
 
     /**
      * პროფილი username-ით — **მხოლოდ საჯარო და აქტიური**.
@@ -106,11 +117,15 @@ class PublicProfileService
     public function domains(User $user): array
     {
         $id = (int) $user->id;
+        $this->domainsMemo ??= new WeakMap;
+        $scope = $this->domainsScope();
+        $bag = $this->domainsMemo[$scope] ?? [];
 
-        if (isset($this->domainsMemo[$id])) {
-            return $this->domainsMemo[$id];
+        if (isset($bag[$id])) {
+            return $bag[$id];
         }
 
+        // ⚠️ რელაცია `Module`-ის `trash` scope-ს ატარებს — ურნაში მყოფი მოდული (§37.7) აქ არ ჩანს
         $publicModules = $user->modules()
             ->where('modules.is_active', true)
             ->wherePivot('is_public', true)
@@ -118,7 +133,10 @@ class PublicProfileService
             ->pluck('modules.key')
             ->all();
 
-        return $this->domainsMemo[$id] = $this->domainsOf($publicModules);
+        $bag[$id] = $this->domainsOf($publicModules);
+        $this->domainsMemo[$scope] = $bag;
+
+        return $bag[$id];
     }
 
     /**
@@ -137,10 +155,14 @@ class PublicProfileService
      */
     public function warmDomains(iterable $users): void
     {
+        $this->domainsMemo ??= new WeakMap;
+        $scope = $this->domainsScope();
+        $bag = $this->domainsMemo[$scope] ?? [];
+
         $ids = [];
         foreach ($users as $user) {
             $id = (int) $user->id;
-            if (! isset($this->domainsMemo[$id])) {
+            if (! isset($bag[$id])) {
                 $ids[$id] = $id;
             }
         }
@@ -151,8 +173,12 @@ class PublicProfileService
 
         $byUser = [];
 
+        /* ⚠️ **§37.7 — `DB::table()` global scope-ს არ ატარებს**, ე.ი. ურნაში
+           მყოფი საჯარო მოდული აქ ცხადად იჭრება: სხვაგვარად `/people`-ის რეიტინგი
+           მას ისევ ითვლიდა, მაშინ როცა პროფილი (`domains()`) უკვე აღარ. */
         DB::table('module_user')
             ->join('modules', 'modules.id', '=', 'module_user.module_id')
+            ->whereNull('modules.trashed_at')
             ->where('modules.is_active', true)
             ->where('module_user.is_public', true)
             ->where('module_user.is_hidden', false)
@@ -163,8 +189,10 @@ class PublicProfileService
             });
 
         foreach ($ids as $id) {
-            $this->domainsMemo[$id] = $this->domainsOf($byUser[$id] ?? []);
+            $bag[$id] = $this->domainsOf($byUser[$id] ?? []);
         }
+
+        $this->domainsMemo[$scope] = $bag;
     }
 
     /**
