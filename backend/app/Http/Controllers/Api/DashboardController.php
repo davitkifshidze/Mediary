@@ -18,6 +18,7 @@ use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\Video;
+use App\Support\ModuleOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -66,10 +67,8 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $modules = Module::where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+        // Tasks §36.2 — ბარათები მენიუსა და `/modules`-ის რიგით (თითო მომხმარებლის)
+        $modules = ModuleOrder::sort(Module::where('is_active', true)->get(), $user);
 
         // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
         $mine = $modules->filter(fn (Module $module) => $user->hasModule($module->key));

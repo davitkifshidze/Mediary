@@ -317,6 +317,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/uploads/limits', [UploadLimitController::class, 'index']);
 
     Route::get('/modules', [ModuleController::class, 'index']);
+    /* Tasks §36 — **პირადი** რიგი (მთელი სია ერთი `PUT`-ით; `DELETE` = საერთოზე
+       დაბრუნება). ⚠️ `{key}`-იან მარშრუტებზე ზემოთ დგას, რომ „order" მოდულის
+       გასაღებად არასდროს წაიკითხოს — `PATCH /modules/{key}` სხვა მეთოდია,
+       მაგრამ ეს რიგი მომავალ `PUT|DELETE /modules/{key}`-საც დაიცავს. */
+    Route::put('/modules/order', [ModuleController::class, 'saveOrder']);
+    Route::delete('/modules/order', [ModuleController::class, 'resetOrder']);
     Route::put('/modules/{key}/settings', [ModuleController::class, 'updateSettings']);
     // §6 (ფაზა 1) — რომელი არჩევითი ველი ჩანს მოდულის ფორმაზე.
     // `PUT`: POST-ს `permission:` middleware `create`-ად წაიკითხავდა.
@@ -1187,6 +1193,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /* ---------- სუპერ-ადმინი (გლობალური და დესტრუქციული) ---------- */
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/modules', [AdminModuleController::class, 'index']);
+        /* Tasks §36.3 — საერთო რიგი („ყველასთვის ნაგულისხმევად"). ⚠️ `{module}`-ზე
+           ზემოთ: მომავალი `PUT /modules/{module}` „order"-ს id-ად წაიკითხავდა. */
+        Route::put('/modules/order', [AdminModuleController::class, 'saveDefaultOrder']);
         Route::patch('/modules/{module}', [AdminModuleController::class, 'update']);
 
         /* **ინსტალაციის პარამეტრები (Tasks §34.1)** — ყველა ანგარიშს ეხება,

@@ -391,6 +391,20 @@ export async function fetchModules(): Promise<ModuleInfo[]> {
   return data.data
 }
 
+/**
+ * **პირადი რიგი** (Tasks §36) — მთელი სია ერთი მოთხოვნით; პასუხი **ჩაწერილს**
+ * აბრუნებს (უცნობი/უხილავი გასაღები სერვერზე ჩუმად იშლება).
+ */
+export async function saveModuleOrder(keys: string[]): Promise<string[]> {
+  const { data } = await api.put('/modules/order', { keys })
+  return data.order
+}
+
+/** პირადი რიგის წაშლა — საერთო (სუპერადმინის) რიგზე დაბრუნება */
+export async function resetModuleOrder(): Promise<void> {
+  await api.delete('/modules/order')
+}
+
 export async function fetchMyRequests(): Promise<ApprovalRequestItem[]> {
   const { data } = await api.get('/requests')
   return data.data
@@ -890,6 +904,15 @@ export async function deleteUser(id: number): Promise<void> {
 export async function fetchAdminModules(): Promise<ModuleInfo[]> {
   const { data } = await api.get('/admin/modules')
   return data.data
+}
+
+/**
+ * **„ეს რიგი ყველასთვის ნაგულისხმევად"** (Tasks §36.3, მხოლოდ super_admin) —
+ * `modules.sort_order`; პირადი რიგის მქონე თავისას ინარჩუნებს.
+ */
+export async function saveDefaultModuleOrder(keys: string[]): Promise<string[]> {
+  const { data } = await api.put('/admin/modules/order', { keys })
+  return data.order
 }
 
 export async function updateModule(id: number, input: Partial<ModuleInfo>): Promise<ModuleInfo> {

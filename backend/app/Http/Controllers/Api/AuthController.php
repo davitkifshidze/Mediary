@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
+use App\Support\ModuleOrder;
 use App\Support\PublicDomain;
 use App\Support\ResetLink;
 use App\Support\StorageFolder;
@@ -312,8 +313,15 @@ class AuthController extends Controller
            სია ისედაც აქვს, ე.ი. ასეულზე მეტი აქ ვერ იქნება. */
         $data = $request->validate(['settings' => ['required', 'array', 'max:200']]);
 
+        /* ⚠️ Tasks §36 — **მოდულების რიგს საკუთარი ჩამწერი აქვს** (`PUT
+           /modules/order`). SPA ამ ბლობს შესვლისას იღებს და მთლიანად უკან
+           აგზავნის, ე.ი. მასში შესვლის მომენტის რიგი ზის — აქ ჩაწერილი
+           `/settings`-ის ნებისმიერ შენახვაზე მერე გადალაგებულ რიგს ჩუმად
+           დააბრუნებდა. ბაზაში მდგარი მნიშვნელობა რჩება. */
+        $settings = ModuleOrder::preserve($request->user(), $data['settings']);
+
         // `settings` fillable-ში არ არის (მასობრივი შევსება არ გვინდა) — forceFill
-        $request->user()->forceFill(['settings' => $data['settings']])->save();
+        $request->user()->forceFill(['settings' => $settings])->save();
 
         return response()->json(['settings' => $request->user()->settings]);
     }

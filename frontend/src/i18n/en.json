@@ -122,7 +122,20 @@
     "noAccess": "You don't have access to this module",
     "noAccessHint": "Request access — an admin will approve it.",
     "selfToggleHint": "Turning it off for yourself doesn't revoke the grant — you can switch it back any time.",
-    "subtitleAdmin": "Enable or disable modules and see who has which."
+    "subtitleAdmin": "Enable or disable modules and see who has which.",
+    "orderHint": "Drag a card, or move it with the arrows, to change the order — the sidebar and the home page cards follow it. The order is yours alone and does not affect anyone else.",
+    "orderHintAdmin": "“Default for everyone” gives your order to everyone who hasn't arranged their own yet — new accounts too.",
+    "moveEarlier": "Move “{{name}}” earlier",
+    "moveLater": "Move “{{name}}” later",
+    "resetOrder": "Default order",
+    "resetOrderTitle": "Go back to the default order?",
+    "resetOrderHint": "Your arrangement is removed and the modules follow the shared order — in the sidebar and on the home page too.",
+    "resetOrderDone": "The order is back to the default",
+    "setDefaultOrder": "Default for everyone",
+    "setDefaultOrderTitle": "Make this the default order for everyone?",
+    "setDefaultOrderHint": "Everyone without their own order gets this one — new accounts too. Whoever arranged theirs keeps it.",
+    "setDefaultOrderDone": "The default order has changed",
+    "resetOrderConfirm": "Go back"
   },
   "videos": {
     "title": "Videos",

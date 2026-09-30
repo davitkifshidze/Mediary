@@ -4,9 +4,14 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ModuleResource;
+use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
+use App\Support\ModuleOrder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
  * მოდულების რეესტრი ადმინისთვის — ჩართვა/გამორთვა და პრეზენტაციული ველები.
@@ -23,7 +28,7 @@ class AdminModuleController extends Controller
      * ისინიც, ვინც თვითონ გამორთო (K13) — ისინი `hidden_by_user`-ით აღინიშნება.
      * `users_count` კი მხოლოდ **რეალურად ჩართულებს** ითვლის.
      */
-    public function index()
+    public function index(Request $request)
     {
         /*
          * pivot-ები წინასწარ — `enabled_at`/`is_hidden` მეხსიერებიდან იკითხება.
@@ -37,7 +42,10 @@ class AdminModuleController extends Controller
          */
         $users = User::with('modules', 'role')->orderBy('id')->get();
 
-        $modules = Module::orderBy('sort_order')->orderBy('id')->get()->each(function (Module $m) use ($users) {
+        /* Tasks §36 — სუპერადმინის **პირადი** რიგით: `/modules` ამ სიას ხატავს,
+           ე.ი. საერთო რიგით დალაგებული მის გადათრევას ყოველ ჩატვირთვაზე
+           „უკან დააბრუნებდა". საერთო რიგი `sort_order`-ის ველში რჩება. */
+        $modules = ModuleOrder::sort(Module::all(), $request->user())->each(function (Module $m) use ($users) {
             $holders = $users->filter(fn (User $u) => $u->isGrantedModule($m->key));
 
             $m->users_count = $holders->filter(fn (User $u) => $u->hasModule($m->key))->count();
@@ -81,5 +89,53 @@ class AdminModuleController extends Controller
         $module->forceFill($data)->save();
 
         return new ModuleResource($module);
+    }
+
+    /**
+     * **„ეს რიგი ყველასთვის ნაგულისხმევად"** (Tasks §36.3, Q27).
+     *
+     * საერთო რიგს (`modules.sort_order`) წერს — მას მიჰყვება ყველა, ვისაც
+     * პირადი რიგი ჯერ არ აქვს (ახალი ანგარიშიც). ⚠️ **პირად რიგს არავის
+     * ცვლის**: ვინც თვითონ დაალაგა, თავისას ინარჩუნებს — სწორედ ეს არის
+     * „თითო მომხმარებლის რიგი".
+     *
+     * ⚠️ **ჩამოთვლილი მოდულები თავიანთი რიგით, დანარჩენები მათ შემდეგ**
+     * (`ModuleOrder::merged()`), ე.ი. სიიდან გამორჩენილი მოდული ბოლოში
+     * გადადის და არ იკარგება. უცნობი გასაღები კი აქ `422`-ია და არა ჩუმი:
+     * ეს ადმინის ჩანაწერია ყველასთვის და ის ყველა მოდულს ხედავს.
+     *
+     * ⚠️ **ერთი ცხადი ლოგის რიგი და არა თითო მოდულზე** — `update()`
+     * query builder-ით იწერება (მოდელის მოვლენა არ ისვრება), თორემ ერთი
+     * დაჭერა ცამეტ „მოდული შეიცვალა"-ს ჩაწერდა; „ვინ შეცვალა ყველას
+     * ნაგულისხმევი რიგი" კი ერთი ფაქტია.
+     */
+    public function saveDefaultOrder(Request $request, AuditLogger $audit)
+    {
+        $current = Module::orderBy('sort_order')->orderBy('id')->pluck('key')->all();
+
+        $data = $request->validate([
+            'keys' => ['required', 'array', 'max:'.ModuleOrder::MAX_KEYS],
+            'keys.*' => ['required', 'string', 'distinct', Rule::in($current)],
+        ]);
+
+        $next = ModuleOrder::merged($data['keys'], $current);
+
+        DB::transaction(function () use ($next) {
+            foreach ($next as $i => $key) {
+                Module::where('key', $key)->update(['sort_order' => ($i + 1) * 10]);
+            }
+        });
+
+        if ($next !== $current) {
+            $audit->log(AuditLog::ACTION_UPDATE, [
+                'module' => 'admin',
+                'subject_type' => 'module',
+                'subject_label' => 'sort_order',
+                'old_values' => ['order' => implode(', ', $current)],
+                'new_values' => ['order' => implode(', ', $next)],
+            ]);
+        }
+
+        return response()->json(['order' => $next]);
     }
 }

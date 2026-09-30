@@ -122,9 +122,18 @@ export function useDragReorder<T extends DragId>(
  * **ჩანაცვლებაა** და არა დამატება: ორი `border-*` ერთად რომ დამჯდარიყო,
  * ზემოთა ხაფანგი დაბრუნდებოდა.
  */
-export function dragRowClass<T extends DragId>(drag: DragReorder<T>, id: T, idle = 'border-border'): string {
+export function dragRowClass<T extends DragId>(
+  drag: DragReorder<T>,
+  id: T,
+  idle = 'border-border',
+  /* ⚠️ **ესეც ჩანაცვლებაა** (Tasks §36): მოდულების ბარათს ჰოვერზე აწევაც
+     აქვს, და ორი `transition-*` კლასიდან ერთი ჩუმად იგებს. ⚠️ Tailwind v4-ში
+     `translate-y-*` **`translate` თვისებას** წერს და არა `transform`-ს — ე.ი.
+     `transition-[…,transform]` აწევას საერთოდ არ ანიმირებს. */
+  transition = 'transition-colors',
+): string {
   return [
-    'transition-colors',
+    transition,
     // ⚠️ **„ხელის" კურსორი მთელ ზოლზეა და არა მხოლოდ სახელურზე** (Tasks §1.3):
     // `draggable` ისედაც `<li>`-ზე ჯდება, ე.ი. მთელი რიგი აიღება — კურსორი კი
     // მხოლოდ სახელურზე ეწერა და ინტერფეისი ტყუოდა („აქ ვერ აიღებ"-ს ამბობდა).

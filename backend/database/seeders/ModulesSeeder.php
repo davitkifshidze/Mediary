@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Module;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Arr;
 
 /**
  * მოდულების რეესტრი (I2). ფილმები/სერიალები — პირველი ორი „plug-in".
@@ -242,7 +243,13 @@ class ModulesSeeder extends Seeder
         ];
 
         foreach ($modules as $m) {
-            $module = Module::updateOrCreate(['key' => $m['key']], $m);
+            /* ⚠️ **`sort_order` მხოლოდ საწყისი მნიშვნელობაა** (Tasks §36, `COLORS`-ის
+               წესი): ის სუპერადმინის საერთო რიგია („ეს რიგი ყველასთვის
+               ნაგულისხმევად"), და `updateOrCreate()` მას ყოველ `db:seed`-ზე
+               ჩუმად დააბრუნებდა — ყველას ნაგულისხმევი რიგი ერთ ბრძანებაზე
+               იკარგებოდა. სახელი/აიქონი კი ისევ კოდიდან ახლდება. */
+            $module = Module::firstOrNew(['key' => $m['key']]);
+            $module->fill($module->exists ? Arr::except($m, ['sort_order']) : $m)->save();
 
             // ფერი მხოლოდ მაშინ, თუ ჯერ არავის აურჩევია (იხ. `COLORS`)
             if ($module->color === null && isset(self::COLORS[$m['key']])) {

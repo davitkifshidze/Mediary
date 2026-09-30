@@ -94,19 +94,27 @@ async function flush() {
   })
 }
 
-async function mount(path = '/') {
-  const page = [
-    moduleRow('song', '/songs', 1),
-    moduleRow('book', '/books', 2),
-    moduleRow('board_game', '/board-games', 3),
-    moduleRow('game', '/games', 4),
-    moduleRow('note', '/notes', 5),
-    moduleRow('course', '/courses', 6),
-    moduleRow('place', '/places', 7),
-  ]
-  mocks.modules.all = page
-  mocks.modules.enabled = page
-  mocks.modules.pageModules = page
+const PAGE_ROWS = [
+  moduleRow('song', '/songs', 1),
+  moduleRow('book', '/books', 2),
+  moduleRow('board_game', '/board-games', 3),
+  moduleRow('game', '/games', 4),
+  moduleRow('note', '/notes', 5),
+  moduleRow('course', '/courses', 6),
+  moduleRow('place', '/places', 7),
+]
+
+/**
+ * ⚠️ `enabled` **სერვერის რიგითაა** (Tasks §36) — `mediaModules`/`pageModules`
+ * მისი ქვე-სიებია, ზუსტად ისე, როგორც `ModulesProvider`-ში.
+ */
+async function mount(path = '/', enabled: ModuleInfo[] = PAGE_ROWS) {
+  mocks.modules.all = enabled
+  mocks.modules.enabled = enabled
+  mocks.modules.mediaModules = enabled
+    .filter((m) => ['movie', 'series', 'anime'].includes(m.key))
+    .map((m) => ({ ...m, type: m.key }))
+  mocks.modules.pageModules = enabled.filter((m) => !['movie', 'series', 'anime'].includes(m.key))
 
   const { Sidebar } = await import('@/components/Sidebar')
 
@@ -192,3 +200,33 @@ describe('Sidebar module sections', () => {
     expect(subItems(note).at(-1)?.href).toBe('/notes?new=1')
   })
 })
+
+/* ============================================================
+   **ერთი რიგი** (Tasks §36.2) — მედია და დანარჩენი მოდულები ერთმანეთში
+   ერევა, `enabled`-ის (ე.ი. სერვერის პირადი რიგის) მიხედვით. ადრე ჯერ ყველა
+   მედია იხატებოდა და მერე დანარჩენი — ფილმს სიმღერის შემდეგ ვერანაირი რიგი
+   ვერ დააყენებდა.
+   ============================================================ */
+describe('Sidebar module order', () => {
+  it('draws media and page modules in one list, in the server order', async () => {
+    const el = await mount('/', [
+      moduleRow('song', '/songs', 1),
+      moduleRow('movie', '/movies', 2),
+      moduleRow('book', '/books', 3),
+      moduleRow('series', '/series', 4),
+    ])
+
+    const rows = [...el.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')].map((b) =>
+      b.textContent?.trim(),
+    )
+    expect(rows).toEqual(['song', 'movie', 'book', 'series'])
+  })
+
+  it('skips a module that has no page of its own', async () => {
+    const el = await mount('/', [moduleRow('mystery', '/mystery', 1), moduleRow('song', '/songs', 2)])
+
+    expect(el.textContent).not.toContain('mystery')
+    expect(moduleButton(el, 'song')).toBeTruthy()
+  })
+})
+

@@ -7,6 +7,7 @@ use App\Http\Resources\ModuleResource;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
 use App\Services\Modules\FieldSettings;
+use App\Support\ModuleOrder;
 use App\Support\ModuleSettings;
 use App\Support\PublicDomain;
 use Illuminate\Http\Request;
@@ -34,9 +35,8 @@ class ModuleController extends Controller
             ->get()
             ->groupBy('module_id');
 
-        $modules = Module::where('is_active', true)
-            ->orderBy('sort_order')->orderBy('id')
-            ->get()
+        // Tasks §36 — რიგი თითო მომხმარებლისაა; ამ სიას საიდბარიც და `/modules`-იც კითხულობს
+        $modules = ModuleOrder::sort(Module::where('is_active', true)->get(), $user)
             ->each(function (Module $m) use ($enabledIds, $requests, $pivots, $user) {
                 $m->enabled = isset($enabledIds[$m->id]);
                 // `granted` — ადმინმა ჩართო (ან super_admin-ია); `enabled` — ამჟამად ჩანს.
@@ -54,6 +54,39 @@ class ModuleController extends Controller
             });
 
         return ModuleResource::collection($modules);
+    }
+
+    /**
+     * **პირადი რიგის შენახვა** (Tasks §36.1) — მთელი რიგი ერთი მოთხოვნით.
+     *
+     * ⚠️ **`PUT` და არა `POST`** — `/modules/{key}/settings`-ის იგივე მიზეზი:
+     * რიგი არსებულის ცვლილებაა და არა შექმნა.
+     *
+     * ⚠️ უცნობი/უხილავი გასაღები ჩუმად იშლება (`ModuleOrder::save()`), და
+     * პასუხი **ჩაწერილს** აბრუნებს და არა მოსულს.
+     */
+    public function saveOrder(Request $request)
+    {
+        $data = $request->validate([
+            'keys' => ['required', 'array', 'max:'.ModuleOrder::MAX_KEYS],
+            'keys.*' => ['required', 'string', 'max:64', 'distinct'],
+        ]);
+
+        return response()->json(['order' => ModuleOrder::save($request->user(), $data['keys'])]);
+    }
+
+    /**
+     * პირადი რიგის წაშლა — საერთო (სუპერადმინის) რიგზე დაბრუნება.
+     *
+     * ⚠️ ეს გასასვლელია და არა სიმბოლური ღილაკი: პირადი რიგის მქონე საერთო
+     * რიგის შემდგომ ცვლილებას აღარ ხედავს, ე.ი. სხვაგვარად მასთან დაბრუნება
+     * მხოლოდ ხელით, თითო მოდულის გადათრევით შეიძლებოდა.
+     */
+    public function resetOrder(Request $request)
+    {
+        ModuleOrder::forget($request->user());
+
+        return response()->json(['order' => []]);
     }
 
     /**

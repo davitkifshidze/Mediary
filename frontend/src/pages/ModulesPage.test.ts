@@ -1,0 +1,237 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, createElement as h } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { FeedbackProvider } from '@/components/ui/feedback'
+import type { ModuleInfo } from '@/api/account'
+import i18n from '@/i18n'
+
+/* ============================================================
+   **მოდულების რიგი `/modules`-ზე** (Tasks §36).
+
+   ⚠️ რასაც backend-ის ტესტი ვერ იტყვის: რომ **UI მთელ რიგს ერთი `PUT`-ით
+   აგზავნის** (ისრითაც და ჩამოგდებითაც), ბარათი **მაშინვე** ინაცვლებს
+   (ოპტიმისტური ქეში — საიდბარიც მას კითხულობს), „ნაგულისხმევი რიგი“ მხოლოდ
+   მაშინ ჩანს, როცა ჩემი რიგი საერთოსგან განსხვავდება, და „ყველასთვის
+   ნაგულისხმევად“ მხოლოდ სუპერადმინს აქვს და **ეკრანის რიგს** აგზავნის.
+
+   ⚠️ `ModulesProvider` ნამდვილია და `fetchModules` — მოკი: სწორედ ესაა
+   გვერდის წყარო, ე.ი. ოპტიმისტური ქეშის შემოწმება მის გარეშე ცარიელი
+   იქნებოდა.
+   ============================================================ */
+
+const moduleRow = (key: string, sort: number, id: number): ModuleInfo => ({
+  id,
+  key,
+  name_ka: key,
+  name_en: key,
+  description_ka: null,
+  description_en: null,
+  icon: 'LayoutGrid',
+  color: null,
+  route_base: `/${key}`,
+  api_base: `/${key}`,
+  morph_alias: null,
+  is_active: true,
+  enabled_by_default: false,
+  sort_order: sort,
+  enabled: true,
+  granted: true,
+  user_settings: {},
+})
+
+const MOVIE = moduleRow('movie', 10, 1)
+const SERIES = moduleRow('series', 20, 2)
+const VIDEO = moduleRow('video', 30, 3)
+
+const mocks = vi.hoisted(() => ({
+  // „სერვერის“ მდგომარეობა — `saveModuleOrder`-ის მოკი მას ცვლის
+  server: { list: [] as ModuleInfo[], admin: [] as ModuleInfo[] },
+  auth: { value: {} as Record<string, unknown> },
+  saveOrder: vi.fn(),
+  resetOrder: vi.fn(),
+  saveDefault: vi.fn(),
+}))
+
+vi.mock('@/api/account', async (original) => ({
+  ...(await original<typeof import('@/api/account')>()),
+  fetchModules: async () => mocks.server.list,
+  fetchAdminModules: async () => mocks.server.admin,
+  fetchMyRequests: async () => [],
+  saveModuleOrder: mocks.saveOrder,
+  resetModuleOrder: mocks.resetOrder,
+  saveDefaultModuleOrder: mocks.saveDefault,
+}))
+
+vi.mock('@/lib/auth', () => ({ useAuth: () => mocks.auth.value }))
+
+;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+let root: Root | null = null
+let container: HTMLDivElement | null = null
+
+afterEach(() => {
+  act(() => root?.unmount())
+  container?.remove()
+  document.body.innerHTML = ''
+  root = null
+  container = null
+  vi.clearAllMocks()
+})
+
+async function flush() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
+/** „სერვერი“ რიგს ინახავს — refetch-ზე ზუსტად ის ბრუნდება, რაც ჩაიწერა */
+function serve(list: ModuleInfo[], admin: ModuleInfo[] = []) {
+  mocks.server.list = list
+  mocks.server.admin = admin
+  mocks.saveOrder.mockImplementation(async (keys: string[]) => {
+    const byKey = new Map(mocks.server.list.map((m) => [m.key, m]))
+    mocks.server.list = keys.flatMap((k) => byKey.get(k) ?? [])
+    return keys
+  })
+  mocks.resetOrder.mockImplementation(async () => {
+    mocks.server.list = [...mocks.server.list].sort((a, b) => a.sort_order - b.sort_order)
+  })
+  mocks.saveDefault.mockImplementation(async (keys: string[]) => keys)
+}
+
+async function mount(superAdmin = false) {
+  // ⚠️ ერთი და იგივე ობიექტი ყოველ რენდერზე — კონტექსტის ჰუკის მოკის წესი
+  mocks.auth.value = { user: { id: 1, is_super_admin: superAdmin }, isAdmin: superAdmin }
+
+  const { ModulesProvider } = await import('@/lib/modules')
+  const { ModulesPage } = await import('@/pages/ModulesPage')
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  await act(async () =>
+    root!.render(
+      h(
+        MemoryRouter,
+        null,
+        h(
+          QueryClientProvider,
+          { client: qc },
+          h(TooltipProvider, null, h(FeedbackProvider, null, h(ModulesProvider, null, h(ModulesPage)))),
+        ),
+      ),
+    ),
+  )
+  await flush()
+  await flush()
+}
+
+/** ბარათების რიგი ეკრანზე — ბმულის მისამართებიდან */
+const shown = () =>
+  [...container!.querySelectorAll('a[href^="/modules/"]')].map((a) => a.getAttribute('href')!.slice('/modules/'.length))
+
+const byLabel = (label: string) => container!.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement
+
+/** ტექსტიანი ღილაკები; „ყველასთვის ნაგულისხმევად“-ის დადასტურება ჰედერის ღილაკის ტექსტს იმეორებს — ის ბოლოა */
+const buttons = (text: string) =>
+  [...document.body.querySelectorAll('button')].filter((b) => b.textContent?.trim() === text)
+
+async function click(el: Element) {
+  await act(async () => {
+    ;(el as HTMLElement).click()
+  })
+  await flush()
+}
+
+/** native drag & drop — jsdom-ს `DataTransfer` არ აქვს, ე.ი. ხელით */
+function dragEvent(type: string, store: Map<string, string>) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'dataTransfer', {
+    value: {
+      setData: (k: string, v: string) => store.set(k, v),
+      getData: (k: string) => store.get(k) ?? '',
+      effectAllowed: 'move',
+      dropEffect: 'move',
+    },
+  })
+  return event
+}
+
+const card = (key: string) => container!.querySelector(`a[href="/modules/${key}"]`)!.parentElement as HTMLElement
+
+describe('ModulesPage — order', () => {
+  it('an arrow moves the card at once and sends the whole order in one PUT', async () => {
+    serve([MOVIE, SERIES, VIDEO])
+    // ⚠️ პასუხი არ მოდის — ბარათი მხოლოდ ოპტიმისტურმა ქეშმა შეიძლება გადაწიოს
+    mocks.saveOrder.mockImplementation(() => new Promise(() => {}))
+    await mount()
+    expect(shown()).toEqual(['movie', 'series', 'video'])
+
+    // პირველს „წინ“ და ბოლოს „უკან“ ვერ წაიწევ
+    expect(byLabel(i18n.t('modules.moveEarlier', { name: 'movie' })).disabled).toBe(true)
+    expect(byLabel(i18n.t('modules.moveLater', { name: 'video' })).disabled).toBe(true)
+
+    await click(byLabel(i18n.t('modules.moveLater', { name: 'movie' })))
+
+    expect(mocks.saveOrder).toHaveBeenCalledTimes(1)
+    expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['series', 'movie', 'video'])
+    expect(shown()).toEqual(['series', 'movie', 'video'])
+  })
+
+  it('dropping a card on another sends the whole new order', async () => {
+    serve([MOVIE, SERIES, VIDEO])
+    await mount()
+
+    const store = new Map<string, string>()
+    await act(async () => {
+      card('video').dispatchEvent(dragEvent('dragstart', store))
+      card('movie').dispatchEvent(dragEvent('dragover', store))
+      card('movie').dispatchEvent(dragEvent('drop', store))
+    })
+    await flush()
+
+    expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['video', 'movie', 'series'])
+    expect(shown()).toEqual(['video', 'movie', 'series'])
+  })
+
+  it('offers “default order” only when my order differs from the shared one', async () => {
+    serve([MOVIE, SERIES, VIDEO])
+    await mount()
+    expect(buttons(i18n.t('modules.resetOrder'))).toHaveLength(0)
+    // ⚠️ ჩვეულებრივ მომხმარებელს საერთო რიგის ღილაკი არასდროს აქვს
+    expect(buttons(i18n.t('modules.setDefaultOrder'))).toHaveLength(0)
+
+    act(() => root?.unmount())
+    container?.remove()
+
+    serve([SERIES, MOVIE, VIDEO])
+    await mount()
+    expect(buttons(i18n.t('modules.setDefaultOrder'))).toHaveLength(0)
+
+    await click(buttons(i18n.t('modules.resetOrder'))[0])
+    // დადასტურება ცალკე ღილაკია — ჰედერის დაჭერა მარტო არაფერს აგზავნის
+    expect(mocks.resetOrder).not.toHaveBeenCalled()
+    await click(buttons(i18n.t('modules.resetOrderConfirm'))[0])
+
+    expect(mocks.resetOrder).toHaveBeenCalledTimes(1)
+    expect(shown()).toEqual(['movie', 'series', 'video'])
+  })
+
+  it('the super admin makes the order on screen the default for everyone', async () => {
+    // ადმინის სიაში გამორთული მოდულიც ჩანს — ისიც რიგშია
+    const off = { ...moduleRow('anime', 25, 4), is_active: false }
+    serve([SERIES, MOVIE, VIDEO], [SERIES, off, MOVIE, VIDEO])
+    await mount(true)
+
+    expect(shown()).toEqual(['series', 'anime', 'movie', 'video'])
+
+    await click(buttons(i18n.t('modules.setDefaultOrder'))[0])
+    await click(buttons(i18n.t('modules.setDefaultOrder')).at(-1)!)
+
+    expect(mocks.saveDefault).toHaveBeenCalledTimes(1)
+    expect(mocks.saveDefault.mock.calls[0][0]).toEqual(['series', 'anime', 'movie', 'video'])
+  })
+})
