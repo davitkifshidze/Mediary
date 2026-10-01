@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -73,6 +73,7 @@ export function NumberPick({
 
   const clamp = (n: number) => Math.min(max, Math.max(min, n))
   const small = size === 'sm'
+  const labelOf = (n: number) => (n === 0 ? (noneLabel ?? t('numberPick.none')) : String(n))
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -87,13 +88,17 @@ export function NumberPick({
           onChange(Number(v))
         }}
       >
+        {/* ⚠️ Tasks §38 — ტრიგერი უგრძელესი ვარიანტის სიგანისაა („ყველა",
+            „სხვა…"), თორემ „20"-ზე ვიწრო ტრიგერის ქვეშ სია უფრო ფართოდ
+            იხსნებოდა. ნაგულისხმევ ზომაზე ტრიგერი ისედაც ველს ავსებს — იქ ეს
+            მხოლოდ ვიწრო გარსში (`CastSyncFlow`-ის რიგი) ერთვება საქმეში. */}
         <SelectTrigger id={id} className={cn(small && 'h-9 w-auto min-w-24')}>
-          <SelectValue />
+          <SelectFitValue labels={[...list.map(labelOf), t('numberPick.other')]} />
         </SelectTrigger>
         <SelectContent>
           {list.map((n) => (
             <SelectItem key={n} value={String(n)}>
-              {n === 0 ? (noneLabel ?? t('numberPick.none')) : n}
+              {labelOf(n)}
             </SelectItem>
           ))}
           {/* ბოლოში — „სხვა", სადაც რიცხვს თვითონ წერ */}

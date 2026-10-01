@@ -22,7 +22,7 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 
 /* ============================================================
    ატვირთვების **მედია-ბიბლიოთეკა** (Tasks 17.5 → §6.2).
@@ -40,6 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ============================================================ */
 
 type Sort = 'size' | 'date' | 'name'
+const SORTS: Sort[] = ['size', 'date', 'name']
 type View = 'grid' | 'list'
 
 /** ⚠️ `primary` — ჩანაწერის მთავარი ფოტო **ყველა** მოდულში (Tasks §9.4). ადრე ის
@@ -196,10 +197,10 @@ export function StorageLibrary({
 
         <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
           <SelectTrigger className="h-9 w-auto min-w-[9rem]">
-            <SelectValue />
+            <SelectFitValue labels={SORTS.map((s) => t(`storage.sort.${s}`))} />
           </SelectTrigger>
           <SelectContent>
-            {(['size', 'date', 'name'] as Sort[]).map((s) => (
+            {SORTS.map((s) => (
               <SelectItem key={s} value={s}>
                 {t(`storage.sort.${s}`)}
               </SelectItem>

@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { LayoutToggle } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
@@ -344,7 +344,7 @@ function Pick({
       <span className="hidden sm:inline">{label}</span>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-9 w-auto min-w-36 text-sm">
-          <SelectValue />
+          <SelectFitValue labels={options.map((option) => option.label)} />
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (

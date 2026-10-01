@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -136,7 +136,7 @@ export function DataTable<T>({
           }}
         >
           <SelectTrigger className="h-9 w-auto min-w-[6.5rem]">
-            <SelectValue />
+            <SelectFitValue labels={PAGE_SIZES.map((n) => t('table.perPage', { count: n }))} />
           </SelectTrigger>
           <SelectContent>
             {PAGE_SIZES.map((n) => (
