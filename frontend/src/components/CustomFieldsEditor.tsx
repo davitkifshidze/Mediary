@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { sortByIds } from '@/lib/reorder'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import {
@@ -93,17 +93,6 @@ export function CustomFieldsEditor({
   const patch = (index: number, change: Partial<Draft>) => {
     setDirty(true)
     setDraft((d) => d.map((f, i) => (i === index ? { ...f, ...change } : f)))
-  }
-
-  const move = (index: number, delta: number) => {
-    const target = index + delta
-    if (target < 0 || target >= draft.length) return
-    setDirty(true)
-    setDraft((d) => {
-      const next = [...d]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
   }
 
   const add = () => {
@@ -200,34 +189,17 @@ export function CustomFieldsEditor({
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={f.enabled} onCheckedChange={(v) => patch(i, { enabled: v })} />
+                  <Switch size="lg" checked={f.enabled} onCheckedChange={(v) => patch(i, { enabled: v })} />
                   {t('fields.enabled')}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={f.required} onCheckedChange={(v) => patch(i, { required: v })} />
+                  <Switch size="lg" checked={f.required} onCheckedChange={(v) => patch(i, { required: v })} />
                   {t('fields.required')}
                 </label>
 
                 <span className="ml-auto flex items-center gap-1">
+                  {/* Tasks §12 — ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა, §11) */}
                   <SortableHandle />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={i === 0}
-                    onClick={() => move(i, -1)}
-                    aria-label={t('fields.moveUp')}
-                  >
-                    <ChevronUp className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={i === draft.length - 1}
-                    onClick={() => move(i, 1)}
-                    aria-label={t('fields.moveDown')}
-                  >
-                    <ChevronDown className="size-4" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

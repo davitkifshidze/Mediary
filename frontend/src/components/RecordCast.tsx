@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, EyeOff, UserPlus } from 'lucide-react'
+import { ChevronDown, CircleOff, UserPlus } from 'lucide-react'
 import { detachCastMember, reorderRecordCast, updateRecordCast } from '@/api/cast'
 import type { CastMember } from '@/api/types'
 import { CastMemberDialog } from '@/components/CastMemberDialog'
@@ -279,7 +279,7 @@ export function RecordCast({
               className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <ChevronDown className={cn('size-4 transition-transform', !showHidden && '-rotate-90')} />
-              <EyeOff className="size-4" />
+              <CircleOff className="size-4" />
               {t('cast.hiddenGroup', { count: hidden.length })}
             </button>
             <InfoHint info={t('cast.hiddenGroupHint')} />

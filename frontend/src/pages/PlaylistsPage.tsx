@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
   ListMusic,
   Loader2,
   SquarePen,
@@ -23,7 +21,7 @@ import {
   type Playlist,
 } from '@/api/playlists'
 import { errorMessage } from '@/lib/errors'
-import { moveWithin, sortByIds } from '@/lib/reorder'
+import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { Button } from '@/components/ui/button'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
@@ -71,10 +69,6 @@ export function PlaylistsPage() {
   })
 
   const playlistIds = playlists.map((p) => p.id)
-  const moveBy = (id: number, delta: number) => {
-    const next = moveWithin(playlistIds, id, delta)
-    if (next) reorder.mutate(next)
-  }
 
   return (
     <PageContainer>
@@ -109,7 +103,7 @@ export function PlaylistsPage() {
 
       <ul className="space-y-2">
         <Sortable ids={playlistIds} onReorder={(ids) => reorder.mutate(ids)}>
-        {playlists.map((playlist, i) => {
+        {playlists.map((playlist) => {
           /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/playlists/${playlist.id}`) },
@@ -137,24 +131,6 @@ export function PlaylistsPage() {
               {/* §7.2 — სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
                   ღილაკი ჯერ პლეილისტს ჩამოტვირთავს და მერე უშვებს */}
               <PlayPlaylistButton playlist={playlist} />
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={i === 0 || reorder.isPending}
-                onClick={() => moveBy(playlist.id, -1)}
-                aria-label={t('videoTypes.moveUp')}
-              >
-                <ChevronUp className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={i === playlists.length - 1 || reorder.isPending}
-                onClick={() => moveBy(playlist.id, 1)}
-                aria-label={t('videoTypes.moveDown')}
-              >
-                <ChevronDown className="size-4" />
-              </Button>
               <Button variant="edit" size="sm" onClick={() => setEditing(playlist)}>
                 <SquarePen className="size-3.5" />
                 {t('actions.edit')}

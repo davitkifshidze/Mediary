@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Lock, Plus, RotateCcw, UserRound, UsersRound } from 'lucide-react'
+import { ArrowRight, Ban, Check, Clock, Lock, Plus, RotateCcw, UserRound, UsersRound } from 'lucide-react'
 import {
   fetchAdminModules,
   fetchMyRequests,
@@ -19,7 +19,6 @@ import {
   useModules,
 } from '@/lib/modules'
 import { useAuth } from '@/lib/auth'
-import { moveWithin } from '@/lib/reorder'
 import { errorMessage } from '@/lib/errors'
 import { arrangeByKeys, isCustomOrder } from '@/lib/moduleOrder'
 import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
@@ -161,11 +160,6 @@ export function ModulesPage() {
     onSettled: refresh,
   })
 
-  // Tasks §11 — „წინ/უკან" (მენიუ და ღილაკები) იმავე მუტაციას იძახებს, რასაც drag & drop
-  const moveBy = (key: string, delta: number) => {
-    const next = moveWithin(keys, key, delta)
-    if (next) order.mutate(next)
-  }
   const navigate = useNavigate()
 
   const askReset = async () => {
@@ -245,11 +239,9 @@ export function ModulesPage() {
         {list.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
-          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · წინ · უკან (წაშლა პირადზე — §32.1) */
+          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა (წაშლა პირადზე — §32.1); „წინ/უკან" §12-ით წავიდა — რიგი სახელურითაა */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
-            { key: 'earlier', label: t('modules.moveEarlier', { name }), icon: ChevronLeft, disabled: i === 0, run: () => moveBy(m.key, -1) },
-            { key: 'later', label: t('modules.moveLater', { name }), icon: ChevronRight, disabled: i === list.length - 1, run: () => moveBy(m.key, 1) },
           ]
           return (
             <RecordContextMenu key={m.id} actions={actions}>
@@ -315,30 +307,9 @@ export function ModulesPage() {
                 )}
 
                 {/* ⚠️ ფიქსირებული ელემენტი — ყოველთვის მარჯვნივ, რომ ზოლები სიმეტრიული იყოს */}
+                {/* Tasks §12 — ისრები წავიდა: რიგი სახელურითაა (მაუსი და კლავიატურა, §11) */}
                 <span className="ml-auto flex shrink-0 items-center">
-                  <SortableHandle className="mr-1" />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8"
-                    disabled={i === 0}
-                    onClick={() => moveBy(m.key, -1)}
-                    aria-label={t('modules.moveEarlier', { name })}
-                    title={t('modules.moveEarlier', { name })}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8"
-                    disabled={i === list.length - 1}
-                    onClick={() => moveBy(m.key, 1)}
-                    aria-label={t('modules.moveLater', { name })}
-                    title={t('modules.moveLater', { name })}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
+                  <SortableHandle />
                 </span>
               </div>
             </SortableItem>

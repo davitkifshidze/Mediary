@@ -83,6 +83,7 @@ export function PublicModulesDialog({
                   <span className="min-w-0 truncate text-sm">{moduleName(m, i18n.language)}</span>
                 </span>
                 <Switch
+                  size="lg"
                   checked={!!m.is_public}
                   disabled={!profilePublic || busy === m.key}
                   onCheckedChange={(v) => toggle(m.key, v)}

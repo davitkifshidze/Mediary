@@ -5,14 +5,12 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import {
   AlertTriangle,
   ArrowLeft,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  SquarePen,
+  Circle,
+  CircleOff,
   Plus,
   RotateCcw,
+  SquarePen,
   Trash2,
 } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
@@ -21,7 +19,6 @@ import type { Status } from '@/api/types'
 import { fetchModuleFields } from '@/api/account'
 import { DICTIONARIES, customDictionaries, type DictionaryDef, type DictionaryItem } from '@/lib/dictionaries'
 import { errorMessage } from '@/lib/errors'
-import { moveWithin } from '@/lib/reorder'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { moduleName, useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
@@ -37,6 +34,7 @@ import {
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
+import { Switch } from '@/components/ui/switch'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -367,12 +365,6 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
   const rowIds = rows.map((r) => r.id)
 
-  /* Tasks §11 — „ერთით ზევით/ქვევით" (მენიუ და ღილაკები) იმავე `onReorder`-ს იძახებს, რასაც drag & drop */
-  const moveBy = (id: string | number, delta: number) => {
-    const next = moveWithin(rowIds, id, delta)
-    if (next) onReorder(next)
-  }
-
   /**
    * **„ნაგულისხმევების აღდგენა" (2026-10-02 §1)** — მხოლოდ ის, რაც აკლია.
    *
@@ -396,7 +388,6 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const busy = reorder.isPending || sections.isPending
 
   return (
     <>
@@ -447,7 +438,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
         <ul className={cn('space-y-2', !items.length && 'mt-4')}>
           {/* Tasks §11 — drag & drop ერთი კომპონენტით: წყვეტილი სლოტი, მაუსთან ასლი, კლავიატურა სახელურზე */}
           <Sortable ids={rowIds} onReorder={onReorder}>
-          {rows.map((row, i) => {
+          {rows.map((row) => {
             // ⚠️ სტატუსი და ერთეული ერთი ფორმისაა; ფსევდო-განყოფილებას ერთეული არ აქვს
             const item =
               row.kind === 'item' ? row.item : row.kind === 'status' ? (row.status as unknown as DictionaryItem) : null
@@ -460,13 +451,11 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                 ? [{
                     key: 'hidden',
                     label: t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide'),
-                    icon: row.hidden ? EyeOff : Eye,
+                    icon: row.hidden ? CircleOff : Circle,
                     disabled: sections.isPending,
                     run: () => sections.mutate(toggleHidden(layout, String(row.id))),
                   }]
                 : []),
-              { key: 'up', label: t('videoTypes.moveUp'), icon: ChevronUp, disabled: i === 0 || busy, run: () => moveBy(row.id, -1) },
-              { key: 'down', label: t('videoTypes.moveDown'), icon: ChevronDown, disabled: i === rows.length - 1 || busy, run: () => moveBy(row.id, 1) },
               ...(item
                 ? [{ key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, separator: true, run: () => setDeleting(item) }]
                 : []),
@@ -516,37 +505,19 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                   </span>
                 </span>
 
-                <span className="flex shrink-0 items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={i === 0 || busy}
-                    onClick={() => moveBy(row.id, -1)}
-                    aria-label={t('videoTypes.moveUp')}
-                  >
-                    <ChevronUp className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={i === rows.length - 1 || busy}
-                    onClick={() => moveBy(row.id, 1)}
-                    aria-label={t('videoTypes.moveDown')}
-                  >
-                    <ChevronDown className="size-4" />
-                  </Button>
-
+                <span className="flex shrink-0 items-center gap-2">
+                  {/* Tasks §12 — ისრები წავიდა (გადალაგება სახელურით, §11); თვალის ნაცვლად დიდი გადამრთველი „მენიუში" */}
                   {layout && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={sections.isPending}
-                      onClick={() => sections.mutate(toggleHidden(layout, String(row.id)))}
-                      aria-label={t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide')}
-                      title={t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide')}
-                    >
-                      {row.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </Button>
+                    <label className="mr-1 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                      <Switch
+                        size="lg"
+                        checked={!row.hidden}
+                        disabled={sections.isPending}
+                        onCheckedChange={() => sections.mutate(toggleHidden(layout, String(row.id)))}
+                        aria-label={t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide')}
+                      />
+                      {t('dictionaries.inMenu')}
+                    </label>
                   )}
 
                   {item && (

@@ -347,6 +347,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
                 )}
               </span>
               <Switch
+                size="lg"
                 checked={card.visibility === 'public'}
                 disabled={!canEdit || busy}
                 onCheckedChange={(v) =>

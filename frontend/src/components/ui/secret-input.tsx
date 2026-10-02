@@ -124,6 +124,7 @@ export function SecretInput({
           {revealed ?? masked}
         </span>
 
+        {/* Tasks §12.3 — თვალი აქ რჩება (ბრაუზერების სტანდარტია), ოღონდ დიდი და ტექსტური თულთიპით */}
         {onReveal && (
           <button
             type="button"
@@ -131,7 +132,7 @@ export function SecretInput({
             disabled={disabled || loading}
             title={revealed === null ? t('secret.show') : t('secret.hide')}
             aria-label={revealed === null ? t('secret.show') : t('secret.hide')}
-            className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+            className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
           >
             {loading ? (
               <Loader2 className="size-4 animate-spin" />
@@ -150,7 +151,7 @@ export function SecretInput({
             disabled={disabled || loading}
             title={t('secret.copy')}
             aria-label={t('secret.copy')}
-            className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+            className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-foreground"
           >
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
           </button>
@@ -206,7 +207,7 @@ export function SecretInput({
           }}
           title={t('actions.cancel')}
           aria-label={t('actions.cancel')}
-          className="absolute inset-y-0 right-1 my-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+          className="absolute inset-y-0 right-0.5 my-auto grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
         >
           <X className="size-4" />
         </button>
@@ -263,7 +264,7 @@ export function PasswordInput({
         onClick={() => setShown((v) => !v)}
         title={shown ? t('secret.hide') : t('secret.show')}
         aria-label={shown ? t('secret.hide') : t('secret.show')}
-        className="absolute inset-y-0 right-1 my-auto grid size-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+        className="absolute inset-y-0 right-0.5 my-auto grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
       >
         {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>

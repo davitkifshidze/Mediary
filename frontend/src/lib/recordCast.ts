@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { TFunction } from 'i18next'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, SquarePen, Trash2, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Circle, CircleOff, SquarePen, Trash2, UserRound } from 'lucide-react'
 import type { CastMember } from '@/api/types'
 
 /* ============================================================
@@ -65,9 +65,10 @@ export function castActions({
   if (!hidden && onLater) list.push({ key: 'later', label: t('cast.moveLater'), icon: ArrowRight, run: onLater })
 
   list.push(
+    // Tasks §12 — თვალის ნაცვლად წრე: „დამალვა/ჩვენება" სიტყვითაა, აიქონი მხოლოდ ნიშანი
     hidden
-      ? { key: 'show', label: t('cast.unhide'), icon: Eye, run: onToggleHidden }
-      : { key: 'hide', label: t('cast.hide'), icon: EyeOff, run: onToggleHidden },
+      ? { key: 'show', label: t('cast.unhide'), icon: Circle, run: onToggleHidden }
+      : { key: 'hide', label: t('cast.hide'), icon: CircleOff, run: onToggleHidden },
   )
 
   /* ⚠️ **წაშლა ბოლოშია და წითელია** — ის ამ ჩანაწერიდან საბოლოოდ აქრობს

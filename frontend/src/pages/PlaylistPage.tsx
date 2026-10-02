@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
   Music,
   Play,
@@ -16,7 +14,7 @@ import { fetchPlaylist, setPlaylistSongs, type Playlist } from '@/api/playlists'
 import { fetchSongs } from '@/api/songs'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
-import { moveWithin, sortByIds } from '@/lib/reorder'
+import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
@@ -96,10 +94,6 @@ export function PlaylistPage() {
     },
   })
 
-  const moveBy = (id: number, delta: number) => {
-    const next = moveWithin(songIds, id, delta)
-    if (next) save.mutate(next)
-  }
 
   const add = () => {
     if (!toAdd.length) return
@@ -281,24 +275,6 @@ export function PlaylistPage() {
                 >
                   <ExternalLink className="size-4" />
                 </a>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={i === 0 || save.isPending}
-                  onClick={() => moveBy(song.id, -1)}
-                  aria-label={t('videoTypes.moveUp')}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={i === songs.length - 1 || save.isPending}
-                  onClick={() => moveBy(song.id, 1)}
-                  aria-label={t('videoTypes.moveDown')}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

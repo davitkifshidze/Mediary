@@ -143,7 +143,6 @@ async function mount(superAdmin = false) {
 const shown = () =>
   [...container!.querySelectorAll('a[href^="/modules/"]')].map((a) => a.getAttribute('href')!.slice('/modules/'.length))
 
-const byLabel = (label: string) => container!.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement
 
 /** ტექსტიანი ღილაკები; „ყველასთვის ნაგულისხმევად“-ის დადასტურება ჰედერის ღილაკის ტექსტს იმეორებს — ის ბოლოა */
 const buttons = (text: string) =>
@@ -172,27 +171,12 @@ function mockGridRects(cols = 3) {
 const card = (key: string) => container!.querySelector(`a[href="/modules/${key}"]`)!.parentElement as HTMLElement
 
 describe('ModulesPage — order', () => {
-  it('an arrow moves the card at once and sends the whole order in one PUT', async () => {
+  it('the keyboard on the handle carries the card two places left, at once, and sends the whole order in one PUT', async () => {
     serve([MOVIE, SERIES, VIDEO])
-    // ⚠️ პასუხი არ მოდის — ბარათი მხოლოდ ოპტიმისტურმა ქეშმა შეიძლება გადაწიოს
+    // ⚠️ პასუხი არ მოდის — ბარათი მხოლოდ ოპტიმისტურმა ქეშმა შეიძლება გადაწიოს (Tasks §12 — ისრები აღარ არის)
     mocks.saveOrder.mockImplementation(() => new Promise(() => {}))
     await mount()
     expect(shown()).toEqual(['movie', 'series', 'video'])
-
-    // პირველს „წინ“ და ბოლოს „უკან“ ვერ წაიწევ
-    expect(byLabel(i18n.t('modules.moveEarlier', { name: 'movie' })).disabled).toBe(true)
-    expect(byLabel(i18n.t('modules.moveLater', { name: 'video' })).disabled).toBe(true)
-
-    await click(byLabel(i18n.t('modules.moveLater', { name: 'movie' })))
-
-    expect(mocks.saveOrder).toHaveBeenCalledTimes(1)
-    expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['series', 'movie', 'video'])
-    expect(shown()).toEqual(['series', 'movie', 'video'])
-  })
-
-  it('the keyboard on the handle carries the card two places left and sends the whole new order', async () => {
-    serve([MOVIE, SERIES, VIDEO])
-    await mount()
 
     const original = Element.prototype.getBoundingClientRect
     mockGridRects()
@@ -213,6 +197,7 @@ describe('ModulesPage — order', () => {
       Element.prototype.getBoundingClientRect = original
     }
 
+    expect(mocks.saveOrder).toHaveBeenCalledTimes(1)
     expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['video', 'movie', 'series'])
     expect(shown()).toEqual(['video', 'movie', 'series'])
   })
