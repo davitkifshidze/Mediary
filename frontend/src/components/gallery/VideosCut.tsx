@@ -152,6 +152,10 @@ export function VideosCut() {
                   ) : (
                     <Link
                       to={`/gallery/records/${video.owner.kind}/${video.owner.id}`}
+                      /* §3.3 — სათაური და „საიდან" state-ით, როგორც ჯგუფების ბარათიდან:
+                         უამისოდ არა-მედია ჩანაწერი ცარიელი სათაურით და ცარიელი ვებძებნით
+                         იხსნებოდა, „უკან" კი ზოგად ბიბლიოთეკაში აბრუნებდა */
+                      state={{ title: video.owner.title ?? undefined, from: '/gallery/videos' }}
                       className="rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       {t('gallery.openRecord')}

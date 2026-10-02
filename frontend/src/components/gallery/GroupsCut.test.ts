@@ -64,8 +64,11 @@ afterEach(() => {
   container = null
 })
 
-async function mountGroupsCut() {
+async function mountGroupsCut(initialPath = '/gallery/actors') {
   const { GroupsCut } = await import('@/components/gallery/GroupsCut')
+  const { useLocation } = await import('react-router-dom')
+  // URL-ის „ზონდი" — `?open=`-ის შემოწმებისთვის (§3.1)
+  const Probe = () => h('span', { 'data-testid': 'search' }, useLocation().search)
 
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -79,7 +82,11 @@ async function mountGroupsCut() {
         QueryClientProvider,
         { client: qc },
         // `TooltipProvider` `main.tsx`-შია — დიალოგის შიგნით tooltip-იც გვხვდება
-        h(MemoryRouter, null, h(TooltipProvider, null, h(GroupsCut, { by: 'actor' }))),
+        h(
+          MemoryRouter,
+          { initialEntries: [initialPath] },
+          h(TooltipProvider, null, h(GroupsCut, { by: 'actor' }), h(Probe)),
+        ),
       ),
     )
   })
@@ -144,5 +151,26 @@ describe('GroupsCut', () => {
     // იმავე `dialogs` სია სიის შტოშიც იხატება — ღია მდგომარეობა state-ს მოსდევს
     await mountGroupsCut()
     expect(dialogs()).toBe(0)
+  })
+
+  /* Tasks §3.1 — გახსნილი ჯგუფი URL-შია: შესვლა `?open=`-ს წერს, „უკან" შლის,
+     ხოლო `?open=`-ით მოსული გვერდი ჯგუფს თავიდანვე გახსნილს აჩვენებს. */
+  it('ჯგუფში შესვლა URL-ში `open`-ს წერს და „უკან" მას შლის', async () => {
+    const node = await openGroup()
+
+    expect(document.body.querySelector('[data-testid="search"]')?.textContent).toContain('open=actor%3A7')
+
+    await act(async () => button(node, 'უკან')!.click())
+    await flush()
+
+    expect(document.body.querySelector('[data-testid="search"]')?.textContent).not.toContain('open=')
+    expect(button(node, 'Mel Gibson'), 'სია დაბრუნდა').toBeTruthy()
+  })
+
+  it('`?open=`-ით მოსული გვერდი ჯგუფს გახსნილს აჩვენებს', async () => {
+    const node = await mountGroupsCut('/gallery/actors?open=actor:7')
+
+    expect(button(node, 'ფოტოები ვებიდან'), 'გახსნილი ჯგუფის ზოლი').toBeTruthy()
+    expect(button(node, 'Mel Gibson'), 'ბარათების სია არ ჩანს').toBeFalsy()
   })
 })

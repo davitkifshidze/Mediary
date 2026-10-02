@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ExternalLink, Globe, Images, Video } from 'lucide-react'
@@ -37,9 +37,11 @@ import { PageContainer } from '@/components/ui/page'
 
 export function GalleryRecordPage() {
   const { type, id } = useParams()
+  const navigate = useNavigate()
   /* ⚠️ სახელი ჯგუფის ბარათიდან მოდის: არა-მედია მშობელს დეტალის endpoint
      არ აქვს, ე.ი. სხვაგვარად ვებძებნა ცარიელი ველით გაიხსნებოდა. */
-  const passedTitle = (useLocation().state as { title?: string } | null)?.title ?? ''
+  const passed = (useLocation().state as { title?: string; from?: string } | null) ?? null
+  const passedTitle = passed?.title ?? ''
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
@@ -60,14 +62,24 @@ export function GalleryRecordPage() {
     (lang === 'ka' ? record?.title_ka || record?.title_en : record?.title_en || record?.title_ka) ??
     ''
 
+  /* Tasks §3.2 — ⚠️ **„უკან" იქ აბრუნებს, საიდანაც მოხვედი.** აქამდე ფიქსირებული
+     `/gallery/records` იყო და ბიბლიოთეკა ყოველთვის „ყველა"/„ჩანაწერებზე" იხსნებოდა —
+     არჩეული მოდული იკარგებოდა. გალერეიდან მოსულს (`state.from`) ისტორიით ვაბრუნებთ
+     (იგივე URL, იგივე ჩანართი, გახსნილი ჯგუფიც კი); პირდაპირი ბმულით მოსულს კი —
+     ამავე მოდულის ბიბლიოთეკაში (`?domain=`). */
+  const goBack = () => {
+    if (passed?.from) navigate(-1)
+    else navigate(`/gallery/records?domain=${encodeURIComponent(String(type))}`)
+  }
   const back = (
-    <Link
-      to="/gallery/records"
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+    <button
+      type="button"
+      onClick={goBack}
+      className="mb-4 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" />
       {t('gallery.cut.records')}
-    </Link>
+    </button>
   )
 
   /* ---------- არა-მედია მშობელი: ბრტყელი ბადე ---------- */

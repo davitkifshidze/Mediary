@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -55,8 +56,37 @@ export function RecordsCut({
 }) {
   const { t, i18n } = useTranslation()
   const { enabled } = useModules()
-  const [domain, setDomain] = useState<GalleryParentKind | 'all'>('all')
-  const [tab, setTab] = useState<'records' | 'actors'>('records')
+  /* Tasks §3.1 — ⚠️ **დომენი და შიდა ჩანართი URL-შია** (`?domain=movie&tab=actors`)
+     და არა `useState`-ში: ჩანაწერის გალერეიდან „უკან" დაბრუნებისას ეს კომპონენტი
+     თავიდან იტვირთება და `useState` ყოველთვის „ყველა"/„ჩანაწერებზე" აბრუნებდა —
+     სწორედ ეს იყო შენი შენიშვნა. `replace`-ით, რომ ტაბების გადართვა ისტორიას არ
+     ავსებდეს; გახსნილი ჯგუფი (`open`) კი ცალკე ჩანაწერია (`GroupsCut`). */
+  const [params, setParams] = useSearchParams()
+  const domain = (params.get('domain') ?? 'all') as GalleryParentKind | 'all'
+  const tab: 'records' | 'actors' = params.get('tab') === 'actors' ? 'actors' : 'records'
+  const setDomain = (key: GalleryParentKind | 'all') =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (key === 'all') next.delete('domain')
+        else next.set('domain', key)
+        // სხვა დომენის გახსნილი ჯგუფი აქ აზრს კარგავს
+        next.delete('open')
+        return next
+      },
+      { replace: true },
+    )
+  const setTab = (key: 'records' | 'actors') =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (key === 'records') next.delete('tab')
+        else next.set('tab', key)
+        next.delete('open')
+        return next
+      },
+      { replace: true },
+    )
 
   /* §37.4 — პირადი მოდულიც ტაბია, თავისი სახელით, ფერითა და ხატულით
      (`galleryParentsOf()` — იგივე სია, რასაც გადატანის ფანჯარა კითხულობს). */

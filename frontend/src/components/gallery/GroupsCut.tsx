@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, DownloadCloud, Globe, Images, Maximize2, Trash2, User, Video } from 'lucide-react'
@@ -97,7 +97,13 @@ export function GroupsCut({
    * უცებ ცარიელდებოდა და ეს „აღარაფერია"-დ იკითხებოდა.
    */
   const [closed, setClosed] = useState<Set<string>>(new Set())
-  const [open, setOpen] = useState<GalleryGroup | null>(null)
+  /* Tasks §3.1 — ⚠️ **გახსნილი ჯგუფი URL-შია** (`?open=movie:12`) და არა `useState`-ში:
+     ჩანაწერის გალერეიდან „უკან" დაბრუნებისას კომპონენტი თავიდან იტვირთება და
+     მხოლოდ URL-იდან იცის, რა იყო გახსნილი; ბრაუზერის „უკან"-იც ჯგუფს ხურავს,
+     რადგან გახსნა ისტორიაში ცალკე ჩანაწერია. თვითონ ჯგუფი `open`-ად ქვემოთ
+     ითვლება — სიიდან, გასაღებით (`keyFor`). */
+  const [params, setParams] = useSearchParams()
+  const location = useLocation()
   const [webOn, setWebOn] = useState<GalleryGroup | null>(null)
   const [videoOn, setVideoOn] = useState<GalleryGroup | null>(null)
 
@@ -168,6 +174,22 @@ export function GroupsCut({
   const keyFor = (group: GalleryGroup) =>
     group.from ? `from:${group.from}` : group.provider ? `provider:${group.provider}` : `${group.kind}:${group.id}`
 
+  /* გახსნილი ჯგუფი — URL-ის `open`-ით (§3.1). ⚠️ სანამ სია იტვირთება, ჯგუფი
+     ჯერ ვერ მოიძებნება — `openPending` ჩონჩხს აჩვენებს, თორემ ერთი წამით სია
+     გაიელვებდა და მერე „ჩავარდებოდა" ჯგუფში. */
+  const openKey = params.get('open')
+  const open = openKey ? (groupsQ.data?.groups.find((g) => keyFor(g) === openKey) ?? null) : null
+  const openPending = !!openKey && !open && groupsQ.isLoading
+  const setOpen = (group: GalleryGroup | null) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (group) next.set('open', keyFor(group))
+      else next.delete('open')
+      return next
+    })
+  /** საიდან მოვედით — ჩანაწერის გალერეის „უკან"-ისთვის (§3.2) */
+  const here = `${location.pathname}${location.search}`
+
   /**
    * ჯგუფის **ყველა** ფოტოს წაშლა.
    *
@@ -228,7 +250,7 @@ export function GroupsCut({
         /* ⚠️ სათაური **state-ით** მიჰყვება — არა-მედია მშობელს დეტალის
            endpoint არ აქვს (იხ. ჯგუფის შიგნითა ზოლი ქვემოთ) */
         run: () =>
-          navigate(`/gallery/records/${group.kind}/${group.id}`, { state: { title: titleOf(group) } }),
+          navigate(`/gallery/records/${group.kind}/${group.id}`, { state: { title: titleOf(group), from: here } }),
       })
     }
 
@@ -327,6 +349,9 @@ export function GroupsCut({
     </>
   )
 
+  // URL-ში ჯგუფი წერია, სია კი ჯერ არ ჩამოსულა — ჩონჩხი და არა სიის გაელვება (§3.1)
+  if (openPending) return <GalleryStackSkeleton />
+
   if (open) {
     const isActor = open.kind === 'actor'
     const isRecord = !open.from && !open.provider && !isActor
@@ -357,7 +382,7 @@ export function GroupsCut({
                 size="sm"
                 onClick={() =>
                   navigate(`/gallery/records/${open.kind}/${open.id}`, {
-                    state: { title: titleOf(open) },
+                    state: { title: titleOf(open), from: here },
                   })
                 }
               >
