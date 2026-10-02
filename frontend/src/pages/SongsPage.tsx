@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
-import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Star, Tags, Trash2 } from 'lucide-react'
+import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Tags, Trash2 } from 'lucide-react'
 import {
   SONG_MAX_RATING,
   createSong,
@@ -61,6 +61,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -434,13 +435,12 @@ export function SongsPage() {
                         {song.rating}/{SONG_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(song.id)}
-                      aria-label={t(song.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                    >
-                      <Star className={cn('size-4', song.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                    </button>
+                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <FavoriteButton
+                      active={song.is_favorite}
+                      pending={favorite.isPending && favorite.variables === song.id}
+                      onToggle={() => favorite.mutate(song.id)}
+                    />
                     <a
                       href={song.url}
                       target="_blank"

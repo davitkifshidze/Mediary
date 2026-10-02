@@ -11,7 +11,6 @@ import {
   Play,
   Plus,
   RefreshCw,
-  Star,
   Trash2,
 } from 'lucide-react'
 import { fetchMovieCollection, mediaApi } from '@/api/media'
@@ -29,6 +28,7 @@ import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
 import { cn } from '@/lib/utils'
@@ -251,18 +251,13 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     {statusName(s, lang)}
                   </button>
                 ))}
-                <button
-                  onClick={() => favMut.mutate()}
-                  aria-label={t('filter.favorite')}
-                  className={cn(
-                    'ml-1 grid size-9 cursor-pointer place-items-center rounded-md border transition-colors',
-                    m.is_favorite
-                      ? 'border-favorite bg-favorite/10 text-favorite'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  <Star className={cn('size-4', m.is_favorite && 'fill-current')} />
-                </button>
+                {/* Tasks §8 — რჩეული ტექსტით, იგივე ღილაკი, რაც სიებშია */}
+                <FavoriteButton
+                  className="ml-1"
+                  active={m.is_favorite}
+                  pending={favMut.isPending}
+                  onToggle={() => favMut.mutate()}
+                />
 
                 {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
                     `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}

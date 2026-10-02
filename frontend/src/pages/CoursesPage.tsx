@@ -11,7 +11,6 @@ import {
   Plus,
   Search,
   SquarePen,
-  Star,
   Trash2,
 } from 'lucide-react'
 import {
@@ -66,8 +65,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    კურსების მოდული (`course`, FEAT-25).
@@ -404,16 +403,12 @@ export function CoursesPage() {
                           {course.files_count || ''}
                         </span>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => favorite.mutate(course.id)}
-                        aria-label={t('filter.favorite')}
-                      >
-                        <Star
-                          className={cn('size-4', course.is_favorite && 'fill-current text-[var(--favorite)]')}
-                        />
-                      </Button>
+                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                      <FavoriteButton
+                        active={course.is_favorite}
+                        pending={favorite.isPending && favorite.variables === course.id}
+                        onToggle={() => favorite.mutate(course.id)}
+                      />
                       <Button
                         variant="edit"
                         size="sm"
@@ -512,7 +507,8 @@ export function CoursesPage() {
         </FilterPanel>
       </div>
 
-      {detail && <CourseDetail course={detail} onClose={() => setDetail(null)} />}
+      {/* Tasks §8 — სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
+      {detail && <CourseDetail course={courses.find((c) => c.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
 
       {editing && (
         <CourseForm

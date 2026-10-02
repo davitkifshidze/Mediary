@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, ExternalLink } from 'lucide-react'
-import { type NoteEntry } from '@/api/notes'
+import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { NoteUploads } from '@/components/NoteUploads'
 import { NoteRemindersButton, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -28,6 +30,12 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   // პირდაპირი ძახილი ბრაუზერის ლოკალს მიჰყვებოდა და პარამეტრს არ ემორჩილებოდა
   const { dateTime } = useDateFormat()
   const [reminders, setReminders] = useState(false)
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const qc = useQueryClient()
+  const favorite = useMutation({
+    mutationFn: () => toggleNoteFavorite(note.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['notes'] }),
+  })
 
 /* ⚠️ **შეხსენებების ფანჯარა უკანა მოდალს ცვლის და არ ეფარება** (2026-09-14,
    შენი არჩევანი: „ის გაქრეს, ეს გამოჩნდეს; დახურავ — პირიქით"). ორი ერთმანეთზე
@@ -50,6 +58,11 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   return (
     <ModalShell title={note.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
+        {/* Tasks §8 — რჩეული თავში (§26.2 შემხსენებლებსაც აქ აიტანს) */}
+        <div className="flex items-center justify-end gap-2">
+          <FavoriteButton size="xs" active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+        </div>
+
         {/* ---------- ფოტოები — ზემოთ (§26.4) ---------- */}
         <NoteUploads noteId={note.id} kinds={['image']} />
 

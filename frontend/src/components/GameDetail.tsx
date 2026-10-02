@@ -20,6 +20,7 @@ import {
   type GameFile,
   type GamePlatform,
   type GameVideoKind,
+  toggleGameFavorite,
 } from '@/api/games'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
@@ -29,6 +30,7 @@ import { useContentLang } from '@/lib/settings'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Badge } from '@/components/ui/badge'
@@ -107,6 +109,12 @@ function MyPlatformChips({ game }: { game: Game }) {
 }
 
 export function GameDetail({ game, onClose }: { game: Game; onClose: () => void }) {
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const favoriteQc = useQueryClient()
+  const favorite = useMutation({
+    mutationFn: () => toggleGameFavorite(game.id),
+    onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['games'] }),
+  })
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
 
@@ -135,6 +143,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               )}
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
+              <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

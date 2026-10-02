@@ -14,6 +14,7 @@ import {
   uploadBookFiles,
   type Book,
   type BookFile,
+  toggleBookFavorite,
 } from '@/api/books'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
@@ -23,6 +24,7 @@ import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/componen
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -49,6 +51,12 @@ import { formatBytes } from '@/lib/utils'
    ============================================================ */
 
 export function BookDetail({ book, onClose }: { book: Book; onClose: () => void }) {
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const favoriteQc = useQueryClient()
+  const favorite = useMutation({
+    mutationFn: () => toggleBookFavorite(book.id),
+    onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['books'] }),
+  })
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
 
@@ -79,6 +87,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
               )}
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
+              <FavoriteButton size="xs" active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

@@ -10,6 +10,7 @@ import {
   type Course,
   type CourseFile,
   type CourseFileKind,
+  toggleCourseFavorite,
 } from '@/api/courses'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
@@ -17,6 +18,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -48,6 +50,11 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const favorite = useMutation({
+    mutationFn: () => toggleCourseFavorite(course.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['courses'] }),
+  })
   const { toast } = useToast()
   const confirm = useConfirm()
 
@@ -170,6 +177,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
               <EnumStatusBadge domain="course" status={course.status} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={course.visibility} />
+              <FavoriteButton size="xs" active={course.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

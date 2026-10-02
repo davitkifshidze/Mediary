@@ -9,7 +9,6 @@ import {
   Plus,
   Search,
   SquarePen,
-  Star,
   Trash2,
 } from 'lucide-react'
 import {
@@ -77,8 +76,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -440,16 +439,12 @@ export function PlacesPage() {
                           {place.files_count || ''}
                         </span>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => favorite.mutate(place.id)}
-                        aria-label={t('filter.favorite')}
-                      >
-                        <Star
-                          className={cn('size-4', place.is_favorite && 'fill-current text-[var(--favorite)]')}
-                        />
-                      </Button>
+                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                      <FavoriteButton
+                        active={place.is_favorite}
+                        pending={favorite.isPending && favorite.variables === place.id}
+                        onToggle={() => favorite.mutate(place.id)}
+                      />
                       <Button
                         variant="edit"
                         size="sm"
@@ -563,7 +558,8 @@ export function PlacesPage() {
         </FilterPanel>
       </div>
 
-      {detail && <PlaceDetail place={detail} onClose={() => setDetail(null)} />}
+      {/* Tasks §8 — სია ახლდება რჩეულის/ფაილის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */}
+      {detail && <PlaceDetail place={places.find((p) => p.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
 
       {editing && (
         <PlaceForm

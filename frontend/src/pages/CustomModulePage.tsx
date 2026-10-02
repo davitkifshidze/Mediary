@@ -13,7 +13,6 @@ import {
   Plus,
   Search,
   SquarePen,
-  Star,
   Tags,
   Trash2,
 } from 'lucide-react'
@@ -81,6 +80,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -527,14 +527,12 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
 
                         <VisibilityBadge value={record.visibility} size="row" />
 
-                        <button
-                          type="button"
-                          aria-label={t(record.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                          onClick={() => favorite.mutate(record.id)}
-                          className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                        >
-                          <Star className={cn('size-4', record.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                        </button>
+                        {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                        <FavoriteButton
+                          active={record.is_favorite}
+                          pending={favorite.isPending && favorite.variables === record.id}
+                          onToggle={() => favorite.mutate(record.id)}
+                        />
                         <Button variant="edit" size="sm" onClick={() => setEditing(record)}>
                           <SquarePen className="size-3.5" />
                           {t('actions.edit')}

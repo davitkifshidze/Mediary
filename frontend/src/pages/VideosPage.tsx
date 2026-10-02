@@ -23,7 +23,6 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Star,
   Tags,
   Trash2,
   TriangleAlert,
@@ -90,6 +89,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn, formatBytes } from '@/lib/utils'
 
@@ -532,13 +532,13 @@ export function VideosPage() {
                       <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={v.title}>
                         {v.title}
                       </h3>
-                      <button
-                        onClick={() => favorite.mutate(v.id)}
-                        aria-label={t(v.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                        className="cursor-pointer text-muted-foreground hover:text-[var(--favorite)]"
-                      >
-                        <Star className={cn('size-4', v.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                      </button>
+                      {/* Tasks §8 — რჩეული ტექსტით და ფერით; ბარათის სათაურის ზოლში დაბალი ზომა */}
+                      <FavoriteButton
+                        size="xs"
+                        active={v.is_favorite}
+                        pending={favorite.isPending && favorite.variables === v.id}
+                        onToggle={() => favorite.mutate(v.id)}
+                      />
                     </div>
 
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -755,7 +755,8 @@ export function VideosPage() {
 
       {detail && (
         <VideoDetail
-          video={detail}
+          /* Tasks §8 — სია ახლდება რჩეულის შემდეგ, მოდალს ახალი ობიექტი უნდა მიუვიდეს */
+          video={videos.find((v) => v.id === detail.id) ?? detail}
           onClose={() => setDetail(null)}
           // „მსგავსი ვიდეოზე" დაჭერა იმავე მოდალში გადაინაცვლებს (K4)
           onOpen={setDetail}

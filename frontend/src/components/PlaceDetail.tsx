@@ -11,6 +11,7 @@ import {
   type Place,
   type PlaceFile,
   type PlaceFileKind,
+  togglePlaceFavorite,
 } from '@/api/places'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
@@ -19,6 +20,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -51,6 +53,11 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
   const lang = useContentLang(i18n.language)
   const { date: formatDate } = useDateFormat()
   const qc = useQueryClient()
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const favorite = useMutation({
+    mutationFn: () => togglePlaceFavorite(place.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['places'] }),
+  })
   const { toast } = useToast()
   const confirm = useConfirm()
 
@@ -178,6 +185,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
               )}
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
+              <FavoriteButton size="xs" active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

@@ -12,6 +12,7 @@ import {
   updateVideoNote,
   uploadVideoFiles,
   type Video,
+  toggleVideoFavorite,
 } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
@@ -23,6 +24,7 @@ import { usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
@@ -72,6 +74,11 @@ export function VideoDetail({
   const { t } = useTranslation()
   const { date } = useDateFormat()
   const qc = useQueryClient()
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ ბარათზე იყო)
+  const favorite = useMutation({
+    mutationFn: () => toggleVideoFavorite(video.id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['videos'] }),
+  })
   const { toast } = useToast()
   const [tab, setTab] = useState<Tab>('video')
 
@@ -134,9 +141,10 @@ export function VideoDetail({
     <ModalShell title={video.title} onClose={onClose} wide>
       {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
           `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex items-center justify-end gap-2">
         {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
         <VisibilityBadge value={video.visibility} />
+        <FavoriteButton size="xs" active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
       </div>
 
       <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />

@@ -14,7 +14,6 @@ import {
   SquarePen,
   Plus,
   Search,
-  Star,
   Tags,
   Trash2,
 } from 'lucide-react'
@@ -76,6 +75,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -444,19 +444,12 @@ export function BookmarksPage() {
                     {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
                     <VisibilityBadge value={bookmark.visibility} size="row" />
 
-                    <button
-                      type="button"
-                      aria-label={t(bookmark.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      onClick={() => favorite.mutate(bookmark.id)}
-                      className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                    >
-                      <Star
-                        className={cn(
-                          'size-4',
-                          bookmark.is_favorite && 'fill-current text-[var(--favorite)]',
-                        )}
-                      />
-                    </button>
+                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <FavoriteButton
+                      active={bookmark.is_favorite}
+                      pending={favorite.isPending && favorite.variables === bookmark.id}
+                      onToggle={() => favorite.mutate(bookmark.id)}
+                    />
                     <Button variant="edit" size="sm" onClick={() => setEditing(bookmark)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}

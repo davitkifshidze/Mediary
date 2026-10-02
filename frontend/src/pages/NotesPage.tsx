@@ -14,7 +14,6 @@ import {
   Plus,
   Search,
   Settings2,
-  Star,
   Tags,
   Trash2,
 } from 'lucide-react'
@@ -55,6 +54,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -421,13 +421,12 @@ export function NotesPage() {
                   <Badge size="row" className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
                     {statusName(note.status, lang)}
                   </Badge>
-                  <button
-                    onClick={() => favorite.mutate(note.id)}
-                    aria-label={t(note.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                    className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                  >
-                    <Star className={cn('size-4', note.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                  </button>
+                  {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით (ადგილს შემხსენებელთან §26 უცვლის) */}
+                  <FavoriteButton
+                    active={note.is_favorite}
+                    pending={favorite.isPending && favorite.variables === note.id}
+                    onToggle={() => favorite.mutate(note.id)}
+                  />
                   {note.links[0]?.url && (
                     <a
                       href={note.links[0].url}

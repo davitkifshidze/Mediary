@@ -13,6 +13,7 @@ import {
   uploadBoardGameFiles,
   type BoardGame,
   type BoardGameFile,
+  toggleBoardGameFavorite,
 } from '@/api/boardGames'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
@@ -21,6 +22,7 @@ import { errorMessage } from '@/lib/errors'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Badge } from '@/components/ui/badge'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -42,6 +44,12 @@ import { formatBytes } from '@/lib/utils'
    ============================================================ */
 
 export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: () => void }) {
+  // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
+  const favoriteQc = useQueryClient()
+  const favorite = useMutation({
+    mutationFn: () => toggleBoardGameFavorite(game.id),
+    onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['board-games'] }),
+  })
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
 
@@ -66,6 +74,7 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
               )}
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
+              <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

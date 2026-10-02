@@ -13,7 +13,6 @@ import {
   Plus,
   Quote,
   Search,
-  Star,
   Tags,
   Trash2,
 } from 'lucide-react'
@@ -51,8 +50,8 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 
@@ -418,13 +417,12 @@ export function BooksPage() {
                         {book.rating}/{BOOK_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(book.id)}
-                      aria-label={t(book.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                    >
-                      <Star className={cn('size-4', book.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                    </button>
+                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <FavoriteButton
+                      active={book.is_favorite}
+                      pending={favorite.isPending && favorite.variables === book.id}
+                      onToggle={() => favorite.mutate(book.id)}
+                    />
                     {/* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი
                         ჩანაწერებისთვის რჩება (მიგრაციამ პირველი ბმული გადმოიტანა,
                         მაგრამ ხელახლა შეყვანილი ლინკი ახლა აქ წერია) */}

@@ -13,7 +13,6 @@ import {
   SquarePen,
   Plus,
   Search,
-  Star,
   Tags,
   Trash2,
   Users,
@@ -51,8 +50,8 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
 /* ============================================================
@@ -371,13 +370,12 @@ export function BoardGamesPage() {
                         {game.rating}/{BOARD_GAME_MAX_RATING}
                       </Badge>
                     )}
-                    <button
-                      onClick={() => favorite.mutate(game.id)}
-                      aria-label={t(game.is_favorite ? 'actions.unfavorite' : 'actions.favorite')}
-                      className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-[var(--favorite)]"
-                    >
-                      <Star className={cn('size-4', game.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                    </button>
+                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <FavoriteButton
+                      active={game.is_favorite}
+                      pending={favorite.isPending && favorite.variables === game.id}
+                      onToggle={() => favorite.mutate(game.id)}
+                    />
                     {(game.links[0]?.url || game.bgg_url) && (
                       <a
                         href={game.links[0]?.url || game.bgg_url || '#'}
