@@ -14,8 +14,10 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\StorageFolder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -115,7 +117,8 @@ class SeriesController extends Controller
             return MissingCredential::response(CredentialProviders::TMDB);
         }
 
-        $existing = Series::where('tmdb_id', $data['tmdb_id'])->first();
+        // ⚠️ ურნიანად (Tasks §40.1ა) — ურნაში მყოფი 409 `record_in_trash`-ია და არა ახალი რიგი
+        $existing = MediaDuplicate::find('series', Series::class, (int) $request->user()->getKey(), ['tmdb_id' => $data['tmdb_id']]);
         if ($existing) {
             $existing->load(['genres', 'cast']);
 
@@ -128,6 +131,12 @@ class SeriesController extends Controller
         try {
             $enricher->enrichSeries($series);
         } catch (\Throwable $e) {
+            if ($e instanceof UniqueConstraintViolationException) {
+                $existing = MediaDuplicate::resolveClash('series', $series, $e);
+                $existing->load(['genres', 'cast']);
+
+                return new SeriesResource($existing);
+            }
             $series->sync_status = 'partial';
             $series->save();
         }

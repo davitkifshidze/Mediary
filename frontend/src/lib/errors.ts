@@ -241,6 +241,9 @@ export const CODES = [
      პასუხშიც აბრუნებს (`error: 'credential_missing'`, თარგმანი/იმპორტი),
      სადაც `provider` არ მოდის — ამიტომ ტექსტი ორია (იხ. `errorMessage()`). */
   'credential_missing',
+  /* Tasks §40.1ა — იგივე ჩანაწერი **ურნაშია** (409 + `domain`, `id`): ახალი რიგი
+     არ იქმნება, რიგის მწკრივი კი „აღდგენას" სთავაზობს. */
+  'record_in_trash',
 ] as const
 
 /**

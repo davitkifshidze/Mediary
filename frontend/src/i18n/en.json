@@ -558,7 +558,9 @@
     "importing": "Importing…",
     "importDone": "Import finished",
     "castSyncing": "Updating actors…",
-    "castSyncDone": "Actors updated"
+    "castSyncDone": "Actors updated",
+    "restoreFromTrash": "Restore",
+    "restoredFromTrash": "“{{title}}” restored from the trash"
   },
   "missing": {
     "label": "Missing:",
@@ -1117,7 +1119,8 @@
     "upload_kind_unknown": "Unknown upload kind.",
     "upload_scope_invalid": "Choose who it applies to — “only them” or “everyone”.",
     "custom_module_limit": "An account can create at most {{max}} personal modules.",
-    "invalid_target": "This account has no such module."
+    "invalid_target": "This account has no such module.",
+    "record_in_trash": "This record is already in the trash — restore it instead of adding a new one"
   },
   "fields": {
     "title": "Fields",

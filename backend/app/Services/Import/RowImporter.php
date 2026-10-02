@@ -2,6 +2,7 @@
 
 namespace App\Services\Import;
 
+use App\Exceptions\RecordInTrashException;
 use App\Models\Book;
 use App\Models\Game;
 use App\Models\Movie;
@@ -13,6 +14,8 @@ use App\Services\Games\RawgClient;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\AppTime;
 use App\Support\ImportSource;
+use App\Support\MediaDuplicate;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -77,10 +80,15 @@ class RowImporter
             return $this->fail('not_found');
         }
 
-        $existing = Movie::withoutGlobalScope('owner')
-            ->where('user_id', $user->getKey())
-            ->where('tmdb_id', $tmdbId)
-            ->first();
+        /* ⚠️ ურნიანად და ორივე იდენტობით (Tasks §40.1ა): `unique(user_id,
+           imdb_id)` ურნაში მყოფს ხედავს, ამიტომ `imdb_id`-იანი ფაილის რიგი
+           პირველივე `save()`-ზე ჩავარდებოდა. */
+        try {
+            $existing = MediaDuplicate::find('movie', Movie::class, (int) $user->getKey(), ['tmdb_id' => $tmdbId])
+                ?? ($row['imdb_id'] ? MediaDuplicate::find('movie', Movie::class, (int) $user->getKey(), ['imdb_id' => (string) $row['imdb_id']]) : null);
+        } catch (RecordInTrashException $e) {
+            return [...$this->fail('record_in_trash'), 'id' => $e->record->getKey()];
+        }
 
         if ($existing) {
             return ['ok' => true, 'skipped' => true, 'error' => null, 'id' => $existing->id, 'title' => $existing->title_en];
@@ -92,6 +100,15 @@ class RowImporter
 
         try {
             $this->enricher->enrichMovie($movie);
+        } catch (UniqueConstraintViolationException $e) {
+            // გამდიდრებამ `imdb_id` მიაწერა, რომელიც სხვა ჩანაწერს უკვე აქვს
+            try {
+                $existing = MediaDuplicate::resolveClash('movie', $movie, $e);
+            } catch (RecordInTrashException $trashed) {
+                return [...$this->fail('record_in_trash'), 'id' => $trashed->record->getKey()];
+            }
+
+            return ['ok' => true, 'skipped' => true, 'error' => null, 'id' => $existing->id, 'title' => $existing->title_en];
         } catch (Throwable) {
             // ⚠️ ნაწილობრივი ჩანაწერიც ჩანაწერია — `/sync`-ს მერე შეუძლია შეავსოს
             $movie->sync_status = 'partial';

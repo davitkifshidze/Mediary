@@ -6,8 +6,10 @@ use App\Models\Message;
 use App\Models\User;
 use App\Services\Profile\PublicProfileService;
 use App\Support\MediaDomain;
+use App\Support\MediaDuplicate;
 use App\Support\PublicDomain;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * **ჩანაწერის გაზიარება ჩატში (FEAT-13).**
@@ -132,10 +134,8 @@ class SharedRecord
         /** @var class-string<Model> $model */
         $model = PublicDomain::model($domain);
 
-        $existing = $model::withoutGlobalScope('owner')
-            ->where('user_id', $recipient->getKey())
-            ->where($identity)
-            ->first();
+        // ⚠️ ურნიანად (Tasks §40.1ა) — ურნაში მყოფი 409 `record_in_trash`-ია, არა მეორე რიგი
+        $existing = MediaDuplicate::find($domain, $model, (int) $recipient->getKey(), $identity);
 
         if ($existing) {
             return ['record' => $existing, 'created' => false];
@@ -146,7 +146,10 @@ class SharedRecord
         $record->save();
 
         $this->fillTitle($domain, $record, (string) ($shared['title'] ?? ''));
-        $this->enrich($domain, $record);
+        $clash = $this->enrich($domain, $record);
+        if ($clash) {
+            return ['record' => $clash, 'created' => false];
+        }
 
         return ['record' => $record->refresh(), 'created' => true];
     }
@@ -224,16 +227,25 @@ class SharedRecord
      * უკვე შექმნილია და მისი წაშლა უარესი შედეგია, ვიდრე ნახევრად
      * შევსებული ბარათი, რომელსაც სინქრონი შეავსებს.
      */
-    private function enrich(string $domain, Model $record): void
+    /**
+     * ⚠️ აბრუნებს **არსებულ** ჩანაწერს, თუ გამდიდრებამ `imdb_id` მიაწერა,
+     * რომელიც მიმღებს სხვა რიგზე უკვე აქვს (Tasks §40.1ა) — მაშინ ახლად
+     * შექმნილი იშლება და `partial`-ის `save()` იმავე ველზე აღარ ვარდება.
+     */
+    private function enrich(string $domain, Model $record): ?Model
     {
         if (! MediaDomain::has($domain)) {
-            return;
+            return null;
         }
 
         try {
             MediaDomain::enrich($domain, $record);
+        } catch (UniqueConstraintViolationException $e) {
+            return MediaDuplicate::resolveClash($domain, $record, $e);
         } catch (\Throwable) {
             $record->forceFill(['sync_status' => 'partial'])->save();
         }
+
+        return null;
     }
 }

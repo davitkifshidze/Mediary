@@ -14,8 +14,10 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\StorageFolder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -123,7 +125,8 @@ class AnimeController extends Controller
             return MissingCredential::response(CredentialProviders::TMDB);
         }
 
-        $existing = Anime::where('tmdb_id', $data['tmdb_id'])->first();
+        // ⚠️ ურნიანად (Tasks §40.1ა) — ურნაში მყოფი 409 `record_in_trash`-ია და არა ახალი რიგი
+        $existing = MediaDuplicate::find('anime', Anime::class, (int) $request->user()->getKey(), ['tmdb_id' => $data['tmdb_id']]);
         if ($existing) {
             $existing->load(['genres', 'cast']);
 
@@ -136,6 +139,12 @@ class AnimeController extends Controller
         try {
             $enricher->enrichAnime($anime);
         } catch (\Throwable $e) {
+            if ($e instanceof UniqueConstraintViolationException) {
+                $existing = MediaDuplicate::resolveClash('anime', $anime, $e);
+                $existing->load(['genres', 'cast']);
+
+                return new AnimeResource($existing);
+            }
             $anime->sync_status = 'partial';
             $anime->save();
         }

@@ -13,6 +13,7 @@ import {
   type GalleryPlanItem,
 } from '@/api/gallery'
 import { importRow, type ImportPlanItem } from '@/api/import'
+import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
   syncActor,
@@ -75,6 +76,11 @@ interface QItem {
   status: QStatus
   /** add — TMDB id */
   tmdbId?: number
+  /**
+   * add/import — იგივე ჩანაწერი მომხმარებლის **ურნაშია** (409 `record_in_trash`,
+   * Tasks §40.1ა): მწკრივი „აღდგენას" სთავაზობს ახალი რიგის ნაცვლად.
+   */
+  trashedId?: number
   /** sync/gallery — ლოკალური ჩანაწერის id + პარამეტრები */
   itemId?: number
   opts?: SyncOptions
@@ -192,6 +198,19 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
   add: { busy: 'queue.adding', done: 'queue.doneTitle' },
   import: { busy: 'queue.importing', done: 'queue.importDone' },
   cast: { busy: 'queue.castSyncing', done: 'queue.castSyncDone' },
+}
+
+/**
+ * რომელი სახეობის სათაური გამოჩნდეს შერეულ რიგზე.
+ *
+ * ⚠️ **სია `HEADLINES`-იდან გამოდის და არა ხელით** (Tasks §40.1ბ) — ხელით
+ * ჩამოწერილს `import` გამორჩა, ე.ი. იმპორტის რიგი „ემატება…"-ს წერდა. ახალი
+ * სახეობა `HEADLINES`-ში უნდა ჩაჯდეს (ტიპი აიძულებს), და აქაც თავისით
+ * მოხვდება. `add` სარეზერვოა — ის ყველაზე ზოგადი სათაურია.
+ */
+export function headlineKindOf(kinds: Iterable<QKind>): QKind {
+  const present = new Set(kinds)
+  return (Object.keys(HEADLINES) as QKind[]).find((k) => k !== 'add' && present.has(k)) ?? 'add'
 }
 
 export function QueueProvider({ children }: { children: React.ReactNode }) {
@@ -482,6 +501,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       error?: string
       skipped?: boolean
       castResult?: CastSyncResult
+      trashedId?: number
     }> = next.kind === 'add'
         ? mediaApi(next.mediaType)
             .addFromTmdb(next.tmdbId!)
@@ -522,6 +542,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   error: r.error ?? undefined,
                   // ⚠️ „უკვე მაქვს" ჩავარდნა არ არის — სერვერის მეორე შემოწმებაა
                   skipped: r.skipped,
+                  trashedId: r.error === 'record_in_trash' ? (r.id ?? undefined) : undefined,
                 }))
             : next.kind === 'purge'
               ? purgeItem(next.purgeOpts!, next.itemId!, ctrl.signal).then((r) => ({
@@ -545,7 +566,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 }))
 
     job
-      .then(({ ok, error, skipped, castResult }) => {
+      .then(({ ok, error, skipped, castResult, trashedId }) => {
         ;[
           next.mediaType,
           'discover',
@@ -582,13 +603,14 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     error,
                     skipped,
                     castResult,
+                    trashedId,
                     ms: performance.now() - started,
                   }
                 : i,
             ),
         )
       })
-      .catch((e: { code?: string; message?: string; response?: { status?: number } }) => {
+      .catch((e: { code?: string; message?: string; response?: { status?: number; data?: { id?: number } } }) => {
         const cancelled = ctrl.signal.aborted || e?.code === 'ERR_CANCELED'
         // 17.3 — კვოტა გავსდა: ნაკადი **ჩერდება** და არ აგრძელებს ცდას
         const quotaFull = e?.response?.status === 413
@@ -598,6 +620,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
            ისინი იშლება, მიზეზი კი წყაროს სახელით იწერება („TMDB-ის გასაღები
            არ გაქვს") — `errorMessage()` მას პასუხის `provider`-იდან აწყობს. */
         const noKey = isApiCode(e, 'credential_missing')
+        // Tasks §40.1ა — იგივე ჩანაწერი ურნაშია: ჩავარდნა კი არა, „აღდგენის" შეთავაზება
+        const inTrash = isApiCode(e, 'record_in_trash')
         setItems((cur) =>
           cur
             .filter((i) => !(quotaFull && i.status === 'pending'))
@@ -607,7 +631,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 ? {
                     ...i,
                     status: 'error',
-                    error: quotaFull ? 'quota' : cancelled ? 'cancelled' : noKey ? errorMessage(e) : e?.message,
+                    error: quotaFull
+                      ? 'quota'
+                      : cancelled
+                        ? 'cancelled'
+                        : noKey
+                          ? errorMessage(e)
+                          : inTrash
+                            ? 'record_in_trash'
+                            : e?.message,
+                    trashedId: inTrash ? e.response?.data?.id : undefined,
                     ms: performance.now() - started,
                   }
                 : i,
@@ -698,6 +731,27 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
      მეორე კი დესტრუქციულია და ცხად დადასტურებაზე დგას. */
   const { toast } = useToast()
   const [handingOff, setHandingOff] = React.useState(false)
+
+  /**
+   * Tasks §40.1ა — ურნაში მყოფის აღდგენა რიგის მწკრივიდან. ⚠️ ურნის სახეობა
+   * მედია-დომენის გასაღებია (`movie` · `series` · `anime` — `TrashDomain::MODELS`),
+   * ე.ი. `mediaType` საკმარისია; ახალი ჩანაწერი არ იქმნება.
+   */
+  const restoreTrashed = React.useCallback(
+    (item: QItem) => {
+      if (item.trashedId == null) return
+      restoreFromTrash(item.mediaType, item.trashedId)
+        .then(() => {
+          setItems((cur) =>
+            cur.map((i) => (i.id === item.id ? { ...i, status: 'done', error: undefined, trashedId: undefined } : i)),
+          )
+          ;[item.mediaType, 'trash', 'dashboard', 'discover'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
+          toast({ title: t('queue.restoredFromTrash', { title: item.title }), variant: 'success' })
+        })
+        .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))
+    },
+    [qc, t, toast],
+  )
 
 
   const pendingItems = items.filter((i) => i.status === 'pending')
@@ -830,8 +884,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     items.filter((i) => i.status === 'error').length + serverRows.filter((r) => r.status === 'error').length
   const running = items.find((i) => i.status === 'running')
   /** სათაურის სახეობა — შერეულ რიგში ყველაზე „ხმამაღალი" იმარჯვებს */
-  const headlineKind: QKind =
-    (['purge', 'gallery', 'translate', 'sync', 'cast'] as QKind[]).find((k) => items.some((i) => i.kind === k)) ?? 'add'
+  const headlineKind = headlineKindOf(items.map((i) => i.kind))
 
   /**
    * დარჩენილი დრო — დასრულებულების საშუალო × დარჩენილი + **თითოეულის პაუზა**.
@@ -1001,6 +1054,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                       </span>
                     )}
                   </span>
+                  {it.status === 'error' && it.trashedId != null && (
+                    <button
+                      onClick={() => restoreTrashed(it)}
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:text-foreground"
+                    >
+                      <RotateCcw className="size-3" />
+                      {t('queue.restoreFromTrash')}
+                    </button>
+                  )}
                   {it.status === 'pending' && (
                     <button
                       onClick={() => cancelOne(it.id)}

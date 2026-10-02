@@ -143,3 +143,21 @@ describe('queue: a missing key (Tasks §30.6)', () => {
     expect(el.textContent).not.toContain('Second film')
   })
 })
+
+/**
+ * Tasks §40.1ბ — სათაურის სია ხელით იყო ჩამოწერილი და `import` გამორჩა,
+ * ე.ი. იმპორტის რიგი „ემატება…"-ს წერდა „იმპორტდება…"-ს ნაცვლად.
+ */
+describe('queue: the headline kind', () => {
+  it('names an import run as an import, not as adding', async () => {
+    const { headlineKindOf } = await import('@/components/ui/queue')
+    expect(headlineKindOf(['import', 'import'])).toBe('import')
+  })
+
+  it('falls back to adding only when nothing more specific runs', async () => {
+    const { headlineKindOf } = await import('@/components/ui/queue')
+    expect(headlineKindOf(['add'])).toBe('add')
+    expect(headlineKindOf([])).toBe('add')
+    expect(headlineKindOf(['add', 'sync'])).toBe('sync')
+  })
+})

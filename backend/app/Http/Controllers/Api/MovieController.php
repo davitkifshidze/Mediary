@@ -14,8 +14,10 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
 use App\Support\StorageFolder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -178,7 +180,8 @@ class MovieController extends Controller
             return MissingCredential::response(CredentialProviders::TMDB);
         }
 
-        $existing = Movie::where('tmdb_id', $data['tmdb_id'])->first();
+        // ⚠️ ურნიანად (Tasks §40.1ა) — ურნაში მყოფი 409 `record_in_trash`-ია და არა ახალი რიგი
+        $existing = MediaDuplicate::find('movie', Movie::class, (int) $request->user()->getKey(), ['tmdb_id' => $data['tmdb_id']]);
         if ($existing) {
             $existing->load(['genres', 'cast']);
 
@@ -191,6 +194,12 @@ class MovieController extends Controller
         try {
             $enricher->enrichMovie($movie);
         } catch (\Throwable $e) {
+            if ($e instanceof UniqueConstraintViolationException) {
+                $existing = MediaDuplicate::resolveClash('movie', $movie, $e);
+                $existing->load(['genres', 'cast']);
+
+                return new MovieResource($existing);
+            }
             $movie->sync_status = 'partial';
             $movie->save();
         }
