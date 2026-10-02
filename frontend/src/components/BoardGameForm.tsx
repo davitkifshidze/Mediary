@@ -496,6 +496,7 @@ export function BoardGameForm({
             <Textarea
               id="bg-desc"
               rows={FORM_TEXT_ROWS}
+              autoGrow
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />

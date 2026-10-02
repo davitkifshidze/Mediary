@@ -407,6 +407,7 @@ export function BookForm({
             <Textarea
               id="b-desc-ka"
               rows={FORM_TEXT_ROWS}
+              autoGrow
               value={form.description_ka}
               onChange={(e) => setForm((f) => ({ ...f, description_ka: e.target.value }))}
             />

@@ -243,6 +243,7 @@ export function NoteForm({
             <Textarea
               id="note-desc"
               rows={FORM_TEXT_ROWS}
+              autoGrow
               placeholder={t('notes.descriptionPlaceholder')}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

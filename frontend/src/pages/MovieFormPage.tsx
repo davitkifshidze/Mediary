@@ -435,6 +435,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
               <Textarea
                 id="m-desc"
                 rows={FORM_TEXT_ROWS}
+              autoGrow
                 value={i18n.language === 'ka' ? form.description_ka : form.description_en}
                 placeholder={fields.placeholder('description')}
                 onChange={(e) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', e.target.value)}

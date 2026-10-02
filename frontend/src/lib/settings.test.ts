@@ -66,7 +66,8 @@ function mount() {
 
     useEffect(() => {
       change = () => settings.set('libraryPageSize', 42)
-      submit = settings.save
+      // ⚠️ `save()` `Promise<boolean>`-ია (Tasks §1.3) — სინქრონული `act`-ისთვის შედეგი იგნორირდება
+      submit = () => void settings.save()
     }, [settings])
 
     return null

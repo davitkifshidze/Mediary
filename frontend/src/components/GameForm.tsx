@@ -519,6 +519,7 @@ export function GameForm({
             <Textarea
               id="g-desc-en"
               rows={FORM_TEXT_ROWS}
+              autoGrow
               value={form.description_en}
               onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
             />

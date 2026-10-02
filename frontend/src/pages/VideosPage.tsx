@@ -1091,6 +1091,7 @@ function VideoForm({
             <Textarea
               id="v-desc"
               rows={FORM_TEXT_ROWS}
+              autoGrow
               placeholder={fields.placeholder('description')}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
