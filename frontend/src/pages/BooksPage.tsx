@@ -520,6 +520,7 @@ export function BooksPage() {
         <BookForm
           book={editing === 'new' ? null : editing}
           genres={allGenres}
+          knownTags={tagOptions}
           onClose={() => setEditing(null)}
           onSaved={() => {
             invalidate()

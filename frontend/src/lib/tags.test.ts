@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dedupeTags, tagKey } from './tags'
+import { addTag, dedupeTags, tagKey } from './tags'
 
 /* ============================================================
    `lib/tags.ts` — `Video::normalizeTags()`-ის **ტყუპი**.
@@ -42,5 +42,21 @@ describe('dedupeTags', () => {
 
   it('თანმიმდევრობას ინახავს', () => {
     expect(dedupeTags(['გ', 'ა', 'ბ', 'ა']).tags).toEqual(['გ', 'ა', 'ბ'])
+  })
+})
+
+describe('addTag (Tasks §13)', () => {
+  it('დუბლს არ ამატებს და არსებულ ფორმას აბრუნებს', () => {
+    expect(addTag(['Rock'], ' rock ')).toEqual({ tags: ['Rock'], duplicate: 'Rock', added: null })
+  })
+
+  it('ახალს ამატებს, ბიბლიოთეკაში ნაცნობს — მისი რეგისტრით', () => {
+    expect(addTag(['Rock'], 'blues')).toEqual({ tags: ['Rock', 'blues'], duplicate: null, added: 'blues' })
+    expect(addTag(['Rock'], 'jazz', ['Jazz'])).toEqual({ tags: ['Rock', 'Jazz'], duplicate: null, added: 'Jazz' })
+    expect(addTag([], 'film   noir').tags).toEqual(['film noir'])
+  })
+
+  it('ცარიელი აკრეფა არაფერს ცვლის', () => {
+    expect(addTag(['Rock'], '   ')).toEqual({ tags: ['Rock'], duplicate: null, added: null })
   })
 })

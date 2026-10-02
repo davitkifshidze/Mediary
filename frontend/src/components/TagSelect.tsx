@@ -1,8 +1,8 @@
 import CreatableSelect from 'react-select/creatable'
 import { useTranslation } from 'react-i18next'
 import { reactSelectPortal, reactSelectStyles, type Option } from '@/lib/selectStyles'
-import { dedupeTags } from '@/lib/tags'
-import { useToast } from '@/components/ui/feedback'
+import { addTag, dedupeTags, tagKey } from '@/lib/tags'
+import { useAlert } from '@/components/ui/feedback'
 
 const multiStyles = reactSelectStyles<true>()
 
@@ -11,11 +11,19 @@ const multiStyles = reactSelectStyles<true>()
  * (`GenreSelect`). არსებული ტეგი ჩამონათვალიდან აირჩევა, ახალი — აკრეფით
  * იქმნება; ჩიპი „x"-ით იხსნება. backend-ის მხარე უცვლელია (`videos.tags` json).
  *
- * ⚠️ **დუბლიკატი აქ იჭრება და აქ ხმაურდება (Tasks §2.6).** ყველა მოდულის
- * ტეგი (და ბორდგეიმის „მექანიკები") ამ ერთ კომპონენტში შედის, ე.ი. წესი
- * ერთხელ იწერება; submit-ზე შემოწმება მაინც რჩება გარანტიად, უბრალოდ მას
- * უკვე აღარაფერი რჩება მოსაჭრელი. „Rock" და „rock" ერთი ტეგია — react-select
- * თვითონ მხოლოდ **ზუსტ** დუბლს იცავს.
+ * ⚠️ **დუბლიკატი აქ იჭრება და აქ ხმაურდება** (Tasks §2.6 → §13). ყველა
+ * მოდულის ტეგი (და ბორდგეიმის „მექანიკები") ამ ერთ კომპონენტში შედის, ე.ი.
+ * წესი ერთხელ იწერება. „Rock" და „rock" ერთი ტეგია — react-select თვითონ
+ * მხოლოდ **ზუსტ** დუბლს იცავს.
+ *
+ * ⚠️ **იგივეს დამატებაზე პოპაპია და არა ტოსტი** (Tasks §13.2, შენი სიტყვები:
+ * „ამოვარდეს სვალის მსგავსი პოპაპი და გითხრას, რომ მსგავსი უკვე არსებობს,
+ * და წაშალოს ბოლოს დამატებული"). Enter-ზე `isValidNewOption` ყოველთვის
+ * „კი"-ს ამბობს, რომ დუბლმაც `onCreateOption`-მდე მოაღწიოს — სწორედ იქ
+ * ჩნდება გაფრთხილება და **ბოლოს აკრეფილი იკარგება, პირველი რჩება**. მენიუდან
+ * რეგისტრით განსხვავებული ვარიანტის არჩევაც იგივე გზას გადის (`apply`).
+ * submit-ზე `dedupeTags` ყველგან **უხმოდ** რჩება გარანტიად (§13.3) — აქ
+ * გავლილი სიისთვის მას უკვე აღარაფერი რჩება მოსაჭრელი.
  */
 export function TagSelect({
   options: available,
@@ -32,12 +40,29 @@ export function TagSelect({
   inputId?: string
 }) {
   const { t } = useTranslation()
-  const { toast } = useToast()
+  const alert = useAlert()
 
+  const warnDuplicate = (tag: string) =>
+    void alert({ title: t('tags.duplicateTitle'), description: t('tags.duplicateAlert', { tag }), variant: 'warning' })
+
+  /** არჩევა/მოხსნა მენიუდან და ჩიპებიდან — რეგისტრით განსხვავებული ვარიანტი იჭრება და გაფრთხილება ჩნდება */
   const apply = (next: string[]) => {
     const { tags, removed } = dedupeTags(next)
-    if (removed > 0) toast({ title: t('tags.duplicate', { count: removed }), variant: 'info' })
+    if (removed > 0) {
+      const extra = next.find((raw, i) => next.findIndex((x) => tagKey(x) === tagKey(raw)) !== i)
+      warnDuplicate(extra ?? next[next.length - 1])
+    }
     onChange(tags)
+  }
+
+  /** აკრეფილი ტეგი Enter-ზე — დუბლი არ ემატება (გაფრთხილება), ბიბლიოთეკაში ნაცნობი ფორმა ინარჩუნებს რეგისტრს */
+  const create = (input: string) => {
+    const result = addTag(value, input, available)
+    if (result.duplicate) {
+      warnDuplicate(result.duplicate)
+      return
+    }
+    if (result.added) onChange(result.tags)
   }
 
   // არჩეული ტეგი შესაძლოა სიაში არ იყოს (ახლად შექმნილი) — ისიც ვარიანტად ვამატებთ
@@ -64,6 +89,8 @@ export function TagSelect({
         options={options}
         value={selected}
         onChange={(vals) => apply(vals.map((v) => v.value))}
+        onCreateOption={create}
+        isValidNewOption={(input) => input.trim().length > 0}
         placeholder={placeholder ?? t('videos.tagsPlaceholder')}
         formatCreateLabel={(input) => t('videos.tagCreate', { tag: input })}
         noOptionsMessage={() => t('videos.tagTypeToCreate')}

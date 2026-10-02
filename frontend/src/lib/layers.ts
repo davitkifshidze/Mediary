@@ -26,6 +26,7 @@
    | drawer / lightbox      | 80/81  | `Sidebar`, `FilterPanel`, `GalleryPanel` |
    | დადასტურება (confirm)  | 90/91  | `ui/feedback.tsx` |
    | **popup**              | **100**| select · popover · მენიუები |
+   | **გაფრთხილება (alert)**| **105**| `useAlert` — popup-იდანაც იძახება (ტეგის დუბლი react-select-ის ღია მენიუდან) |
    | **tooltip**            | **110**| `ui/tooltip.tsx` |
 
    ⚠️ popup ყოველთვის **ყველა ფენაზე ზემოთაა** — მას სწორედ იმ ფენიდან ხსნიან,
@@ -55,6 +56,9 @@ export const LAYER_PLAYER = 'z-50'
 
 /** ჩამოსაშლელი/popover/მენიუ — ყველა მოდალზე და lightbox-ზე ზემოთ */
 export const LAYER_POPUP = 'z-[100]'
+
+/** Tasks §13.1 — ერთღილაკიანი გაფრთხილება popup-ზე მაღლა, tooltip-ზე დაბლა */
+export const LAYER_ALERT = 'z-[105]'
 
 /** tooltip — popup-ზეც ზემოთ (მას popup-ის შიგნითაც ვიძახებთ) */
 export const LAYER_TOOLTIP = 'z-[110]'

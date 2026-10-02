@@ -159,6 +159,8 @@ final class FieldCatalog
             ['key' => 'format', 'type' => 'select', 'sort_order' => 80],
             ['key' => 'status', 'type' => 'select', 'sort_order' => 90],
             ['key' => 'genre', 'type' => 'select', 'sort_order' => 100],
+            // Tasks §13.4 — ტეგები ფორმაში დაბრუნდა („აბსოლუტურად ყველგან"); Open Library-ის საგნებიც აქ ჯდება
+            ['key' => 'tags', 'type' => 'list', 'sort_order' => 105],
             ['key' => 'cover', 'type' => 'file', 'sort_order' => 110],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 120],
         ],

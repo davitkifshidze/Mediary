@@ -42,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { StarRating } from '@/components/ui/star-rating'
+import { TagSelect } from '@/components/TagSelect'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
@@ -59,11 +60,14 @@ const FORM_ID = 'book-form'
 export function BookForm({
   book,
   genres,
+  knownTags = [],
   onClose,
   onSaved,
 }: {
   book: Book | null
   genres: BookGenre[]
+  /** Tasks §13.4 — ბიბლიოთეკაში უკვე არსებული ტეგები, შემოთავაზებისთვის */
+  knownTags?: string[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -235,11 +239,8 @@ export function BookForm({
 
     setErrors({})
 
-    const { tags, removed } = dedupeTags(form.tags)
-    if (removed > 0) {
-      setForm((f) => ({ ...f, tags }))
-      toast({ title: t('tags.duplicate', { count: removed }), variant: 'info' })
-    }
+    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
+    const { tags } = dedupeTags(form.tags)
 
     save.mutate({
       title_ka: form.title_ka || null,
@@ -457,9 +458,17 @@ export function BookForm({
                 <Plus className="size-4" />
               </Button>
             </div>
-            {/* §5.7 — ტეგები და მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ახლა
-                ერთი „წყაროს ლინკი" ცვლის, ტეგებს კი Open Library ავსებს
-                (ფილტრების პანელი მათზე ისევ მუშაობს). */}
+            {/* §5.7 — მრავალი ბმული ფორმიდან მოხსნილია: ბმულს ერთი „წყაროს ლინკი" ცვლის. */}
+          </FormField>
+
+          {/* Tasks §13.4 — ტეგები ფორმაშიც („აბსოლუტურად ყველგან"): Open Library-ის საგნები ავსებს, ხელითაც იცვლება */}
+          <FormField size="third" {...fields.field('tags')} htmlFor="b-tags">
+            <TagSelect
+              inputId="b-tags"
+              options={knownTags}
+              value={form.tags}
+              onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+            />
           </FormField>
 
           {/* Tasks §25.4 — „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}

@@ -35,3 +35,28 @@ export function dedupeTags(tags: string[]): { tags: string[]; removed: number } 
 
   return { tags: out, removed: tags.filter((t) => t.trim()).length - out.length }
 }
+
+/**
+ * **ერთი ტეგის დამატება აკრეფიდან** (Tasks §13.2).
+ *
+ * - დუბლი (იგივე `tagKey`) **არ ემატება** — `duplicate` არსებული ფორმაა, რომ
+ *   გაფრთხილებამ „„Rock“ უკვე დამატებულია“ თქვას და არა აკრეფილი „rock“;
+ * - ბიბლიოთეკაში ნაცნობი ტეგი (`known`) თავისი რეგისტრით ჯდება — „jazz“ → „Jazz“,
+ *   რომ ფილტრში ორი ფორმა არ გაჩნდეს;
+ * - ცარიელი აკრეფა არაფერს ცვლის.
+ */
+export function addTag(
+  current: readonly string[],
+  input: string,
+  known: readonly string[] = [],
+): { tags: string[]; duplicate: string | null; added: string | null } {
+  const clean = input.trim().replace(/\s+/g, ' ')
+  if (!clean) return { tags: [...current], duplicate: null, added: null }
+
+  const key = clean.toLowerCase()
+  const existing = current.find((tag) => tagKey(tag) === key)
+  if (existing) return { tags: [...current], duplicate: existing, added: null }
+
+  const canonical = known.find((tag) => tagKey(tag) === key) ?? clean
+  return { tags: [...current, canonical], duplicate: null, added: canonical }
+}

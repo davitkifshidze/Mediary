@@ -750,6 +750,9 @@
     "deleteRecordAnime": "Delete anime",
     "deleteRecordDesc": "“{{name}}” will move to the trash — you can restore it from there. Are you sure?"
   },
+  "alert": {
+    "ok": "Got it"
+  },
   "genres": {
     "manage": "Manage genres",
     "title": "Manage genres",
@@ -1248,7 +1251,8 @@
         "status": "Status",
         "genre": "Genre",
         "cover": "Main photo",
-        "description": "Description"
+        "description": "Description",
+        "tags": "Tags"
       },
       "board_game": {
         "designer": "Designer",
@@ -1358,7 +1362,8 @@
         "publisher": "Who published it.",
         "isbn": "The international number — Open Library provides it too.",
         "format": "This decides the unit of reading progress: an audiobook counts only percent, print counts pages too.",
-        "source_url": "An external link (a shop, a library). It does not replace the uploaded file."
+        "source_url": "An external link (a shop, a library). It does not replace the uploaded file.",
+        "tags": "Your own labels for filtering. Subjects from Open Library land here too."
       },
       "board_game": {
         "designer": "Who designed the game.",
@@ -2528,7 +2533,8 @@
     "saved": "Saved"
   },
   "tags": {
-    "duplicate": "Duplicate tag removed ({{count}})"
+    "duplicateTitle": "Tag already added",
+    "duplicateAlert": "The tag “{{tag}}” is already in the list — the one you just typed was not kept."
   },
   "duration": {
     "hours": "h",

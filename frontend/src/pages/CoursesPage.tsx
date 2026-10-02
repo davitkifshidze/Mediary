@@ -648,11 +648,8 @@ function CourseForm({
 
     setErrors({})
 
-    const { tags, removed } = dedupeTags(form.tags)
-    if (removed > 0) {
-      setForm((f) => ({ ...f, tags }))
-      toast({ title: t('tags.duplicate', { count: removed }), variant: 'info' })
-    }
+    // Tasks §13.3 — submit-ზე დუბლი უხმოდ იჭრება: `TagSelect` უკვე გააფრთხილა, აქ მხოლოდ გარანტიაა
+    const { tags } = dedupeTags(form.tags)
 
     save.mutate({
       title: form.title,

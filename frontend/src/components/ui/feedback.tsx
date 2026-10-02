@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LAYER_ALERT } from '@/lib/layers'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -27,6 +28,31 @@ const ConfirmContext = React.createContext<(opts: ConfirmOptions) => Promise<boo
 
 export function useConfirm() {
   return React.useContext(ConfirmContext)
+}
+
+// ---------- Alert (Tasks §13.1) ----------
+/**
+ * **ერთღილაკიანი გაფრთხილება** — sweetalert-ის ანალოგი ჩვენი ვიზუალით.
+ * შენი სიტყვები: „ამოვარდეს სვალის მსგავსი პოპაპი და გითხრას, რომ მსგავსი
+ * უკვე არსებობს". `useConfirm` ყოველთვის ორღილაკიანია („გაუქმება/დადასტურება")
+ * და კითხვას სვამს; აქ კითხვა არ არის — მხოლოდ „გასაგებია".
+ *
+ * ⚠️ **popup-ზე მაღლა** (`LAYER_ALERT`): ის react-select-ის ღია მენიუდან
+ * იძახება, რომელიც `z-[100]`-ზეა — `useConfirm`-ის `z-[91]` მის უკან დარჩებოდა.
+ */
+export interface AlertOptions {
+  title: string
+  description?: string
+  variant?: 'info' | 'warning'
+  okText?: string
+}
+
+type AlertState = AlertOptions & { resolve: () => void }
+
+const AlertContext = React.createContext<(opts: AlertOptions) => Promise<void>>(() => Promise.resolve())
+
+export function useAlert() {
+  return React.useContext(AlertContext)
 }
 
 // ---------- Toast ----------
@@ -61,6 +87,8 @@ let nextToastId = 1
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const [confirmState, setConfirmState] = React.useState<ConfirmState | null>(null)
+  const [alertState, setAlertState] = React.useState<AlertState | null>(null)
+  const pendingAlert = React.useRef<AlertState | null>(null)
   const [toasts, setToasts] = React.useState<ToastItem[]>([])
 
   /** გახსნილი კითხვა — `settle()` მას აქედან იღებს და არა state-ის ასლიდან */
@@ -115,10 +143,28 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
   const toastApi = React.useMemo<ToastApi>(() => ({ toast, dismiss }), [toast, dismiss])
 
+  const alert = React.useCallback(
+    (opts: AlertOptions) =>
+      new Promise<void>((resolve) => {
+        const state: AlertState = { ...opts, resolve }
+        pendingAlert.current = state
+        setAlertState(state)
+      }),
+    [],
+  )
+
+  // იგივე წესი, რაც `settle()`-ს: გვერდითი ეფექტი state-updater-ის გარეთ, ref-იდან
+  const closeAlert = () => {
+    const current = pendingAlert.current
+    pendingAlert.current = null
+    setAlertState(null)
+    current?.resolve()
+  }
+
   return (
     <ConfirmContext.Provider value={confirm}>
       <ToastContext.Provider value={toastApi}>
-        {children}
+        <AlertContext.Provider value={alert}>{children}</AlertContext.Provider>
 
         {/* Confirm dialog */}
         <DialogPrimitive.Root
@@ -167,6 +213,55 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                       autoFocus
                     >
                       {confirmState.confirmText ?? t('confirm.confirm')}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+
+        {/* Tasks §13.1 — ერთღილაკიანი გაფრთხილება; popup-ზე მაღლა (`LAYER_ALERT`) */}
+        <DialogPrimitive.Root
+          open={!!alertState}
+          onOpenChange={(open) => {
+            if (!open) closeAlert()
+          }}
+        >
+          <DialogPrimitive.Portal>
+            <DialogPrimitive.Overlay className={cn('fb-overlay fixed inset-0 bg-black/50 backdrop-blur-sm', LAYER_ALERT)} />
+            <DialogPrimitive.Content
+              className={cn(
+                'fb-content fixed left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-6 shadow-xl focus:outline-none',
+                LAYER_ALERT,
+              )}
+              onEscapeKeyDown={closeAlert}
+              data-testid="alert-dialog"
+            >
+              {alertState && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md bg-muted">
+                      {alertState.variant === 'warning' ? (
+                        <AlertTriangle className="size-5 text-[var(--icon-warn)]" />
+                      ) : (
+                        <Info className="size-5 text-status-watching" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <DialogPrimitive.Title className="font-display text-lg font-semibold tracking-tight">
+                        {alertState.title}
+                      </DialogPrimitive.Title>
+                      {alertState.description && (
+                        <DialogPrimitive.Description className="mt-1.5 text-sm text-muted-foreground">
+                          {alertState.description}
+                        </DialogPrimitive.Description>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex justify-end">
+                    <Button onClick={closeAlert} autoFocus>
+                      {alertState.okText ?? t('alert.ok')}
                     </Button>
                   </div>
                 </>
