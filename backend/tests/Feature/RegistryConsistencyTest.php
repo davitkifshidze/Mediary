@@ -15,13 +15,16 @@ use App\Models\VideoType;
 use App\Services\Export\RecordExporter;
 use App\Services\Gallery\ModuleImages;
 use App\Services\Purge\PurgeService;
+use App\Services\Share\ShareImporter;
 use App\Services\Storage\StorageMeter;
 use App\Support\AuditRegistry;
 use App\Support\CredentialProviders;
 use App\Support\CustomFields;
 use App\Support\ExportDomain;
+use App\Support\FieldCatalog;
 use App\Support\GalleryParent;
 use App\Support\ImportSource;
+use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\ShareDomain;
 use App\Support\StatusDomain;
@@ -30,6 +33,7 @@ use App\Support\TrashDomain;
 use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -178,6 +182,93 @@ class RegistryConsistencyTest extends TestCase
 
         foreach (ShareDomain::NOT_SHARED as $key => $reason) {
             $this->assertNotSame('', trim($reason), "{$key}: მიზეზი ცარიელია");
+        }
+    }
+
+    /**
+     * **გაზიარების რეესტრის ყოველი რიგი ცოცხალ სქემასა და კატალოგზე დგას** (§40.10).
+     *
+     * ⚠️ აქ ყველაფერი ჩუმად ტყდება: არარსებული სვეტი რეცეპტში — ფაქტი ჩუმად არ
+     * გადმოდის (ან SQL 500 დამატებისას); არასწორი რელაცია — ჟანრი ჩუმად ცარიელია;
+     * კატალოგის ველის შეცდომა — მფლობელის „საჯაროდ არ გამოჩნდეს" ჩუმად არაფერს
+     * აკეთებს; enum-ის ნაგულისხმევი სიაში თუ არ არის — `invalid_status` საკუთარ ჩანაწერზე.
+     */
+    public function test_every_share_domain_is_wired_to_real_columns(): void
+    {
+        $media = MediaDomain::TYPES;
+        $recipes = ShareImporter::recipeDomains();
+
+        $this->assertEqualsCanonicalizing(
+            array_values(array_diff(ShareDomain::keys(), $media)),
+            $recipes,
+            'ეტაპი 2-ის ყოველ დომენს დამატების რეცეპტი უნდა ჰქონდეს (და სხვას — არა)'
+        );
+
+        foreach (ShareDomain::keys() as $domain) {
+            $model = ShareDomain::model($domain);
+            $instance = new $model;
+            $table = $instance->getTable();
+            $module = ShareDomain::module($domain);
+
+            // კლასიფიკატორი — რელაცია არსებობს და სწორ ლექსიკონს ეკითხება
+            $classifier = ShareDomain::classifier($domain);
+            $relation = $instance->{$classifier['relation']}();
+            $this->assertSame($classifier['model'], get_class($relation->getRelated()), "{$domain}: კლასიფიკატორის რელაცია სხვა მოდელს ეკითხება");
+            // ⚠️ `MorphToMany` (მედიის `genreables`) `BelongsToMany`-ის ქვეკლასია
+            $this->assertSame($classifier['multi'], $relation instanceof BelongsToMany, "{$domain}: `multi` სტრუქტურას არ ემთხვევა");
+            $this->assertTrue(FieldCatalog::knows($module, $classifier['field']), "{$domain}: კლასიფიკატორის ველი კატალოგში არ არის");
+            $this->assertTrue(FieldCatalog::knows($module, ShareDomain::photoField($domain)), "{$domain}: მთავარი ფოტოს ველი კატალოგში არ არის");
+
+            if (! in_array($domain, $media, true)) {
+                $shape = ShareDomain::classifierShape($domain);
+                $columns = $shape['type'] === 'column' ? [$shape['column']] : [];
+
+                foreach ([...ShareImporter::recipeColumns($domain), ...$columns] as $column) {
+                    $this->assertTrue(Schema::hasColumn($table, $column), "{$domain}: რეცეპტის სვეტი `{$table}.{$column}` არ არსებობს");
+                }
+            }
+
+            if (ShareDomain::statusKind($domain) === 'enum') {
+                $this->assertContains(ShareDomain::defaultStatus($domain), $model::STATUSES, "{$domain}: enum-ის ნაგულისხმევი სიაში არ არის");
+            }
+
+            if (ShareDomain::statusKind($domain) === 'dictionary') {
+                $this->assertTrue(StatusDomain::usesDictionary($domain), "{$domain}: ლექსიკონი `StatusDomain`-ში არ არის");
+            }
+        }
+    }
+
+    /** SPA-ს `SHARE_DOMAINS` — `ShareDomain::DOMAINS`-ის სარკე, რიგის ჩათვლით */
+    public function test_the_spa_share_domains_mirror_the_backend(): void
+    {
+        $this->assertSame(ShareDomain::keys(), $this->tsConstList('api/shareLinks.ts', 'SHARE_DOMAINS'));
+    }
+
+    /**
+     * SPA-ს `SHARE_DOMAIN_META` — სტატუსი, `multi`, `global` და შეფასება backend-ს ემთხვევა.
+     *
+     * ⚠️ დაშორება ჩუმია: ფანჯარა „სტატუსით"-ს სტატუსის უქონელ დომენზე
+     * შესთავაზებდა (422), ან „ყველა ერთდროულად"-ს ერთსვეტიანზე (სერვერი `any`-ად
+     * აქცევდა და რიცხვი სხვას იტყოდა).
+     */
+    public function test_the_spa_share_meta_mirrors_the_backend(): void
+    {
+        $source = (string) file_get_contents(base_path('../frontend/src/lib/shareLinks.ts'));
+        preg_match_all(
+            "/^\s{2}(\w+): \{ status: (null|'(\w+)'), classifier: '(\w+)', multi: (true|false), global: (true|false), personalRating: (true|false)/m",
+            $source,
+            $rows,
+            PREG_SET_ORDER,
+        );
+
+        $this->assertSame(ShareDomain::keys(), array_column($rows, 1), '`SHARE_DOMAIN_META` ვერ წაიკითხა ან დომენი აკლია');
+
+        foreach ($rows as $row) {
+            $domain = $row[1];
+            $this->assertSame(ShareDomain::statusKind($domain), $row[2] === 'null' ? null : $row[3], "{$domain}: status");
+            $this->assertSame(ShareDomain::classifierIsMulti($domain), $row[5] === 'true', "{$domain}: multi");
+            $this->assertSame(ShareDomain::classifierIsGlobal($domain), $row[6] === 'true', "{$domain}: global");
+            $this->assertSame(ShareDomain::hasPersonalRating($domain), $row[7] === 'true', "{$domain}: personalRating");
         }
     }
 

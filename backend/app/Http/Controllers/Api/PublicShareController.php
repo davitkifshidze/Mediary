@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Genre;
 use App\Models\ShareLink;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
@@ -15,6 +14,7 @@ use App\Services\Share\ShareScope;
 use App\Support\Like;
 use App\Support\PublicDomain;
 use App\Support\ShareDomain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,28 +119,31 @@ class PublicShareController extends Controller
 
         $term = trim((string) $request->query('q', ''));
         if ($term !== '') {
-            $query->whereHas('translations', fn ($t) => $t->where('title', 'like', Like::contains($term)));
+            $this->search($query, $domain, $term);
         }
 
+        $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain));
+        // ⚠️ მფლობელმა კლასიფიკატორი საჯაროდ დამალა — არც ბარათზე, არც ფილტრში
+        $classifierHidden = in_array(ShareDomain::classifier($domain)['field'], $hidden, true);
+
         $genre = trim((string) $request->query('genre', ''));
-        if ($genre !== '') {
-            $query->whereHas('genres', fn ($g) => $g->where('slug', $genre));
+        if ($genre !== '' && ! $classifierHidden) {
+            $this->filterByClassifier($query, $domain, $genre);
         }
 
         $perPage = min(max((int) $request->integer('per_page', self::PER_PAGE), 1), 100);
         $page = max(1, (int) $request->integer('page', 1));
 
-        $paginator = $query->with('genres')
+        $paginator = ShareDomain::withClassifier($query, $domain)
             ->orderByDesc($table.'.id')
             ->paginate($perPage, ['*'], 'page', $page);
 
         $records = $paginator->getCollection();
-        $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain));
         // ⚠️ „უკვე გაქვს" — იგივე წესი, რასაც დამატების გეგმა კითხულობს (`ShareMatcher`)
         $mine = $viewer !== null && ! $own ? ShareMatcher::matches($viewer, $domain, $records) : [];
 
         return response()->json([
-            'data' => $records->map(fn (Model $record) => $this->card($link, $domain, $record, $hidden, $mine, $viewer !== null && ! $own))
+            'data' => $records->map(fn (Model $record) => $this->card($link, $domain, $record, $hidden, $classifierHidden, $mine, $viewer !== null && ! $own))
                 ->values()
                 ->all(),
             'meta' => [
@@ -149,7 +152,7 @@ class PublicShareController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
             ],
-            'genres' => in_array('genres', $hidden, true) ? [] : $this->genreFacet($owner, $domain, $spec),
+            'genres' => $classifierHidden ? [] : $this->classifierFacet($owner, $domain, $spec),
         ]);
     }
 
@@ -179,21 +182,80 @@ class PublicShareController extends Controller
     }
 
     /**
-     * ვიწრო ბარათი + ჟანრები (+ შესულს `in_library`).
+     * ძებნა სათაურით — დომენის საკუთარ სვეტებში (`PublicDomain::search()` —
+     * ხილვადობის სიის იგივე რუკა): მედიაზე თარგმანების ცხრილი, დანარჩენზე
+     * `title`/`name`/ავტორი/შემსრულებელი.
+     */
+    private function search(Builder $query, string $domain, string $term): void
+    {
+        $map = PublicDomain::search($domain);
+        $table = $query->getModel()->getTable();
+        $like = Like::contains($term);
+
+        if ($map['relation'] !== null) {
+            $query->whereHas($map['relation'], function ($t) use ($map, $like) {
+                $t->where(function ($w) use ($map, $like) {
+                    foreach ($map['columns'] as $column) {
+                        $w->orWhere($column, 'like', $like);
+                    }
+                });
+            });
+
+            return;
+        }
+
+        $query->where(function (Builder $w) use ($map, $table, $like) {
+            foreach ($map['columns'] as $column) {
+                $w->orWhere($table.'.'.$column, 'like', $like);
+            }
+        });
+    }
+
+    /**
+     * ჟანრის/კატეგორიის/ტიპის ფილტრი — მედიაზე slug, დანარჩენზე **მფლობელის** id.
      *
-     * ⚠️ **`poster` → `image`** — ველების კატალოგი მთავარ ფოტოს `poster`-ს
-     * ეძახის, ბარათი — `image`-ს (§33-ის ცნობილი შეუსაბამობა). აქ ის
-     * ითარგმნება, თორემ მფლობელის „ბარათზე არ გამოჩნდეს" პოსტერზე არაფერს
-     * იზამდა.
+     * ⚠️ სტრუქტურით (სვეტი/pivot) და არა `whereHas()`-ით: ლექსიკონის რელაცია
+     * `owner` scope-ს ხელახლა დაადებდა და შესულ უცხოს არაფერი დარჩებოდა.
+     */
+    private function filterByClassifier(Builder $query, string $domain, string $value): void
+    {
+        if (ShareDomain::classifierIsGlobal($domain)) {
+            $query->whereHas('genres', fn ($g) => $g->where('slug', $value));
+
+            return;
+        }
+
+        $table = $query->getModel()->getTable();
+        $shape = ShareDomain::classifierShape($domain);
+        $id = (int) $value;
+
+        if ($shape['type'] === 'column') {
+            $query->where($table.'.'.$shape['column'], $id);
+
+            return;
+        }
+
+        $query->whereIn($table.'.id', DB::table($shape['table'])->where($shape['related'], $id)->select($shape['foreign']));
+    }
+
+    /**
+     * ვიწრო ბარათი + კლასიფიკატორი (+ შესულს `in_library`).
+     *
+     * ⚠️ **მთავარი ფოტოს გასაღები ითარგმნება** — ველების კატალოგი მას
+     * `poster`/`cover`/`thumbnail`/`photo`-ს ეძახის, ბარათი — `image`-ს (§33-ის
+     * ცნობილი შეუსაბამობა). აქ ის ითარგმნება, თორემ მფლობელის „ბარათზე არ
+     * გამოჩნდეს" ფოტოზე არაფერს იზამდა.
+     * ⚠️ **`genres` ყველა დომენზეა** — ჟანრი, კატეგორია თუ ტიპი, ერთი ფორმით
+     * (`value` · სახელი ორივე ენაზე): მიმღების გვერდს ერთი ბარათი აქვს.
      *
      * @param  list<string>  $hidden
      * @param  array<int, array{id: int, trashed: bool}>  $mine
      */
-    private function card(ShareLink $link, string $domain, Model $record, array $hidden, array $mine, bool $mark): array
+    private function card(ShareLink $link, string $domain, Model $record, array $hidden, bool $classifierHidden, array $mine, bool $mark): array
     {
         $card = PublicDomain::card($domain, $record, $hidden);
 
-        if (in_array('poster', $hidden, true)) {
+        if (in_array(ShareDomain::photoField($domain), $hidden, true)) {
             unset($card['image']);
         }
 
@@ -206,9 +268,13 @@ class PublicShareController extends Controller
             unset($card['rating']);
         }
 
-        if (! in_array('genres', $hidden, true)) {
-            $card['genres'] = $record->genres
-                ->map(fn (Genre $g) => ['slug' => $g->slug, 'name_ka' => $g->name_ka, 'name_en' => $g->name_en])
+        if (! $classifierHidden) {
+            $card['genres'] = ShareDomain::classifierEntries($record, $domain)
+                ->map(fn (Model $entry) => [
+                    'value' => ShareDomain::classifierValue($domain, $entry),
+                    'name_ka' => $entry->getAttribute('name_ka'),
+                    'name_en' => $entry->getAttribute('name_en'),
+                ])
                 ->values()
                 ->all();
         }
@@ -221,39 +287,62 @@ class PublicShareController extends Controller
     }
 
     /**
-     * სექციის ჟანრები რაოდენობებით — ფილტრისთვის.
+     * სექციის ჟანრები/კატეგორიები/ტიპები რაოდენობებით — ფილტრისთვის.
      *
-     * ⚠️ **ძებნისა და ჟანრის ფილტრის გარეშე** ითვლება: თორემ ერთი ჟანრის
-     * არჩევისას დანარჩენები სიიდან გაქრებოდა და გადართვა შეუძლებელი გახდებოდა.
-     * ⚠️ **ნედლი `genreables`** და არა `Genre::movies()`: იმ რელაციას `owner`
-     * scope მოჰყვება, რომელიც შესულ უცხოს **მის საკუთარ** ფილმებზე მოჭრიდა.
+     * ⚠️ **ძებნისა და ფილტრის გარეშე** ითვლება: თორემ ერთი ჟანრის არჩევისას
+     * დანარჩენები სიიდან გაქრებოდა და გადართვა შეუძლებელი გახდებოდა.
+     * ⚠️ **ნედლი სტრუქტურა** (`genreables`, pivot ან სვეტი) და არა რელაცია:
+     * რელაციას `owner` scope მოჰყვება, რომელიც შესულ უცხოს **მის საკუთარ**
+     * ჩანაწერებზე მოჭრიდა. სახელები ლექსიკონიდან `owner`-ის გარეშე იკითხება;
+     * ურნაში მყოფი ჟანრი (`trash`) არ ჩანს.
      *
      * @param  array<string, mixed>  $spec
-     * @return list<array{slug: string, name_ka: ?string, name_en: ?string, count: int}>
+     * @return list<array{value: string, name_ka: ?string, name_en: ?string, count: int}>
      */
-    private function genreFacet(User $owner, string $domain, array $spec): array
+    private function classifierFacet(User $owner, string $domain, array $spec): array
     {
         $scope = ShareScope::query($owner, $domain, $spec);
-        $ids = $scope->select($scope->getModel()->getTable().'.id');
+        $table = $scope->getModel()->getTable();
+        $ids = $scope->select($table.'.id');
 
-        $counts = DB::table('genreables')
-            ->where('genreable_type', $domain)
-            ->whereIn('genreable_id', $ids)
-            ->groupBy('genre_id')
-            ->select('genre_id', DB::raw('count(*) as aggregate'))
-            ->pluck('aggregate', 'genre_id');
+        if (ShareDomain::classifierIsGlobal($domain)) {
+            $counts = DB::table('genreables')
+                ->where('genreable_type', $domain)
+                ->whereIn('genreable_id', $ids)
+                ->groupBy('genre_id')
+                ->select('genre_id as entry', DB::raw('count(*) as aggregate'))
+                ->pluck('aggregate', 'entry');
+        } else {
+            $shape = ShareDomain::classifierShape($domain);
+
+            $counts = $shape['type'] === 'column'
+                ? DB::table($table)
+                    ->whereIn('id', $ids)
+                    ->whereNotNull($shape['column'])
+                    ->groupBy($shape['column'])
+                    ->select($shape['column'].' as entry', DB::raw('count(*) as aggregate'))
+                    ->pluck('aggregate', 'entry')
+                : DB::table($shape['table'])
+                    ->whereIn($shape['foreign'], $ids)
+                    ->groupBy($shape['related'])
+                    ->select($shape['related'].' as entry', DB::raw('count(*) as aggregate'))
+                    ->pluck('aggregate', 'entry');
+        }
 
         if ($counts->isEmpty()) {
             return [];
         }
 
-        return Genre::whereIn('id', $counts->keys())
+        $model = ShareDomain::classifier($domain)['model'];
+
+        return $model::withoutGlobalScope('owner')
+            ->whereIn('id', $counts->keys()->all())
             ->get()
-            ->map(fn (Genre $g) => [
-                'slug' => $g->slug,
-                'name_ka' => $g->name_ka,
-                'name_en' => $g->name_en,
-                'count' => (int) ($counts[$g->id] ?? 0),
+            ->map(fn (Model $entry) => [
+                'value' => ShareDomain::classifierValue($domain, $entry),
+                'name_ka' => $entry->getAttribute('name_ka'),
+                'name_en' => $entry->getAttribute('name_en'),
+                'count' => (int) ($counts[$entry->getKey()] ?? 0),
             ])
             ->sortByDesc('count')
             ->values()

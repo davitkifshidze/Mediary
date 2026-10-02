@@ -3,6 +3,7 @@ import { act, createElement as h, useEffect, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
+import type { ShareDomainKey } from '@/api/shareLinks'
 
 /* ============================================================
    **რიგის `cast` სახეობა** (Tasks §39.3).
@@ -171,21 +172,26 @@ describe('queue: the headline kind', () => {
    ცალკე ითვლება და მწკრივი „აღდგენას" სთავაზობს (40.1).
    ============================================================ */
 
-const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn() }))
+const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn(), restoreFromTrash: vi.fn() }))
 
 vi.mock('@/api/shareLinks', async (original) => ({
   ...(await original<typeof import('@/api/shareLinks')>()),
   addShareItem: shareMocks.addShareItem,
 }))
 
-async function runOneShare() {
+vi.mock('@/api/trash', async (original) => ({
+  ...(await original<typeof import('@/api/trash')>()),
+  restoreFromTrash: shareMocks.restoreFromTrash,
+}))
+
+async function runOneShare(domain: ShareDomainKey = 'movie') {
   const { QueueProvider, useQueue } = await import('@/components/ui/queue')
 
   function Starter() {
     const { enqueueShare } = useQueue()
 
     useEffect(() => {
-      enqueueShare('T'.repeat(48), 'movie', [{ id: 5, title: 'Ran' }], 'owner')
+      enqueueShare('T'.repeat(48), domain, [{ id: 5, title: 'Ran' }], 'owner')
     }, [enqueueShare])
 
     return null
@@ -223,5 +229,35 @@ describe('queue: the share kind', () => {
     expect(text).toContain(i18n.t('share.summary.trash', { count: 1 }))
     expect(text).not.toContain(i18n.t('share.summary.failed', { count: 1 }))
     expect(text).toContain(i18n.t('queue.restoreFromTrash'))
+  })
+
+  /* §40.10 — ⚠️ ერთეულის სექცია ცალკე ველია (`shareDomain`): `mediaType`
+     მედია-დომენია და წიგნს `movie`-ად წაიკითხავდა — დამატებაც და ურნიდან
+     აღდგენაც სხვა მოდულში წავიდოდა. */
+  it('sends a stage-2 section as itself, not as a media type', async () => {
+    shareMocks.addShareItem.mockResolvedValue({ ok: true, result: 'added', id: 41, partial: false, poster_skipped: null })
+
+    await runOneShare('book')
+
+    expect(shareMocks.addShareItem).toHaveBeenCalledWith('T'.repeat(48), 'book', 5, 'owner', expect.any(AbortSignal))
+  })
+
+  it('restores a stage-2 record from the trash of its own section', async () => {
+    shareMocks.addShareItem.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 409'), {
+        isAxiosError: true,
+        response: { status: 409, data: { message: 'record_in_trash', domain: 'book', id: 78 } },
+      }),
+    )
+    shareMocks.restoreFromTrash.mockResolvedValue({ restored: true, with_parent: false, records: 0 })
+
+    const el = await runOneShare('book')
+    const restore = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('queue.restoreFromTrash')))
+    expect(restore, '„აღდგენა" არ დაიხატა').toBeTruthy()
+
+    await act(async () => restore!.click())
+    await flush()
+
+    expect(shareMocks.restoreFromTrash).toHaveBeenCalledWith('book', 78)
   })
 })

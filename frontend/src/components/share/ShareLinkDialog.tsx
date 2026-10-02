@@ -13,10 +13,10 @@ import {
   type ShareLink,
 } from '@/api/shareLinks'
 import { fetchGenres } from '@/api/media'
-import { useModules } from '@/lib/modules'
+import { useShareDomains } from '@/hooks/useShareDomains'
 import { copyText } from '@/lib/clipboard'
 import { errorMessage } from '@/lib/errors'
-import { buildDomains, isShareDomain, shareTokenOf, specComplete } from '@/lib/shareLinks'
+import { buildDomains, shareMeta, shareTokenOf, specComplete } from '@/lib/shareLinks'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { StepSection } from '@/components/ui/step-section'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/feedback'
-import { MediaDomainCards } from '@/components/MediaDomainCards'
+import { ShareDomainCards } from '@/components/share/ShareDomainCards'
 import { ShareScopeFields } from '@/components/share/ShareScopeFields'
 import { ShareQr } from '@/components/share/ShareQr'
 
@@ -43,6 +43,13 @@ import { ShareQr } from '@/components/share/ShareQr'
    ⚠️ **პირადი თუ მოხვდა — წითელი სამკუთხედი**: ბმული ხილვადობის ერთადერთი
    გამონაკლისია და „ვისაც ეს ბმული ექნება, შენს პირად ჩანაწერებსაც დაინახავს"
    სწორედ ის ფაქტია, რომლის გამოტოვებაც არ შეიძლება.
+
+   ⚠️ **ახალ ბმულზე არცერთი სექცია არ არის წინასწარ მონიშნული** (§40.10):
+   ეტაპ 1-ში „ყველა" სამ მედიას ნიშნავდა; თერთმეტ სექციაზე ერთი დაჭერა კი
+   ბუკმარკებს, ადგილებსა და კურსებს — პირადებიანად — ერთ ბმულში ჩაყრიდა.
+   ⚠️ **ბმულის სექცია, რომლის მოდულიც აღარ გაქვს, რედაქტირებისას ცხადად
+   ითქმის და შენახვისას ამოვარდება** — სერვერი მას `share_domain_unavailable`-ით
+   დააბრუნებდა, ბარათი კი, რომლითაც მისი მოხსნა შეიძლებოდა, აღარ იხატება.
    ============================================================ */
 
 type ExpiryChoice = '7' | '30' | '365' | 'never' | 'keep'
@@ -61,20 +68,20 @@ export function ShareLinkDialog({
   const { t } = useTranslation()
   const { toast } = useToast()
   const qc = useQueryClient()
-  const { mediaModules } = useModules()
+  const { available, moduleOf, nameOf } = useShareDomains()
 
   const editing = !!link
 
-  const available = useMemo(
-    () => mediaModules.map((m) => m.type).filter((type): type is ShareDomainKey => isShareDomain(type)),
-    [mediaModules],
-  )
-
   const [selected, setSelected] = useState<ShareDomainKey[]>(() => {
-    if (link) return SHARE_DOMAINS.filter((d) => d in link.domains)
+    if (link) return SHARE_DOMAINS.filter((d) => d in link.domains && available.includes(d))
     if (initial) return [initial.domain]
-    return available
+    return []
   })
+  // ბმულში დარჩენილი სექცია, რომლის მოდულიც აღარ გაქვს — შენახვისას ამოვარდება
+  const dropped = useMemo(
+    () => (link ? SHARE_DOMAINS.filter((d) => d in link.domains && !available.includes(d)) : []),
+    [link, available],
+  )
   const [specs, setSpecs] = useState<Partial<Record<ShareDomainKey, ShareDomainSpec>>>(() => {
     if (link) return { ...link.domains }
     if (initial) return { [initial.domain]: initial.spec }
@@ -82,14 +89,27 @@ export function ShareLinkDialog({
   })
   const [name, setName] = useState(link?.name ?? '')
   const [showStatus, setShowStatus] = useState(link?.show_status ?? true)
+  const [showRating, setShowRating] = useState(link?.show_rating ?? true)
   const [expiry, setExpiry] = useState<ExpiryChoice>(editing ? 'keep' : '30')
   const [result, setResult] = useState<ShareLink | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const genresQ = useQuery({ queryKey: ['genres'], queryFn: () => fetchGenres() })
+  // გლობალური ჟანრები მხოლოდ მედიას სჭირდება (ეტაპი 2-ს თავისი ლექსიკონი აქვს)
+  const genresQ = useQuery({
+    queryKey: ['genres'],
+    queryFn: () => fetchGenres(),
+    enabled: selected.some((d) => shareMeta(d).global),
+  })
 
   const domains = useMemo(() => buildDomains(selected, specs), [selected, specs])
-  const complete = selected.length > 0 && selected.every((d) => specComplete(domains[d] ?? { scope: 'all' }))
+  const complete = selected.length > 0 && selected.every((d) => specComplete(domains[d] ?? { scope: 'all' }, d))
+  // სექციები ბარათების რიგით (საიდბარის რიგი, §36)
+  const ordered = useMemo(
+    () => [...available, ...SHARE_DOMAINS.filter((d) => !available.includes(d))].filter((d) => selected.includes(d)),
+    [available, selected],
+  )
+  // „ჩემი შეფასება" მხოლოდ იქ, სადაც შეფასება მართლა შენია (`ShareDomain::personal_rating`)
+  const ratingRelevant = selected.some((d) => shareMeta(d).personalRating)
 
   const preview = useQuery({
     queryKey: ['share-preview', domains],
@@ -99,10 +119,8 @@ export function ShareLinkDialog({
     placeholderData: keepPreviousData,
   })
 
-  const toggleDomain = (type: string) => {
-    if (!isShareDomain(type)) return
-    setSelected((cur) => (cur.includes(type) ? cur.filter((d) => d !== type) : [...cur, type]))
-  }
+  const toggleDomain = (domain: ShareDomainKey) =>
+    setSelected((cur) => (cur.includes(domain) ? cur.filter((d) => d !== domain) : [...cur, domain]))
 
   const expiresDays = (): ShareExpiry | undefined => {
     if (expiry === 'keep') return undefined
@@ -117,6 +135,8 @@ export function ShareLinkDialog({
         domains,
         name: name.trim() || null,
         show_status: showStatus,
+        // ⚠️ შეფასების უქონელ სექციებზე გადამრთველი არ ჩანს — შენახული მნიშვნელობა არ იცვლება
+        ...(ratingRelevant ? { show_rating: showRating } : {}),
         ...(days !== undefined ? { expires_days: days } : {}),
       }
 
@@ -201,9 +221,11 @@ export function ShareLinkDialog({
       <div className="space-y-4">
         {/* ---------- 1. რომელი სექციები ---------- */}
         <StepSection step={1} title={t('share.stepSections')} hint={t('share.stepSectionsHint')}>
-          <MediaDomainCards value={selected} onToggle={toggleDomain} />
-          {selected.length === 0 && (
-            <p className="mt-2 text-xs text-destructive">{t('share.noSections')}</p>
+          <ShareDomainCards value={selected} onToggle={toggleDomain} />
+          {dropped.length > 0 && (
+            <p className="mt-2 text-xs text-destructive">
+              {t('share.droppedSections', { names: dropped.map(nameOf).join(', ') })}
+            </p>
           )}
         </StepSection>
 
@@ -233,11 +255,11 @@ export function ShareLinkDialog({
             }
           >
             <div className="space-y-3">
-              {SHARE_DOMAINS.filter((d) => selected.includes(d)).map((domain) => (
+              {ordered.map((domain) => (
                 <ShareScopeFields
                   key={domain}
                   domain={domain}
-                  module={mediaModules.find((m) => m.type === domain)}
+                  module={moduleOf(domain)}
                   spec={specs[domain] ?? { scope: 'all' }}
                   genres={genresQ.data ?? []}
                   count={count?.domains[domain]}
@@ -258,9 +280,18 @@ export function ShareLinkDialog({
                 <span className="block text-xs text-muted-foreground">{t('share.showStatusHint')}</span>
               </span>
             </label>
-            {/* ⚠️ „ჩემი შეფასება" აქ განზრახ არ ჩანს: სამივე მედია-დომენის
-                `rating` TMDB-ის ქულაა და არა შენი (`ShareDomain::personal_rating`),
-                ე.ი. გადამრთველი არაფერს შეცვლიდა. ეტაპი 2-ის დომენებზე გამოჩნდება. */}
+            {/* ⚠️ „ჩემი შეფასება" მხოლოდ თამაშს, წიგნს, სამაგიდოს, ადგილსა და
+                სიმღერას აქვს (`ShareDomain::personal_rating`): მედიის `rating`
+                TMDB-ის ქულაა და არა შენი, ე.ი. იქ გადამრთველი არაფერს შეცვლიდა. */}
+            {ratingRelevant && (
+              <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                <Checkbox checked={showRating} onCheckedChange={(v) => setShowRating(v === true)} className="mt-0.5" />
+                <span>
+                  <span className="font-medium">{t('share.showRating')}</span>
+                  <span className="block text-xs text-muted-foreground">{t('share.showRatingHint')}</span>
+                </span>
+              </label>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

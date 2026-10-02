@@ -4,12 +4,13 @@ namespace App\Services\Share;
 
 use App\Models\Genre;
 use App\Models\ShareLink;
-use App\Models\Status;
 use App\Models\User;
 use App\Services\Gallery\GalleryScope;
+use App\Support\MediaDomain;
 use App\Support\ShareDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -26,9 +27,18 @@ use Illuminate\Validation\Rule;
  * `trash` scope რჩება — ურნაში მყოფი ბმულში არ ჩანს.
  *
  * ⚠️ **რეჟიმები `GalleryScope`-ისაა** (`all` · `status` · `favorite` ·
- * `genre` · `ids`) და ფილტრების წესიც იქ წერია — აქ მხოლოდ მფლობელი და
- * „მხოლოდ საჯაროები" ემატება. „მხოლოდ საჯარო" **ჩანაწერის** ფენაა
+ * `genre` · `ids`) და მედიაზე ფილტრების წესიც იქ წერია — აქ მხოლოდ მფლობელი
+ * და „მხოლოდ საჯაროები" ემატება. „მხოლოდ საჯარო" **ჩანაწერის** ფენაა
  * (`visibility = public`) და არა სამივე: ბმული თვითონაა თანხმობა.
+ *
+ * ⚠️ **ეტაპი 2-ის რვა დომენი (§40.10) თავის ფილტრს აქ იღებს**, რადგან
+ * `GalleryScope` მედიისაა (გლობალური ჟანრი slug-ით). `genre` რეჟიმი მათზე
+ * „კლასიფიკაციით"-ია — ჟანრი, კატეგორია ან ტიპი, **მფლობელის id-ებით**
+ * (`categories`); ფილტრი სვეტზე ან pivot-ზე იწერება და არა `whereHas()`-ით —
+ * ლექსიკონის რელაცია `owner` scope-ს ხელახლა დაადებდა და შესულ უცხოს
+ * ცარიელ სექციას აჩვენებდა (§1.2). „სტატუსით" enum-იანზე გასაღებია,
+ * ლექსიკონიანზე — მფლობელის ლექსიკონის გასაღები, სტატუსის უქონელზე
+ * (სიმღერა, სამაგიდო) კი საერთოდ არ არსებობს (`invalid_status`).
  *
  * ⚠️ **ცოცხალია** (Q47): წესი ყოველ გახსნაზე ითვლება, ე.ი. ფარგალს მორგებული
  * ახალი ჩანაწერი ბმულშიც ჩნდება. ხელით მონიშნული ფიქსირებული სიაა.
@@ -53,6 +63,9 @@ final class ShareScope
             'domains.*.statuses.*' => ['string', 'max:60'],
             'domains.*.genres' => ['nullable', 'array', 'max:50'],
             'domains.*.genres.*' => ['string', 'max:80'],
+            // ეტაპი 2 — per-user ლექსიკონის (ჟანრი/კატეგორია/ტიპი) მფლობელის id-ები
+            'domains.*.categories' => ['nullable', 'array', 'max:50'],
+            'domains.*.categories.*' => ['integer'],
             'domains.*.genre_mode' => ['nullable', Rule::in(self::GENRE_MODES)],
             'domains.*.ids' => ['nullable', 'array', 'max:'.self::MAX_IDS],
             'domains.*.ids.*' => ['integer'],
@@ -90,7 +103,8 @@ final class ShareScope
 
             if ($scope === 'status') {
                 $keys = array_values(array_unique(array_map('strval', (array) ($spec['statuses'] ?? []))));
-                $known = Status::keysFor((int) $owner->id, $domain);
+                // ⚠️ სიმღერასა და სამაგიდოს სტატუსი არ აქვს — სია ცარიელია, ე.ი. ყოველი გასაღები უცნობია (`invalid_status`)
+                $known = ShareDomain::statusKeys($owner, $domain);
 
                 if ($keys === []) {
                     self::fail('share_scope_incomplete', $domain);
@@ -104,17 +118,37 @@ final class ShareScope
             }
 
             if ($scope === 'genre') {
-                $slugs = array_values(array_unique(array_map('strval', (array) ($spec['genres'] ?? []))));
-                // ⚠️ უცნობი slug ჩუმად ვარდება — ჟანრი გლობალურია და შეიძლება წაიშალოს
-                $slugs = Genre::whereIn('slug', $slugs)->pluck('slug')->all();
+                if (ShareDomain::classifierIsGlobal($domain)) {
+                    $slugs = array_values(array_unique(array_map('strval', (array) ($spec['genres'] ?? []))));
+                    // ⚠️ უცნობი slug ჩუმად ვარდება — ჟანრი გლობალურია და შეიძლება წაიშალოს
+                    $slugs = Genre::whereIn('slug', $slugs)->pluck('slug')->all();
 
-                if ($slugs === []) {
-                    self::fail('share_scope_incomplete', $domain);
+                    if ($slugs === []) {
+                        self::fail('share_scope_incomplete', $domain);
+                    }
+
+                    sort($slugs);
+                    $clean['genres'] = $slugs;
+                } else {
+                    /* ⚠️ მფლობელის ცოცხალ ლექსიკონზე იჭრება — სხვისი ან ურნაში
+                       მყოფი id ჩუმად ვარდება (`ids`-ის წესი), ცარიელი კი 422-ია */
+                    $ids = ShareDomain::ownClassifierIds(
+                        $owner,
+                        $domain,
+                        array_values(array_unique(array_map('intval', (array) ($spec['categories'] ?? [])))),
+                    );
+
+                    if ($ids === []) {
+                        self::fail('share_scope_incomplete', $domain);
+                    }
+
+                    $clean['categories'] = $ids;
                 }
 
-                sort($slugs);
-                $clean['genres'] = $slugs;
-                $clean['genre_mode'] = ($spec['genre_mode'] ?? 'any') === 'all' ? 'all' : 'any';
+                // ⚠️ „ყველა ერთდროულად" მხოლოდ pivot-ს აქვს: ერთ სვეტს ორი სხვადასხვა მნიშვნელობა ვერ ექნება
+                $clean['genre_mode'] = ShareDomain::classifierIsMulti($domain) && ($spec['genre_mode'] ?? 'any') === 'all'
+                    ? 'all'
+                    : 'any';
             }
 
             if ($scope === 'ids') {
@@ -147,18 +181,98 @@ final class ShareScope
 
         $scope = (string) ($spec['scope'] ?? 'all');
 
-        $query = GalleryScope::query($domain, [
-            'scope' => $scope,
-            'statuses' => $spec['statuses'] ?? [],
-            'favorite' => $scope === 'favorite',
-            'genres' => $spec['genres'] ?? [],
-            'genre_mode' => $spec['genre_mode'] ?? 'any',
-            // ⚠️ ცარიელი სია „არცერთია" (`GalleryScope::ids()` → `1 = 0`)
-            'ids' => $scope === 'ids' ? array_values(array_map('intval', (array) ($spec['ids'] ?? []))) : null,
-        ], $base);
+        $query = MediaDomain::has($domain)
+            ? GalleryScope::query($domain, [
+                'scope' => $scope,
+                'statuses' => $spec['statuses'] ?? [],
+                'favorite' => $scope === 'favorite',
+                'genres' => $spec['genres'] ?? [],
+                'genre_mode' => $spec['genre_mode'] ?? 'any',
+                // ⚠️ ცარიელი სია „არცერთია" (`GalleryScope::ids()` → `1 = 0`)
+                'ids' => $scope === 'ids' ? array_values(array_map('intval', (array) ($spec['ids'] ?? []))) : null,
+            ], $base)
+            : self::filter($base, $domain, $scope, $spec);
 
         if (! empty($spec['public_only'])) {
             $query->where($table.'.visibility', 'public');
+        }
+
+        return $query;
+    }
+
+    /**
+     * ეტაპი 2-ის რვა დომენის ფილტრი (`GalleryScope`-ის ტყუპი, per-user ლექსიკონით).
+     *
+     * ⚠️ ცხადი რეჟიმისას **მხოლოდ თავისი** ფილტრი მუშაობს (`GalleryScope`-ის წესი)
+     * და ცარიელი არჩევანი „არცერთია" — `normalize()` მას ისედაც არ უშვებს, მაგრამ
+     * შენახული ბმული ხელით შეცვლილი შეიძლება იყოს და „ყველაფერი" აქ ტყუილი იქნებოდა.
+     *
+     * @param  array<string, mixed>  $spec
+     */
+    private static function filter(Builder $query, string $domain, string $scope, array $spec): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return match ($scope) {
+            'status' => self::statusFilter($query, $domain, array_values(array_map('strval', (array) ($spec['statuses'] ?? [])))),
+            'favorite' => $query->where($table.'.is_favorite', true),
+            'genre' => self::classifierFilter(
+                $query,
+                $domain,
+                array_values(array_map('intval', (array) ($spec['categories'] ?? []))),
+                ($spec['genre_mode'] ?? 'any') === 'all',
+            ),
+            'ids' => ($ids = array_values(array_map('intval', (array) ($spec['ids'] ?? [])))) === []
+                ? $query->whereRaw('1 = 0')
+                : $query->whereIn($table.'.id', $ids),
+            default => $query,
+        };
+    }
+
+    /** @param  list<string>  $keys */
+    private static function statusFilter(Builder $query, string $domain, array $keys): Builder
+    {
+        if ($keys === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return match (ShareDomain::statusKind($domain)) {
+            // §6.4 — `status` რელაცია `owner` scope-ს თვითონ აშორებს (`HasStatus::status()`)
+            'dictionary' => $query->statusKey($keys),
+            'enum' => $query->whereIn($query->getModel()->getTable().'.status', $keys),
+            default => $query->whereRaw('1 = 0'),
+        };
+    }
+
+    /**
+     * ჟანრი/კატეგორია/ტიპი — **სტრუქტურით** (სვეტი ან pivot) და არა რელაციით.
+     *
+     * @param  list<int>  $ids
+     */
+    private static function classifierFilter(Builder $query, string $domain, array $ids, bool $all): Builder
+    {
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $table = $query->getModel()->getTable();
+        $shape = ShareDomain::classifierShape($domain);
+
+        if ($shape['type'] === 'column') {
+            return $query->whereIn($table.'.'.$shape['column'], $ids);
+        }
+
+        $owned = fn (array $values) => DB::table($shape['table'])
+            ->whereIn($shape['related'], $values)
+            ->select($shape['foreign']);
+
+        if (! $all) {
+            return $query->whereIn($table.'.id', $owned($ids));
+        }
+
+        // „ყველა ერთდროულად" — თითო მნიშვნელობაზე თავისი პირობა (`GalleryScope`-ის ფორმა)
+        foreach ($ids as $id) {
+            $query->whereIn($table.'.id', $owned([$id]));
         }
 
         return $query;

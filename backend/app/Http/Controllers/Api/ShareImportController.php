@@ -70,14 +70,13 @@ class ShareImportController extends Controller
         $records = $query->orderByDesc($table.'.id')->get();
         $matches = ShareMatcher::matches($viewer, $domain, $records);
 
-        $items = $records->map(function ($record) use ($matches) {
+        $items = $records->map(function ($record) use ($matches, $domain) {
             $mine = $matches[(int) $record->getKey()] ?? null;
 
+            // ⚠️ სათაური ბარათის ველებიდან — რვა დომენს სხვადასხვა სვეტში უწერია (`title`, `name`…)
             return [
                 'id' => (int) $record->getKey(),
-                'title_ka' => $record->title_ka,
-                'title_en' => $record->title_en,
-                'year' => $record->year,
+                ...ShareDomain::titleOf($domain, $record),
                 'state' => $mine === null ? 'new' : ($mine['trashed'] ? 'trash' : 'have'),
                 'mine_id' => $mine['id'] ?? null,
             ];
@@ -92,8 +91,11 @@ class ShareImportController extends Controller
                 'have' => $items->where('state', 'have')->count(),
                 'trash' => $items->where('state', 'trash')->count(),
             ],
-            // ⚠️ „როგორც გამზიარებელს აქვს" მხოლოდ მაშინ, როცა ბმული სტატუსს აზიარებს (Q48)
-            'status_modes' => $link->show_status ? ['default', 'owner'] : ['default'],
+            /* ⚠️ „როგორც გამზიარებელს აქვს" მხოლოდ მაშინ, როცა ბმული სტატუსს აზიარებს (Q48);
+               სტატუსის უქონელ დომენზე (სიმღერა, სამაგიდო) რეჟიმი საერთოდ არ არსებობს */
+            'status_modes' => ShareDomain::statusKind($domain) === null
+                ? []
+                : ($link->show_status ? ['default', 'owner'] : ['default']),
         ]);
     }
 
@@ -124,7 +126,8 @@ class ShareImportController extends Controller
         }
 
         $query = ShareScope::query($owner, $domain, $spec);
-        $record = $query->with('genres')->whereKey((int) $data['id'])->first();
+        // ⚠️ კლასიფიკატორი `owner` scope-ის გარეშე — სახელით გადატანას (Q51) გამზიარებლის ჟანრები სჭირდება
+        $record = ShareDomain::withClassifier($query, $domain)->whereKey((int) $data['id'])->first();
 
         if (! $record) {
             return response()->json(['message' => 'share_record_not_found'], 404);
@@ -140,7 +143,7 @@ class ShareImportController extends Controller
                 'module' => $module,
                 'subject_type' => $domain,
                 'subject_id' => $result['id'],
-                'subject_label' => $record->title_ka ?: $record->title_en,
+                'subject_label' => ShareDomain::label($domain, $record),
                 'new_values' => ['source' => 'share', 'share_link' => $link->id, 'owner' => $owner->username],
             ]);
         }

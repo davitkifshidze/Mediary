@@ -146,7 +146,8 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
   const { toast } = useToast()
   const confirm = useConfirm()
   const qc = useQueryClient()
-  const { mediaModules } = useModules()
+  // ⚠️ `all` და არა `enabled`: გათიშული მოდულის სექციაც სახელითა და ფერით უნდა დაიხატოს
+  const { all } = useModules()
   const { date, relative } = useDateFormat()
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['share-links'] })
@@ -242,7 +243,7 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
       {/* სექციები რაოდენობებით — გათიშული მოდული ცხადად აღინიშნება */}
       <div className="flex flex-wrap gap-2">
         {sections.map((domain) => {
-          const m = mediaModules.find((x) => x.type === domain)
+          const m = all.find((x) => x.key === domain)
           const off = link.unavailable.includes(domain)
 
           return (

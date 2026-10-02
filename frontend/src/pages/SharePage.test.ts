@@ -262,3 +262,86 @@ describe('SharePage — ბიბლიოთეკაში დამატე�
     expect(mocks.requestModule).toHaveBeenCalledWith('movie')
   })
 })
+
+describe('SharePage — ეტაპი 2-ის სექციები (§40.10)', () => {
+  const stage2 = (): PublicShare => ({
+    owner: { username: 'nino', display_name: 'Nino', avatar_path: null },
+    link: { expires_at: null, show_status: true },
+    sections: [
+      { domain: 'book', count: 1 },
+      { domain: 'song', count: 1 },
+    ],
+    modules: {
+      book: { name_ka: 'წიგნები', name_en: 'Books', icon: 'BookOpen', color: '#c47f2c' },
+      song: { name_ka: 'სიმღერები', name_en: 'Songs', icon: 'Music', color: '#d6457a' },
+    },
+    viewer: {
+      signed_in: true,
+      own: false,
+      sections: {
+        book: { enabled: true, can_create: true, requested: false },
+        song: { enabled: true, can_create: true, requested: false },
+      },
+    },
+  })
+
+  beforeEach(() => {
+    mocks.fetchPublicShareItems.mockImplementation((_token: string, domain: string) =>
+      Promise.resolve(
+        domain === 'book'
+          ? {
+              data: [
+                {
+                  id: 5,
+                  domain: 'book',
+                  title_ka: 'ვეფხისტყაოსანი',
+                  title_en: null,
+                  subtitle: 'შოთა რუსთაველი',
+                  status: 'read',
+                  in_library: null,
+                },
+              ],
+              meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+              genres: [{ value: '3', name_ka: 'პოეზია', name_en: 'Poetry', count: 1 }],
+            }
+          : {
+              data: [
+                {
+                  id: 8,
+                  domain: 'song',
+                  title_en: 'Suliko',
+                  subtitle: 'Varinka',
+                  url: 'https://www.youtube.com/watch?v=abc',
+                  in_library: null,
+                },
+              ],
+              meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+              genres: [],
+            },
+      ),
+    )
+  })
+
+  it('an enum status is translated, the subtitle shows and the status choice exists only where statuses do', async () => {
+    mocks.fetchPublicShare.mockResolvedValue(stage2())
+    await mount()
+
+    const card = document.querySelector('[data-testid="share-card"]')
+    expect(card?.textContent).toContain('ვეფხისტყაოსანი')
+    expect(card?.textContent).toContain('შოთა რუსთაველი')
+    // ⚠️ enum-ის გასაღები i18n-ით ითარგმნება — ნედლი `read` ეკრანზე არ უნდა ჩანდეს
+    expect(card?.textContent).toContain('წაკითხული')
+    expect(document.querySelector('[aria-label="რა სტატუსით დაემატოს"]')).toBeTruthy()
+
+    // სიმღერას სტატუსი არ აქვს — არჩევანი, რომელიც არაფერს ცვლის, არ იხატება
+    await act(async () => button('სიმღერები')!.click())
+    await flush()
+    await flush()
+
+    expect(mocks.fetchPublicShareItems).toHaveBeenLastCalledWith(TOKEN, 'song', { page: 1, q: undefined, genre: undefined })
+    expect(document.querySelector('[aria-label="რა სტატუსით დაემატოს"]')).toBeNull()
+
+    const source = document.querySelector<HTMLAnchorElement>('[data-testid="share-card"] a[aria-label="წყაროზე გახსნა"]')
+    expect(source?.getAttribute('href')).toBe('https://www.youtube.com/watch?v=abc')
+  })
+})

@@ -13,7 +13,7 @@ import {
   type GalleryPlanItem,
 } from '@/api/gallery'
 import { importRow, type ImportPlanItem } from '@/api/import'
-import { addShareItem, type ShareStatusMode } from '@/api/shareLinks'
+import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/shareLinks'
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
@@ -33,6 +33,7 @@ import {
 } from '@/api/translations'
 import type { MediaType } from '@/lib/media'
 import { isMediaKey } from '@/lib/modules'
+import { shareMeta } from '@/lib/shareLinks'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -137,6 +138,12 @@ interface QItem {
   shareToken?: string
   shareStatusMode?: ShareStatusMode
   /**
+   * share — **რომელ სექციაში** ემატება (§40.10). ⚠️ ცალკე ველი და არა
+   * `mediaType`: ის მედია-დომენია და ქეშის გასუფთავებას ემსახურება, ბმული კი
+   * თამაშსაც, წიგნსაც და ადგილსაც აზიარებს (`galleryActor`-ის მიზეზი).
+   */
+  shareDomain?: ShareDomainKey
+  /**
    * cast — ნაბიჯის შედეგი. ⚠️ „უცვლელი" და „TMDB-ზე არაფერია" ორივე
    * `skipped`-ია, მაგრამ მომხმარებლისთვის სხვადასხვა ფაქტია (§39.6).
    */
@@ -171,7 +178,7 @@ interface QueueApi {
   /** Tasks §40.9 — ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
   enqueueShare: (
     token: string,
-    domain: MediaType,
+    domain: ShareDomainKey,
     items: { id: number; title: string }[],
     statusMode: ShareStatusMode,
   ) => void
@@ -494,14 +501,14 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
    * მფლობელისგან), და ორივე ცალკე ერთეულია; ერთი ბმულიდან კი ორჯერ არ ემატება.
    */
   const enqueueShare = React.useCallback(
-    (token: string, domain: MediaType, rows: { id: number; title: string }[], statusMode: ShareStatusMode) => {
+    (token: string, domain: ShareDomainKey, rows: { id: number; title: string }[], statusMode: ShareStatusMode) => {
       setExpanded(true) // რამდენიმე წამიდან წუთებამდე — პროგრესი მაშინვე ჩანს
       setItems((cur) => {
         const base = freshBase(cur)
         const busy = new Set(
           cur
             .filter((i) => i.kind === 'share' && (i.status === 'pending' || i.status === 'running'))
-            .map((i) => `share:${i.shareToken}:${i.mediaType}:${i.itemId}`),
+            .map((i) => `share:${i.shareToken}:${i.shareDomain}:${i.itemId}`),
         )
         const fresh = rows
           .filter((r) => !busy.has(`share:${token}:${domain}:${r.id}`))
@@ -510,7 +517,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             kind: 'share' as QKind,
             itemId: r.id,
             title: r.title,
-            mediaType: domain,
+            // ⚠️ არა-მედია სექციაზე `mediaType` მხოლოდ ქეშის ველია (`cast`-ის წესი)
+            mediaType: isMediaKey(domain) ? domain : ('movie' as MediaType),
+            shareDomain: domain,
             status: 'pending' as QStatus,
             shareToken: token,
             shareStatusMode: statusMode,
@@ -606,7 +615,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             /* ⚠️ **ეს შტოც `syncItem`-ის ზოგად შტომდე დგას** (§40.9) — თორემ
                გამზიარებლის ჩანაწერის id ჩუმად **ჩემი** ფილმის სინქრონად წავიდოდა */
             : next.kind === 'share'
-              ? addShareItem(next.shareToken!, next.mediaType, next.itemId!, next.shareStatusMode ?? 'default', ctrl.signal).then(
+              ? addShareItem(
+                  next.shareToken!,
+                  next.shareDomain ?? next.mediaType,
+                  next.itemId!,
+                  next.shareStatusMode ?? 'default',
+                  ctrl.signal,
+                ).then(
                   (r) => ({
                     ok: r.ok,
                     // „უკვე გქონდა" ჩავარდნა არ არის — `skipped`-ია
@@ -649,8 +664,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'import' ? ['books', 'games', 'dashboard', 'export'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
-          // §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓"
-          ...(next.kind === 'share' ? ['dashboard', 'public-share-items', 'trash'] : []),
+          /* §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
+             §40.10 — და იმ მოდულის სია, სადაც დაემატა (თამაშები, წიგნები…) */
+          ...(next.kind === 'share'
+            ? ['dashboard', 'public-share-items', 'trash', ...(next.shareDomain ? [shareMeta(next.shareDomain).listKey] : [])]
+            : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         /* Tasks §30.6 — ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
            ერთეულის პასუხმაც (`ok:false, error:'credential_missing'` — თარგმანი,
@@ -802,18 +820,25 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Tasks §40.1ა — ურნაში მყოფის აღდგენა რიგის მწკრივიდან. ⚠️ ურნის სახეობა
-   * მედია-დომენის გასაღებია (`movie` · `series` · `anime` — `TrashDomain::MODELS`),
-   * ე.ი. `mediaType` საკმარისია; ახალი ჩანაწერი არ იქმნება.
+   * დომენის გასაღებია (`TrashDomain::MODELS`): დამატებასა და იმპორტზე —
+   * მედია (`mediaType`), ბმულიდან კი ნებისმიერი სექცია (`shareDomain` — `game`,
+   * `book`…, §40.10). ახალი ჩანაწერი არ იქმნება.
    */
   const restoreTrashed = React.useCallback(
     (item: QItem) => {
       if (item.trashedId == null) return
-      restoreFromTrash(item.mediaType, item.trashedId)
+      restoreFromTrash(item.shareDomain ?? item.mediaType, item.trashedId)
         .then(() => {
           setItems((cur) =>
             cur.map((i) => (i.id === item.id ? { ...i, status: 'done', error: undefined, trashedId: undefined } : i)),
           )
-          ;[item.mediaType, 'trash', 'dashboard', 'discover'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
+          ;[
+            item.shareDomain ? shareMeta(item.shareDomain).listKey : item.mediaType,
+            'trash',
+            'dashboard',
+            'discover',
+            'public-share-items',
+          ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
           toast({ title: t('queue.restoredFromTrash', { title: item.title }), variant: 'success' })
         })
         .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))

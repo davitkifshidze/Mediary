@@ -55,6 +55,8 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
+import { ShareListButton } from '@/components/share/ShareListButton'
+import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11).
@@ -237,6 +239,8 @@ export function GamesPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
+            <ShareListButton domain="game" spec={librarySpec('game', view, genres)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Link
               to="/dictionaries/game-genres"

@@ -63,6 +63,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { ShareListButton } from '@/components/share/ShareListButton'
+import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -261,6 +263,8 @@ export function SongsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
+            <ShareListButton domain="song" spec={librarySpec('song', view, genres)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             {/* Tasks §35.5 — მთელი (გაფილტრული) სია რიგში. აქამდე მხოლოდ მთავარ
                 ფოტოზე დაჭერა უკრავდა — ვიდეოების გვერდს ეს ღილაკი ჰქონდა, აქ კი არა. */}

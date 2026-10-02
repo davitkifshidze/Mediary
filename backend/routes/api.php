@@ -413,13 +413,14 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ ორივე **`GET`-ია**: ექსპორტი კითხვაა და არა ჩანაწერი; POST-ს
        `EnsureModulePermission` `create`-ად წაიკითხავდა და view-only როლი
        საკუთარ მონაცემებს ვერ წაიღებდა. */
-    /* Tasks §40.4–40.5 — **გაზიარების ბმულები** (მფლობელის მხარე).
-       ⚠️ `preview` `{shareLink}`-ზე ზემოთ დგას, თორემ „preview" id-ად
-       წაიკითხებოდა; ⚠️ `module:`/`permission:` აქ არ დგას — ბმული სამ დომენს
-       ფარავს და უფლებას `ShareDomain::availableFor()` ამოწმებს. */
+    /* Tasks §40.4–40.5, §40.10 — **გაზიარების ბმულები** (მფლობელის მხარე).
+       ⚠️ `preview`/`records` `{shareLink}`-ზე ზემოთ დგას, თორემ id-ად
+       წაიკითხებოდა; ⚠️ `module:`/`permission:` აქ არ დგას — ბმული რამდენიმე
+       დომენს ფარავს და უფლებას `ShareDomain::availableFor()` ამოწმებს. */
     Route::get('/share-links', [ShareLinkController::class, 'index']);
     Route::post('/share-links', [ShareLinkController::class, 'store']);
     Route::get('/share-links/preview', [ShareLinkController::class, 'preview']);
+    Route::get('/share-links/records', [ShareLinkController::class, 'records']);
     Route::patch('/share-links/{shareLink}', [ShareLinkController::class, 'update'])->whereNumber('shareLink');
     Route::delete('/share-links/{shareLink}', [ShareLinkController::class, 'destroy'])->whereNumber('shareLink');
     Route::post('/share-links/{shareLink}/regenerate', [ShareLinkController::class, 'regenerate'])

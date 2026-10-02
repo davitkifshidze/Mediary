@@ -14,8 +14,10 @@ use App\Support\AppTime;
 use App\Support\MediaDomain;
 use App\Support\MediaDuplicate;
 use App\Support\NotificationType;
+use App\Support\PublicDomain;
 use App\Support\ShareDomain;
 use App\Support\StorageFolder;
+use App\Support\VideoUrl;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -26,7 +28,7 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება (Tasks §40.8).**
+ * **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება (Tasks §40.8, §40.10).**
  *
  * ⚠️ **მხოლოდ „რა ფილმია" გადმოდის (Q49 — „ა").** TMDB-იანი ჩანაწერი მიმღებთან
  * TMDB-დან თავიდან ივსება (პოსტერი, აღწერა, ჟანრები, მსახიობები) — მიმღების
@@ -36,12 +38,27 @@ use Throwable;
  * წელი, აღწერა, ჟანრები და ატვირთული პოსტერი კოპირდება — პოსტერი **მიმღების**
  * კვოტით; ადგილი თუ არ ეყო, ჩანაწერი პოსტერის გარეშე ემატება და მიზეზი ბრუნდება.
  *
+ * ⚠️ **ეტაპი 2-ის რვა დომენი (§40.10) Q49-ის მეორე შტოთია**: ჩანაწერის
+ * **ფაქტები** კოპირდება (`RECIPES` — სათაური, აღწერა, წელი, იდენტობა,
+ * ბმული, მთავარი ფოტო), **პირადი** კი არა — შეფასება, რჩეული, ტეგები,
+ * ბმულების სია, პროგრესი, „ჩემი პლატფორმა", ჩანიშვნები, ფაილები, დაკვრის
+ * მრიცხველი. გარე წყაროს (RAWG/Open Library/Nominatim/oEmbed) **არ
+ * ეკითხება**: ფაქტების სვეტები ისედაც წყაროს პასუხია, RAWG მიმღების პირად
+ * გასაღებს ითხოვს (რომელიც უმრავლესობას არ აქვს), Nominatim კი წამში ერთ
+ * მოთხოვნას — 300 ადგილი ხუთი წუთი იქნებოდა იმის გასაგებად, რაც უკვე ვიცით.
+ * კლასიფიკატორი (ჟანრი/კატეგორია/ტიპი) **სახელით** გადმოდის (Q51): მიმღებთან
+ * იმავე სახელის ჩანაწერი (ორივე ენაზე, რეგისტრისა და პუნქტუაციის გარეშე) — ის;
+ * არ აქვს — **იქმნება** მის ლექსიკონში (სახელი, აიქონი; ფერის სვეტი
+ * ლექსიკონებს არ აქვს).
+ *
  * ⚠️ **სტატუსს მიმღები ირჩევს (Q48 — „ა")**: `default` — მისი ნაგულისხმევი
- * (`HasStatus`-ის `creating` ჰუკი), `owner` — „როგორც გამზიარებელს აქვს",
- * **როლით** და არასდროს სახელით ან გასაღებით (§6.4: ჩემი „ნანახი" და შენი
- * „ვნახე" მხოლოდ როლის დონეზეა ერთი). დასრულებულს გამზიარებლის ნახვის
- * თარიღიც მოჰყვება — თორემ 300 „ნანახი" ერთ დღეს ჩაიწერებოდა სტატისტიკასა და
- * ყურების ჟურნალში.
+ * (`HasStatus`-ის `creating` ჰუკი; enum-იანზე სვეტის ნაგულისხმევი), `owner` —
+ * „როგორც გამზიარებელს აქვს": ლექსიკონიანზე **როლით** და არასდროს სახელით ან
+ * გასაღებით (§6.4: ჩემი „ნანახი" და შენი „ვნახე" მხოლოდ როლის დონეზეა ერთი),
+ * enum-იანზე — გასაღებით (ის კოდშია და ყველასთვის ერთია). დასრულებულს
+ * გამზიარებლის თარიღიც მოჰყვება — თორემ 300 „ნანახი" ერთ დღეს ჩაიწერებოდა
+ * სტატისტიკასა და მიზნებში. ⚠️ ვიდეოს `watched_at` **დაკვრის** დროა და არა
+ * სტატუსის (`statusDoneColumn()` — `null`), ამიტომ ის არასდროს გადმოდის.
  *
  * ⚠️ **გამდიდრება სურვილისამებრია და არა პირობა** (ჩატის წესი): გასაღები
  * შეიძლება არ იყოს ან წყარო არ პასუხობდეს — ჩანაწერი მაინც იქმნება (სათაურით
@@ -49,10 +66,91 @@ use Throwable;
  */
 final class ShareImporter
 {
+    /**
+     * **რა გადმოდის ეტაპი 2-ის დომენებზე** — ფაქტები და მთავარი ფოტო.
+     *
+     * ⚠️ სია **ცხადად** წერია (`PublicDomain::card()`-ის წესი): მოდელის ყველა
+     * სვეტის კოპირება ხვალ დამატებულ პირად ველს ჩუმად გადაიტანდა.
+     * - `copy` — სვეტები, რომლებიც ერთი-ერთზე გადმოდის;
+     * - `url` — `embed` (ვიდეო/სიმღერა: პლატფორმა და ჩაშენება **ჩვენი
+     *   allowlist-ით** თავიდან გამოითვლება, `VideoUrl`) ან `apply` (ბუკმარკი/კურსი —
+     *   მოდელის `applyUrl()`, დომენის/პლატფორმის ერთადერთი მწერალი);
+     * - `photo` — მთავარი ფოტოს სვეტი, წყაროს სვეტი, **წყაროს საერთო ფაილის**
+     *   ნიშნები და საქაღალდე მიმღების ასლისთვის.
+     *
+     * @var array<string, array{copy: list<string>, url?: 'embed'|'apply', photo: array{column: string, source: ?string, shared: list<string>, folder: string}}>
+     */
+    private const RECIPES = [
+        'game' => [
+            'copy' => [
+                'title_ka', 'title_en', 'description_ka', 'description_en', 'release_date', 'developer',
+                'publisher', 'franchise', 'platforms', 'modes', 'opencritic', 'users_score', 'age_rating',
+                'size_gb', 'rawg_id', 'rawg_slug', 'igdb_id', 'igdb_slug', 'cover_url',
+            ],
+            'photo' => ['column' => 'cover_path', 'source' => 'cover_source', 'shared' => ['rawg'], 'folder' => StorageFolder::GAME_COVERS],
+        ],
+        'book' => [
+            'copy' => [
+                'title_ka', 'title_en', 'description_ka', 'description_en', 'author', 'publisher', 'isbn',
+                'year', 'pages', 'language', 'series_name', 'series_number', 'openlibrary_id', 'cover_url',
+            ],
+            'photo' => ['column' => 'cover_path', 'source' => 'cover_source', 'shared' => ['openlibrary'], 'folder' => StorageFolder::BOOK_COVERS],
+        ],
+        'board_game' => [
+            'copy' => [
+                'title', 'description', 'year', 'designer', 'publisher', 'players_min', 'players_max',
+                'age_min', 'playtime_min', 'playtime_max', 'complexity', 'bgg_id', 'bgg_rating', 'image_url',
+            ],
+            'photo' => ['column' => 'image_path', 'source' => 'image_source', 'shared' => ['bgg'], 'folder' => StorageFolder::BOARD_GAME_IMAGES],
+        ],
+        'place' => [
+            'copy' => ['name', 'address', 'city', 'country', 'lat', 'lng', 'osm_id', 'osm_type', 'description'],
+            'photo' => ['column' => 'photo_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::PLACE_PHOTOS],
+        ],
+        'video' => [
+            'copy' => ['title', 'description', 'channel', 'published_at', 'duration', 'thumbnail_url'],
+            'url' => 'embed',
+            'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::VIDEO_THUMBNAILS],
+        ],
+        'song' => [
+            'copy' => ['title', 'artist', 'album', 'year', 'duration', 'thumbnail_url'],
+            'url' => 'embed',
+            'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::SONG_THUMBNAILS],
+        ],
+        'bookmark' => [
+            'copy' => ['title', 'description', 'image_url', 'favicon_url'],
+            'url' => 'apply',
+            'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::BOOKMARK_THUMBNAILS],
+        ],
+        'course' => [
+            'copy' => ['title', 'description', 'image_url'],
+            'url' => 'apply',
+            'photo' => ['column' => 'thumbnail_path', 'source' => null, 'shared' => [], 'folder' => StorageFolder::COURSE_THUMBNAILS],
+        ],
+    ];
+
     public function __construct(
         private readonly StorageMeter $meter,
         private readonly Notifier $notifier,
     ) {}
+
+    /** რეცეპტის მქონე დომენები — `RegistryConsistencyTest`-ისთვის */
+    public static function recipeDomains(): array
+    {
+        return array_keys(self::RECIPES);
+    }
+
+    /** @return list<string> რეცეპტის სვეტები — `RegistryConsistencyTest` მათ სქემაში ამოწმებს */
+    public static function recipeColumns(string $domain): array
+    {
+        $recipe = self::RECIPES[$domain];
+
+        return array_values(array_filter([
+            ...$recipe['copy'],
+            $recipe['photo']['column'],
+            $recipe['photo']['source'],
+        ]));
+    }
 
     /**
      * რომელ სექციაში შეუძლია მნახველს დამატება — მიმღების გვერდისა და გეგმისთვის.
@@ -115,6 +213,26 @@ final class ShareImporter
             return ['result' => 'have', 'id' => $match['id'], 'partial' => false, 'poster_skipped' => null];
         }
 
+        $result = MediaDomain::has($domain)
+            ? $this->addMedia($viewer, $domain, $record, $statusMode)
+            : $this->addRecord($viewer, $domain, $record, $statusMode);
+
+        if ($result['result'] === 'added') {
+            $this->countImport($link, $owner, $viewer);
+        }
+
+        return $result;
+    }
+
+    /**
+     * ფილმი · სერიალი · ანიმე (ეტაპი 1).
+     *
+     * @return array{result: 'added'|'have', id: int, partial: bool, poster_skipped: ?string}
+     */
+    private function addMedia(User $viewer, string $domain, Model $record, string $statusMode): array
+    {
+        $model = ShareDomain::model($domain);
+
         $copy = new $model;
         $copy->user_id = $viewer->id;
 
@@ -156,16 +274,211 @@ final class ShareImporter
 
             $this->copyText($record, $copy, true);
             $copy->genres()->sync($record->genres()->pluck('genres.id')->all());
-            $posterSkipped = $this->copyPoster($record, $copy, $viewer, $domain);
+            $posterSkipped = $this->copyPhoto($record, $copy, $viewer, [
+                'column' => 'poster_path',
+                'source' => 'poster_source',
+                // ⚠️ TMDB-ის საერთო ფაილი TMDB-იან ჩანაწერს ჰქონდა — აქ ყველაფერი კოპირდება
+                'shared' => [],
+                'folder' => StorageFolder::posters($domain),
+            ]);
         }
 
         if ($statusMode === 'owner') {
-            $this->applyOwnerStatus($record, $copy, $viewer, $domain);
+            $this->applyOwnerRole($record, $copy, $viewer, $domain, true);
+            $copy->save();
         }
 
-        $this->countImport($link, $owner, $viewer);
-
         return ['result' => 'added', 'id' => (int) $copy->getKey(), 'partial' => $partial, 'poster_skipped' => $posterSkipped];
+    }
+
+    /**
+     * ეტაპი 2-ის რვა დომენი — ფაქტები, კლასიფიკატორი სახელით, სტატუსი, ფოტო.
+     *
+     * ⚠️ სტატუსი და სვეტის კლასიფიკატორი **პირველ შენახვამდე** იწერება: ერთი
+     * `INSERT` და ერთი „შეიქმნა" ჟურნალში, და არა შექმნა + ორი განახლება.
+     *
+     * @return array{result: 'added', id: int, partial: bool, poster_skipped: ?string}
+     */
+    private function addRecord(User $viewer, string $domain, Model $record, string $statusMode): array
+    {
+        $recipe = self::RECIPES[$domain];
+        $model = ShareDomain::model($domain);
+
+        $copy = new $model;
+        $copy->forceFill(['user_id' => $viewer->id]);
+
+        foreach ($recipe['copy'] as $column) {
+            $copy->setAttribute($column, $record->getAttribute($column));
+        }
+
+        $url = $record->getAttribute('url');
+
+        if (($recipe['url'] ?? null) === 'embed' && is_string($url) && $url !== '') {
+            // ⚠️ ჩაშენება ჩვენი allowlist-იდან თავიდან გამოითვლება — სხვის ჩანაწერს ვენდობით მხოლოდ ბმულში
+            $parsed = VideoUrl::parse($url);
+            $copy->forceFill([
+                'url' => $url,
+                'platform' => $parsed['platform'],
+                'external_id' => $parsed['external_id'],
+                'embed_url' => $parsed['embed_url'],
+            ]);
+            $copy->thumbnail_url ??= $parsed['thumbnail_url'];
+        }
+
+        // ⚠️ `Bookmark::applyUrl()` `null`-ს არ იღებს; ბმულის გარეშე კურსს `url` ისედაც ცარიელი რჩება
+        if (($recipe['url'] ?? null) === 'apply' && is_string($url) && $url !== '') {
+            $copy->applyUrl($url);
+        }
+
+        $classes = $this->classifierFor($viewer, $domain, $record);
+        $shape = ShareDomain::classifierShape($domain);
+
+        if ($shape['type'] === 'column') {
+            $copy->setAttribute($shape['column'], $classes[0] ?? null);
+        }
+
+        $this->applyRecordStatus($record, $copy, $viewer, $domain, $statusMode);
+
+        $copy->save();
+
+        if ($shape['type'] === 'pivot' && $classes !== []) {
+            $copy->{ShareDomain::classifier($domain)['relation']}()->sync($classes);
+        }
+
+        $posterSkipped = $this->copyPhoto($record, $copy, $viewer, $recipe['photo']);
+
+        return ['result' => 'added', 'id' => (int) $copy->getKey(), 'partial' => false, 'poster_skipped' => $posterSkipped];
+    }
+
+    /**
+     * სტატუსი ეტაპი 2-ის დომენზე — `null`-ზე (სიმღერა, სამაგიდო) არაფერი.
+     *
+     * ⚠️ enum-ის თარიღი თავის ერთადერთ მწერალს გადის: თამაშსა და წიგნს
+     * `TracksCompletion` (`saving`, `??` — წინასწარ ჩაწერილი თარიღი რჩება),
+     * კურსს `syncStatusDates()` (`??=`), ადგილს `applyStatus()` (ცხადი თარიღი უპირატესია).
+     */
+    private function applyRecordStatus(Model $record, Model $copy, User $viewer, string $domain, string $statusMode): void
+    {
+        $kind = ShareDomain::statusKind($domain);
+
+        if ($kind === 'dictionary') {
+            // `default` — `HasStatus`-ის `creating` ჰუკი მიმღების ნაგულისხმევს ირჩევს
+            if ($statusMode === 'owner') {
+                $this->applyOwnerRole($record, $copy, $viewer, $domain, false);
+            }
+
+            return;
+        }
+
+        if ($kind !== 'enum') {
+            return;
+        }
+
+        $model = ShareDomain::model($domain);
+        $theirs = (string) $record->getAttribute('status');
+        $owner = $statusMode === 'owner' && in_array($theirs, $model::STATUSES, true);
+        $key = $owner ? $theirs : (string) ShareDomain::defaultStatus($domain);
+        $from = $owner ? $record : null;
+
+        if ($domain === 'place') {
+            $date = $from && $key === 'visited' ? $from->getAttribute('visited_at') : null;
+            $copy->applyStatus($key, $date ? Carbon::parse($date)->toDateString() : null);
+
+            return;
+        }
+
+        $copy->status = $key;
+
+        if ($domain === 'course') {
+            if ($from) {
+                $copy->started_at = $from->getAttribute('started_at');
+                $copy->finished_at = $from->getAttribute('finished_at');
+            }
+
+            $copy->syncStatusDates();
+
+            return;
+        }
+
+        // თამაში · წიგნი — `TracksCompletion` შენახვისას წინასწარ ჩაწერილ თარიღს ტოვებს
+        if ($from && $key === PublicDomain::doneStatus($domain)) {
+            $copy->finished_at = $from->getAttribute('finished_at');
+        }
+    }
+
+    /**
+     * კლასიფიკატორი **სახელით** (Q51) — მიმღების ლექსიკონის id-ები.
+     *
+     * ⚠️ ჯერ მიმღების ნაგულისხმევები იქმნება (`ensureDefaults()`), თორემ
+     * ცარიელ ლექსიკონში „Action" ახლად შეიქმნებოდა, მერე კი ნაგულისხმევი
+     * „Action" მის გვერდით — ერთი ჟანრი ორჯერ.
+     * ⚠️ შედარება ორივე ენაზეა და რეგისტრის, ჰარისა და პუნქტუაციის გარეშე
+     * („Sci-Fi" = „sci fi") — `CastSync::resolve()`-ის წესი; PHP-ში და არა SQL-ში
+     * (ქართულზე `LOWER()` არაფერს ცვლის, `COLLATE` კი ორ ძრავზე სხვადასხვაა).
+     * ⚠️ ურნაში მყოფი თანამოსახელე **არ ცოცხლდება** — ჩუმი აღდგენა უარესია;
+     * ახალი იქმნება (`makeKey()` ურნისასაც ხედავს, ე.ი. გასაღები არ დაეჯახება).
+     *
+     * @return list<int>
+     */
+    private function classifierFor(User $viewer, string $domain, Model $record): array
+    {
+        $entries = ShareDomain::classifierEntries($record, $domain);
+
+        if ($entries->isEmpty()) {
+            return [];
+        }
+
+        $model = ShareDomain::classifier($domain)['model'];
+        $model::ensureDefaults((int) $viewer->id);
+
+        $mine = $model::withoutGlobalScope('owner')
+            ->where('user_id', $viewer->id)
+            ->orderBy('sort_order')
+            ->get();
+
+        $ids = [];
+
+        foreach ($entries as $entry) {
+            $names = self::names($entry);
+            $hit = $mine->first(fn (Model $m) => array_intersect($names, self::names($m)) !== []);
+
+            if (! $hit) {
+                $nameKa = (string) ($entry->getAttribute('name_ka') ?: $entry->getAttribute('name_en'));
+                $nameEn = (string) ($entry->getAttribute('name_en') ?: $entry->getAttribute('name_ka'));
+
+                $hit = new $model;
+                $hit->forceFill([
+                    'user_id' => $viewer->id,
+                    'key' => $model::makeKey((int) $viewer->id, $nameEn ?: $nameKa),
+                    'name_ka' => $nameKa,
+                    'name_en' => $nameEn,
+                    'icon' => $entry->getAttribute('icon'),
+                    'sort_order' => (int) $mine->max('sort_order') + 1,
+                ])->save();
+
+                $mine->push($hit);
+            }
+
+            $ids[] = (int) $hit->getKey();
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /** @return list<string> ნორმალიზებული სახელები ორივე ენაზე */
+    private static function names(Model $entry): array
+    {
+        $out = [];
+
+        foreach (['name_ka', 'name_en'] as $field) {
+            $value = $entry->getAttribute($field);
+
+            if (is_string($value) && trim($value) !== '') {
+                $out[] = mb_strtolower((string) preg_replace('/[\s\p{P}]+/u', '', $value));
+            }
+        }
+
+        return array_values(array_unique(array_filter($out)));
     }
 
     /**
@@ -199,19 +512,36 @@ final class ShareImporter
     }
 
     /**
-     * ხელით შეყვანილის პოსტერი — **მიმღების კვოტით** (`StorageMeter`-ის ერთადერთი გზა).
+     * მთავარი ფოტო — **მიმღების კვოტით** (`StorageMeter`-ის ერთადერთი გზა).
      *
      * ⚠️ ფაილი **კოპირდება** და არა იზიარებს გზას: გამზიარებლის ფაილი მისი
-     * ჩანაწერის წაშლასთან ერთად იშლება, და მიმღების პოსტერი მაშინ გატყდებოდა.
-     * ⚠️ კვოტა არ ეყო → ჩანაწერი **მაინც** ემატება, პოსტერის გარეშე, და მიზეზი
+     * ჩანაწერის წაშლასთან ერთად იშლება, და მიმღების ფოტო მაშინ გატყდებოდა.
+     * ⚠️ **გამონაკლისი — წყაროს საერთო ფაილი** (`shared`: RAWG · Open Library ·
+     * BGG): ის წყაროს id-ით არის დასახელებული, კვოტაში არ ითვლება და
+     * ჩანაწერთან ერთად **არასდროს** იშლება — მიმღების ჩანაწერი იმავე გზას
+     * მიუთითებს, ზუსტად ისე, როგორც მას თვითონ რომ ჩამოეტვირთა. ⚠️ გალერეის
+     * ფაილი (`inGallery()` — „მთავრად დაყენებული") საერთო **არ** არის: ის
+     * გამზიარებლის გალერეის ფოტოა და მისი წაშლა მიმღების სურათს გატეხავდა.
+     * ⚠️ კვოტა არ ეყო → ჩანაწერი **მაინც** ემატება, ფოტოს გარეშე, და მიზეზი
      * ბრუნდება (`storage_quota_exceeded` / `module_quota_exceeded`) — ერთი სურათის
-     * გამო ფილმის დაკარგვა უარესი შედეგია.
+     * გამო ჩანაწერის დაკარგვა უარესი შედეგია.
+     *
+     * @param  array{column: string, source: ?string, shared: list<string>, folder: string}  $photo
      */
-    private function copyPoster(Model $record, Model $copy, User $viewer, string $domain): ?string
+    private function copyPhoto(Model $record, Model $copy, User $viewer, array $photo): ?string
     {
-        $path = (string) $record->getAttribute('poster_path');
+        $column = $photo['column'];
+        $path = (string) $record->getAttribute($column);
 
         if ($path === '' || preg_match('#^https?://#', $path)) {
+            return null;
+        }
+
+        $source = $photo['source'] !== null ? (string) $record->getAttribute($photo['source']) : null;
+
+        if ($source !== null && in_array($source, $photo['shared'], true) && ! StorageFolder::inGallery($path)) {
+            $copy->forceFill([$column => $path, $photo['source'] => $source])->save();
+
             return null;
         }
 
@@ -225,27 +555,35 @@ final class ShareImporter
             $stored = $this->meter->storeContents(
                 $viewer,
                 (string) $disk->get($path),
-                StorageFolder::posters($domain),
+                $photo['folder'],
                 pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg',
             );
         } catch (HttpResponseException $e) {
             return (string) ($e->getResponse()->getData(true)['message'] ?? 'storage_quota_exceeded');
         }
 
-        $copy->forceFill(['poster_path' => $stored, 'poster_source' => 'upload'])->save();
+        $fill = [$column => $stored];
+
+        if ($photo['source'] !== null) {
+            $fill[$photo['source']] = 'upload';
+        }
+
+        $copy->forceFill($fill)->save();
 
         return null;
     }
 
     /**
-     * „როგორც გამზიარებელს აქვს" — **როლით** (Q48).
+     * „როგორც გამზიარებელს აქვს" — **როლით** (Q48), ლექსიკონიან დომენზე.
      *
-     * ⚠️ `applyStatus()` ერთადერთი ჩამწერია `watched_at`-ისა (BUG-05); მას
-     * მხოლოდ მაშინ ვაწვდით გამზიარებლის თარიღს, როცა როლი `done`-ია — ის
-     * არსებულ მნიშვნელობას ინარჩუნებს, ე.ი. „ახლა" აღარ ჩაიწერება.
+     * ⚠️ `applyStatus()` ერთადერთი ჩამწერია დასრულების სვეტისა (BUG-05); მას
+     * გამზიარებლის თარიღს მხოლოდ მედიაზე ვაწვდით (`$withDate`) — იქ ის
+     * `watched_at`-ია და არსებულ მნიშვნელობას ინარჩუნებს, ე.ი. „ახლა" აღარ
+     * ჩაიწერება. ⚠️ ვიდეოზე/ბუკმარკზე `$withDate` ყოველთვის `false`-ია: ვიდეოს
+     * `watched_at` დაკვრის დროა, ბუკმარკს კი დასრულების სვეტი საერთოდ არ აქვს.
      * მიმღებს ასეთი როლის სტატუსი თუ არ აქვს (წაშალა) — მისი ნაგულისხმევი რჩება.
      */
-    private function applyOwnerStatus(Model $record, Model $copy, User $viewer, string $domain): void
+    private function applyOwnerRole(Model $record, Model $copy, User $viewer, string $domain, bool $withDate): void
     {
         $role = $record->status?->role;
 
@@ -266,12 +604,11 @@ final class ShareImporter
             return;
         }
 
-        if ($role === 'done' && $record->getAttribute('watched_at')) {
+        if ($withDate && $role === 'done' && $record->getAttribute('watched_at')) {
             $copy->watched_at = $record->getAttribute('watched_at');
         }
 
         $copy->applyStatus($status);
-        $copy->save();
     }
 
     /**

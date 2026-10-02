@@ -70,6 +70,40 @@ class ShareLinkController extends Controller
         return response()->json(ShareScope::counts($user, ShareScope::normalize($user, $data['domains'])));
     }
 
+    /**
+     * **„კონკრეტული ჩანაწერების" პიქერის სია** (§40.10) — მფლობელის ცოცხალი
+     * ჩანაწერები ერთ დომენში: id, სათაური ორივე ენაზე, წელი.
+     *
+     * ⚠️ **ერთი endpoint რვა დომენისთვის** და არა რვა მოდულის `index(all=1)`:
+     * იმათ რვა სხვადასხვა ფორმა აქვთ და პიქერს რვა სხვადასხვა „სათაურის
+     * წამკითხველი" დასჭირდებოდა. სათაური ბარათის ველებიდანაა (`titleOf()`),
+     * ე.ი. პიქერში იგივე წერია, რასაც მიმღები დაინახავს.
+     * ⚠️ მფლობელი ცხადია და მოდულის უფლება `availableFor()`-ით მოწმდება —
+     * სხვა დომენი 422-ია (`share_domain_unavailable`), არა ცარიელი სია.
+     */
+    public function records(Request $request): JsonResponse
+    {
+        $data = $request->validate(['domain' => ['required', 'string', Rule::in(ShareDomain::keys())]]);
+        $user = $request->user();
+        $domain = $data['domain'];
+
+        if (! in_array($domain, ShareDomain::availableFor($user), true)) {
+            return response()->json(['message' => 'share_domain_unavailable', 'domain' => $domain], 422);
+        }
+
+        $query = ShareScope::query($user, $domain, ['scope' => 'all']);
+        $table = $query->getModel()->getTable();
+
+        $items = $query->orderByDesc($table.'.id')
+            ->limit(ShareScope::MAX_IDS)
+            ->get()
+            ->map(fn ($record) => ['id' => (int) $record->getKey(), ...ShareDomain::titleOf($domain, $record)])
+            ->values()
+            ->all();
+
+        return response()->json(['data' => $items]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         if (! $this->enabled()) {

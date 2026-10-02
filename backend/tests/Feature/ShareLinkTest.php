@@ -315,8 +315,8 @@ class ShareLinkTest extends TestCase
         $token = $this->tokenOf($this->create(['movie' => ['scope' => 'all']]));
 
         $res = $this->anonymous("/api/public/shares/{$token}/movie?genre=drama")->assertOk();
-        $this->assertSame('drama', $res->json('data.0.genres.0.slug'));
-        $this->assertSame([['slug' => 'drama', 'name_ka' => null, 'name_en' => 'Drama', 'count' => 2]], $res->json('genres'));
+        $this->assertSame('drama', $res->json('data.0.genres.0.value'));
+        $this->assertSame([['value' => 'drama', 'name_ka' => null, 'name_en' => 'Drama', 'count' => 2]], $res->json('genres'));
     }
 
     public function test_search_finds_by_title(): void

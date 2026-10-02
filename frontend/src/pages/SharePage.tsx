@@ -6,6 +6,7 @@ import {
   CalendarClock,
   Check,
   CheckSquare,
+  ExternalLink,
   Library,
   Link2Off,
   Loader2,
@@ -33,7 +34,8 @@ import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
-import { genreName } from '@/lib/display'
+import { shareGenreName, shareMeta, type ShareClassifierKind, type ShareDomainMeta } from '@/lib/shareLinks'
+import { ENUM_STATUS_NS, type EnumStatusDomain } from '@/lib/statuses'
 import { PageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
@@ -44,7 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { StatusBadge } from '@/components/StatusBadge'
+import { EnumStatusBadge, StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -64,9 +66,28 @@ import { cn } from '@/lib/utils'
    ⚠️ **სია `useInfiniteQuery`-ია** და არა ხელით დაგროვებული გვერდები:
    დამატების შემდეგ „უკვე გაქვს ✓" ყველა ჩატვირთულ გვერდზე უნდა განახლდეს,
    ხელით დაგროვება კი ხელახლა ჩამოტვირთულ გვერდს მეორედ დაურთავდა.
+
+   ⚠️ **§40.10 — თერთმეტი სექცია, სამი ბარათის ფორმა** (`SHARE_DOMAIN_META`):
+   პოსტერი (ფილმი, თამაში, წიგნი…), ფართო ესკიზი (ვიდეო, სიმღერა, ბუკმარკი,
+   კურსი) და ფოტო (ადგილი). ერთ სექციაში ერთი ფორმაა, ამიტომ ბადეც მას
+   მიჰყვება. ფილტრის სიტყვაც სექციისაა — „ყველა ჟანრი" / „კატეგორია" / „ტიპი".
    ============================================================ */
 
 const ALL_GENRES = '__all__'
+
+/** ფილტრის „ყველა" — კლასიფიკატორის სიტყვით */
+const ALL_CLASSIFIERS = {
+  genre: 'share.page.allGenres',
+  category: 'share.page.allCategories',
+  type: 'share.page.allTypes',
+} as const satisfies Record<ShareClassifierKind, string>
+
+/** ბარათის კადრის პროპორცია და ბადის სვეტები — სექციის ფორმით */
+const SHAPE = {
+  poster: { aspect: 'aspect-[2/3]', grid: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6' },
+  wide: { aspect: 'aspect-video', grid: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' },
+  photo: { aspect: 'aspect-[4/3]', grid: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' },
+} as const satisfies Record<ShareDomainMeta['shape'], { aspect: string; grid: string }>
 
 export function SharePage() {
   const { token = '' } = useParams()
@@ -238,6 +259,8 @@ export function SharePage() {
     return m ? (lang === 'ka' ? m.name_ka : m.name_en) : d
   }
   const genres = firstPage?.genres ?? []
+  const meta = domain ? shareMeta(domain) : null
+  const shape = SHAPE[meta?.shape ?? 'poster']
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -340,7 +363,8 @@ export function SharePage() {
                 <span className="text-sm font-medium">{t('share.page.addTitle')}</span>
                 <InfoHint info={t('share.page.addHint')} />
                 <div className="flex-1" />
-                {share.link.show_status && (
+                {/* ⚠️ სტატუსის უქონელ სექციაზე (სიმღერა, სამაგიდო) არჩევანი არაფერს ცვლის */}
+                {share.link.show_status && meta?.status && (
                   <Select value={statusMode} onValueChange={(v) => setStatusMode(v as ShareStatusMode)}>
                     <SelectTrigger className="w-60" aria-label={t('share.page.statusMode')}>
                       <SelectValue />
@@ -395,10 +419,10 @@ export function SharePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL_GENRES}>{t('share.page.allGenres')}</SelectItem>
+                    <SelectItem value={ALL_GENRES}>{t(ALL_CLASSIFIERS[meta?.classifier ?? 'genre'])}</SelectItem>
                     {genres.map((g) => (
-                      <SelectItem key={g.slug} value={g.slug}>
-                        {genreName(g, lang)} · {g.count}
+                      <SelectItem key={g.value} value={g.value}>
+                        {shareGenreName(g, lang)} · {g.count}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -435,12 +459,13 @@ export function SharePage() {
                 }
               />
             ) : (
-              <div className="grid grid-cols-2 gap-4 pb-10 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+              <div className={cn('grid gap-4 pb-10', shape.grid)}>
                 {items.map((card) => (
                   <ShareCardTile
                     key={`${card.domain}-${card.id}`}
                     card={card}
                     lang={lang}
+                    aspect={shape.aspect}
                     selectable={canAdd && !card.in_library}
                     selected={selected.has(card.id)}
                     onToggle={() => toggle(card.id)}
@@ -464,16 +489,25 @@ export function SharePage() {
   )
 }
 
-/** ერთი ბარათი — პოსტერი, სათაური, წელი, ჟანრები, სტატუსი, „უკვე გაქვს", მონიშვნა */
+/**
+ * ერთი ბარათი — კადრი, სათაური, ქვესათაური, წელი, ჟანრები, სტატუსი, „უკვე გაქვს",
+ * მონიშვნა და (ვიდეოს, სიმღერის, ბუკმარკისა და კურსის) წყაროს ბმული.
+ *
+ * ⚠️ **სტატუსი ორი ფორმითაა** (§6.4): ლექსიკონიან სექციაზე ობიექტი (სახელი
+ * მფლობელის ლექსიკონიდან), enum-იანზე (თამაში, წიგნი, ადგილი, კურსი) —
+ * გასაღები, რომელიც i18n-ით ითარგმნება.
+ */
 function ShareCardTile({
   card,
   lang,
+  aspect,
   selectable,
   selected,
   onToggle,
 }: {
   card: ShareCard
   lang: 'ka' | 'en'
+  aspect: string
   selectable: boolean
   selected: boolean
   onToggle: () => void
@@ -483,12 +517,17 @@ function ShareCardTile({
   const image = storageUrl(card.image)
   const genres = (card.genres ?? []).slice(0, 2)
   const status = card.status && typeof card.status === 'object' ? (card.status as Status) : null
+  const enumStatus =
+    typeof card.status === 'string' && card.domain in ENUM_STATUS_NS
+      ? { domain: card.domain as EnumStatusDomain, key: card.status }
+      : null
 
   return (
     <div className="min-w-0" data-testid="share-card">
       <div
         className={cn(
-          'relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-muted',
+          'relative w-full overflow-hidden rounded-lg bg-muted',
+          aspect,
           selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
         )}
       >
@@ -525,9 +564,24 @@ function ShareCardTile({
         )}
       </div>
       <div className="mt-2 min-w-0 space-y-1">
-        <p className="truncate text-sm font-medium" title={title}>
-          {title}
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+          <span className="truncate" title={title}>
+            {title}
+          </span>
+          {card.url && (
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label={t('share.page.openSource')}
+              title={t('share.page.openSource')}
+              className="shrink-0 text-muted-foreground hover:text-primary"
+            >
+              <ExternalLink className="size-3.5" />
+            </a>
+          )}
         </p>
+        {card.subtitle && <p className="truncate text-xs text-muted-foreground">{card.subtitle}</p>}
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           {card.year && <span>{card.year}</span>}
           {card.rating != null && (
@@ -538,9 +592,12 @@ function ShareCardTile({
           )}
         </p>
         {genres.length > 0 && (
-          <p className="truncate text-[11px] text-muted-foreground">{genres.map((g) => genreName(g, lang)).join(' · ')}</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {genres.map((g) => shareGenreName(g, lang)).join(' · ')}
+          </p>
         )}
         {status && <StatusBadge status={status} />}
+        {enumStatus && <EnumStatusBadge domain={enumStatus.domain} status={enumStatus.key} />}
       </div>
     </div>
   )

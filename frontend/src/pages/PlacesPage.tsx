@@ -78,6 +78,8 @@ import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
+import { ShareListButton } from '@/components/share/ShareListButton'
+import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -263,6 +265,8 @@ export function PlacesPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
+            <ShareListButton domain="place" spec={librarySpec('place', view, categories)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />

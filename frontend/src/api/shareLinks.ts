@@ -1,21 +1,40 @@
 import { api } from '@/lib/api'
-import type { MediaType } from '@/lib/media'
 import type { PublicCard } from '@/api/publicProfile'
 
 /* ============================================================
    **გაზიარების ბმული (Tasks §40).**
 
-   მფლობელი ბმულს ქმნის, სხვა ადამიანი კი მისით მის ფილმებს, სერიალებსა
-   და ანიმეს ხედავს — ფარგლებით, თითო სექციაზე. ⚠️ ნახვა შესვლის გარეშეც
-   შეიძლება (Q46); ბიბლიოთეკაში დამატება მხოლოდ შესულს (40.8).
+   მფლობელი ბმულს ქმნის, სხვა ადამიანი კი მისით მის ჩანაწერებს ხედავს —
+   ფარგლებით, თითო სექციაზე: ფილმები, სერიალები, ანიმე (ეტაპი 1) და
+   თამაშები, წიგნები, სამაგიდო თამაშები, ადგილები, ვიდეოები, სიმღერები,
+   ბუკმარკები, კურსები (ეტაპი 2, §40.10). ⚠️ ნახვა შესვლის გარეშეც შეიძლება
+   (Q46); ბიბლიოთეკაში დამატება მხოლოდ შესულს (40.8).
 
    ⚠️ **ფარგლების ლექსიკონი `GalleryScope`-ისაა** (`all` · `status` ·
    `favorite` · `genre` · `ids`) — იგივე, რასაც სინქრონიზაციისა და გალერეის
-   ფანჯრები იყენებს; ორი ლექსიკონი ერთი კითხვისთვის დაშორდებოდა.
+   ფანჯრები იყენებს; ორი ლექსიკონი ერთი კითხვისთვის დაშორდებოდა. `genre`
+   ეტაპი 2-ის დომენებზე „კლასიფიკაციით"-ია — ჟანრი, კატეგორია ან ტიპი,
+   **მფლობელის ლექსიკონის id-ებით** (`categories`); მედიაზე — გლობალური
+   ჟანრის slug-ებით (`genres`).
    ============================================================ */
 
-/** რომელი დომენები ზიარდება ბმულით — `ShareDomain::DOMAINS`-ის სარკე */
-export const SHARE_DOMAINS = ['movie', 'series', 'anime'] as const satisfies readonly MediaType[]
+/**
+ * რომელი დომენები ზიარდება ბმულით — `ShareDomain::DOMAINS`-ის სარკე, **რიგის
+ * ჩათვლით** (`RegistryConsistencyTest::test_the_spa_share_domains_mirror_the_backend`).
+ */
+export const SHARE_DOMAINS = [
+  'movie',
+  'series',
+  'anime',
+  'game',
+  'book',
+  'board_game',
+  'place',
+  'video',
+  'song',
+  'bookmark',
+  'course',
+] as const
 
 export type ShareDomainKey = (typeof SHARE_DOMAINS)[number]
 
@@ -27,7 +46,10 @@ export type ShareScopeMode = (typeof SHARE_SCOPES)[number]
 export interface ShareDomainSpec {
   scope: ShareScopeMode
   statuses?: string[]
+  /** მედია — გლობალური ჟანრის slug-ები */
   genres?: string[]
+  /** ეტაპი 2 — მფლობელის ლექსიკონის (ჟანრი/კატეგორია/ტიპი) id-ები */
+  categories?: number[]
   genre_mode?: 'any' | 'all'
   ids?: number[]
   public_only?: boolean
@@ -105,6 +127,23 @@ function domainsParam(domains: ShareDomains) {
   )
 }
 
+/** „კონკრეტული ჩანაწერების" პიქერის ერთეული (§40.10) */
+export interface ShareRecordOption {
+  id: number
+  title_ka: string | null
+  title_en: string | null
+  year: number | null
+}
+
+/**
+ * მფლობელის ჩანაწერები ერთ დომენში — ეტაპი 2-ის პიქერისთვის. ⚠️ ერთი endpoint
+ * რვა დომენზე: მოდულების `index`-ებს რვა სხვადასხვა ფორმა აქვთ.
+ */
+export async function fetchShareRecords(domain: ShareDomainKey): Promise<ShareRecordOption[]> {
+  const { data } = await api.get('/share-links/records', { params: { domain } })
+  return data.data
+}
+
 /** რამდენი მოხვდება ბმულში (`GET` — მხოლოდ ითვლის) */
 export async function previewShareLink(domains: ShareDomains, signal?: AbortSignal): Promise<SharePreview> {
   const { data } = await api.get('/share-links/preview', { params: { domains: domainsParam(domains) }, signal })
@@ -154,10 +193,15 @@ export interface ShareAbility {
   requested: boolean
 }
 
+/**
+ * ბარათის/ფილტრის კლასიფიკატორი — ჟანრი, კატეგორია თუ ტიპი, ერთი ფორმით.
+ * `value` — რასაც ფილტრი სერვერს უბრუნებს: მედიაზე slug, დანარჩენზე
+ * **მფლობელის** ლექსიკონის id (სტრიქონად).
+ */
 export interface ShareGenre {
-  slug: string
+  value: string
   name_ka: string | null
-  name_en: string
+  name_en: string | null
 }
 
 /** მიმღების ბარათი — ვიწრო (`PublicDomain::card()`) + ჟანრები (+ შესულს „უკვე გაქვს") */
@@ -239,7 +283,7 @@ export interface ShareItemResult {
   id: number
   /** TMDB-დან ვერ შეივსო (გასაღები არ არის, წყარო არ პასუხობს) — სინქრონიზაცია შეავსებს */
   partial: boolean
-  /** ხელით შეყვანილის პოსტერი ვერ ჩაიწერა — მიზეზის კოდი */
+  /** მთავარი ფოტო ვერ ჩაიწერა (კვოტა) — მიზეზის კოდი */
   poster_skipped: string | null
 }
 
