@@ -38,23 +38,29 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { PageContainer } from '@/components/ui/page'
+import { PageHeader } from '@/components/ui/page-header'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { ShareLinkDialog } from '@/components/share/ShareLinkDialog'
 import { ShareQr } from '@/components/share/ShareQr'
 
 /* ============================================================
-   **გაზიარების ბმულების სია** — „ექსპორტ & იმპორტის" მესამე ჩანართი
-   (Tasks §40.5).
+   **„გაზიარების ბმულები" — ცალკე განყოფილება** (Tasks §40.14).
 
-   ⚠️ **აქ ცხოვრობს და არა ცალკე გვერდზე**: ბიბლიოთეკის გატანა ფაილით თუ
-   ბმულით ერთი კითხვაა — §31-ის მიზეზი, რის გამოც ექსპორტი და იმპორტი ერთ
-   სექციად გაერთიანდა.
+   შენი სიტყვები: „ეს ფუნქციონალი არ იყოს ყველა მოდულში შიდა ღილაკად,
+   არამედ სადმე ცალკე მენიუში გაიტანე — მაგალითად, მონაცემების ქვევით".
 
-   ⚠️ **„ახალი ბმული" ძველს კლავს** — ეს დადასტურებას ითხოვს: ვისაც ძველი
+   ⚠️ **ერთადერთი ადგილი, სადაც ბმული იქმნება და იმართება.** აქამდე
+   ბმული სამი გზით იქმნებოდა — „ექსპორტ & იმპორტის" მესამე ჩანართიდან და
+   თითო მოდულის სათაურის ღილაკიდან („ამ სიის გაზიარება", ცხრა გვერდზე); ახლა
+   საიდბარის თავისი რიგი აქვს („მონაცემების" ქვემოთ) და ძველი ჩანართის
+   მისამართი (`/transfer?tab=share`) აქ გადმოდის.
+
+   ⚠️ **„ახალი მისამართი" ძველს კლავს** — ეს დადასტურებას ითხოვს: ვისაც ძველი
    ბმული აქვს, ის ამ წამიდან „ასეთი ბმული არ არსებობს"-ს ნახავს.
    ============================================================ */
 
-export function SharePanel() {
+export function ShareLinksPage() {
   const { t } = useTranslation()
   const [editing, setEditing] = useState<ShareLink | null>(null)
   const [creating, setCreating] = useState(false)
@@ -66,72 +72,73 @@ export function SharePanel() {
   const enabled = data?.meta.enabled ?? true
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
-          <Link2 className="size-5 text-muted-foreground" />
-          {t('share.listTitle')}
-          <InfoHint info={t('share.listHint')} />
-        </h2>
-        <div className="flex-1" />
-        <Button type="button" disabled={!enabled} onClick={() => setCreating(true)}>
-          <Plus className="size-4" />
-          {t('share.new')}
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        tool="share"
+        title={t('share.listTitle')}
+        hint={<InfoHint info={t('share.listHint')} />}
+        actions={
+          <Button type="button" disabled={!enabled} onClick={() => setCreating(true)}>
+            <Plus className="size-4" />
+            {t('share.new')}
+          </Button>
+        }
+      />
 
-      {!enabled && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {t('share.disabled')}
-        </p>
-      )}
+      <div className="space-y-4">
+        {!enabled && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {t('share.disabled')}
+          </p>
+        )}
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-      ) : links.length === 0 ? (
-        <EmptyState
-          icon={<Link2 className="size-6" />}
-          title={t('share.empty')}
-          hint={t('share.emptyHint')}
-          actions={
-            enabled && (
-              <Button type="button" onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {t('share.new')}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : links.length === 0 ? (
+          <EmptyState
+            icon={<Link2 className="size-6" />}
+            title={t('share.empty')}
+            hint={t('share.emptyHint')}
+            actions={
+              enabled && (
+                <Button type="button" onClick={() => setCreating(true)}>
+                  <Plus className="size-4" />
+                  {t('share.new')}
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <ul className="grid gap-3 lg:grid-cols-2">
+            {links.map((link) => (
+              <ShareLinkCard
+                key={link.id}
+                link={link}
+                onEdit={() => setEditing(link)}
+                onQr={() => setQrFor(link)}
+              />
+            ))}
+          </ul>
+        )}
+
+        {creating && <ShareLinkDialog onClose={() => setCreating(false)} />}
+        {editing && <ShareLinkDialog link={editing} onClose={() => setEditing(null)} />}
+
+        {qrFor?.url && (
+          <ModalShell title={qrFor.name || t('share.unnamed')} onClose={() => setQrFor(null)}>
+            <div className="grid place-items-center gap-3">
+              <ShareQr value={qrFor.url} size={220} />
+              <p className="break-all text-center font-mono text-xs text-muted-foreground">{qrFor.url}</p>
+            </div>
+            <ModalFooter>
+              <Button type="button" onClick={() => setQrFor(null)}>
+                {t('actions.close')}
               </Button>
-            )
-          }
-        />
-      ) : (
-        <ul className="grid gap-3 lg:grid-cols-2">
-          {links.map((link) => (
-            <ShareLinkCard
-              key={link.id}
-              link={link}
-              onEdit={() => setEditing(link)}
-              onQr={() => setQrFor(link)}
-            />
-          ))}
-        </ul>
-      )}
-
-      {creating && <ShareLinkDialog onClose={() => setCreating(false)} />}
-      {editing && <ShareLinkDialog link={editing} onClose={() => setEditing(null)} />}
-
-      {qrFor?.url && (
-        <ModalShell title={qrFor.name || t('share.unnamed')} onClose={() => setQrFor(null)}>
-          <div className="grid place-items-center gap-3">
-            <ShareQr value={qrFor.url} size={220} />
-            <p className="break-all text-center font-mono text-xs text-muted-foreground">{qrFor.url}</p>
-          </div>
-          <ModalFooter>
-            <Button type="button" onClick={() => setQrFor(null)}>
-              {t('actions.close')}
-            </Button>
-          </ModalFooter>
-        </ModalShell>
-      )}
-    </div>
+            </ModalFooter>
+          </ModalShell>
+        )}
+      </div>
+    </PageContainer>
   )
 }
 

@@ -23,6 +23,7 @@ import {
   Plus,
   Puzzle,
   ScrollText,
+  Share2,
   ShieldCheck,
   Tags,
   Trash2,
@@ -748,6 +749,14 @@ export function Sidebar({
         <Link to="/credentials" onClick={() => setDrawerOpen(false)} style={toolAccent('credentials')} className={toolLink('/credentials')}>
           <KeyRound className="size-4 shrink-0" />
           {t('credentials.title')}
+        </Link>
+        {/* Tasks §40.14 — „გაზიარების ბმულები" — შენი მითითებით „მონაცემების" ქვემოთ.
+            ⚠️ **ერთადერთი შესასვლელია**: მოდულების სათაურის ღილაკი და „ექსპორტ &
+            იმპორტის" ჩანართი მოიხსნა. ⚠️ **პირობის გარეშე ჩანს** — ბმული თითქმის
+            ყველა მოდულს ეხება, ხოლო რომელს შეგიძლია გააზიარო, ფანჯარა თვითონ ამბობს. */}
+        <Link to="/share-links" onClick={() => setDrawerOpen(false)} style={toolAccent('share')} className={toolLink('/share-links')}>
+          <Share2 className="size-4 shrink-0" />
+          {t('share.listTitle')}
         </Link>
         {/* Tasks §16.2 — „ვისთან ჰგავს ჩემი გემოვნება". მოდულზე დამოკიდებული
             არაა: სოციალური ფენა ბიბლიოთეკის შიგთავსს არ ეკითხება. */}

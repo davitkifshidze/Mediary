@@ -3,7 +3,6 @@ import { SHARE_DOMAINS } from '@/api/shareLinks'
 import {
   SHARE_DOMAIN_META,
   buildDomains,
-  librarySpec,
   shareGenreName,
   shareModes,
   shareTokenOf,
@@ -84,49 +83,6 @@ describe('shareModes — `ShareDomain::modes()`-ის სარკე', () => {
     expect(shareModes('movie')).toEqual(['all', 'status', 'favorite', 'genre', 'ids'])
     expect(shareModes('song')).toEqual(['all', 'favorite', 'genre', 'ids'])
     expect(shareModes('playlist')).toEqual(['all', 'ids'])
-  })
-})
-
-describe('librarySpec — „ეს სია გაუზიარე"', () => {
-  it('the sidebar section wins over genres', () => {
-    expect(librarySpec('movie', 'watched', ['drama'])).toEqual({ scope: 'status', statuses: ['watched'] })
-    expect(librarySpec('movie', 'favorite', [])).toEqual({ scope: 'favorite' })
-  })
-
-  it('genres are ANDed, like the library filter', () => {
-    expect(librarySpec('movie', 'all', ['drama', 'crime'])).toEqual({
-      scope: 'genre',
-      genres: ['drama', 'crime'],
-      genre_mode: 'all',
-    })
-  })
-
-  it('no filter shares everything', () => {
-    expect(librarySpec('movie', null, [])).toEqual({ scope: 'all' })
-    expect(librarySpec('movie', 'all', [])).toEqual({ scope: 'all' })
-  })
-
-  it('stage-2 filters are dictionary ids: AND on a pivot, OR on a single column', () => {
-    // თამაშის ჟანრი pivot-ია — სიის ფილტრი „და"-თია
-    expect(librarySpec('game', 'all', ['4', '9'])).toEqual({ scope: 'genre', categories: [4, 9], genre_mode: 'all' })
-    // ბუკმარკის კატეგორია ერთი სვეტია — სია „ან"-ით ფილტრავს (`whereIn`)
-    expect(librarySpec('bookmark', null, ['2', '5'])).toEqual({ scope: 'genre', categories: [2, 5], genre_mode: 'any' })
-  })
-
-  it('a section without statuses never turns its view into a status scope', () => {
-    // სიმღერას სტატუსი არ აქვს — უცნობი `view` „ყველა"-ა და არა `invalid_status`
-    expect(librarySpec('song', 'done', [])).toEqual({ scope: 'all' })
-    // ვიდეოს „ჩამოტვირთული" სტატუსი არაა
-    expect(librarySpec('video', 'downloaded', [])).toEqual({ scope: 'all' })
-    expect(librarySpec('course', 'taking', [])).toEqual({ scope: 'status', statuses: ['taking'] })
-  })
-
-  it('drops a value that is not an id', () => {
-    expect(librarySpec('place', 'all', ['x', '0'])).toEqual({ scope: 'all' })
-  })
-
-  it('a playlist has neither favourites nor a classifier', () => {
-    expect(librarySpec('playlist', 'favorite', ['4'])).toEqual({ scope: 'all' })
   })
 })
 

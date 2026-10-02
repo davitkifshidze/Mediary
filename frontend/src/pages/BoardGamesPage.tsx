@@ -53,8 +53,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { ShareListButton } from '@/components/share/ShareListButton'
-import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    ბორდგეიმების მოდული (`board_game`, Tasks §14).
@@ -236,8 +234,6 @@ export function BoardGamesPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
-            <ShareListButton domain="board_game" spec={librarySpec('board_game', view, genres)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Link
               to="/dictionaries/board-game-genres"

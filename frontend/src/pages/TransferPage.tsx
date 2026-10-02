@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ExportPanel } from '@/components/transfer/ExportPanel'
 import { ImportPanel } from '@/components/transfer/ImportPanel'
-import { SharePanel } from '@/components/transfer/SharePanel'
 
 /* ============================================================
-   **„ექსპორტ & იმპორტი" — ერთი სექცია, სამი ჩანართი** (Tasks §31; მესამე —
-   „გაზიარება", Tasks §40.5: ბიბლიოთეკის გატანა ბმულით იგივე კითხვაა, რაც ფაილით).
+   **„ექსპორტ & იმპორტი" — ერთი სექცია, ორი ჩანართი** (Tasks §31).
+
+   ⚠️ **„გაზიარება" აქ მესამე ჩანართი იყო** (Tasks §40.5) და §40.14-ით თავის
+   განყოფილებაში გადავიდა (`/share-links`, საიდბარში „მონაცემების" ქვემოთ —
+   შენი მითითება). ძველი მისამართი (`?tab=share`) იქ გადამისამართდება.
 
    შენი სიტყვები: „იმპორტის სექციას ვერ მივუხვდი: ექსპორტები პროფილიდანაა,
    და ეს ყველაფერი მენიუში შეიტანე — ექსპორტი და იმპორტი, შესაბამისი
@@ -30,20 +32,18 @@ import { SharePanel } from '@/components/transfer/SharePanel'
    მოკლე რექვესთის ფასი ამას ღირს.
    ============================================================ */
 
-type TransferTab = 'export' | 'import' | 'share'
+type TransferTab = 'export' | 'import'
 
 export function TransferPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
 
   const raw = params.get('tab')
-  // Tasks §40.5 — მესამე ჩანართი: ბიბლიოთეკის გატანა ბმულით
-  const tab: TransferTab = raw === 'import' || raw === 'share' ? raw : 'export'
+  const tab: TransferTab = raw === 'import' ? raw : 'export'
 
   const tabs: CutOption[] = [
     { key: 'export', label: t('transfer.tabExport'), hint: t('transfer.tabExportHint') },
     { key: 'import', label: t('transfer.tabImport'), hint: t('transfer.tabImportHint') },
-    { key: 'share', label: t('transfer.tabShare'), hint: t('transfer.tabShareHint') },
   ]
 
   // ⚠️ დანარჩენი პარამეტრები რჩება — მხოლოდ ჩანართი იცვლება
@@ -53,6 +53,9 @@ export function TransferPage() {
       next.set('tab', key)
       return next
     })
+
+  // §40.14 — გაზიარების ბმულებს თავისი განყოფილება აქვს; შენახული ძველი ბმული არ უნდა გატყდეს
+  if (raw === 'share') return <Navigate to="/share-links" replace />
 
   return (
     <PageContainer>
@@ -67,9 +70,6 @@ export function TransferPage() {
       </div>
       <div hidden={tab !== 'import'}>
         <ImportPanel />
-      </div>
-      <div hidden={tab !== 'share'}>
-        <SharePanel />
       </div>
     </PageContainer>
   )

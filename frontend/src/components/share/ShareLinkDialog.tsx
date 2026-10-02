@@ -50,19 +50,21 @@ import { ShareQr } from '@/components/share/ShareQr'
    ⚠️ **ბმულის სექცია, რომლის მოდულიც აღარ გაქვს, რედაქტირებისას ცხადად
    ითქმის და შენახვისას ამოვარდება** — სერვერი მას `share_domain_unavailable`-ით
    დააბრუნებდა, ბარათი კი, რომლითაც მისი მოხსნა შეიძლებოდა, აღარ იხატება.
+
+   ⚠️ **ერთი შესასვლელია — „გაზიარების ბმულების" გვერდი** (§40.14): მოდულების
+   სათაურის „ამ სიის გაზიარება" მოიხსნა (შენი მითითება), და მასთან ერთად
+   წინასწარი შევსებაც (`initial`) — ფანჯარა ახლა ყოველთვის ცარიელი იხსნება
+   (ან რედაქტირებისას — ბმულის ფარგლებით).
    ============================================================ */
 
 type ExpiryChoice = '7' | '30' | '365' | 'never' | 'keep'
 
 export function ShareLinkDialog({
   link,
-  initial,
   onClose,
 }: {
   /** რედაქტირება — URL იგივე რჩება */
   link?: ShareLink | null
-  /** „ეს სია გაუზიარე" — ბიბლიოთეკის გვერდიდან (დომენი + მიმდინარე ფილტრი) */
-  initial?: { domain: ShareDomainKey; spec: ShareDomainSpec }
   onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -74,7 +76,6 @@ export function ShareLinkDialog({
 
   const [selected, setSelected] = useState<ShareDomainKey[]>(() => {
     if (link) return SHARE_DOMAINS.filter((d) => d in link.domains && available.includes(d))
-    if (initial) return [initial.domain]
     return []
   })
   // ბმულში დარჩენილი სექცია, რომლის მოდულიც აღარ გაქვს — შენახვისას ამოვარდება
@@ -84,7 +85,6 @@ export function ShareLinkDialog({
   )
   const [specs, setSpecs] = useState<Partial<Record<ShareDomainKey, ShareDomainSpec>>>(() => {
     if (link) return { ...link.domains }
-    if (initial) return { [initial.domain]: initial.spec }
     return {}
   })
   const [name, setName] = useState(link?.name ?? '')

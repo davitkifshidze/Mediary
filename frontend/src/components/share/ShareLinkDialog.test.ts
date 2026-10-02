@@ -11,9 +11,11 @@ import '@/i18n'
    გაზიარების ბმულის ფანჯარა (Tasks §40.4).
 
    ⚠️ backend-ის ტესტი ამბობს „ფარგლით ბმული სწორად ჭრის"; **რას აგზავნის
-   ფანჯარა** — ის ვერ ამბობს. აქ მოწმდება ორი ბმა: ბიბლიოთეკის „ეს სია
-   გაუზიარე" მიმდინარე ფილტრს მართლა გადასცემს, და პირადის გაფრთხილება
-   მაშინ ჩანს, როცა სერვერი პირად ჩანაწერებს ითვლის.
+   ფანჯარა** — ის ვერ ამბობს. აქ მოწმდება, რომ სექციის ბარათი და ფარგლის
+   არჩევანი სწორ ფორმას აგზავნის, და პირადის გაფრთხილება მაშინ ჩანს, როცა
+   სერვერი პირად ჩანაწერებს ითვლის. ⚠️ ყოველი სცენარი **დაჭერებით** იწყება
+   (§40.14): ფანჯარას წინასწარი შევსება აღარ აქვს — მოდულის სათაურის
+   ღილაკი მოიხსნა და ერთადერთი შესასვლელი „გაზიარების ბმულების" გვერდია.
 
    §40.10: ახალ ბმულზე არცერთი სექცია წინასწარ არ ინიშნება; ეტაპი 2-ის
    სექცია მფლობელის ლექსიკონის **id-ებს** აგზავნის და „ჩემი შეფასება"
@@ -142,15 +144,31 @@ async function mount(props: Record<string, unknown>) {
 const button = (text: string) =>
   [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(text)) as HTMLButtonElement | undefined
 
+/** ფარგლის რეჟიმი — `ScopeRow`-ის რადიო თავისი წარწერით */
+const radio = (label: string) =>
+  [...document.querySelectorAll('label')]
+    .find((l) => l.textContent?.trim() === label)
+    ?.querySelector<HTMLButtonElement>('[role="radio"]') ?? undefined
+
+async function click(el: HTMLElement | undefined) {
+  expect(el, 'ელემენტი არ დაიხატა').toBeTruthy()
+  await act(async () => el!.click())
+  await flush()
+  await flush()
+}
+
 describe('ShareLinkDialog', () => {
-  it('„ეს სია გაუზიარე" მიმდინარე ფილტრს გადასცემს', async () => {
+  it('სექცია და სტატუსი დაჭერით აირჩევა და ზუსტად ეს ფარგალი ინახება', async () => {
     mocks.previewShareLink.mockResolvedValue({ domains: { movie: { total: 4, private: 0 } }, total: 4, private: 0 })
     mocks.createShareLink.mockResolvedValue({
       id: 1,
       url: `http://localhost/share/${'b'.repeat(48)}`,
     } as ShareLink)
 
-    await mount({ initial: { domain: 'movie', spec: { scope: 'status', statuses: ['watched'] } } })
+    await mount({})
+    await click(button('ფილმები'))
+    await click(radio('სტატუსით'))
+    await click(button('ნანახი'))
 
     // წინასწარი რიცხვი იმავე ფარგლით ითხოვება, რაც შეინახება
     expect(mocks.previewShareLink).toHaveBeenCalledWith(
@@ -176,7 +194,10 @@ describe('ShareLinkDialog', () => {
   it('პირადი ჩანაწერები წითლად ჩანს', async () => {
     mocks.previewShareLink.mockResolvedValue({ domains: { movie: { total: 5, private: 2 } }, total: 5, private: 2 })
 
-    await mount({ initial: { domain: 'movie', spec: { scope: 'all' } } })
+    await mount({})
+    await click(button('ფილმები'))
+
+    expect(mocks.previewShareLink).toHaveBeenCalledWith({ movie: { scope: 'all', public_only: false } }, expect.anything())
 
     expect(document.body.textContent).toContain('მათ შორის პირადი — 2')
     // ⚠️ კრიტიკული სამკუთხედი სათაურშია — მისი ტექსტი popover-შია, ღილაკი კი ჩანს
@@ -186,7 +207,12 @@ describe('ShareLinkDialog', () => {
   it('ცარიელი არჩევანი ღილაკს თიშავს და სერვერს არ ეკითხება', async () => {
     mocks.previewShareLink.mockResolvedValue({ domains: {}, total: 0, private: 0 })
 
-    await mount({ initial: { domain: 'movie', spec: { scope: 'status', statuses: [] } } })
+    await mount({})
+    await click(button('ფილმები'))
+    mocks.previewShareLink.mockClear()
+
+    // „სტატუსით" არცერთი სტატუსის გარეშე — „არაფერი" და არა „ყველაფერი"
+    await click(radio('სტატუსით'))
 
     expect(button('ბმულის შექმნა')?.disabled).toBe(true)
     expect(mocks.previewShareLink).not.toHaveBeenCalled()
@@ -206,7 +232,10 @@ describe('ShareLinkDialog', () => {
     mocks.previewShareLink.mockResolvedValue({ domains: { book: { total: 2, private: 0 } }, total: 2, private: 0 })
     mocks.createShareLink.mockResolvedValue({ id: 2, url: `http://localhost/share/${'c'.repeat(48)}` } as ShareLink)
 
-    await mount({ initial: { domain: 'book', spec: { scope: 'genre', categories: [3] } } })
+    await mount({})
+    await click(button('წიგნები'))
+    await click(radio('ჟანრით'))
+    await click(button('პოეზია'))
 
     expect(mocks.previewShareLink).toHaveBeenCalledWith(
       { book: { scope: 'genre', categories: [3], genre_mode: 'any', public_only: false } },
@@ -281,12 +310,13 @@ describe('ShareLinkDialog', () => {
     mocks.previewShareLink.mockResolvedValue({ domains: { playlist: { total: 1, private: 0 } }, total: 1, private: 0 })
     mocks.fetchShareRecords.mockResolvedValue([{ id: 5, title_ka: null, title_en: 'Road trip', year: null }])
 
-    await mount({ initial: { domain: 'playlist', spec: { scope: 'ids', ids: [5] } } })
+    await mount({})
+    await click(button('პლეილისტები'))
 
-    expect(mocks.previewShareLink).toHaveBeenCalledWith(
-      { playlist: { scope: 'ids', ids: [5], public_only: false } },
-      expect.anything(),
-    )
+    expect(mocks.previewShareLink).toHaveBeenCalledWith({ playlist: { scope: 'all', public_only: false } }, expect.anything())
+
+    // „კონკრეტული" — პლეილისტები ბმულის საკუთარი endpoint-იდან
+    await click(radio('კონკრეტული ჩანაწერები'))
     expect(mocks.fetchShareRecords).toHaveBeenCalledWith('playlist')
 
     const text = document.body.textContent ?? ''

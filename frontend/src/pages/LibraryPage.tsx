@@ -44,8 +44,6 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
-import { ShareListButton } from '@/components/share/ShareListButton'
-import { librarySpec } from '@/lib/shareLinks'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -360,9 +358,6 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 <p className="mt-1 text-muted-foreground">{t('pick.hint')}</p>
               </TooltipContent>
             </Tooltip>
-            {/* Tasks §40.4 — **„ეს სია გაუზიარე"**: ფანჯარა ამ დომენითა და მიმდინარე
-                ფილტრით (განყოფილება ან ჟანრები) იხსნება. */}
-            <ShareListButton domain={type} spec={librarySpec(type, view, genres)} />
             {/* ვიწრო ეკრანზე ფილტრები უჯრაშია — დესკტოპზე პანელი მარჯვნივ დგას */}
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button variant="outline" onClick={() => setDiscoverOpen(true)}>

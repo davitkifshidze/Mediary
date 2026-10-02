@@ -253,3 +253,16 @@ describe('Sidebar module order', () => {
   })
 })
 
+/* Tasks §40.14 — „გაზიარების ბმულები" საკუთარი რიგია, შენი მითითებით
+   „მონაცემების" ქვემოთ (მოდულების სათაურის ღილაკი მოიხსნა). */
+describe('Sidebar share links row', () => {
+  it('sits right below the credentials row', async () => {
+    const el = await mount()
+    const hrefs = [...el.querySelectorAll('a')].map((a) => a.getAttribute('href'))
+    const credentials = hrefs.indexOf('/credentials')
+
+    expect(credentials).toBeGreaterThan(-1)
+    expect(hrefs[credentials + 1]).toBe('/share-links')
+    expect(el.querySelector('a[href="/share-links"]')?.textContent).toContain(i18n.t('share.listTitle'))
+  })
+})

@@ -134,43 +134,6 @@ export function buildDomains(selected: ShareDomainKey[], specs: Partial<Record<S
 }
 
 /**
- * **„ეს სია გაუზიარე"** — მოდულის გვერდის მიმდინარე ფილტრიდან სექციის ფარგლები.
- *
- * ⚠️ ბმულის ფარგალი **ერთი** პირობაა (Tasks §40.3 — შენი ჩამონათვალი
- * „ან"-ებით: სტატუსი, ან კატეგორია, ან რჩეულები…). ორივე თუ არის არჩეული,
- * **განყოფილება იმარჯვებს** (საიდბარის სტატუსი — „სად ვარ"), ფანჯარა კი
- * არჩევანს ცხადად აჩვენებს და შეცვლა იქვე შეიძლება.
- * ⚠️ სიის ფილტრი pivot-ზე **„და"**-თია (`Controller::slugList()`), ერთ სვეტზე
- * კი „ან"-ით (`whereIn`) — ამიტომ `genre_mode` დომენის სტრუქტურას მიჰყვება,
- * თორემ ბმულში სხვა სია მოხვდებოდა.
- * ⚠️ `view`-ში სტატუსი მხოლოდ სტატუსიან დომენზეა — სიმღერისა და სამაგიდოს
- * განყოფილება „ყველა"/„რჩეული"-ა.
- */
-export function librarySpec(
-  domain: ShareDomainKey,
-  view: string | null | undefined,
-  classifiers: readonly string[] = [],
-): ShareDomainSpec {
-  const meta = SHARE_DOMAIN_META[domain]
-
-  if (view === 'favorite' && meta.favorite) return { scope: 'favorite' }
-  if (view && view !== 'all' && view !== 'downloaded' && view !== 'favorite' && meta.status !== null) {
-    return { scope: 'status', statuses: [view] }
-  }
-
-  if (classifiers.length && meta.classifier !== null) {
-    const mode = meta.multi ? 'all' : 'any'
-
-    if (meta.global) return { scope: 'genre', genres: [...classifiers], genre_mode: mode }
-
-    const ids = classifiers.map(Number).filter((id) => Number.isInteger(id) && id > 0)
-    if (ids.length) return { scope: 'genre', categories: ids, genre_mode: mode }
-  }
-
-  return { scope: 'all' }
-}
-
-/**
  * ბარათისა და ფილტრის კლასიფიკატორის სახელი ენით. ⚠️ ორივე მხარე შეიძლება
  * ცარიელი იყოს (გლობალურ ჟანრს ქართული ხშირად არ აქვს), ამიტომ არა
  * `genreName()` — მისი ტიპი ინგლისურს სავალდებულოდ თვლის.

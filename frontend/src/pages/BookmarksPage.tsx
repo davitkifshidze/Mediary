@@ -85,8 +85,6 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
-import { ShareListButton } from '@/components/share/ShareListButton'
-import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
@@ -298,8 +296,6 @@ export function BookmarksPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
-            <ShareListButton domain="bookmark" spec={librarySpec('bookmark', view, categories)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Link
               to="/dictionaries/bookmark-categories"

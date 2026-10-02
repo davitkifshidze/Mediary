@@ -90,8 +90,6 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn, formatBytes } from '@/lib/utils'
-import { ShareListButton } from '@/components/share/ShareListButton'
-import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    ვიდეოების მოდული (I5) — Tasks 5.
@@ -381,8 +379,6 @@ export function VideosPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
-            <ShareListButton domain="video" spec={librarySpec('video', view, types)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             {/* §7.2 — მთელი (გაფილტრული) სია რიგში */}
             {videos.length > 0 && (

@@ -53,8 +53,6 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
-import { ShareListButton } from '@/components/share/ShareListButton'
-import { librarySpec } from '@/lib/shareLinks'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -247,8 +245,6 @@ export function BooksPage() {
                 ))}
               </SelectContent>
             </Select>
-            {/* Tasks §40.10 — „ამ სიის გაზიარება“: ბმული ამ სექციითა და მიმდინარე ფილტრით */}
-            <ShareListButton domain="book" spec={librarySpec('book', view, genres)} />
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Link
               to="/dictionaries/book-genres"

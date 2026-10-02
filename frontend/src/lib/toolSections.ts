@@ -12,6 +12,7 @@ import {
   ListChecks,
   MessageSquare,
   Puzzle,
+  Share2,
   ScrollText,
   ShieldCheck,
   Tags,
@@ -58,6 +59,7 @@ export type ToolSectionKey =
   | 'roles'
   | 'audit'
   | 'credentials'
+  | 'share'
   | 'backups'
   | 'transfer'
   | 'stats'
@@ -80,6 +82,8 @@ export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
   roles: { color: 'var(--tool-roles)', icon: ShieldCheck },
   audit: { color: 'var(--tool-audit)', icon: ScrollText },
   credentials: { color: 'var(--tool-credentials)', icon: KeyRound },
+  /* Tasks §40.14 — „გაზიარების ბმულები": ცალკე განყოფილება „მონაცემების" ქვემოთ */
+  share: { color: 'var(--tool-share)', icon: Share2 },
   backups: { color: 'var(--tool-backups)', icon: DatabaseBackup },
   /* Tasks §31 — „ექსპორტ & იმპორტი": ორი მიმართულება ერთ სექციაში, ამიტომ
      ხატულაც ორმხრივია. ⚠️ ყოფილი „იმპორტის" ვარდისფერი რჩება — სექცია

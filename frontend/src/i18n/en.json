@@ -3268,9 +3268,7 @@
       "steam": "Steam has no CSV export of its own — you need a file with `appid` and `name` columns (from a library export tool, for example). Each game is found by name and added as to play."
     },
     "readAs": "Read it as {{source}}",
-    "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way.",
-    "tabShare": "Share",
-    "tabShareHint": "A link for someone else"
+    "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way."
   },
   "exportData": {
     "hint": "Each module's records in one file: title, status, genre, tags and links. CSV opens in Excel with Georgian intact; JSON is for other programs. Uploaded files are not packed here — download them separately below, as a ZIP.",
@@ -3923,7 +3921,7 @@
     "create": "Create link",
     "saved": "Link saved",
     "readyTitle": "Your link is ready",
-    "readyHint": "Copy and send it, or show the QR code. You can change or revoke it from the “Share” tab of Export & import.",
+    "readyHint": "Copy and send it, or show the QR code. You can change or revoke it from the “Share links” section.",
     "copy": "Copy",
     "copied": "Link copied",
     "copyFailed": "Couldn't copy — select it and copy by hand",
@@ -3954,8 +3952,6 @@
     "views": "Views: {{count}}",
     "imports": "Added: {{count}}",
     "lastOpened": "Last opened {{when}}",
-    "shareList": "Share this list",
-    "shareListHint": "A share link with this section and the current filter — the recipient sees your list even without signing in.",
     "page": {
       "sharedBy": "Shared with you by",
       "validUntil": "Link valid until {{date}}",

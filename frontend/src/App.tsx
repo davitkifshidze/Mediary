@@ -36,6 +36,7 @@ const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ defaul
 const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const TransferPage = lazy(() => import('@/pages/TransferPage').then((m) => ({ default: m.TransferPage })))
+const ShareLinksPage = lazy(() => import('@/pages/ShareLinksPage').then((m) => ({ default: m.ShareLinksPage })))
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })))
 const SyncPage = lazy(() => import('@/pages/SyncPage').then((m) => ({ default: m.SyncPage })))
@@ -326,6 +327,8 @@ function AppShell() {
               ⚠️ მოდულზე დამოკიდებული არაა და არც უნდა იყოს: გასაღები
               `modules` ცხრილში არ არის და ყველა ანგარიშს თავისი სჭირდება. */}
           <Route path="credentials" element={<CredentialsPage />} />
+          {/* Tasks §40.14 — გაზიარების ბმულები: თავისი განყოფილება „მონაცემების" ქვემოთ */}
+          <Route path="share-links" element={<ShareLinksPage />} />
           {/* Tasks §22 — ბაზის დამპი (გვერდი თვითონ ამოწმებს super_admin-ს) */}
           <Route path="backups" element={<BackupsPage />} />
           {/* Tasks 1.5 — მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}

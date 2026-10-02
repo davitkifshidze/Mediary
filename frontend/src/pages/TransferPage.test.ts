@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { ImportPlan } from '@/api/import'
@@ -101,6 +101,11 @@ async function flush() {
   })
 }
 
+/** გადამისამართების სამიზნე — სად აღმოვჩნდით */
+function Where() {
+  return h('p', { 'data-testid': 'where' }, useLocation().pathname)
+}
+
 async function mount(url = '/transfer') {
   const { TransferPage } = await import('@/pages/TransferPage')
   container = document.createElement('div')
@@ -112,7 +117,20 @@ async function mount(url = '/transfer') {
       h(
         MemoryRouter,
         { initialEntries: [url] },
-        h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, h(TransferPage))),
+        h(
+          QueryClientProvider,
+          { client: qc },
+          h(
+            TooltipProvider,
+            null,
+            h(
+              Routes,
+              null,
+              h(Route, { path: '/transfer', element: h(TransferPage) }),
+              h(Route, { path: '/share-links', element: h(Where) }),
+            ),
+          ),
+        ),
       ),
     ),
   )
@@ -172,6 +190,19 @@ describe('TransferPage', () => {
     container!.remove()
     await mount('/transfer?tab=nonsense')
     expect(card(i18n.t('transfer.tabExport'))?.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  /* Tasks §40.14 — „გაზიარება" აქ მესამე ჩანართი იყო; ახლა თავისი განყოფილებაა.
+     ⚠️ შენახული ძველი ბმული ექსპორტზე ჩუმად არ უნდა ჩამოვარდეს */
+  it('has no share tab any more and sends the old share tab to its own section', async () => {
+    await mount('/transfer')
+    expect(card('გაზიარება')).toBeUndefined()
+
+    act(() => root?.unmount())
+    container?.remove()
+
+    await mount('/transfer?tab=share')
+    expect(document.querySelector('[data-testid="where"]')?.textContent).toBe('/share-links')
   })
 
   it('downloads the card’s own module and format, and never an empty module', async () => {

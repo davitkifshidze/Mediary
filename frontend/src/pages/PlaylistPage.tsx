@@ -28,7 +28,6 @@ import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
-import { ShareListButton } from '@/components/share/ShareListButton'
 
 /* ============================================================
    ერთი პლეილისტი — სიმღერების რიგი.
@@ -139,8 +138,6 @@ export function PlaylistPage() {
               მოდული კი `song` — პლეილისტი მუსიკის მოდულში ცხოვრობს (§15). */}
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={playlist.visibility} />
-          {/* Tasks §40.13 — „ამ პლეილისტის გაზიარება": ბმული ზუსტად ამ პლეილისტით */}
-          <ShareListButton domain="playlist" spec={{ scope: 'ids', ids: [playlist.id] }} />
           {/* §7.2 — მთელი პლეილისტი თანმიმდევრობით; ერთი დამთავრდება →
               შემდეგი თავისით ჩაირთვება (ეს არის ამოცანის არსი) */}
           {songs.length > 0 && (
