@@ -66,6 +66,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -272,9 +273,46 @@ export function CoursesPage() {
           ) : (
             <>
               <ul className="space-y-3">
-                {courses.map((course) => (
+                {courses.map((course) => {
+                  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+                  const actions: MenuAction[] = [
+                    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(course) },
+                    ...(course.url
+                      ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(course.url!, '_blank', 'noopener,noreferrer') }]
+                      : []),
+                    {
+                      key: 'status',
+                      label: t('courses.status'),
+                      sub: COURSE_STATUSES.map((s) => ({
+                        key: `status:${s}`,
+                        label: t(`courses.statuses.${s}`),
+                        checked: course.status === s,
+                        run: () => status.mutate({ id: course.id, next: s }),
+                      })),
+                    },
+                    favoriteAction(course.is_favorite, () => favorite.mutate(course.id), t),
+                    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(course) },
+                    {
+                      key: 'delete',
+                      label: t('actions.delete'),
+                      icon: MENU_ICONS.delete,
+                      danger: true,
+                      run: async () => {
+                        if (
+                          await confirm({
+                            title: t('courses.delete'),
+                            description: t('courses.deleteHint', { name: course.title }),
+                            variant: 'destructive',
+                          })
+                        ) {
+                          remove.mutate(course.id)
+                        }
+                      },
+                    },
+                  ]
+                  return (
+                  <RecordContextMenu key={course.id} actions={actions}>
                   <li
-                    key={course.id}
                     className="flex gap-4 rounded-xl border border-border bg-card p-4"
                   >
                     <button
@@ -405,7 +443,9 @@ export function CoursesPage() {
                       </Button>
                     </div>
                   </li>
-                ))}
+                  </RecordContextMenu>
+                  )
+                })}
               </ul>
 
               <ShowMore

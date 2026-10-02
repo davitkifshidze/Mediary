@@ -1,27 +1,24 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Check, SquarePen, PlayCircle, Star, Trash2 } from 'lucide-react'
+import { AlertTriangle, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
+  contextMenuItems,
+  favoriteAction,
+  MENU_ICONS,
+  statusActions,
+  type MenuAction,
+} from '@/components/ui/record-menu'
 import { mediaApi } from '@/api/media'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
-import { cn } from '@/lib/utils'
 import { genreName, movieTitle } from '@/lib/display'
 import type { MovieListItem } from '@/api/types'
 import { useContentLang } from '@/lib/settings'
-import { statusName, useStatuses } from '@/lib/statuses'
+import { useStatuses } from '@/lib/statuses'
 
 export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
   const { t, i18n } = useTranslation()
@@ -63,6 +60,21 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
     })
     if (ok) delMut.mutate()
   }
+
+  /* Tasks §7 — ერთი სია (`record-menu`): გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა.
+     „გახსნა" აქამდე არ იყო — მარჯვენა ღილაკი ბრაუზერის „ახალ ჩანართში"-ს ფარავდა. */
+  const actions: MenuAction[] = [
+    {
+      key: 'open',
+      label: t('actions.open'),
+      icon: MENU_ICONS.open,
+      run: () => nav(`${detailBase}/${movie.id}`, { state: { from: loc.pathname + loc.search } }),
+    },
+    statusActions(t('form.status'), statuses, movie.status, lang, (key) => statusMut.mutate(key)),
+    favoriteAction(movie.is_favorite, () => favMut.mutate(), t),
+    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${movie.id}/edit`) },
+    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
+  ]
 
   return (
     <ContextMenu>
@@ -157,38 +169,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
         </Tooltip>
       </div>
 
-      <ContextMenuContent>
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>{t('form.status')}</ContextMenuSubTrigger>
-          <ContextMenuSubContent>
-            {statuses.map((s) => (
-              <ContextMenuItem key={s.id} onSelect={() => statusMut.mutate(s.key)}>
-                <Check className={cn('size-3.5', movie.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
-                {statusName(s, lang)}
-              </ContextMenuItem>
-            ))}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-        <ContextMenuItem onSelect={() => favMut.mutate()}>
-          <Star className={cn('size-3.5', movie.is_favorite && 'fill-current text-favorite')} />
-          {movie.is_favorite ? t('actions.unfavorite') : t('actions.favorite')}
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onSelect={() => nav(`${detailBase}/${movie.id}/edit`)}>
-          <SquarePen className="size-3.5" />
-          {t('actions.edit')}
-        </ContextMenuItem>
-        <ContextMenuItem
-          onSelect={() => {
-            // defer so the menu fully closes before the dialog grabs focus
-            setTimeout(askDelete, 0)
-          }}
-          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-        >
-          <Trash2 className="size-3.5" />
-          {t('actions.delete')}
-        </ContextMenuItem>
-      </ContextMenuContent>
+      <ContextMenuContent>{contextMenuItems(actions)}</ContextMenuContent>
     </ContextMenu>
   )
 }

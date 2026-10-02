@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    **საერთო datatable (Tasks §6.4).**
@@ -42,10 +43,13 @@ export function DataTable<T>({
   empty,
   toolbar,
   minWidth = '640px',
+  menu,
 }: {
   rows: T[]
   columns: DataColumn<T>[]
   rowKey: (row: T) => string | number
+  /** Tasks §7 — სტრიქონის მარჯვენა ღილაკის მენიუ (იგივე სია, რაც `⋯`-ს აქვს) */
+  menu?: (row: T) => MenuAction[]
   /** რომელ ტექსტებში ეძებოს; არ არის → ძებნის ველი არ ჩანს */
   searchOf?: (row: T) => (string | null | undefined)[]
   searchPlaceholder?: string
@@ -201,13 +205,15 @@ export function DataTable<T>({
               </tr>
             ) : (
               shown.map((row) => (
-                <tr key={rowKey(row)} className="border-b border-border last:border-b-0">
-                  {columns.map((c) => (
-                    <td key={c.key} className={cn('px-3 py-2', c.className)}>
-                      {c.render(row)}
-                    </td>
-                  ))}
-                </tr>
+                <RecordContextMenu key={rowKey(row)} actions={menu?.(row) ?? []}>
+                  <tr className="border-b border-border last:border-b-0">
+                    {columns.map((c) => (
+                      <td key={c.key} className={cn('px-3 py-2', c.className)}>
+                        {c.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                </RecordContextMenu>
               ))
             )}
           </tbody>

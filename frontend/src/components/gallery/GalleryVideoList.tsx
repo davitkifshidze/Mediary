@@ -8,6 +8,7 @@ import { usePlayer, type PlayerItem } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { Button } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================
@@ -69,10 +70,39 @@ export function GalleryVideoList({
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((video, index) => {
           const playable = isAllowedEmbed(video.embed_url)
+          /* Tasks §7 — მარჯვენა ღილაკი: დაკვრა · წყარო · — · წაშლა */
+          const actions: MenuAction[] = [
+            {
+              key: 'play',
+              label: t('playback.play'),
+              icon: MENU_ICONS.play,
+              run: () =>
+                playable
+                  ? player.play(videos.map(toItem), index, t('gallery.videosTitle'))
+                  : window.open(video.url, '_blank', 'noreferrer'),
+            },
+            { key: 'source', label: t('photos.infoOpen'), icon: MENU_ICONS.link, run: () => window.open(video.url, '_blank', 'noreferrer') },
+            {
+              key: 'delete',
+              label: t('actions.delete'),
+              icon: MENU_ICONS.delete,
+              danger: true,
+              separator: true,
+              run: async () => {
+                const ok = await confirm({
+                  title: t('gallery.videoDeleteTitle'),
+                  description: t('gallery.videoDeleteHint'),
+                  confirmText: t('confirm.delete'),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(video.id)
+              },
+            },
+          ]
 
           return (
+            <RecordContextMenu key={video.id} actions={actions}>
             <li
-              key={video.id}
               className="flex gap-3 rounded-xl border border-border bg-background p-2.5"
             >
               <button
@@ -137,6 +167,7 @@ export function GalleryVideoList({
                 </div>
               </div>
             </li>
+            </RecordContextMenu>
           )
         })}
       </ul>

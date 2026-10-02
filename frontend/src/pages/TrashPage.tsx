@@ -47,6 +47,7 @@ import { PrivateImage } from '@/components/PrivateFile'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -270,9 +271,21 @@ export function TrashPage() {
                 </header>
 
                 <ul className="grid gap-2">
-                  {group.items.map((item) => (
+                  {group.items.map((item) => {
+                    /* Tasks §7 — მარჯვენა ღილაკი: აღდგენა · (ჩანაცვლება) · (ჩანაწერებით) · — · ახლავე წაშლა */
+                    const actions: MenuAction[] = [
+                      { key: 'restore', label: t('trash.restore'), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item }) },
+                      ...(item.replaceable
+                        ? [{ key: 'replace', label: t('trash.replace'), icon: Replace, disabled: restore.isPending, run: () => restore.mutate({ group, item, replace: true }) }]
+                        : []),
+                      ...(item.offers_records
+                        ? [{ key: 'records', label: t('trash.withRecords', { count: item.count ?? 0 }), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item, records: true }) }]
+                        : []),
+                      { key: 'delete', label: t('trash.deleteNow'), icon: MENU_ICONS.delete, danger: true, separator: true, disabled: remove.isPending, run: () => void removeOne(group, item) },
+                    ]
+                    return (
+                    <RecordContextMenu key={item.id} actions={actions}>
                     <li
-                      key={item.id}
                       className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background p-3"
                     >
                       <Thumb item={item} fallback={group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)} />
@@ -366,7 +379,9 @@ export function TrashPage() {
                         {t('trash.deleteNow')}
                       </Button>
                     </li>
-                  ))}
+                    </RecordContextMenu>
+                    )
+                  })}
                 </ul>
 
                 {/* ⚠️ სერვერი თითო ჯგუფზე 50 რიგს აბრუნებს — თუ მეტია,

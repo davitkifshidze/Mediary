@@ -67,16 +67,8 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { contextMenuItems, favoriteAction, MENU_ICONS, statusActions } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
@@ -560,53 +552,23 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                     </li>
                   </ContextMenuTrigger>
 
+                  {/* Tasks §7 — ერთი სია (`record-menu`): გახსნა · დაკვრა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */}
                   <ContextMenuContent>
-                    <ContextMenuItem onSelect={() => setTimeout(() => setViewing(record), 0)}>
-                      <ModuleIcon name={module.icon} className="size-3.5" />
-                      {t('customModules.open')}
-                    </ContextMenuItem>
-                    {isPlayableRecord(record) && (
-                      <ContextMenuItem onSelect={() => playFrom(record.id)}>
-                        <Play className="size-3.5" />
-                        {t('playback.play')}
-                      </ContextMenuItem>
-                    )}
-                    {record.url && (
-                      <ContextMenuItem onSelect={() => window.open(record.url ?? '', '_blank', 'noopener,noreferrer')}>
-                        <ExternalLink className="size-3.5" />
-                        {t('customModules.openLink')}
-                      </ContextMenuItem>
-                    )}
-                    {statuses.length > 0 && (
-                      <ContextMenuSub>
-                        <ContextMenuSubTrigger>{t('customModules.status')}</ContextMenuSubTrigger>
-                        <ContextMenuSubContent>
-                          {statuses.map((s) => (
-                            <ContextMenuItem key={s.id} onSelect={() => status.mutate({ id: record.id, next: s.key })}>
-                              <Check className={cn('size-3.5', record.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
-                              {statusName(s, lang)}
-                            </ContextMenuItem>
-                          ))}
-                        </ContextMenuSubContent>
-                      </ContextMenuSub>
-                    )}
-                    <ContextMenuItem onSelect={() => favorite.mutate(record.id)}>
-                      <Star className={cn('size-3.5', record.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                      {record.is_favorite ? t('actions.unfavorite') : t('actions.favorite')}
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    {/* ⚠️ ფანჯარა `setTimeout`-ით — მენიუ ჯერ ბოლომდე დაიხუროს (`MovieCard`-ის წესი) */}
-                    <ContextMenuItem onSelect={() => setTimeout(() => setEditing(record), 0)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onSelect={() => setTimeout(() => askDelete(record), 0)}
-                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                      {t('actions.delete')}
-                    </ContextMenuItem>
+                    {contextMenuItems([
+                      { key: 'open', label: t('customModules.open'), icon: MENU_ICONS.open, run: () => setViewing(record) },
+                      ...(isPlayableRecord(record)
+                        ? [{ key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: () => playFrom(record.id) }]
+                        : []),
+                      ...(record.url
+                        ? [{ key: 'link', label: t('customModules.openLink'), icon: MENU_ICONS.link, run: () => window.open(record.url ?? '', '_blank', 'noopener,noreferrer') }]
+                        : []),
+                      ...(statuses.length > 0
+                        ? [statusActions(t('customModules.status'), statuses, record.status, lang, (key) => status.mutate({ id: record.id, next: key }))]
+                        : []),
+                      favoriteAction(record.is_favorite, () => favorite.mutate(record.id), t),
+                      { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(record) },
+                      { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => askDelete(record) },
+                    ])}
                   </ContextMenuContent>
                 </ContextMenu>
               )

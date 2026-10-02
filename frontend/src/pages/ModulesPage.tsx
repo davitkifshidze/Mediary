@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Ban, Check, ChevronLeft, ChevronRight, Clock, Lock, Plus, RotateCcw, UserRound, UsersRound } from 'lucide-react'
@@ -28,6 +28,7 @@ import { CustomModulesOversight } from '@/components/CustomModulesOversight'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
@@ -161,6 +162,7 @@ export function ModulesPage() {
   })
 
   const drag = useDragReorder<string>(keys, (next) => order.mutate(next))
+  const navigate = useNavigate()
 
   const askReset = async () => {
     const ok = await confirm({
@@ -237,9 +239,15 @@ export function ModulesPage() {
         {list.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
+          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · წინ · უკან (წაშლა პირადზე — §32.1) */
+          const actions: MenuAction[] = [
+            { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
+            { key: 'earlier', label: t('modules.moveEarlier', { name }), icon: ChevronLeft, disabled: i === 0, run: () => drag.moveBy(m.key, -1) },
+            { key: 'later', label: t('modules.moveLater', { name }), icon: ChevronRight, disabled: i === list.length - 1, run: () => drag.moveBy(m.key, 1) },
+          ]
           return (
+            <RecordContextMenu key={m.id} actions={actions}>
             <div
-              key={m.id}
               {...drag.handlers(m.key)}
               style={{
                 // ⚠️ ფერის უქონელი მოდული ოქროსფერ ნაგულისხმევს იღებს — აქ
@@ -334,6 +342,7 @@ export function ModulesPage() {
                 </span>
               </div>
             </div>
+            </RecordContextMenu>
           )
         })}
       </div>

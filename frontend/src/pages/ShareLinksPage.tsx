@@ -36,7 +36,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
-import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -226,7 +226,19 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
 
   const sections = SHARE_DOMAINS.filter((d) => d in link.domains)
 
+  /* Tasks §7 — ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: QR · მისამართის შეცვლა ·
+     გაუქმება/აღდგენა · — · წაშლა */
+  const actions: MenuAction[] = [
+    ...(link.readable && active ? [{ key: 'qr', label: t('share.qr'), icon: QrCode, run: onQr }] : []),
+    ...(link.readable ? [{ key: 'regenerate', label: t('share.regenerate'), icon: RefreshCw, run: () => void askRegenerate() }] : []),
+    link.state === 'revoked'
+      ? { key: 'unrevoke', label: t('share.unrevoke'), icon: RotateCcw, run: () => revoke.mutate(false) }
+      : { key: 'revoke', label: t('share.revoke'), icon: Ban, danger: true, run: () => void askRevoke() },
+    { key: 'delete', label: t('actions.delete'), icon: Trash2, danger: true, separator: true, run: () => void askDelete() },
+  ]
+
   return (
+    <RecordContextMenu actions={actions}>
     <li
       className={cn('flex flex-col gap-3 rounded-xl border border-border bg-card p-4', !active && 'opacity-75')}
       style={modAccent('var(--tool-transfer)')}
@@ -332,36 +344,9 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
 
         <div className="flex-1" />
 
-        <ActionMenu label={t('actions.more')}>
-          {link.readable && active && (
-            <ActionMenuClose className={actionItemClass()} onClick={onQr}>
-              <QrCode className="size-4" />
-              {t('share.qr')}
-            </ActionMenuClose>
-          )}
-          {link.readable && (
-            <ActionMenuClose className={actionItemClass()} onClick={askRegenerate}>
-              <RefreshCw className="size-4" />
-              {t('share.regenerate')}
-            </ActionMenuClose>
-          )}
-          {link.state === 'revoked' ? (
-            <ActionMenuClose className={actionItemClass()} onClick={() => revoke.mutate(false)}>
-              <RotateCcw className="size-4" />
-              {t('share.unrevoke')}
-            </ActionMenuClose>
-          ) : (
-            <ActionMenuClose className={actionItemClass('destructive')} onClick={askRevoke}>
-              <Ban className="size-4" />
-              {t('share.revoke')}
-            </ActionMenuClose>
-          )}
-          <ActionMenuClose className={actionItemClass('destructive')} onClick={askDelete}>
-            <Trash2 className="size-4" />
-            {t('actions.delete')}
-          </ActionMenuClose>
-        </ActionMenu>
+        <RecordActionMenu actions={actions} />
       </div>
     </li>
+    </RecordContextMenu>
   )
 }

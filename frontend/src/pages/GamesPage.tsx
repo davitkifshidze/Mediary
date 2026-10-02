@@ -25,6 +25,7 @@ import {
   GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
+  updateGame,
   toggleGameFavorite,
   type Game,
   type GameFilters,
@@ -52,6 +53,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
@@ -145,6 +147,12 @@ export function GamesPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleGameFavorite, onSuccess: invalidate, onError: fail })
+  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  const status = useMutation({
+    mutationFn: ({ id, next }: { id: number; next: (typeof GAME_STATUSES)[number] }) => updateGame(id, { status: next }),
+    onSuccess: invalidate,
+    onError: fail,
+  })
   const remove = useMutation({
     mutationFn: deleteGame,
     onSuccess: () => {
@@ -286,9 +294,42 @@ export function GamesPage() {
                 game.links.find((l) => l.kind === 'store') ??
                 game.links.find((l) => l.kind !== 'official') ??
                 game.links[0]
+              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
+                ...(store
+                  ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(store.url, '_blank', 'noopener,noreferrer') }]
+                  : []),
+                {
+                  key: 'status',
+                  label: t('form.status'),
+                  sub: GAME_STATUSES.map((s) => ({
+                    key: `status:${s}`,
+                    label: t(`games.statuses.${s}`),
+                    checked: game.status === s,
+                    run: () => status.mutate({ id: game.id, next: s }),
+                  })),
+                },
+                favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(game) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('games.deleteTitle'),
+                      description: t('games.deleteHint', { name: title(game) }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(game.id)
+                  },
+                },
+              ]
               return (
+                <RecordContextMenu key={game.id} actions={actions}>
                 <li
-                  key={game.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <button
@@ -414,6 +455,7 @@ export function GamesPage() {
                     </Button>
                   </span>
                 </li>
+                </RecordContextMenu>
               )
             })}
           </ul>

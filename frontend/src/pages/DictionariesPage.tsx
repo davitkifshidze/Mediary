@@ -37,6 +37,7 @@ import {
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { DragHandle } from '@/components/ui/drag-handle'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
@@ -447,9 +448,28 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
               row.kind === 'item' ? row.item : row.kind === 'status' ? (row.status as unknown as DictionaryItem) : null
             const pseudo = row.kind === 'pseudo' ? row.pseudo : null
 
+            /* Tasks §7 — მარჯვენა ღილაკი: რედაქტირება · მენიუში ჩვენება/დამალვა · ზევით/ქვევით · — · წაშლა */
+            const actions: MenuAction[] = [
+              ...(item ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, run: () => setEditing(item) }] : []),
+              ...(layout
+                ? [{
+                    key: 'hidden',
+                    label: t(row.hidden ? 'dictionaries.show' : 'dictionaries.hide'),
+                    icon: row.hidden ? EyeOff : Eye,
+                    disabled: sections.isPending,
+                    run: () => sections.mutate(toggleHidden(layout, String(row.id))),
+                  }]
+                : []),
+              { key: 'up', label: t('videoTypes.moveUp'), icon: ChevronUp, disabled: i === 0 || busy, run: () => drag.moveBy(row.id, -1) },
+              { key: 'down', label: t('videoTypes.moveDown'), icon: ChevronDown, disabled: i === rows.length - 1 || busy, run: () => drag.moveBy(row.id, 1) },
+              ...(item
+                ? [{ key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, separator: true, run: () => setDeleting(item) }]
+                : []),
+            ]
+
             return (
+              <RecordContextMenu key={row.id} actions={actions}>
               <li
-                key={row.id}
                 {...drag.handlers(row.id)}
                 className={cn(
                   'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3',
@@ -543,6 +563,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                   )}
                 </span>
               </li>
+              </RecordContextMenu>
             )
           })}
         </ul>

@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
@@ -189,9 +190,33 @@ export function PlaylistPage() {
       <ol className="space-y-2">
         {songs.map((song, i) => {
           const cover = storageUrl(song.thumbnail)
+          /* Tasks §7 — მარჯვენა ღილაკის მენიუ: აქედან დაკვრა · წყარო · — · მოხსნა პლეილისტიდან */
+          const actions: MenuAction[] = [
+            {
+              key: 'play',
+              label: t('playback.playFromHere'),
+              icon: MENU_ICONS.play,
+              run: () => player.play(songs.map(songItem), i, playlist.name),
+            },
+            {
+              key: 'source',
+              label: t('playlists.openSource'),
+              icon: MENU_ICONS.link,
+              run: () => window.open(song.url, '_blank', 'noopener,noreferrer'),
+            },
+            {
+              key: 'remove',
+              label: t('playlists.removeSong'),
+              icon: MENU_ICONS.delete,
+              danger: true,
+              separator: true,
+              disabled: save.isPending,
+              run: () => save.mutate(songIds.filter((x) => x !== song.id)),
+            },
+          ]
           return (
+            <RecordContextMenu key={song.id} actions={actions}>
             <li
-              key={song.id}
               {...drag.handlers(song.id)}
               className={cn(
                 'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-3 py-2',
@@ -273,6 +298,7 @@ export function PlaylistPage() {
                 </Button>
               </span>
             </li>
+            </RecordContextMenu>
           )
         })}
       </ol>

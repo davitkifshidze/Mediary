@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, Play, Trash2, Video } from 'lucide-react'
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Pager } from '@/components/ui/pager'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import type { VideoPlatform } from '@/api/videos'
 
 /* ============================================================
@@ -37,6 +38,7 @@ export function VideosCut() {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const confirm = useConfirm()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const player = usePlayer()
   const [page, setPage] = useState(1)
@@ -100,10 +102,47 @@ export function VideosCut() {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((video, index) => {
           const playable = isAllowedEmbed(video.embed_url)
+          /* Tasks §7 — მარჯვენა ღილაკი: დაკვრა · მსახიობის გვერდი / ჩანაწერის გალერეა · წყარო · — · წაშლა */
+          const actions: MenuAction[] = [
+            {
+              key: 'play',
+              label: t('playback.play'),
+              icon: MENU_ICONS.play,
+              run: () => (playable ? playFrom(index) : window.open(video.url, '_blank', 'noreferrer')),
+            },
+            video.owner.kind === 'actor'
+              ? { key: 'owner', label: t('gallery.actorPage'), icon: MENU_ICONS.open, run: () => navigate(`/actors/${video.owner.id}`) }
+              : {
+                  key: 'owner',
+                  label: t('gallery.openRecord'),
+                  icon: MENU_ICONS.open,
+                  run: () =>
+                    navigate(`/gallery/records/${video.owner.kind}/${video.owner.id}`, {
+                      state: { title: video.owner.title ?? undefined, from: '/gallery/videos' },
+                    }),
+                },
+            { key: 'source', label: t('photos.infoOpen'), icon: MENU_ICONS.link, run: () => window.open(video.url, '_blank', 'noreferrer') },
+            {
+              key: 'delete',
+              label: t('actions.delete'),
+              icon: MENU_ICONS.delete,
+              danger: true,
+              separator: true,
+              run: async () => {
+                const ok = await confirm({
+                  title: t('gallery.videoDeleteTitle'),
+                  description: t('gallery.videoDeleteHint'),
+                  confirmText: t('confirm.delete'),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(video.id)
+              },
+            },
+          ]
 
           return (
+            <RecordContextMenu key={video.id} actions={actions}>
             <li
-              key={video.id}
               className="flex gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:border-primary/50"
             >
               <button
@@ -192,6 +231,7 @@ export function VideosCut() {
                 </div>
               </div>
             </li>
+            </RecordContextMenu>
           )
         })}
       </ul>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, AudioLines, ExternalLink, ListMusic, ListVideo, ListX, Music, Play, Video } from 'lucide-react'
+import { ArrowDown, ArrowUp, AudioLines, ListMusic, ListVideo, ListX, Music, Play, Video } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { dragRowClass, useDragReorder, type DragReorder } from '@/lib/dragReorder'
 import { usePlayer, type PlayerLayout, type QueueEntry } from '@/lib/player'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/videoDuration'
-import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { MENU_ICONS, RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { DragHandle } from '@/components/ui/drag-handle'
 
 /* ============================================================
@@ -126,7 +126,20 @@ function QueueRow({
   const time = formatDuration(entry.duration)
   const Fallback = entry.kind === 'song' ? Music : Video
 
+  /* Tasks §7 — ერთი სია `⋯`-სთვისაც და მარჯვენა ღილაკისთვისაც: დაკვრა · წინ · უკან · წყარო · — · რიგიდან მოხსნა.
+     ⚠️ რასაც ვერ გააკეთებ, ის არ იხატება (და არა გამორთულად) — პირველს „წინ" არ აქვს. */
+  const actions: MenuAction[] = [
+    { key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: onJump },
+    ...(position > 0 ? [{ key: 'earlier', label: t('playback.moveEarlier'), icon: ArrowUp, run: () => drag.moveBy(entry.uid, -1) }] : []),
+    ...(!last ? [{ key: 'later', label: t('playback.moveLater'), icon: ArrowDown, run: () => drag.moveBy(entry.uid, 1) }] : []),
+    ...(entry.url
+      ? [{ key: 'source', label: t('playback.openSource'), icon: MENU_ICONS.link, run: () => window.open(entry.url!, '_blank', 'noopener,noreferrer') }]
+      : []),
+    { key: 'remove', label: t('playback.removeFromQueue'), icon: ListX, danger: true, separator: true, run: onRemove },
+  ]
+
   return (
+    <RecordContextMenu actions={actions}>
     <li
       data-uid={entry.uid}
       {...drag.handlers(entry.uid)}
@@ -204,37 +217,8 @@ function QueueRow({
         </span>
       </button>
 
-      {/* ⚠️ რასაც ვერ გააკეთებ, ის არ იხატება (და არა გამორთულად) — პირველს „წინ" არ აქვს */}
-      <ActionMenu label={t('playback.itemActions')}>
-        {position > 0 && (
-          <ActionMenuClose asChild>
-            <button type="button" onClick={() => drag.moveBy(entry.uid, -1)} className={actionItemClass()}>
-              <ArrowUp className="size-4" />
-              {t('playback.moveEarlier')}
-            </button>
-          </ActionMenuClose>
-        )}
-        {!last && (
-          <ActionMenuClose asChild>
-            <button type="button" onClick={() => drag.moveBy(entry.uid, 1)} className={actionItemClass()}>
-              <ArrowDown className="size-4" />
-              {t('playback.moveLater')}
-            </button>
-          </ActionMenuClose>
-        )}
-        {entry.url && (
-          <a href={entry.url} target="_blank" rel="noopener noreferrer" className={actionItemClass()}>
-            <ExternalLink className="size-4" />
-            {t('playback.openSource')}
-          </a>
-        )}
-        <ActionMenuClose asChild>
-          <button type="button" onClick={onRemove} className={actionItemClass('destructive')}>
-            <ListX className="size-4" />
-            {t('playback.removeFromQueue')}
-          </button>
-        </ActionMenuClose>
-      </ActionMenu>
+      <RecordActionMenu actions={actions} label={t('playback.itemActions')} />
     </li>
+    </RecordContextMenu>
   )
 }

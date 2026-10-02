@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, SquarePen, Trash2 } from 'lucide-react'
@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/errors'
 import { roleName } from '@/lib/display'
 import { UserAvatar } from '@/components/UserAvatar'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { DataTable, type DataColumn } from '@/components/ui/data-table'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
@@ -42,6 +43,7 @@ export function UsersPage() {
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
+  const navigate = useNavigate()
   const { user: me, canAdmin } = useAuth()
   const fmt = useDateFormat()
 
@@ -211,6 +213,26 @@ export function UsersPage() {
           rows={rows}
           columns={columns}
           rowKey={(u) => u.id}
+          /* Tasks §7 — სტრიქონის მარჯვენა ღილაკი: იგივე ორი მოქმედება, რაც „მოქმედება" ღილაკს აქვს */
+          menu={(u): MenuAction[] => [
+            { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, run: () => navigate(`/users/${u.id}`) },
+            {
+              key: 'delete',
+              label: t('actions.delete'),
+              icon: MENU_ICONS.delete,
+              danger: true,
+              separator: true,
+              disabled: u.id === me?.id,
+              run: async () => {
+                const ok = await confirm({
+                  title: t('admin.deleteUser'),
+                  description: t('admin.deleteUserHint', { name: u.display_name }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(u.id)
+              },
+            },
+          ]}
           defaultSort={{ key: 'created_at', dir: 'desc' }}
           pageSize={25}
           minWidth="880px"

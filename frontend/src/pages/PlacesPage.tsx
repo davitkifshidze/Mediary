@@ -77,6 +77,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -297,9 +298,46 @@ export function PlacesPage() {
           ) : (
             <>
               <ul className="space-y-3">
-                {places.map((place) => (
+                {places.map((place) => {
+                  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რუკა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+                  const actions: MenuAction[] = [
+                    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(place) },
+                    ...(place.map_url
+                      ? [{ key: 'map', label: t('places.openMap'), icon: MapIcon, run: () => window.open(place.map_url!, '_blank', 'noopener,noreferrer') }]
+                      : []),
+                    {
+                      key: 'status',
+                      label: t('places.status'),
+                      sub: PLACE_STATUSES.map((s) => ({
+                        key: `status:${s}`,
+                        label: t(`places.statuses.${s}`),
+                        checked: place.status === s,
+                        run: () => status.mutate({ id: place.id, next: s }),
+                      })),
+                    },
+                    favoriteAction(place.is_favorite, () => favorite.mutate(place.id), t),
+                    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(place) },
+                    {
+                      key: 'delete',
+                      label: t('actions.delete'),
+                      icon: MENU_ICONS.delete,
+                      danger: true,
+                      run: async () => {
+                        if (
+                          await confirm({
+                            title: t('places.delete'),
+                            description: t('places.deleteHint', { name: place.name }),
+                            variant: 'destructive',
+                          })
+                        ) {
+                          remove.mutate(place.id)
+                        }
+                      },
+                    },
+                  ]
+                  return (
+                  <RecordContextMenu key={place.id} actions={actions}>
                   <li
-                    key={place.id}
                     className="flex gap-4 rounded-xl border border-border bg-card p-4"
                   >
                     <button
@@ -441,7 +479,9 @@ export function PlacesPage() {
                       </Button>
                     </div>
                   </li>
-                ))}
+                  </RecordContextMenu>
+                  )
+                })}
               </ul>
 
               <ShowMore

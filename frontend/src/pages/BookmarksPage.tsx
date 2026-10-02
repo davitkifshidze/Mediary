@@ -61,16 +61,8 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { contextMenuItems, favoriteAction, MENU_ICONS, statusActions } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
@@ -482,47 +474,25 @@ export function BookmarksPage() {
                 </li>
                 </ContextMenuTrigger>
 
+                {/* Tasks §7 — ერთი სია (`record-menu`): ბმულის გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */}
                 <ContextMenuContent>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      window.open(bookmark.url, '_blank', 'noopener,noreferrer')
-                      visited.mutate(bookmark.id)
-                    }}
-                  >
-                    <ExternalLink className="size-3.5" />
-                    {t('bookmarks.open')}
-                  </ContextMenuItem>
-                  <ContextMenuSub>
-                    <ContextMenuSubTrigger>{t('bookmarks.status')}</ContextMenuSubTrigger>
-                    <ContextMenuSubContent>
-                      {statuses.map((s) => (
-                        <ContextMenuItem key={s.id} onSelect={() => status.mutate({ id: bookmark.id, next: s.key })}>
-                          <Check
-                            className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
-                          />
-                          {statusName(s, lang)}
-                        </ContextMenuItem>
-                      ))}
-                    </ContextMenuSubContent>
-                  </ContextMenuSub>
-                  <ContextMenuItem onSelect={() => favorite.mutate(bookmark.id)}>
-                    <Star className={cn('size-3.5', bookmark.is_favorite && 'fill-current text-[var(--favorite)]')} />
-                    {bookmark.is_favorite ? t('actions.unfavorite') : t('actions.favorite')}
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  {/* ⚠️ ფანჯარა `setTimeout`-ით — მენიუ ჯერ ბოლომდე უნდა დაიხუროს,
-                      თორემ ფოკუსს დაიჭერს (`MovieCard`-ის წესი) */}
-                  <ContextMenuItem onSelect={() => setTimeout(() => setEditing(bookmark), 0)}>
-                    <SquarePen className="size-3.5" />
-                    {t('actions.edit')}
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => setTimeout(() => askDelete(bookmark), 0)}
-                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                    {t('actions.delete')}
-                  </ContextMenuItem>
+                  {contextMenuItems([
+                    {
+                      key: 'open',
+                      label: t('bookmarks.open'),
+                      icon: MENU_ICONS.link,
+                      run: () => {
+                        window.open(bookmark.url, '_blank', 'noopener,noreferrer')
+                        visited.mutate(bookmark.id)
+                      },
+                    },
+                    statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) =>
+                      status.mutate({ id: bookmark.id, next: key }),
+                    ),
+                    favoriteAction(bookmark.is_favorite, () => favorite.mutate(bookmark.id), t),
+                    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(bookmark) },
+                    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => askDelete(bookmark) },
+                  ])}
                 </ContextMenuContent>
                 </ContextMenu>
               )

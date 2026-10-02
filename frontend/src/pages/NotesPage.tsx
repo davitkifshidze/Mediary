@@ -23,6 +23,7 @@ import {
   fetchNoteCategories,
   fetchNotes,
   toggleNoteFavorite,
+  setNoteStatus,
   type NoteEntry,
   type NoteFilters,
 } from '@/api/notes'
@@ -54,6 +55,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
@@ -154,6 +156,12 @@ export function NotesPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleNoteFavorite, onSuccess: invalidate, onError: fail })
+  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  const status = useMutation({
+    mutationFn: ({ id, next }: { id: number; next: string }) => setNoteStatus(id, next),
+    onSuccess: invalidate,
+    onError: fail,
+  })
   const remove = useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
@@ -315,9 +323,36 @@ export function NotesPage() {
           )}
 
           <ul className="space-y-2">
-            {notes.map((note) => (
+            {notes.map((note) => {
+              /* Tasks §7/§26.4 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
+                 (ბმული) · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(note) },
+                statusActions(t('form.status'), statuses, note.status, lang, (key) => status.mutate({ id: note.id, next: key })),
+                favoriteAction(note.is_favorite, () => favorite.mutate(note.id), t),
+                { key: 'reminders', label: t('notes.remindersTitle'), icon: BellRing, run: () => setReminders(note) },
+                ...(note.links.length > 0
+                  ? [{ key: 'link', label: t('actions.openLink'), icon: MENU_ICONS.link, run: () => window.open(note.links[0].url, '_blank', 'noopener,noreferrer') }]
+                  : []),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(note) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('notes.deleteTitle'),
+                      description: t('notes.deleteHint', { name: note.title }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(note.id)
+                  },
+                },
+              ]
+              return (
+              <RecordContextMenu key={note.id} actions={actions}>
               <li
-                key={note.id}
                 className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
               >
                 <button
@@ -449,7 +484,9 @@ export function NotesPage() {
                   </Button>
                 </span>
               </li>
-            ))}
+              </RecordContextMenu>
+              )
+            })}
           </ul>
 
           <ShowMore shown={notes.length} total={total} onMore={showMore} loading={query.isFetching} />

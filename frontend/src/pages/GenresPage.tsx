@@ -18,6 +18,7 @@ import { GenreSingleSelect } from '@/components/GenreSelect'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { genreName } from '@/lib/display'
 import { cn } from '@/lib/utils'
 
@@ -59,8 +60,15 @@ export function GenresPage() {
         </div>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          {genres.map((g) => (
-            <li key={g.id} className="flex items-center gap-3 px-4 py-3">
+          {genres.map((g) => {
+            /* Tasks §7 — მარჯვენა ღილაკი: რედაქტირება · — · წაშლა */
+            const actions: MenuAction[] = [
+              { key: 'edit', label: t('genres.edit'), icon: MENU_ICONS.edit, run: () => setEditing(g) },
+              { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, separator: true, run: () => setDeleting(g) },
+            ]
+            return (
+            <RecordContextMenu key={g.id} actions={actions}>
+            <li className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{genreName(g, lang)}</div>
                 <div className="truncate text-xs text-muted-foreground">
@@ -91,7 +99,9 @@ export function GenresPage() {
                 <Trash2 className="size-4" />
               </button>
             </li>
-          ))}
+            </RecordContextMenu>
+            )
+          })}
         </ul>
       )}
 

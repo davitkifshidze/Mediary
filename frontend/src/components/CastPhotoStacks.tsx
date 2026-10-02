@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2, User } from 'lucide-react'
 import type { GalleryCastImage, GalleryCastMember, GalleryImage } from '@/api/gallery'
@@ -11,6 +11,7 @@ import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
+import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { LayoutToggle, type GalleryLayout } from '@/components/gallery/LayoutToggle'
 
 /* ============================================================
@@ -61,6 +62,7 @@ export function CastPhotoStacks({
   const [unlocking, setUnlocking] = useState<number | null>(null)
   /** §17 — რომელი ფოტოები გადაგვაქვს (`null` — დიალოგი დახურულია) */
   const [moving, setMoving] = useState<number[] | null>(null)
+  const navigate = useNavigate()
 
   /**
    * ჯგუფები — **ჩანაწერის შემადგენლობის რიგით** (billing order), რომ მთავარი
@@ -194,6 +196,21 @@ export function CastPhotoStacks({
                 images={photos.filter((image) => !image.locked).map((image) => image.url)}
                 open={openActor === member.id}
                 onClick={() => setOpenActor((cur) => (cur === member.id ? null : member.id))}
+                /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · მსახიობის გვერდი · — · დასტის წაშლა */
+                menu={contextMenuItems([
+                  { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpenActor(member.id) },
+                  { key: 'actor', label: t('gallery.actorPage'), icon: User, run: () => navigate(`/actors/${member.id}`) },
+                  ...(onDelete && photos.some((image) => !image.locked)
+                    ? [{
+                        key: 'delete',
+                        label: t('photos.deleteSelected', { count: photos.filter((image) => !image.locked).length }),
+                        icon: MENU_ICONS.delete,
+                        danger: true,
+                        separator: true,
+                        run: () => onDelete(pick(photos.map((i) => i.id), photos)),
+                      }]
+                    : []),
+                ])}
                 actions={
                   /* §25.4 — „მსახიობები გამოიძახო, გალერეა ნახო და წაშალო":
                      ერთეულების წაშლა ბადეშივე იყო, მთელი დასტისა კი — არსად,

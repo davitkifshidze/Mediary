@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Loader2, Lock, Search, Sparkles, Users } from 'lucide-react'
@@ -9,6 +9,7 @@ import { isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 import { InfoHint } from '@/components/ui/info-hint'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
@@ -136,10 +137,17 @@ function ProfileRow({
   lang: 'ka' | 'en'
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const p = row.profile
   const avatar = p.avatar_path ? storageUrl(p.avatar_path) : null
 
+  /* Tasks §7 — მარჯვენა ღილაკი: პროფილის გახსნა */
+  const actions: MenuAction[] = [
+    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/u/${p.username}`) },
+  ]
+
   return (
+    <RecordContextMenu actions={actions}>
     <li>
       <Link
         to={`/u/${p.username}`}
@@ -197,5 +205,6 @@ function ProfileRow({
         </span>
       </Link>
     </li>
+    </RecordContextMenu>
   )
 }

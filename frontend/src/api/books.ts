@@ -187,6 +187,12 @@ export async function toggleBookFavorite(id: number): Promise<Book> {
   return data.data
 }
 
+/** სტატუსი კონტექსტური მენიუდან (Tasks §7) — `PATCH /books/{id}/status` */
+export async function setBookStatus(id: number, status: BookStatus): Promise<Book> {
+  const { data } = await api.patch(`/books/${id}/status`, { status })
+  return data.data
+}
+
 /** პროგრესი — გვერდი ან პროცენტი; მეორეს backend თვითონ ითვლის */
 export async function setBookProgress(
   id: number,

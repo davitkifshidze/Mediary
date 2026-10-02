@@ -51,6 +51,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
@@ -278,9 +279,29 @@ export function BoardGamesPage() {
           <ul className="space-y-2">
             {games.map((game) => {
               const image = storageUrl(game.image)
+              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რჩეული · — · რედაქტირება · წაშლა (სტატუსი სამაგიდოს არ აქვს) */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(game) },
+                favoriteAction(game.is_favorite, () => favorite.mutate(game.id), t),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(game) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('boardGames.deleteTitle'),
+                      description: t('boardGames.deleteHint', { name: game.title }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(game.id)
+                  },
+                },
+              ]
               return (
+                <RecordContextMenu key={game.id} actions={actions}>
                 <li
-                  key={game.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <button
@@ -390,6 +411,7 @@ export function BoardGamesPage() {
                     </Button>
                   </span>
                 </li>
+                </RecordContextMenu>
               )
             })}
           </ul>

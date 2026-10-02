@@ -29,6 +29,7 @@ import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
 import { cn } from '@/lib/utils'
 import { STATUS_ACTIVE, STATUS_INACTIVE } from '@/lib/statusStyles'
@@ -154,6 +155,14 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
     .filter((p) => !p.owned)
     .map((p) => ({ tmdbId: p.tmdb_id, title: p.title }))
 
+  /* Tasks §7 — მარჯვენა ღილაკი ჰეროზე (პოსტერი, სათაური): სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+  const heroActions: MenuAction[] = [
+    statusActions(t('form.status'), statuses, m.status, lang, (key) => statusMut.mutate(key)),
+    favoriteAction(m.is_favorite, () => favMut.mutate(), t),
+    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${m.id}/edit`) },
+    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
+  ]
+
   return (
     <div>
       {/* ===== HERO ===== */}
@@ -174,6 +183,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
             {t('actions.back')}
           </Link>
 
+          <RecordContextMenu actions={heroActions}>
           <div className="flex flex-col gap-6 pb-8 sm:flex-row">
             <PosterImage
               src={m.poster}
@@ -291,6 +301,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
               </div>
             </div>
           </div>
+          </RecordContextMenu>
         </div>
       </div>
 

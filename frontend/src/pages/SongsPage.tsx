@@ -61,6 +61,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
@@ -320,9 +321,35 @@ export function SongsPage() {
           <ul className="space-y-2">
             {songs.map((song, i) => {
               const cover = storageUrl(song.thumbnail)
+              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
+                {
+                  key: 'source',
+                  label: t('playback.openSource'),
+                  icon: MENU_ICONS.link,
+                  run: () => window.open(song.url, '_blank', 'noopener,noreferrer'),
+                },
+                favoriteAction(song.is_favorite, () => favorite.mutate(song.id), t),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(song) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('songs.deleteTitle'),
+                      description: t('songs.deleteHint', { name: song.title }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(song.id)
+                  },
+                },
+              ]
               return (
+                <RecordContextMenu key={song.id} actions={actions}>
                 <li
-                  key={song.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <button
@@ -445,6 +472,7 @@ export function SongsPage() {
                     </Button>
                   </span>
                 </li>
+                </RecordContextMenu>
               )
             })}
           </ul>

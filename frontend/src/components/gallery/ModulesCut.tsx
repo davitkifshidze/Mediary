@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PhotoGrid, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
+import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { GalleryStackSkeleton, GallerySkeletonGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { Pager } from '@/components/ui/pager'
 
@@ -76,6 +77,10 @@ export function ModulesCut() {
               badge={group.private ? <Lock className="size-3" /> : undefined}
               aspect="wide"
               onClick={() => setOpen(group)}
+              /* Tasks §7 — მარჯვენა ღილაკი: გახსნა */
+              menu={contextMenuItems([
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpen(group) },
+              ])}
             />
           </li>
         ))}

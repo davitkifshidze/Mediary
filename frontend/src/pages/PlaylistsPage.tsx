@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -35,6 +35,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -57,6 +58,7 @@ export function PlaylistsPage() {
     queryFn: fetchPlaylists,
   })
 
+  const navigate = useNavigate()
   const reorder = useMutation({
     mutationFn: reorderPlaylists,
     onSuccess: (next) => qc.setQueryData(['playlists'], next),
@@ -100,9 +102,16 @@ export function PlaylistsPage() {
       )}
 
       <ul className="space-y-2">
-        {playlists.map((playlist, i) => (
+        {playlists.map((playlist, i) => {
+          /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
+          const actions: MenuAction[] = [
+            { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/playlists/${playlist.id}`) },
+            { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(playlist) },
+            { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(playlist) },
+          ]
+          return (
+          <RecordContextMenu key={playlist.id} actions={actions}>
           <li
-            key={playlist.id}
             {...drag.handlers(playlist.id)}
             className={cn(
               'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3',
@@ -158,7 +167,9 @@ export function PlaylistsPage() {
               </Button>
             </span>
           </li>
-        ))}
+          </RecordContextMenu>
+          )
+        })}
       </ul>
 
       {editing && (

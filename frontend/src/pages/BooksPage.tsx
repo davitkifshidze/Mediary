@@ -20,6 +20,7 @@ import {
 import {
   BOOK_MAX_RATING,
   BOOK_STATUSES,
+  setBookStatus,
   deleteBook,
   fetchBookGenres,
   fetchBooks,
@@ -50,6 +51,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { EnumStatusBadge } from '@/components/StatusBadge'
@@ -139,6 +141,12 @@ export function BooksPage() {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const favorite = useMutation({ mutationFn: toggleBookFavorite, onSuccess: invalidate, onError: fail })
+  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  const status = useMutation({
+    mutationFn: ({ id, next }: { id: number; next: (typeof BOOK_STATUSES)[number] }) => setBookStatus(id, next),
+    onSuccess: invalidate,
+    onError: fail,
+  })
   const remove = useMutation({
     mutationFn: deleteBook,
     onSuccess: () => {
@@ -289,9 +297,39 @@ export function BooksPage() {
           <ul className="space-y-2">
             {books.map((book) => {
               const cover = storageUrl(book.cover)
+              /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpened(book) },
+                {
+                  key: 'status',
+                  label: t('form.status'),
+                  sub: BOOK_STATUSES.map((s) => ({
+                    key: `status:${s}`,
+                    label: t(`books.statuses.${s}`),
+                    checked: book.status === s,
+                    run: () => status.mutate({ id: book.id, next: s }),
+                  })),
+                },
+                favoriteAction(book.is_favorite, () => favorite.mutate(book.id), t),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(book) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('books.deleteTitle'),
+                      description: t('books.deleteHint', { name: title(book) }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(book.id)
+                  },
+                },
+              ]
               return (
+                <RecordContextMenu key={book.id} actions={actions}>
                 <li
-                  key={book.id}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
                   <button
@@ -423,6 +461,7 @@ export function BooksPage() {
                     </Button>
                   </span>
                 </li>
+                </RecordContextMenu>
               )
             })}
           </ul>

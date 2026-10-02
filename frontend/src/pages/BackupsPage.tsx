@@ -31,6 +31,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { BackupViewer } from '@/components/backups/BackupViewer'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { formatBytes } from '@/lib/utils'
@@ -223,8 +224,41 @@ export function BackupsPage() {
       )}
 
       <ul className="space-y-2">
-        {rows.map((b) => (
-          <li key={b.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+        {rows.map((b) => {
+          const ready = b.status === 'ready'
+          /* Tasks §7 — მარჯვენა ღილაკი: გადმოწერა · შიგთავსი · აღდგენა · — · წაშლა */
+          const actions: MenuAction[] = [
+            { key: 'download', label: t('actions.download'), icon: Download, disabled: !ready, run: () => downloadBackup(b) },
+            { key: 'view', label: t('backups.viewerTitle'), icon: Table2, disabled: !ready, run: () => setViewing(b) },
+            {
+              key: 'restore',
+              label: t('backups.restore'),
+              icon: RotateCcw,
+              disabled: !ready || meta?.restore_available === false,
+              run: () => {
+                setTyped('')
+                setRestoring(b)
+              },
+            },
+            {
+              key: 'delete',
+              label: t('actions.delete'),
+              icon: MENU_ICONS.delete,
+              danger: true,
+              separator: true,
+              run: async () => {
+                const ok = await confirm({
+                  title: t('backups.deleteTitle'),
+                  description: t('backups.deleteHint', { name: b.name ?? '' }),
+                  variant: 'destructive',
+                })
+                if (ok) remove.mutate(b.id)
+              },
+            },
+          ]
+          return (
+          <RecordContextMenu key={b.id} actions={actions}>
+          <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
             <Database className="size-4 shrink-0 text-muted-foreground" />
 
             <div className="min-w-0 flex-1">
@@ -290,7 +324,9 @@ export function BackupsPage() {
               </Button>
             </div>
           </li>
-        ))}
+          </RecordContextMenu>
+          )
+        })}
       </ul>
 
       {viewing && <BackupViewer backup={viewing} onClose={() => setViewing(null)} />}

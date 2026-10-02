@@ -31,6 +31,7 @@ import {
 import {
   createVideo,
   deleteVideo,
+  setVideoStatus,
   deleteVideoDownload,
   fetchVideoDownloadStatus,
   fetchVideo,
@@ -89,6 +90,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
@@ -231,6 +233,12 @@ export function VideosPage() {
 
   const favorite = useMutation({ mutationFn: toggleVideoFavorite, onSuccess: invalidate, onError: fail })
   const remove = useMutation({ mutationFn: deleteVideo, onSuccess: invalidate, onError: fail })
+  // Tasks §7 — სტატუსი კონტექსტური მენიუდან (სიაში ბეჯი მხოლოდ აჩვენებს)
+  const status = useMutation({
+    mutationFn: ({ id, next }: { id: number; next: string }) => setVideoStatus(id, next),
+    onSuccess: invalidate,
+    onError: fail,
+  })
 
   /* ---------- §7.1 — ლოკალური ჩამოწერა ----------
      ⚠️ `yt-dlp`-ის ყოფნა **ერთხელ** იკითხება და ღილაკს ხსნის/კეტავს: მის
@@ -433,8 +441,41 @@ export function VideosPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {videos.map((v, i) => {
               const thumb = storageUrl(v.thumbnail)
+              /* Tasks §7 — მარჯვენა ღილაკის მენიუ ბარათზე: გახსნა · დაკვრა · წყარო ·
+                 სტატუსი ▸ · რჩეული · (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
+                { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
+                {
+                  key: 'source',
+                  label: t('videos.source'),
+                  icon: MENU_ICONS.link,
+                  run: () => window.open(v.url, '_blank', 'noopener,noreferrer'),
+                },
+                statusActions(t('form.status'), statuses, v.status, lang, (key) => status.mutate({ id: v.id, next: key })),
+                favoriteAction(v.is_favorite, () => favorite.mutate(v.id), t),
+                ...(!v.download_status || v.download_status === 'failed'
+                  ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
+                  : []),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
+                {
+                  key: 'delete',
+                  label: t('actions.delete'),
+                  icon: MENU_ICONS.delete,
+                  danger: true,
+                  run: async () => {
+                    const ok = await confirm({
+                      title: t('videos.deleteTitle'),
+                      description: t('videos.deleteHint', { name: v.title }),
+                      variant: 'destructive',
+                    })
+                    if (ok) remove.mutate(v.id)
+                  },
+                },
+              ]
               return (
-                <div key={v.id} className="overflow-hidden rounded-xl border border-border bg-card">
+                <RecordContextMenu key={v.id} actions={actions}>
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {/* ⚠️ §35.6 — ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ფანჯარაში
                       ვიდეო აღარ იკვრება, ნახვას დამკვრელი ითვლის ჩართვაზე */}
                   <button
@@ -661,6 +702,7 @@ export function VideosPage() {
                     </div>
                   </div>
                 </div>
+                </RecordContextMenu>
               )
             })}
           </div>

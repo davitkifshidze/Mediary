@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PhotoStack } from '@/components/ui/photo-stack'
+import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
@@ -234,6 +235,55 @@ export function AlbumsCut() {
                      ბლარიან რიგებს აბრუნებს (`path` არასდროს), ე.ი. აქ გაჩერება
                      ბლარიან ბადესთან ერთად პაროლის ღილაკსაც ანდებდა. */
                   onClick={() => setOpen({ id: group.id, title: titleOf(group.id) })}
+                  /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · (განბლოკვა/ჩაკეტვა) · — · რედაქტირება ·
+                     ფოტოების წაშლა · ალბომის წაშლა — იგივე, რაც ქვედა ზოლის ღილაკებია */
+                  menu={contextMenuItems([
+                    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setOpen({ id: group.id, title: titleOf(group.id) }) },
+                    ...(album && locked
+                      ? [{ key: 'unlock', label: t('gallery.albumUnlock'), icon: LockOpen, run: () => setUnlocking(album) }]
+                      : []),
+                    ...(album && group.locked && group.unlocked
+                      ? [{ key: 'relock', label: t('gallery.albumRelock'), icon: Lock, run: () => relock.mutate(album.id) }]
+                      : []),
+                    ...(album
+                      ? [{ key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ album }) }]
+                      : []),
+                    ...(group.photos > 0 && !locked
+                      ? [{
+                          key: 'deletePhotos',
+                          label: t('gallery.deleteGroup', { count: group.photos }),
+                          icon: Images,
+                          danger: true,
+                          separator: !album,
+                          run: async () => {
+                            const ok = await confirm({
+                              title: t('gallery.deleteGroupTitle'),
+                              description: t('gallery.deleteGroupHint', { count: group.photos, name: titleOf(group.id) }),
+                              confirmText: t('confirm.delete'),
+                              variant: 'destructive',
+                            })
+                            if (ok) removePhotos.mutate(filters)
+                          },
+                        }]
+                      : []),
+                    ...(album
+                      ? [{
+                          key: 'deleteAlbum',
+                          label: t('gallery.albumDeleteTitle'),
+                          icon: MENU_ICONS.delete,
+                          danger: true,
+                          run: async () => {
+                            const ok = await confirm({
+                              title: t('gallery.albumDeleteTitle'),
+                              description: t('gallery.albumDeleteHint', { name: album.name }),
+                              confirmText: t('confirm.delete'),
+                              variant: 'destructive',
+                            })
+                            if (ok) remove.mutate(album.id)
+                          },
+                        }]
+                      : []),
+                  ])}
                   actions={
                     /* ⚠️ **ფოტოების წაშლა ორივე ბარათს აქვს**, სახელის
                        რედაქტირება და ალბომის წაშლა კი მხოლოდ ნამდვილს:
