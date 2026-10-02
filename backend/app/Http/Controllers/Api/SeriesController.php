@@ -200,6 +200,12 @@ class SeriesController extends Controller
             $query->statusRole('todo');
         }
 
+        // Tasks §6.5 — უკვე ნაჩვენებები გამოირიცხება (იხ. `MovieController::randomPick()`)
+        $exclude = array_filter(array_map('intval', (array) $request->input('exclude', [])));
+        if ($exclude) {
+            $query->whereNotIn('series.id', $exclude);
+        }
+
         $record = $query->reorder()->inRandomOrder()->first();
 
         return response()->json(['data' => $record ? new SeriesResource($record->load(['genres', 'cast'])) : null]);

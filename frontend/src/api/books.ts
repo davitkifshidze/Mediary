@@ -70,6 +70,8 @@ export interface Book {
   visibility: 'private' | 'public'
   files_count?: number
   notes_count?: number
+  /** მხოლოდ ციტატები (Tasks §6.8) — სიის ბრჭყალების მრიცხველი */
+  quotes_count?: number
   created_at: string | null
 }
 
@@ -163,10 +165,6 @@ export async function fetchBooks(filters: BookFilters = {}): Promise<Page<Book>>
   return readPage<Book>(data)
 }
 
-export async function fetchBook(id: number): Promise<Book> {
-  const { data } = await api.get(`/books/${id}`)
-  return data.data
-}
 
 export async function createBook(input: BookInput): Promise<Book> {
   const { data } = await api.post('/books', toFormData(input))
@@ -186,11 +184,6 @@ export async function deleteBook(id: number): Promise<void> {
 
 export async function toggleBookFavorite(id: number): Promise<Book> {
   const { data } = await api.patch(`/books/${id}/favorite`)
-  return data.data
-}
-
-export async function setBookStatus(id: number, status: BookStatus): Promise<Book> {
-  const { data } = await api.patch(`/books/${id}/status`, { status })
   return data.data
 }
 

@@ -112,6 +112,26 @@ class RandomPickTest extends TestCase
         $this->assertGreaterThan(1, count(array_unique($seen)));
     }
 
+    /**
+     * Tasks §6.5 — **„სხვა" უკვე ნაჩვენებს არ იმეორებს**: `exclude[]` სიიდან
+     * გამორიცხავს; როცა ყველა ამოიწურა — `null`.
+     */
+    public function test_excluded_records_are_never_picked(): void
+    {
+        $a = $this->movie('A', 'to_watch');
+        $b = $this->movie('B', 'to_watch');
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->getJson('/api/movies?pick=random&exclude[]='.$a->id)
+                ->assertOk()
+                ->assertJsonPath('data.id', $b->id);
+        }
+
+        $this->getJson("/api/movies?pick=random&exclude[]={$a->id}&exclude[]={$b->id}")
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
+
     /** სამივე მედია-დომენს აქვს */
     public function test_series_and_anime_answer_too(): void
     {

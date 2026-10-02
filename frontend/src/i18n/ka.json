@@ -2122,6 +2122,8 @@
       "playing": "ვთამაშობ",
       "finished": "დახურული"
     },
+    "myPlatformSet": "ჩემს პლატფორმად მონიშვნა",
+    "myPlatformUnset": "ჩემი პლატფორმის მოხსნა",
     "platforms": {
       "pc": "PC",
       "ps5": "PlayStation 5",
@@ -2513,7 +2515,6 @@
   },
   "dates": {
     "pick": "აირჩიე თარიღი",
-    "pickMany": "აირჩიე თარიღები",
     "pickRange": "აირჩიე პერიოდი",
     "time": "დრო",
     "pickTime": "დროის არჩევა",

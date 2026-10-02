@@ -126,6 +126,8 @@ export function RecordNotes({
     onSuccess: () => {
       setBody('')
       setPage('')
+      // Tasks §6.8 — „ციტატაა" ჩექბოქსიც ინულდება, თორემ შემდეგი ჩანიშვნა უნებურად ციტატად ჩაიწერებოდა
+      setIsQuote(false)
       done()
     },
     onError: fail,

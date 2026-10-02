@@ -7,6 +7,7 @@ use App\Models\BoardGame;
 use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\CastMember;
+use App\Models\Course;
 use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
@@ -66,6 +67,11 @@ class AppServiceProvider extends ServiceProvider
             'bookmark' => Bookmark::class,
             // FEAT-26 — ადგილი გალერეის მშობელია (`GalleryParent`)
             'place' => Place::class,
+            /* Tasks §6.1 — ⚠️ **კურსი აქამდე აკლდა** და ატვირთული ესკიზის
+               შეცვლა/წაშლა `ColumnTrash::capture()`-ში `getMorphClass()`-ზე
+               `ClassMorphViolationException`-ით ვარდებოდა. ახლა
+               `RegistryConsistencyTest` ყველა აღრიცხულ მოდელს რუკაში ეძებს. */
+            'course' => Course::class,
             /* Tasks §37 — ინტერფეისიდან შექმნილი მოდულის ჩანაწერი (გალერეის
                მშობელი, 37.4). ⚠️ **ერთი ალიასი ყველა პირად მოდულზე** — მოდულს
                რიგი (`module`) ამბობს და არა ალიასი: ალიასი კოდის რეესტრია,

@@ -7,6 +7,7 @@ use App\Http\Resources\VideoResource;
 use App\Models\Video;
 use App\Services\Video\VideoDownloader;
 use App\Services\Video\YtDlp;
+use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -59,11 +60,14 @@ class VideoDownloadController extends Controller
 
         abort_unless($disk->fileExists($video->download_path), 404);
 
-        return $disk->response(
+        /* Tasks §6.4 — ⚠️ **`SafeMime`-ით და Range-ით.** აქამდე `$disk->response()` იყო:
+           პროექტის წესს („პირადი ფაილი მხოლოდ `SafeMime`-ით") გვერდს უვლიდა და
+           `StreamedResponse` Range-ს არ იცნობდა — `<video>`-ში გადახვევა ვერ იმუშავებდა
+           (§21-ის ლოკალური ფლეერის წინაპირობა). */
+        return SafeMime::fileResponse(
+            $disk,
             $video->download_path,
             $video->download_name ?: basename($video->download_path),
-            [],
-            'inline',
         );
     }
 

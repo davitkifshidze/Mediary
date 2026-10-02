@@ -34,7 +34,7 @@ class BookController extends Controller
 
     public function index(Request $request)
     {
-        $query = Book::query()->with('genre')->withCount(['files', 'notes']);
+        $query = Book::query()->with('genre')->withCount(['files', 'notes', 'quotes']);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

@@ -164,11 +164,19 @@ export function GroupsCut({
     return (lang === 'ka' ? group.title_ka || group.title : group.title || group.title_ka) || `#${group.id}`
   }
 
-  /** ჯგუფის შიგნით შესვლა — ორი მისამართი, ერთი ფორმა */
+  /**
+   * ჯგუფის შიგნით შესვლა — ორი მისამართი, ერთი ფორმა.
+   *
+   * ⚠️ Tasks §6.3 — ჩანაწერის ჯგუფი **მხოლოდ მისი საკუთარი ფოტოებია** (`with_cast: false`):
+   * backend `owner=movie:ID`-ზე ნაგულისხმევად მსახიობების ფოტოებსაც აბრუნებდა, ე.ი.
+   * ბარათი „12 ფოტოს" წერდა, შიგნით მეტი ჩანდა, „ჯგუფის წაშლა" კი **მსახიობების
+   * ფოტოებსაც შლიდა** — ისინი სხვა ფილმებშიც ჩანან და თავისი დასტა აქვთ.
+   */
   const filtersFor = (group: GalleryGroup) => {
     if (group.from) return { from: group.from }
     if (group.provider) return { provider: group.provider }
-    return { owner: `${group.kind === 'actor' ? 'actor' : group.kind}:${group.id}` }
+    if (group.kind === 'actor') return { owner: `actor:${group.id}` }
+    return { owner: `${group.kind}:${group.id}`, with_cast: false as const }
   }
 
   const keyFor = (group: GalleryGroup) =>
@@ -350,7 +358,7 @@ export function GroupsCut({
   )
 
   // URL-ში ჯგუფი წერია, სია კი ჯერ არ ჩამოსულა — ჩონჩხი და არა სიის გაელვება (§3.1)
-  if (openPending) return <GalleryStackSkeleton />
+  if (openPending) return <GalleryStackSkeleton aspect={by === 'actor' ? 'portrait' : 'wide'} />
 
   if (open) {
     const isActor = open.kind === 'actor'
@@ -542,8 +550,8 @@ export function GroupsCut({
             showOwner
           />
         ) : groupsQ.isLoading ? (
-          <GalleryStackSkeleton />
-        ) : !groups.length ? (
+          <GalleryStackSkeleton aspect={by === 'actor' ? 'portrait' : 'wide'} />
+        ) :!groups.length ? (
           <EmptyState
             icon={<Images className="size-6" />}
             title={filters.have === 'without' ? t('gallery.allHavePhotos') : t('gallery.noPhotosYet')}

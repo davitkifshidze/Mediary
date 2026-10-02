@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    ============================================================ */
 
 /** შეფასების ჭერი — იგივე რიცხვი `Place/Book/Game/BoardGame/Song::MAX_RATING`-შია */
-export const RATING_MAX = 10
+const RATING_MAX = 10
 
 /** „შეფასების გარეშე" — Radix-ს ცარიელი მნიშვნელობა ეკრძალება */
 const NONE = 'none'

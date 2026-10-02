@@ -82,11 +82,14 @@ export function createMediaApi(base: string) {
      * უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ.
      * ⚠️ **`null` ნორმალური პასუხია** — „ფილტრში არაფერია" და არა შეცდომა.
      */
-    pickRandom: async (filters: MediaFilters = {}): Promise<Movie | null> => {
+    pickRandom: async (filters: MediaFilters = {}, exclude: number[] = []): Promise<Movie | null> => {
       // ⚠️ `all` განზრახ ვარდება: შემთხვევითი არჩევა სერვერზე ხდება, ე.ი.
       // მთელი სიის ჩამოტვირთვას აზრი არ აქვს (და `all=1` `meta`-საც შლის)
       const { all: _all, ...rest } = filters
-      const { data } = await api.get(base, { params: { ...rest, pick: 'random' } })
+      // Tasks §6.5 — უკვე ნაჩვენებები სერვერზე გამოირიცხება, რომ „სხვა" იგივეს არ დააბრუნებდეს
+      const { data } = await api.get(base, {
+        params: { ...rest, pick: 'random', ...(exclude.length ? { exclude } : {}) },
+      })
       return data.data ?? null
     },
     /** TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს) */

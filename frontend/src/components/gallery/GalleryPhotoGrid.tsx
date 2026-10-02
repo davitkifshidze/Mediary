@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { cn } from '@/lib/utils'
 import {
   deleteGalleryImage,
   type GalleryLockedImage,
@@ -175,13 +176,17 @@ export function GallerySkeletonGrid({ count = 8 }: { count?: number }) {
   )
 }
 
-/** ჯგუფების ჩონჩხი — დასტის პროპორციით */
-export function GalleryStackSkeleton({ count = 8 }: { count?: number }) {
+/**
+ * ჯგუფების ჩონჩხი — დასტის პროპორციით. ⚠️ Tasks §6.7 — პროპორცია **ჯგუფის
+ * ტიპს მიჰყვება**: მსახიობი `3/4`-ია, ჩანაწერი და ალბომი კი `16/10` — ყოველთვის
+ * `3/4` რომ იყოს, ჩატვირთვისას განლაგება ხტებოდა.
+ */
+export function GalleryStackSkeleton({ count = 8, aspect = 'portrait' }: { count?: number; aspect?: 'portrait' | 'wide' }) {
   return (
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
         <li key={i} className="rounded-2xl border border-border bg-card p-4">
-          <div className="aspect-[3/4] animate-pulse rounded-xl bg-muted/60" />
+          <div className={cn('animate-pulse rounded-xl bg-muted/60', aspect === 'wide' ? 'aspect-[16/10]' : 'aspect-[3/4]')} />
           <div className="mt-3 h-3 w-2/3 animate-pulse rounded bg-muted/60" />
           <div className="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-muted/50" />
         </li>

@@ -55,7 +55,7 @@
 | §3 | გალერეა — ჩანაწერის გალერეიდან „უკან“ ზოგად ბიბლიოთეკაში აბრუნებს | ⚡ | S–M | — | — | ✅ |
 | §4 | დროის არჩევა — ველზე დაჭერითაც გაიხსნას | ⚡ | S | — | — | ✅ |
 | §5 | მოდალში პატარა, ცარიელი სქროლი (ბუკმარკის რედაქტირება) | ⚡ | S | — | — | ✅ |
-| §6 | ათი წვრილი ხარვეზი, რომელიც ანალიზისას გამოჩნდა | ⚡ | S–M | — | — | ⬜ |
+| §6 | ათი წვრილი ხარვეზი, რომელიც ანალიზისას გამოჩნდა | ⚡ | S–M | — | — | ✅ |
 | | **ფაზა 2 — გლობალური საფუძველი** | | | | | |
 | §7 | კონტექსტური მენიუ — აბსოლუტურად ყველგან, ერთი სიით | 🌐 | L | — | §2 | ⬜ |
 | §8 | რჩეული — ერთი ღილაკი ყველგან: აიქონი + „რჩეული“, ფერით | 🌐 | M | — | — | ⬜ |
@@ -297,40 +297,59 @@ Radix-ის ნაგულისხმევები მოქმედებ
 
 > შენ არ გითხოვია, მაგრამ კოდის კითხვისას გამოჩნდა და თითოეული რომელიმე შენს სექციას ეხება. პატარაა, ერთ კომიტად.
 
-- [ ] **6.1** `course` აკლია `enforceMorphMap`-ს (`AppServiceProvider.php:49-84`) — ატვირთული ესკიზის
+- [x] **6.1** `course` აკლია `enforceMorphMap`-ს (`AppServiceProvider.php:49-84`) — ატვირთული ესკიზის
       შეცვლა/წაშლა კურსზე `ClassMorphViolationException`-ს ისვრის (`CourseController.php:207-219` →
       `ColumnTrash::capture`, `ColumnTrash.php:63`; `StorageMeter.php:1180`). tinker-ით დადასტურებულია. +
       `RegistryConsistencyTest`-ში შემოწმება, რომ ყველა მოდელი რუკაშია — ახალი მოდული (§33–§34) იმავეზე არ წამოეგოს.
-- [ ] **6.2** `RunBatchItem::run` (`RunBatchItem.php:228-246`) `sync()`/`translate()`-ის შედეგს უგულებელყოფს და
+      **შესრულდა** — `'course' => Course::class`; ტესტი `test_every_record_model_has_a_morph_alias`
+      (`TrashDomain::MODELS`-ის ყველა მოდელი რუკაშია).
+- [x] **6.2** `RunBatchItem::run` (`RunBatchItem.php:228-246`) `sync()`/`translate()`-ის შედეგს უგულებელყოფს და
       ყოველთვის `true`-ს აბრუნებს — სერვერულ რიგში ჩავარდნილი სინქრონიზაცია „წარმატებულად“ ჩანს (`ItemSyncer`
       ყველა გამონაკლისს იჭერს და `ok:false`-ს აბრუნებს, ე.ი. `failed` მიუღწეველია). `BatchQueueTest.php:297-307,
       444-452` მხოლოდ იმიტომ გადის, რომ `sync()`-ს ისვრის. §31-ის წინაპირობაა.
-- [ ] **6.3** გალერეის ბარათზე „ჯგუფის წაშლა“ **ფილმის მსახიობების ფოტოებსაც შლის**: ფილტრი `{owner:'movie:ID'}`
+      **შესრულდა** — `ok:false` → გადასროლა (`failed` + ლოგი + პარტიის მრიცხველი), `skipped:true` → `skipped`
+      მიზეზით; ორი ახალი ტესტი (`…_reports_failure_is_counted_as_failed`, `…_skipped_result_is_marked_skipped_not_ok`).
+- [x] **6.3** გალერეის ბარათზე „ჯგუფის წაშლა“ **ფილმის მსახიობების ფოტოებსაც შლის**: ფილტრი `{owner:'movie:ID'}`
       და backend-ის `with_cast` ნაგულისხმევად `true` (`GalleryController.php:1051-1060`; `api/gallery.ts:715`;
       `lib/galleryDelete.ts`), დადასტურებაში კი მხოლოდ ჩანაწერის ფოტოების რიცხვია (`group.photos`). ეწინააღმდეგება
       `RecordGallery.tsx:202-205`-ის პირობას („მსახიობების ფოტოებს არ ეხება“). `with_cast: false` + რიცხვი სწორი.
-- [ ] **6.4** `VideoDownloadController::show` (`:49-68`) `$disk->response()`-ს იყენებს და არა
+      **შესრულდა** — `GroupsCut.filtersFor()` ჩანაწერის ჯგუფზე `with_cast: false`-ს აწვდის: შიგნით ზუსტად ბარათის
+      რიცხვი ჩანს, წაშლაც მხოლოდ მას ეხება.
+- [x] **6.4** `VideoDownloadController::show` (`:49-68`) `$disk->response()`-ს იყენებს და არა
       `SafeMime::response()`-ს (`CLAUDE.md`-ის წესი პირადი ფაილებისთვის) — და არც HTTP Range-ს უჭერს მხარს
       (გადახვევა ვერ იმუშავებს). `SafeMime::response()` + Range (`206 Partial Content`) — §21-ის წინაპირობა.
-- [ ] **6.5** „რა ვნახო დღეს“: „დავიწყე“ (`RandomPickDialog.tsx`, `pick.start`) `[type]` მოთხოვნებს არ
+      **შესრულდა** — `SafeMime::fileResponse()` (`BinaryFileResponse`: Range → 206 + `Content-Range`, nosniff,
+      inline/attachment MIME-ით, ASCII სათადარიგო სახელით); `VideoDownloadStreamTest` (მთლიანი, `bytes=2-5`, სხვისი 404).
+- [x] **6.5** „რა ვნახო დღეს“: „დავიწყე“ (`RandomPickDialog.tsx`, `pick.start`) `[type]` მოთხოვნებს არ
       აახლებს — ბადე ძველ სტატუსს აჩვენებს; „სხვა“ იგივე ჩანაწერს აბრუნებს ხოლმე (`inRandomOrder()->first()`,
       `MovieController.php:240-269`). `invalidateQueries([type])` + `exclude` პარამეტრი ბოლო id-ებით.
-- [ ] **6.6** `MoviePage.tsx:246` — `aria-label="favorite"` ხისტი ინგლისური, i18n-ის გარეშე (§8-ში ისედაც
-      იცვლება ღილაკი, მაგრამ აქ აღირიცხოს).
-- [ ] **6.7** `GalleryStackSkeleton` ყოველთვის `aspect-[3/4]`-ია (`GalleryPhotoGrid.tsx:179-191`), ჩანაწერის
+      **შესრულდა** — სამივე კონტროლერში `exclude[]`; დიალოგი ნანახ id-ებს აგროვებს (გასაღების ნაწილია), „დავიწყე“
+      `[type]`-ს აუქმებს; `RandomPickTest::test_excluded_records_are_never_picked`.
+- [x] **6.6** `MoviePage.tsx:246` — `aria-label="favorite"` ხისტი ინგლისური, i18n-ის გარეშე (§8-ში ისედაც
+      იცვლება ღილაკი, მაგრამ აქ აღირიცხოს). **შესრულდა** — `t('filter.favorite')`.
+- [x] **6.7** `GalleryStackSkeleton` ყოველთვის `aspect-[3/4]`-ია (`GalleryPhotoGrid.tsx:179-191`), ჩანაწერის
       დასტები კი `16/10` — ჩატვირთვისას განლაგება ხტება. ჩონჩხი ჯგუფის ტიპს მიჰყვეს.
-- [ ] **6.8** წიგნის ციტატის „ციტატაა“ ჩექბოქსი დამატების შემდეგ არ ინულდება და სიის `notes_count` ყველა
+      **შესრულდა** — `aspect="portrait" | "wide"` პროპი; მსახიობები `3/4`, ჩანაწერები და ალბომები `16/10`.
+- [x] **6.8** წიგნის ციტატის „ციტატაა“ ჩექბოქსი დამატების შემდეგ არ ინულდება და სიის `notes_count` ყველა
       ჩანიშვნას ითვლის და არა ციტატებს (`RecordNotes.tsx:163-203`, `BookController`). §23-ში ფორმა იცვლება, მაგრამ
       მრიცხველი აქვე გასწორდეს (`quotes_count` ცალკე).
-- [ ] **6.9** `my_platform` თამაშის ფორმიდან ამოღებულია, დეტალი და სია კი მას ჯერ კიდევ ანათებს
+      **შესრულდა** — ჩექბოქსი ინულდება; `Book::quotes()` + `withCount('quotes')` + `quotes_count` რესურსში, სიის
+      ბრჭყალების აიქონი მას ითვლის.
+- [x] **6.9** `my_platform` თამაშის ფორმიდან ამოღებულია, დეტალი და სია კი მას ჯერ კიდევ ანათებს
       (`GameDetail.tsx:107-124`) — ახალ თამაშს ვერასდროს ექნება. §24-ში პლატფორმების ბარათებზე „ჩემი“ ნიშნის
       არჩევა ბრუნდება (ერთი დაჭერით ბარათზე), ან ანათება ქრება.
-- [ ] **6.10** მკვდარი კოდი, რომელსაც lint ვერ ხედავს (`unused-exports.mjs` მხოლოდ `src/lib`-ს სკანავს):
+      **შესრულდა** — დეტალში პლატფორმის ჩიპზე დაჭერა „ჩემად“ ნიშნავს (`PATCH my_platform`), ხელახლა — ხსნის;
+      `toFormData` `null`-ს ცარიელ სტრიქონად აგზავნის (backend-ზე `null`). §24 ბარათებად გადააკეთებს.
+- [x] **6.10** მკვდარი კოდი, რომელსაც lint ვერ ხედავს (`unused-exports.mjs` მხოლოდ `src/lib`-ს სკანავს):
       `setBookStatus` (`api/books.ts:192`), `DateMultiPicker` (`date-picker.tsx:175`), გამოუყენებელი
       `framer-motion` დამოკიდებულება (`package.json:34`; §11 გადაწყვეტს — თუ dnd-kit, წაიშალოს). სკრიპტს `src/api`
       და `src/components/ui` დაემატოს.
+      **შესრულდა** — წაიშალა `setBookStatus`, `fetchBook`, `DateMultiPicker` (+ `dates.pickMany`), `DialogTrigger`;
+      `PHOTO_PAGE_SIZES`/`RATING_MAX` მოდულის შიდა გახდა; `framer-motion` ამოღებულია (Q3); სკრიპტი `lib` +
+      `components/ui`-ს ამოწმებს (`api/` — არა: shim-ფაილების 50+ ნაპოვარი ცალკე სამუშაოა).
 
-**ზომა:** S–M · **სტატუსი:** ⬜
+**ზომა:** S–M · **სტატუსი:** ✅ შესრულებულია (2026-10-03) — სრული backend (1527) და frontend (513) სუიტები,
+`npm run build`, `npm run lint`, i18n აუდიტი მწვანე.
 
 ---
 

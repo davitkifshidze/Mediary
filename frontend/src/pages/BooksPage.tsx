@@ -337,10 +337,11 @@ export function BooksPage() {
                           {book.files_count}
                         </span>
                       )}
-                      {(book.notes_count ?? 0) > 0 && (
+                      {/* Tasks §6.8 — ბრჭყალების აიქონი **ციტატებს** ითვლის; `notes_count` ყველა ჩანიშვნას შეიცავდა */}
+                      {(book.quotes_count ?? 0) > 0 && (
                         <span className="inline-flex items-center gap-1">
                           <Quote className="size-3" />
-                          {book.notes_count}
+                          {book.quotes_count}
                         </span>
                       )}
                     </p>

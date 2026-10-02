@@ -504,4 +504,69 @@ class BatchQueueTest extends TestCase
             $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items'),
         );
     }
+
+    /* ================= შედეგი და არა მხოლოდ გამონაკლისი (Tasks §6.2) ================= */
+
+    /**
+     * ⚠️ `ItemSyncer` გამონაკლისს **შიგნით** იჭერს და `ok:false`-ს აბრუნებს — ე.ი.
+     * რეალურ ჩავარდნას worker-ი აქამდე „წარმატებად" წერდა. ახლა `ok:false`
+     * ზუსტად ისე ითვლება, როგორც გადასროლილი გამონაკლისი.
+     */
+    public function test_a_sync_that_reports_failure_is_counted_as_failed(): void
+    {
+        $bad = $this->makeMovie($this->alice, 'Bad');
+        $good = $this->makeMovie($this->alice, 'Good');
+
+        $this->mock(ItemSyncer::class, function ($mock) use ($bad) {
+            $mock->shouldReceive('sync')->andReturnUsing(fn ($record) => (int) $record->id === (int) $bad->id
+                ? ['ok' => false, 'skipped' => false, 'changed' => [], 'error' => 'tmdb_unavailable']
+                : ['ok' => true, 'skipped' => false, 'changed' => ['title'], 'error' => null]);
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [
+                ['type' => 'movie', 'id' => $bad->id],
+                ['type' => 'movie', 'id' => $good->id],
+            ],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $items = collect(
+            $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->assertJsonPath('failed', 1)->json('items')
+        )->keyBy('id');
+
+        $this->assertSame('failed', $items[$bad->id]['status']);
+        $this->assertSame('tmdb_unavailable', $items[$bad->id]['error']);
+        $this->assertSame('ok', $items[$good->id]['status']);
+    }
+
+    /** `skipped:true` („ვერაფერი შეივსო") — გამოტოვებაა, არც `ok` და არც `failed` */
+    public function test_a_skipped_result_is_marked_skipped_not_ok(): void
+    {
+        $movie = $this->makeMovie($this->alice, 'Nothing to do');
+
+        $this->mock(ItemTranslator::class, function ($mock) {
+            $mock->shouldReceive('translate')->andReturn([
+                'ok' => true, 'skipped' => true, 'changed' => [], 'providers' => [], 'error' => null,
+            ]);
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'translate',
+            'items' => [['type' => 'movie', 'id' => $movie->id]],
+            'options' => ['sources' => ['tmdb']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $items = $this->actingAs($this->alice)->getJson("/api/batches/{$id}")
+            ->assertOk()
+            ->assertJsonPath('failed', 0)
+            ->json('items');
+
+        $this->assertSame('skipped', $items[0]['status']);
+    }
 }

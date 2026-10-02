@@ -194,7 +194,7 @@ export function AlbumsCut() {
           emptyText={t('gallery.albumsEmpty')}
         />
       ) : groupsQ.isLoading ? (
-        <GalleryStackSkeleton />
+        <GalleryStackSkeleton aspect="wide" />
       ) : !groups.length ? (
         <EmptyState
           icon={<FolderPlus className="size-6" />}

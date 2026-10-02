@@ -171,40 +171,6 @@ export function DatePicker({
   )
 }
 
-/** რამდენიმე კონკრეტული თარიღი (`YYYY-MM-DD`-ების მასივი) */
-export function DateMultiPicker({
-  id,
-  value,
-  onChange,
-  placeholder,
-}: {
-  id?: string
-  value: string[]
-  onChange: (value: string[]) => void
-  placeholder?: string
-}) {
-  const { t } = useTranslation()
-  const fmt = useDateFormat()
-  const calendar = useCalendarProps()
-
-  const selected = value.map((v) => fromISODate(v)).filter((d): d is Date => Boolean(d))
-
-  return (
-    <CalendarPopover
-      id={id}
-      text={value.length ? value.map((v) => fmt.date(v)).join(', ') : null}
-      placeholder={placeholder ?? t('dates.pickMany')}
-      onClear={() => onChange([])}
-    >
-      <DayPicker
-        {...calendar}
-        mode="multiple"
-        selected={selected}
-        onSelect={(days) => onChange((days ?? []).map(toISODate).sort())}
-      />
-    </CalendarPopover>
-  )
-}
 
 export interface DateRangeValue {
   from: string | null

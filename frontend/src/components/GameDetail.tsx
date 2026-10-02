@@ -10,6 +10,7 @@ import {
   deleteGameVideo,
   fetchGameFiles,
   fetchGameNotes,
+  updateGame,
   updateGameNote,
   fetchGameVideos,
   GAME_MAX_RATING,
@@ -17,6 +18,7 @@ import {
   uploadGameFiles,
   type Game,
   type GameFile,
+  type GamePlatform,
   type GameVideoKind,
 } from '@/api/games'
 import { storageUrl } from '@/lib/api'
@@ -56,6 +58,53 @@ import { formatBytes } from '@/lib/utils'
    (RAWG/TMDB), user-ის ატვირთული კი სექციის ცხრილშია — ვიდეოსა და
    ბორდგეიმის იგივე წესი.
    ============================================================ */
+
+/**
+ * პლატფორმების ჩიპები — **„ჩემი პლატფორმა" დაჭერით ირჩევა** (Tasks §6.9).
+ *
+ * ⚠️ ფორმიდან `my_platform` ამოღებულია (წინა პარტიის §13), ანათება კი დეტალსა
+ * და სიაში დარჩა — ე.ი. ახალ თამაშს „ჩემი" ვერასდროს ექნებოდა. ხელახლა დაჭერა
+ * მოხსნის (`null`); სია `['games']`-ის გაუქმებით ახლდება და დეტალს ახალ
+ * ობიექტს აწვდის (`GamesPage` მას id-ით პოულობს).
+ */
+function MyPlatformChips({ game }: { game: Game }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const { toast } = useToast()
+
+  const pick = useMutation({
+    mutationFn: (platform: GamePlatform | null) => updateGame(game.id, { my_platform: platform }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['games'] }),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  if (game.platforms.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {game.platforms.map((p) => {
+        const mine = p === game.my_platform
+
+        return (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={mine}
+            disabled={pick.isPending}
+            title={t(mine ? 'games.myPlatformUnset' : 'games.myPlatformSet')}
+            onClick={() => pick.mutate(mine ? null : p)}
+            className={cn(
+              'cursor-pointer rounded-md px-2 py-0.5 text-xs transition-colors',
+              mine ? 'bg-primary/15 font-medium text-primary' : 'bg-muted text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {t(`games.platforms.${p}`)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export function GameDetail({ game, onClose }: { game: Game; onClose: () => void }) {
   const { t, i18n } = useTranslation()
@@ -104,24 +153,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               </div>
             )}
 
-            {game.platforms.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {game.platforms.map((p) => (
-                  <span
-                    key={p}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-xs',
-                      // „ჩემი" პლატფორმა გამორჩეულია — სიის ბარათის იგივე წესი
-                      p === game.my_platform
-                        ? 'bg-primary/15 font-medium text-primary'
-                        : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {t(`games.platforms.${p}`)}
-                  </span>
-                ))}
-              </div>
-            )}
+            <MyPlatformChips game={game} />
 
             {/* ---------- მოკლე ცნობები ---------- */}
             <DetailFacts>

@@ -144,7 +144,7 @@ const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen]
  * რომ გალერეამ, ჩანაწერმა, მსახიობმა და პროფილის ფაილებმა ერთნაირად
  * მოიქცნენ — ოთხი ასლი ოთხნაირად დაითვლიდა.
  */
-export const PHOTO_PAGE_SIZES = [10, 20, 30, 40, 50] as const
+const PHOTO_PAGE_SIZES = [10, 20, 30, 40, 50] as const
 
 export const PHOTO_PAGE_ALL = 0
 

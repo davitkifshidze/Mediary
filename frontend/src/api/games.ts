@@ -176,7 +176,8 @@ function toFormData(input: GameInput): FormData {
 
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  if (input.my_platform) fd.append('my_platform', input.my_platform)
+  // Tasks §6.9 — `null` = „ჩემი პლატფორმის მოხსნა“: ცარიელი სტრიქონი backend-ზე `null` ხდება, `undefined` არ იგზავნება
+  if (input.my_platform !== undefined) fd.append('my_platform', input.my_platform ?? '')
   ;(input.platforms ?? []).forEach((p) => fd.append('platforms[]', p))
   ;(input.modes ?? []).forEach((m) => fd.append('modes[]', m))
   // ⚠️ ცარიელ მასივსაც ვგზავნით (`genre_ids` გასაღებით), თორემ ყველა ჟანრის

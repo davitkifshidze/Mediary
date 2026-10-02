@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Dices, Loader2, PlayCircle } from 'lucide-react'
@@ -42,18 +42,22 @@ export function RandomPickDialog({
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
+  const qc = useQueryClient()
   const { data: statuses = [] } = useStatuses(type)
 
   const [starting, setStarting] = useState(false)
+  /* Tasks §6.5 — ⚠️ **„სხვა" უკვე ნაჩვენებს არ იმეორებს**: ნანახი id-ები სერვერს
+     `exclude`-ით მიაქვს (`inRandomOrder()` თვითონ ამას ვერ იცნობს). სია გასაღების
+     ნაწილია, ე.ი. ყოველი „სხვა" ახალი მოთხოვნაა და არა ქეშის პასუხი. */
+  const [seen, setSeen] = useState<number[]>([])
 
-  /* ⚠️ **`useQuery` + `refetch()` და არა `useEffect`**: პირველი არჩევანი
-     გახსნისთანავე უნდა მოვიდეს, „სხვა" კი იმავე მოთხოვნის გამეორებაა —
-     ეფექტს აქ დამოკიდებულებების ხელით დათრგუნვა დასჭირდებოდა.
+  /* ⚠️ **`useQuery` და არა `useEffect`**: პირველი არჩევანი გახსნისთანავე უნდა
+     მოვიდეს, „სხვა" კი გასაღების ცვლილებაა (`seen`).
      ⚠️ **`staleTime: 0` + `gcTime: 0`**: ქეშირებული „შემთხვევითი" ყოველ
      გახსნაზე ერთსა და იმავე ფილმს დააბრუნებდა. */
-  const { data: record, isFetching, refetch } = useQuery({
-    queryKey: ['random-pick', type, filters],
-    queryFn: () => mediaApi(type).pickRandom(filters),
+  const { data: record, isFetching } = useQuery({
+    queryKey: ['random-pick', type, filters, seen],
+    queryFn: () => mediaApi(type).pickRandom(filters, seen),
     staleTime: 0,
     gcTime: 0,
   })
@@ -62,11 +66,17 @@ export function RandomPickDialog({
 
   const doing = statuses.find((s) => s.role === 'doing')
 
+  const another = () => {
+    if (record) setSeen((cur) => (cur.includes(record.id) ? cur : [...cur, record.id]))
+  }
+
   const start = async () => {
     if (!record || !doing) return
     setStarting(true)
     try {
       await mediaApi(type).setStatus(record.id, doing.key)
+      // Tasks §6.5 — ბადემ ახალი სტატუსი უნდა დაინახოს; აქამდე ძველს აჩვენებდა
+      void qc.invalidateQueries({ queryKey: [type] })
       toast({ title: t('pick.started'), variant: 'success' })
       onClose()
     } finally {
@@ -127,7 +137,7 @@ export function RandomPickDialog({
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={() => void refetch()} disabled={busy}>
+            <Button variant="outline" onClick={another} disabled={busy}>
               <Dices className="size-4" />
               {t('pick.again')}
             </Button>

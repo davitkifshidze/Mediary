@@ -225,7 +225,7 @@ class RunBatchItem implements ShouldQueue
         // შეიძლება წაიშალოს, სიაში კი „რა იყო ეს" უნდა დარჩეს
         $item?->update(['title' => $this->titleOf($record)]);
 
-        match ($this->kind) {
+        $result = match ($this->kind) {
             'sync' => $syncer->sync($record, [
                 'fields' => $this->options['fields'] ?? [],
                 'media' => (bool) ($this->options['media'] ?? false),
@@ -242,6 +242,25 @@ class RunBatchItem implements ShouldQueue
             'gallery' => $gallery->fetch($user, $record, $gallery->options($this->options)),
             default => null,
         };
+
+        /* Tasks §6.2 — ⚠️ **შედეგი იკითხება და არა მხოლოდ გამონაკლისი.** `ItemSyncer`
+           და `ItemTranslator` ყველა გამონაკლისს შიგნით იჭერს და `ok:false`-ს აბრუნებს,
+           ე.ი. აქამდე ჩავარდნილი სინქრონიზაცია სერვერულ რიგში **ყოველთვის** `OK`
+           ხდებოდა — `failed` მიუღწეველი იყო და `BatchQueueTest` მხოლოდ იმიტომ გადიოდა,
+           რომ `sync()`-ს ისროლებდა. `ok:false` → გადასროლა (ზემოთა `catch` `failed`-ს
+           წერს, ლოგავს და პარტიის მრიცხველს ზრდის); `skipped` → `skipped` მიზეზით
+           („ვერაფერი შეივსო", `no_tmdb_id`), თორემ ის „განახლებულად" ჩაითვლებოდა. */
+        if (is_array($result)) {
+            if (($result['ok'] ?? true) === false) {
+                throw new RuntimeException((string) ($result['error'] ?? 'failed'));
+            }
+
+            if (($result['skipped'] ?? false) === true) {
+                $item?->update(['status' => BatchItem::SKIPPED, 'error' => $result['error'] ?? null]);
+
+                return false;
+            }
+        }
 
         return true;
     }

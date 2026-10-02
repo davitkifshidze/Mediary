@@ -42,7 +42,11 @@ const ENTRIES = new Set(['main.tsx', 'App.tsx'])
  * ხელით უნდა შემოწმდეს. ე.ი. `lint`-ში მათი ჩაგდება მცველს **პირველსავე
  * დღეს გამორთვამდე მიიყვანდა**.
  */
-const SCOPE = process.argv.includes('--all') ? ROOT : path.join(ROOT, 'lib')
+/* Tasks §6.10 — ⚠️ **`components/ui`-იც მოწმდება**: საერთო პრიმიტივებში მკვდარი
+   ექსპორტი (`DateMultiPicker`, `DialogTrigger`) ზუსტად იმავე ტყუილია, რაც `lib`-ში —
+   „ეს კომპონენტი სადღაც გამოიყენება". `api/` კვლავ გარეთაა (shim-ფაილები, 50+ ნაპოვარი). */
+const SCOPES = process.argv.includes('--all') ? [ROOT] : [path.join(ROOT, 'lib'), path.join(ROOT, 'components', 'ui')]
+const inScope = (file) => SCOPES.some((scope) => file.startsWith(scope + path.sep))
 
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -68,7 +72,7 @@ const dead = []
 
 for (const [file, src] of sources) {
   // ⚠️ ვეძებთ მხოლოდ `SCOPE`-ში, მაგრამ **გამოყენებას მთელ `src`-ში** ვითვლით
-  if (!file.startsWith(SCOPE + path.sep) || ENTRIES.has(path.basename(file))) continue
+  if (!inScope(file) || ENTRIES.has(path.basename(file))) continue
 
   const names = new Set()
   for (const m of src.matchAll(DECL)) names.add(m[1])

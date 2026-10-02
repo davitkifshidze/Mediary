@@ -243,7 +243,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 ))}
                 <button
                   onClick={() => favMut.mutate()}
-                  aria-label="favorite"
+                  aria-label={t('filter.favorite')}
                   className={cn(
                     'ml-1 grid size-9 cursor-pointer place-items-center rounded-md border transition-colors',
                     m.is_favorite

@@ -34,6 +34,7 @@ use App\Support\UploadLimits;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -1306,6 +1307,35 @@ class RegistryConsistencyTest extends TestCase
         foreach (AuditRegistry::NOT_LOGGED as $class => $reason) {
             $this->assertNotSame('', trim($reason), "{$class}: გამონაკლისს მიზეზი არ უწერია");
         }
+    }
+
+    /**
+     * **ყოველი მოდულის ჩანაწერი morph-რუკაშია** (Tasks §6.1).
+     *
+     * ⚠️ `enforceMorphMap()` რუკის გარეთ მდგომ მოდელზე `getMorphClass()`-ს
+     * **გამონაკლისით** აწყვეტს — და `ColumnTrash::capture()` სწორედ მას იძახებს
+     * ატვირთული ფოტოს შეცვლა/წაშლისას. `course` ასე აკლდა: კურსის ესკიზის
+     * შეცვლა 500-ს აბრუნებდა და არც ერთი ტესტი არ ხედავდა. ახალი მოდული
+     * (`TrashDomain::MODELS`-ში შესული) ამ ტესტს რუკის გარეშე ვერ გაივლის.
+     */
+    public function test_every_record_model_has_a_morph_alias(): void
+    {
+        $mapped = array_values(Relation::morphMap());
+        $this->assertContains(Movie::class, $mapped, 'morph-რუკა ცარიელია');
+
+        $missing = [];
+
+        foreach (TrashDomain::MODELS as $class) {
+            if (! in_array($class, $mapped, true)) {
+                $missing[] = $class;
+            }
+        }
+
+        $this->assertSame([], $missing, implode(PHP_EOL, [
+            'მოდელი `TrashDomain::MODELS`-შია, morph-რუკაში კი არა (`AppServiceProvider::boot()`).',
+            'შედეგი: `getMorphClass()` — მაგ. ფოტოს შეცვლისას `ColumnTrash`-ში — გამონაკლისს ისვრის.',
+            'გამორჩენილი: '.implode(', ', $missing),
+        ]));
     }
 
     /** @return list<string> */

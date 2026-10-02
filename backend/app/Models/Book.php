@@ -110,6 +110,12 @@ class Book extends Model
         return $this->hasMany(BookFile::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    /** მხოლოდ ციტატები — სიის „ციტატების" მრიცხველისთვის (Tasks §6.8; `notes_count` ყველა ჩანიშვნას ითვლიდა) */
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(BookNote::class)->where('is_quote', true);
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(BookNote::class)->orderByDesc('id');

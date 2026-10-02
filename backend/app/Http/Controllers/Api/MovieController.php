@@ -263,6 +263,14 @@ class MovieController extends Controller
             $query->statusRole('todo');
         }
 
+        /* Tasks §6.5 — ⚠️ „სხვა" იგივე ჩანაწერს აბრუნებდა: `inRandomOrder()` უკვე
+           ნაჩვენებს არ იცნობს. SPA ბოლო id-ებს `exclude`-ით აწვდის; როცა ყველა
+           ამოიწურა, სია ცარიელია და დიალოგი ამას ამბობს — თავიდან დაწყება მისი საქმეა. */
+        $exclude = array_filter(array_map('intval', (array) $request->input('exclude', [])));
+        if ($exclude) {
+            $query->whereNotIn('movies.id', $exclude);
+        }
+
         $record = $query->reorder()->inRandomOrder()->first();
 
         return response()->json(['data' => $record ? new MovieResource($record->load(['genres', 'cast'])) : null]);

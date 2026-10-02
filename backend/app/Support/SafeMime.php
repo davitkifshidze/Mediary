@@ -4,6 +4,9 @@ namespace App\Support;
 
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -91,5 +94,36 @@ final class SafeMime
             ],
             $inline ? 'inline' : 'attachment',
         );
+    }
+
+    /**
+     * **იგივე წესები, ოღონდ HTTP Range-ით** (Tasks §6.4) — ვიდეოსა და აუდიოსთვის.
+     *
+     * ⚠️ `StreamedResponse` (ზემოთა `response()`) Range-ს არ იცნობს: ბრაუზერი
+     * `<video>`-ში გადახვევას `Range: bytes=…`-ით ითხოვს და მთელი ფაილის
+     * თავიდან მიღებაზე გადახვევა უბრალოდ არ მუშაობს. `BinaryFileResponse` მას
+     * `prepare()`-ში თვითონ ამუშავებს (206, `Content-Range`), ოღონდ **მხოლოდ
+     * ლოკალურ დისკზე** (`$disk->path()`) — პირადი საქაღალდეები სწორედ ასეთია.
+     */
+    public static function fileResponse(FilesystemAdapter $disk, string $path, ?string $name = null): BinaryFileResponse
+    {
+        $mime = self::detect($disk, $path);
+        $inline = self::isInline($mime);
+        $filename = $name ?: basename($path);
+
+        $response = new BinaryFileResponse($disk->path($path), 200, [
+            'Content-Type' => $inline ? $mime : self::DOWNLOAD,
+            'X-Content-Type-Options' => 'nosniff',
+            'Accept-Ranges' => 'bytes',
+        ]);
+
+        // ⚠️ ASCII-სათადარიგო სახელი აუცილებელია — ქართული სათაური ინგლისური ბრაუზერის header-ში ვერ ჩაჯდებოდა
+        $response->setContentDisposition(
+            $inline ? ResponseHeaderBag::DISPOSITION_INLINE : ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $filename,
+            str_replace(['%', '/', '\\', '"'], '_', Str::ascii($filename)) ?: 'file',
+        );
+
+        return $response;
     }
 }
