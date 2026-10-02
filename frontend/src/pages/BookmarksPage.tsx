@@ -745,6 +745,7 @@ function BookmarkForm({
                   {fields.label('thumbnail')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   preview={thumbPreview ?? imageUrl}
                   hint={t('bookmarks.thumbnailHint')}

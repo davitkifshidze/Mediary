@@ -78,6 +78,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { cn } from '@/lib/utils'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -413,20 +414,24 @@ export function PlacesPage() {
 
                       {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
                           `asChild` არ აქვს. რუკა გარე სერვისია (OSM). */}
-                      {place.map_url && (
-                        <a
-                          href={place.map_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={t('places.openMap')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <MapIcon className="size-4" />
-                        </a>
-                      )}
+                      {/* Tasks §14.2 — რუკის სლოტი ყოველთვის ადგილზეა (კოორდინატის გარეშე უხილავი), §14.3 — ყველა კონტროლი h-9 */}
+                      <a
+                        href={place.map_url ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t('places.openMap')}
+                        aria-hidden={!place.map_url || undefined}
+                        className={cn(
+                          'grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
+                          !place.map_url && 'invisible pointer-events-none',
+                        )}
+                      >
+                        <MapIcon className="size-4" />
+                      </a>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="size-9"
                         onClick={() => setDetail(place)}
                         aria-label={t('places.files')}
                       >
@@ -453,7 +458,7 @@ export function PlacesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive"
+                        className="size-9 text-destructive"
                         onClick={async () => {
                           if (
                             await confirm({
@@ -776,6 +781,7 @@ function PlaceForm({
                   {fields.label('photo')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   preview={preview}
                   variant="wide"
                   onSelect={(file) => {

@@ -326,6 +326,7 @@ export function BookForm({
                   {fields.label('cover')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   hint={t('books.coverHint')}
                   preview={coverPreview}
                   onSelect={(file) => {

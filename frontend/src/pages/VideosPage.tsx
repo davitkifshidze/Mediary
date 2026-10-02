@@ -1101,6 +1101,7 @@ function VideoForm({
                   {fields.label('thumbnail')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   hint={t('videos.thumbnailHint')}
                   preview={thumbPreview}

@@ -57,6 +57,11 @@ export function FormGrid({ children, className }: { children: ReactNode; classNa
  * `media` — სექციის გვერდითი სვეტი (მთავარი ფოტო): §26-ის მოთხოვნით
  * **ფოტო ზემოთაა**, ძირითად ველებთან ერთად, და არა ფორმის ბოლოში.
  * ვიწრო ეკრანზე ის ველებს ზემოდან ადგება.
+ *
+ * ⚠️ Tasks §14.1 — სვეტი **`sm:items-stretch`**-ია: `PosterUploader fill`
+ * ყუთი `sm:h-full`-ით ზუსტად ველების სიმაღლეს იღებს (სიმღერაზე — სამი
+ * სტრიქონი, თამაშზე — ოთხი), ე.ი. ფორმიდან ფორმაში სხვადასხვა სიმაღლის
+ * ყუთი აღარ ჩანს.
  */
 export function FormSection({
   title,
@@ -92,7 +97,7 @@ export function FormSection({
       {plain ? (
         children
       ) : media ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch" data-testid="form-media-row">
           <div className="shrink-0">{media}</div>
           <FormGrid className="min-w-0 flex-1">{children}</FormGrid>
         </div>

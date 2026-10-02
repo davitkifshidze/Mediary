@@ -846,6 +846,7 @@ function CustomRecordForm({
                   {fields.label('photo')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   preview={photoPreview ?? imageUrl}
                   onSelect={(file) => {

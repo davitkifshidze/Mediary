@@ -450,12 +450,15 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         <section className={cn(FORM_CARD, 'space-y-4')}>
           <div className={CARD_TITLE}>{t('form.details')}</div>
 
-          <div className="flex flex-col gap-5 sm:flex-row">
-            <div className={fields.shows('poster') ? 'shrink-0' : 'hidden'}>
+          {/* Tasks §14.1 — სვეტი იჭიმება: ლეიბლი ზემოთ, ყუთი დარჩენილ სიმაღლეს ავსებს (`FormSection media`-ს იგივე წესი) */}
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch">
+            <div className={fields.shows('poster') ? 'flex shrink-0 flex-col' : 'hidden'}>
               <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
                 {fields.label('poster')}
               </FieldLabel>
+              <div className="sm:min-h-0 sm:flex-1">
               <PosterUploader
+                fill
                 preview={preview}
                 onSelect={(f) => {
                   setPoster(f)
@@ -468,6 +471,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                   setRemovePoster(true)
                 }}
               />
+              </div>
             </div>
 
             <div className="grid flex-1 grid-cols-2 gap-4">

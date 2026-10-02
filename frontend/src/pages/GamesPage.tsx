@@ -410,7 +410,7 @@ export function GamesPage() {
                         rel="noopener noreferrer"
                         aria-label={t('books.openLink')}
                         title={store.label || store.url}
-                        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                        className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
                       >
                         <ExternalLink className="size-4" />
                       </a>

@@ -45,7 +45,8 @@ export function DetailHero({
       <div
         className={cn(
           'mx-auto grid shrink-0 place-items-center overflow-hidden rounded-lg bg-muted ring-1 ring-border sm:mx-0',
-          shape === 'poster' ? 'aspect-[3/4] w-32' : 'aspect-video w-56',
+          // Tasks §14.4 — ერთი სიმაღლე ორივე ფორმაზე; სიგანე პროპორციიდან (პოსტერი 3:4, ფოტო 16:9)
+          shape === 'poster' ? 'aspect-[3/4] h-40' : 'aspect-video h-40',
         )}
       >
         {image ? <img src={image} alt={alt} className="size-full object-cover" /> : fallback}

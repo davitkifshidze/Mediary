@@ -445,7 +445,7 @@ export function SongsPage() {
                       rel="noopener noreferrer"
                       aria-label={t('songs.source')}
                       title={t('songs.source')}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                      className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
                     >
                       <ExternalLink className="size-4" />
                     </a>
@@ -803,6 +803,7 @@ function SongForm({
                   {fields.label('thumbnail')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   hint={t('songs.coverHint')}
                   preview={thumbPreview}

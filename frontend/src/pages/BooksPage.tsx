@@ -54,6 +54,7 @@ import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
+import { cn } from '@/lib/utils'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -424,18 +425,21 @@ export function BooksPage() {
                     {/* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი
                         ჩანაწერებისთვის რჩება (მიგრაციამ პირველი ბმული გადმოიტანა,
                         მაგრამ ხელახლა შეყვანილი ლინკი ახლა აქ წერია) */}
-                    {(book.source_url || book.links[0]?.url) && (
-                      <a
-                        href={book.source_url || book.links[0].url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('books.openLink')}
-                        title={book.source_url || book.links[0].label || book.links[0].url}
-                        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
-                    )}
+                    {/* Tasks §14.2 — ბმულის სლოტი ყოველთვის ადგილზეა: უბმულო წიგნზე უხილავია, რომ ღილაკები არ გადაინაცვლონ */}
+                    <a
+                      href={book.source_url || book.links[0]?.url || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={t('books.openLink')}
+                      aria-hidden={!(book.source_url || book.links[0]?.url) || undefined}
+                      title={book.source_url || book.links[0]?.label || book.links[0]?.url}
+                      className={cn(
+                        'grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground',
+                        !(book.source_url || book.links[0]?.url) && 'invisible pointer-events-none',
+                      )}
+                    >
+                      <ExternalLink className="size-4" />
+                    </a>
                     <Button variant="edit" size="sm" onClick={() => setEditing(book)}>
                       <SquarePen className="size-3.5" />
                       {t('actions.edit')}

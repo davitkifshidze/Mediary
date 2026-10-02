@@ -443,6 +443,7 @@ export function BoardGameForm({
                   {fields.label('image')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   hint={t('boardGames.imageHint')}
                   preview={imagePreview}

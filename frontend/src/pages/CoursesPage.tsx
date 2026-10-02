@@ -68,6 +68,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { cn } from '@/lib/utils'
 
 /* ============================================================
    კურსების მოდული (`course`, FEAT-25).
@@ -382,20 +383,24 @@ export function CoursesPage() {
 
                       {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
                           `asChild` არ აქვს; გარე ბმული ბუკმარკის იგივე ფორმაშია. */}
-                      {course.url && (
-                        <a
-                          href={course.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={t('courses.open')}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
-                      )}
+                      {/* Tasks §14.2 — ბმულის სლოტი ყოველთვის ადგილზეა (უბმულოზე უხილავი), §14.3 — ყველა კონტროლი h-9 */}
+                      <a
+                        href={course.url ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t('courses.open')}
+                        aria-hidden={!course.url || undefined}
+                        className={cn(
+                          'grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
+                          !course.url && 'invisible pointer-events-none',
+                        )}
+                      >
+                        <ExternalLink className="size-4" />
+                      </a>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="size-9"
                         onClick={() => setDetail(course)}
                         aria-label={t('courses.files')}
                       >
@@ -422,7 +427,7 @@ export function CoursesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive"
+                        className="size-9 text-destructive"
                         onClick={async () => {
                           if (
                             await confirm({
@@ -701,6 +706,7 @@ function CourseForm({
                   {fields.label('thumbnail')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   preview={preview}
                   variant="wide"
                   onSelect={(file) => {

@@ -436,7 +436,7 @@ export function NotesPage() {
                       rel="noopener noreferrer"
                       aria-label={t('books.openLink')}
                       title={note.links[0].label || note.links[0].url}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                      className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
                     >
                       <ExternalLink className="size-4" />
                     </a>

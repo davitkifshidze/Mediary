@@ -428,6 +428,7 @@ export function GameForm({
                   {fields.label('cover')}
                 </FieldLabel>
                 <PosterUploader
+                  fill
                   variant="wide"
                   hint={t('games.coverHint')}
                   preview={coverPreview}
