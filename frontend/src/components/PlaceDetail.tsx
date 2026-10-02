@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Image as ImageIcon, Loader2, Map as MapIcon, MapPin, Upload } from 'lucide-react'
 import {
   PLACE_FILE_KINDS,
-  PLACE_MAX_RATING,
   deletePlaceFile,
   fetchPlaceFiles,
   uploadPlaceFiles,
@@ -19,7 +18,7 @@ import { useDateFormat } from '@/lib/dates'
 import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { Badge } from '@/components/ui/badge'
+import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -178,11 +177,8 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           badges={
             <>
               <EnumStatusBadge domain="place" status={place.status} />
-              {place.rating != null && (
-                <Badge className="bg-secondary tabular-nums">
-                  {place.rating}/{PLACE_MAX_RATING}
-                </Badge>
-              )}
+              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              <RatingStars value={place.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
               <FavoriteButton size="xs" active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />

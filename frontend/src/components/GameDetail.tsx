@@ -13,7 +13,6 @@ import {
   updateGame,
   updateGameNote,
   fetchGameVideos,
-  GAME_MAX_RATING,
   GAME_VIDEO_KINDS,
   uploadGameFiles,
   type Game,
@@ -33,7 +32,7 @@ import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { Badge } from '@/components/ui/badge'
+import { RatingStars } from '@/components/ui/star-rating'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
@@ -136,11 +135,8 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           badges={
             <>
               <EnumStatusBadge domain="game" status={game.status} />
-              {game.rating != null && (
-                <Badge className="bg-secondary tabular-nums">
-                  {game.rating}/{GAME_MAX_RATING}
-                </Badge>
-              )}
+              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
               <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />

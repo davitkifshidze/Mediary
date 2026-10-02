@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Support\Like;
 use App\Support\PublicDomain;
+use App\Support\Rating;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -188,7 +189,8 @@ class MatchService
                        აქაც ობიექტია და არა გასაღები: ჩემი „ნანახი" და მისი
                        „ნანახი" სხვადასხვა რიგია, თუნდაც ერთნაირად ერქვათ. */
                     'status' => StatusResource::brief($own->status ?? null),
-                    'rating' => $own->rating,
+                    // Tasks §9 — ჩემი **საკუთარი** ქულა: მედიაზე `my_rating`, `rating` იქ TMDB-ისაა
+                    'rating' => $own->{Rating::columnFor($own)},
                 ],
                 // ⚠️ ორივე მექანიზმი ერთ ადგილას — `PublicDomain::isDone()`
                 'both_done' => PublicDomain::countsDone($domain)

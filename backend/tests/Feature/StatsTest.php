@@ -59,7 +59,8 @@ class StatsTest extends TestCase
 
     private function movie(User $user, int $year, ?string $watchedAt = null, ?float $rating = null): Movie
     {
-        $movie = Movie::create(['user_id' => $user->id, 'year' => $year, 'rating' => $rating]);
+        // Tasks §9 — სტატისტიკა **ჩემს** ქულას ითვლის (`my_rating`), TMDB-ის საშუალოს არა
+        $movie = Movie::create(['user_id' => $user->id, 'year' => $year, 'my_rating' => $rating]);
 
         if ($watchedAt) {
             $movie->forceFill(['watched_at' => $watchedAt])->save();

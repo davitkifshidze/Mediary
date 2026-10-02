@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Download, ExternalLink, FileText, Paperclip, Trash2, Upload } from 'lucide-react'
 import {
-  BOOK_MAX_RATING,
   createBookNote,
   deleteBookFile,
   deleteBookNote,
@@ -23,7 +22,7 @@ import { RecordNotes } from '@/components/RecordNotes'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
-import { Badge } from '@/components/ui/badge'
+import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
@@ -80,11 +79,8 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
           badges={
             <>
               <EnumStatusBadge domain="book" status={book.status} />
-              {book.rating != null && (
-                <Badge className="bg-secondary tabular-nums">
-                  {book.rating}/{BOOK_MAX_RATING}
-                </Badge>
-              )}
+              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              <RatingStars value={book.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
               <FavoriteButton size="xs" active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />

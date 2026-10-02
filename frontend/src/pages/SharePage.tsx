@@ -36,6 +36,7 @@ import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
+import { cardRatings, formatRating } from '@/lib/rating'
 import { shareGenreName, shareMeta, type ShareClassifierKind, type ShareDomainMeta } from '@/lib/shareLinks'
 import { ENUM_STATUS_NS, type EnumStatusDomain } from '@/lib/statuses'
 import { PageContainer } from '@/components/ui/page'
@@ -558,6 +559,8 @@ function ShareCardTile({
       ? { domain: card.domain as EnumStatusDomain, key: card.status }
       : null
 
+  const ratings = cardRatings(card)
+
   return (
     <div className="min-w-0" data-testid="share-card">
       <div
@@ -596,12 +599,14 @@ function ShareCardTile({
         {card.subtitle && <p className="truncate text-xs text-muted-foreground">{card.subtitle}</p>}
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           {card.year && <span>{card.year}</span>}
-          {card.rating != null && (
-            <span className="inline-flex items-center gap-0.5">
-              <Star className="size-3 fill-current" />
-              {card.rating}
+          {/* Tasks §9 — მფლობელის ქულა ვარსკვლავით, მედიაზე TMDB-ის საშუალო ცალკე */}
+          {ratings.mine != null && (
+            <span className="inline-flex items-center gap-0.5 text-gold">
+              <Star className="size-3 fill-current" aria-hidden="true" />
+              {formatRating(ratings.mine)}
             </span>
           )}
+          {ratings.average != null && <span title={t('rating.tmdbAverage')}>TMDB {ratings.average}</span>}
         </p>
         {genres.length > 0 && (
           <p className="truncate text-[11px] text-muted-foreground">

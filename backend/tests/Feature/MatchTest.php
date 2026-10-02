@@ -184,11 +184,11 @@ class MatchTest extends TestCase
     public function test_item_list_carries_both_sides(): void
     {
         $mine = $this->movie($this->alice, 100, status: 'watched');
-        $mine->rating = 9;
+        $mine->my_rating = 9;
         $mine->save();
 
         $theirs = $this->movie($this->bob, 100, status: 'to_watch');
-        $theirs->rating = 5;
+        $theirs->my_rating = 5;
         $theirs->save();
 
         $res = $this->actingAs($this->alice)->getJson('/api/matches/bob/movie')->assertOk();

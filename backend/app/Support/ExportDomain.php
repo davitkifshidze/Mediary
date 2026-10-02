@@ -74,7 +74,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'runtime', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
+                'rating', 'my_rating', 'runtime', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
                 'imdb_url', 'ge_url', 'collection_name', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
             ],
@@ -84,7 +84,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
+                'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
             ],
@@ -94,7 +94,7 @@ final class ExportDomain
             'with' => ['translations', 'status', 'genres.translations'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
-                'rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
+                'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
                 'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
             ],

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTags;
@@ -42,15 +43,12 @@ class Song extends Model
      */
     use HasTrash;
 
-    /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
-    public const MAX_RATING = 10;
-
     protected $guarded = ['id'];
 
     protected $casts = [
         'year' => 'integer',
         'duration' => 'integer',
-        'rating' => 'integer',
+        'rating' => RatingCast::class,
         'tags' => 'array',
         'is_favorite' => 'boolean',
         'play_count' => 'integer',

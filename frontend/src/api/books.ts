@@ -10,9 +10,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    წყარო (Open Library) ერთენოვანია.
    ============================================================ */
 
-/** „ჩემი ქულის" ჭერი — იგივე რიცხვი `Book::MAX_RATING`-შია */
-export const BOOK_MAX_RATING = 10
-
 /**
  * წიგნის ენა — **პრესეტები და არა დახურული სია** (Tasks §6.1, შენი არჩევანი).
  *

@@ -17,7 +17,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import {
-  BOOK_MAX_RATING,
   BOOK_STATUSES,
   setBookStatus,
   deleteBook,
@@ -52,7 +51,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { Badge } from '@/components/ui/badge'
+import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
@@ -412,11 +411,8 @@ export function BooksPage() {
                   <span className="flex shrink-0 items-center gap-1">
                     {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
                     <EnumStatusBadge domain="book" status={book.status} size="row" className="mr-1" />
-                    {book.rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        {book.rating}/{BOOK_MAX_RATING}
-                      </Badge>
-                    )}
+                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
+                    <RatingBadge value={book.rating} size="row" className="mr-1" />
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
                     <FavoriteButton
                       active={book.is_favorite}

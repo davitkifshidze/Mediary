@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
@@ -39,9 +40,6 @@ class Game extends Model
 
     /** FEAT-21 — „როდის გავიარე" თარიღი; `finished` სტატუსზე ივსება */
     use TracksCompletion;
-
-    /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
-    public const MAX_RATING = 10;
 
     /** Tasks §13 — მხოლოდ სამი: გასავლელი · ვთამაშობ · დახურული (`finished` —
         გასაღები რჩება: ის `PublicDomain::MATCH`-ის „done"-ია და `finished_at`-ს ადგენს) */
@@ -107,7 +105,7 @@ class Game extends Model
         'links' => 'array',
         'opencritic' => 'integer',
         'users_score' => 'float',
-        'rating' => 'integer',
+        'rating' => RatingCast::class,
         'size_gb' => 'float',
         'rawg_id' => 'integer',
         'igdb_id' => 'integer',

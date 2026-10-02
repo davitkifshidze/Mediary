@@ -18,7 +18,6 @@ import {
   Users,
 } from 'lucide-react'
 import {
-  BOARD_GAME_MAX_RATING,
   deleteBoardGame,
   fetchBoardGameGenres,
   fetchBoardGames,
@@ -53,6 +52,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Badge } from '@/components/ui/badge'
+import { RatingBadge } from '@/components/ui/star-rating'
 
 /* ============================================================
    ბორდგეიმების მოდული (`board_game`, Tasks §14).
@@ -365,11 +365,8 @@ export function BoardGamesPage() {
                         BGG {game.bgg_rating}
                       </Badge>
                     )}
-                    {game.rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        {game.rating}/{BOARD_GAME_MAX_RATING}
-                      </Badge>
-                    )}
+                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
+                    <RatingBadge value={game.rating} size="row" className="mr-1" />
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
                     <FavoriteButton
                       active={game.is_favorite}

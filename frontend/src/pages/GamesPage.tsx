@@ -20,7 +20,6 @@ import {
   deleteGame,
   fetchGameGenres,
   fetchGames,
-  GAME_MAX_RATING,
   GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
@@ -55,7 +54,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
@@ -415,11 +414,8 @@ export function GamesPage() {
                         <ExternalLink className="size-4" />
                       </a>
                     )}
-                    {game.rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        {game.rating}/{GAME_MAX_RATING}
-                      </Badge>
-                    )}
+                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
+                    <RatingBadge value={game.rating} size="row" className="mr-1" />
                     {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
                     <EnumStatusBadge
                       domain="game"

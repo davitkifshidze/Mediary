@@ -16,6 +16,7 @@ class AnimeListResource extends JsonResource
             'title_en' => $this->title_en,
             'year' => $this->year,
             'rating' => $this->rating,
+            'my_rating' => $this->my_rating,
             'seasons' => $this->seasons,
             'episodes' => $this->episodes,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,

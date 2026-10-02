@@ -185,6 +185,8 @@ describe('ShareLinkDialog', () => {
       domains: { movie: { scope: 'status', statuses: ['watched'], public_only: false } },
       name: null,
       show_status: true,
+      // Tasks §9 — ფილმსაც აქვს „ჩემი ქულა" (`my_rating`), ე.ი. გადამრთველი ფილმზეც იგზავნება
+      show_rating: true,
       expires_days: 30,
     })
     // შედეგის ეკრანი: ბმული და კოპირება
@@ -290,8 +292,8 @@ describe('ShareLinkDialog', () => {
     await mount({ link })
 
     expect(document.body.textContent).toContain('„კურსები“ — ეს მოდული აღარ გაქვს')
-    // ფილმს შეფასება TMDB-ისაა — გადამრთველი არ ჩანს და შენახული მნიშვნელობაც არ იგზავნება
-    expect(document.body.textContent).not.toContain('ჩემი შეფასება')
+    // Tasks §9 — ფილმზეც ჩანს „ჩემი შეფასება": `my_rating` მფლობელისაა (TMDB-ის საშუალო გადამრთველს არ ეხება)
+    expect(document.body.textContent).toContain('ჩემი შეფასება')
 
     await act(async () => button('შენახვა')!.click())
     await flush()
@@ -301,6 +303,8 @@ describe('ShareLinkDialog', () => {
       domains: { movie: { scope: 'all', public_only: false } },
       name: null,
       show_status: true,
+      // ფიქსტურაში გადამრთველი გამორთულია — ფილმზეც ისე ინახება, როგორც იყო
+      show_rating: false,
     })
   })
 

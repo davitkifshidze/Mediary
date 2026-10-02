@@ -135,14 +135,19 @@ class PlaceModuleTest extends TestCase
      * ⚠️ ფორმა ახლა ამრჩევია (`RatingSelect`), ე.ი. 7.5 ან 0 მხოლოდ ხელით
      * დაწერილ რექვესთს შეუძლია — და ის დანარჩენი ოთხი მოდულის წესით 422-ია.
      */
-    public function test_the_rating_is_a_whole_number_from_one_to_ten(): void
+    public function test_the_rating_is_a_number_from_zero_to_ten_with_tenths(): void
     {
         $this->postJson('/api/places', $this->payload(['rating' => 7]))
             ->assertStatus(201)
-            // ⚠️ რიცხვად — `decimal:1` cast-ი "7.0"-ს აბრუნებდა
+            // ⚠️ რიცხვად — `decimal:1` cast-ი "7.0"-ს აბრუნებდა; მთელი ქულა `int`-ია (`RatingCast`)
             ->assertJsonPath('data.rating', 7);
 
-        foreach ([7.5, 0, 11] as $bad) {
+        // Tasks §9 — ვარსკვლავის ნახევარი და ხელით ჩაწერილი მეათედი ისე ინახება, როგორც აკრიფე
+        $this->postJson('/api/places', $this->payload(['rating' => 7.5]))
+            ->assertStatus(201)
+            ->assertJsonPath('data.rating', 7.5);
+
+        foreach ([-1, 10.1, 'abc'] as $bad) {
             $this->postJson('/api/places', $this->payload(['rating' => $bad]))
                 ->assertStatus(422)
                 ->assertJsonValidationErrors(['rating']);

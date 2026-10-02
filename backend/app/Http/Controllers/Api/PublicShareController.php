@@ -331,9 +331,10 @@ class PublicShareController extends Controller
             unset($card['status']);
         }
 
-        // მედიის `rating` TMDB-ის ქულაა და არა მფლობელის — გადამრთველი მას არ ეხება
+        /* Tasks §9 (Q1) — გადამრთველი **მფლობელის** ქულას მალავს: მედიაზე ეს
+           `my_rating`-ია, ბარათის `rating` კი TMDB-ის საშუალოა და საჯარო ფაქტად რჩება. */
         if (! $link->show_rating && ShareDomain::hasPersonalRating($domain)) {
-            unset($card['rating']);
+            unset($card[ShareDomain::personalRatingKey($domain)]);
         }
 
         if (! $classifierHidden) {

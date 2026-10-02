@@ -10,6 +10,7 @@ use App\Services\Video\VideoMetadata;
 use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\Like;
+use App\Support\Rating;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use App\Support\VideoUrl;
@@ -188,7 +189,7 @@ class SongController extends Controller
             'duration' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'tags' => ['nullable', 'array', 'max:20'],
             'tags.*' => ['string', 'max:40'],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:'.Song::MAX_RATING],
+            'rating' => Rating::rules(),
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],

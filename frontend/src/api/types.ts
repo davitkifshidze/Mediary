@@ -70,7 +70,10 @@ export interface MovieListItem {
   title_ka: string | null
   title_en: string | null
   year: number | null
+  /** TMDB-ის საშუალო (სტრიქონი — `decimal:1`); შენი ქულა `my_rating`-შია */
   rating: string | null
+  /** Tasks §9 (Q1) — „ჩემი ქულა" 0–10 მეათედით, TMDB-ის საშუალოსგან ცალკე */
+  my_rating: number | null
   poster: string | null
   status: Status | null
   is_favorite: boolean

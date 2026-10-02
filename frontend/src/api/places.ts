@@ -16,9 +16,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
 
 export const PLACE_STATUSES = ['to_visit', 'visited'] as const
 
-/** „ჩემი შეფასების" ჭერი — იგივე რიცხვი `Place::MAX_RATING`-შია (Tasks §25.2) */
-export const PLACE_MAX_RATING = 10
-
 export type PlaceStatus = (typeof PLACE_STATUSES)[number]
 
 export const PLACE_FILE_KINDS = ['image', 'doc'] as const

@@ -16,6 +16,7 @@ class MovieListResource extends JsonResource
             'title_en' => $this->title_en,
             'year' => $this->year,
             'rating' => $this->rating,
+            'my_rating' => $this->my_rating,
             'poster' => $this->poster_path ? asset('storage/'.$this->poster_path) : null,
             /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა

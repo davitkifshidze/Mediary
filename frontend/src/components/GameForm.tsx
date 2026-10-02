@@ -8,7 +8,6 @@ import {
   fetchRawgDraft,
   GAME_LINK_KINDS,
   GAME_LINK_STORES,
-  GAME_MAX_RATING,
   GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
@@ -53,7 +52,7 @@ import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
-import { RatingSelect } from '@/components/ui/rating-select'
+import { StarRating } from '@/components/ui/star-rating'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
@@ -546,9 +545,8 @@ export function GameForm({
           {/* ⚠️ §5.1 — OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება (payload-ში
               ისევ მიდის); „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით */}
           <FormField size="third" {...fields.field('rating')} htmlFor="g-rating" error={errors.rating}>
-            <RatingSelect
+            <StarRating
               id="g-rating"
-              max={GAME_MAX_RATING}
               value={form.rating}
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}

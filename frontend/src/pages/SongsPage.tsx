@@ -6,7 +6,6 @@ import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Tags, Trash2 } from 'lucide-react'
 import {
-  SONG_MAX_RATING,
   createSong,
   deleteSong,
   fetchSongGenres,
@@ -49,7 +48,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
-import { RatingSelect } from '@/components/ui/rating-select'
+import { StarRating } from '@/components/ui/star-rating'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FieldAction, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { QuickFill } from '@/components/ui/quick-fill'
@@ -64,7 +63,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { RatingBadge } from '@/components/ui/star-rating'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -430,11 +429,8 @@ export function SongsPage() {
                   </div>
 
                   <span className="flex shrink-0 items-center gap-1">
-                    {song.rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        {song.rating}/{SONG_MAX_RATING}
-                      </Badge>
-                    )}
+                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
+                    <RatingBadge value={song.rating} size="row" className="mr-1" />
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
                     <FavoriteButton
                       active={song.is_favorite}
@@ -866,9 +862,8 @@ function SongForm({
           </FormField>
 
           <FormField size="half" {...fields.field('rating')} htmlFor="s-rating" error={errors.rating}>
-            <RatingSelect
+            <StarRating
               id="s-rating"
-              max={SONG_MAX_RATING}
               value={form.rating}
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}

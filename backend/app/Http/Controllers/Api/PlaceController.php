@@ -9,6 +9,7 @@ use App\Services\Places\NominatimClient;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
+use App\Support\Rating;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -220,7 +221,7 @@ class PlaceController extends Controller
             'tags.*' => ['string', 'max:40'],
             'status' => [...$must, Rule::in(Place::STATUSES)],
             // Tasks §25.2 — მთელი 1–10, დანარჩენი ოთხი მოდულის ზუსტი წესი
-            'rating' => ['nullable', 'integer', 'min:1', 'max:'.Place::MAX_RATING],
+            'rating' => Rating::rules(),
             'is_favorite' => ['nullable', 'boolean'],
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'visited_at' => ['nullable', 'date'],

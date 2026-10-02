@@ -59,7 +59,7 @@ class LibraryStats
      * `year` — რომელი სვეტი ნიშნავს „გამოშვების წელს" (თარიღიც შეიძლება);
      * `done_at` — „როდის გავაკეთე" (თვეების ჭრილი მხოლოდ ამაზე დგას);
      * `genres` — `morph` (გლობალური polymorphic) · `pivot` · `column`;
-     * `rating` — არსებობს თუ არა შეფასების სვეტი.
+     * `rating` — **მფლობელის** ქულის სვეტი (Tasks §9: მედიაზე `my_rating`, რადგან `rating` TMDB-ისაა) ან `null`.
      *
      * ⚠️ **`done_at` დღეს ყველა მოდულს აქვს, მაგრამ `null` კვლავ კანონიერია.**
      * 2026-09-20-მდე წიგნს, თამაშს, ბორდგეიმსა და ჩანაწერს ასეთი სვეტი არ
@@ -71,27 +71,27 @@ class LibraryStats
      * სხვადასხვა ფაქტი ერთ სვეტში ზუსტად ის ხაფანგია, რომლის გამოც ვიდეოს
      * `watched_at` სტატუსს არ ეხმიანება.
      *
-     * @var array<string, array{model: class-string<Model>, year: ?string, done_at: ?string, genres: ?array, rating: bool}>
+     * @var array<string, array{model: class-string<Model>, year: ?string, done_at: ?string, genres: ?array, rating: ?string}>
      */
     private const MODULES = [
-        'movie' => ['model' => Movie::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'movie'], 'rating' => true, 'watch_log' => 'movie'],
-        'series' => ['model' => Series::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'series'], 'rating' => true, 'watch_log' => 'series'],
-        'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => true, 'watch_log' => 'anime'],
-        'video' => ['model' => Video::class, 'year' => null, 'done_at' => 'watched_at', 'genres' => ['kind' => 'column', 'column' => 'type_id', 'table' => 'video_types'], 'rating' => false],
-        'song' => ['model' => Song::class, 'year' => 'year', 'done_at' => 'played_at', 'genres' => ['kind' => 'pivot', 'table' => 'song_genre_song', 'local' => 'song_id', 'foreign' => 'song_genre_id', 'dictionary' => 'song_genres'], 'rating' => true],
+        'movie' => ['model' => Movie::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'movie'], 'rating' => 'my_rating', 'watch_log' => 'movie'],
+        'series' => ['model' => Series::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'series'], 'rating' => 'my_rating', 'watch_log' => 'series'],
+        'anime' => ['model' => Anime::class, 'year' => 'year', 'done_at' => 'watched_at', 'genres' => ['kind' => 'morph', 'alias' => 'anime'], 'rating' => 'my_rating', 'watch_log' => 'anime'],
+        'video' => ['model' => Video::class, 'year' => null, 'done_at' => 'watched_at', 'genres' => ['kind' => 'column', 'column' => 'type_id', 'table' => 'video_types'], 'rating' => null],
+        'song' => ['model' => Song::class, 'year' => 'year', 'done_at' => 'played_at', 'genres' => ['kind' => 'pivot', 'table' => 'song_genre_song', 'local' => 'song_id', 'foreign' => 'song_genre_id', 'dictionary' => 'song_genres'], 'rating' => 'rating'],
         /* FEAT-21-ის ნარჩენი (2026-09-20) — წიგნს თავისი სვეტი აქვს. */
-        'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => true],
+        'book' => ['model' => Book::class, 'year' => 'year', 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'book_genres'], 'rating' => 'rating'],
         /* Tasks §12 — სამაგიდო თამაშს სტატუსი და შეძენის თარიღი აღარ აქვს, ე.ი.
            თვეების ჭრილი და მიზანი მას არ ეხება. */
-        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => true],
-        'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => 'finished_at', 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => true],
-        'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => false],
-        'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => false],
+        'board_game' => ['model' => BoardGame::class, 'year' => 'year', 'done_at' => null, 'genres' => ['kind' => 'column', 'column' => 'genre_id', 'table' => 'board_game_genres'], 'rating' => 'rating'],
+        'game' => ['model' => Game::class, 'year' => 'release_date', 'done_at' => 'finished_at', 'genres' => ['kind' => 'pivot', 'table' => 'game_genre_game', 'local' => 'game_id', 'foreign' => 'game_genre_id', 'dictionary' => 'game_genres'], 'rating' => 'rating'],
+        'note' => ['model' => NoteEntry::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'note_categories'], 'rating' => null],
+        'bookmark' => ['model' => Bookmark::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'bookmark_categories'], 'rating' => null],
         /* FEAT-25 — ⚠️ `done_at` **`finished_at`-ია და არა `updated_at`**:
            „წელს რამდენი დავასრულე" სწორედ ამით ითვლება (FEAT-08/FEAT-21). */
-        'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => false],
+        'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => null],
         // ⚠️ `done_at` = `visited_at` — „წელს სად ვიყავი“ სწორედ ეს კითხვაა
-        'place' => ['model' => Place::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'place_categories'], 'rating' => true],
+        'place' => ['model' => Place::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'place_categories'], 'rating' => 'rating'],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */
@@ -139,7 +139,7 @@ class LibraryStats
             'genres' => CustomModules::classifies($module)
                 ? ['kind' => 'column', 'column' => 'category_id', 'table' => 'custom_categories']
                 : null,
-            'rating' => false,
+            'rating' => null,
             'custom' => true,
         ];
     }
@@ -184,7 +184,7 @@ class LibraryStats
             'status' => $this->byStatus($base, $module),
             'years' => $map['year'] ? $this->byYear($base, $map['year']) : [],
             'genres' => $map['genres'] ? $this->byGenre($base, $map['genres']) : [],
-            'ratings' => $map['rating'] ? $this->byRating($base) : [],
+            'ratings' => $map['rating'] ? $this->byRating($base, $map['rating']) : [],
             /* FEAT-14 — მედია-დომენები თვეებს **ნახვების ჟურნალიდან** კითხულობენ,
                ე.ი. ხელახლა ნახვასაც ითვლიან; დანარჩენი — `done_at` სვეტიდან. */
             'months' => isset($map['watch_log'])
@@ -748,14 +748,14 @@ class LibraryStats
      * `round()` ორ დრაივერზე სხვადასხვა ტიპს აბრუნებს; განსხვავებული
      * მნიშვნელობა კი ათამდეა, ე.ი. დაჯგუფება ისედაც იაფია.
      */
-    private function byRating(callable $base): array
+    private function byRating(callable $base, string $column): array
     {
         $buckets = [];
 
         $rows = $base()->toBase()
-            ->whereNotNull('rating')
-            ->groupBy('rating')
-            ->selectRaw('rating, count(*) as total')
+            ->whereNotNull($column)
+            ->groupBy($column)
+            ->selectRaw("{$column} as rating, count(*) as total")
             ->get();
 
         foreach ($rows as $row) {

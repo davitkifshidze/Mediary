@@ -16,6 +16,7 @@ import {
 import { mediaApi } from '@/api/media'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
+import { formatRating } from '@/lib/rating'
 import type { MovieListItem } from '@/api/types'
 import { useContentLang } from '@/lib/settings'
 import { useStatuses } from '@/lib/statuses'
@@ -139,10 +140,20 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                   </h3>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span>{movie.year ?? '—'}</span>
+                    {/* Tasks §9 (Q1) — ჩემი ქულა ოქროსფერი ვარსკვლავით; TMDB-ის საშუალო „TMDB"-ით და მინიშნებით */}
+                    {movie.my_rating != null && (
+                      <>
+                        <span className="opacity-40">·</span>
+                        <span className="inline-flex items-center gap-0.5 font-medium text-gold">
+                          <Star className="transition-transform size-3 fill-current" aria-hidden="true" />
+                          {formatRating(movie.my_rating)}
+                        </span>
+                      </>
+                    )}
                     {movie.rating && (
                       <>
                         <span className="opacity-40">·</span>
-                        <span>★ {movie.rating}</span>
+                        <span title={t('rating.tmdbAverage')}>TMDB {movie.rating}</span>
                       </>
                     )}
                   </div>

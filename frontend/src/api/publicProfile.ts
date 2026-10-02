@@ -94,6 +94,8 @@ export interface PublicCard {
    */
   status?: Status | string | null
   rating?: number | string | null
+  /** Tasks §9 — მედიაზე მფლობელის ქულა (`rating` იქ TMDB-ის საშუალოა); `lib/rating.ts` `cardRatings()` */
+  my_rating?: number | null
   url?: string | null
   songs_count?: number
   /**

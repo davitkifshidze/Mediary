@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
 import { storageUrl } from '@/lib/api'
 import { useContentLang } from '@/lib/settings'
+import { cardRatings, formatRating } from '@/lib/rating'
 import { PageContainer } from '@/components/ui/page'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
@@ -347,6 +348,7 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
 
   const image = storageUrl(card.image)
   const subtitle = card.subtitle || (card.year ? String(card.year) : null)
+  const ratings = cardRatings(card)
 
   const body = (
     <>
@@ -362,10 +364,16 @@ function PublicCardTile({ card, lang }: { card: PublicCard; lang: 'ka' | 'en' })
           {title}
         </p>
         {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
-        {card.rating != null && (
-          <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Star className="size-3 fill-current" />
-            {card.rating}
+        {/* Tasks §9 — მფლობელის ქულა ვარსკვლავით, მედიაზე TMDB-ის საშუალო ცალკე */}
+        {(ratings.mine != null || ratings.average != null) && (
+          <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+            {ratings.mine != null && (
+              <span className="inline-flex items-center gap-1 text-gold">
+                <Star className="size-3 fill-current" aria-hidden="true" />
+                {formatRating(ratings.mine)}
+              </span>
+            )}
+            {ratings.average != null && <span>TMDB {ratings.average}</span>}
           </p>
         )}
       </div>

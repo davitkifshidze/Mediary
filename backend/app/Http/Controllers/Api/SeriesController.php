@@ -214,7 +214,8 @@ class SeriesController extends Controller
     private function applyData(Series $series, Request $request): void
     {
         // translation ველები (title_*, description_*) ცალკე მუშავდება — იხ. applyTranslations()
-        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'runtime', 'seasons', 'episodes'] as $field) {
+        // Tasks §9 (Q1) — `my_rating` „ჩემი ქულაა", `rating` TMDB-ის საშუალო: ორი სვეტი, ორი აზრი
+        foreach (['year', 'ge_url', 'trailer_url', 'rating', 'my_rating', 'runtime', 'seasons', 'episodes'] as $field) {
             if ($request->has($field)) {
                 $series->{$field} = $request->input($field) ?: null;
             }

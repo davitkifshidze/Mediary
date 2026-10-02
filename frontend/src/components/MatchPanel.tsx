@@ -193,7 +193,8 @@ function MatchItems({ username, domain }: { username: string; domain: MatchDomai
                 {t('matches.you')}: {statusLabel(t, lang, card.domain, card.mine.status, card.mine.rating)}
               </span>
               <span className="block">
-                @{username}: {statusLabel(t, lang, card.domain, card.status ?? null, card.rating ?? null)}
+                {/* Tasks §9 — მედიაზე მეორე მხარის ქულა `my_rating`-ია; `rating` იქ TMDB-ის საშუალოა */}
+                @{username}: {statusLabel(t, lang, card.domain, card.status ?? null, (card.my_rating !== undefined ? card.my_rating : card.rating) ?? null)}
               </span>
             </span>
           </li>

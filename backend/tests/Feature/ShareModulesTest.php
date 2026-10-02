@@ -372,7 +372,7 @@ class ShareModulesTest extends TestCase
     {
         $personal = array_filter([
             'is_favorite' => true,
-            'rating' => ShareDomain::hasPersonalRating($domain) ? 8 : null,
+            ShareDomain::personalRatingKey($domain) => ShareDomain::hasPersonalRating($domain) ? 8 : null,
             'visibility' => 'public',
         ], fn ($v) => $v !== null);
 
@@ -391,7 +391,7 @@ class ShareModulesTest extends TestCase
         $this->assertSame('private', $copy->visibility, 'ხილვადობა მიმღებისაა');
 
         if (ShareDomain::hasPersonalRating($domain)) {
-            $this->assertNull($copy->rating, 'შეფასება გამზიარებლის აზრია');
+            $this->assertNull($copy->{ShareDomain::personalRatingKey($domain)}, 'შეფასება გამზიარებლის აზრია');
         }
 
         if ($copy->getAttribute('url') !== null || in_array($domain, ['video', 'song', 'bookmark'], true)) {

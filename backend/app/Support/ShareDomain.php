@@ -73,17 +73,17 @@ final class ShareDomain
      */
     public const DOMAINS = [
         'movie' => [
-            'module' => 'movie', 'personal_rating' => false, 'status' => 'dictionary',
+            'module' => 'movie', 'personal_rating' => true, 'status' => 'dictionary',
             'classifier' => ['relation' => 'genres', 'model' => Genre::class, 'field' => 'genres', 'multi' => true, 'global' => true],
             'photo' => 'poster',
         ],
         'series' => [
-            'module' => 'series', 'personal_rating' => false, 'status' => 'dictionary',
+            'module' => 'series', 'personal_rating' => true, 'status' => 'dictionary',
             'classifier' => ['relation' => 'genres', 'model' => Genre::class, 'field' => 'genres', 'multi' => true, 'global' => true],
             'photo' => 'poster',
         ],
         'anime' => [
-            'module' => 'anime', 'personal_rating' => false, 'status' => 'dictionary',
+            'module' => 'anime', 'personal_rating' => true, 'status' => 'dictionary',
             'classifier' => ['relation' => 'genres', 'model' => Genre::class, 'field' => 'genres', 'multi' => true, 'global' => true],
             'photo' => 'poster',
         ],
@@ -172,6 +172,16 @@ final class ShareDomain
     public static function hasPersonalRating(string $domain): bool
     {
         return self::DOMAINS[$domain]['personal_rating'] ?? false;
+    }
+
+    /**
+     * რომელ ბარათის ველშია მფლობელის **საკუთარი** ქულა (Tasks §9, Q1):
+     * მედიაზე `my_rating` (ბარათის `rating` TMDB-ის საშუალოა და საჯარო
+     * ფაქტია), დანარჩენზე `rating`.
+     */
+    public static function personalRatingKey(string $domain): string
+    {
+        return Rating::column($domain);
     }
 
     /** „რჩეული" (`is_favorite`) — პლეილისტს არ აქვს */

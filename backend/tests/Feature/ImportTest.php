@@ -135,7 +135,9 @@ class ImportTest extends TestCase
         $this->assertSame(2, Movie::withoutGlobalScope('owner')->count());
 
         $movie = Movie::withoutGlobalScope('owner')->where('tmdb_id', 603)->firstOrFail();
-        $this->assertSame('9.0', (string) $movie->rating);
+        // Tasks §9 — Letterboxd-ის ქულა „ჩემი ქულაა" (`my_rating`); TMDB-ის `rating` ხელუხლებელია
+        $this->assertSame(9, $movie->my_rating);
+        $this->assertNull($movie->rating);
         // Letterboxd-ის `watched.csv` განსაზღვრებით ნანახია → `role = done`
         $this->assertSame('done', $movie->status_role);
         // ფაილის თარიღი და არა „ახლა"

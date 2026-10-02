@@ -13,6 +13,7 @@ use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
 use App\Support\Like;
 use App\Support\MissingCredential;
+use App\Support\Rating;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use App\Support\VideoUrl;
@@ -325,7 +326,7 @@ class GameController extends Controller
 
             'opencritic' => ['nullable', 'integer', 'min:0', 'max:100'],
             'users_score' => ['nullable', 'numeric', 'min:0', 'max:5'],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:'.Game::MAX_RATING],
+            'rating' => Rating::rules(),
 
             'links' => ['nullable', 'array', 'max:10'],
             'links.*.label' => ['nullable', 'string', 'max:60'],

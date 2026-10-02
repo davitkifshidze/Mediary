@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTrash;
@@ -31,9 +32,6 @@ class BoardGame extends Model
      */
     use HasTrash;
 
-    /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
-    public const MAX_RATING = 10;
-
     /* ⚠️ Tasks §12 — **სტატუსი არ აქვს** (შენი სიტყვები: „სტატუსიც საერთოდ
        ამოიღე, საჭირო არ არის"). კოლექციაში მყოფი თამაში ისედაც „მაქვს"-ია;
        ამიტომ წავიდა შეძენის თარიღიც (`acquired_at`, Q10) და მისი
@@ -52,7 +50,7 @@ class BoardGame extends Model
         'complexity' => 'float',
         'bgg_id' => 'integer',
         'bgg_rating' => 'float',
-        'rating' => 'integer',
+        'rating' => RatingCast::class,
         'is_favorite' => 'boolean',
         'links' => 'array',
         'sort_order' => 'integer',

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, Plus, Store, X } from 'lucide-react'
 import {
-  BOARD_GAME_MAX_RATING,
   createBoardGame,
   fetchBggCandidates,
   fetchBggDraft,
@@ -43,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
-import { RatingSelect } from '@/components/ui/rating-select'
+import { StarRating } from '@/components/ui/star-rating'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
@@ -536,9 +535,8 @@ export function BoardGameForm({
 
           {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
           <FormField size="half" {...fields.field('rating')} htmlFor="bg-rating" error={errors.rating}>
-            <RatingSelect
+            <StarRating
               id="bg-rating"
-              max={BOARD_GAME_MAX_RATING}
               value={form.rating}
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}

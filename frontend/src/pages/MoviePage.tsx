@@ -29,6 +29,7 @@ import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { RatingStars } from '@/components/ui/star-rating'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
 import { cn } from '@/lib/utils'
@@ -203,9 +204,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     {m.episodes ? ` · ${t('detail.episodes', { count: m.episodes })}` : ''}
                   </span>
                 ) : null}
+                {/* Tasks §9 (Q1) — ჩემი ქულა ვარსკვლავებით და „4.6 / 10"; TMDB-ის საშუალო ცალკე, `i`-ით */}
+                <RatingStars value={m.my_rating} />
                 {m.rating && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-status-towatch/15 px-2 py-0.5 font-semibold text-status-towatch">
-                    ★ {m.rating}
+                  <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-muted-foreground">
+                    TMDB {m.rating}
+                    <InfoHint info={t('rating.tmdbAverage')} />
                   </span>
                 )}
                 {m.imdb_url && (

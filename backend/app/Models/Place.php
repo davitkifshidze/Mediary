@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
@@ -51,9 +52,6 @@ class Place extends Model
 
     public const FILE_KINDS = ['image', 'doc'];
 
-    /** „ჩემი შეფასების" შკალა (Tasks §25.2) — წიგნის, თამაშის, სამაგიდოსა და სიმღერის იგივე */
-    public const MAX_RATING = 10;
-
     protected $guarded = ['id'];
 
     protected $casts = [
@@ -63,8 +61,8 @@ class Place extends Model
            „ეს ორი ერთი ადგილია?" პასუხგაუცემელი ხდებოდა. */
         'lat' => 'decimal:7',
         'lng' => 'decimal:7',
-        // Tasks §25.2 — მთელი რიცხვი 1–10 (ადრე `decimal:1`, 0–10)
-        'rating' => 'integer',
+        // Tasks §9 — „ჩემი ქულა" 0–10 მეათედებით, ყველა მოდულის ერთი შკალა (`Rating`)
+        'rating' => RatingCast::class,
         'is_favorite' => 'boolean',
         'visited_at' => 'date',
         'sort_order' => 'integer',

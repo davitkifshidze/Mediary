@@ -206,6 +206,7 @@ describe('MovieFormPage — sync on the edit form', () => {
       description_ka: null,
       description_en: null,
       rating: null,
+      my_rating: null,
       runtime: null,
       genres: [],
       status: null,

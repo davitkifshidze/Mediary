@@ -19,7 +19,7 @@ export interface ShareDomainMeta {
   multi: boolean
   /** მედიის გლობალური ჟანრი (slug); დანარჩენზე — მფლობელის ლექსიკონის id */
   global: boolean
-  /** მფლობელის **საკუთარი** შეფასება (`ShareDomain::personal_rating`) */
+  /** მფლობელის **საკუთარი** შეფასება (`ShareDomain::personal_rating`); მედიაზე ეს `my_rating`-ია (Tasks §9) */
   personalRating: boolean
   /** „რჩეული" (`is_favorite`) — პლეილისტს არ აქვს */
   favorite: boolean
@@ -41,9 +41,9 @@ export interface ShareDomainMeta {
  * ⚠️ `satisfies` ყოველ დომენს ითხოვს — ახალი დომენი აქ ჩაუწერლად `tsc`-ს აწითლებს.
  */
 export const SHARE_DOMAIN_META = {
-  movie: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'movie', shape: 'poster', listKeys: ['movie'] },
-  series: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'series', shape: 'poster', listKeys: ['series'] },
-  anime: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'anime', shape: 'poster', listKeys: ['anime'] },
+  movie: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: true, favorite: true, module: 'movie', shape: 'poster', listKeys: ['movie'] },
+  series: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: true, favorite: true, module: 'series', shape: 'poster', listKeys: ['series'] },
+  anime: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: true, favorite: true, module: 'anime', shape: 'poster', listKeys: ['anime'] },
   game: { status: 'enum', classifier: 'genre', multi: true, global: false, personalRating: true, favorite: true, module: 'game', shape: 'poster', listKeys: ['games'] },
   book: { status: 'enum', classifier: 'genre', multi: false, global: false, personalRating: true, favorite: true, module: 'book', shape: 'poster', listKeys: ['books'] },
   board_game: { status: null, classifier: 'genre', multi: false, global: false, personalRating: true, favorite: true, module: 'board_game', shape: 'poster', listKeys: ['board-games'] },

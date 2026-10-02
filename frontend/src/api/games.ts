@@ -13,9 +13,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    read-only ველია და ფორმაში არ იგზავნება.
    ============================================================ */
 
-/** „ჩემი ქულის" ჭერი — იგივე რიცხვი `Game::MAX_RATING`-შია */
-export const GAME_MAX_RATING = 10
-
 /** Tasks §13 — გასავლელი · ვთამაშობ · დახურული (`finished` — გასაღები რჩება) */
 export const GAME_STATUSES = ['to_play', 'playing', 'finished'] as const
 export type GameStatus = (typeof GAME_STATUSES)[number]

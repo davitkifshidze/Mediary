@@ -9,9 +9,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    ინგლისურია. იგივე გადაწყვეტილებაა, რაც ვიდეოსა და სიმღერაზე.
    ============================================================ */
 
-/** „ჩემი ქულის" ჭერი — იგივე რიცხვი `BoardGame::MAX_RATING`-შია */
-export const BOARD_GAME_MAX_RATING = 10
-
 /** მაქვს · მინდა · ვთამაშობ · გავყიდე */
 
 export interface BoardGameLink {

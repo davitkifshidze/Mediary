@@ -10,6 +10,7 @@ use App\Services\BoardGames\GeorgianShops;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
+use App\Support\Rating;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
@@ -245,7 +246,7 @@ class BoardGameController extends Controller
             ],
             'bgg_rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
 
-            'rating' => ['nullable', 'integer', 'min:1', 'max:'.BoardGame::MAX_RATING],
+            'rating' => Rating::rules(),
             'is_favorite' => ['nullable', 'boolean'],
 
             // მაღაზიები: ფასი **ბმულზეა** და არა ჩანაწერზე (ორი მაღაზია, ორი ფასი)

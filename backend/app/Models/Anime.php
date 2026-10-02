@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCastMembers;
 use App\Models\Concerns\HasCustomFields;
@@ -66,6 +67,8 @@ class Anime extends Model
         'tmdb_id' => 'integer',
         'ge_id' => 'integer',
         'rating' => 'decimal:1',
+        // Tasks §9 (Q1) — „ჩემი ქულა" ცალკე სვეტშია; `rating` TMDB-ის საშუალოა
+        'my_rating' => RatingCast::class,
         'runtime' => 'integer',
         'seasons' => 'integer',
         'episodes' => 'integer',

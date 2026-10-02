@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
@@ -43,9 +44,6 @@ class Book extends Model
      */
     use TracksCompletion;
 
-    /** „ჩემი ქულის" შკალა — ერთი წყარო ვალიდაციისთვისაც და UI-სთვისაც */
-    public const MAX_RATING = 10;
-
     public const FORMATS = ['print', 'ebook', 'audio'];
 
     public const STATUSES = ['to_read', 'reading', 'read', 'abandoned'];
@@ -56,7 +54,7 @@ class Book extends Model
         'year' => 'integer',
         'pages' => 'integer',
         'series_number' => 'integer',
-        'rating' => 'integer',
+        'rating' => RatingCast::class,
         'is_favorite' => 'boolean',
         'progress_page' => 'integer',
         'progress_percent' => 'integer',

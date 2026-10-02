@@ -497,6 +497,12 @@
       "media": "Media"
     }
   },
+  "rating": {
+    "mine": "My rating",
+    "tmdbAverage": "TMDB average",
+    "clear": "Clear the rating",
+    "setTo": "Rate {{value}} / 10"
+  },
   "detail": {
     "watch": "Watch",
     "cast": "Cast",
@@ -3917,7 +3923,7 @@
     "showStatus": "My status",
     "showStatusHint": "Show your status on the card — for example “Watched” or “To watch”.",
     "showRating": "My rating",
-    "showRatingHint": "Show your own rating on the card — for games, books, board games, places and songs.",
+    "showRatingHint": "Show your own rating on the card — for movies, series, anime, games, books, board games, places and songs. TMDB's average stays visible either way.",
     "name": "Name",
     "nameHint": "Only for you — to tell links apart in the list. The recipient never sees it.",
     "namePlaceholder": "e.g. for Nino",

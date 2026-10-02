@@ -17,6 +17,7 @@ import { useSettings } from '@/lib/settings'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
+import { StarRating } from '@/components/ui/star-rating'
 import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -61,7 +62,8 @@ const EMPTY = {
   trailer_url: '',
   description_ka: '',
   description_en: '',
-  rating: '',
+  /** Tasks §9 (Q1) — „ჩემი ქულა" (`my_rating`); TMDB-ის `rating`-ს ფორმა აღარ ეხება */
+  my_rating: null as number | null,
   // §2.5 — ხანგრძლივობა **წუთებში** (`movies.runtime`), `DurationInput`-ით
   runtime: '',
   genres: [] as string[],
@@ -125,7 +127,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       trailer_url: m.trailer_url ?? '',
       description_ka: m.description_ka ?? '',
       description_en: m.description_en ?? '',
-      rating: m.rating ?? '',
+      my_rating: m.my_rating ?? null,
       runtime: m.runtime ? String(m.runtime) : '',
       genres: m.genres.map((g) => g.slug),
       status: m.status?.key ?? '',
@@ -147,7 +149,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
     if (form.trailer_url) fd.append('trailer_url', form.trailer_url)
     fd.append('description_ka', form.description_ka)
     fd.append('description_en', form.description_en)
-    if (form.rating) fd.append('rating', form.rating)
+    // Tasks §9 — ჩემი ქულა ყოველთვის იგზავნება: ცარიელი სტრიქონი = წაშლა (`Rating::normalize()`)
+    fd.append('my_rating', form.my_rating == null ? '' : String(form.my_rating))
     if (form.runtime) fd.append('runtime', form.runtime)
     // ცარიელი გასაღები საერთოდ არ იგზავნება — backend ნაგულისხმევს დაუყენებს
     if (form.status) fd.append('status', form.status)
@@ -171,7 +174,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
       title_ka: d.title_ka ?? f.title_ka,
       year: d.year ? String(d.year) : f.year,
       imdb_id: d.imdb_id ?? f.imdb_id,
-      rating: d.rating != null ? String(d.rating) : f.rating,
       description_en: d.description_en ?? f.description_en,
       description_ka: d.description_ka ?? f.description_ka,
       genres: d.genres
@@ -311,7 +313,6 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         title_en: mv.title_en ?? f.title_en,
         year: mv.year ? String(mv.year) : f.year,
         imdb_id: mv.imdb_id ?? f.imdb_id,
-        rating: mv.rating != null ? String(mv.rating) : f.rating,
         description_ka: mv.description_ka ?? f.description_ka,
         description_en: mv.description_en ?? f.description_en,
         genres: mv.genres.map((g) => g.slug),
@@ -490,17 +491,19 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                   <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
                     {fields.label('rating')}
                   </FieldLabel>
-                  <Input
+                  {/* Tasks §9 (Q1) — ვარსკვლავები `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
+                  <StarRating
                     id="m-rating"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="10"
-                    placeholder={fields.placeholder('rating')}
-                    value={form.rating}
-                    onChange={(e) => set('rating', e.target.value)}
+                    value={form.my_rating}
+                    invalid={!!errors.my_rating}
+                    onChange={(my_rating) => setForm((f) => ({ ...f, my_rating }))}
                   />
-                  {errors.rating && <p className="mt-1 text-xs text-destructive">{errors.rating[0]}</p>}
+                  {movieQ.data?.rating && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('rating.tmdbAverage')}: {movieQ.data.rating}
+                    </p>
+                  )}
+                  {errors.my_rating && <p className="mt-1 text-xs text-destructive">{errors.my_rating[0]}</p>}
                 </div>
               )}
             </div>

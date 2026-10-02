@@ -12,7 +12,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import {
-  PLACE_MAX_RATING,
   PLACE_STATUSES,
   createPlace,
   deletePlace,
@@ -52,7 +51,7 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
-import { Badge } from '@/components/ui/badge'
+import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -60,7 +59,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
-import { RatingSelect } from '@/components/ui/rating-select'
+import { StarRating } from '@/components/ui/star-rating'
 import { ModalShell } from '@/components/ui/modal-shell'
 import {
   QuickFill,
@@ -368,11 +367,7 @@ export function PlacesPage() {
                           {place.name}
                         </button>
                         <EnumStatusBadge domain="place" status={place.status} />
-                        {place.rating != null && (
-                          <Badge className="bg-secondary tabular-nums">
-                            {place.rating}/{PLACE_MAX_RATING}
-                          </Badge>
-                        )}
+                        <RatingBadge value={place.rating} />
                         <VisibilityBadge value={place.visibility} />
                       </div>
 
@@ -856,9 +851,8 @@ function PlaceForm({
 
           {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
           <FormField size="quarter" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
-            <RatingSelect
+            <StarRating
               id="p-rating"
-              max={PLACE_MAX_RATING}
               value={form.rating}
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}

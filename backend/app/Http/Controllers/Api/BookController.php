@@ -10,6 +10,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Lang;
 use App\Support\Like;
+use App\Support\Rating;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -282,7 +283,7 @@ class BookController extends Controller
 
             'format' => ['nullable', Rule::in(Book::FORMATS)],
             'status' => [...$must, Rule::in(Book::STATUSES)],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:'.Book::MAX_RATING],
+            'rating' => Rating::rules(),
             'is_favorite' => ['nullable', 'boolean'],
             'progress_page' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'progress_percent' => ['nullable', 'integer', 'min:0', 'max:100'],

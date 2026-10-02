@@ -15,6 +15,7 @@ use App\Services\Tmdb\TmdbClient;
 use App\Support\AppTime;
 use App\Support\ImportSource;
 use App\Support\MediaDuplicate;
+use App\Support\Rating;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Throwable;
@@ -162,7 +163,7 @@ class RowImporter
             $book->cover_url = "https://covers.openlibrary.org/b/id/{$coverId}-L.jpg";
         }
 
-        $this->applyRating($book, $row, 10);
+        $this->applyRating($book, $row);
         $book->save();
 
         return ['ok' => true, 'skipped' => false, 'error' => null, 'id' => $book->id, 'title' => $book->title_en];
@@ -216,14 +217,15 @@ class RowImporter
     /**
      * შეფასება — უკვე 1–10-ზეა გადაყვანილი (`ImportSource::rating()`).
      *
-     * ⚠️ `$decimals = 0` წიგნზე, რადგან `books.rating` **integer**-ია;
-     * ფილმზე კი `decimal:1`. ერთი მრგვალება ორივეზე ან ნახევარვარსკვლავს
-     * კარგავდა, ან ბაზაში ჩუმად იჭრებოდა.
+     * ⚠️ Tasks §9 — Letterboxd-ის/IMDb-ის „შენი ქულა" ფილმზე **`my_rating`**-ში
+     * ჯდება და არა `rating`-ში: ის TMDB-ის საშუალოა და იმპორტი მას არ
+     * უნდა გადაწერდეს. წიგნის `rating` ახლა `decimal(3,1)`-ია, ე.ი. აღარც
+     * მრგვალდება (`RatingCast` მეათედამდე ინახავს).
      */
-    private function applyRating(Movie|Book $record, array $row, int $decimals = 1): void
+    private function applyRating(Movie|Book $record, array $row): void
     {
         if ($row['rating'] !== null) {
-            $record->rating = $decimals === 0 ? (int) round((float) $row['rating']) : (float) $row['rating'];
+            $record->{Rating::columnFor($record)} = (float) $row['rating'];
         }
     }
 

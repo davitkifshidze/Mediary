@@ -280,9 +280,9 @@ export function ShareLinkDialog({
                 <span className="block text-xs text-muted-foreground">{t('share.showStatusHint')}</span>
               </span>
             </label>
-            {/* ⚠️ „ჩემი შეფასება" მხოლოდ თამაშს, წიგნს, სამაგიდოს, ადგილსა და
-                სიმღერას აქვს (`ShareDomain::personal_rating`): მედიის `rating`
-                TMDB-ის ქულაა და არა შენი, ე.ი. იქ გადამრთველი არაფერს შეცვლიდა. */}
+            {/* ⚠️ „ჩემი შეფასება" — `ShareDomain::personal_rating`: მედიაზე ეს `my_rating`-ია
+                (Tasks §9), ბარათის `rating` კი TMDB-ის ქულაა და გადამრთველი მას არ ეხება;
+                პლეილისტს, ვიდეოს, ბუკმარკსა და კურსს საკუთარი ქულა არ აქვს. */}
             {ratingRelevant && (
               <label className="flex cursor-pointer items-start gap-2.5 text-sm">
                 <Checkbox checked={showRating} onCheckedChange={(v) => setShowRating(v === true)} className="mt-0.5" />

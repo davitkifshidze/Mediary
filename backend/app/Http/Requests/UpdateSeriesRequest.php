@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Status;
 use App\Support\PublicDomain;
+use App\Support\Rating;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -43,6 +44,8 @@ class UpdateSeriesRequest extends FormRequest
             'description_ka' => ['nullable', 'string'],
             'description_en' => ['nullable', 'string'],
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            // Tasks §9 — „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
+            'my_rating' => Rating::rules(),
             'runtime' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'seasons' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'episodes' => ['nullable', 'integer', 'min:1', 'max:100000'],

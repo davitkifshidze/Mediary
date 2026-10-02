@@ -419,7 +419,10 @@ final class PublicDomain
                 // §6.4 — ობიექტი: სახელი **მფლობელის** ლექსიკონშია და უცხო
                 // მნახველი მას სხვაგვარად ვერსად წაიკითხავდა
                 'status' => StatusResource::brief($record->status),
+                // Tasks §9 (Q1) — `rating` TMDB-ის საშუალოა, `my_rating` მფლობელის ქულა;
+                // კატალოგის `rating` ველის დამალვა ორივეს მალავს (`DERIVED`)
                 'rating' => $record->rating,
+                'my_rating' => $record->my_rating,
             ],
             'game' => [
                 'title_ka' => $record->title_ka,
@@ -579,5 +582,7 @@ final class PublicDomain
      */
     private const DERIVED = [
         'url' => ['embed_url'],
+        // Tasks §9 — მედიის „ჩემი ქულა" იმავე კატალოგის ველს ეკუთვნის, რასაც TMDB-ის საშუალო
+        'rating' => ['my_rating'],
     ];
 }

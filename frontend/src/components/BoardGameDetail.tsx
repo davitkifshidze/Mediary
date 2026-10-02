@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dices, Download, FileText, Trash2, Upload, Users } from 'lucide-react'
 import {
-  BOARD_GAME_MAX_RATING,
   createBoardGameNote,
   deleteBoardGameFile,
   deleteBoardGameNote,
@@ -21,7 +20,7 @@ import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { Badge } from '@/components/ui/badge'
+import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -67,11 +66,8 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
           fallback={<Dices className="size-8 text-muted-foreground" />}
           badges={
             <>
-              {game.rating != null && (
-                <Badge className="bg-secondary tabular-nums">
-                  {game.rating}/{BOARD_GAME_MAX_RATING}
-                </Badge>
-              )}
+              {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
+              <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
               <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />

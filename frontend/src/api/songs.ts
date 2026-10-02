@@ -12,9 +12,6 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
    ხანგრძლივობა · ტეგები · ჩემი ქულა.
    ============================================================ */
 
-/** „ჩემი ქულის" ჭერი — იგივე რიცხვი `Song::MAX_RATING`-შია */
-export const SONG_MAX_RATING = 10
-
 export interface Song {
   id: number
   title: string

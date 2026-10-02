@@ -5,7 +5,6 @@ import { Plus } from 'lucide-react'
 import {
   BOOK_FORMATS,
   BOOK_LANGUAGES,
-  BOOK_MAX_RATING,
   BOOK_STATUSES,
   createBook,
   fetchBookCandidates,
@@ -42,7 +41,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
-import { RatingSelect } from '@/components/ui/rating-select'
+import { StarRating } from '@/components/ui/star-rating'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 
 /* ============================================================
@@ -465,9 +464,8 @@ export function BookForm({
 
           {/* Tasks §25.4 — „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
           <FormField size="third" {...fields.field('rating')} htmlFor="b-rating" error={errors.rating}>
-            <RatingSelect
+            <StarRating
               id="b-rating"
-              max={BOOK_MAX_RATING}
               value={form.rating}
               invalid={!!errors.rating}
               onChange={(rating) => setForm((f) => ({ ...f, rating }))}
