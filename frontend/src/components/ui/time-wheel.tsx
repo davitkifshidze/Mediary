@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { WheelPicker, WheelPickerWrapper, type WheelPickerOption } from '@ncdai/react-wheel-picker'
 import '@ncdai/react-wheel-picker/style.css'
@@ -69,6 +69,9 @@ export function TimeWheelPopover({
   onConfirm,
   children,
   align = 'start',
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  autoFocus = true,
 }: {
   /** რით გაიხსნას; ცარიელზე — `fallback` */
   value: string | null
@@ -77,26 +80,43 @@ export function TimeWheelPopover({
   /** ტრიგერი (`asChild`) — ღილაკი ან ხატულა */
   children: ReactNode
   align?: 'start' | 'center' | 'end'
+  /**
+   * Tasks §4 — ⚠️ **ღია მდგომარეობა გარედანაც იმართება**: `TimePicker` ბორბლებს
+   * ველზე დაჭერითაც ხსნის, ტრიგერი კი ისევ საათის ხატულაა. გარეშე — ძველებურად, შიგნით.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /**
+   * ⚠️ `false` — ფოკუსი popover-ში **არ** გადადის. ველიდან გახსნისას react-aria-ს
+   * სეგმენტებს ფოკუსი რომ წაერთვას, აკრეფა გაწყდებოდა; ხატულიდან გახსნისას კი
+   * ფოკუსი ბორბლებს სჭირდება (კლავიატურა, Enter).
+   */
+  autoFocus?: boolean
 }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [innerOpen, setInnerOpen] = useState(false)
+  const open = openProp ?? innerOpen
   const [hour, setHour] = useState(9)
   const [minute, setMinute] = useState(0)
 
+  /* ⚠️ ყოველ გახსნაზე ველის ახლანდელი მნიშვნელობიდან იწყება — წინა გაუქმებული
+     ტრიალი არ უნდა „დაბრუნდეს". ეფექტია და არა `onOpenChange`-ის შიგნით, რადგან
+     კონტროლირებულ რეჟიმში გახსნა მშობლისგან მოდის და Radix-ის callback-ს არ გაივლის. */
+  useEffect(() => {
+    if (!open) return
+    const [h, m] = parseClock(value) ?? parseClock(fallback) ?? [9, 0]
+    setHour(h)
+    setMinute(m)
+  }, [open, value, fallback])
+
   const onOpenChange = (next: boolean) => {
-    if (next) {
-      // ⚠️ ყოველ გახსნაზე ველის ახლანდელი მნიშვნელობიდან იწყება — წინა
-      // გაუქმებული ტრიალი არ უნდა „დაბრუნდეს"
-      const [h, m] = parseClock(value) ?? parseClock(fallback) ?? [9, 0]
-      setHour(h)
-      setMinute(m)
-    }
-    setOpen(next)
+    if (openProp === undefined) setInnerOpen(next)
+    onOpenChangeProp?.(next)
   }
 
   const confirm = () => {
     onConfirm(`${pad(hour)}:${pad(minute)}`)
-    setOpen(false)
+    onOpenChange(false)
   }
 
   /* Enter — დადასტურება (ბორბლებზეც). ⚠️ `preventDefault` — თორემ ფოკუსში
@@ -116,6 +136,7 @@ export function TimeWheelPopover({
           align={align}
           sideOffset={4}
           onKeyDown={onKeyDown}
+          onOpenAutoFocus={autoFocus ? undefined : (e) => e.preventDefault()}
           className={cn(
             LAYER_POPUP,
             'fb-content w-52 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl focus:outline-none',

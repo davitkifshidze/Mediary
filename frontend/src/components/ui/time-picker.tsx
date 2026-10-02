@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { DateInput, DateSegment, TimeField } from 'react-aria-components'
 import { Time } from '@internationalized/date'
 import { useTranslation } from 'react-i18next'
@@ -67,38 +67,65 @@ export function TimePicker({
 
   const emit = (next: Time | null) => onChange(next ? `${pad(next.hour)}:${pad(next.minute)}` : null)
 
+  /* Tasks §4 — ⚠️ **ბორბლები ველზე დაჭერითაც იხსნება**, არა მხოლოდ საათის
+     ხატულით (შენი შენიშვნა). ღია მდგომარეობა აქ არის, popover-ი კი ხატულასთან
+     რჩება მიმაგრებული. ველიდან გახსნისას ფოკუსი სეგმენტებს რჩება (`autoFocus`
+     false), რომ აკრეფა არ გაწყდეს — ხატულიდან კი ბორბლებზე გადადის.
+
+     ⚠️ `wasOpenAtPointerDown`: ღია popover-ზე ველზე დაჭერა Radix-ისთვის „გარეთ
+     დაჭერაა" და მას `pointerdown`-ზევე ხურავს; ჩვენი `click` მის შემდეგ მოდის და
+     იმავე წამს ისევ გახსნიდა — ციმციმი. ამიტომ ვიმახსოვრებთ, ღია იყო თუ არა
+     დაჭერის მომენტში, და მაშინ არაფერს ვაკეთებთ. */
+  const [wheelOpen, setWheelOpen] = useState(false)
+  const openedFromField = useRef(false)
+  const wasOpenAtPointerDown = useRef(false)
+
+  const openFromField = () => {
+    if (compact || wasOpenAtPointerDown.current) return
+    openedFromField.current = true
+    setWheelOpen(true)
+  }
+
   return (
     <div
       className={cn(
         'inline-flex h-10 items-center gap-1 rounded-md border border-input bg-transparent px-2',
         className,
       )}
+      onPointerDownCapture={() => {
+        wasOpenAtPointerDown.current = wheelOpen
+      }}
     >
-      <TimeField
-        id={id}
-        aria-label={ariaLabel ?? t('dates.time')}
-        value={time}
-        onChange={(v) => emit(v ? new Time(v.hour, v.minute) : null)}
-        /* ⚠️ 24-საათიანი ციკლი ცხადადაა მითითებული: აპში ყველგან `09:00`
-           წერია, ბრაუზერის ლოკალი კი AM/PM-ს მოიტანდა და ერთ ეკრანზე
-           ორი ფორმატი აღმოჩნდებოდა. */
-        hourCycle={24}
-        granularity="minute"
-        shouldForceLeadingZeros
-      >
-        <DateInput className="flex items-center text-sm tabular-nums">
-          {(segment) => (
-            <DateSegment
-              segment={segment}
-              className={cn(
-                'rounded-[3px] px-0.5 outline-none tabular-nums',
-                'data-[focused]:bg-primary data-[focused]:text-primary-foreground',
-                'data-[placeholder]:text-muted-foreground',
-              )}
-            />
-          )}
-        </DateInput>
-      </TimeField>
+      {/* ⚠️ მხოლოდ ველია დასაჭერი ზონა — გასუფთავების ჯვარი და ხატულა არა.
+          `onClickCapture` და არა `onClick`: react-aria-ს სეგმენტი (`usePress`) click-ის
+          გავრცელებას აჩერებს და bubble-ფაზაში ჩვენამდე არ მოაღწევდა. */}
+      <div className={cn('flex items-center', !compact && 'cursor-pointer')} onClickCapture={openFromField}>
+        <TimeField
+          id={id}
+          aria-label={ariaLabel ?? t('dates.time')}
+          value={time}
+          onChange={(v) => emit(v ? new Time(v.hour, v.minute) : null)}
+          /* ⚠️ 24-საათიანი ციკლი ცხადადაა მითითებული: აპში ყველგან `09:00`
+             წერია, ბრაუზერის ლოკალი კი AM/PM-ს მოიტანდა და ერთ ეკრანზე
+             ორი ფორმატი აღმოჩნდებოდა. */
+          hourCycle={24}
+          granularity="minute"
+          shouldForceLeadingZeros
+        >
+          <DateInput className="flex items-center text-sm tabular-nums">
+            {(segment) => (
+              <DateSegment
+                segment={segment}
+                className={cn(
+                  'rounded-[3px] px-0.5 outline-none tabular-nums',
+                  'data-[focused]:bg-primary data-[focused]:text-primary-foreground',
+                  'data-[placeholder]:text-muted-foreground',
+                )}
+              />
+            )}
+          </DateInput>
+        </TimeField>
+      </div>
 
       {clearable && value && (
         <button
@@ -112,7 +139,17 @@ export function TimePicker({
       )}
 
       {!compact && (
-        <TimeWheelPopover value={value} onConfirm={(v) => onChange(v)} align="end">
+        <TimeWheelPopover
+          value={value}
+          onConfirm={(v) => onChange(v)}
+          align="end"
+          open={wheelOpen}
+          onOpenChange={(next) => {
+            if (!next) openedFromField.current = false
+            setWheelOpen(next)
+          }}
+          autoFocus={!openedFromField.current}
+        >
           <button
             type="button"
             aria-label={t('dates.pickTime')}

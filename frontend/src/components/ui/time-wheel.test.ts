@@ -138,4 +138,44 @@ describe('TimeWheelPopover', () => {
     expect(onChange).toHaveBeenCalledWith('10:15')
     expect(confirmButton()).toBeFalsy()
   })
+
+  /* Tasks §4 — ველზე დაჭერაც ხსნის ბორბლებს; ფოკუსი სეგმენტებს რჩება, რომ
+     აკრეფა არ გაწყდეს; დადასტურება ისევ ველის მნიშვნელობას წერს და ხურავს. */
+  it('clicking the time field itself opens the wheels and keeps the focus in the field (§4)', async () => {
+    const onChange = vi.fn()
+    await mount(onChange, () => {})
+
+    const segment = document.querySelector<HTMLElement>('[role="spinbutton"]')!
+    expect(segment).toBeTruthy()
+
+    await act(async () => {
+      segment.focus()
+      segment.click()
+    })
+    await flush()
+
+    expect(confirmButton(), 'ბორბლები ველიდან გაიხსნა').toBeTruthy()
+    // ფოკუსი popover-ში არ გადასულა
+    const popover = confirmButton()!.closest('.fb-content')
+    expect(popover?.contains(document.activeElement)).toBe(false)
+
+    await act(async () => confirmButton()!.click())
+    await flush()
+
+    expect(onChange).toHaveBeenCalledWith('10:15')
+    expect(confirmButton()).toBeFalsy()
+  })
+
+  it('the clock button still toggles the wheels after a field-opened session', async () => {
+    await mount(() => {}, () => {})
+
+    await act(async () => document.querySelector<HTMLElement>('[role="spinbutton"]')!.click())
+    await flush()
+    await act(async () => confirmButton()!.click())
+    await flush()
+
+    await act(async () => clockButton()!.click())
+    await flush()
+    expect(confirmButton()).toBeTruthy()
+  })
 })
