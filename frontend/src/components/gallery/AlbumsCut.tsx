@@ -6,12 +6,15 @@ import {
   deleteGalleryAlbum,
   fetchGalleryAlbums,
   fetchGalleryGroups,
+  reorderGalleryAlbums,
   lockGalleryAlbum,
   type GalleryAlbum,
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
 import { useDeleteGroupPhotos } from '@/lib/galleryDelete'
 import { formatBytes } from '@/lib/utils'
+import { sortByIds } from '@/lib/reorder'
+import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -88,6 +91,19 @@ export function AlbumsCut() {
     ['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums'].forEach(
       (key) => qc.invalidateQueries({ queryKey: [key] }),
     )
+
+  /* Tasks §11 — ალბომების რიგი drag & drop-ით (API `reorderGalleryAlbums` უკვე იყო, UI — არა);
+     ოპტიმისტურად ჯგუფების ქეშში, პასუხი ალბომების სიას ანახლებს */
+  const reorderAlbums = useMutation({
+    mutationFn: reorderGalleryAlbums,
+    onMutate: (ids) =>
+      qc.setQueryData<typeof groups>(['gallery-groups', 'album', {}], (old) =>
+        old ? sortByIds(old, ids, (g) => g.id) : old,
+      ),
+    onSuccess: (next) => qc.setQueryData(['gallery-albums'], next),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['gallery-groups'] }),
+  })
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteGalleryAlbum(id),
@@ -210,6 +226,7 @@ export function AlbumsCut() {
         />
       ) : (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <Sortable ids={groups.map((g) => g.id)} layout="grid" onReorder={(ids) => reorderAlbums.mutate(ids)}>
           {groups.map((group) => {
             const album = albumOf(group.id)
             const locked = !!group.locked && !group.unlocked
@@ -218,7 +235,7 @@ export function AlbumsCut() {
             const filters = { owner: `album:${group.id}` }
 
             return (
-              <li key={`album:${group.id}`}>
+              <SortableItem key={`album:${group.id}`} id={group.id}>
                 <PhotoStack
                   title={titleOf(group.id)}
                   label={`${t('gallery.photos', { count: group.photos })} · ${formatBytes(group.bytes)}`}
@@ -367,9 +384,10 @@ export function AlbumsCut() {
                     </>
                   }
                 />
-              </li>
+              </SortableItem>
             )
           })}
+        </Sortable>
         </ul>
       )}
 

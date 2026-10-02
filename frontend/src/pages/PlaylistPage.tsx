@@ -16,13 +16,12 @@ import { fetchPlaylist, setPlaylistSongs, type Playlist } from '@/api/playlists'
 import { fetchSongs } from '@/api/songs'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
-import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
+import { moveWithin, sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
-import { cn } from '@/lib/utils'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { DragHandle } from '@/components/ui/drag-handle'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import { Label } from '@/components/ui/label'
 import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -79,14 +78,28 @@ export function PlaylistPage() {
 
   const save = useMutation({
     mutationFn: (ids: number[]) => setPlaylistSongs(playlistId, ids),
+    /* Tasks §11 — ოპტიმისტურად: სიმღერა ჩაშვებისთანავე თავის ადგილზე დგება (აქამდე მხოლოდ
+       პასუხზე ხტებოდა). ⚠️ ჯერ მიმდინარე ჩამოტვირთვა ჩერდება, თორემ ძველი რიგი ახალს დააწერდა. */
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: ['playlists', playlistId] })
+      qc.setQueryData<Playlist>(['playlists', playlistId], (old) =>
+        old?.songs ? { ...old, songs: sortByIds(old.songs, ids, (s) => s.id) } : old,
+      )
+    },
     onSuccess: (next: Playlist) => {
       qc.setQueryData(['playlists', playlistId], next)
       qc.invalidateQueries({ queryKey: ['playlists'] })
     },
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+    onError: (e) => {
+      toast({ title: errorMessage(e), variant: 'error' })
+      qc.invalidateQueries({ queryKey: ['playlists', playlistId] })
+    },
   })
 
-  const drag = useDragReorder(songIds, (ids) => save.mutate(ids))
+  const moveBy = (id: number, delta: number) => {
+    const next = moveWithin(songIds, id, delta)
+    if (next) save.mutate(next)
+  }
 
   const add = () => {
     if (!toAdd.length) return
@@ -193,6 +206,7 @@ export function PlaylistPage() {
       )}
 
       <ol className="space-y-2">
+        <Sortable ids={songIds} onReorder={(ids) => save.mutate(ids)}>
         {songs.map((song, i) => {
           const cover = storageUrl(song.thumbnail)
           /* Tasks §7 — მარჯვენა ღილაკის მენიუ: აქედან დაკვრა · წყარო · — · მოხსნა პლეილისტიდან */
@@ -221,14 +235,8 @@ export function PlaylistPage() {
           ]
           return (
             <RecordContextMenu key={song.id} actions={actions}>
-            <li
-              {...drag.handlers(song.id)}
-              className={cn(
-                'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-3 py-2',
-                dragRowClass(drag, song.id),
-              )}
-            >
-              <DragHandle />
+            <SortableItem id={song.id} handle className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
+              <SortableHandle />
               <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                 {i + 1}
               </span>
@@ -277,7 +285,7 @@ export function PlaylistPage() {
                   variant="ghost"
                   size="icon"
                   disabled={i === 0 || save.isPending}
-                  onClick={() => drag.moveBy(song.id, -1)}
+                  onClick={() => moveBy(song.id, -1)}
                   aria-label={t('videoTypes.moveUp')}
                 >
                   <ChevronUp className="size-4" />
@@ -286,7 +294,7 @@ export function PlaylistPage() {
                   variant="ghost"
                   size="icon"
                   disabled={i === songs.length - 1 || save.isPending}
-                  onClick={() => drag.moveBy(song.id, 1)}
+                  onClick={() => moveBy(song.id, 1)}
                   aria-label={t('videoTypes.moveDown')}
                 >
                   <ChevronDown className="size-4" />
@@ -302,10 +310,11 @@ export function PlaylistPage() {
                   <X className="size-4" />
                 </Button>
               </span>
-            </li>
+            </SortableItem>
             </RecordContextMenu>
           )
         })}
+        </Sortable>
       </ol>
     </PageContainer>
   )

@@ -71,6 +71,14 @@ vi.mock('@/lib/auth', () => ({ useAuth: () => mocks.auth.value }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
+if (!('ResizeObserver' in globalThis)) {
+  ;(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
@@ -148,18 +156,17 @@ async function click(el: Element) {
   await flush()
 }
 
-/** native drag & drop — jsdom-ს `DataTransfer` არ აქვს, ე.ი. ხელით */
-function dragEvent(type: string, store: Map<string, string>) {
-  const event = new Event(type, { bubbles: true, cancelable: true })
-  Object.defineProperty(event, 'dataTransfer', {
-    value: {
-      setData: (k: string, v: string) => store.set(k, v),
-      getData: (k: string) => store.get(k) ?? '',
-      effectAllowed: 'move',
-      dropEffect: 'move',
-    },
-  })
-  return event
+/** Tasks §11 — jsdom-ს განლაგება არ აქვს: ბარათების მართკუთხედები რიგიდან ითვლება (3 სვეტი),
+    რომ dnd-kit-ის კლავიატურის სენსორმა მარცხენა მეზობელი იპოვოს; მაუსთან ასლს იმ ბარათის ზომა აქვს, რომლის ასლიცაა */
+function mockGridRects(cols = 3) {
+  Element.prototype.getBoundingClientRect = function (this: Element) {
+    const ids = [...new Set([...document.querySelectorAll<HTMLElement>('[data-sortable-id]')].map((x) => x.dataset.sortableId))]
+    const target = (this.closest('[data-sortable-id]') ?? this.querySelector('[data-sortable-id]')) as HTMLElement | null
+    const index = target ? ids.indexOf(target.dataset.sortableId) : -1
+    const left = index < 0 ? 0 : (index % cols) * 200
+    const top = index < 0 ? 0 : Math.floor(index / cols) * 120
+    return { x: left, y: top, left, top, width: 180, height: 100, right: left + 180, bottom: top + 100, toJSON: () => ({}) } as DOMRect
+  }
 }
 
 const card = (key: string) => container!.querySelector(`a[href="/modules/${key}"]`)!.parentElement as HTMLElement
@@ -183,17 +190,28 @@ describe('ModulesPage — order', () => {
     expect(shown()).toEqual(['series', 'movie', 'video'])
   })
 
-  it('dropping a card on another sends the whole new order', async () => {
+  it('the keyboard on the handle carries the card two places left and sends the whole new order', async () => {
     serve([MOVIE, SERIES, VIDEO])
     await mount()
 
-    const store = new Map<string, string>()
-    await act(async () => {
-      card('video').dispatchEvent(dragEvent('dragstart', store))
-      card('movie').dispatchEvent(dragEvent('dragover', store))
-      card('movie').dispatchEvent(dragEvent('drop', store))
-    })
-    await flush()
+    const original = Element.prototype.getBoundingClientRect
+    mockGridRects()
+    try {
+      const handle = card('video').querySelector<HTMLElement>('[data-sortable-handle]')!
+      expect(handle, 'სახელური ვერ მოიძებნა').toBeTruthy()
+      const key = async (code: string) => {
+        await act(async () => {
+          handle.dispatchEvent(new KeyboardEvent('keydown', { code, key: code === 'Space' ? ' ' : code, bubbles: true, cancelable: true }))
+        })
+        await flush()
+      }
+      await key('Space')
+      await key('ArrowLeft')
+      await key('ArrowLeft')
+      await key('Space')
+    } finally {
+      Element.prototype.getBoundingClientRect = original
+    }
 
     expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['video', 'movie', 'series'])
     expect(shown()).toEqual(['video', 'movie', 'series'])

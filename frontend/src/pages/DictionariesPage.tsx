@@ -21,7 +21,7 @@ import type { Status } from '@/api/types'
 import { fetchModuleFields } from '@/api/account'
 import { DICTIONARIES, customDictionaries, type DictionaryDef, type DictionaryItem } from '@/lib/dictionaries'
 import { errorMessage } from '@/lib/errors'
-import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
+import { moveWithin } from '@/lib/reorder'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { moduleName, useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
@@ -36,7 +36,7 @@ import {
 } from '@/lib/statusSections'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
-import { DragHandle } from '@/components/ui/drag-handle'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -365,10 +365,13 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
     }
   }
 
-  const drag = useDragReorder<string | number>(
-    rows.map((r) => r.id),
-    onReorder,
-  )
+  const rowIds = rows.map((r) => r.id)
+
+  /* Tasks §11 — „ერთით ზევით/ქვევით" (მენიუ და ღილაკები) იმავე `onReorder`-ს იძახებს, რასაც drag & drop */
+  const moveBy = (id: string | number, delta: number) => {
+    const next = moveWithin(rowIds, id, delta)
+    if (next) onReorder(next)
+  }
 
   /**
    * **„ნაგულისხმევების აღდგენა" (2026-10-02 §1)** — მხოლოდ ის, რაც აკლია.
@@ -442,6 +445,8 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
       {!isLoading && (
         <ul className={cn('space-y-2', !items.length && 'mt-4')}>
+          {/* Tasks §11 — drag & drop ერთი კომპონენტით: წყვეტილი სლოტი, მაუსთან ასლი, კლავიატურა სახელურზე */}
+          <Sortable ids={rowIds} onReorder={onReorder}>
           {rows.map((row, i) => {
             // ⚠️ სტატუსი და ერთეული ერთი ფორმისაა; ფსევდო-განყოფილებას ერთეული არ აქვს
             const item =
@@ -460,8 +465,8 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                     run: () => sections.mutate(toggleHidden(layout, String(row.id))),
                   }]
                 : []),
-              { key: 'up', label: t('videoTypes.moveUp'), icon: ChevronUp, disabled: i === 0 || busy, run: () => drag.moveBy(row.id, -1) },
-              { key: 'down', label: t('videoTypes.moveDown'), icon: ChevronDown, disabled: i === rows.length - 1 || busy, run: () => drag.moveBy(row.id, 1) },
+              { key: 'up', label: t('videoTypes.moveUp'), icon: ChevronUp, disabled: i === 0 || busy, run: () => moveBy(row.id, -1) },
+              { key: 'down', label: t('videoTypes.moveDown'), icon: ChevronDown, disabled: i === rows.length - 1 || busy, run: () => moveBy(row.id, 1) },
               ...(item
                 ? [{ key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, separator: true, run: () => setDeleting(item) }]
                 : []),
@@ -469,15 +474,15 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
 
             return (
               <RecordContextMenu key={row.id} actions={actions}>
-              <li
-                {...drag.handlers(row.id)}
+              <SortableItem
+                id={row.id}
+                handle
                 className={cn(
-                  'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3',
-                  dragRowClass(drag, row.id),
+                  'flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3',
                   row.hidden && 'bg-muted/40',
                 )}
               >
-                <DragHandle />
+                <SortableHandle />
                 <span
                   className={cn(
                     'grid size-9 shrink-0 place-items-center rounded-md',
@@ -516,7 +521,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                     variant="ghost"
                     size="icon"
                     disabled={i === 0 || busy}
-                    onClick={() => drag.moveBy(row.id, -1)}
+                    onClick={() => moveBy(row.id, -1)}
                     aria-label={t('videoTypes.moveUp')}
                   >
                     <ChevronUp className="size-4" />
@@ -525,7 +530,7 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                     variant="ghost"
                     size="icon"
                     disabled={i === rows.length - 1 || busy}
-                    onClick={() => drag.moveBy(row.id, 1)}
+                    onClick={() => moveBy(row.id, 1)}
                     aria-label={t('videoTypes.moveDown')}
                   >
                     <ChevronDown className="size-4" />
@@ -562,10 +567,11 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
                     </>
                   )}
                 </span>
-              </li>
+              </SortableItem>
               </RecordContextMenu>
             )
           })}
+          </Sortable>
         </ul>
       )}
 

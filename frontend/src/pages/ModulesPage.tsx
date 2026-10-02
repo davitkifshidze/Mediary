@@ -19,7 +19,7 @@ import {
   useModules,
 } from '@/lib/modules'
 import { useAuth } from '@/lib/auth'
-import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
+import { moveWithin } from '@/lib/reorder'
 import { errorMessage } from '@/lib/errors'
 import { arrangeByKeys, isCustomOrder } from '@/lib/moduleOrder'
 import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
@@ -27,7 +27,7 @@ import { CustomModuleDialog } from '@/components/CustomModuleDialog'
 import { CustomModulesOversight } from '@/components/CustomModulesOversight'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
-import { DragHandle } from '@/components/ui/drag-handle'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -161,7 +161,11 @@ export function ModulesPage() {
     onSettled: refresh,
   })
 
-  const drag = useDragReorder<string>(keys, (next) => order.mutate(next))
+  // Tasks §11 — „წინ/უკან" (მენიუ და ღილაკები) იმავე მუტაციას იძახებს, რასაც drag & drop
+  const moveBy = (key: string, delta: number) => {
+    const next = moveWithin(keys, key, delta)
+    if (next) order.mutate(next)
+  }
   const navigate = useNavigate()
 
   const askReset = async () => {
@@ -236,19 +240,23 @@ export function ModulesPage() {
       {loading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {/* Tasks §11 — ბადის drag & drop ერთი კომპონენტით; კლავიატურა სახელურზეა */}
+        <Sortable ids={keys} layout="grid" onReorder={(next) => order.mutate(next)}>
         {list.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
           /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · წინ · უკან (წაშლა პირადზე — §32.1) */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
-            { key: 'earlier', label: t('modules.moveEarlier', { name }), icon: ChevronLeft, disabled: i === 0, run: () => drag.moveBy(m.key, -1) },
-            { key: 'later', label: t('modules.moveLater', { name }), icon: ChevronRight, disabled: i === list.length - 1, run: () => drag.moveBy(m.key, 1) },
+            { key: 'earlier', label: t('modules.moveEarlier', { name }), icon: ChevronLeft, disabled: i === 0, run: () => moveBy(m.key, -1) },
+            { key: 'later', label: t('modules.moveLater', { name }), icon: ChevronRight, disabled: i === list.length - 1, run: () => moveBy(m.key, 1) },
           ]
           return (
             <RecordContextMenu key={m.id} actions={actions}>
-            <div
-              {...drag.handlers(m.key)}
+            <SortableItem
+              as="div"
+              id={m.key}
+              handle
               style={{
                 // ⚠️ ფერის უქონელი მოდული ოქროსფერ ნაგულისხმევს იღებს — აქ
                 // საიდბარის `<nav>`-ის მსგავსი მშობელი არ არსებობს, ე.ი.
@@ -256,15 +264,7 @@ export function ModulesPage() {
                 ...(modAccent(m.color) ?? MODULE_ACCENT_FALLBACK),
                 animationDelay: `${Math.min(i * STAGGER_MS, STAGGER_MAX_MS)}ms`,
               }}
-              className={cn(
-                'fb-card group flex flex-col rounded-2xl border bg-card hover:-translate-y-0.5',
-                dragRowClass(
-                  drag,
-                  m.key,
-                  'border-border hover:border-[var(--mod)]',
-                  'transition-[border-color,translate,opacity]',
-                ),
-              )}
+              className="fb-card group flex flex-col rounded-2xl border border-border bg-card transition-[border-color,translate,opacity] hover:-translate-y-0.5 hover:border-[var(--mod)]"
             >
               <Link to={`/modules/${m.key}`} draggable={false} className="block flex-1 cursor-pointer p-5 pb-0">
                 <div className="flex items-center gap-3">
@@ -316,13 +316,13 @@ export function ModulesPage() {
 
                 {/* ⚠️ ფიქსირებული ელემენტი — ყოველთვის მარჯვნივ, რომ ზოლები სიმეტრიული იყოს */}
                 <span className="ml-auto flex shrink-0 items-center">
-                  <DragHandle className="mr-1" />
+                  <SortableHandle className="mr-1" />
                   <Button
                     variant="ghost"
                     size="icon"
                     className="size-8"
                     disabled={i === 0}
-                    onClick={() => drag.moveBy(m.key, -1)}
+                    onClick={() => moveBy(m.key, -1)}
                     aria-label={t('modules.moveEarlier', { name })}
                     title={t('modules.moveEarlier', { name })}
                   >
@@ -333,7 +333,7 @@ export function ModulesPage() {
                     size="icon"
                     className="size-8"
                     disabled={i === list.length - 1}
-                    onClick={() => drag.moveBy(m.key, 1)}
+                    onClick={() => moveBy(m.key, 1)}
                     aria-label={t('modules.moveLater', { name })}
                     title={t('modules.moveLater', { name })}
                   >
@@ -341,10 +341,11 @@ export function ModulesPage() {
                   </Button>
                 </span>
               </div>
-            </div>
+            </SortableItem>
             </RecordContextMenu>
           )
         })}
+        </Sortable>
       </div>
 
       {/* §37.8 — სხვების პირადი მოდულები: აგრეგატები და გამორთვა, შიგთავსი არა (Q41) */}

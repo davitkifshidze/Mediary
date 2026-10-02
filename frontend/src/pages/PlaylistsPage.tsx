@@ -23,11 +23,10 @@ import {
   type Playlist,
 } from '@/api/playlists'
 import { errorMessage } from '@/lib/errors'
-import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
+import { moveWithin, sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { DragHandle } from '@/components/ui/drag-handle'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -62,14 +61,20 @@ export function PlaylistsPage() {
   const navigate = useNavigate()
   const reorder = useMutation({
     mutationFn: reorderPlaylists,
+    // Tasks §11 — ოპტიმისტურად: რიგი ჩაშვებისთანავე დგება, პასუხი მას ადასტურებს
+    onMutate: (ids) => qc.setQueryData<Playlist[]>(['playlists'], (old) => (old ? sortByIds(old, ids, (p) => p.id) : old)),
     onSuccess: (next) => qc.setQueryData(['playlists'], next),
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+    onError: (e) => {
+      toast({ title: errorMessage(e), variant: 'error' })
+      qc.invalidateQueries({ queryKey: ['playlists'] })
+    },
   })
 
-  const drag = useDragReorder(
-    playlists.map((p) => p.id),
-    (ids) => reorder.mutate(ids),
-  )
+  const playlistIds = playlists.map((p) => p.id)
+  const moveBy = (id: number, delta: number) => {
+    const next = moveWithin(playlistIds, id, delta)
+    if (next) reorder.mutate(next)
+  }
 
   return (
     <PageContainer>
@@ -103,6 +108,7 @@ export function PlaylistsPage() {
       )}
 
       <ul className="space-y-2">
+        <Sortable ids={playlistIds} onReorder={(ids) => reorder.mutate(ids)}>
         {playlists.map((playlist, i) => {
           /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
           const actions: MenuAction[] = [
@@ -112,14 +118,8 @@ export function PlaylistsPage() {
           ]
           return (
           <RecordContextMenu key={playlist.id} actions={actions}>
-          <li
-            {...drag.handlers(playlist.id)}
-            className={cn(
-              'flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3',
-              dragRowClass(drag, playlist.id),
-            )}
-          >
-            <DragHandle />
+          <SortableItem id={playlist.id} handle className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+            <SortableHandle />
             <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted">
               <ListMusic className="size-4" />
             </span>
@@ -141,7 +141,7 @@ export function PlaylistsPage() {
                 variant="ghost"
                 size="icon"
                 disabled={i === 0 || reorder.isPending}
-                onClick={() => drag.moveBy(playlist.id, -1)}
+                onClick={() => moveBy(playlist.id, -1)}
                 aria-label={t('videoTypes.moveUp')}
               >
                 <ChevronUp className="size-4" />
@@ -150,7 +150,7 @@ export function PlaylistsPage() {
                 variant="ghost"
                 size="icon"
                 disabled={i === playlists.length - 1 || reorder.isPending}
-                onClick={() => drag.moveBy(playlist.id, 1)}
+                onClick={() => moveBy(playlist.id, 1)}
                 aria-label={t('videoTypes.moveDown')}
               >
                 <ChevronDown className="size-4" />
@@ -168,10 +168,11 @@ export function PlaylistsPage() {
                 <Trash2 className="size-3.5" />
               </Button>
             </span>
-          </li>
+          </SortableItem>
           </RecordContextMenu>
           )
         })}
+        </Sortable>
       </ul>
 
       {editing && (

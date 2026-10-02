@@ -61,7 +61,7 @@
 | §8 | რჩეული — ერთი ღილაკი ყველგან: აიქონი + „რჩეული“, ფერით | 🌐 | M | — | — | ✅ |
 | §9 | შეფასება — ვარსკვლავები, ხელით ჩაწერა, „4.6 / 10“ ყველგან | 🌐 | M–L | Q1 | 0 | ✅ |
 | §10 | შესვლების მთვლელი და ჟურნალი — ყველა ჩანაწერზე | 🌐 | L | Q2 | — | ✅ |
-| §11 | Drag & drop — ადგილის ჩრდილი, წყვეტილი სლოტი, გადაადგილების ანიმაცია | 🌐 | M–L | Q3 | — | ⬜ |
+| §11 | Drag & drop — ადგილის ჩრდილი, წყვეტილი სლოტი, გადაადგილების ანიმაცია | 🌐 | M–L | Q3 | — | ✅ |
 | §12 | ისრები და თვალის აიქონი — სხვა, უფრო დიდი კონტროლები | 🌐 | M | — | §11 | ⬜ |
 | §13 | ტეგები — იგივეს დამატებაზე პოპაპი ყველგან | 🌐 | S–M | — | — | ⬜ |
 | §14 | ფორმების სიმეტრია — მთავარი ფოტოს ზომა, ცარიელი სექციების ადგილი | 🌐 | M | — | — | ⬜ |
@@ -602,22 +602,37 @@ morph `visitable_*`, `source library|public|share`, `visited_at datetime`; მ�
 - [x] **11.1** ❓ **Q3** — ბიბლიოთეკა: `@dnd-kit/core + sortable` ⭐ (ბადე, სქროლის კონტეინერი, `DragOverlay`,
       კლავიატურის სენსორი, ~25 kB gzip) · `framer-motion` `Reorder` (უკვე დაყენებულია, მხოლოდ ერთგანზომილებიანი
       სიები) · ხელით (CSS `transform` + `FLIP`).
-- [ ] **11.2** `components/ui/sortable.tsx` — ერთი კომპონენტი ყველა მომხმარებლისთვის: გადასატანი ადგილზე
+- [x] **11.2** `components/ui/sortable.tsx` — ერთი კომპონენტი ყველა მომხმარებლისთვის: გადასატანი ადგილზე
       **გაფერმკრთალებული ჩრდილით** (`opacity-30`, `grayscale`), **`DragOverlay`** მაუსთან (ნამდვილი ბარათი,
       `shadow-lg`, `scale-[1.02]`), სამიზნე ადგილას **წყვეტილი სლოტი** (`border-2 border-dashed border-primary/60
       bg-primary/5` იმავე ზომით), დანარჩენები `transform`-ით **ცურავენ** (150 ms); ბადესა და სიას ერთნაირად; `id`
       string|number; `disabledIds` (დამალული მსახიობები); სქროლის კონტეინერი.
-- [ ] **11.3** მიერთება ექვსივე ადგილას + `CustomFieldsEditor` და ალბომები (`/gallery/albums` — API უკვე არსებობს);
+- [x] **11.3** მიერთება ექვსივე ადგილას + `CustomFieldsEditor` და ალბომები (`/gallery/albums` — API უკვე არსებობს);
       ოპტიმისტური განახლება ყველგან (ფლეილისტებიც — ახლა მხოლოდ წარმატებაზე).
-- [ ] **11.4** `dragReorder.ts` და `drag-handle.tsx` იშლება (სახელურის აიქონი რჩება `Sortable.Handle`-ად);
+- [x] **11.4** `dragReorder.ts` და `drag-handle.tsx` იშლება (სახელურის აიქონი რჩება `Sortable.Handle`-ად);
       `framer-motion` — Q3-ის მიხედვით.
-- [ ] **11.5** ტესტები: `ModulesPage.test.ts:150-195`, `Player.test.ts:351-368`, `RecordCast.test.ts:131-150` ახალ
+- [x] **11.5** ტესტები: `ModulesPage.test.ts:150-195`, `Player.test.ts:351-368`, `RecordCast.test.ts:131-150` ახალ
       სენსორებზე გადადის (dnd-kit-ის ტესტური `KeyboardSensor` — jsdom-ში სანდოა); `sortable.test.ts`.
 
 **გადაწყვეტილება (Q3):** **`@dnd-kit/core` + `@dnd-kit/sortable`** — ბადე და სია, სქროლის კონტეინერი, `DragOverlay`,
 კლავიატურის სენსორი (ისრების ღილაკებს ჩაანაცვლებს — §12); გამოუყენებელი `framer-motion` დამოკიდებულება იშლება.
 
-**ზომა:** M–L · **სტატუსი:** ⬜
+**შესრულდა 2026-10-03.** `@dnd-kit/core` 6.3 + `sortable` + `utilities` დაყენდა (`framer-motion` §6-ში უკვე წაიშალა).
+`components/ui/sortable.tsx`: `Sortable` (DndContext + SortableContext, `list`/`grid` სტრატეგია, `PointerSensor` 6 px-იანი
+ზღურბლით — ღილაკზე დაჭერა დაჭერად რჩება, `KeyboardSensor` Space → ისრები → Space, Esc; ქართული განცხადებები პოზიციებით),
+`SortableItem` (`as` li/div, `disabled`, `handle`; აღებული ელემენტი ახალ სლოტზე **გაფერმკრთალებული და წყვეტილი** —
+`opacity-40 grayscale border-dashed!…`; დანარჩენები `transform`-ით ცურავენ 150 ms), `SortableHandle` (`handle`-რეჟიმში
+კლავიატურის აქტივატორია, `span` role=button). **მაუსთან ნამდვილი ბარათი** — `DragOverlay`, რომელშიც აღებული ელემენტის DOM-ის
+ასლია (`outerHTML`), ე.ი. გამომძახებლებს ბარათი ცალკე კომპონენტად არ დასჭირდათ. მიერთებულია: კლასიფიკატორები, მოდულები
+(ბადე), ფლეილისტები (**ოპტიმისტური** `sortByIds`-ით — აქამდე მხოლოდ წარმატებაზე), ფლეილისტის სიმღერები (ოპტიმისტური),
+ფლეერის რიგი, მსახიობები (ბადე; დამალულები `disabled`), პირადი ველები (`handle`-რეჟიმი — ინპუტებიანი ბარათი; სტაბილური
+`uid`), ალბომები (`/gallery/albums` — ბადე, `reorderGalleryAlbums` ოპტიმისტურად). `lib/reorder.ts`: `moveWithin`
+(მენიუს „ერთით წინ/უკან" და ისრები — იმავე `onReorder`-ზე), `sortByIds`. `lib/dragReorder.ts` და `ui/drag-handle.tsx`
+წაიშალა. ტესტები: `sortable.test.ts` (4 — კლავიატურით გადალაგება jsdom-ში `getBoundingClientRect`-ის რიგითი მოკით, Esc,
+`handle`, `disabled`), `reorder.test.ts` (3), `ModulesPage.test.ts`-ის native drop ტესტი კლავიატურის სენსორზე გადავიდა;
+`Player.test.ts`/`RecordCast.test.ts` უცვლელი (მენიუს გზა). ⚠️ ისრიანი ღილაკები ჯერ რჩება — §12.1 შლის.
+
+**ზომა:** M–L · **სტატუსი:** ✅
 
 ---
 

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, AudioLines, ListMusic, ListVideo, ListX, Music, Play, Video } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
-import { dragRowClass, useDragReorder, type DragReorder } from '@/lib/dragReorder'
+import { moveWithin } from '@/lib/reorder'
 import { usePlayer, type PlayerLayout, type QueueEntry } from '@/lib/player'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/videoDuration'
 import { MENU_ICONS, RecordActionMenu, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { DragHandle } from '@/components/ui/drag-handle'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 
 /* ============================================================
    დამკვრელის რიგი — YouTube-ის ფლეილისტის ყალიბით (Tasks §35.2).
@@ -23,8 +23,8 @@ import { DragHandle } from '@/components/ui/drag-handle'
    (`scrollTo` თვითონ `<ol>`-ზე). `scrollIntoView` ყველა წინაპარს
    გადაახვევდა, ე.ი. ტრეკის შეცვლაზე მთელი გვერდი ახტებოდა.
 
-   ⚠️ **გადალაგება `useDragReorder`-ითაა + „ერთით წინ/უკან" მენიუში** —
-   native drag & drop კლავიატურით მიუწვდომელია (პროექტის წესი).
+   ⚠️ **გადალაგება `Sortable`-ითაა (Tasks §11) + „ერთით წინ/უკან" მენიუში** —
+   მენიუს პუნქტები კლავიატურისა და სენსორული ეკრანის მოკლე გზაა.
    ============================================================ */
 
 export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
@@ -34,7 +34,10 @@ export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
   const side = layout === 'side'
 
   const uids = useMemo(() => queue.map((entry) => entry.uid), [queue])
-  const drag = useDragReorder(uids, player.reorder)
+  const moveBy = (uid: number, delta: number) => {
+    const next = moveWithin(uids, uid, delta)
+    if (next) player.reorder(next)
+  }
 
   const listRef = useRef<HTMLOListElement>(null)
   const scrolled = useRef(false)
@@ -81,6 +84,7 @@ export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
       </header>
 
       <ol ref={listRef} className="fb-scroll relative min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1.5">
+        <Sortable ids={uids} onReorder={player.reorder}>
         {queue.map((entry, i) => (
           <QueueRow
             key={entry.uid}
@@ -90,11 +94,12 @@ export function PlayerQueue({ layout }: { layout: PlayerLayout }) {
             active={i === index}
             upNext={index >= 0 && i === index + 1}
             playing={playing}
-            drag={drag}
+            moveBy={moveBy}
             onJump={() => player.jumpTo(i)}
             onRemove={() => player.remove(entry.uid)}
           />
         ))}
+        </Sortable>
       </ol>
     </section>
   )
@@ -107,7 +112,7 @@ function QueueRow({
   active,
   upNext,
   playing,
-  drag,
+  moveBy,
   onJump,
   onRemove,
 }: {
@@ -117,7 +122,7 @@ function QueueRow({
   active: boolean
   upNext: boolean
   playing: boolean
-  drag: DragReorder<number>
+  moveBy: (uid: number, delta: number) => void
   onJump: () => void
   onRemove: () => void
 }) {
@@ -130,8 +135,8 @@ function QueueRow({
      ⚠️ რასაც ვერ გააკეთებ, ის არ იხატება (და არა გამორთულად) — პირველს „წინ" არ აქვს. */
   const actions: MenuAction[] = [
     { key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: onJump },
-    ...(position > 0 ? [{ key: 'earlier', label: t('playback.moveEarlier'), icon: ArrowUp, run: () => drag.moveBy(entry.uid, -1) }] : []),
-    ...(!last ? [{ key: 'later', label: t('playback.moveLater'), icon: ArrowDown, run: () => drag.moveBy(entry.uid, 1) }] : []),
+    ...(position > 0 ? [{ key: 'earlier', label: t('playback.moveEarlier'), icon: ArrowUp, run: () => moveBy(entry.uid, -1) }] : []),
+    ...(!last ? [{ key: 'later', label: t('playback.moveLater'), icon: ArrowDown, run: () => moveBy(entry.uid, 1) }] : []),
     ...(entry.url
       ? [{ key: 'source', label: t('playback.openSource'), icon: MENU_ICONS.link, run: () => window.open(entry.url!, '_blank', 'noopener,noreferrer') }]
       : []),
@@ -140,16 +145,16 @@ function QueueRow({
 
   return (
     <RecordContextMenu actions={actions}>
-    <li
+    <SortableItem
+      id={entry.uid}
       data-uid={entry.uid}
-      {...drag.handlers(entry.uid)}
+      handle
       className={cn(
-        'group flex items-center gap-1 rounded-lg border px-1 py-1',
-        dragRowClass(drag, entry.uid, 'border-transparent'),
+        'group flex items-center gap-1 rounded-lg border border-transparent px-1 py-1',
         active ? 'bg-primary/10' : 'hover:bg-muted/60',
       )}
     >
-      <DragHandle className="opacity-40 transition-opacity group-hover:opacity-100" />
+      <SortableHandle className="opacity-40 transition-opacity group-hover:opacity-100" />
 
       {/* ⚠️ მენიუ ღილაკის **გარეთაა** — ჩადგმული ინტერაქტიული ელემენტი
           არასწორი HTML-ია და ერთი დაჭერა ორივეს გაუშვებდა */}
@@ -218,7 +223,7 @@ function QueueRow({
       </button>
 
       <RecordActionMenu actions={actions} label={t('playback.itemActions')} />
-    </li>
+    </SortableItem>
     </RecordContextMenu>
   )
 }

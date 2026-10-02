@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { sortByIds } from '@/lib/reorder'
+import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import {
   CUSTOM_FIELD_TYPES,
   fetchCustomFields,
@@ -38,7 +40,10 @@ import { useToast } from '@/components/ui/feedback'
    ============================================================ */
 
 /** ლოკალური სამუშაო ასლი — `sort_order` სიის რიგიდან გამოითვლება */
-type Draft = Omit<CustomFieldDefinition, 'sort_order'>
+type Draft = Omit<CustomFieldDefinition, 'sort_order'> & {
+  /** Tasks §11 — სტაბილური id drag & drop-ისთვის: ახალ ველს `key` ჯერ არ აქვს */
+  uid: string
+}
 
 export function CustomFieldsEditor({
   moduleKey,
@@ -64,14 +69,14 @@ export function CustomFieldsEditor({
   const [dirty, setDirty] = useState(false)
 
   useEffect(() => {
-    if (!dirty) setDraft(fields.map(({ sort_order: _sort, ...rest }) => rest))
+    if (!dirty) setDraft(fields.map(({ sort_order: _sort, ...rest }) => ({ ...rest, uid: rest.key })))
   }, [fields, dirty])
 
   const save = useMutation({
     mutationFn: () =>
       saveCustomFields(
         moduleKey,
-        draft.map((f, i) => ({ ...f, sort_order: (i + 1) * 10 })),
+        draft.map(({ uid: _uid, ...f }, i) => ({ ...f, sort_order: (i + 1) * 10 })),
       ),
     onSuccess: (next) => {
       setDirty(false)
@@ -106,6 +111,7 @@ export function CustomFieldsEditor({
     setDraft((d) => [
       ...d,
       {
+        uid: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         key: '',
         type: 'text',
         label_ka: '',
@@ -116,6 +122,12 @@ export function CustomFieldsEditor({
         required: false,
       },
     ])
+  }
+
+  // Tasks §11 — drag & drop იმავე სიას ალაგებს, რასაც ისრები
+  const onReorder = (uids: string[]) => {
+    setDirty(true)
+    setDraft((d) => sortByIds(d, uids, (f) => f.uid))
   }
 
   const remove = (index: number) => {
@@ -142,8 +154,10 @@ export function CustomFieldsEditor({
         <p className="text-sm text-muted-foreground">{t('customFields.empty')}</p>
       ) : (
         <ul className="space-y-3">
+          {/* ⚠️ ინპუტებიანი ბარათი — აღება და კლავიატურა მხოლოდ სახელურზეა (`handle`), თორემ ტექსტის მონიშვნა გადათრევად წაიკითხებოდა */}
+          <Sortable ids={draft.map((f) => f.uid)} onReorder={onReorder}>
           {draft.map((f, i) => (
-            <li key={f.key || `new-${i}`} className="rounded-lg border border-border p-3">
+            <SortableItem key={f.uid} id={f.uid} handle className="rounded-lg border border-border p-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor={`cfe-ka-${i}`}>{t('genres.name_ka')}</Label>
@@ -195,6 +209,7 @@ export function CustomFieldsEditor({
                 </label>
 
                 <span className="ml-auto flex items-center gap-1">
+                  <SortableHandle />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -224,8 +239,9 @@ export function CustomFieldsEditor({
                   </Button>
                 </span>
               </div>
-            </li>
+            </SortableItem>
           ))}
+          </Sortable>
         </ul>
       )}
 
@@ -238,7 +254,7 @@ export function CustomFieldsEditor({
             size="sm"
             onClick={() => {
               setDirty(false)
-              setDraft(fields.map(({ sort_order: _sort, ...rest }) => rest))
+              setDraft(fields.map(({ sort_order: _sort, ...rest }) => ({ ...rest, uid: rest.key })))
             }}
           >
             {t('actions.cancel')}

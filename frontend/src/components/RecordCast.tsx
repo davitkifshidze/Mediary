@@ -21,7 +21,8 @@ import {
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
 import { castName } from '@/lib/display'
-import { dragRowClass, useDragReorder } from '@/lib/dragReorder'
+import { moveWithin } from '@/lib/reorder'
+import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { errorMessage } from '@/lib/errors'
 import type { MediaType } from '@/lib/media'
 import { castActions, castOrderPayload, reorderCast, splitCast, type CastAction } from '@/lib/recordCast'
@@ -110,7 +111,12 @@ export function RecordCast({
     },
   })
 
-  const drag = useDragReorder(visibleIds, (ids) => reorder.mutate(castOrderPayload(ids, hidden)))
+  // Tasks §11 — drag & drop და მენიუს „ერთით წინ/უკან" ერთსა და იმავე payload-ს აგზავნის (დამალულები ბოლოში)
+  const reorderVisible = (ids: number[]) => reorder.mutate(castOrderPayload(ids, hidden))
+  const moveBy = (id: number, delta: number) => {
+    const next = moveWithin(visibleIds, id, delta)
+    if (next) reorderVisible(next)
+  }
 
   const toggleHidden = useMutation({
     mutationFn: (c: CastMember) => updateRecordCast(type, recordId, c.id, { is_hidden: !c.is_hidden }),
@@ -164,8 +170,8 @@ export function RecordCast({
       hidden: !!c.is_hidden,
       onOpen: () => nav(`/actors/${c.id}`),
       onEditRole: () => setRoleOf(c),
-      onEarlier: !c.is_hidden && index > 0 ? () => drag.moveBy(c.id, -1) : undefined,
-      onLater: !c.is_hidden && index < visible.length - 1 ? () => drag.moveBy(c.id, 1) : undefined,
+      onEarlier: !c.is_hidden && index > 0 ? () => moveBy(c.id, -1) : undefined,
+      onLater: !c.is_hidden && index < visible.length - 1 ? () => moveBy(c.id, 1) : undefined,
       onToggleHidden: () => toggleHidden.mutate(c),
       onDelete: () => askDetach(c),
     })
@@ -177,12 +183,11 @@ export function RecordCast({
     return (
       <ContextMenu key={c.id}>
         <ContextMenuTrigger asChild>
-          <div
-            {...(movable ? drag.handlers(c.id) : {})}
-            className={cn(
-              'group/cast relative rounded-md border p-2 text-center',
-              movable ? dragRowClass(drag, c.id, 'border-transparent hover:border-border') : 'border-transparent',
-            )}
+          <SortableItem
+            as="div"
+            id={c.id}
+            disabled={!movable}
+            className={cn('group/cast relative rounded-md border border-transparent p-2 text-center', movable && 'hover:border-border')}
           >
             {/* ⚠️ `draggable={false}` ბმულსა და ფოტოზე — ორივე თავისით გადაითრევა
                 და ბარათის drag & drop-ს ჩაანაცვლებდა (ბრაუზერი URL-ს „წაიღებდა") */}
@@ -215,7 +220,7 @@ export function RecordCast({
                 ))}
               </ActionMenu>
             </div>
-          </div>
+          </SortableItem>
         </ContextMenuTrigger>
 
         <ContextMenuContent>
@@ -252,6 +257,8 @@ export function RecordCast({
         </Button>
       </div>
 
+      {/* Tasks §11 — ბადის drag & drop; დამალულები სიაშია, მაგრამ `disabled` და რიგის გარეთ */}
+      <Sortable ids={visibleIds} layout="grid" onReorder={reorderVisible}>
       {cast.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('cast.empty')}</p>
       ) : visible.length === 0 ? (
@@ -282,6 +289,7 @@ export function RecordCast({
           </AutoHeight>
         </div>
       )}
+      </Sortable>
 
       {adding && (
         <CastMemberDialog

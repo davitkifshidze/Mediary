@@ -519,6 +519,13 @@
       "share": "Share link"
     }
   },
+  "sortable": {
+    "instructions": "Press Space or Enter to pick up, the arrow keys to move, Space again to drop; Escape cancels.",
+    "pickedUp": "Picked up — position {{from}} of {{total}}",
+    "movedOver": "Moving to position {{to}} of {{total}}",
+    "dropped": "Dropped at position {{to}} of {{total}}",
+    "cancelled": "Reordering cancelled"
+  },
   "detail": {
     "watch": "Watch",
     "cast": "Cast",
