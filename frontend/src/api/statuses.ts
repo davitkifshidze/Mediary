@@ -93,6 +93,30 @@ export async function reorderStatuses(domain: StatusDomainKey, ids: number[]): P
   return data.data
 }
 
+/** „ნაგულისხმევების აღდგენის" პასუხი — სია + რა მოხდა თითო ნაგულისხმევს */
+export interface RestoredDefaults {
+  /** ლექსიკონი აღდგენის შემდეგ, საბოლოო რიგით */
+  data: Status[]
+  /** თავიდან შეიქმნა (საბოლოოდ იყო წაშლილი) */
+  restored: string[]
+  /** ურნიდან დაბრუნდა — იგივე რიგი, ძველი ჩანაწერების კავშირით */
+  from_trash: string[]
+  /** არ დაემატა — იმავე სახელის საკუთარი სტატუსი სხვა გასაღებით გაქვს */
+  skipped: string[]
+}
+
+/**
+ * **„ნაგულისხმევი სტატუსების აღდგენა" (2026-10-02 §1)** — ამატებს მხოლოდ იმას,
+ * რაც აკლია, და არაფერს შლის (`Status::restoreDefaults()`).
+ *
+ * ⚠️ მხოლოდ ღილაკით — გვერდის გახსნა არაფერს აბრუნებს (`ensureDefaults()`
+ * მხოლოდ ცარიელ ლექსიკონს ავსებს), თორემ განზრახ წაშლილი თავისით დაბრუნდებოდა.
+ */
+export async function restoreDefaultStatuses(domain: StatusDomainKey): Promise<RestoredDefaults> {
+  const { data } = await api.post(`/statuses/${domain}/restore-defaults`)
+  return data
+}
+
 /* ---------- საიდბარის განლაგება (ეტაპი 8) ---------- */
 
 /** ფსევდო-განყოფილების ადგილი: `start` · `end` · მეზობელ სტატუსის `key` */

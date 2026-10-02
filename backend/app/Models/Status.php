@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
 use App\Support\DictionaryKey;
+use App\Support\DictionaryTrash;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -115,6 +116,142 @@ class Status extends Model
         }
 
         DB::table((new static)->getTable())->insert($rows);
+    }
+
+    /**
+     * **„ნაგულისხმევი სტატუსების აღდგენა" (Tasks 2026-10-02 §1)** — მხოლოდ ღილაკით.
+     *
+     * ამატებს მხოლოდ იმას, რაც აკლია, და **არაფერს შლის**: ცოცხალი სტატუსი
+     * (გადარქმეულიც — გასაღებით იცნობა) ხელუხლებელია; ურნაში მყოფი ნაგულისხმევი
+     * **იქიდან ბრუნდება** (ახალი იმავე გასაღებით ვერც შეიქმნებოდა —
+     * `unique(user_id, module, key)` ურნისასაც ხედავს); დანარჩენი თავიდან იქმნება.
+     *
+     * ⚠️ **ავტომატურად — არასდროს** (`ensureDefaults()` ამიტომ მხოლოდ ცარიელ
+     * ლექსიკონს ავსებს): განზრახ წაშლილი სტატუსი თავისით რომ ბრუნდებოდეს,
+     * „ყველაფერი წაშლადია" მოტყუება იქნებოდა.
+     * ⚠️ **თანამოსახელე გამოტოვდება** (`skipped`): იმავე სახელის საკუთარი
+     * სტატუსი სხვა გასაღებით რომ გაქვს, მეორე „საყურებელი" ორ ერთნაირ რიგს
+     * დახატავდა (`restore_to_watch_status` მიგრაციის წესი).
+     * ⚠️ **ადგილი კანონიკურია**: აღდგენილი უახლოეს წინა ნაგულისხმევს მოსდევს
+     * („საყურებელი" — „გადაუწყვეტელს"); წინა თუ არ არის — სიის თავშია.
+     * რიგის გადაწერა query builder-ითაა (`reorder`-ის წესი — ჟურნალს არ ავსებს);
+     * შექმნა კი მოდელით — ეს ადამიანის ქმედებაა და ჟურნალში უნდა ჩანდეს.
+     * ⚠️ ნაგულისხმევი (`is_default`) მხოლოდ მაშინ ინიშნება, როცა ცოცხალ სიაში
+     * არცერთი არ არის — თორემ არჩეულს ჩუმად შეცვლიდა.
+     *
+     * @return array{restored: list<string>, from_trash: list<string>, skipped: list<string>}
+     */
+    public static function restoreDefaults(int $userId, string $domain): array
+    {
+        $defaults = array_values(StatusDomain::defaults($domain));
+        $result = ['restored' => [], 'from_trash' => [], 'skipped' => []];
+
+        if ($defaults === []) {
+            return $result;
+        }
+
+        $base = fn () => static::withoutGlobalScopes(['owner', 'trash'])->where('user_id', $userId)->where('module', $domain);
+        $all = $base()->get();
+        $live = $all->filter(fn (self $s) => $s->trashed_at === null);
+
+        $norm = fn (?string $v) => mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', (string) $v)));
+        $taken = $live->flatMap(fn (self $s) => [$norm($s->name_ka), $norm($s->name_en)])->filter()->unique()->values()->all();
+
+        $back = [];
+
+        foreach ($defaults as $default) {
+            $key = (string) $default['key'];
+
+            if ($live->contains(fn (self $s) => $s->key === $key)) {
+                continue;
+            }
+
+            $names = array_filter([$norm($default['name_ka'] ?? null), $norm($default['name_en'] ?? null)]);
+
+            if (array_intersect($names, $taken) !== []) {
+                $result['skipped'][] = $key;
+
+                continue;
+            }
+
+            $trashed = $all->first(fn (self $s) => $s->key === $key);
+
+            if ($trashed) {
+                // ⚠️ ურნის აღდგენის იგივე გზა (`TrashBin::restore()` ჩანაწერების გარეშე): ჟურნალს `HasTrash` წერს
+                $trashed->restoreFromTrash();
+                DictionaryTrash::forget($trashed);
+                $result['from_trash'][] = $key;
+                $back[$key] = $trashed;
+            } else {
+                $row = new static;
+                $row->forceFill([
+                    'user_id' => $userId,
+                    'module' => $domain,
+                    'key' => $key,
+                    'name_ka' => $default['name_ka'],
+                    'name_en' => $default['name_en'],
+                    'role' => $default['role'],
+                    'icon' => $default['icon'] ?? null,
+                    'color' => $default['color'] ?? null,
+                    'is_default' => false,
+                    'sort_order' => 0,
+                ])->save();
+
+                $result['restored'][] = $key;
+                $back[$key] = $row;
+            }
+
+            $taken = [...$taken, ...$names];
+        }
+
+        if ($back === []) {
+            return $result;
+        }
+
+        // ---------- რიგი: აღდგენილი — უახლოეს წინა ნაგულისხმევს მოსდევს ----------
+        $order = $base()->whereNull('trashed_at')
+            ->whereNotIn('id', array_map(fn (self $s) => $s->getKey(), array_values($back)))
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->all();
+        $canonical = array_map(fn (array $d) => (string) $d['key'], $defaults);
+
+        foreach ($canonical as $i => $key) {
+            if (! isset($back[$key])) {
+                continue;
+            }
+
+            $position = 0;
+
+            for ($j = $i - 1; $j >= 0; $j--) {
+                foreach ($order as $index => $row) {
+                    if ($row->key === $canonical[$j]) {
+                        $position = $index + 1;
+                        break 2;
+                    }
+                }
+            }
+
+            array_splice($order, $position, 0, [$back[$key]]);
+        }
+
+        foreach ($order as $index => $row) {
+            if ((int) $row->sort_order !== $index + 1) {
+                static::withoutGlobalScopes(['owner', 'trash'])->whereKey($row->getKey())->update(['sort_order' => $index + 1]);
+            }
+        }
+
+        // ---------- ნაგულისხმევი — მხოლოდ მაშინ, როცა არცერთი არ არის ----------
+        $hasDefault = $base()->whereNull('trashed_at')->where('is_default', true)->exists();
+        $canonicalDefault = collect($defaults)->first(fn (array $d) => ! empty($d['is_default']));
+
+        if (! $hasDefault && $canonicalDefault) {
+            $base()->whereNull('trashed_at')->where('key', $canonicalDefault['key'])->first()
+                ?->forceFill(['is_default' => true])
+                ->save();
+        }
+
+        return $result;
     }
 
     /**

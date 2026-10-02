@@ -12,6 +12,7 @@ import {
   EyeOff,
   SquarePen,
   Plus,
+  RotateCcw,
   Trash2,
 } from 'lucide-react'
 import type { ModuleInfo } from '@/api/account'
@@ -368,6 +369,29 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
     onReorder,
   )
 
+  /**
+   * **„ნაგულისხმევების აღდგენა" (2026-10-02 §1)** — მხოლოდ ის, რაც აკლია.
+   *
+   * ⚠️ ურნიდან დაბრუნებული სტატუსი ჩანაწერებს ისევ უჩანს (მათი `status_id`
+   * მასზე რჩებოდა, §29.8) — ამიტომ ჩანაწერების ქეშიც ნახლდება, ურნისაც.
+   */
+  const restore = useMutation({
+    mutationFn: () => def.restoreDefaults!(),
+    onSuccess: (res) => {
+      qc.setQueryData(def.queryKey, res.data)
+      qc.invalidateQueries({ queryKey: [def.recordsQueryKey] })
+      if (res.from_trash.length) qc.invalidateQueries({ queryKey: ['trash'] })
+
+      const back = res.restored.length + res.from_trash.length
+      toast({
+        title: back ? t('dictionaries.defaultsRestored', { count: back }) : t('dictionaries.defaultsComplete'),
+        description: res.skipped.length ? t('dictionaries.defaultsSkipped', { count: res.skipped.length }) : undefined,
+        variant: back ? 'success' : 'info',
+      })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
   const busy = reorder.isPending || sections.isPending
 
   return (
@@ -382,6 +406,15 @@ function DictionaryList({ def, lang }: { def: DictionaryDef; lang: string }) {
             <Button variant="outline" onClick={() => navigate(def.recordsRoute)}>
               {t('dictionaries.backToRecords')}
             </Button>
+            {def.restoreDefaults && (
+              <span className="inline-flex items-center gap-1">
+                <Button variant="outline" disabled={restore.isPending} onClick={() => restore.mutate()}>
+                  <RotateCcw className="size-4" />
+                  {t('dictionaries.restoreDefaults')}
+                </Button>
+                <InfoHint info={t('dictionaries.restoreDefaultsHint')} />
+              </span>
+            )}
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />
               {t('dictionaries.add')}

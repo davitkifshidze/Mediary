@@ -233,6 +233,22 @@ class StatusController extends Controller
         return response()->json([self::SECTIONS_KEY => $layout]);
     }
 
+    /**
+     * **„ნაგულისხმევი სტატუსების აღდგენა"** — მხოლოდ ის, რაც აკლია (`Status::restoreDefaults()`).
+     *
+     * ⚠️ უფლება `create`-ია — სტატუსებს ამატებს (`store()`-ის იგივე); არაფერს შლის.
+     * ⚠️ `POST` და მარშრუტი `{id}`-ზე ზემოთ დგას (`reorder`-ის წესი).
+     */
+    public function restoreDefaults(Request $request, string $domain)
+    {
+        $this->guard($request, $domain, 'create');
+
+        $userId = (int) $request->user()->id;
+        $result = Status::restoreDefaults($userId, $domain);
+
+        return StatusResource::collection($this->ordered($domain, $userId))->additional($result);
+    }
+
     /** გადალაგება — მოწოდებული id-ების რიგი ხდება `sort_order` */
     public function reorder(Request $request, string $domain)
     {

@@ -39,6 +39,8 @@ import {
   deleteStatus,
   fetchStatuses,
   reorderStatuses,
+  restoreDefaultStatuses,
+  type RestoredDefaults,
   type StatusDomainKey,
 } from '@/api/statuses'
 import type { DictionaryRemoval, DictionaryRemoved } from '@/api/dictionary'
@@ -122,6 +124,13 @@ export interface DictionaryDef {
    * ⚠️ §37 — პირადი მოდულის გასაღებიც (`StatusDomainKey`).
    */
   statusDomain?: StatusDomainKey
+  /**
+   * **„ნაგულისხმევი სტატუსების აღდგენა"** (2026-10-02 §1) — მხოლოდ სტატუსის
+   * ლექსიკონზე, რომელსაც საწყისი ნაკრები **აქვს**. ⚠️ პირადი მოდული
+   * „სტატუსების გარეშე" შექმნილი (`statuses: 'none'`) მას არ იღებს: ნაკრები
+   * ცარიელია და ღილაკი ყოველთვის „არაფერი აკლია"-ს იტყოდა.
+   */
+  restoreDefaults?: () => Promise<RestoredDefaults>
   /**
    * **კლასიფიკაციის ველის გასაღები კატალოგში** (Tasks §37, Q30) — ვიდეოზე
    * `type_id`, ჟანრიანზე `genre`/`genres`, კატეგორიანზე `category`.
@@ -376,6 +385,7 @@ for (const domain of STATUS_DOMAINS) {
     statusDomain: domain,
     list: (() => fetchStatuses(domain)) as never,
     reorder: ((ids: number[]) => reorderStatuses(domain, ids)) as never,
+    restoreDefaults: () => restoreDefaultStatuses(domain),
     remove: (id, removal) => deleteStatus(domain, id, removal),
     count: (item) => num(item.records_count),
     dialog: (item, onClose) => (
@@ -409,6 +419,7 @@ export function customDictionaries(modules: ModuleInfo[]): DictionaryDef[] {
         statusDomain: key,
         list: (() => fetchStatuses(key)) as never,
         reorder: ((ids: number[]) => reorderStatuses(key, ids)) as never,
+        restoreDefaults: m.definition?.statuses === 'none' ? undefined : () => restoreDefaultStatuses(key),
         remove: (id, removal) => deleteStatus(key, id, removal),
         count: (item) => num(item.records_count),
         dialog: (item, onClose) => (

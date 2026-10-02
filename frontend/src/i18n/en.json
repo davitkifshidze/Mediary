@@ -2823,7 +2823,12 @@
     "confirmLabel": "Type {{word}} to confirm",
     "recordsDeleted": "{{count}} record(s) moved to the trash",
     "navHint": "Every module's statuses, genres, types and categories.",
-    "indexAction": "Open a card to add, reorder, hide or delete entries."
+    "indexAction": "Open a card to add, reorder, hide or delete entries.",
+    "restoreDefaults": "Restore defaults",
+    "restoreDefaultsHint": "Adds only the default statuses that are missing — a deleted one comes back from the trash, still linked to its old records. Nothing is deleted and renamed statuses stay as they are.",
+    "defaultsRestored": "Restored: {{count}}",
+    "defaultsComplete": "You already have every default status",
+    "defaultsSkipped": "{{count}} not added — you already have a status with that name"
   },
   "playback": {
     "play": "Play",

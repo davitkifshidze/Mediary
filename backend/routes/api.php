@@ -1191,6 +1191,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('domain', StatusDomain::pattern());
     Route::post('/statuses/{domain}/reorder', [StatusController::class, 'reorder'])
         ->where('domain', StatusDomain::pattern());
+    // 2026-10-02 §1 — „ნაგულისხმევი სტატუსების აღდგენა": მხოლოდ ის, რაც აკლია; არაფერს შლის
+    Route::post('/statuses/{domain}/restore-defaults', [StatusController::class, 'restoreDefaults'])
+        ->where('domain', StatusDomain::pattern());
     // ეტაპი 8 — საიდბარის განლაგება (დამალვა + „ყველა"/„რჩეული"-ს ადგილი)
     Route::put('/statuses/{domain}/sections', [StatusController::class, 'sections'])
         ->where('domain', StatusDomain::pattern());
