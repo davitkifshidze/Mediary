@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Check, ChevronRight, Loader2, Minus, Plus, Target } from 'lucide-react'
+import { Check, Loader2, Minus, Pencil, Plus, Target } from 'lucide-react'
 import { fetchStatsSummary } from '@/api/stats'
 import { MODULE_ACCENT_FALLBACK, modAccent, moduleName, useModules } from '@/lib/modules'
 import { useSettings } from '@/lib/settings'
@@ -14,14 +14,16 @@ import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
 /**
- * **წლიური მიზნები (FEAT-21 → Tasks §27) — დეშბორდის ზოლი და მოდალი.**
+ * **წლიური მიზნები (FEAT-21 → Tasks §27 → Tasks §1) — დეშბორდის ზოლი და მოდალი.**
  *
  * შენი სიტყვები: „მიზნის დაყენებაც ბარათების ზემოთ იყოს და დაჭერისას უფრო
- * კარგი UI/UX-ის მოდალი გამოვიდეს".
+ * კარგი UI/UX-ის მოდალი გამოვიდეს" · „შიდა ვიზუალი კარგია, მომწონს — გარე
+ * ვიზუალიც შეალამაზე უფრო, სანამ რამეს აირჩევ" (2026-10-02).
  *
  * ⚠️ **ზოლი ყოველთვის ჩანს** (Tasks §27.2) — „მიზანი ჯერ არ დაგისახავს"-იც
- * პასუხია. აქამდე ბლოკი მხოლოდ დაყენებული მიზნით ჩნდებოდა, ცარიელზე კი
- * მარჯვენა კუთხეში პატარა ღილაკი რჩებოდა, რომელსაც თვალი ვერ პოულობდა.
+ * პასუხია. Tasks §1.4-დან ზოლი **ბარათია**: სათაური და შეჯამება, თითო მიზანზე
+ * მოდულის ფერის მინი-ბარათი პროგრესის ზოლითა და ტემპით, ერთი ღილაკი
+ * „მიზნების შეცვლა"; ცარიელზე — მოწვევა და „მიზნის დაყენება".
  *
  * ⚠️ **„გზაზეა" = ამ ტემპით წლის ბოლომდე მიზანს მიაღწევს**: `done` იყოფა
  * წლის განვლილ ნაწილზე (`paceOf`). ერთი ფორმულა ზოლსაც და მოდალსაც
@@ -31,6 +33,12 @@ import { cn } from '@/lib/utils'
  * წმინდა ინტერფეისის პარამეტრია, backend-ის არცერთი გადაწყვეტილება მას
  * არ ეყრდნობა — ცალკე მიგრაცია ერთი რიცხვისთვის მექანიზმის გამრავლება
  * იქნებოდა.
+ *
+ * ⚠️ **`goals[key]` შეიძლება სია იყოს** (Tasks §1): `UserResource` წლის
+ * გასაღებებს სიად აბრუნებდა და ბაზაში `movie: [50, 10, 10, 12]` დაგროვდა.
+ * მიზეზი და მონაცემი backend-ზე გასწორდა, მაგრამ აქ არაობიექტი **ცარიელად**
+ * ითვლება — ძველი ქეშიდან ან სხვა ანგარიშის ბრაუზერიდან მოსულმა სიამ ზოლი
+ * აღარ უნდა გაფუჭოს და შენახვაზე ობიექტში აღარ უნდა ჩაიშალოს.
  *
  * ⚠️ **პროგრესს სერვერი ითვლის** (`/stats/summary`-ის `done_by_module`) —
  * იმავე აგრეგატიდან, რომელსაც სტატისტიკა კითხულობს; მეორე წყარო ორ
@@ -68,6 +76,12 @@ export function paceOf(done: number, year: number, now = new Date()): number {
   return Math.round(done / yearFraction(year, now))
 }
 
+/** ერთი მოდულის მიზნები წლების მიხედვით — მხოლოდ ობიექტი ითვლება (Tasks §1) */
+export function yearlyGoals(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return value as Record<string, number>
+}
+
 export function YearGoals() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -98,7 +112,7 @@ export function YearGoals() {
 
   const all = data.goal_modules.map((key) => ({
     key,
-    target: Number(goals[key]?.[year] ?? 0),
+    target: Number(yearlyGoals(goals[key])[year] ?? 0),
     done: data.done_by_module[key] ?? 0,
     mod: modules.find((m) => m.key === key),
   }))
@@ -107,7 +121,7 @@ export function YearGoals() {
 
   const setGoal = (key: string, n: number) => {
     const value = Math.max(0, Math.min(GOAL_MAX, Math.round(n) || 0))
-    const next = { ...goals, [key]: { ...(goals[key] ?? {}), [year]: value } }
+    const next = { ...goals, [key]: { ...yearlyGoals(goals[key]), [year]: value } }
 
     // ⚠️ 0 = „მიზანი არ მაქვს": გასაღების დატოვება ზოლს ცარიელი ნიშნით ავსებდა
     if (value === 0) delete next[key][year]
@@ -128,10 +142,14 @@ export function YearGoals() {
     setEditing(false)
   }
 
+  /* Tasks §1.3 — ⚠️ `save()` ახლა `Promise<boolean>`-ია: ჩავარდნაზე ტოსტი
+     პროვაიდერმა უკვე აჩვენა, ფანჯარა კი ღია რჩება, რომ „შენახულია" არ ვთქვათ,
+     სანამ სერვერს არ შეუნახავს. */
   const commit = async () => {
     setBusy(true)
     try {
-      await save()
+      const ok = await save()
+      if (!ok) return
       setEditing(false)
       toast({ title: t('goals.saved'), variant: 'success' })
     } finally {
@@ -139,47 +157,49 @@ export function YearGoals() {
     }
   }
 
+  const hasGoals = rows.length > 0
+
   return (
     <>
-      {/* ===== ზოლი — ბარათების ზემოთ, ყოველთვის (§27.2) ===== */}
-      <button
-        type="button"
-        onClick={open}
-        className="group mb-6 flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/50"
-      >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+      {/* ===== ზოლი — ბარათების ზემოთ, ყოველთვის (§27.2); ვიზუალი — Tasks §1.4 ===== */}
+      <section aria-label={t('goals.title', { year: data.year })} className="mb-6 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
             <Target className="size-4" />
           </span>
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{t('goals.title', { year: data.year })}</span>
             <span className="block truncate text-xs text-muted-foreground">
-              {rows.length > 0 ? t('goals.barSummary', { onTrack, total: rows.length }) : t('goals.barEmpty')}
+              {hasGoals ? t('goals.barSummary', { onTrack, total: rows.length }) : t('goals.barEmpty')}
             </span>
           </span>
-        </span>
+          <Button type="button" variant={hasGoals ? 'edit' : 'default'} size="sm" onClick={open}>
+            {hasGoals ? <Pencil className="size-4" /> : <Plus className="size-4" />}
+            {hasGoals ? t('goals.edit') : t('goals.set')}
+          </Button>
+        </div>
 
-        {rows.length > 0 && (
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        {hasGoals ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {rows.map((row) => (
-              <span
+              <GoalTile
                 key={row.key}
-                className="inline-flex items-center gap-1.5 rounded-md bg-[var(--mod-soft)] px-2 py-1 text-xs tabular-nums"
-                style={modAccent(row.mod?.color) ?? MODULE_ACCENT_FALLBACK}
-              >
-                <ModuleIcon name={row.mod?.icon ?? null} className="size-3.5 text-[var(--mod)]" />
-                {row.done}/{row.target}
-                {row.done >= row.target && <Check className="size-3.5 text-[var(--icon-ok)]" />}
-              </span>
+                name={row.mod ? moduleName(row.mod, lang) : row.key}
+                icon={row.mod?.icon ?? null}
+                color={row.mod?.color ?? null}
+                done={row.done}
+                target={row.target}
+                pace={paceOf(row.done, data.year)}
+                onOpen={open}
+              />
             ))}
-          </span>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-lg border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground">
+            {t('goals.barEmptyHint', { presets: GOAL_PRESETS.join(' · ') })}
+          </p>
         )}
-
-        <span className="ml-auto flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-          {rows.length > 0 ? t('goals.edit') : t('goals.set')}
-          <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-        </span>
-      </button>
+      </section>
 
       {/* ===== მოდალი (§27.3) ===== */}
       {editing && (
@@ -216,6 +236,66 @@ export function YearGoals() {
         </ModalShell>
       )}
     </>
+  )
+}
+
+/**
+ * ზოლის მინი-ბარათი — ერთი დასახული მიზანი (Tasks §1.4): მოდულის ხატულა და
+ * ფერი, `შესრულდა / მიზანი`, თხელი პროგრესის ზოლი და ტემპი; მიღწეულზე ✓.
+ * დაჭერა მოდალს ხსნის — იგივე, რაც „მიზნების შეცვლა".
+ *
+ * ⚠️ ფერი მოდულისაა (`modules.color`) — იგივე წყარო, რაც საიდბარსა და
+ * მოდალის `GoalCard`-ს; მეორე პალიტრა ერთ მოდულს ორ ფერს მისცემდა.
+ */
+function GoalTile({
+  name,
+  icon,
+  color,
+  done,
+  target,
+  pace,
+  onOpen,
+}: {
+  name: string
+  icon: string | null
+  color: string | null
+  done: number
+  target: number
+  pace: number
+  onOpen: () => void
+}) {
+  const { t } = useTranslation()
+  const percent = Math.min(100, Math.round((done / target) * 100))
+  const reached = done >= target
+  const track = reached || pace >= target
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={t('goals.openCard', { module: name })}
+      className="cursor-pointer rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-[var(--mod)]"
+      style={modAccent(color) ?? MODULE_ACCENT_FALLBACK}
+    >
+      <span className="flex items-center gap-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+          <ModuleIcon name={icon} className="size-4 text-[var(--mod)]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{name}</span>
+          <span className="block text-xs tabular-nums text-muted-foreground">
+            {done} / {target}
+          </span>
+        </span>
+        {reached && <Check className="size-4 shrink-0 text-[var(--icon-ok)]" />}
+      </span>
+      <span className="mt-2.5 block h-1.5 overflow-hidden rounded-md bg-secondary">
+        <span className="block h-full rounded-md bg-[var(--mod)] transition-[width]" style={{ width: `${percent}%` }} />
+      </span>
+      <span className={cn('mt-1.5 block truncate text-xs', track ? 'text-[var(--icon-ok)]' : 'text-[var(--status-undecided)]')}>
+        {reached ? t('goals.reached') : t('goals.pace', { count: pace })}
+      </span>
+    </button>
   )
 }
 

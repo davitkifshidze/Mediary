@@ -12,6 +12,7 @@ use App\Services\Stats\LibraryStats;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -227,5 +228,63 @@ class YearGoalsTest extends TestCase
             50,
             $this->user->fresh()->settings['goals']['movie']['2026'],
         );
+    }
+
+    /**
+     * Tasks §1.1 — **წლის გასაღები `/auth/me`-ზეც რჩება.** `JsonResource` ყველა-
+     * რიცხვითგასაღებიან მასივს სიად აბრუნებდა (`{"2026": 50}` → `[50]`), ე.ი.
+     * ბაზაში სწორი მნიშვნელობა ბრაუზერამდე დამახინჯებული აღწევდა — ზემოთა ტესტი
+     * ამას ვერ ხედავდა, რადგან ბაზას კითხულობს და არა პასუხს.
+     */
+    public function test_goal_year_keys_survive_the_auth_me_response(): void
+    {
+        $this->putJson('/api/auth/settings', [
+            'settings' => ['goals' => ['movie' => ['2026' => 50], 'book' => ['2026' => 12]]],
+        ])->assertOk();
+
+        $goals = $this->getJson('/api/auth/me')->assertOk()->json('data.settings.goals');
+
+        $this->assertSame(['2026' => 50], $goals['movie']);
+        $this->assertSame(['2026' => 12], $goals['book']);
+    }
+
+    /**
+     * Tasks §1.2 — **სიებად ქცეული მიზნები მიმდინარე წელზე ბრუნდება.** ბოლო
+     * ელემენტი უახლესი მიზანია; `{"0": 50, "2026": 10}` ფორმიდან მხოლოდ წელი რჩება;
+     * არა-მასივი იშლება; ცარიელი `goals` ობიექტად (`{}`) იწერება და არა სიად.
+     */
+    public function test_broken_goal_lists_are_repaired_to_the_current_year(): void
+    {
+        $year = (string) now()->year;
+
+        DB::table('users')->where('id', $this->user->id)->update([
+            'settings' => json_encode([
+                'cardSize' => 'm',
+                'goals' => [
+                    'movie' => [50, 10, 10, 12],
+                    'series' => ['0' => 10, $year => 5],
+                    'book' => 'oops',
+                    'game' => [$year => 7],
+                ],
+            ]),
+        ]);
+
+        $migration = require base_path('database/migrations/2026_10_02_000004_repair_year_goal_lists.php');
+        $migration->up();
+
+        $settings = $this->user->fresh()->settings;
+
+        $this->assertSame('m', $settings['cardSize']);
+        $this->assertSame([$year => 12], $settings['goals']['movie']);
+        $this->assertSame([$year => 5], $settings['goals']['series']);
+        $this->assertSame([$year => 7], $settings['goals']['game']);
+        $this->assertArrayNotHasKey('book', $settings['goals']);
+
+        // ცარიელი მიზნები — `{}`
+        DB::table('users')->where('id', $this->user->id)->update([
+            'settings' => json_encode(['goals' => ['movie' => 'oops']]),
+        ]);
+        $migration->up();
+        $this->assertSame('{"goals":{}}', DB::table('users')->where('id', $this->user->id)->value('settings'));
     }
 }

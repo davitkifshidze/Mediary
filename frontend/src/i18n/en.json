@@ -3584,7 +3584,7 @@
   },
   "goals": {
     "title": "Goals for {{year}}",
-    "edit": "Change",
+    "edit": "Change goals",
     "set": "Set a goal",
     "editHint": "Switch a module on and choose how many you intend to finish this year. “On track” means this pace reaches the goal by year end.",
     "saved": "The goals have been saved.",
@@ -3597,7 +3597,9 @@
     "reached": "Goal reached",
     "target": "Target",
     "less": "One less",
-    "more": "One more"
+    "more": "One more",
+    "barEmptyHint": "Pick a module and a number ({{presets}}) — how many you intend to finish this year; the goal cards will appear here.",
+    "openCard": "{{module}} — change the goal"
   },
   "courses": {
     "title": "Courses",

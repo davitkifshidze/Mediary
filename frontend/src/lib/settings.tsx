@@ -185,7 +185,13 @@ interface SettingsApi {
   reset: () => void
   /** შეუნახავი ცვლილებების გაუქმება */
   revert: () => void
-  save: () => void
+  /**
+   * backend-ზე შენახვა. ⚠️ `Promise<boolean>` — გამომძახებელმა (მიზნების მოდალი)
+   * უნდა იცოდეს, შეინახა თუ არა: `void` ვერსიაზე `await save()` არაფერს ელოდებოდა
+   * და „შენახულია" ჩავარდნაზეც ჩანდა (Tasks §1.3). ჩავარდნის ტოსტი აქვე ჩანს,
+   * ამიტომ `false`-ზე გამომძახებელი მხოლოდ ფანჯარას ტოვებს ღიად.
+   */
+  save: () => Promise<boolean>
   /** არის თუ არა გაუშვებელი ცვლილება */
   dirty: boolean
   /** კონკრეტული პარამეტრი შეცვლილია და ჯერ არ შენახულა */
@@ -201,7 +207,7 @@ const SettingsContext = React.createContext<SettingsApi>({
   set: () => {},
   reset: () => {},
   revert: () => {},
-  save: () => {},
+  save: async () => false,
   dirty: false,
   isDirty: () => false,
   saving: false,
@@ -280,19 +286,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const reset = React.useCallback(() => setSettings(DEFAULT_SETTINGS), [])
   const revert = React.useCallback(() => setSettings(persisted), [persisted])
 
-  const save = React.useCallback(() => {
+  const save = React.useCallback((): Promise<boolean> => {
     if (!user) {
       saveLocal(settings)
       setPersisted(settings)
       setSavedAt(Date.now())
-      return
+      return Promise.resolve(true)
     }
     setSaving(true)
-    saveSettings(settings)
+    return saveSettings(settings)
       .then(() => {
         saveLocal(settings)
         setPersisted(settings)
         setSavedAt(Date.now())
+        return true
       })
       /* ⚠️ **ჩავარდნა ცხადად ჩანს (Tasks GAP-03).** ეს `/settings`-ისა და
          `/sync`-ის ერთადერთი შენახვის გზაა და `catch`-ი ცარიელი იყო: 500/419
@@ -302,7 +309,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
          ⚠️ `persisted` **განზრახ არ ახლდება**, ე.ი. `dirty` რჩება: ცვლილება
          ჯერ არ შენახულა და ზოლმაც ეს უნდა თქვას. */
-      .catch((e: unknown) => toast({ title: errorMessage(e), variant: 'error' }))
+      .catch((e: unknown) => {
+        toast({ title: errorMessage(e), variant: 'error' })
+        return false
+      })
       .finally(() => setSaving(false))
   }, [settings, toast, user])
 

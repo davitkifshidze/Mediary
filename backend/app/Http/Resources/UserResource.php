@@ -10,6 +10,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
+    /**
+     * ⚠️ **გასაღებები ინარჩუნებს ფორმას** (Tasks §1.1). `JsonResource` ყოველ ჩადგმულ
+     * მასივს, რომლის ყველა გასაღები რიცხვითია, `array_values()`-ით გადანომრავს
+     * (`ConditionallyLoadsAttributes::removeMissingValues()`): `settings.goals`-ის
+     * `{"movie": {"2026": 12}}` ბრაუზერში `{"movie": [12]}`-ად ჩადიოდა, SPA მიზანს
+     * ვეღარ კითხულობდა და ყოველ შენახვაზე სიას ობიექტში შლიდა — ასე ბაზაში
+     * `movie: [50, 10, 10, 12]` დაგროვდა. `settings` მომხმარებლის თავისუფალი JSON-ია,
+     * ე.ი. რიცხვითი გასაღები (წელი, id) მასში ნებისმიერ დროს შეიძლება გაჩნდეს.
+     */
+    public $preserveKeys = true;
+
     public function toArray(Request $request): array
     {
         return [

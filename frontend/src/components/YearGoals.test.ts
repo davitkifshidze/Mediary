@@ -6,17 +6,19 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **მიზნები — ზოლი ბარათების ზემოთ და ახალი მოდალი** (Tasks §27.2/§27.3).
+   **მიზნები — ზოლი ბარათების ზემოთ და მოდალი** (Tasks §27.2/§27.3, §1).
 
-   ⚠️ მოწმდება: ზოლი მიზნის გარეშეც ჩანს („მიზანი ჯერ არ დაგისახავს"),
-   მოდულის ჩართვა საწყის 12-ს სვამს, სწრაფი ვარიანტი რიცხვს ცვლის,
-   „შენახვა" ინახავს, ხოლო დახურვა ცვლილებას აბრუნებს (§4.5).
+   ⚠️ მოწმდება: ზოლი მიზნის გარეშეც ჩანს („მიზანი ჯერ არ დაგისახავს") და
+   „მიზნის დაყენება" მოდალს ხსნის, მოდულის ჩართვა საწყის 12-ს სვამს, სწრაფი
+   ვარიანტი რიცხვს ცვლის, „შენახვა" ინახავს და ჩავარდნაზე ფანჯარას ღიად
+   ტოვებს (§1.3), დახურვა ცვლილებას აბრუნებს (§4.5), სიად ქცეული მიზანი კი
+   ცარიელად ითვლება და შენახვაზე ობიექტში არ იშლება (§1).
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
   set: vi.fn(),
-  save: vi.fn().mockResolvedValue(undefined),
-  settings: { goals: {} as Record<string, Record<string, number>> },
+  save: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  settings: { goals: {} as Record<string, unknown> },
   modules: {
     enabled: [
       { key: 'book', name_ka: 'წიგნები', name_en: 'Books', icon: 'BookOpen', color: '#8a5a2b' },
@@ -68,6 +70,7 @@ afterEach(() => {
   container = null
   mocks.settings.goals = {}
   vi.clearAllMocks()
+  mocks.save.mockResolvedValue(true)
 })
 
 async function flush() {
@@ -101,25 +104,36 @@ describe('goal pace', () => {
     // ⚠️ 1 იანვარს ნულზე არ ვყოფთ
     expect(Number.isFinite(paceOf(3, 2026, new Date(2026, 0, 1)))).toBe(true)
   })
+
+  it('treats anything but an object as "no goals" (§1)', async () => {
+    const { yearlyGoals } = await import('@/components/YearGoals')
+
+    expect(yearlyGoals({ 2026: 12 })).toEqual({ 2026: 12 })
+    expect(yearlyGoals([50, 10, 12])).toEqual({})
+    expect(yearlyGoals(undefined)).toEqual({})
+    expect(yearlyGoals('oops')).toEqual({})
+  })
 })
 
 describe('YearGoals', () => {
-  it('the bar shows even without a goal and opens the editor', async () => {
+  it('the bar shows even without a goal and "set a goal" opens the editor', async () => {
     await mount()
 
-    const bar = buttonWith(i18n.t('goals.barEmpty'))
-    expect(bar).toBeTruthy()
+    expect(document.body.textContent).toContain(i18n.t('goals.barEmpty'))
+    const open = buttonWith(i18n.t('goals.set'))
+    expect(open).toBeTruthy()
 
-    await act(async () => bar!.click())
+    await act(async () => open!.click())
     await flush()
 
+    expect(buttonWith(i18n.t('actions.save'))).toBeTruthy()
     expect(document.body.textContent).toContain('წიგნები')
     expect(document.body.textContent).toContain('ფილმები')
   })
 
   it('switching a module on starts it at 12', async () => {
     await mount()
-    await act(async () => buttonWith(i18n.t('goals.barEmpty'))!.click())
+    await act(async () => buttonWith(i18n.t('goals.set'))!.click())
     await flush()
 
     const toggle = document.querySelector<HTMLButtonElement>(
@@ -143,19 +157,70 @@ describe('YearGoals', () => {
     await act(async () => buttonWith(i18n.t('actions.save'))!.click())
     await flush()
     expect(mocks.save).toHaveBeenCalled()
+    // შენახვის შემდეგ მოდალი დაიხურა
+    expect(buttonWith(i18n.t('actions.save'))).toBeFalsy()
+  })
+
+  it('a failed save keeps the editor open (§1.3)', async () => {
+    mocks.settings.goals = { book: { 2026: 12 } }
+    mocks.save.mockResolvedValue(false)
+    await mount()
+    await act(async () => buttonWith(i18n.t('goals.edit'))!.click())
+    await flush()
+
+    await act(async () => buttonWith(i18n.t('actions.save'))!.click())
+    await flush()
+
+    expect(mocks.save).toHaveBeenCalled()
+    expect(buttonWith(i18n.t('actions.save'))).toBeTruthy()
+  })
+
+  it('the bar shows a tile per goal with progress, and a tile opens the editor', async () => {
+    mocks.settings.goals = { movie: { 2026: 52 } }
+    await mount()
+
+    // 30 ფილმი 52-დან — ბარათზე, ტემპით; „გზაზეა" დღევანდელ თარიღზეა დამოკიდებული
+    const { paceOf } = await import('@/components/YearGoals')
+    expect(document.body.textContent).toContain('30 / 52')
+    expect(document.body.textContent).toContain(
+      i18n.t('goals.barSummary', { onTrack: paceOf(30, 2026) >= 52 ? 1 : 0, total: 1 }),
+    )
+
+    const tile = document.querySelector<HTMLButtonElement>(
+      `[aria-label="${i18n.t('goals.openCard', { module: 'ფილმები' })}"]`,
+    )
+    expect(tile).toBeTruthy()
+    await act(async () => tile!.click())
+    await flush()
+    expect(buttonWith(i18n.t('actions.save'))).toBeTruthy()
   })
 
   it('closing without saving puts the old goals back (§4.5)', async () => {
     mocks.settings.goals = { movie: { 2026: 52 } }
     await mount()
 
-    // ზოლი ახლა შედეგს აჩვენებს: 30 წიგნი → ტემპით წლის ბოლოს მიზანს მიაღწევს თუ არა
-    expect(document.body.textContent).toContain('30/52')
-
     await act(async () => buttonWith(i18n.t('goals.edit'))!.click())
     await flush()
     await act(async () => buttonWith(i18n.t('actions.cancel'))!.click())
 
     expect(mocks.set).toHaveBeenLastCalledWith('goals', { movie: { 2026: 52 } })
+  })
+
+  it('a goal that arrived as a list counts as unset and is not spread on save (§1)', async () => {
+    mocks.settings.goals = { movie: [50, 10, 10, 12] }
+    await mount()
+
+    expect(document.body.textContent).toContain(i18n.t('goals.barEmpty'))
+
+    await act(async () => buttonWith(i18n.t('goals.set'))!.click())
+    await flush()
+
+    const toggle = document.querySelector<HTMLButtonElement>(
+      `[aria-label="${i18n.t('goals.toggle', { module: 'ფილმები' })}"]`,
+    )!
+    await act(async () => toggle.click())
+
+    // სია ობიექტში არ იშლება: `{0: 50, 1: 10, …, 2026: 12}` აღარ ჩნდება
+    expect(mocks.set).toHaveBeenLastCalledWith('goals', { movie: { 2026: 12 } })
   })
 })
