@@ -37,7 +37,8 @@ class SongController extends Controller
     public function index(Request $request)
     {
         $query = Song::query()
-            ->with(['genres', 'playlists:id,name']);
+            ->with(['genres', 'playlists:id,name'])
+            ->withCount('visits');
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);

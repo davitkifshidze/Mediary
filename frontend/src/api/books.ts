@@ -56,6 +56,8 @@ export interface Book {
   status: BookStatus
   rating: number | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   progress_page: number | null
   progress_percent: number | null
   /** storage-ის გზა ან გარე URL */

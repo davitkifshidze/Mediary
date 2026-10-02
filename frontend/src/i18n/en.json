@@ -503,6 +503,22 @@
     "clear": "Clear the rating",
     "setTo": "Rate {{value}} / 10"
   },
+  "visits": {
+    "count": "Opened {{count}} times",
+    "last": "Last — {{when}}",
+    "open": "Visit log",
+    "title": "Visit log",
+    "hint": "Who opened this record, when and from where. A visit counts once an hour per person; visits from your public profile and share links are listed too.",
+    "empty": "Nobody has opened it yet",
+    "me": "Me",
+    "anonymous": "Anonymous",
+    "showingLast": "Showing the last {{count}} of {{total}}",
+    "source": {
+      "library": "Library",
+      "public": "Public profile",
+      "share": "Share link"
+    }
+  },
   "detail": {
     "watch": "Watch",
     "cast": "Cast",

@@ -83,6 +83,8 @@ export interface Game {
   links: GameLink[]
   status: GameStatus
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   age_rating: string | null
   size_gb: number | null
   rawg_id: number | null

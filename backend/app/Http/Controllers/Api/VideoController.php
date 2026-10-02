@@ -30,7 +30,7 @@ class VideoController extends Controller
     {
         $query = Video::query()
             ->with('type')
-            ->withCount(['images', 'documents', 'notes']);
+            ->withCount(['images', 'documents', 'notes', 'visits']);
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);
@@ -85,7 +85,7 @@ class VideoController extends Controller
         $base = Video::query()
             ->whereKeyNot($video->getKey())
             ->with('type')
-            ->withCount(['images', 'documents', 'notes']);
+            ->withCount(['images', 'documents', 'notes', 'visits']);
 
         return VideoResource::collection($search->similar($base, $video));
     }

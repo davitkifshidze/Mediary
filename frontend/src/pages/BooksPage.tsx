@@ -50,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
@@ -414,6 +415,7 @@ export function BooksPage() {
                     {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
                     <RatingBadge value={book.rating} size="row" className="mr-1" />
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <VisitCount value={book.visits_count} />
                     <FavoriteButton
                       active={book.is_favorite}
                       pending={favorite.isPending && favorite.variables === book.id}

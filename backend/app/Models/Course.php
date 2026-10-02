@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasVisits;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,9 @@ class Course extends Model
 
     /** FEAT-11 — კალათა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
+
+    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
+    use HasVisits;
 
     /** ⚠️ ოთხი და არა სამი: „მივატოვე" ცალკე ფაქტია და არა „დასრულებული" */
     public const STATUSES = ['to_take', 'taking', 'done', 'dropped'];

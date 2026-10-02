@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\RecordVisit;
 use App\Models\ShareLink;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
@@ -11,6 +12,7 @@ use App\Services\Share\ShareImporter;
 use App\Services\Share\ShareMatcher;
 use App\Services\Share\ShareResolver;
 use App\Services\Share\ShareScope;
+use App\Services\Visits\RecordVisits;
 use App\Support\Like;
 use App\Support\PublicDomain;
 use App\Support\ShareDomain;
@@ -49,6 +51,7 @@ class PublicShareController extends Controller
     public function __construct(
         private PublicProfileService $profiles,
         private FieldSettings $fields,
+        private RecordVisits $visits,
     ) {}
 
     /** ბმულის თავი: ვინ გაგიზიარა, სექციები რაოდენობებით, ვადა */
@@ -192,6 +195,8 @@ class PublicShareController extends Controller
 
         $viewer = $request->user();
         $own = $viewer !== null && (int) $viewer->id === (int) $owner->id;
+        // Tasks §10 — გაზიარების ბმულიდან შესვლა ჟურნალში `share`-ით; მფლობელი არ ითვლება
+        $this->visits->fromPublic($record, $request, $owner, RecordVisit::SOURCE_SHARE);
         $perPage = min(max((int) $request->integer('per_page', 100), 1), 100);
         $page = max(1, (int) $request->integer('page', 1));
 

@@ -77,6 +77,7 @@ use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\PublicShareController;
 use App\Http\Controllers\Api\RecordCastController;
+use App\Http\Controllers\Api\RecordVisitController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
@@ -108,6 +109,7 @@ use App\Support\CustomModules;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
+use App\Support\Visitable;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -317,6 +319,15 @@ Route::middleware('auth:sanctum')->group(function () {
        SPA-ს მარშრუტის შეცვლა HTTP რექვესთი არ არის, ე.ი. სიგნალი ცხადად
        მოდის. მოდულის middleware-ის გარეთ — იხ. `AuditController`. */
     Route::post('/audit/visit', [AuditController::class, 'visit']);
+
+    /* ---------- შესვლების მთვლელი და ჟურნალი (Tasks §10) ----------
+       ⚠️ მოდულის middleware-ის გარეთ: `{type}` მოდულის გასაღები ყოველთვის არაა
+       (`playlist` → `song`, `custom_record` → ჩანაწერის `module`) და POST
+       „შექმნად" წაიკითხებოდა — მოდულს `RecordVisitController` თვითონ ამოწმებს. */
+    Route::get('/visits/{type}/{id}', [RecordVisitController::class, 'index'])
+        ->whereIn('type', Visitable::keys())->whereNumber('id');
+    Route::post('/visits/{type}/{id}', [RecordVisitController::class, 'store'])
+        ->whereIn('type', Visitable::keys())->whereNumber('id');
 
     /* ---------- დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები ----------
        მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */

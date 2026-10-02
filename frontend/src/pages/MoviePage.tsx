@@ -29,6 +29,7 @@ import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { RatingStars } from '@/components/ui/star-rating'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
@@ -198,6 +199,8 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                 {m.year && <span className="font-medium">{m.year}</span>}
+                {/* Tasks §10 — „შევედი N-ჯერ" (გვერდის მაუნთზე ითვლება, არა `show()`-ზე) */}
+                <VisitBadge type={type} id={m.id} />
                 {type === 'series' && m.seasons ? (
                   <span className="text-muted-foreground">
                     {t('detail.seasons', { count: m.seasons })}

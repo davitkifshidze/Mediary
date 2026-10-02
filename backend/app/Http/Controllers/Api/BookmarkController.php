@@ -32,7 +32,7 @@ class BookmarkController extends Controller
 
     public function index(Request $request)
     {
-        $query = Bookmark::query()->with('category');
+        $query = Bookmark::query()->with('category')->withCount('visits');
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {

@@ -21,7 +21,7 @@ class NoteEntryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = NoteEntry::query()->with('category')->withCount(['files', 'reminders']);
+        $query = NoteEntry::query()->with('category')->withCount(['files', 'reminders', 'visits']);
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {

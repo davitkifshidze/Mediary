@@ -16,6 +16,8 @@ export interface Playlist {
   visibility: 'private' | 'public'
   /** სიაში მოდის */
   songs_count?: number
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   /** შიდა გვერდზე მოდის, pivot-ის რიგით */
   songs?: Song[]
   created_at: string | null

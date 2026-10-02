@@ -11,6 +11,8 @@ class VideoResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
+            'visits_count' => $this->whenCounted('visits'),
             'title' => $this->title,
             'description' => $this->description,
             // Q52 — არხი და გამოქვეყნების დღე (`Y-m-d`, დრო არ აქვს)

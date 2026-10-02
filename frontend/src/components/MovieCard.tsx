@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
+import { VisitCount } from '@/components/RecordVisits'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -156,6 +157,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                         <span title={t('rating.tmdbAverage')}>TMDB {movie.rating}</span>
                       </>
                     )}
+                    <VisitCount value={movie.visits_count} className="ml-auto" />
                   </div>
                 </div>
               </Link>

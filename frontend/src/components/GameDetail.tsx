@@ -30,6 +30,7 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RatingStars } from '@/components/ui/star-rating'
@@ -139,6 +140,8 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
+              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+              <VisitBadge type="game" id={game.id} />
               <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

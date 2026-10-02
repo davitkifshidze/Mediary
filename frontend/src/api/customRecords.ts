@@ -49,6 +49,8 @@ export interface CustomRecord {
   tags: string[]
   status: Status | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   finished_at: string | null
   visibility: 'private' | 'public'
   created_at: string | null

@@ -58,6 +58,7 @@ use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
 use App\Models\Playlist;
+use App\Models\RecordVisit;
 use App\Models\Role;
 use App\Models\Series;
 use App\Models\SeriesTranslation;
@@ -266,6 +267,8 @@ class AuditRegistry
         TrashedFile::class => 'ურნის ტექნიკური რიგი (Tasks §29); წაშლას/აღდგენას წყარო (ჩატი, ველი) და `TrashBin` ცხადად წერს',
         TrashEntry::class => 'ურნის ტექნიკური რიგი (Tasks §29, ეტაპი 2); მსახიობის მოხსნას/აღდგენას `RecordCastController` და `TrashBin` ცხადად წერს',
         TrashedMessage::class => 'ურნის ტექნიკური რიგი (Tasks §29, ეტაპი 5); წაშლა `chat_delete`-ად, აღდგენა `TrashBin`-ში ცხადად იწერება',
+        // Tasks §10 — დეტალის ყოველი გახსნა ლოგში „შეიქმნა"-დ ჩაიწერებოდა და §4-ის გვერდს დამარხავდა
+        RecordVisit::class => 'შესვლების ჟურნალი — ყოველი გახსნა ლოგს დამარხავდა; საკუთარი GET აქვს',
     ];
 
     /** მოდულის რიგის გარეშე არსებული ჭრილები — ფილტრში მოდულების გვერდით ჩანს */

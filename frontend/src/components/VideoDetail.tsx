@@ -25,6 +25,7 @@ import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
@@ -144,6 +145,8 @@ export function VideoDetail({
       <div className="mt-4 flex items-center justify-end gap-2">
         {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
         <VisibilityBadge value={video.visibility} />
+        {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+        <VisitBadge type="video" id={video.id} />
         <FavoriteButton size="xs" active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
       </div>
 

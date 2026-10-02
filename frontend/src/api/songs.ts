@@ -32,6 +32,8 @@ export interface Song {
   tags: string[]
   rating: number | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   play_count: number
   played_at: string | null
   /** 16.5 — საჯარო პროფილის წინაპირობა */

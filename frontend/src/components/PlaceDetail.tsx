@@ -20,6 +20,7 @@ import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -181,6 +182,8 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
               <RatingStars value={place.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
+              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+              <VisitBadge type="place" id={place.id} />
               <FavoriteButton size="xs" active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

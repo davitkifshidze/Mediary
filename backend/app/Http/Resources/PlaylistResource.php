@@ -17,6 +17,8 @@ class PlaylistResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
+            'visits_count' => $this->whenCounted('visits'),
             'name' => $this->name,
             'sort_order' => $this->sort_order,
             // Tasks 16 — პლეილისტი დამოუკიდებელი გაზიარებადი ერთეულია

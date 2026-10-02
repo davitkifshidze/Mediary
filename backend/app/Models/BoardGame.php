@@ -6,6 +6,7 @@ use App\Casts\RatingCast;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasVisits;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,9 @@ class BoardGame extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
+
+    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
+    use HasVisits;
 
     /* ⚠️ Tasks §12 — **სტატუსი არ აქვს** (შენი სიტყვები: „სტატუსიც საერთოდ
        ამოიღე, საჭირო არ არის"). კოლექციაში მყოფი თამაში ისედაც „მაქვს"-ია;

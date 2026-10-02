@@ -145,7 +145,7 @@ class PlaylistController extends Controller
 
     private function ordered()
     {
-        return Playlist::query()->withCount('songs')->orderBy('sort_order')->orderBy('id');
+        return Playlist::query()->withCount(['songs', 'visits'])->orderBy('sort_order')->orderBy('id');
     }
 
     /**

@@ -61,6 +61,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
@@ -432,6 +433,7 @@ export function SongsPage() {
                     {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
                     <RatingBadge value={song.rating} size="row" className="mr-1" />
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <VisitCount value={song.visits_count} />
                     <FavoriteButton
                       active={song.is_favorite}
                       pending={favorite.isPending && favorite.variables === song.id}

@@ -38,7 +38,7 @@ class CustomRecordController extends Controller
 
     public function index(Request $request, string $type)
     {
-        $query = CustomRecord::query()->forModule($type)->with('category');
+        $query = CustomRecord::query()->forModule($type)->with('category')->withCount('visits');
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->statusKey($key);

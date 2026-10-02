@@ -38,6 +38,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PrivateFileLink } from '@/components/PrivateFile'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
+import { VisitBadge } from '@/components/RecordVisits'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
@@ -96,6 +97,8 @@ export function CustomRecordDetail({
           fallback={<ModuleIcon name={module.icon} className="size-8 text-muted-foreground" />}
           badges={
             <>
+              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+              <VisitBadge type="custom_record" id={record.id} />
               {record.status && (
                 <Badge size="row" className={STATUS_BADGE[statusTone(record.status)]}>
                   {statusName(record.status, lang)}

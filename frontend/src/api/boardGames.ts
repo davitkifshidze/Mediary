@@ -41,6 +41,8 @@ export interface BoardGame {
   image_source: 'upload' | 'bgg' | null
   rating: number | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   links: BoardGameLink[]
   visibility: 'private' | 'public'
   files_count?: number

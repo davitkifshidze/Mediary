@@ -76,6 +76,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitCount } from '@/components/RecordVisits'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -445,6 +446,7 @@ export function BookmarksPage() {
                     <VisibilityBadge value={bookmark.visibility} size="row" />
 
                     {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                    <VisitCount value={bookmark.visits_count} />
                     <FavoriteButton
                       active={bookmark.is_favorite}
                       pending={favorite.isPending && favorite.variables === bookmark.id}

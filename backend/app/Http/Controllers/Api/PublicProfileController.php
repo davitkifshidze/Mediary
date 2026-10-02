@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
+use App\Models\RecordVisit;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
+use App\Services\Visits\RecordVisits;
 use App\Support\AlbumLock;
 use App\Support\GalleryParent;
 use App\Support\GallerySort;
@@ -48,6 +50,7 @@ class PublicProfileController extends Controller
         private PublicProfileService $profiles,
         private FieldSettings $fields,
         private PublicGallery $gallery,
+        private RecordVisits $visits,
     ) {}
 
     /** პროფილის თავი: ავატარი/სახელი/ბიო + ხილვადი დომენები რაოდენობებით */
@@ -145,6 +148,9 @@ class PublicProfileController extends Controller
 
         $record = $this->profiles->playlist($user, $playlist);
         abort_unless($record, 404);
+
+        // Tasks §10 — სხვისი შესვლა საჯარო პროფილიდან; მფლობელი თავის თავს არ ითვლის
+        $this->visits->fromPublic($record, $request, $user, RecordVisit::SOURCE_PUBLIC);
 
         $page = $this->profiles->playlistSongs($user, $record)->paginate($this->perPage($request));
 

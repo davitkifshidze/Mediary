@@ -35,6 +35,8 @@ export interface NoteEntry {
   due_at: string | null
   status: Status | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   /** ⚠️ §13 — პირადი დოკუმენტების მოდული: default ყოველთვის `private` */
   visibility: 'private' | 'public'
   files_count?: number

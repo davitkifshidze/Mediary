@@ -34,6 +34,8 @@ export interface Video {
   duration: number | null
   tags: string[]
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   watch_count: number
   watched_at: string | null
   created_at: string | null

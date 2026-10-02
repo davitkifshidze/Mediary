@@ -55,6 +55,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -422,6 +423,7 @@ export function NotesPage() {
                     {statusName(note.status, lang)}
                   </Badge>
                   {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით (ადგილს შემხსენებელთან §26 უცვლის) */}
+                  <VisitCount value={note.visits_count} />
                   <FavoriteButton
                     active={note.is_favorite}
                     pending={favorite.isPending && favorite.variables === note.id}

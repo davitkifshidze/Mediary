@@ -77,6 +77,8 @@ export interface MovieListItem {
   poster: string | null
   status: Status | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   description_ka?: string | null
   description_en?: string | null
   collection_id?: number | null

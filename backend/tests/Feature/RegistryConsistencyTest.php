@@ -31,6 +31,7 @@ use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
 use App\Support\UploadLimits;
+use App\Support\Visitable;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -259,6 +260,12 @@ class RegistryConsistencyTest extends TestCase
                 $this->assertTrue(StatusDomain::usesDictionary($domain), "{$domain}: ლექსიკონი `StatusDomain`-ში არ არის");
             }
         }
+    }
+
+    /** Tasks §10 — SPA-ს `VISIT_TYPES` `Visitable::TYPES`-ის სარკეა (URL-ის სეგმენტი და morph-ალიასი ერთი სიტყვაა) */
+    public function test_the_spa_visit_types_mirror_the_backend(): void
+    {
+        $this->assertSame(Visitable::keys(), $this->tsConstList('api/visits.ts', 'VISIT_TYPES'));
     }
 
     /** SPA-ს `SHARE_DOMAINS` — `ShareDomain::DOMAINS`-ის სარკე, რიგის ჩათვლით */
@@ -722,6 +729,8 @@ class RegistryConsistencyTest extends TestCase
         'user_credentials' => 'API-გასაღები ხშირად იმიტომ იშლება, რომ გაჟონა — 30 დღით შენახვა ამას გააბათილებდა',
         // Tasks §40 — ბმული გასაღებია და არა შიგთავსი; გაუქმება (`revoked_at`) მისი შექცევადი მდგომარეობაა
         'share_links' => 'ბმული გასაღებია და არა შიგთავსი — წაშლილის აღდგენა წვდომას ხელახლა გახსნიდა, რისი შეწყვეტაც წაშლის აზრია; შექცევადი ნაბიჯი გაუქმებაა',
+        // Tasks §10 — ჟურნალი ჩანაწერს ეკუთვნის და მასთან ერთად ქრება (`HasVisits::deleting`); `user_id` აქ მნახველია და არა მფლობელი
+        'record_visits' => 'შესვლების ჟურნალი — ჩანაწერთან ერთად ქრება (`HasVisits`), ცალკე წასაშლელი არაფერია',
         // Tasks §40.8 — „ვინ დაიმატა ბმულიდან“ (ბმულის სტატისტიკა); ბმულთან ერთად იშლება
         'share_link_imports' => 'ბმულის სტატისტიკა (ვინ, რამდენი, როდის) — შიგთავსი არაა და ბმულთან ერთად ქრება',
         'approval_requests' => 'გაუქმებული მოთხოვნა ტექნიკური ოპერაციაა',

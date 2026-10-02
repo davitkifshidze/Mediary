@@ -22,6 +22,7 @@ import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/componen
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -70,6 +71,8 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
               <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
+              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+              <VisitBadge type="board_game" id={game.id} />
               <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

@@ -7,6 +7,7 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasVisits;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,6 +42,9 @@ class NoteEntry extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
+
+    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
+    use HasVisits;
 
     protected $guarded = ['id'];
 

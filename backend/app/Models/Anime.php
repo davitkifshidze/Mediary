@@ -9,6 +9,7 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasVisits;
 use App\Models\Concerns\HasWatchLog;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +52,9 @@ class Anime extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
+
+    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
+    use HasVisits;
 
     /**
      * ⚠️ **ხელახლა ნახვის ჟურნალი (FEAT-14)** — `watched_at` „ბოლო ნახვაა"

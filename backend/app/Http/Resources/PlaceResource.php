@@ -21,6 +21,8 @@ class PlaceResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
+            'visits_count' => $this->whenCounted('visits'),
             'name' => $this->name,
             'address' => $this->address,
             'city' => $this->city,

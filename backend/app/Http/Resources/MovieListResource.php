@@ -12,6 +12,8 @@ class MovieListResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
+            'visits_count' => $this->whenCounted('visits'),
             'title_ka' => $this->title_ka,
             'title_en' => $this->title_en,
             'year' => $this->year,

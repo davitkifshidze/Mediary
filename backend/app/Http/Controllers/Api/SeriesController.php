@@ -28,7 +28,7 @@ class SeriesController extends Controller
     /** სერიალების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
-        $query = Series::query()->with('genres');
+        $query = Series::query()->with('genres')->withCount('visits');
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

@@ -32,3 +32,21 @@ export function safeSet(key: string, value: string): void {
     // private mode / სავსე quota / დაბლოკილი საცავი — იხ. ზემოთ
   }
 }
+
+/* Tasks §10 — ერთი სესიის ფარგლებში „უკვე გავაკეთე" ნიშნები (შესვლის
+   მთვლელი): ტაბის დახურვაზე ქრება, სწორედ ეს გვინდა. იგივე წესები. */
+export function sessionGet(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+export function sessionSet(key: string, value: string): void {
+  try {
+    window.sessionStorage.setItem(key, value)
+  } catch {
+    // იხ. ზემოთ
+  }
+}

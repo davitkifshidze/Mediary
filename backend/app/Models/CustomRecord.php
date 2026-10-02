@@ -8,6 +8,7 @@ use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
+use App\Models\Concerns\HasVisits;
 use App\Services\Storage\StorageMeter;
 use App\Support\CustomModules;
 use App\Support\StorageFolder;
@@ -49,6 +50,9 @@ class CustomRecord extends Model
 
     /** FEAT-11 → Tasks §29 — წაშლა ურნაშია (`moveToTrash()`) */
     use HasTrash;
+
+    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
+    use HasVisits;
 
     /** morph alias, როცა მოდული ჯერ არ ვიცით (ცარიელი ინსტანცია) */
     public const MORPH = 'custom_record';

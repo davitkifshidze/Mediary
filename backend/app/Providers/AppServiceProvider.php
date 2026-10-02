@@ -13,6 +13,7 @@ use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\Place;
+use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
 use App\Models\User;
@@ -77,6 +78,8 @@ class AppServiceProvider extends ServiceProvider
                რიგი (`module`) ამბობს და არა ალიასი: ალიასი კოდის რეესტრია,
                პირადი მოდული კი ბაზაში იბადება. */
             'custom_record' => CustomRecord::class,
+            // Tasks §10 — ფლეილისტს შესვლების ჟურნალი აქვს (`record_visits.visitable_type`)
+            'playlist' => Playlist::class,
             // Tasks 10 — გალერეის ფოტოები მსახიობზეც ეკიდება
             'cast_member' => CastMember::class,
             /* FEAT-19 — `notifications.notifiable` **ერთადერთი პოლიმორფული

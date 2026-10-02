@@ -53,6 +53,8 @@ export interface Place {
   /** Tasks §25.2 — მთელი რიცხვი 1–10 (ადრე `decimal(3,1)` სტრიქონად) */
   rating: number | null
   is_favorite: boolean
+  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
+  visits_count?: number
   visited_at: string | null
   photo: string | null
   files_count?: number

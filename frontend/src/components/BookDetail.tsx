@@ -24,6 +24,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { VisitBadge } from '@/components/RecordVisits'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -83,6 +84,8 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
               <RatingStars value={book.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
+              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+              <VisitBadge type="book" id={book.id} />
               <FavoriteButton size="xs" active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

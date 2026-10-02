@@ -28,6 +28,7 @@ import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { VisitBadge } from '@/components/RecordVisits'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
@@ -129,9 +130,13 @@ export function PlaylistPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{playlist.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('playlists.songCount', { count: songs.length })}
-            {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              {t('playlists.songCount', { count: songs.length })}
+              {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
+            </span>
+            {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი (გვერდის მაუნთზე ითვლება) */}
+            <VisitBadge type="playlist" id={playlist.id} />
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
