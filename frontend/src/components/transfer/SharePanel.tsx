@@ -275,6 +275,19 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
         {link.last_opened_at && <span>{t('share.lastOpened', { when: relative(link.last_opened_at) })}</span>}
       </p>
 
+      {/* §40.8 — ვინ დაიმატა ამ ბმულიდან (ახლები ზემოთ; ბევრზე — პირველი ხუთი და „კიდევ N") */}
+      {link.importers.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t('share.importedBy', {
+            names: link.importers
+              .slice(0, 5)
+              .map((i) => (i.username ? `@${i.username} (${i.added})` : `${i.display_name} (${i.added})`))
+              .join(', '),
+          })}
+          {link.importers.length > 5 && ` ${t('share.importedMore', { count: link.importers.length - 5 })}`}
+        </p>
+      )}
+
       {!link.readable && (
         <p className="text-xs text-destructive">{t('share.unreadable')}</p>
       )}

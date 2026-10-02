@@ -560,7 +560,9 @@
     "castSyncing": "Updating actors…",
     "castSyncDone": "Actors updated",
     "restoreFromTrash": "Restore",
-    "restoredFromTrash": "“{{title}}” restored from the trash"
+    "restoredFromTrash": "“{{title}}” restored from the trash",
+    "sharing": "Adding from the link…",
+    "shareDone": "Adding from the link finished"
   },
   "missing": {
     "label": "Missing:",
@@ -1126,7 +1128,10 @@
     "share_revoked": "This share link has been revoked",
     "share_domain_unavailable": "You can't share this section — the module isn't enabled for you",
     "share_scope_incomplete": "Choose what goes into the link — a status, a genre or records",
-    "share_links_disabled": "Share links are switched off on this installation"
+    "share_links_disabled": "Share links are switched off on this installation",
+    "share_own_link": "This is your own link — its records are already in your library",
+    "share_record_not_found": "This record is no longer in the link",
+    "share_status_hidden": "This link doesn’t share statuses — add the record with your default status"
   },
   "fields": {
     "title": "Fields",
@@ -3550,7 +3555,8 @@
       "batch_done": "A background run has finished",
       "module_created": "A new module was created",
       "module_deleted": "A module was deleted",
-      "module_disabled": "An admin disabled your module"
+      "module_disabled": "An admin disabled your module",
+      "share_imported": "Someone is adding records from your link"
     },
     "detail": {
       "module": "Module: {{name}}",
@@ -3559,7 +3565,8 @@
       "backup": "Backup: {{name}}",
       "batch": "{{total}} items, {{failed}} failed.",
       "upload": "{{kind}}: {{what}}",
-      "customModule": "{{name}} · {{owner}}"
+      "customModule": "{{name}} · {{owner}}",
+      "share": "{{name}} · {{link}}"
     }
   },
   "pick": {
@@ -3863,7 +3870,7 @@
   },
   "share": {
     "listTitle": "Share links",
-    "listHint": "With a link, someone else sees your films, series and anime — exactly within the limits you choose. Viewing needs no sign-in; you can change or revoke a link at any time.",
+    "listHint": "With a link, someone else sees your films, series and anime — exactly within the limits you choose — and, once signed in, can add them to their own library. Viewing needs no sign-in; you can change or revoke a link at any time.",
     "new": "New link",
     "disabled": "Share links are switched off on this installation (SHARE_LINKS) — existing links don't open and new ones can't be created.",
     "empty": "You have no share links yet",
@@ -3961,7 +3968,32 @@
       "notFoundHint": "Check the address — the link may have been changed or deleted.",
       "expired": "This link has expired",
       "revoked": "This link has been revoked",
-      "askOwner": "Ask the person who shared it for a new link."
+      "askOwner": "Ask the person who shared it for a new link.",
+      "queued": "Adding to your library: {{count}}",
+      "nothingNew": "Nothing new — you already have them all",
+      "requested": "Request sent — you can add these once an admin approves it",
+      "noModule": "You don’t have the “{{module}}” module yet — request it, and once an admin approves you can add these records to your own library.",
+      "requestModule": "Request the module",
+      "requestSent": "Request sent",
+      "noCreateRight": "You don’t have the right to add records in “{{module}}”.",
+      "addTitle": "Add to my library",
+      "addHint": "A TMDB record is refilled from TMDB on your side — only “which film it is” travels; the sharer’s favourites, notes and custom fields don’t. What you already have isn’t duplicated.",
+      "statusMode": "Status to add with",
+      "statusDefault": "With my default status",
+      "statusOwner": "As the sharer has it",
+      "selectNew": "Select all new",
+      "unselectAll": "Clear selection",
+      "addSelected": "Add selected ({{count}})",
+      "addAllNew": "Add all new",
+      "select": "Select “{{title}}”"
+    },
+    "importedBy": "Added by: {{names}}",
+    "importedMore": "and {{count}} more",
+    "summary": {
+      "added": "Added: {{count}}",
+      "have": "Already had: {{count}}",
+      "trash": "In your trash: {{count}}",
+      "failed": "Failed: {{count}}"
     }
   }
 }

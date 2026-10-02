@@ -13,6 +13,7 @@ import {
   type GalleryPlanItem,
 } from '@/api/gallery'
 import { importRow, type ImportPlanItem } from '@/api/import'
+import { addShareItem, type ShareStatusMode } from '@/api/shareLinks'
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
@@ -53,7 +54,7 @@ import { cn } from '@/lib/utils'
    ============================================================ */
 
 type QStatus = 'pending' | 'running' | 'done' | 'error'
-type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import' | 'cast'
+type QKind = 'add' | 'sync' | 'gallery' | 'translate' | 'purge' | 'import' | 'cast' | 'share'
 
 /** `purge`-ის ერთეულის კონტექსტი — რას ვშლით და ვისთან (20.2) */
 export interface PurgeQueueOptions {
@@ -128,6 +129,14 @@ interface QItem {
   /** cast — რა განახლდეს (§39.2); ერთეულზეა იმავე მიზეზით, რაც `sources` */
   castOpts?: CastSyncOptions
   /**
+   * share — გაზიარების ბმულის ტოკენი და სტატუსის რეჟიმი (Tasks §40.9).
+   * ⚠️ ერთეულზეა და არა დიალოგზე (`sources`-ის მიზეზი): რიგი თითო ჩანაწერს
+   * ცალკე აგზავნის, ე.ი. აქ რომ არ ეწეროს, მეორე ჩანაწერიდან სტატუსი
+   * ჩუმად ნაგულისხმევზე დაბრუნდებოდა. `itemId` — **გამზიარებლის** ჩანაწერია.
+   */
+  shareToken?: string
+  shareStatusMode?: ShareStatusMode
+  /**
    * cast — ნაბიჯის შედეგი. ⚠️ „უცვლელი" და „TMDB-ზე არაფერია" ორივე
    * `skipped`-ია, მაგრამ მომხმარებლისთვის სხვადასხვა ფაქტია (§39.6).
    */
@@ -159,6 +168,13 @@ interface QueueApi {
   enqueueImport: (items: ImportPlanItem[], source: string) => void
   /** მსახიობების მონაცემები (§39) — გეგმის მსახიობები + ველები */
   enqueueCast: (items: CastSyncPlanItem[], opts: CastSyncOptions) => void
+  /** Tasks §40.9 — ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
+  enqueueShare: (
+    token: string,
+    domain: MediaType,
+    items: { id: number; title: string }[],
+    statusMode: ShareStatusMode,
+  ) => void
   isQueued: (tmdbId: number, mediaType?: MediaType) => boolean
   active: number
   isBusy: boolean
@@ -174,6 +190,7 @@ const QueueContext = React.createContext<QueueApi>({
   enqueuePurge: () => {},
   enqueueImport: () => {},
   enqueueCast: () => {},
+  enqueueShare: () => {},
   isQueued: () => false,
   active: 0,
   isBusy: false,
@@ -198,6 +215,7 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
   add: { busy: 'queue.adding', done: 'queue.doneTitle' },
   import: { busy: 'queue.importing', done: 'queue.importDone' },
   cast: { busy: 'queue.castSyncing', done: 'queue.castSyncDone' },
+  share: { busy: 'queue.sharing', done: 'queue.shareDone' },
 }
 
 /**
@@ -468,6 +486,41 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  /**
+   * ბმულიდან დამატება რიგში (Tasks §40.9).
+   *
+   * ⚠️ **დუბლის გასაღები `share:{token}:{domain}:{id}`-ია** — ერთი და იგივე
+   * ფილმი ორ სხვადასხვა ბმულში შეიძლება იყოს (სხვადასხვა id-ით, სხვადასხვა
+   * მფლობელისგან), და ორივე ცალკე ერთეულია; ერთი ბმულიდან კი ორჯერ არ ემატება.
+   */
+  const enqueueShare = React.useCallback(
+    (token: string, domain: MediaType, rows: { id: number; title: string }[], statusMode: ShareStatusMode) => {
+      setExpanded(true) // რამდენიმე წამიდან წუთებამდე — პროგრესი მაშინვე ჩანს
+      setItems((cur) => {
+        const base = freshBase(cur)
+        const busy = new Set(
+          cur
+            .filter((i) => i.kind === 'share' && (i.status === 'pending' || i.status === 'running'))
+            .map((i) => `share:${i.shareToken}:${i.mediaType}:${i.itemId}`),
+        )
+        const fresh = rows
+          .filter((r) => !busy.has(`share:${token}:${domain}:${r.id}`))
+          .map((r) => ({
+            id: nextId++,
+            kind: 'share' as QKind,
+            itemId: r.id,
+            title: r.title,
+            mediaType: domain,
+            status: 'pending' as QStatus,
+            shareToken: token,
+            shareStatusMode: statusMode,
+          }))
+        return fresh.length ? [...base, ...fresh] : base
+      })
+    },
+    [],
+  )
+
   const cancelPending = React.useCallback(() => {
     setItems((cur) => cur.filter((i) => i.status !== 'pending'))
     abortRef.current?.abort()
@@ -550,6 +603,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   error: r.error ?? undefined,
                   skipped: r.skipped,
                 }))
+            /* ⚠️ **ეს შტოც `syncItem`-ის ზოგად შტომდე დგას** (§40.9) — თორემ
+               გამზიარებლის ჩანაწერის id ჩუმად **ჩემი** ფილმის სინქრონად წავიდოდა */
+            : next.kind === 'share'
+              ? addShareItem(next.shareToken!, next.mediaType, next.itemId!, next.shareStatusMode ?? 'default', ctrl.signal).then(
+                  (r) => ({
+                    ok: r.ok,
+                    // „უკვე გქონდა" ჩავარდნა არ არის — `skipped`-ია
+                    skipped: r.result === 'have',
+                  }),
+                )
             /* ⚠️ **ეს შტო `syncItem`-ის ზოგად შტომდე დგას** (§39.3) — თორემ
                მსახიობის id ჩუმად ფილმის სინქრონად წავიდოდა */
             : next.kind === 'cast'
@@ -586,6 +649,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'import' ? ['books', 'games', 'dashboard', 'export'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
+          // §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓"
+          ...(next.kind === 'share' ? ['dashboard', 'public-share-items', 'trash'] : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         /* Tasks §30.6 — ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
            ერთეულის პასუხმაც (`ok:false, error:'credential_missing'` — თარგმანი,
@@ -639,7 +704,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                           ? errorMessage(e)
                           : inTrash
                             ? 'record_in_trash'
-                            : e?.message,
+                            : next.kind === 'share'
+                              ? // ⚠️ თარგმნილი მიზეზი („ჩანაწერი ბმულში აღარ არის") და არა axios-ის ტექსტი
+                                errorMessage(e)
+                              : e?.message,
                     trashedId: inTrash ? e.response?.data?.id : undefined,
                     ms: performance.now() - started,
                   }
@@ -833,6 +901,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueuePurge,
       enqueueImport,
       enqueueCast,
+      enqueueShare,
       isQueued,
       active,
       isBusy,
@@ -846,6 +915,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       enqueuePurge,
       enqueueImport,
       enqueueCast,
+      enqueueShare,
       isQueued,
       active,
       isBusy,
@@ -943,6 +1013,30 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     return parts.length ? parts.join(' · ') : null
   }, [items, serverItems, t])
 
+  /**
+   * **ბმულიდან დამატების შეჯამება** (Tasks §40.9) — „დაემატა N · უკვე გქონდა M ·
+   * ურნაშია K · ვერ დაემატა L". ⚠️ „ურნაშია" ცალკე ითვლება და არა ჩავარდნად:
+   * მწკრივს „აღდგენის" ღილაკი აქვს და ის სხვა ქმედებას ითხოვს.
+   */
+  const shareSummary = React.useMemo(() => {
+    const done = items.filter((i) => i.kind === 'share' && (i.status === 'done' || i.status === 'error'))
+    if (!done.length) return null
+
+    const added = done.filter((i) => i.status === 'done' && !i.skipped).length
+    const have = done.filter((i) => i.status === 'done' && i.skipped).length
+    const trash = done.filter((i) => i.status === 'error' && i.trashedId != null).length
+    const failed = done.filter((i) => i.status === 'error' && i.trashedId == null && i.error !== 'cancelled').length
+
+    return [
+      added > 0 && t('share.summary.added', { count: added }),
+      have > 0 && t('share.summary.have', { count: have }),
+      trash > 0 && t('share.summary.trash', { count: trash }),
+      failed > 0 && t('share.summary.failed', { count: failed }),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }, [items, t])
+
   return (
     <QueueContext.Provider value={api}>
       {children}
@@ -984,8 +1078,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 {running ? (
                   <p className="truncate text-xs text-muted-foreground">{running.title}</p>
                 ) : (
-                  headlineKind === 'cast' &&
-                  castSummary && <p className="truncate text-xs text-muted-foreground">{castSummary}</p>
+                  (headlineKind === 'cast' ? castSummary : headlineKind === 'share' ? shareSummary : null) && (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {headlineKind === 'cast' ? castSummary : shareSummary}
+                    </p>
+                  )
                 )}
               </span>
               <span className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground">

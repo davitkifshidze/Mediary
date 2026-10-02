@@ -44,6 +44,9 @@ final class NotificationType
     /** Tasks §37.8 — სუპერადმინმა პირადი მოდული გამორთო (მფლობელს) */
     public const MODULE_DISABLED = 'module_disabled';
 
+    /** Tasks §40.8 — ვიღაცამ ჩემი გაზიარების ბმულიდან ჩანაწერები დაიმატა (ერთი მიმღებზე დღეში) */
+    public const SHARE_IMPORTED = 'share_imported';
+
     /** @var list<string> */
     public const ALL = [
         self::REQUEST_APPROVED,
@@ -54,6 +57,7 @@ final class NotificationType
         self::MODULE_CREATED,
         self::MODULE_DELETED,
         self::MODULE_DISABLED,
+        self::SHARE_IMPORTED,
     ];
 
     /**
@@ -89,6 +93,8 @@ final class NotificationType
                ჯგუფი კი `/modules`-ზეა. მფლობელი კი თავის მოდულზე მიდის. */
             self::MODULE_CREATED, self::MODULE_DELETED => '/modules',
             self::MODULE_DISABLED => isset($data['module_key']) ? '/modules/'.$data['module_key'] : '/modules',
+            // ბმულების სია — „ვინ დაიმატა" იქ ჩანს
+            self::SHARE_IMPORTED => '/transfer?tab=share',
             default => null,
         };
     }

@@ -253,6 +253,11 @@ export const CODES = [
   'share_domain_unavailable',
   'share_scope_incomplete',
   'share_links_disabled',
+  /* Tasks §40.8 — ბიბლიოთეკაში დამატება: საკუთარი ბმული (409), ფარგლის გარეთ
+     მყოფი ჩანაწერი (404) და სტატუსი, რომელსაც ბმული არ აზიარებს (422) */
+  'share_own_link',
+  'share_record_not_found',
+  'share_status_hidden',
 ] as const
 
 /**

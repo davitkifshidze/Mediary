@@ -99,6 +99,14 @@ export function NotificationBell() {
     if (n.type === 'batch_done') {
       return t('notifications.detail.batch', { total: d.total ?? 0, failed: d.failed ?? 0 })
     }
+    /* Tasks §40.8 — ვინ და რომელი ბმულიდან (შეტყობინება ერთი მიმღებზე დღეშია,
+       ამიტომ რიცხვი აქ არ წერია — ის პირველ ჩანაწერზე იბადება და მოატყუებდა) */
+    if (n.type === 'share_imported') {
+      return t('notifications.detail.share', {
+        name: d.display_name ?? d.username ?? '—',
+        link: d.link_name || t('share.unnamed'),
+      })
+    }
     /* §34.5 — ატვირთვის მოთხოვნა: რა ჩაირთო და **ვისზე** (Q42 — შეტყობინებამ
        უნდა თქვას, მხოლოდ მისთვის გავრცელდა თუ ყველასთვის) */
     if (d.request_type === 'upload_limit' && d.upload_kind) {

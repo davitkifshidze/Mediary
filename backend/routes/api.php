@@ -82,6 +82,7 @@ use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
 use App\Http\Controllers\Api\SeriesSyncController;
+use App\Http\Controllers\Api\ShareImportController;
 use App\Http\Controllers\Api\ShareLinkController;
 use App\Http\Controllers\Api\SongController;
 use App\Http\Controllers\Api\SongGenreController;
@@ -423,6 +424,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/share-links/{shareLink}', [ShareLinkController::class, 'destroy'])->whereNumber('shareLink');
     Route::post('/share-links/{shareLink}/regenerate', [ShareLinkController::class, 'regenerate'])
         ->whereNumber('shareLink');
+    /* Tasks §40.8 — **ბმულიდან საკუთარ ბიბლიოთეკაში დამატება** (მხოლოდ შესულს — Q46).
+       ⚠️ `throttle:share` აქ განზრახ არ დგას: რიგი `syncDelayMs`-ის ტემპით
+       (ნაგულისხმევად 200 მწ — წუთში ~300) აგზავნის, და 120/წთ ჭერი ჩვეულებრივ
+       დამატებას შუაზე გაწყვეტდა (`api`-ის 600/წთ-ის გაკვეთილი). */
+    Route::post('/shares/{token}/plan', [ShareImportController::class, 'plan'])
+        ->where('token', '[A-Za-z0-9]{20,100}');
+    Route::post('/shares/{token}/item', [ShareImportController::class, 'item'])
+        ->where('token', '[A-Za-z0-9]{20,100}');
 
     Route::get('/export', [ExportController::class, 'index']);
     Route::get('/export/{module}', [ExportController::class, 'show']);

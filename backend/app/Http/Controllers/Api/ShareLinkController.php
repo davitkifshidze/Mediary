@@ -13,6 +13,8 @@ use App\Support\ShareDomain;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -37,7 +39,14 @@ class ShareLinkController extends Controller
         $links = ShareLink::query()->latest('id')->get();
 
         return response()->json([
-            'data' => $links->map(fn (ShareLink $link) => $this->payload($link, $user))->values()->all(),
+            'data' => (function () use ($links, $user) {
+                // ⚠️ „ვინ დაიმატა" ერთი query-თი მთელ სიაზე და არა ბმულზე
+                $importers = $this->importers($links->pluck('id')->all());
+
+                return $links->map(fn (ShareLink $link) => $this->payload($link, $user, $importers[$link->id] ?? []))
+                    ->values()
+                    ->all();
+            })(),
             'meta' => [
                 'enabled' => $this->enabled(),
                 'available' => ShareDomain::availableFor($user),
@@ -198,7 +207,57 @@ class ShareLinkController extends Controller
      * კიდევ შეუძლია გააზიაროს; გათიშული მოდულის დომენი `unavailable`-ში
      * ჩანს — ბმულიდან ის მიმღებისთვის ჩუმად ქრება და მფლობელმა ეს უნდა იცოდეს.
      */
-    private function payload(ShareLink $link, User $owner): array
+    /**
+     * ვინ დაიმატა თითო ბმულიდან და რამდენი (Tasks §40.5/§40.8) — ახლები ზემოთ.
+     *
+     * ⚠️ მხოლოდ username და საჩვენებელი სახელი გადის — მფლობელს მეტი არაფერი
+     * სჭირდება და მიმღების ელფოსტა მისი საქმე არ არის.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, list<array{username: ?string, display_name: string, added: int, last_added_at: ?string}>>
+     */
+    private function importers(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = DB::table('share_link_imports')
+            ->join('users', 'users.id', '=', 'share_link_imports.user_id')
+            ->whereIn('share_link_imports.share_link_id', $ids)
+            ->orderByDesc('share_link_imports.last_added_at')
+            ->get([
+                'share_link_imports.share_link_id',
+                'share_link_imports.added',
+                'share_link_imports.last_added_at',
+                'users.username',
+                'users.name',
+                'users.first_name',
+                'users.last_name',
+            ]);
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $full = trim(($row->first_name ?? '').' '.($row->last_name ?? ''));
+
+            $out[(int) $row->share_link_id][] = [
+                'username' => $row->username,
+                'display_name' => $full ?: ($row->name ?: (string) $row->username),
+                'added' => (int) $row->added,
+                'last_added_at' => $row->last_added_at
+                    ? Carbon::parse((string) $row->last_added_at)->toIso8601String()
+                    : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>|null  $importers  `null` — თვითონ წაიკითხოს (ერთი ბმული)
+     */
+    private function payload(ShareLink $link, User $owner, ?array $importers = null): array
     {
         $live = ShareScope::liveDomains($link, $owner);
         $counts = [];
@@ -225,6 +284,7 @@ class ShareLinkController extends Controller
             'state' => $link->state(),
             'views' => $link->views,
             'imports' => $link->imports,
+            'importers' => $importers ?? ($this->importers([$link->id])[$link->id] ?? []),
             'last_opened_at' => $link->last_opened_at?->toIso8601String(),
             'created_at' => $link->created_at?->toIso8601String(),
         ];

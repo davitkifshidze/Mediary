@@ -8,13 +8,14 @@ use App\Models\ShareLink;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
 use App\Services\Profile\PublicProfileService;
+use App\Services\Share\ShareImporter;
+use App\Services\Share\ShareMatcher;
+use App\Services\Share\ShareResolver;
 use App\Services\Share\ShareScope;
 use App\Support\Like;
 use App\Support\PublicDomain;
 use App\Support\ShareDomain;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -53,7 +54,7 @@ class PublicShareController extends Controller
     /** ბმულის თავი: ვინ გაგიზიარა, სექციები რაოდენობებით, ვადა */
     public function show(Request $request, string $token): JsonResponse
     {
-        [$link, $owner] = $this->resolve($token);
+        [$link, $owner] = ShareResolver::resolve($token);
 
         $viewer = $request->user();
         $own = $viewer !== null && (int) $viewer->id === (int) $owner->id;
@@ -85,6 +86,10 @@ class PublicShareController extends Controller
                 'signed_in' => $viewer !== null,
                 // ⚠️ საკუთარი ბმული — „მიმღების თვალით" ნახვა; დამატება 409-ია (40.8)
                 'own' => $own,
+                // §40.6 — რომელ სექციაში შეუძლია დამატება (მოდულის უქონელს — მოთხოვნის ღილაკი)
+                'sections' => $viewer !== null && ! $own
+                    ? (object) ShareImporter::abilities($viewer, array_keys($domains))
+                    : (object) [],
             ],
         ]);
     }
@@ -97,12 +102,12 @@ class PublicShareController extends Controller
      */
     public function items(Request $request, string $token, string $domain): JsonResponse
     {
-        [$link, $owner] = $this->resolve($token);
+        [$link, $owner] = ShareResolver::resolve($token);
 
         $domains = ShareScope::liveDomains($link, $owner);
         // ⚠️ ბმულის გარეთ მყოფი (ან მას შემდეგ გათიშული) დომენი არ არსებობს
         if (! isset($domains[$domain])) {
-            $this->deny('share_not_found', 404);
+            ShareResolver::deny('share_not_found', 404);
         }
 
         $spec = $domains[$domain];
@@ -131,7 +136,8 @@ class PublicShareController extends Controller
 
         $records = $paginator->getCollection();
         $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain));
-        $mine = $viewer !== null && ! $own ? $this->inLibrary($viewer, $domain, $records) : [];
+        // ⚠️ „უკვე გაქვს" — იგივე წესი, რასაც დამატების გეგმა კითხულობს (`ShareMatcher`)
+        $mine = $viewer !== null && ! $own ? ShareMatcher::matches($viewer, $domain, $records) : [];
 
         return response()->json([
             'data' => $records->map(fn (Model $record) => $this->card($link, $domain, $record, $hidden, $mine, $viewer !== null && ! $own))
@@ -148,47 +154,6 @@ class PublicShareController extends Controller
     }
 
     /* ---------- დამხმარეები ---------- */
-
-    /**
-     * ბმული და მისი მფლობელი — ან 404 / 410.
-     *
-     * @return array{0: ShareLink, 1: User}
-     */
-    private function resolve(string $token): array
-    {
-        if (! config('mediary.share_links')) {
-            $this->deny('share_not_found', 404);
-        }
-
-        $link = ShareLink::findByToken($token);
-
-        if (! $link) {
-            $this->deny('share_not_found', 404);
-        }
-
-        $owner = User::find($link->user_id);
-
-        // ⚠️ გათიშული ანგარიშის ბმული „არ არსებობს" და არა „ამოიწურა"
-        if (! $owner || ! $owner->is_active) {
-            $this->deny('share_not_found', 404);
-        }
-
-        if ($link->isRevoked()) {
-            $this->deny('share_revoked', 410);
-        }
-
-        if ($link->isExpired()) {
-            $this->deny('share_expired', 410);
-        }
-
-        return [$link, $owner];
-    }
-
-    /** @return never */
-    private function deny(string $code, int $status): void
-    {
-        throw new HttpResponseException(response()->json(['message' => $code], $status));
-    }
 
     /**
      * ნახვების მრიცხველი.
@@ -222,7 +187,7 @@ class PublicShareController extends Controller
      * იზამდა.
      *
      * @param  list<string>  $hidden
-     * @param  array<string, array{id: int, trashed: bool}>  $mine
+     * @param  array<int, array{id: int, trashed: bool}>  $mine
      */
     private function card(ShareLink $link, string $domain, Model $record, array $hidden, array $mine, bool $mark): array
     {
@@ -249,75 +214,10 @@ class PublicShareController extends Controller
         }
 
         if ($mark) {
-            $card['in_library'] = $mine[$this->identityKey($domain, $record) ?? ''] ?? null;
+            $card['in_library'] = $mine[(int) $record->getKey()] ?? null;
         }
 
         return $card;
-    }
-
-    /**
-     * „უკვე გაქვს ✓" — მნახველის ჩანაწერები იმავე იდენტობით (`PublicDomain::MATCH`).
-     *
-     * ⚠️ **ურნაც ჩანს** (`trashed: true`) — 40.1-ის გაკვეთილი: „არ გაქვს"
-     * ურნაში მყოფზე ტყუილი იქნებოდა და დამატება 409-ზე წაიქცეოდა.
-     * ⚠️ **ერთი query გვერდზე** და არა ჩანაწერზე.
-     *
-     * @param  Collection<int, Model>  $records
-     * @return array<string, array{id: int, trashed: bool}>
-     */
-    private function inLibrary(User $viewer, string $domain, Collection $records): array
-    {
-        $columns = PublicDomain::MATCH[$domain]['columns'] ?? [];
-        $first = $columns[0] ?? null;
-
-        if ($first === null) {
-            return [];
-        }
-
-        $values = $records->pluck($first)->filter(fn ($v) => $v !== null && $v !== '')->unique()->values()->all();
-
-        if ($values === []) {
-            return [];
-        }
-
-        $model = ShareDomain::model($domain);
-
-        // ⚠️ `withOnly([])` — მოდელის `$with` (თარგმანი, სტატუსი) აქ ზედმეტი query-ა
-        $rows = $model::withoutGlobalScopes(['owner', 'trash'])
-            ->withOnly([])
-            ->where('user_id', $viewer->id)
-            ->whereIn($first, $values)
-            ->get(['id', 'trashed_at', ...$columns]);
-
-        $out = [];
-        foreach ($rows as $row) {
-            $key = $this->identityKey($domain, $row);
-
-            // ⚠️ ცოცხალი ურნაში მყოფზე უპირატესია — ორივე თუ არის, „გაქვს"
-            if ($key !== null && (! isset($out[$key]) || $out[$key]['trashed'])) {
-                $out[$key] = ['id' => (int) $row->id, 'trashed' => $row->trashed_at !== null];
-            }
-        }
-
-        return $out;
-    }
-
-    /** იდენტობის გასაღები — ცარიელ სვეტზე `null` (ასეთი ჩანაწერი არ ემთხვევა) */
-    private function identityKey(string $domain, Model $record): ?string
-    {
-        $parts = [];
-
-        foreach (PublicDomain::MATCH[$domain]['columns'] ?? [] as $column) {
-            $value = $record->getAttribute($column);
-
-            if ($value === null || $value === '') {
-                return null;
-            }
-
-            $parts[] = (string) $value;
-        }
-
-        return $parts === [] ? null : implode("\x1f", $parts);
     }
 
     /**

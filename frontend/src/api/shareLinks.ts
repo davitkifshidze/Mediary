@@ -56,6 +56,8 @@ export interface ShareLink {
   state: 'active' | 'expired' | 'revoked'
   views: number
   imports: number
+  /** Tasks §40.8 — ვინ დაიმატა ამ ბმულიდან და რამდენი (ახლები ზემოთ) */
+  importers: { username: string | null; display_name: string; added: number; last_added_at: string | null }[]
   last_opened_at: string | null
   created_at: string | null
 }
@@ -136,7 +138,20 @@ export interface PublicShare {
   link: { expires_at: string | null; show_status: boolean }
   sections: { domain: ShareDomainKey; count: number }[]
   modules: Record<string, { name_ka: string; name_en: string; icon: string; color: string | null }>
-  viewer: { signed_in: boolean; own: boolean }
+  viewer: {
+    signed_in: boolean
+    own: boolean
+    /** შესულ უცხოს — რომელ სექციაში შეუძლია დამატება (§40.6); სხვას — ცარიელი */
+    sections: Partial<Record<ShareDomainKey, ShareAbility>>
+  }
+}
+
+/** მნახველის შესაძლებლობა ერთ სექციაში — მოდულის უქონელს მოთხოვნის ღილაკი უჩანს */
+export interface ShareAbility {
+  enabled: boolean
+  can_create: boolean
+  /** მოდულის მოთხოვნა უკვე გაგზავნილია */
+  requested: boolean
 }
 
 export interface ShareGenre {
@@ -180,5 +195,66 @@ export async function fetchPublicShareItems(
       ...(params.genre ? { genre: params.genre } : {}),
     },
   })
+  return data
+}
+
+/* ---------- ბიბლიოთეკაში დამატება — შესულისთვის (Tasks §40.8) ---------- */
+
+/** „ჩემი ნაგულისხმევი სტატუსით" · „როგორც გამზიარებელს აქვს" (Q48) */
+export type ShareStatusMode = 'default' | 'owner'
+
+export interface SharePlanItem {
+  id: number
+  title_ka: string | null
+  title_en: string | null
+  year: number | null
+  /** `new` — არ გაქვს · `have` — გაქვს · `trash` — შენს ურნაშია */
+  state: 'new' | 'have' | 'trash'
+  mine_id: number | null
+}
+
+export interface SharePlan {
+  domain: ShareDomainKey
+  module: ShareAbility
+  items: SharePlanItem[]
+  counts: { new: number; have: number; trash: number }
+  status_modes: ShareStatusMode[]
+}
+
+/**
+ * რა შედის არჩევანში და რომელი უკვე გაქვს. ⚠️ გარე წყაროს არ ეკითხება —
+ * `ids`-ის გარეშე მთელი სექციაა.
+ */
+export async function planShareImport(token: string, domain: ShareDomainKey, ids?: number[]): Promise<SharePlan> {
+  const { data } = await api.post(`/shares/${encodeURIComponent(token)}/plan`, {
+    domain,
+    ...(ids && ids.length ? { ids } : {}),
+  })
+  return data
+}
+
+export interface ShareItemResult {
+  ok: boolean
+  result: 'added' | 'have'
+  id: number
+  /** TMDB-დან ვერ შეივსო (გასაღები არ არის, წყარო არ პასუხობს) — სინქრონიზაცია შეავსებს */
+  partial: boolean
+  /** ხელით შეყვანილის პოსტერი ვერ ჩაიწერა — მიზეზის კოდი */
+  poster_skipped: string | null
+}
+
+/** ერთი ჩანაწერის დამატება — რიგი თითოს ცალკე აგზავნის */
+export async function addShareItem(
+  token: string,
+  domain: ShareDomainKey,
+  id: number,
+  statusMode: ShareStatusMode,
+  signal?: AbortSignal,
+): Promise<ShareItemResult> {
+  const { data } = await api.post(
+    `/shares/${encodeURIComponent(token)}/item`,
+    { domain, id, status_mode: statusMode },
+    { signal },
+  )
   return data
 }

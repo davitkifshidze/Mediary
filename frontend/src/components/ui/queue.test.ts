@@ -161,3 +161,67 @@ describe('queue: the headline kind', () => {
     expect(headlineKindOf(['add', 'sync'])).toBe('sync')
   })
 })
+
+/* ============================================================
+   **რიგის `share` სახეობა** (Tasks §40.9).
+
+   ⚠️ ერთეულის `itemId` **გამზიარებლის** ჩანაწერია — ზოგად `syncItem`-ზე
+   ჩავარდნილი შტო მას ჩემი ბიბლიოთეკის id-ად წაიკითხავდა და სხვა ფილმს
+   გადააწერდა (`cast`-ის იგივე საფრთხე). ⚠️ „ურნაშია" ჩავარდნად კი არა,
+   ცალკე ითვლება და მწკრივი „აღდგენას" სთავაზობს (40.1).
+   ============================================================ */
+
+const shareMocks = vi.hoisted(() => ({ addShareItem: vi.fn() }))
+
+vi.mock('@/api/shareLinks', async (original) => ({
+  ...(await original<typeof import('@/api/shareLinks')>()),
+  addShareItem: shareMocks.addShareItem,
+}))
+
+async function runOneShare() {
+  const { QueueProvider, useQueue } = await import('@/components/ui/queue')
+
+  function Starter() {
+    const { enqueueShare } = useQueue()
+
+    useEffect(() => {
+      enqueueShare('T'.repeat(48), 'movie', [{ id: 5, title: 'Ran' }], 'owner')
+    }, [enqueueShare])
+
+    return null
+  }
+
+  const el = await render(h(QueueProvider, null, h(Starter)))
+  await flush()
+  await flush()
+
+  return el
+}
+
+describe('queue: the share kind', () => {
+  it('adds through the share endpoint with the item status mode, never the record sync', async () => {
+    shareMocks.addShareItem.mockResolvedValue({ ok: true, result: 'added', id: 40, partial: false, poster_skipped: null })
+
+    const el = await runOneShare()
+
+    expect(shareMocks.addShareItem).toHaveBeenCalledWith('T'.repeat(48), 'movie', 5, 'owner', expect.any(AbortSignal))
+    expect(mocks.syncItem).not.toHaveBeenCalled()
+    expect(el.textContent).toContain(i18n.t('share.summary.added', { count: 1 }))
+  })
+
+  it('counts a record in my trash apart and offers to restore it', async () => {
+    shareMocks.addShareItem.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 409'), {
+        isAxiosError: true,
+        response: { status: 409, data: { message: 'record_in_trash', domain: 'movie', id: 77 } },
+      }),
+    )
+
+    const el = await runOneShare()
+    const text = el.textContent ?? ''
+
+    expect(text).toContain(i18n.t('share.summary.trash', { count: 1 }))
+    expect(text).not.toContain(i18n.t('share.summary.failed', { count: 1 }))
+    expect(text).toContain(i18n.t('queue.restoreFromTrash'))
+  })
+})
