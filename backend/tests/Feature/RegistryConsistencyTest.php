@@ -23,6 +23,7 @@ use App\Support\ExportDomain;
 use App\Support\GalleryParent;
 use App\Support\ImportSource;
 use App\Support\PublicDomain;
+use App\Support\ShareDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
@@ -143,6 +144,41 @@ class RegistryConsistencyTest extends TestCase
         $this->assertSame(count($colours), count(array_unique($colours)),
             'ორ მოდულს ერთი და იგივე ფერი აქვს'
         );
+    }
+
+    /**
+     * **Tasks §40.10 — ყოველი საბაზისო მოდული ან ბმულით ზიარდება, ან მიზეზით არა.**
+     *
+     * ⚠️ ხვალინდელი მოდული ტესტს თავისით აწითლებს: მისი გამოტოვება
+     * გადაწყვეტილება უნდა იყოს (`ShareDomain::NOT_SHARED`-ში, მიზეზით) და არა
+     * დავიწყება. და პირიქით — მკვდარი ან ორჯერ ჩაწერილი გასაღებიც წითელია.
+     * ⚠️ გაზიარებულ დომენს **იდენტობა** სჭირდება (`PublicDomain::MATCH`):
+     * „უკვე გაქვს ✓" და (40.8) დამატება სწორედ მისით პოულობს „იმავე ფილმს".
+     */
+    public function test_every_module_is_shareable_or_has_a_reason(): void
+    {
+        $modules = Module::base()->pluck('key')->all();
+        $shared = array_map(ShareDomain::module(...), ShareDomain::keys());
+        $reasoned = array_keys(ShareDomain::NOT_SHARED);
+
+        $this->assertSame([], array_values(array_diff($modules, $shared, $reasoned)),
+            'მოდული არც `ShareDomain`-შია და არც `NOT_SHARED`-ში'
+        );
+        $this->assertSame([], array_values(array_diff($reasoned, $modules)),
+            '`NOT_SHARED`-ში მკვდარი გასაღებია'
+        );
+        $this->assertSame([], array_values(array_intersect($shared, $reasoned)),
+            'მოდული ერთდროულად ზიარდება და გამონაკლისიცაა'
+        );
+
+        foreach (ShareDomain::keys() as $domain) {
+            $this->assertTrue(PublicDomain::has($domain), "{$domain}: ბარათი (`PublicDomain::card()`) არ აქვს");
+            $this->assertNotEmpty(PublicDomain::MATCH[$domain]['columns'] ?? [], "{$domain}: იდენტობა არ აქვს");
+        }
+
+        foreach (ShareDomain::NOT_SHARED as $key => $reason) {
+            $this->assertNotSame('', trim($reason), "{$key}: მიზეზი ცარიელია");
+        }
     }
 
     /**
@@ -565,6 +601,8 @@ class RegistryConsistencyTest extends TestCase
 
         // 29.9 — ტექნიკური ოპერაცია და არა შიგთავსის წაშლა
         'user_credentials' => 'API-გასაღები ხშირად იმიტომ იშლება, რომ გაჟონა — 30 დღით შენახვა ამას გააბათილებდა',
+        // Tasks §40 — ბმული გასაღებია და არა შიგთავსი; გაუქმება (`revoked_at`) მისი შექცევადი მდგომარეობაა
+        'share_links' => 'ბმული გასაღებია და არა შიგთავსი — წაშლილის აღდგენა წვდომას ხელახლა გახსნიდა, რისი შეწყვეტაც წაშლის აზრია; შექცევადი ნაბიჯი გაუქმებაა',
         'approval_requests' => 'გაუქმებული მოთხოვნა ტექნიკური ოპერაციაა',
         'sessions' => 'სესია — არა შიგთავსი',
         'module_user' => 'მოდულზე წვდომა — პარამეტრი და არა შიგთავსი',

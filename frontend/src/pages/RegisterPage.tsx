@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Clapperboard, UserPlus } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -19,6 +19,11 @@ export function RegisterPage() {
   const { t } = useTranslation()
   const { register } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  /* Tasks §40.6 — **ბმულით მოსული ახალი მომხმარებელი ბმულს არ კარგავს.**
+     აქამდე რეგისტრაცია ყოველთვის `/modules`-ზე გადადიოდა, ე.ი. გაზიარების
+     გვერდიდან „რეგისტრაცია" დაჭერილს გვერდი სამუდამოდ ეკარგებოდა. */
+  const from = (location.state as { from?: string } | null)?.from
 
   const [form, setForm] = useState({
     first_name: '',
@@ -57,7 +62,7 @@ export function RegisterPage() {
         // `name` backend-ზე სავალდებულოა — სახელი+გვარი ან username
         name: [form.first_name, form.last_name].filter(Boolean).join(' ') || form.username,
       })
-      navigate('/modules', { replace: true })
+      navigate(from ?? '/modules', { replace: true })
     } catch (err) {
       const fe = fieldErrors(err)
       setErrors(fe)
@@ -143,7 +148,7 @@ export function RegisterPage() {
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {t('auth.hasAccount')}{' '}
-            <Link to="/login" className="text-primary hover:text-primary/70">
+            <Link to="/login" state={from ? { from } : undefined} className="text-primary hover:text-primary/70">
               {t('auth.login')}
             </Link>
           </p>

@@ -6,9 +6,11 @@ import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ExportPanel } from '@/components/transfer/ExportPanel'
 import { ImportPanel } from '@/components/transfer/ImportPanel'
+import { SharePanel } from '@/components/transfer/SharePanel'
 
 /* ============================================================
-   **„ექსპორტ & იმპორტი" — ერთი სექცია, ორი ჩანართი** (Tasks §31).
+   **„ექსპორტ & იმპორტი" — ერთი სექცია, სამი ჩანართი** (Tasks §31; მესამე —
+   „გაზიარება", Tasks §40.5: ბიბლიოთეკის გატანა ბმულით იგივე კითხვაა, რაც ფაილით).
 
    შენი სიტყვები: „იმპორტის სექციას ვერ მივუხვდი: ექსპორტები პროფილიდანაა,
    და ეს ყველაფერი მენიუში შეიტანე — ექსპორტი და იმპორტი, შესაბამისი
@@ -23,22 +25,25 @@ import { ImportPanel } from '@/components/transfer/ImportPanel'
    `/transfer?tab=import`-ზე გადადის და „უკან" ღილაკიც მუშაობს. უცნობი
    მნიშვნელობა ექსპორტზე ბრუნდება.
 
-   ⚠️ **ორივე ჩანართი დამონტაჟებული რჩება** (`hidden`) — არჩეული ფაილი და
+   ⚠️ **ყველა ჩანართი დამონტაჟებული რჩება** (`hidden`) — არჩეული ფაილი და
    მზა გეგმა ჩანართის გადართვაზე არ უნდა დაიკარგოს (§39-ის წესი). ორი
    მოკლე რექვესთის ფასი ამას ღირს.
    ============================================================ */
 
-type TransferTab = 'export' | 'import'
+type TransferTab = 'export' | 'import' | 'share'
 
 export function TransferPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
 
-  const tab: TransferTab = params.get('tab') === 'import' ? 'import' : 'export'
+  const raw = params.get('tab')
+  // Tasks §40.5 — მესამე ჩანართი: ბიბლიოთეკის გატანა ბმულით
+  const tab: TransferTab = raw === 'import' || raw === 'share' ? raw : 'export'
 
   const tabs: CutOption[] = [
     { key: 'export', label: t('transfer.tabExport'), hint: t('transfer.tabExportHint') },
     { key: 'import', label: t('transfer.tabImport'), hint: t('transfer.tabImportHint') },
+    { key: 'share', label: t('transfer.tabShare'), hint: t('transfer.tabShareHint') },
   ]
 
   // ⚠️ დანარჩენი პარამეტრები რჩება — მხოლოდ ჩანართი იცვლება
@@ -62,6 +67,9 @@ export function TransferPage() {
       </div>
       <div hidden={tab !== 'import'}>
         <ImportPanel />
+      </div>
+      <div hidden={tab !== 'share'}>
+        <SharePanel />
       </div>
     </PageContainer>
   )

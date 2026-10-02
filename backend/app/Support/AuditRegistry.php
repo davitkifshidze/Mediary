@@ -62,6 +62,7 @@ use App\Models\Role;
 use App\Models\Series;
 use App\Models\SeriesTranslation;
 use App\Models\SerpSearch;
+use App\Models\ShareLink;
 use App\Models\Song;
 use App\Models\SongGenre;
 use App\Models\Status;
@@ -202,6 +203,9 @@ class AuditRegistry
 
         // ---- ანგარიში, ადმინის ზონა, ჩატი
         User::class => 'account',
+        /* Tasks §40 — გაზიარების ბმული ანგარიშის ფაქტია (სამ დომენს ფარავს).
+           ⚠️ ტოკენის ორივე სვეტი `HIDDEN`-შია — ჟურნალი `/audit`-ზე ეკრანზე იხატება. */
+        ShareLink::class => 'account',
         Role::class => 'admin',
         Module::class => 'admin',
         /* Tasks §34.1 — ინსტალაციის პარამეტრი (ატვირთვის ლიმიტები, ურნის
@@ -278,6 +282,9 @@ class AuditRegistry
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        // Tasks §40.2 — გაზიარების ბმულის ტოკენი (ღია ასლიც და ჰეშიც)
+        'token',
+        'token_hash',
     ];
 
     /**

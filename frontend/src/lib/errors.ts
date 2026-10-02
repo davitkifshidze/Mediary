@@ -244,6 +244,15 @@ export const CODES = [
   /* Tasks §40.1ა — იგივე ჩანაწერი **ურნაშია** (409 + `domain`, `id`): ახალი რიგი
      არ იქმნება, რიგის მწკრივი კი „აღდგენას" სთავაზობს. */
   'record_in_trash',
+  /* Tasks §40 — გაზიარების ბმული. ⚠️ 404 და 410 სხვადასხვა რამეს გთხოვს:
+     `share_not_found` — „ასეთი არ არსებობს", `share_expired`/`share_revoked` —
+     „იყო, ამოიწურა" (მფლობელს ახალი სთხოვე). */
+  'share_not_found',
+  'share_expired',
+  'share_revoked',
+  'share_domain_unavailable',
+  'share_scope_incomplete',
+  'share_links_disabled',
 ] as const
 
 /**

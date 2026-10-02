@@ -155,7 +155,12 @@ export function LoginPage() {
             <>
               <p className="mt-5 text-center text-sm text-muted-foreground">
                 {t('auth.noAccount')}{' '}
-                <Link to="/register" className="text-primary hover:text-primary/70">
+                {/* §40.6 — „საიდან მოვედი" რეგისტრაციასაც მიჰყვება (გაზიარების ბმული) */}
+                <Link
+                  to="/register"
+                  state={location.state}
+                  className="text-primary hover:text-primary/70"
+                >
                   {t('auth.register')}
                 </Link>
               </p>

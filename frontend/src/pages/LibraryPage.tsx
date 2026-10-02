@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Dices,
+  Share2,
   Layers,
   Plus,
   Search,
@@ -44,6 +45,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
+import { ShareLinkDialog } from '@/components/share/ShareLinkDialog'
+import { librarySpec } from '@/lib/shareLinks'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -118,6 +121,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   const [discoverOpen, setDiscoverOpen] = useState(false)
   /** FEAT-20 — „რა ვნახო დღეს" */
   const [pickOpen, setPickOpen] = useState(false)
+  /** Tasks §40.4 — „ეს სია გაუზიარე" (გაზიარების ბმული მიმდინარე ფილტრით) */
+  const [shareOpen, setShareOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [page, setPage] = useState(1)
 
@@ -357,6 +362,25 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 <p className="mt-1 text-muted-foreground">{t('pick.hint')}</p>
               </TooltipContent>
             </Tooltip>
+            {/* Tasks §40.4 — **„ეს სია გაუზიარე"**: ფანჯარა ამ დომენითა და მიმდინარე
+                ფილტრით (განყოფილება ან ჟანრები) იხსნება. ⚠️ ფილტრის ჩამრთველთან,
+                რადგან ბმულის ფარგალი სწორედ ეს ფილტრია. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShareOpen(true)}
+                  aria-label={t('share.shareList')}
+                >
+                  <Share2 className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm">
+                <p className="font-medium">{t('share.shareList')}</p>
+                <p className="mt-1 text-muted-foreground">{t('share.shareListHint')}</p>
+              </TooltipContent>
+            </Tooltip>
             {/* ვიწრო ეკრანზე ფილტრები უჯრაშია — დესკტოპზე პანელი მარჯვნივ დგას */}
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button variant="outline" onClick={() => setDiscoverOpen(true)}>
@@ -489,6 +513,12 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
       {/* FEAT-20 — არჩევანი სერვერზე ხდება, იმავე ფილტრით, რაც სიას აქვს */}
       {pickOpen && (
         <RandomPickDialog type={type} filters={filters} onClose={() => setPickOpen(false)} />
+      )}
+      {shareOpen && (
+        <ShareLinkDialog
+          initial={{ domain: type, spec: librarySpec(view, genres) }}
+          onClose={() => setShareOpen(false)}
+        />
       )}
 
       <DiscoverModal

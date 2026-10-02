@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -150,6 +150,15 @@ async function choose(triggerId: string, label: string) {
   await flush()
 }
 
+/* ⚠️ **მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ** (Tasks DEBT-12): ფორმა
+   თარიღის ამრჩევს, ტეგებსა და ფაილებს ტვირთავს, და სრულ, პარალელურ გაშვებაზე
+   პირველი იმპორტი 5 წამს ცდებოდა — ტესტი „დროში ვერ ჩაეტია" და არა „ჩავარდა". */
+beforeAll(async () => {
+  await import('@/components/NoteForm')
+}, 60_000)
+
+vi.setConfig({ testTimeout: 20_000 })
+
 describe('NoteForm (new note)', () => {
   it('the pinned save button sits outside the form and still submits it', async () => {
     await mount(() => {})
@@ -181,8 +190,9 @@ describe('NoteForm (new note)', () => {
     await flush()
     await flush()
 
+    // ⚠️ შექმნა → ველების შენახვა → `onSaved` ჯაჭვია; დატვირთულ გაშვებაზე ორი `flush` არ კმარა
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(mocks.createNote).toHaveBeenCalledTimes(1)
     expect(mocks.saveCustomFieldValues).toHaveBeenCalledWith('note', 5, { mood: 'კარგი' })
-    expect(onSaved).toHaveBeenCalled()
   })
 })

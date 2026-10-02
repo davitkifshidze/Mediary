@@ -47,6 +47,7 @@ const ResetPasswordPage = lazy(() =>
 )
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })))
+const SharePage = lazy(() => import('@/pages/SharePage').then((m) => ({ default: m.SharePage })))
 const PeoplePage = lazy(() => import('@/pages/PeoplePage').then((m) => ({ default: m.PeoplePage })))
 const SearchPage = lazy(() => import('@/pages/SearchPage').then((m) => ({ default: m.SearchPage })))
 const ChatPage = lazy(() => import('@/pages/ChatPage').then((m) => ({ default: m.ChatPage })))
@@ -396,6 +397,8 @@ export default function App() {
             გაზიარებადი ბმული ავტორიზაციის გარეშეც უნდა იხსნებოდეს. დაცვა
             backend-შია — სამი ფენა, ყველა default-ით `private`. */}
         <Route path="/u/:username" element={<PublicProfilePage />} />
+        {/* Tasks §40.6 — გაზიარების ბმული: ნახვა შესვლის გარეშეც (Q46), `/u/:username`-ის ყალიბი */}
+        <Route path="/share/:token" element={<SharePage />} />
         <Route
           path="/*"
           element={

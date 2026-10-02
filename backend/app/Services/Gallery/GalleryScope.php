@@ -86,10 +86,16 @@ final class GalleryScope
      *
      * ⚠️ `MediaDomain::query()` `owner` global scope-ს იმემკვიდრეობს, ე.ი.
      * სხვისი ჩანაწერი აქ ვერ მოხვდება.
+     *
+     * ⚠️ **`$base` — ცხადი მფლობელის query** (Tasks §40.3): გაზიარების ბმულზე
+     * მნახველი მფლობელი არაა, ე.ი. `owner` scope ან არაფერს ჭრის (ანონიმი), ან
+     * **მნახველის** ბიბლიოთეკაზე ჭრის. `ShareScope` ამიტომ თავის query-ს აწვდის
+     * და ფილტრების წესი (სტატუსი, ჟანრი „ნებისმიერი/ყველა", ხელით მონიშნული)
+     * მაინც ერთ ადგილას რჩება.
      */
-    public static function query(string $type, array $data): Builder
+    public static function query(string $type, array $data, ?Builder $base = null): Builder
     {
-        $query = MediaDomain::query($type);
+        $query = $base ?? MediaDomain::query($type);
         $scope = $data['scope'] ?? null;
 
         if ($scope === 'off' || $scope === 'all') {
@@ -128,11 +134,11 @@ final class GalleryScope
                არა „ყველაფერს".** პიქერი დომენებად არის გაყოფილი: ორი ფილმის
                მონიშვნისას სერიალები უბრალოდ არ მონაწილეობს. `/sync`-ის ძველი
                ქცევა (ცარიელი = მთელი დომენი) აქ მთელ ბიბლიოთეკას ჩამოწერდა. */
-            return $ids === null ? $query->whereRaw('1 = 0') : $query->whereIn('id', $ids);
+            return $ids === null ? $query->whereRaw('1 = 0') : $query->whereIn($query->getModel()->getQualifiedKeyName(), $ids);
         }
 
         if ($ids !== null && $scope === null) {
-            $query->whereIn('id', $ids);
+            $query->whereIn($query->getModel()->getQualifiedKeyName(), $ids);
         }
 
         return $query;

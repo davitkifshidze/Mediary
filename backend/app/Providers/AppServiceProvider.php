@@ -198,6 +198,18 @@ class AppServiceProvider extends ServiceProvider
          * ⚠️ გასაღები **user + ალბომი** ერთად: ერთ ალბომზე შეცდომა მეორეს
          * არ კეტავს, თორემ ერთი დავიწყებული პაროლი მთელ გალერეას გაყინავდა.
          */
+        /*
+         * Tasks §40.6 — **გაზიარების ბმულის ნახვა** (ავტორიზაციის გარეშე).
+         *
+         * ⚠️ ტოკენი გამოუცნობია (~285 ბიტი), ე.ი. ჭერი გადარჩევას კი არა,
+         * დატვირთვას იცავს: ერთ ბმულზე IP-ით 120/წთ (სიის „მეტის ჩვენება"
+         * და ძებნა ამაზე ბევრად ნაკლებია) და ერთი IP-ით ჯამში 300/წთ.
+         */
+        RateLimiter::for('share', fn (Request $r) => [
+            Limit::perMinute(120)->by('share:'.$r->ip().':'.$r->route('token')),
+            Limit::perMinute(300)->by('share-ip:'.$r->ip()),
+        ]);
+
         RateLimiter::for('album-unlock', function (Request $r) {
             /* ⚠️ `route()` აქ **მოდელია და არა id**: route-middleware
                `SubstituteBindings`-ის შემდეგ მუშაობს, ე.ი. პირდაპირი

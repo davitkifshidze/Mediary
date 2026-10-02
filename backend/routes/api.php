@@ -75,12 +75,14 @@ use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlaceFileController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
+use App\Http\Controllers\Api\PublicShareController;
 use App\Http\Controllers\Api\RecordCastController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
 use App\Http\Controllers\Api\SeriesStatusController;
 use App\Http\Controllers\Api\SeriesSyncController;
+use App\Http\Controllers\Api\ShareLinkController;
 use App\Http\Controllers\Api\SongController;
 use App\Http\Controllers\Api\SongGenreController;
 use App\Http\Controllers\Api\StatsController;
@@ -197,6 +199,25 @@ Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileC
     ->middleware('throttle:album-unlock');
 
 Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
+
+/* ---------- გაზიარების ბმული (Tasks §40.6) — ავტორიზაციის გარეშე ----------
+   ⚠️ **კიდევ ორი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
+   ემატება — სულ თერთმეტი დომენური მარშრუტი):
+
+    10. `GET  /public/shares/{token}`            — ვინ გაგიზიარა, სექციები რაოდენობებით
+    11. `GET  /public/shares/{token}/{domain}`   — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
+
+   ⚠️ **სამ ფენას არ ეკითხება** — ბმული თვითონაა მფლობელის თანხმობა, ე.ი. ფარგალში
+   მოხვედრილი პირადი ჩანაწერიც ჩანს. დაცვა: 48-სიმბოლოიანი შემთხვევითი ტოკენი
+   (ბაზაში — `sha256` და დაშიფრული ასლი), ვადა, გაუქმება და `throttle:share`
+   (IP + ტოკენი). მთელი მექანიზმი ერთი ცვლადით ითიშება: `SHARE_LINKS=false`.
+   ⚠️ ტოკენი მოდელზე არ ებმება (`EnsureRecordOwnership` უცხოს 404-ს მისცემდა). */
+Route::middleware('throttle:share')->group(function () {
+    Route::get('/public/shares/{token}', [PublicShareController::class, 'show'])
+        ->where('token', '[A-Za-z0-9]{20,100}');
+    Route::get('/public/shares/{token}/{domain}', [PublicShareController::class, 'items'])
+        ->where('token', '[A-Za-z0-9]{20,100}');
+});
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -391,6 +412,18 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ ორივე **`GET`-ია**: ექსპორტი კითხვაა და არა ჩანაწერი; POST-ს
        `EnsureModulePermission` `create`-ად წაიკითხავდა და view-only როლი
        საკუთარ მონაცემებს ვერ წაიღებდა. */
+    /* Tasks §40.4–40.5 — **გაზიარების ბმულები** (მფლობელის მხარე).
+       ⚠️ `preview` `{shareLink}`-ზე ზემოთ დგას, თორემ „preview" id-ად
+       წაიკითხებოდა; ⚠️ `module:`/`permission:` აქ არ დგას — ბმული სამ დომენს
+       ფარავს და უფლებას `ShareDomain::availableFor()` ამოწმებს. */
+    Route::get('/share-links', [ShareLinkController::class, 'index']);
+    Route::post('/share-links', [ShareLinkController::class, 'store']);
+    Route::get('/share-links/preview', [ShareLinkController::class, 'preview']);
+    Route::patch('/share-links/{shareLink}', [ShareLinkController::class, 'update'])->whereNumber('shareLink');
+    Route::delete('/share-links/{shareLink}', [ShareLinkController::class, 'destroy'])->whereNumber('shareLink');
+    Route::post('/share-links/{shareLink}/regenerate', [ShareLinkController::class, 'regenerate'])
+        ->whereNumber('shareLink');
+
     Route::get('/export', [ExportController::class, 'index']);
     Route::get('/export/{module}', [ExportController::class, 'show']);
 
