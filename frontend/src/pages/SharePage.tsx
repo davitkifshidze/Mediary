@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Library,
   Link2Off,
+  ListMusic,
   Loader2,
   LogIn,
   Search,
@@ -21,6 +22,7 @@ import {
 import {
   fetchPublicShare,
   fetchPublicShareItems,
+  fetchSharePlaylist,
   planShareImport,
   type ShareCard,
   type ShareDomainKey,
@@ -47,6 +49,7 @@ import { useToast } from '@/components/ui/feedback'
 import { useQueue } from '@/components/ui/queue'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge, StatusBadge } from '@/components/StatusBadge'
+import { PlaylistPlayerDialog } from '@/components/PublicPlaylistDialog'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -71,6 +74,11 @@ import { cn } from '@/lib/utils'
    პოსტერი (ფილმი, თამაში, წიგნი…), ფართო ესკიზი (ვიდეო, სიმღერა, ბუკმარკი,
    კურსი) და ფოტო (ადგილი). ერთ სექციაში ერთი ფორმაა, ამიტომ ბადეც მას
    მიჰყვება. ფილტრის სიტყვაც სექციისაა — „ყველა ჟანრი" / „კატეგორია" / „ტიპი".
+
+   ⚠️ **§40.13 — პლეილისტის ბარათი იხსნება**: შიგნით მისი სიმღერებია რიგით,
+   დაკვრით (§33-ის ფანჯარა — `PlaylistPlayerDialog`, ბმულის წყაროთი).
+   სექციის მეტამონაცემი `song`-ისაა (`SHARE_DOMAIN_META.module`), სახელი და
+   ხატულა — თავისი.
    ============================================================ */
 
 const ALL_GENRES = '__all__'
@@ -107,6 +115,7 @@ export function SharePage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [statusMode, setStatusMode] = useState<ShareStatusMode>('default')
   const [adding, setAdding] = useState(false)
+  const [openPlaylist, setOpenPlaylist] = useState<ShareCard | null>(null)
 
   // ძებნა ყოველ ასოზე არ იგზავნება
   useEffect(() => {
@@ -153,6 +162,7 @@ export function SharePage() {
     setQ('')
     setTerm('')
     setSelected(new Set())
+    setOpenPlaylist(null)
   }
 
   const ability = domain ? share?.viewer.sections[domain] : undefined
@@ -253,11 +263,14 @@ export function SharePage() {
   }
 
   const avatar = storageUrl(share.owner.avatar_path)
-  const moduleOf = (d: ShareDomainKey) => share.modules[d]
+  // ⚠️ პლეილისტის მოდული `song`-ია — ფერი იქიდან, სახელი და ხატულა თავისი
+  const moduleOf = (d: ShareDomainKey) => share.modules[shareMeta(d).module]
   const sectionName = (d: ShareDomainKey) => {
+    if (d === 'playlist') return t('playlists.title')
     const m = moduleOf(d)
     return m ? (lang === 'ka' ? m.name_ka : m.name_en) : d
   }
+  const sectionIcon = (d: ShareDomainKey) => (d === 'playlist' ? 'ListMusic' : (moduleOf(d)?.icon ?? 'Film'))
   const genres = firstPage?.genres ?? []
   const meta = domain ? shareMeta(domain) : null
   const shape = SHAPE[meta?.shape ?? 'poster']
@@ -325,7 +338,10 @@ export function SharePage() {
                     label: sectionName(s.domain),
                     count: s.count,
                     ...(m
-                      ? { color: m.color, node: <ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" /> }
+                      ? {
+                          color: m.color,
+                          node: <ModuleIcon name={sectionIcon(s.domain)} className="size-4 text-[var(--mod)]" />,
+                        }
                       : {}),
                   }
                 })}
@@ -460,18 +476,38 @@ export function SharePage() {
               />
             ) : (
               <div className={cn('grid gap-4 pb-10', shape.grid)}>
-                {items.map((card) => (
-                  <ShareCardTile
-                    key={`${card.domain}-${card.id}`}
-                    card={card}
-                    lang={lang}
-                    aspect={shape.aspect}
-                    selectable={canAdd && !card.in_library}
-                    selected={selected.has(card.id)}
-                    onToggle={() => toggle(card.id)}
-                  />
-                ))}
+                {items.map((card) =>
+                  card.domain === 'playlist' ? (
+                    <SharePlaylistTile
+                      key={`${card.domain}-${card.id}`}
+                      card={card}
+                      selectable={canAdd && !card.in_library}
+                      selected={selected.has(card.id)}
+                      onToggle={() => toggle(card.id)}
+                      onOpen={() => setOpenPlaylist(card)}
+                    />
+                  ) : (
+                    <ShareCardTile
+                      key={`${card.domain}-${card.id}`}
+                      card={card}
+                      lang={lang}
+                      aspect={shape.aspect}
+                      selectable={canAdd && !card.in_library}
+                      selected={selected.has(card.id)}
+                      onToggle={() => toggle(card.id)}
+                    />
+                  ),
+                )}
               </div>
+            )}
+
+            {openPlaylist && (
+              <PlaylistPlayerDialog
+                queryKey={['public-share-playlist', token, openPlaylist.id]}
+                load={(page) => fetchSharePlaylist(token, openPlaylist.id, page)}
+                playlist={openPlaylist}
+                onClose={() => setOpenPlaylist(null)}
+              />
             )}
 
             {list.hasNextPage && (
@@ -536,32 +572,8 @@ function ShareCardTile({
         ) : (
           <div className="grid size-full place-items-center text-xs text-muted-foreground">—</div>
         )}
-        {card.in_library && (
-          <span
-            className={cn(
-              'absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium shadow',
-              card.in_library.trashed ? 'bg-background/90 text-muted-foreground' : 'bg-status-watched text-white',
-            )}
-          >
-            {card.in_library.trashed ? <Trash2 className="size-3" /> : <Check className="size-3" />}
-            {t(card.in_library.trashed ? 'share.page.inTrash' : 'share.page.inLibrary')}
-          </span>
-        )}
-        {selectable && (
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={selected}
-            aria-label={t('share.page.select', { title })}
-            onClick={onToggle}
-            className={cn(
-              'absolute right-1.5 top-1.5 grid size-6 cursor-pointer place-items-center rounded-md border shadow',
-              selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90',
-            )}
-          >
-            {selected && <Check className="size-4" />}
-          </button>
-        )}
+        <InLibraryMark mine={card.in_library} />
+        {selectable && <SelectBox title={title} selected={selected} onToggle={onToggle} />}
       </div>
       <div className="mt-2 min-w-0 space-y-1">
         <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
@@ -600,5 +612,94 @@ function ShareCardTile({
         {enumStatus && <EnumStatusBadge domain={enumStatus.domain} status={enumStatus.key} />}
       </div>
     </div>
+  )
+}
+
+/**
+ * **პლეილისტის ბარათი** (§40.13) — სახელი, სიმღერების რიცხვი, „უკვე გაქვს",
+ * მონიშვნა; კადრზე დაჭერა მის სიმღერებს ხსნის.
+ *
+ * ⚠️ მონიშვნის ღილაკი გახსნის ღილაკის **გვერდით** დგას და არა შიგნით —
+ * ღილაკში ღილაკი არასწორი HTML-ია და ერთი დაჭერა ორივეს გაუშვებდა.
+ */
+function SharePlaylistTile({
+  card,
+  selectable,
+  selected,
+  onToggle,
+  onOpen,
+}: {
+  card: ShareCard
+  selectable: boolean
+  selected: boolean
+  onToggle: () => void
+  onOpen: () => void
+}) {
+  const { t } = useTranslation()
+  const title = card.title_en || card.title_ka || '—'
+
+  return (
+    <div className="min-w-0" data-testid="share-card">
+      <div className={cn('relative rounded-lg', selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={t('share.page.openPlaylist', { title })}
+          className="group grid aspect-[2/3] w-full cursor-pointer place-items-center overflow-hidden rounded-lg border border-border bg-muted transition-colors hover:border-primary/50"
+        >
+          <span className="px-2 text-center">
+            <ListMusic className="mx-auto size-8 text-muted-foreground transition-colors group-hover:text-primary" />
+            <span className="mt-2 block text-xs text-muted-foreground">
+              {t('playlists.songCount', { count: card.songs_count ?? 0 })}
+            </span>
+          </span>
+        </button>
+        <InLibraryMark mine={card.in_library} />
+        {selectable && <SelectBox title={title} selected={selected} onToggle={onToggle} />}
+      </div>
+      <p className="mt-2 truncate text-sm font-medium" title={title}>
+        {title}
+      </p>
+    </div>
+  )
+}
+
+/** „უკვე გაქვს" / „შენს ურნაშია" — ბარათის კუთხეში */
+function InLibraryMark({ mine }: { mine: ShareCard['in_library'] }) {
+  const { t } = useTranslation()
+
+  if (!mine) return null
+
+  return (
+    <span
+      className={cn(
+        'absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium shadow',
+        mine.trashed ? 'bg-background/90 text-muted-foreground' : 'bg-status-watched text-white',
+      )}
+    >
+      {mine.trashed ? <Trash2 className="size-3" /> : <Check className="size-3" />}
+      {t(mine.trashed ? 'share.page.inTrash' : 'share.page.inLibrary')}
+    </span>
+  )
+}
+
+/** მონიშვნის ჩამრთველი ბარათის კუთხეში */
+function SelectBox({ title, selected, onToggle }: { title: string; selected: boolean; onToggle: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={selected}
+      aria-label={t('share.page.select', { title })}
+      onClick={onToggle}
+      className={cn(
+        'absolute right-1.5 top-1.5 grid size-6 cursor-pointer place-items-center rounded-md border shadow',
+        selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90',
+      )}
+    >
+      {selected && <Check className="size-4" />}
+    </button>
   )
 }

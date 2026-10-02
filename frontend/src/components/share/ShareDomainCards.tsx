@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchDashboard } from '@/api/dashboard'
 import type { ShareDomainKey } from '@/api/shareLinks'
 import { useShareDomains } from '@/hooks/useShareDomains'
-import { moduleName } from '@/lib/modules'
+import { shareMeta } from '@/lib/shareLinks'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { ScopeCard, ScopeGroup } from '@/components/ui/scope-card'
 
@@ -25,28 +25,29 @@ export function ShareDomainCards({
   value: ShareDomainKey[]
   onToggle: (domain: ShareDomainKey) => void
 }) {
-  const { t, i18n } = useTranslation()
-  const { available, moduleOf } = useShareDomains()
+  const { t } = useTranslation()
+  const { available, look } = useShareDomains()
 
-  // ⚠️ რიცხვი ბიბლიოთეკის ზომაა (`MediaDomainCards`-ის წყარო); ბმულის რიცხვი ქვემოთაა
+  /* ⚠️ რიცხვი ბიბლიოთეკის ზომაა (`MediaDomainCards`-ის წყარო); ბმულის რიცხვი ქვემოთაა.
+     პლეილისტს თავისი მთვლელი დეშბორდზე არ აქვს (`song`-ისა სიმღერებს ითვლის) — რიცხვის გარეშეა */
   const { data: cards } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard })
-  const countOf = (key: string) => cards?.find((c) => c.key === key)?.count ?? undefined
+  const countOf = (domain: ShareDomainKey) =>
+    shareMeta(domain).module === domain ? (cards?.find((c) => c.key === domain)?.count ?? undefined) : undefined
 
   return (
     <div>
       <ScopeGroup layout="inline">
         {available.map((domain) => {
-          const m = moduleOf(domain)
-          if (!m) return null
+          const { label, icon, color } = look(domain)
 
           return (
             <ScopeCard
               key={domain}
               active={value.includes(domain)}
-              color={m.color}
-              icon={<ModuleIcon name={m.icon} className="size-4 text-[var(--mod)]" />}
-              label={moduleName(m, i18n.language)}
-              count={countOf(m.key)}
+              color={color}
+              icon={<ModuleIcon name={icon} className="size-4 text-[var(--mod)]" />}
+              label={label}
+              count={countOf(domain)}
               onClick={() => onToggle(domain)}
             />
           )

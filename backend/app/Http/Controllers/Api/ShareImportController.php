@@ -144,7 +144,13 @@ class ShareImportController extends Controller
                 'subject_type' => $domain,
                 'subject_id' => $result['id'],
                 'subject_label' => ShareDomain::label($domain, $record),
-                'new_values' => ['source' => 'share', 'share_link' => $link->id, 'owner' => $owner->username],
+                'new_values' => [
+                    'source' => 'share',
+                    'share_link' => $link->id,
+                    'owner' => $owner->username,
+                    // §40.13 — პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა
+                    ...(isset($result['songs_added']) ? ['songs_added' => $result['songs_added']] : []),
+                ],
             ]);
         }
 

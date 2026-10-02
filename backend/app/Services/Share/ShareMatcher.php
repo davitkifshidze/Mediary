@@ -2,6 +2,7 @@
 
 namespace App\Services\Share;
 
+use App\Models\Playlist;
 use App\Models\User;
 use App\Support\MediaDomain;
 use App\Support\ShareDomain;
@@ -36,6 +37,10 @@ use Illuminate\Database\Eloquent\Model;
  * არის, ცოცხალი იმარჯვებს.
  * ⚠️ **ერთი query მთელ სიაზე** და არა ჩანაწერზე; მფლობელი ცხადია (`owner`
  * და `trash` scope-ების გარეშე — მნახველის ურნაც უნდა ჩანდეს).
+ *
+ * ⚠️ **პლეილისტი (§40.13) ასლის წყაროთი იცნობა** (`playlists.copied_from_id`)
+ * და არა სახელით: „რჩეული"/„გზაში" ჩვეულებრივი სახელებია, და მეგობრის
+ * პლეილისტი ჩემს თანამოსახელე პლეილისტად ჩაითვლებოდა.
  */
 final class ShareMatcher
 {
@@ -82,6 +87,10 @@ final class ShareMatcher
     {
         if ($records->isEmpty()) {
             return [];
+        }
+
+        if (ShareDomain::isList($domain)) {
+            return self::playlistCopies($viewer, $records);
         }
 
         $steps = self::STEPS[$domain] ?? [];
@@ -139,6 +148,34 @@ final class ShareMatcher
     }
 
     /* ---------- შიდა ---------- */
+
+    /**
+     * მნახველის ასლები გამზიარებლის პლეილისტებიდან — ერთი query.
+     *
+     * @param  Collection<int, Model>  $records
+     * @return array<int, array{id: int, trashed: bool}>
+     */
+    private static function playlistCopies(User $viewer, Collection $records): array
+    {
+        $copies = Playlist::withoutGlobalScopes(['owner', 'trash'])
+            ->where('user_id', $viewer->id)
+            ->whereIn('copied_from_id', $records->modelKeys())
+            ->get(['id', 'copied_from_id', 'trashed_at']);
+
+        $out = [];
+
+        foreach ($copies->groupBy('copied_from_id') as $source => $rows) {
+            // ცოცხალი იმარჯვებს — ურნაში მყოფი მხოლოდ მაშინ, როცა სხვა არ არის
+            $pick = $rows->first(fn (Model $row) => $row->getAttribute('trashed_at') === null) ?? $rows->first();
+
+            $out[(int) $source] = [
+                'id' => (int) $pick->getKey(),
+                'trashed' => $pick->getAttribute('trashed_at') !== null,
+            ];
+        }
+
+        return $out;
+    }
 
     /**
      * ერთი query მნახველის ყველა შესაძლო ტყუპზე.

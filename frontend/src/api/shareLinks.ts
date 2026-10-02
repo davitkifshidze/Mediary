@@ -5,10 +5,11 @@ import type { PublicCard } from '@/api/publicProfile'
    **გაზიარების ბმული (Tasks §40).**
 
    მფლობელი ბმულს ქმნის, სხვა ადამიანი კი მისით მის ჩანაწერებს ხედავს —
-   ფარგლებით, თითო სექციაზე: ფილმები, სერიალები, ანიმე (ეტაპი 1) და
+   ფარგლებით, თითო სექციაზე: ფილმები, სერიალები, ანიმე (ეტაპი 1),
    თამაშები, წიგნები, სამაგიდო თამაშები, ადგილები, ვიდეოები, სიმღერები,
-   ბუკმარკები, კურსები (ეტაპი 2, §40.10). ⚠️ ნახვა შესვლის გარეშეც შეიძლება
-   (Q46); ბიბლიოთეკაში დამატება მხოლოდ შესულს (40.8).
+   ბუკმარკები, კურსები (ეტაპი 2, §40.10) და პლეილისტები (§40.13 — სია და
+   არა ჩანაწერი: შიგნით მისი სიმღერებია, დამატება ასლს ქმნის). ⚠️ ნახვა
+   შესვლის გარეშეც შეიძლება (Q46); ბიბლიოთეკაში დამატება მხოლოდ შესულს (40.8).
 
    ⚠️ **ფარგლების ლექსიკონი `GalleryScope`-ისაა** (`all` · `status` ·
    `favorite` · `genre` · `ids`) — იგივე, რასაც სინქრონიზაციისა და გალერეის
@@ -32,6 +33,7 @@ export const SHARE_DOMAINS = [
   'place',
   'video',
   'song',
+  'playlist',
   'bookmark',
   'course',
 ] as const
@@ -242,6 +244,29 @@ export async function fetchPublicShareItems(
   return data
 }
 
+/** ბმულში მყოფი პლეილისტის ერთი გვერდი — თავისი სიმღერებით, რიგით (§40.13) */
+export interface SharePlaylistPage {
+  playlist: ShareCard
+  data: ShareCard[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+}
+
+/**
+ * ⚠️ **ყველა სიმღერა ჩანს — პირადიც** (§33-ის წესი): სიმღერა პლეილისტის
+ * ხილვადობას იღებს, ბმული კი თვითონაა თანხმობა.
+ */
+export async function fetchSharePlaylist(
+  token: string,
+  playlistId: number,
+  page = 1,
+  perPage = 100,
+): Promise<SharePlaylistPage> {
+  const { data } = await api.get(`/public/shares/${encodeURIComponent(token)}/playlists/${playlistId}`, {
+    params: { page, per_page: perPage },
+  })
+  return data
+}
+
 /* ---------- ბიბლიოთეკაში დამატება — შესულისთვის (Tasks §40.8) ---------- */
 
 /** „ჩემი ნაგულისხმევი სტატუსით" · „როგორც გამზიარებელს აქვს" (Q48) */
@@ -285,6 +310,8 @@ export interface ShareItemResult {
   partial: boolean
   /** მთავარი ფოტო ვერ ჩაიწერა (კვოტა) — მიზეზის კოდი */
   poster_skipped: string | null
+  /** §40.13 — პლეილისტის ასლს რამდენი ახალი სიმღერა მოჰყვა */
+  songs_added?: number
 }
 
 /** ერთი ჩანაწერის დამატება — რიგი თითოს ცალკე აგზავნის */

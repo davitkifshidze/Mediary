@@ -281,12 +281,12 @@ class ShareModulesTest extends TestCase
         $token = $this->link(['video' => ['scope' => 'status', 'statuses' => ['watched']]]);
         $this->assertSame([$watched->id], array_column($this->anonymous("/api/public/shares/{$token}/video")->json('data'), 'id'));
 
-        // ⚠️ სტატუსის უქონელი დომენი — ნებისმიერი გასაღები უცნობია
+        // ⚠️ სტატუსის უქონელ დომენზე „სტატუსით" საერთოდ არ არსებობს (§40.13 — `ShareDomain::modes()`)
         foreach (['song', 'board_game'] as $domain) {
             $this->actingAs($this->owner)
                 ->postJson('/api/share-links', ['domains' => [$domain => ['scope' => 'status', 'statuses' => ['done']]]])
                 ->assertStatus(422)
-                ->assertJsonPath('message', 'invalid_status');
+                ->assertJsonPath('message', 'share_scope_unsupported');
         }
 
         // enum-ის უცნობი გასაღები

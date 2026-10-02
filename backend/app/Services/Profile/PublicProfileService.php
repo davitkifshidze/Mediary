@@ -251,7 +251,7 @@ class PublicProfileService
            (`playlistSongs()`) ერთი განსაზღვრიდან დგება (`ownSongs()`), ე.ი.
            ბარათზე რაც წერია, შიგნითაც ის არის. */
         if ($domain === 'playlist') {
-            $q->withCount(['songs' => fn (Builder $songs) => $this->ownSongs($songs, $user)]);
+            $this->withSongCount($q, $user);
         }
 
         /* ⚠️ **ალბომის რიცხვი ლოკის მიღმა იზომება** (Tasks §7.5): scope-ს
@@ -301,6 +301,15 @@ class PublicProfileService
     public function playlistSongs(User $user, Playlist $playlist): BelongsToMany
     {
         return $this->ownSongs($playlist->songs(), $user);
+    }
+
+    /**
+     * პლეილისტების query-ს სიმღერების რიცხვი (`songs_count`) — საჯარო პროფილიც
+     * და გაზიარების ბმულიც (§40.13) ამ ერთ განსაზღვრას კითხულობს.
+     */
+    public function withSongCount(Builder $playlists, User $user): Builder
+    {
+        return $playlists->withCount(['songs' => fn (Builder $songs) => $this->ownSongs($songs, $user)]);
     }
 
     /**

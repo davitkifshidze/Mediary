@@ -37,8 +37,12 @@ use Illuminate\Validation\Rule;
  * (`categories`); ფილტრი სვეტზე ან pivot-ზე იწერება და არა `whereHas()`-ით —
  * ლექსიკონის რელაცია `owner` scope-ს ხელახლა დაადებდა და შესულ უცხოს
  * ცარიელ სექციას აჩვენებდა (§1.2). „სტატუსით" enum-იანზე გასაღებია,
- * ლექსიკონიანზე — მფლობელის ლექსიკონის გასაღები, სტატუსის უქონელზე
- * (სიმღერა, სამაგიდო) კი საერთოდ არ არსებობს (`invalid_status`).
+ * ლექსიკონიანზე — მფლობელის ლექსიკონის გასაღები.
+ *
+ * ⚠️ **ყველა დომენს ყველა რეჟიმი არ აქვს** (`ShareDomain::modes()`): სტატუსის
+ * უქონელზე (სიმღერა, სამაგიდო) „სტატუსით" არ არსებობს, პლეილისტზე (§40.13) —
+ * არც „რჩეული" და არც „ჟანრით". ასეთი რეჟიმი **422-ია**
+ * (`share_scope_unsupported`) და არა ჩუმი „ყველა".
  *
  * ⚠️ **ცოცხალია** (Q47): წესი ყოველ გახსნაზე ითვლება, ე.ი. ფარგალს მორგებული
  * ახალი ჩანაწერი ბმულშიც ჩნდება. ხელით მონიშნული ფიქსირებული სიაა.
@@ -101,9 +105,12 @@ final class ShareScope
             $scope = (string) $spec['scope'];
             $clean = ['scope' => $scope, 'public_only' => (bool) ($spec['public_only'] ?? false)];
 
+            if (! in_array($scope, ShareDomain::modes($domain), true)) {
+                self::fail('share_scope_unsupported', $domain);
+            }
+
             if ($scope === 'status') {
                 $keys = array_values(array_unique(array_map('strval', (array) ($spec['statuses'] ?? []))));
-                // ⚠️ სიმღერასა და სამაგიდოს სტატუსი არ აქვს — სია ცარიელია, ე.ი. ყოველი გასაღები უცნობია (`invalid_status`)
                 $known = ShareDomain::statusKeys($owner, $domain);
 
                 if ($keys === []) {
@@ -201,11 +208,12 @@ final class ShareScope
     }
 
     /**
-     * ეტაპი 2-ის რვა დომენის ფილტრი (`GalleryScope`-ის ტყუპი, per-user ლექსიკონით).
+     * ეტაპი 2-ის დომენებისა და პლეილისტის ფილტრი (`GalleryScope`-ის ტყუპი, per-user ლექსიკონით).
      *
      * ⚠️ ცხადი რეჟიმისას **მხოლოდ თავისი** ფილტრი მუშაობს (`GalleryScope`-ის წესი)
      * და ცარიელი არჩევანი „არცერთია" — `normalize()` მას ისედაც არ უშვებს, მაგრამ
      * შენახული ბმული ხელით შეცვლილი შეიძლება იყოს და „ყველაფერი" აქ ტყუილი იქნებოდა.
+     * იგივე მიზეზით დომენზე არარსებული რეჟიმიც „არცერთია" და არა SQL-ის შეცდომა.
      *
      * @param  array<string, mixed>  $spec
      */
@@ -215,7 +223,9 @@ final class ShareScope
 
         return match ($scope) {
             'status' => self::statusFilter($query, $domain, array_values(array_map('strval', (array) ($spec['statuses'] ?? [])))),
-            'favorite' => $query->where($table.'.is_favorite', true),
+            'favorite' => ShareDomain::supportsFavorite($domain)
+                ? $query->where($table.'.is_favorite', true)
+                : $query->whereRaw('1 = 0'),
             'genre' => self::classifierFilter(
                 $query,
                 $domain,
@@ -251,7 +261,7 @@ final class ShareScope
      */
     private static function classifierFilter(Builder $query, string $domain, array $ids, bool $all): Builder
     {
-        if ($ids === []) {
+        if ($ids === [] || ! ShareDomain::hasClassifier($domain)) {
             return $query->whereRaw('1 = 0');
         }
 

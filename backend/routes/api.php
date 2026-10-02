@@ -202,11 +202,12 @@ Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileC
 Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::class, 'items']);
 
 /* ---------- გაზიარების ბმული (Tasks §40.6) — ავტორიზაციის გარეშე ----------
-   ⚠️ **კიდევ ორი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
-   ემატება — სულ თერთმეტი დომენური მარშრუტი):
+   ⚠️ **კიდევ სამი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
+   ემატება — სულ თორმეტი დომენური მარშრუტი):
 
-    10. `GET  /public/shares/{token}`            — ვინ გაგიზიარა, სექციები რაოდენობებით
-    11. `GET  /public/shares/{token}/{domain}`   — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
+    10. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
+    11. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
+    12. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით (§40.13)
 
    ⚠️ **სამ ფენას არ ეკითხება** — ბმული თვითონაა მფლობელის თანხმობა, ე.ი. ფარგალში
    მოხვედრილი პირადი ჩანაწერიც ჩანს. დაცვა: 48-სიმბოლოიანი შემთხვევითი ტოკენი
@@ -218,6 +219,10 @@ Route::middleware('throttle:share')->group(function () {
         ->where('token', '[A-Za-z0-9]{20,100}');
     Route::get('/public/shares/{token}/{domain}', [PublicShareController::class, 'items'])
         ->where('token', '[A-Za-z0-9]{20,100}');
+    // ⚠️ მოდელი არ იბმება (`/public/profiles/{username}/playlists/{playlist}`-ის წესი)
+    Route::get('/public/shares/{token}/playlists/{playlist}', [PublicShareController::class, 'playlist'])
+        ->where('token', '[A-Za-z0-9]{20,100}')
+        ->whereNumber('playlist');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

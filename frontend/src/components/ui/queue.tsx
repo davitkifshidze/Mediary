@@ -667,7 +667,14 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           /* §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";
              §40.10 — და იმ მოდულის სია, სადაც დაემატა (თამაშები, წიგნები…) */
           ...(next.kind === 'share'
-            ? ['dashboard', 'public-share-items', 'trash', ...(next.shareDomain ? [shareMeta(next.shareDomain).listKey] : [])]
+            ? [
+                'dashboard',
+                'public-share-items',
+                // §40.13 — პლეილისტის ფანჯრის „უკვე გაქვს" სიმღერებზეც
+                'public-share-playlist',
+                'trash',
+                ...(next.shareDomain ? shareMeta(next.shareDomain).listKeys : []),
+              ]
             : []),
         ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
         /* Tasks §30.6 — ⚠️ **გასაღების არქონა ჩანაწერის ფაქტი არ არის.**
@@ -833,11 +840,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             cur.map((i) => (i.id === item.id ? { ...i, status: 'done', error: undefined, trashedId: undefined } : i)),
           )
           ;[
-            item.shareDomain ? shareMeta(item.shareDomain).listKey : item.mediaType,
+            ...(item.shareDomain ? shareMeta(item.shareDomain).listKeys : [item.mediaType]),
             'trash',
             'dashboard',
             'discover',
             'public-share-items',
+            'public-share-playlist',
           ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
           toast({ title: t('queue.restoredFromTrash', { title: item.title }), variant: 'success' })
         })

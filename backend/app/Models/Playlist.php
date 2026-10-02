@@ -32,6 +32,8 @@ class Playlist extends Model
 
     protected $casts = [
         'sort_order' => 'integer',
+        // §40.13 — ბმულიდან მიღებული ასლის წყარო (გამზიარებლის პლეილისტის id)
+        'copied_from_id' => 'integer',
     ];
 
     /**

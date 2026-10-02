@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { ExternalLink, ListMusic, Loader2, Music, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react'
+import { Check, ExternalLink, ListMusic, Loader2, Music, Pause, Play, SkipBack, SkipForward, Trash2, Volume2 } from 'lucide-react'
 import { fetchPublicPlaylist, type PublicCard } from '@/api/publicProfile'
 import type { VideoPlatform } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
@@ -38,7 +38,22 @@ import { PlayerStage } from '@/components/PlayerStage'
    ⚠️ **„შემდეგი" ჩატვირთულ ნაწილს არ ემორჩილება**: სია გვერდებადაა (100-100),
    ბოლოს მიღწევისას მომდევნო გვერდი ჩამოიტვირთება და დაკვრა გრძელდება —
    თორემ 150-სიმღერიანი ფლეილისტი მე-100-ზე ჩუმად გაჩერდებოდა.
+
+   ⚠️ **ერთი ფანჯარა ორ წყაროზე** (Tasks §40.13): საჯარო პროფილი და
+   გაზიარების ბმული ერთსა და იმავე ფანჯარას ხსნის — `PlaylistPlayerDialog`
+   მხოლოდ წყაროს (`load`) და ქეშის გასაღებს იღებს. ბმულის სიმღერას შესულ
+   უცხოსთან „უკვე გაქვს" ახლავს (`in_library`), პროფილისას — არა.
    ============================================================ */
+
+/** სიმღერის ბარათი — ბმულზე შესულ უცხოს „უკვე გაქვს"-იც ახლავს */
+export type PlaylistSongCard = PublicCard & { in_library?: { id: number; trashed: boolean } | null }
+
+/** ფანჯრის ერთი გვერდი — პროფილისაც და ბმულისაც ეს ფორმა აქვს */
+export interface PlaylistPlayerPage {
+  playlist: PublicCard
+  data: PlaylistSongCard[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+}
 
 const PLATFORMS: readonly VideoPlatform[] = ['youtube', 'vimeo', 'dailymotion', 'file', 'other']
 
@@ -77,6 +92,7 @@ function prevPlayable(items: PlayerItem[], before: number): number | null {
   return null
 }
 
+/** საჯარო პროფილის ფლეილისტი (§33) */
 export function PublicPlaylistDialog({
   username,
   playlist,
@@ -87,11 +103,34 @@ export function PublicPlaylistDialog({
   playlist: PublicCard
   onClose: () => void
 }) {
+  return (
+    <PlaylistPlayerDialog
+      queryKey={['public-playlist', username, playlist.id]}
+      load={(page) => fetchPublicPlaylist(username, playlist.id, page)}
+      playlist={playlist}
+      onClose={onClose}
+    />
+  )
+}
+
+/** ფლეილისტის შიგთავსი და დაკვრა — წყარო გამომძახებლისაა (პროფილი ან ბმული) */
+export function PlaylistPlayerDialog({
+  queryKey,
+  load,
+  playlist,
+  onClose,
+}: {
+  queryKey: readonly unknown[]
+  load: (page: number) => Promise<PlaylistPlayerPage>
+  /** სიის ბარათი — სახელი და რიცხვი მაშინვე ჩანს, სანამ შიგთავსი მოვა */
+  playlist: PublicCard
+  onClose: () => void
+}) {
   const { t } = useTranslation()
 
   const query = useInfiniteQuery({
-    queryKey: ['public-playlist', username, playlist.id],
-    queryFn: ({ pageParam }) => fetchPublicPlaylist(username, playlist.id, pageParam),
+    queryKey,
+    queryFn: ({ pageParam }) => load(pageParam),
     initialPageParam: 1,
     getNextPageParam: (last) =>
       last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined,
@@ -269,6 +308,12 @@ export function PublicPlaylistDialog({
                         <span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span>
                       )}
                     </span>
+                    {cards[i]?.in_library && (
+                      <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                        {cards[i].in_library?.trashed ? <Trash2 className="size-3" /> : <Check className="size-3" />}
+                        {t(cards[i].in_library?.trashed ? 'share.page.inTrash' : 'share.page.inLibrary')}
+                      </span>
+                    )}
                     {formatDuration(item.duration) && (
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {formatDuration(item.duration)}

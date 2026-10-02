@@ -23,6 +23,7 @@ import '@/i18n'
 const mocks = vi.hoisted(() => ({
   fetchPublicShare: vi.fn(),
   fetchPublicShareItems: vi.fn(),
+  fetchSharePlaylist: vi.fn(),
   planShareImport: vi.fn(),
   requestModule: vi.fn(),
   enqueueShare: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('@/api/shareLinks', async (original) => ({
   ...(await original<typeof import('@/api/shareLinks')>()),
   fetchPublicShare: mocks.fetchPublicShare,
   fetchPublicShareItems: mocks.fetchPublicShareItems,
+  fetchSharePlaylist: mocks.fetchSharePlaylist,
   planShareImport: mocks.planShareImport,
 }))
 
@@ -343,5 +345,77 @@ describe('SharePage — ეტაპი 2-ის სექციები (§40.
 
     const source = document.querySelector<HTMLAnchorElement>('[data-testid="share-card"] a[aria-label="წყაროზე გახსნა"]')
     expect(source?.getAttribute('href')).toBe('https://www.youtube.com/watch?v=abc')
+  })
+})
+
+describe('SharePage — პლეილისტები (§40.13)', () => {
+  const playlistShare = (): PublicShare => ({
+    owner: { username: 'nino', display_name: 'Nino', avatar_path: null },
+    link: { expires_at: null, show_status: true },
+    sections: [{ domain: 'playlist', count: 1 }],
+    // ⚠️ პლეილისტის მოდული `song`-ია — სერვერი მეტამონაცემს მოდულის გასაღებით აბრუნებს
+    modules: { song: { name_ka: 'სიმღერები', name_en: 'Songs', icon: 'Music', color: '#d6457a' } },
+    viewer: { signed_in: true, own: false, sections: { playlist: { enabled: true, can_create: true, requested: false } } },
+  })
+
+  beforeEach(() => {
+    mocks.fetchPublicShareItems.mockResolvedValue({
+      data: [{ id: 3, domain: 'playlist', title_en: 'Road trip', songs_count: 2, in_library: null }],
+      meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+      genres: [],
+    })
+    mocks.fetchSharePlaylist.mockResolvedValue({
+      playlist: { id: 3, domain: 'playlist', title_en: 'Road trip', songs_count: 2 },
+      data: [
+        { id: 11, domain: 'song', title_en: 'Suliko', url: 'https://www.youtube.com/watch?v=abc', in_library: null },
+        { id: 12, domain: 'song', title_en: 'Tbiliso', url: 'https://www.youtube.com/watch?v=def', in_library: { id: 90, trashed: false } },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 100, total: 2 },
+    })
+  })
+
+  it('a playlist card opens its songs in order, with "you have it" marks', async () => {
+    mocks.fetchPublicShare.mockResolvedValue(playlistShare())
+    await mount()
+
+    // სექციის სახელი და ხატულა თავისია, ფერი კი `song`-ის მეტამონაცემიდან მოდის
+    const tab = button('პლეილისტები')
+    expect(tab?.querySelector('.lucide-list-music')).toBeTruthy()
+    expect(tab?.getAttribute('style')?.toLowerCase()).toContain('#d6457a')
+    const card = document.querySelector('[data-testid="share-card"]')
+    expect(card?.textContent).toContain('Road trip')
+    expect(card?.textContent).toContain('2 სიმღერა')
+    // სტატუსის რეჟიმი პლეილისტს არ აქვს
+    expect(document.querySelector('[aria-label="რა სტატუსით დაემატოს"]')).toBeNull()
+
+    // ⚠️ კადრი ღილაკია თავისი სახელით (`aria-label`) — ტექსტად მასზე მხოლოდ რიცხვი წერია
+    await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="„Road trip“ — გახსნა"]')!.click())
+    await flush()
+    await flush()
+
+    expect(mocks.fetchSharePlaylist).toHaveBeenCalledWith(TOKEN, 3, 1)
+    const text = document.body.textContent ?? ''
+    expect(text.indexOf('Suliko')).toBeGreaterThan(-1)
+    expect(text.indexOf('Suliko')).toBeLessThan(text.indexOf('Tbiliso'))
+    expect(text).toContain('უკვე გაქვს')
+  })
+
+  it('adding a playlist plans and queues it as a playlist', async () => {
+    mocks.fetchPublicShare.mockResolvedValue(playlistShare())
+    mocks.planShareImport.mockResolvedValue({
+      domain: 'playlist',
+      module: { enabled: true, can_create: true, requested: false },
+      items: [{ id: 3, title_ka: null, title_en: 'Road trip', year: null, state: 'new', mine_id: null }],
+      counts: { new: 1, have: 0, trash: 0 },
+      status_modes: [],
+    } satisfies SharePlan)
+    await mount()
+
+    await act(async () => document.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+    await act(async () => button('მონიშნულის დამატება (1)')!.click())
+    await flush()
+
+    expect(mocks.planShareImport).toHaveBeenCalledWith(TOKEN, 'playlist', [3])
+    expect(mocks.enqueueShare).toHaveBeenCalledWith(TOKEN, 'playlist', [{ id: 3, title: 'Road trip' }], 'default')
   })
 })

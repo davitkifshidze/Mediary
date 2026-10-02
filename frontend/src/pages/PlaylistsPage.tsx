@@ -35,6 +35,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
+import { ShareListButton } from '@/components/share/ShareListButton'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -84,6 +85,8 @@ export function PlaylistsPage() {
         hint={<InfoHint info={t('playlists.subtitle')} />}
         actions={
           <>
+            {/* Tasks §40.13 — პლეილისტები ბმულით (ყველა; კონკრეტული — ფანჯარაში) */}
+            <ShareListButton domain="playlist" spec={{ scope: 'all' }} />
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />
               {t('playlists.add')}

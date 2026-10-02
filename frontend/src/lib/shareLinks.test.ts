@@ -5,6 +5,7 @@ import {
   buildDomains,
   librarySpec,
   shareGenreName,
+  shareModes,
   shareTokenOf,
   specComplete,
 } from '@/lib/shareLinks'
@@ -67,6 +68,23 @@ describe('buildDomains', () => {
       song: { scope: 'all', public_only: false },
     })
   })
+
+  it('a playlist keeps only "all" and "specific" — favourites fall back to "all"', () => {
+    expect(buildDomains(['playlist'], { playlist: { scope: 'favorite' } })).toEqual({
+      playlist: { scope: 'all', public_only: false },
+    })
+    expect(buildDomains(['playlist'], { playlist: { scope: 'ids', ids: [3] } })).toEqual({
+      playlist: { scope: 'ids', ids: [3], public_only: false },
+    })
+  })
+})
+
+describe('shareModes — `ShareDomain::modes()`-ის სარკე', () => {
+  it('offers only the scopes the section really has', () => {
+    expect(shareModes('movie')).toEqual(['all', 'status', 'favorite', 'genre', 'ids'])
+    expect(shareModes('song')).toEqual(['all', 'favorite', 'genre', 'ids'])
+    expect(shareModes('playlist')).toEqual(['all', 'ids'])
+  })
 })
 
 describe('librarySpec — „ეს სია გაუზიარე"', () => {
@@ -105,6 +123,10 @@ describe('librarySpec — „ეს სია გაუზიარე"', () => 
 
   it('drops a value that is not an id', () => {
     expect(librarySpec('place', 'all', ['x', '0'])).toEqual({ scope: 'all' })
+  })
+
+  it('a playlist has neither favourites nor a classifier', () => {
+    expect(librarySpec('playlist', 'favorite', ['4'])).toEqual({ scope: 'all' })
   })
 })
 

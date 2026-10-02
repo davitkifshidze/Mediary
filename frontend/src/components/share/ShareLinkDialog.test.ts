@@ -28,16 +28,18 @@ const mocks = vi.hoisted(() => ({
   fetchDashboard: vi.fn(),
   fetchStatuses: vi.fn(),
   fetchBookGenres: vi.fn(),
+  fetchShareRecords: vi.fn(),
   /* ⚠️ **ერთი და იგივე ობიექტი ყოველ render-ზე** — ახალი მასივი ყოველ
      გამოძახებაზე effect-ის მარყუჟს წარმოშობდა (`GalleryDownloadDialog.test`-ის გაკვეთილი) */
   modules: (() => {
     const movie = { key: 'movie', type: 'movie', name_ka: 'ფილმები', name_en: 'Movies', icon: 'Film', color: '#7073ff', enabled: true }
     const series = { key: 'series', type: 'series', name_ka: 'სერიალები', name_en: 'Series', icon: 'Tv', color: '#3fae8c', enabled: true }
     const book = { key: 'book', name_ka: 'წიგნები', name_en: 'Books', icon: 'BookOpen', color: '#c47f2c', enabled: true }
+    const song = { key: 'song', name_ka: 'სიმღერები', name_en: 'Songs', icon: 'Music', color: '#d6457a', enabled: true }
     // გათიშული — ბმულში დარჩენილი სექციის სახელი აქედან მოდის
     const course = { key: 'course', name_ka: 'კურსები', name_en: 'Courses', icon: 'GraduationCap', color: '#2c8fc4', enabled: false }
 
-    return { all: [movie, series, book, course], enabled: [movie, series, book], mediaModules: [movie, series] }
+    return { all: [movie, series, book, song, course], enabled: [movie, series, book, song], mediaModules: [movie, series] }
   })(),
   auth: { can: () => true },
 }))
@@ -47,6 +49,7 @@ vi.mock('@/api/shareLinks', async (original) => ({
   previewShareLink: mocks.previewShareLink,
   createShareLink: mocks.createShareLink,
   updateShareLink: mocks.updateShareLink,
+  fetchShareRecords: mocks.fetchShareRecords,
 }))
 
 vi.mock('@/api/media', async (original) => ({
@@ -270,5 +273,27 @@ describe('ShareLinkDialog', () => {
       name: null,
       show_status: true,
     })
+  })
+
+  /* §40.13 — პლეილისტს მხოლოდ „ყველა" და „კონკრეტული" აქვს; შიგნით ყველა სიმღერა
+     ჩანს, პირადიც — და ეს სექციის სათაურთან წითლად წერია. */
+  it('პლეილისტის სექცია: რჩეული და ჟანრი არ ჩანს, სიმღერების გამჟღავნება წითლად წერია', async () => {
+    mocks.previewShareLink.mockResolvedValue({ domains: { playlist: { total: 1, private: 0 } }, total: 1, private: 0 })
+    mocks.fetchShareRecords.mockResolvedValue([{ id: 5, title_ka: null, title_en: 'Road trip', year: null }])
+
+    await mount({ initial: { domain: 'playlist', spec: { scope: 'ids', ids: [5] } } })
+
+    expect(mocks.previewShareLink).toHaveBeenCalledWith(
+      { playlist: { scope: 'ids', ids: [5], public_only: false } },
+      expect.anything(),
+    )
+    expect(mocks.fetchShareRecords).toHaveBeenCalledWith('playlist')
+
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('პლეილისტები')
+    expect(text).not.toContain('მხოლოდ რჩეულები')
+    expect(text).not.toContain('ჟანრით')
+    expect(text).not.toContain('სტატუსით')
+    expect(document.querySelector('.lucide-triangle-alert')).toBeTruthy()
   })
 })

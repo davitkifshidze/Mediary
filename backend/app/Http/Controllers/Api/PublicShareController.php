@@ -123,8 +123,9 @@ class PublicShareController extends Controller
         }
 
         $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module($domain));
-        // ⚠️ მფლობელმა კლასიფიკატორი საჯაროდ დამალა — არც ბარათზე, არც ფილტრში
-        $classifierHidden = in_array(ShareDomain::classifier($domain)['field'], $hidden, true);
+        // ⚠️ მფლობელმა კლასიფიკატორი საჯაროდ დამალა (ან დომენს ის საერთოდ არ აქვს) — არც ბარათზე, არც ფილტრში
+        $field = ShareDomain::classifierField($domain);
+        $classifierHidden = $field === null || in_array($field, $hidden, true);
 
         $genre = trim((string) $request->query('genre', ''));
         if ($genre !== '' && ! $classifierHidden) {
@@ -133,6 +134,12 @@ class PublicShareController extends Controller
 
         $perPage = min(max((int) $request->integer('per_page', self::PER_PAGE), 1), 100);
         $page = max(1, (int) $request->integer('page', 1));
+
+        /* §40.13 — პლეილისტის ბარათი სიმღერების რიცხვით; ⚠️ `owner`-ის გარეშე და
+           მფლობელის ცხადი id-ით (§33.3-ის გაკვეთილი: შესულ უცხოს „0 სიმღერა" ეწერებოდა) */
+        if (ShareDomain::isList($domain)) {
+            $this->profiles->withSongCount($query, $owner);
+        }
 
         $paginator = ShareDomain::withClassifier($query, $domain)
             ->orderByDesc($table.'.id')
@@ -153,6 +160,66 @@ class PublicShareController extends Controller
                 'total' => $paginator->total(),
             ],
             'genres' => $classifierHidden ? [] : $this->classifierFacet($owner, $domain, $spec),
+        ]);
+    }
+
+    /**
+     * **ბმულში მყოფი პლეილისტის სიმღერები, მისივე რიგით (Tasks §40.13).**
+     *
+     * ⚠️ **ყველა სიმღერა ჩანს — პირადიც** (§33-ის Q24): სიმღერა მშობლის
+     * ხილვადობას იღებს, ბმული კი თვითონაა თანხმობა. „მხოლოდ საჯაროები"
+     * პლეილისტს ეხება და არა მის სიმღერებს — ფანჯარა ამას წითლად ამბობს.
+     * ⚠️ სიმღერები მფლობელისაა (`ownSongs()` — `owner`-ის გარეშე, ცხადი id-ით;
+     * `trash` რჩება): pivot-ში ხელით ჩაწერილი სხვისი სიმღერა არ ჩანს.
+     * ⚠️ ბმულის გარეთ მყოფი პლეილისტი **404**-ია (`share_record_not_found`) —
+     * კლიენტს ვენდობით იმაში, *რას* ითხოვს, და არა იმაში, *რა არის* ბმულში.
+     */
+    public function playlist(Request $request, string $token, int $playlist): JsonResponse
+    {
+        [$link, $owner] = ShareResolver::resolve($token);
+
+        $domains = ShareScope::liveDomains($link, $owner);
+        if (! isset($domains['playlist'])) {
+            ShareResolver::deny('share_not_found', 404);
+        }
+
+        $query = ShareScope::query($owner, 'playlist', $domains['playlist']);
+        $record = $this->profiles->withSongCount($query, $owner)->whereKey($playlist)->first();
+
+        if (! $record) {
+            ShareResolver::deny('share_record_not_found', 404);
+        }
+
+        $viewer = $request->user();
+        $own = $viewer !== null && (int) $viewer->id === (int) $owner->id;
+        $perPage = min(max((int) $request->integer('per_page', 100), 1), 100);
+        $page = max(1, (int) $request->integer('page', 1));
+
+        $songs = $this->profiles->playlistSongs($owner, $record)
+            // ⚠️ ჟანრი `owner`-ის გარეშე (`ShareDomain::withClassifier()`-ის მიზეზი, §1.2)
+            ->with(['genres' => fn ($q) => $q->withoutGlobalScope('owner')])
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        // `playlist` და `song` ერთ მოდულს ეკუთვნის — ერთი ველების კონფიგი ორივესთვის
+        $hidden = $this->fields->hiddenOnPublic($owner, ShareDomain::module('song'));
+        $field = ShareDomain::classifierField('song');
+        $classifierHidden = $field === null || in_array($field, $hidden, true);
+
+        $records = $songs->getCollection();
+        $mark = $viewer !== null && ! $own;
+        $mine = $mark ? ShareMatcher::matches($viewer, 'song', $records) : [];
+
+        return response()->json([
+            'playlist' => PublicDomain::card('playlist', $record, $hidden),
+            'data' => $records->map(fn (Model $song) => $this->card($link, 'song', $song, $hidden, $classifierHidden, $mine, $mark))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $songs->currentPage(),
+                'last_page' => $songs->lastPage(),
+                'per_page' => $songs->perPage(),
+                'total' => $songs->total(),
+            ],
         ]);
     }
 
@@ -254,8 +321,9 @@ class PublicShareController extends Controller
     private function card(ShareLink $link, string $domain, Model $record, array $hidden, bool $classifierHidden, array $mine, bool $mark): array
     {
         $card = PublicDomain::card($domain, $record, $hidden);
+        $photo = ShareDomain::photoField($domain);
 
-        if (in_array(ShareDomain::photoField($domain), $hidden, true)) {
+        if ($photo !== null && in_array($photo, $hidden, true)) {
             unset($card['image']);
         }
 
@@ -301,6 +369,10 @@ class PublicShareController extends Controller
      */
     private function classifierFacet(User $owner, string $domain, array $spec): array
     {
+        if (! ShareDomain::hasClassifier($domain)) {
+            return [];
+        }
+
         $scope = ShareScope::query($owner, $domain, $spec);
         $table = $scope->getModel()->getTable();
         $ids = $scope->select($table.'.id');
@@ -333,7 +405,7 @@ class PublicShareController extends Controller
             return [];
         }
 
-        $model = ShareDomain::classifier($domain)['model'];
+        $model = (string) ShareDomain::classifier($domain)['model'];
 
         return $model::withoutGlobalScope('owner')
             ->whereIn('id', $counts->keys()->all())

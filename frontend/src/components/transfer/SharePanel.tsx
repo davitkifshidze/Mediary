@@ -26,7 +26,8 @@ import {
 import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { modAccent, moduleName, useModules } from '@/lib/modules'
+import { modAccent } from '@/lib/modules'
+import { useShareDomains } from '@/hooks/useShareDomains'
 import { shareTokenOf } from '@/lib/shareLinks'
 import { STATUS_BADGE } from '@/lib/statusStyles'
 import { cn } from '@/lib/utils'
@@ -142,12 +143,12 @@ const STATE_TONE: Record<ShareLink['state'], string> = {
 }
 
 function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => void; onQr: () => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { toast } = useToast()
   const confirm = useConfirm()
   const qc = useQueryClient()
-  // ⚠️ `all` და არა `enabled`: გათიშული მოდულის სექციაც სახელითა და ფერით უნდა დაიხატოს
-  const { all } = useModules()
+  // ⚠️ გათიშული მოდულის სექციაც სახელითა და ფერით უნდა დაიხატოს (`look()` ყველა მოდულს კითხულობს)
+  const { look } = useShareDomains()
   const { date, relative } = useDateFormat()
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['share-links'] })
@@ -243,7 +244,7 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
       {/* სექციები რაოდენობებით — გათიშული მოდული ცხადად აღინიშნება */}
       <div className="flex flex-wrap gap-2">
         {sections.map((domain) => {
-          const m = all.find((x) => x.key === domain)
+          const m = look(domain)
           const off = link.unavailable.includes(domain)
 
           return (
@@ -253,11 +254,11 @@ function ShareLinkCard({ link, onEdit, onQr }: { link: ShareLink; onEdit: () => 
                 'inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs',
                 off && 'text-muted-foreground line-through',
               )}
-              style={modAccent(m?.color)}
+              style={modAccent(m.color)}
               title={off ? t('share.sectionUnavailable') : undefined}
             >
-              <ModuleIcon name={m?.icon ?? 'Film'} className="size-3.5 text-[var(--mod)]" />
-              {m ? moduleName(m, i18n.language) : domain}
+              <ModuleIcon name={m.icon} className="size-3.5 text-[var(--mod)]" />
+              {m.label}
               {!off && <span className="tabular-nums text-muted-foreground">{link.counts[domain] ?? 0}</span>}
             </span>
           )

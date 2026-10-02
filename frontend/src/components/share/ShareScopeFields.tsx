@@ -25,12 +25,13 @@ import { RadioGroup } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { GenreSelect } from '@/components/GenreSelect'
 import { MediaRecordPicker } from '@/components/MediaRecordPicker'
 import { IdMultiSelect } from '@/components/MovieMultiSelect'
 import { ModuleIcon } from '@/components/ModuleIcon'
-import { MODULE_ACCENT_FALLBACK, isMediaKey, modAccent, moduleName } from '@/lib/modules'
-import type { ModuleInfo } from '@/api/account'
+import { MODULE_ACCENT_FALLBACK, isMediaKey, modAccent } from '@/lib/modules'
+import type { ShareDomainLook } from '@/hooks/useShareDomains'
 
 /* ============================================================
    **ერთი სექციის ფარგლები** გაზიარების ბმულის ფანჯარაში (Tasks §40.3).
@@ -48,6 +49,10 @@ import type { ModuleInfo } from '@/api/account'
    დაუბრუნებდა. კლასიფიკატორი მედიაზე გლობალური ჟანრია (slug), დანარჩენზე —
    **მფლობელის** ჟანრი/კატეგორია/ტიპი (id). ყოველი ქვე-ფორმა თავის
    კომპონენტშია: hook-ები პირობით ვერ გამოიძახება.
+
+   ⚠️ **პლეილისტს (§40.13) მხოლოდ „ყველა" და „კონკრეტული" აქვს** —
+   რჩეული, სტატუსი და კლასიფიკატორი მას არ აქვს (`shareModes()`), შიგნით კი
+   მისი ყველა სიმღერა ჩანს, პირადიც — ეს სათაურთან წითლად წერია.
    ============================================================ */
 
 /** კლასიფიკატორის რეჟიმის სახელი — „ჟანრით" / „კატეგორიით" / „ტიპით" */
@@ -63,6 +68,9 @@ interface ClassifierEntry {
   name_en: string
   icon?: string | null
 }
+
+/** კლასიფიკატორიანი ეტაპი 2-ის დომენი — მედიის და პლეილისტის გარდა */
+type ClassifiedDomain = Exclude<ShareDomainKey, MediaType | 'playlist'>
 
 /**
  * **მფლობელის ლექსიკონი ყოველ ეტაპი 2-ის დომენზე.**
@@ -82,18 +90,19 @@ const CLASSIFIER_SOURCE = {
   song: { queryKey: ['song-genres'], list: fetchSongGenres },
   bookmark: { queryKey: ['bookmark-categories'], list: fetchBookmarkCategories },
   course: { queryKey: ['course-categories'], list: fetchCourseCategories },
-} satisfies Record<Exclude<ShareDomainKey, MediaType>, { queryKey: string[]; list: () => Promise<ClassifierEntry[]> }>
+} satisfies Record<ClassifiedDomain, { queryKey: string[]; list: () => Promise<ClassifierEntry[]> }>
 
 export function ShareScopeFields({
   domain,
-  module,
+  look,
   spec,
   genres,
   count,
   onChange,
 }: {
   domain: ShareDomainKey
-  module: ModuleInfo | undefined
+  /** სახელი, ხატულა, ფერი — `useShareDomains().look()` */
+  look: ShareDomainLook
   spec: ShareDomainSpec
   /** მედიის გლობალური ჟანრები — მხოლოდ ფილმს/სერიალს/ანიმეს სჭირდება */
   genres: Genre[]
@@ -101,9 +110,8 @@ export function ShareScopeFields({
   count?: { total: number; private: number }
   onChange: (next: ShareDomainSpec) => void
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const meta = shareMeta(domain)
-  const name = module ? moduleName(module, i18n.language) : domain
 
   const patch = (next: Partial<ShareDomainSpec>) => onChange({ ...spec, ...next })
 
@@ -113,12 +121,14 @@ export function ShareScopeFields({
   }
 
   return (
-    <div className="rounded-lg border border-border p-3" style={modAccent(module?.color) ?? MODULE_ACCENT_FALLBACK}>
+    <div className="rounded-lg border border-border p-3" style={modAccent(look.color) ?? MODULE_ACCENT_FALLBACK}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="grid size-7 place-items-center rounded-md bg-[var(--mod-soft)]">
-          <ModuleIcon name={module?.icon ?? 'Film'} className="size-4 text-[var(--mod)]" />
+          <ModuleIcon name={look.icon} className="size-4 text-[var(--mod)]" />
         </span>
-        <span className="font-medium">{name}</span>
+        <span className="font-medium">{look.label}</span>
+        {/* ⚠️ პლეილისტის შიგნით ყველა სიმღერა ჩანს — „მხოლოდ საჯაროები" თვითონ პლეილისტს ეხება */}
+        {domain === 'playlist' && <InfoHint critical={t('share.playlistRevealsSongs')} />}
         {count && (
           <span className="text-xs text-muted-foreground">
             {t('share.domainCount', { count: count.total })}
@@ -144,14 +154,15 @@ export function ShareScopeFields({
           </ScopeRow>
         )}
 
-        <ScopeRow value="favorite" active={spec.scope} label={t('share.scope.favorite')} />
+        {meta.favorite && <ScopeRow value="favorite" active={spec.scope} label={t('share.scope.favorite')} />}
 
+        {meta.classifier !== null && (
         <ScopeRow value="genre" active={spec.scope} label={t(CLASSIFIER_LABEL[meta.classifier])}>
           {meta.global ? (
             <GenreSelect genres={genres} value={spec.genres ?? []} onChange={(next) => patch({ genres: next })} />
           ) : (
             <ClassifierChips
-              domain={domain as Exclude<ShareDomainKey, MediaType>}
+              domain={domain as ClassifiedDomain}
               value={spec.categories ?? []}
               onChange={(next) => patch({ categories: next })}
             />
@@ -172,6 +183,7 @@ export function ShareScopeFields({
             </ChipRow>
           )}
         </ScopeRow>
+        )}
 
         <ScopeRow value="ids" active={spec.scope} label={t('share.scope.ids')}>
           {isMediaKey(domain) ? (
@@ -185,7 +197,7 @@ export function ShareScopeFields({
             <ShareRecordPicker
               domain={domain}
               value={spec.ids ?? []}
-              placeholder={name}
+              placeholder={look.label}
               onChange={(next) => patch({ ids: next })}
             />
           )}
@@ -273,7 +285,7 @@ function ClassifierChips({
   value,
   onChange,
 }: {
-  domain: Exclude<ShareDomainKey, MediaType>
+  domain: ClassifiedDomain
   value: number[]
   onChange: (next: number[]) => void
 }) {

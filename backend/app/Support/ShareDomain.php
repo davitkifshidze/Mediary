@@ -49,6 +49,10 @@ use Illuminate\Support\Collection;
  *   შეფასება. მედიის `rating` TMDB-ის ქულაა (საჯარო ფაქტი ფილმზე და არა ჩემი
  *   აზრი), ე.ი. „ჩემი შეფასების" გადამრთველი მათზე არაფერს შეცვლიდა —
  *   ფანჯარა მას მხოლოდ მაშინ აჩვენებს, როცა არჩეულ დომენებს შორის ასეთი არის.
+ * - **`favorite`** — აქვს თუ არა „რჩეული" (`is_favorite`); არ წერია — აქვს.
+ * - **`list`** — ჩანაწერი კი არა, **სიაა** (§40.13 — პლეილისტი): კლასიფიკატორი,
+ *   მთავარი ფოტო და დამატების რეცეპტი არ აქვს; დამატება ასლს ქმნის
+ *   (`ShareImporter::addPlaylist()`), „უკვე გაქვს" კი ასლის წყაროთი იცნობა.
  *
  * ⚠️ `RegistryConsistencyTest`: ყოველი საბაზისო მოდული ან აქაა, ან
  * `NOT_SHARED`-ში — **მიზეზით**; SPA-ს `SHARE_DOMAINS` ამ სიის სარკეა.
@@ -61,8 +65,10 @@ final class ShareDomain
      *     personal_rating: bool,
      *     status: 'dictionary'|'enum'|null,
      *     status_default?: string,
-     *     classifier: array{relation: string, model: class-string<Model>, field: string, multi: bool, global?: bool},
-     *     photo: string,
+     *     favorite?: bool,
+     *     list?: bool,
+     *     classifier: array{relation: string, model: class-string<Model>, field: string, multi: bool, global?: bool}|null,
+     *     photo: string|null,
      * }>
      */
     public const DOMAINS = [
@@ -111,6 +117,14 @@ final class ShareDomain
             'classifier' => ['relation' => 'genres', 'model' => SongGenre::class, 'field' => 'genres', 'multi' => true],
             'photo' => 'thumbnail',
         ],
+        /* §40.13 (Q53 — „გ") — **სია და არა ჩანაწერი**: `song` მოდულში ცხოვრობს,
+           ფარგლები მხოლოდ „ყველა" და „კონკრეტული" (რჩეული, სტატუსი და
+           კლასიფიკატორი არ აქვს), შიგნით კი მისი ყველა სიმღერა ჩანს — პირადიც. */
+        'playlist' => [
+            'module' => 'song', 'personal_rating' => false, 'status' => null, 'favorite' => false, 'list' => true,
+            'classifier' => null,
+            'photo' => null,
+        ],
         'bookmark' => [
             'module' => 'bookmark', 'personal_rating' => false, 'status' => 'dictionary',
             'classifier' => ['relation' => 'category', 'model' => BookmarkCategory::class, 'field' => 'category', 'multi' => false],
@@ -125,10 +139,6 @@ final class ShareDomain
 
     /**
      * მოდულები, რომლებიც ბმულით **არასდროს** ზიარდება — მიზეზით.
-     *
-     * ⚠️ ფლეილისტი აქ არ წერია, რადგან ის მოდული კი არა, `song`-ის ქვესექციაა;
-     * ბმულით მისი გაზიარება ცალკე კითხვაა (`Questions.md` · Q53) — სია და არა
-     * ჩანაწერი: „ჩემსაში დამატება" სიმღერებსაც და სიასაც შექმნიდა.
      *
      * @var array<string, string>
      */
@@ -162,6 +172,38 @@ final class ShareDomain
     public static function hasPersonalRating(string $domain): bool
     {
         return self::DOMAINS[$domain]['personal_rating'] ?? false;
+    }
+
+    /** „რჩეული" (`is_favorite`) — პლეილისტს არ აქვს */
+    public static function supportsFavorite(string $domain): bool
+    {
+        return self::DOMAINS[$domain]['favorite'] ?? true;
+    }
+
+    /** სია (პლეილისტი) და არა ჩანაწერი — დამატება ასლს ქმნის (§40.13) */
+    public static function isList(string $domain): bool
+    {
+        return self::DOMAINS[$domain]['list'] ?? false;
+    }
+
+    /**
+     * **რომელი ფარგალი არსებობს ამ დომენზე** — `ShareScope::MODES`-ის ქვესიმრავლე.
+     *
+     * ⚠️ არარსებული რეჟიმი 422-ია (`share_scope_unsupported`) და არა ჩუმი
+     * „ყველა": სტატუსის უქონელზე „სტატუსით", პლეილისტზე „რჩეული" ან „ჟანრით"
+     * ან ცარიელ სიას მისცემდა, ან SQL-ს წააქცევდა (`is_favorite` არ არსებობს).
+     *
+     * @return list<string>
+     */
+    public static function modes(string $domain): array
+    {
+        return array_values(array_filter([
+            'all',
+            self::statusKind($domain) !== null ? 'status' : null,
+            self::supportsFavorite($domain) ? 'favorite' : null,
+            self::hasClassifier($domain) ? 'genre' : null,
+            'ids',
+        ]));
     }
 
     /* ---------- სტატუსი ---------- */
@@ -199,10 +241,26 @@ final class ShareDomain
 
     /* ---------- კლასიფიკატორი (ჟანრი · კატეგორია · ტიპი) ---------- */
 
-    /** @return array{relation: string, model: class-string<Model>, field: string, multi: bool, global?: bool} */
-    public static function classifier(string $domain): array
+    /**
+     * ⚠️ `null` — კლასიფიკატორი არ აქვს (პლეილისტი); გამომძახებელი ჯერ
+     * `hasClassifier()`-ს ეკითხება.
+     *
+     * @return array{relation: string, model: class-string<Model>, field: string, multi: bool, global?: bool}|null
+     */
+    public static function classifier(string $domain): ?array
     {
-        return self::DOMAINS[$domain]['classifier'];
+        return self::DOMAINS[$domain]['classifier'] ?? null;
+    }
+
+    public static function hasClassifier(string $domain): bool
+    {
+        return self::classifier($domain) !== null;
+    }
+
+    /** კლასიფიკატორის ველი კატალოგში (`genre`/`category`/`type_id`…); არ აქვს — `null` */
+    public static function classifierField(string $domain): ?string
+    {
+        return self::classifier($domain)['field'] ?? null;
     }
 
     /** მედიის გლობალური ჟანრი (slug) თუ per-user ლექსიკონი (id) */
@@ -213,13 +271,13 @@ final class ShareDomain
 
     public static function classifierIsMulti(string $domain): bool
     {
-        return self::classifier($domain)['multi'];
+        return self::classifier($domain)['multi'] ?? false;
     }
 
-    /** მთავარი ფოტოს გასაღები ველების კატალოგში (ბარათზე `image`) */
-    public static function photoField(string $domain): string
+    /** მთავარი ფოტოს გასაღები ველების კატალოგში (ბარათზე `image`); სიას — `null` */
+    public static function photoField(string $domain): ?string
     {
-        return self::DOMAINS[$domain]['photo'];
+        return self::DOMAINS[$domain]['photo'] ?? null;
     }
 
     /**
@@ -234,11 +292,13 @@ final class ShareDomain
      */
     public static function ownClassifierIds(User $owner, string $domain, array $ids): array
     {
-        if ($ids === []) {
+        $classifier = self::classifier($domain);
+
+        if ($ids === [] || $classifier === null) {
             return [];
         }
 
-        $model = self::classifier($domain)['model'];
+        $model = $classifier['model'];
 
         $own = $model::withoutGlobalScope('owner')
             ->where('user_id', $owner->id)
@@ -262,9 +322,13 @@ final class ShareDomain
      */
     public static function withClassifier(Builder $query, string $domain): Builder
     {
-        $relation = self::classifier($domain)['relation'];
+        $classifier = self::classifier($domain);
 
-        return $query->with([$relation => fn ($q) => $q->withoutGlobalScope('owner')]);
+        if ($classifier === null) {
+            return $query;
+        }
+
+        return $query->with([$classifier['relation'] => fn ($q) => $q->withoutGlobalScope('owner')]);
     }
 
     /**
@@ -275,7 +339,13 @@ final class ShareDomain
      */
     public static function classifierEntries(Model $record, string $domain): Collection
     {
-        $relation = self::classifier($domain)['relation'];
+        $classifier = self::classifier($domain);
+
+        if ($classifier === null) {
+            return collect();
+        }
+
+        $relation = $classifier['relation'];
 
         if (! $record->relationLoaded($relation)) {
             $record->load([$relation => fn ($q) => $q->withoutGlobalScope('owner')]);
@@ -306,7 +376,7 @@ final class ShareDomain
     public static function classifierShape(string $domain): array
     {
         $model = self::model($domain);
-        $relation = (new $model)->{self::classifier($domain)['relation']}();
+        $relation = (new $model)->{(string) self::classifier($domain)['relation']}();
 
         if ($relation instanceof BelongsToMany) {
             return [

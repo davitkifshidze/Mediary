@@ -68,7 +68,7 @@ export function ShareLinkDialog({
   const { t } = useTranslation()
   const { toast } = useToast()
   const qc = useQueryClient()
-  const { available, moduleOf, nameOf } = useShareDomains()
+  const { available, look } = useShareDomains()
 
   const editing = !!link
 
@@ -224,7 +224,7 @@ export function ShareLinkDialog({
           <ShareDomainCards value={selected} onToggle={toggleDomain} />
           {dropped.length > 0 && (
             <p className="mt-2 text-xs text-destructive">
-              {t('share.droppedSections', { names: dropped.map(nameOf).join(', ') })}
+              {t('share.droppedSections', { names: dropped.map((d) => look(d).label).join(', ') })}
             </p>
           )}
         </StepSection>
@@ -259,7 +259,7 @@ export function ShareLinkDialog({
                 <ShareScopeFields
                   key={domain}
                   domain={domain}
-                  module={moduleOf(domain)}
+                  look={look(domain)}
                   spec={specs[domain] ?? { scope: 'all' }}
                   genres={genresQ.data ?? []}
                   count={count?.domains[domain]}

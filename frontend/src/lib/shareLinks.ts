@@ -1,4 +1,4 @@
-import type { ShareDomainSpec, ShareDomains, ShareDomainKey } from '@/api/shareLinks'
+import type { ShareDomainSpec, ShareDomains, ShareDomainKey, ShareScopeMode } from '@/api/shareLinks'
 import { SHARE_DOMAINS } from '@/api/shareLinks'
 
 /* ============================================================
@@ -13,47 +13,66 @@ export type ShareClassifierKind = 'genre' | 'category' | 'type'
 
 export interface ShareDomainMeta {
   status: ShareStatusKind
-  classifier: ShareClassifierKind
+  /** `null` — კლასიფიკატორი არ აქვს (პლეილისტი, §40.13) */
+  classifier: ShareClassifierKind | null
   /** pivot — „ნებისმიერი/ყველა" მხოლოდ მას აქვს აზრი */
   multi: boolean
   /** მედიის გლობალური ჟანრი (slug); დანარჩენზე — მფლობელის ლექსიკონის id */
   global: boolean
   /** მფლობელის **საკუთარი** შეფასება (`ShareDomain::personal_rating`) */
   personalRating: boolean
+  /** „რჩეული" (`is_favorite`) — პლეილისტს არ აქვს */
+  favorite: boolean
+  /** რომელი მოდულის უფლება და ფერი — პლეილისტი `song`-ისაა */
+  module: string
   /** ბარათის ფორმა მიმღების გვერდზე */
   shape: 'poster' | 'wide' | 'photo'
-  /** სიის react-query გასაღები — დამატების შემდეგ ახლდება (მოდულის გვერდი) */
-  listKey: string
+  /** სიების react-query გასაღები — დამატების შემდეგ ახლდება (მოდულის გვერდი) */
+  listKeys: readonly string[]
 }
 
 /**
- * **თითო დომენის თვისებები — `ShareDomain::DOMAINS`-ის სარკე** (§40.10).
+ * **თითო დომენის თვისებები — `ShareDomain::DOMAINS`-ის სარკე** (§40.10, §40.13).
  *
  * ⚠️ რიგები **ერთ ხაზზეა** განზრახ: `RegistryConsistencyTest` მათ წყაროდან
- * კითხულობს და სტატუსს, `multi`-ს, `global`-სა და შეფასებას backend-ს ადარებს —
- * ორი რეესტრი ერთ დღეს დაშორდებოდა და ფანჯარა სერვერის 422-ს დაიჭერდა.
+ * კითხულობს და სტატუსს, კლასიფიკატორს, `multi`-ს, `global`-ს, შეფასებას,
+ * „რჩეულსა" და მოდულს backend-ს ადარებს — ორი რეესტრი ერთ დღეს დაშორდებოდა
+ * და ფანჯარა სერვერის 422-ს დაიჭერდა.
  * ⚠️ `satisfies` ყოველ დომენს ითხოვს — ახალი დომენი აქ ჩაუწერლად `tsc`-ს აწითლებს.
  */
 export const SHARE_DOMAIN_META = {
-  movie: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, shape: 'poster', listKey: 'movie' },
-  series: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, shape: 'poster', listKey: 'series' },
-  anime: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, shape: 'poster', listKey: 'anime' },
-  game: { status: 'enum', classifier: 'genre', multi: true, global: false, personalRating: true, shape: 'poster', listKey: 'games' },
-  book: { status: 'enum', classifier: 'genre', multi: false, global: false, personalRating: true, shape: 'poster', listKey: 'books' },
-  board_game: { status: null, classifier: 'genre', multi: false, global: false, personalRating: true, shape: 'poster', listKey: 'board-games' },
-  place: { status: 'enum', classifier: 'category', multi: false, global: false, personalRating: true, shape: 'photo', listKey: 'places' },
-  video: { status: 'dictionary', classifier: 'type', multi: false, global: false, personalRating: false, shape: 'wide', listKey: 'videos' },
-  song: { status: null, classifier: 'genre', multi: true, global: false, personalRating: true, shape: 'wide', listKey: 'songs' },
-  bookmark: { status: 'dictionary', classifier: 'category', multi: false, global: false, personalRating: false, shape: 'wide', listKey: 'bookmarks' },
-  course: { status: 'enum', classifier: 'category', multi: false, global: false, personalRating: false, shape: 'wide', listKey: 'courses' },
+  movie: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'movie', shape: 'poster', listKeys: ['movie'] },
+  series: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'series', shape: 'poster', listKeys: ['series'] },
+  anime: { status: 'dictionary', classifier: 'genre', multi: true, global: true, personalRating: false, favorite: true, module: 'anime', shape: 'poster', listKeys: ['anime'] },
+  game: { status: 'enum', classifier: 'genre', multi: true, global: false, personalRating: true, favorite: true, module: 'game', shape: 'poster', listKeys: ['games'] },
+  book: { status: 'enum', classifier: 'genre', multi: false, global: false, personalRating: true, favorite: true, module: 'book', shape: 'poster', listKeys: ['books'] },
+  board_game: { status: null, classifier: 'genre', multi: false, global: false, personalRating: true, favorite: true, module: 'board_game', shape: 'poster', listKeys: ['board-games'] },
+  place: { status: 'enum', classifier: 'category', multi: false, global: false, personalRating: true, favorite: true, module: 'place', shape: 'photo', listKeys: ['places'] },
+  video: { status: 'dictionary', classifier: 'type', multi: false, global: false, personalRating: false, favorite: true, module: 'video', shape: 'wide', listKeys: ['videos'] },
+  song: { status: null, classifier: 'genre', multi: true, global: false, personalRating: true, favorite: true, module: 'song', shape: 'wide', listKeys: ['songs'] },
+  playlist: { status: null, classifier: null, multi: false, global: false, personalRating: false, favorite: false, module: 'song', shape: 'poster', listKeys: ['playlists', 'songs'] },
+  bookmark: { status: 'dictionary', classifier: 'category', multi: false, global: false, personalRating: false, favorite: true, module: 'bookmark', shape: 'wide', listKeys: ['bookmarks'] },
+  course: { status: 'enum', classifier: 'category', multi: false, global: false, personalRating: false, favorite: true, module: 'course', shape: 'wide', listKeys: ['courses'] },
 } as const satisfies Record<ShareDomainKey, ShareDomainMeta>
 
 export function shareMeta(domain: ShareDomainKey): ShareDomainMeta {
   return SHARE_DOMAIN_META[domain]
 }
 
-export function isShareDomain(value: string): value is ShareDomainKey {
-  return (SHARE_DOMAINS as readonly string[]).includes(value)
+/**
+ * **რომელი ფარგალი არსებობს ამ დომენზე** — `ShareDomain::modes()`-ის სარკე.
+ * ⚠️ სხვა რეჟიმს სერვერი `share_scope_unsupported`-ით (422) აბრუნებს.
+ */
+export function shareModes(domain: ShareDomainKey): ShareScopeMode[] {
+  const meta = SHARE_DOMAIN_META[domain]
+  const modes: ShareScopeMode[] = ['all']
+
+  if (meta.status !== null) modes.push('status')
+  if (meta.favorite) modes.push('favorite')
+  if (meta.classifier !== null) modes.push('genre')
+  modes.push('ids')
+
+  return modes
 }
 
 /**
@@ -96,8 +115,8 @@ export function buildDomains(selected: ShareDomainKey[], specs: Partial<Record<S
 
     const meta = SHARE_DOMAIN_META[domain]
     const spec = specs[domain] ?? { scope: 'all' }
-    // ⚠️ სტატუსის უქონელ დომენზე „სტატუსით" არ არსებობს — ნარჩენი რეჟიმი „ყველად" ბრუნდება
-    const scope = spec.scope === 'status' && meta.status === null ? 'all' : spec.scope
+    // ⚠️ დომენზე არარსებული რეჟიმი (სტატუსის უქონელზე „სტატუსით", პლეილისტზე „რჩეული") „ყველად" ბრუნდება
+    const scope = shareModes(domain).includes(spec.scope) ? spec.scope : 'all'
     const clean: ShareDomainSpec = { scope, public_only: !!spec.public_only }
 
     if (scope === 'status') clean.statuses = spec.statuses ?? []
@@ -134,12 +153,12 @@ export function librarySpec(
 ): ShareDomainSpec {
   const meta = SHARE_DOMAIN_META[domain]
 
-  if (view === 'favorite') return { scope: 'favorite' }
-  if (view && view !== 'all' && view !== 'downloaded' && meta.status !== null) {
+  if (view === 'favorite' && meta.favorite) return { scope: 'favorite' }
+  if (view && view !== 'all' && view !== 'downloaded' && view !== 'favorite' && meta.status !== null) {
     return { scope: 'status', statuses: [view] }
   }
 
-  if (classifiers.length) {
+  if (classifiers.length && meta.classifier !== null) {
     const mode = meta.multi ? 'all' : 'any'
 
     if (meta.global) return { scope: 'genre', genres: [...classifiers], genre_mode: mode }

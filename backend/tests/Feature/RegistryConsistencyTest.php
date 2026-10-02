@@ -177,6 +177,12 @@ class RegistryConsistencyTest extends TestCase
 
         foreach (ShareDomain::keys() as $domain) {
             $this->assertTrue(PublicDomain::has($domain), "{$domain}: ბარათი (`PublicDomain::card()`) არ აქვს");
+
+            // ⚠️ სიას (§40.13 — პლეილისტი) გლობალური იდენტობა არ აქვს: ის ასლის წყაროთი იცნობა (`copied_from_id`)
+            if (ShareDomain::isList($domain)) {
+                continue;
+            }
+
             $this->assertNotEmpty(PublicDomain::MATCH[$domain]['columns'] ?? [], "{$domain}: იდენტობა არ აქვს");
         }
 
@@ -191,7 +197,8 @@ class RegistryConsistencyTest extends TestCase
      * ⚠️ აქ ყველაფერი ჩუმად ტყდება: არარსებული სვეტი რეცეპტში — ფაქტი ჩუმად არ
      * გადმოდის (ან SQL 500 დამატებისას); არასწორი რელაცია — ჟანრი ჩუმად ცარიელია;
      * კატალოგის ველის შეცდომა — მფლობელის „საჯაროდ არ გამოჩნდეს" ჩუმად არაფერს
-     * აკეთებს; enum-ის ნაგულისხმევი სიაში თუ არ არის — `invalid_status` საკუთარ ჩანაწერზე.
+     * აკეთებს; enum-ის ნაგულისხმევი სიაში თუ არ არის — `invalid_status` საკუთარ ჩანაწერზე;
+     * „რჩეული" სვეტის გარეშე — SQL-ის შეცდომა ბმულის გახსნისას (§40.13).
      */
     public function test_every_share_domain_is_wired_to_real_columns(): void
     {
@@ -199,9 +206,12 @@ class RegistryConsistencyTest extends TestCase
         $recipes = ShareImporter::recipeDomains();
 
         $this->assertEqualsCanonicalizing(
-            array_values(array_diff(ShareDomain::keys(), $media)),
+            array_values(array_filter(
+                array_diff(ShareDomain::keys(), $media),
+                fn (string $domain) => ! ShareDomain::isList($domain),
+            )),
             $recipes,
-            'ეტაპი 2-ის ყოველ დომენს დამატების რეცეპტი უნდა ჰქონდეს (და სხვას — არა)'
+            'ეტაპი 2-ის ყოველ ჩანაწერიან დომენს დამატების რეცეპტი უნდა ჰქონდეს (და სხვას — არა)'
         );
 
         foreach (ShareDomain::keys() as $domain) {
@@ -210,14 +220,26 @@ class RegistryConsistencyTest extends TestCase
             $table = $instance->getTable();
             $module = ShareDomain::module($domain);
 
+            // „რჩეული" — ფარგალი მხოლოდ იქ, სადაც სვეტი არსებობს
+            $this->assertSame(Schema::hasColumn($table, 'is_favorite'), ShareDomain::supportsFavorite($domain), "{$domain}: `favorite` სქემას არ ემთხვევა");
+
+            // §40.13 — სია (პლეილისტი): კლასიფიკატორი და ფოტო არ აქვს, „უკვე გაქვს" ასლის წყაროთი იცნობა
+            if (ShareDomain::isList($domain)) {
+                $this->assertFalse(ShareDomain::hasClassifier($domain), "{$domain}: სიას კლასიფიკატორი არ აქვს");
+                $this->assertNull(ShareDomain::photoField($domain), "{$domain}: სიას მთავარი ფოტო არ აქვს");
+                $this->assertTrue(Schema::hasColumn($table, 'copied_from_id'), "{$domain}: ასლის წყაროს სვეტი არ არსებობს");
+
+                continue;
+            }
+
             // კლასიფიკატორი — რელაცია არსებობს და სწორ ლექსიკონს ეკითხება
-            $classifier = ShareDomain::classifier($domain);
+            $classifier = (array) ShareDomain::classifier($domain);
             $relation = $instance->{$classifier['relation']}();
             $this->assertSame($classifier['model'], get_class($relation->getRelated()), "{$domain}: კლასიფიკატორის რელაცია სხვა მოდელს ეკითხება");
             // ⚠️ `MorphToMany` (მედიის `genreables`) `BelongsToMany`-ის ქვეკლასია
             $this->assertSame($classifier['multi'], $relation instanceof BelongsToMany, "{$domain}: `multi` სტრუქტურას არ ემთხვევა");
             $this->assertTrue(FieldCatalog::knows($module, $classifier['field']), "{$domain}: კლასიფიკატორის ველი კატალოგში არ არის");
-            $this->assertTrue(FieldCatalog::knows($module, ShareDomain::photoField($domain)), "{$domain}: მთავარი ფოტოს ველი კატალოგში არ არის");
+            $this->assertTrue(FieldCatalog::knows($module, (string) ShareDomain::photoField($domain)), "{$domain}: მთავარი ფოტოს ველი კატალოგში არ არის");
 
             if (! in_array($domain, $media, true)) {
                 $shape = ShareDomain::classifierShape($domain);
@@ -245,17 +267,19 @@ class RegistryConsistencyTest extends TestCase
     }
 
     /**
-     * SPA-ს `SHARE_DOMAIN_META` — სტატუსი, `multi`, `global` და შეფასება backend-ს ემთხვევა.
+     * SPA-ს `SHARE_DOMAIN_META` — სტატუსი, კლასიფიკატორი, `multi`, `global`, შეფასება,
+     * „რჩეული" და მოდული backend-ს ემთხვევა.
      *
      * ⚠️ დაშორება ჩუმია: ფანჯარა „სტატუსით"-ს სტატუსის უქონელ დომენზე
-     * შესთავაზებდა (422), ან „ყველა ერთდროულად"-ს ერთსვეტიანზე (სერვერი `any`-ად
-     * აქცევდა და რიცხვი სხვას იტყოდა).
+     * შესთავაზებდა (422), „ყველა ერთდროულად"-ს ერთსვეტიანზე (სერვერი `any`-ად
+     * აქცევდა და რიცხვი სხვას იტყოდა), „რჩეულს" პლეილისტზე (422), ან სექციას
+     * სხვა მოდულის უფლებით დახატავდა.
      */
     public function test_the_spa_share_meta_mirrors_the_backend(): void
     {
         $source = (string) file_get_contents(base_path('../frontend/src/lib/shareLinks.ts'));
         preg_match_all(
-            "/^\s{2}(\w+): \{ status: (null|'(\w+)'), classifier: '(\w+)', multi: (true|false), global: (true|false), personalRating: (true|false)/m",
+            "/^\s{2}(\w+): \{ status: (null|'(\w+)'), classifier: (null|'(\w+)'), multi: (true|false), global: (true|false), personalRating: (true|false), favorite: (true|false), module: '(\w+)'/m",
             $source,
             $rows,
             PREG_SET_ORDER,
@@ -266,9 +290,12 @@ class RegistryConsistencyTest extends TestCase
         foreach ($rows as $row) {
             $domain = $row[1];
             $this->assertSame(ShareDomain::statusKind($domain), $row[2] === 'null' ? null : $row[3], "{$domain}: status");
-            $this->assertSame(ShareDomain::classifierIsMulti($domain), $row[5] === 'true', "{$domain}: multi");
-            $this->assertSame(ShareDomain::classifierIsGlobal($domain), $row[6] === 'true', "{$domain}: global");
-            $this->assertSame(ShareDomain::hasPersonalRating($domain), $row[7] === 'true', "{$domain}: personalRating");
+            $this->assertSame(ShareDomain::hasClassifier($domain), $row[4] !== 'null', "{$domain}: classifier");
+            $this->assertSame(ShareDomain::classifierIsMulti($domain), $row[6] === 'true', "{$domain}: multi");
+            $this->assertSame(ShareDomain::classifierIsGlobal($domain), $row[7] === 'true', "{$domain}: global");
+            $this->assertSame(ShareDomain::hasPersonalRating($domain), $row[8] === 'true', "{$domain}: personalRating");
+            $this->assertSame(ShareDomain::supportsFavorite($domain), $row[9] === 'true', "{$domain}: favorite");
+            $this->assertSame(ShareDomain::module($domain), $row[10], "{$domain}: module");
         }
     }
 

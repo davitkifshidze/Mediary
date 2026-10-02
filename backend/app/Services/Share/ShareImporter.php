@@ -5,10 +5,12 @@ namespace App\Services\Share;
 use App\Exceptions\RecordInTrashException;
 use App\Models\ApprovalRequest;
 use App\Models\Module;
+use App\Models\Playlist;
 use App\Models\ShareLink;
 use App\Models\Status;
 use App\Models\User;
 use App\Services\Notify\Notifier;
+use App\Services\Profile\PublicProfileService;
 use App\Services\Storage\StorageMeter;
 use App\Support\AppTime;
 use App\Support\MediaDomain;
@@ -63,6 +65,10 @@ use Throwable;
  * ⚠️ **გამდიდრება სურვილისამებრია და არა პირობა** (ჩატის წესი): გასაღები
  * შეიძლება არ იყოს ან წყარო არ პასუხობდეს — ჩანაწერი მაინც იქმნება (სათაურით
  * და ჟანრებით), `partial: true`-ით, და ჩვეულებრივი სინქრონიზაცია მერე შეავსებს.
+ *
+ * ⚠️ **პლეილისტი (§40.13) ასლს ქმნის** — `addPlaylist()`: სიმღერები სიმღერის
+ * რეცეპტით ემატება (ან უკვე არსებული გამოიყენება) და მიმღებთან იმავე რიგის
+ * პლეილისტი იქმნება.
  */
 final class ShareImporter
 {
@@ -132,6 +138,7 @@ final class ShareImporter
     public function __construct(
         private readonly StorageMeter $meter,
         private readonly Notifier $notifier,
+        private readonly PublicProfileService $profiles,
     ) {}
 
     /** რეცეპტის მქონე დომენები — `RegistryConsistencyTest`-ისთვის */
@@ -192,9 +199,9 @@ final class ShareImporter
     }
 
     /**
-     * ერთი ჩანაწერის დამატება.
+     * ერთი ჩანაწერის (ან პლეილისტის) დამატება.
      *
-     * @return array{result: 'added'|'have', id: int, partial: bool, poster_skipped: ?string}
+     * @return array{result: 'added'|'have', id: int, partial: bool, poster_skipped: ?string, songs_added?: int}
      *
      * @throws RecordInTrashException იგივე ჩანაწერი მიმღების ურნაშია (409)
      */
@@ -213,9 +220,11 @@ final class ShareImporter
             return ['result' => 'have', 'id' => $match['id'], 'partial' => false, 'poster_skipped' => null];
         }
 
-        $result = MediaDomain::has($domain)
-            ? $this->addMedia($viewer, $domain, $record, $statusMode)
-            : $this->addRecord($viewer, $domain, $record, $statusMode);
+        $result = match (true) {
+            ShareDomain::isList($domain) && $record instanceof Playlist => $this->addPlaylist($owner, $viewer, $record),
+            MediaDomain::has($domain) => $this->addMedia($viewer, $domain, $record, $statusMode),
+            default => $this->addRecord($viewer, $domain, $record, $statusMode),
+        };
 
         if ($result['result'] === 'added') {
             $this->countImport($link, $owner, $viewer);
@@ -348,6 +357,125 @@ final class ShareImporter
         $posterSkipped = $this->copyPhoto($record, $copy, $viewer, $recipe['photo']);
 
         return ['result' => 'added', 'id' => (int) $copy->getKey(), 'partial' => false, 'poster_skipped' => $posterSkipped];
+    }
+
+    /**
+     * **პლეილისტის ასლი (§40.13, Q53 — „გ").**
+     *
+     * სიმღერები გამზიარებლის რიგით: მიმღებს რაც უკვე აქვს (`ShareMatcher`-ის
+     * იგივე წესი, რასაც სიმღერების სექცია კითხულობს), ის გამოიყენება; დანარჩენი
+     * სიმღერის რეცეპტით ემატება (ფაქტები, ჟანრი სახელით, ესკიზი). ბოლოს
+     * იქმნება პლეილისტი იმავე რიგით და წყაროს id-ით (`copied_from_id`).
+     *
+     * ⚠️ **პლეილისტი ბოლოს იქმნება** — შუა გზაზე ჩავარდნა ასლის გარეშე დატოვებდა
+     * მხოლოდ დამატებულ სიმღერებს, და განმეორებითი დამატება მათ „უკვე გაქვს"-ად
+     * ცნობს და დანარჩენს დაასრულებს.
+     * ⚠️ **ურნაში მყოფი სიმღერაც ერთვება** (და არ ორმაგდება): ის აღდგენისას
+     * პლეილისტში დაბრუნდება — ერთი სიმღერის გამო მთელი პლეილისტის უარყოფა უარესია.
+     * ⚠️ **გამზიარებელს ერთი სიმღერა ორჯერ რომ ჰქონდეს** (ერთი ბმული, ორი რიგი),
+     * მიმღებთან ის ერთხელ ემატება: იდენტობა ციკლშივე ახსოვს.
+     * ⚠️ **ასლი ერთხელ იქმნება**: მერე ის მიმღების საკუთარი პლეილისტია —
+     * გამზიარებლის ახალი სიმღერები თავისით არ ემატება (წაშლილი სიმღერა
+     * განმეორებით დამატებაზე ჩუმად რომ არ დაბრუნდეს).
+     *
+     * @return array{result: 'added', id: int, partial: bool, poster_skipped: ?string, songs_added: int}
+     */
+    private function addPlaylist(User $owner, User $viewer, Playlist $source): array
+    {
+        $songs = $this->profiles->playlistSongs($owner, $source)
+            // ⚠️ ჟანრი `owner`-ის გარეშე — სახელით გადატანას (Q51) გამზიარებლის ჟანრები სჭირდება
+            ->with(['genres' => fn ($q) => $q->withoutGlobalScope('owner')])
+            ->get();
+
+        $matches = ShareMatcher::matches($viewer, 'song', $songs);
+
+        $ids = [];
+        $seen = [];
+        $added = 0;
+        $posterSkipped = null;
+
+        foreach ($songs as $song) {
+            $url = (string) $song->getAttribute('url');
+            $identity = ShareMatcher::identityKey('song', $song) ?? ($url !== '' ? 'url:'.$url : null);
+            $hit = $matches[(int) $song->getKey()] ?? null;
+
+            if ($hit) {
+                $id = $hit['id'];
+            } elseif ($identity !== null && isset($seen[$identity])) {
+                $id = $seen[$identity];
+            } else {
+                $result = $this->addRecord($viewer, 'song', $song, 'default');
+                $id = $result['id'];
+                $added++;
+                $posterSkipped ??= $result['poster_skipped'];
+            }
+
+            if ($identity !== null) {
+                $seen[$identity] ??= $id;
+            }
+
+            $ids[] = $id;
+        }
+
+        $copy = new Playlist;
+        $copy->forceFill([
+            'user_id' => $viewer->id,
+            'name' => $this->copyName($viewer, $owner, (string) $source->getAttribute('name')),
+            'sort_order' => Playlist::nextOrderFor((int) $viewer->id),
+            'copied_from_id' => (int) $source->getKey(),
+        ])->save();
+
+        $pivot = [];
+        foreach (array_values(array_unique($ids)) as $i => $id) {
+            $pivot[$id] = ['sort_order' => $i + 1];
+        }
+
+        $copy->songs()->sync($pivot);
+
+        return [
+            'result' => 'added',
+            'id' => (int) $copy->getKey(),
+            'partial' => false,
+            'poster_skipped' => $posterSkipped,
+            'songs_added' => $added,
+        ];
+    }
+
+    /**
+     * ასლის სახელი — თავისუფალია, თავისი; დაკავებულია — გამზიარებლის მეტსახელით.
+     *
+     * ⚠️ სახელი ანგარიშზე უნიკალურია (`unique(user_id, name)` — ურნაში მყოფიც
+     * იკავებს), და MySQL-ის კოლაცია რეგისტრს არ არჩევს: „Road trip" და „road trip"
+     * ერთია. ამიტომ შედარება `mb_strtolower`-ით, ურნიანად. სიგრძე — ფორმის 120-ის
+     * ფარგლებში, სუფიქსი არ იჭრება.
+     */
+    private function copyName(User $viewer, User $owner, string $name): string
+    {
+        $taken = Playlist::withoutGlobalScopes(['owner', 'trash'])
+            ->where('user_id', $viewer->id)
+            ->pluck('name')
+            ->map(fn ($n) => mb_strtolower(trim((string) $n)))
+            ->all();
+
+        $base = trim($name);
+        $fit = fn (string $tail) => mb_substr($base, 0, 120 - mb_strlen($tail)).$tail;
+        $suffix = $owner->username ? ' (@'.$owner->username.')' : '';
+
+        $candidates = [$fit('')];
+        if ($suffix !== '') {
+            $candidates[] = $fit($suffix);
+        }
+        for ($i = 2; $i <= 50; $i++) {
+            $candidates[] = $fit($suffix.' '.$i);
+        }
+
+        foreach ($candidates as $candidate) {
+            if (! in_array(mb_strtolower($candidate), $taken, true)) {
+                return $candidate;
+            }
+        }
+
+        return $fit($suffix.' '.bin2hex(random_bytes(3)));
     }
 
     /**
