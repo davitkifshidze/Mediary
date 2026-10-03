@@ -196,3 +196,21 @@ describe('NoteForm (new note)', () => {
     expect(mocks.saveCustomFieldValues).toHaveBeenCalledWith('note', 5, { mood: 'კარგი' })
   })
 })
+
+/* Tasks §26.3 — შემხსენებლების ზოლი სათაურის ზემოთაა; ახალზე გამორთული, მიზეზით */
+describe('NoteForm — reminders bar (§26.3)', () => {
+  it('the reminders bar sits above the title field and is disabled on a new note', async () => {
+    await mount(() => {})
+
+    const bar = document.querySelector<HTMLElement>('[data-testid="note-reminders-bar"]')!
+    const title = document.getElementById('note-title')!
+    expect(bar).not.toBeNull()
+    // ზოლი DOM-ში სათაურის ველზე **წინაა**
+    expect(bar.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const button = bar.querySelector('button')!
+    expect(button.disabled).toBe(true)
+    expect(button.textContent).toContain(i18n.t('notes.remindersTitle'))
+    // ზოლი ფორმის ქვემოთ აღარ არის
+    expect(document.querySelectorAll('[data-testid="note-reminders-bar"]')).toHaveLength(1)
+  })
+})

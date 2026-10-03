@@ -262,3 +262,32 @@ describe('NoteRemindersButton', () => {
     expect(dialog!.textContent).toContain('09:00')
   })
 })
+
+/* Tasks §26.1 — შემხსენებლის ღილაკი: ტექსტი, რიცხვი ბეჯად, აქტიურზე ქარვისფერი */
+describe('NoteRemindersChip', () => {
+  it('shows the label, the count and the amber tone when reminders exist', async () => {
+    const { NoteRemindersChip } = await import('@/components/NoteRemindersDialog')
+    const i18n = (await import('@/i18n')).default
+    const { createRoot } = await import('react-dom/client')
+    const { act, createElement: h } = await import('react')
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const r = createRoot(host)
+    const onOpen = vi.fn()
+    await act(async () => r.render(h(NoteRemindersChip, { count: 2, onOpen })))
+
+    const button = host.querySelector('button')!
+    expect(button.textContent).toContain(i18n.t('notes.reminderChip'))
+    expect(button.textContent).toContain('2')
+    expect(button.className).toContain('h-9')
+    expect(button.getAttribute('data-active')).toBe('true')
+    expect(button.className).toContain('--status-towatch')
+    await act(async () => button.click())
+    expect(onOpen).toHaveBeenCalled()
+
+    await act(async () => r.render(h(NoteRemindersChip, { count: 0, onOpen })))
+    expect(host.querySelector('button')?.getAttribute('data-active')).toBeNull()
+    act(() => r.unmount())
+    host.remove()
+  })
+})

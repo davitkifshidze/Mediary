@@ -89,6 +89,49 @@ export function NoteRemindersDialog({
  * ⚠️ ის ფორმის **ქვედა რიგშია**, „გაუქმება/შენახვის" გვერდით, და არა ველებს
  * შორის — ე.ი. ვიზუალურადაც „გასასვლელია" და არა შესავსები ნაწილი.
  */
+/**
+ * Tasks §26.1 — **შემხსენებლის ღილაკი სტრიქონზე და დეტალის ჰეროზე**: `outline` h-9,
+ * ზარი + „შემხსენებელი" + რიცხვი ბეჯად; აქტიურზე (ერთი მაინც არსებობს) ქარვისფერი
+ * ჩარჩო/ფონი (`--status-towatch`) — რჩეულის წითელ-ვარდისფერის გვერდით ორი თანაბარი,
+ * ფერით გარჩევადი ღილაკი (შენი სიტყვები: „ტექსტი მიუწერე, შესაბამისი ფერით,
+ * თანაბარი ზომებით").
+ */
+export function NoteRemindersChip({
+  count,
+  onOpen,
+  disabled,
+  className,
+}: {
+  count: number
+  onOpen: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  const { t } = useTranslation()
+  const active = count > 0
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={disabled}
+      onClick={onOpen}
+      aria-label={t('notes.remindersTitle')}
+      data-active={active || undefined}
+      className={cn(active && 'border-[var(--status-towatch)] bg-[color-mix(in_oklab,var(--status-towatch)_12%,transparent)] text-[var(--status-towatch)]', className)}
+    >
+      <BellRing className={cn('size-3.5', active && 'fill-current')} />
+      {t('notes.reminderChip')}
+      {active && (
+        <span className="rounded-md bg-[color-mix(in_oklab,var(--status-towatch)_22%,transparent)] px-1.5 py-0.5 text-xs leading-none tabular-nums">
+          {count}
+        </span>
+      )}
+    </Button>
+  )
+}
+
 export function NoteRemindersLink({
   note,
   onOpen,

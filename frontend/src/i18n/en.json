@@ -2323,6 +2323,8 @@
     "linkBecomesVideo": "On save it moves into the game's videos and plays in the player."
   },
   "notes": {
+    "reminderChip": "Reminder",
+    "linkButton": "Link",
     "title": "Notes",
     "add": "Add note",
     "count": "{{count}} note(s)",

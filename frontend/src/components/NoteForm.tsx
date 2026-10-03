@@ -221,6 +221,15 @@ export function NoteForm({
           (2026-09-14 → §26.1): ატვირთვები, შეხსენება და დამატებითი ველები
           ღილაკების ზემოთ დგას და არა მათ ქვემოთ. HTML5-ის `form="…"` სწორედ
           ამისთვისაა: ღილაკი ფორმის გარეთ დგას და მაინც მას უშვებს. */}
+      {/* Tasks §26.3 — **შემხსენებლების ზოლი თავშია, სათაურის ზემოთ** (შენი ახალი
+          მითითება, 2026-10-02; ის 2026-09-14-ის „`</form>`-ის შემდეგ დარჩეს"-ს ცვლის).
+          ⚠️ `<form>`-ის **გარეთ** ისევ: შეხსენებას საკუთარი endpoint აქვს და ჩანაწერის
+          `PUT`-ში არ მოგზაურობს. ახალ ჩანაწერზე ზოლი თავშივე დგას, გამორთული, `i`-ით
+          „ჯერ შეინახე" — შეხსენებას `note_entry_id` სჭირდება. */}
+      <div className="mt-4" data-testid="note-reminders-bar">
+        <NoteRemindersLink note={current} onOpen={() => setReminders(true)} />
+      </div>
+
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
         <FormSection title={t('form.sections.basic')}>
           {/* ⚠️ სახელი `locked`-ია (§6.5) — მისი გარეშე ჩანაწერი არ ჩაიწერება;
@@ -384,15 +393,6 @@ export function NoteForm({
       <FormSection title={t('form.sections.media')} plain className="mt-6">
         <NoteUploads noteId={current?.id ?? null} pending={pending} />
       </FormSection>
-
-      {/* ⚠️ **შეხსენება ფორმის შიგნით არ დგას — არც ველებს შორის და არც
-          „გაუქმება/შენახვის" რიგში** (შენი მითითება, 2026-09-14): ის
-          `</form>`-ის **გარეთაა**, ცალკე რიგად, ხატულითა და ტექსტით.
-          ე.ი. ჩანაწერის ფორმას ისევ ერთი საქმე აქვს, გვერდზე კი ცხადად
-          ჩანს გასასვლელი შეხსენებებზე. იგივე, რასაც სიის ზარი აკეთებს. */}
-      <div className="mt-6">
-        <NoteRemindersLink note={current} onOpen={() => setReminders(true)} />
-      </div>
 
       {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
       <CustomFieldsCard

@@ -6,7 +6,7 @@ import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { NoteUploads } from '@/components/NoteUploads'
-import { NoteRemindersButton, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
+import { NoteRemindersButton, NoteRemindersChip, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useDateFormat } from '@/lib/dates'
 
@@ -59,12 +59,16 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
   return (
     <ModalShell title={note.title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
-        {/* Tasks §8 — რჩეული თავში (§26.2 შემხსენებლებსაც აქ აიტანს) */}
-        <div className="flex items-center justify-end gap-2">
+        {/* Tasks §8/§26.2 — ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
           <VisitBadge type="note" id={note.id} />
-          <FavoriteButton size="xs" active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+          <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(true)} />
+          <FavoriteButton active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
         </div>
+
+        {/* §26.2 — შემხსენებლების ბარათი **ზემოთ**, აღწერამდე (აქამდე ბოლოში იყო ჩამარხული) */}
+        <NoteRemindersButton note={note} onOpen={() => setReminders(true)} />
 
         {/* ---------- ფოტოები — ზემოთ (§26.4) ---------- */}
         <NoteUploads noteId={note.id} kinds={['image']} />
@@ -103,9 +107,6 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
 
         {/* დოკუმენტები და ვიდეოები — იგივე კომპონენტი, რაც ფორმაშია */}
         <NoteUploads noteId={note.id} kinds={['doc', 'video']} />
-
-        {/* ეტაპი 11 — იგივე ღილაკი, რაც ფორმაში: ერთი შესვლის წერტილი */}
-        <NoteRemindersButton note={note} onOpen={() => setReminders(true)} />
       </div>
     </ModalShell>
   )

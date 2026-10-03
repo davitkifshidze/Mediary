@@ -35,7 +35,7 @@ import { NoteChannelsDialog } from '@/components/NoteChannelsDialog'
 import { NoteNotificationsDialog } from '@/components/NoteNotificationsDialog'
 import { NoteDetail } from '@/components/NoteDetail'
 import { NoteForm } from '@/components/NoteForm'
-import { NoteRemindersDialog } from '@/components/NoteRemindersDialog'
+import { NoteRemindersChip, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import {
   FilterGroup,
@@ -45,7 +45,7 @@ import {
   FilterTrigger,
 } from '@/components/FilterPanel'
 import { useFilterDraft } from '@/lib/filters'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
@@ -417,51 +417,31 @@ export function NotesPage() {
                   )}
                 </div>
 
-                <span className="flex shrink-0 items-center gap-1">
+                {/* Tasks §26.1 — კლასტერი: სტატუსი → **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) →
+                    **რჩეული** (წითელ-ვარდისფერი, §8) → ბმული ტექსტით → რედაქტირება → წაშლა; ყველა h-9.
+                    ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), რომ რედაქტირება არ გადაინაცვლოს. */}
+                <span className="flex shrink-0 items-center gap-1" data-testid="note-cluster">
+                  <VisitCount value={note.visits_count} />
                   {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
                   <StatusBadge status={note.status} size="row" className="mr-1" />
-                  {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით (ადგილს შემხსენებელთან §26 უცვლის) */}
-                  <VisitCount value={note.visits_count} />
+                  <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
                   <FavoriteButton
                     active={note.is_favorite}
                     pending={favorite.isPending && favorite.variables === note.id}
                     onToggle={() => favorite.mutate(note.id)}
                   />
-                  {note.links[0]?.url && (
-                    <a
-                      href={note.links[0].url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t('books.openLink')}
-                      title={note.links[0].label || note.links[0].url}
-                      className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                    >
-                      <ExternalLink className="size-4" />
-                    </a>
-                  )}
-                  {/* ⚠️ **ზარი მოქმედებების რიგშია, რედაქტირების გვერდით**
-                      (შენი მითითება, 2026-09-14) — და აღარ მეტა-ხაზში,
-                      კატეგორიისა და ფაილების მრიცხველებს შორის: იქ ის
-                      *ინფორმაცია* ეგონა თვალს და არა ღილაკი, თუმცა ღილაკი იყო.
-                      ⚠️ ყოველთვის ჩანს (ნულზეც), თორემ „შეხსენება დავამატო"
-                      მხოლოდ იმას ეჩვენებოდა, ვისაც უკვე ჰქონდა. */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReminders(note)}
-                    title={t('notes.remindersTitle')}
-                    aria-label={t('notes.remindersTitle')}
+                  <a
+                    href={note.links[0]?.url ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-hidden={note.links[0]?.url ? undefined : true}
+                    tabIndex={note.links[0]?.url ? undefined : -1}
+                    title={note.links[0]?.label || note.links[0]?.url}
+                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-muted-foreground', !note.links[0]?.url && 'invisible')}
                   >
-                    <BellRing className="size-3.5" />
-                    {/* ⚠️ **რიცხვს ფიქსირებული ადგილი აქვს** (შენი მითითება,
-                        2026-09-14): პირობითად დახატული ციფრი ღილაკს აგანიერებდა,
-                        ე.ი. შეხსენებიანი და უშეხსენებო ჩანაწერის რიგები ერთმანეთს
-                        არ ემთხვეოდა. `tabular-nums` — ერთნიშნა და ორნიშნა რიცხვიც
-                        ერთსა და იმავე სიგანეშია. */}
-                    <span className="w-3 text-center tabular-nums">
-                      {(note.reminders_count ?? 0) > 0 ? note.reminders_count : ''}
-                    </span>
-                  </Button>
+                    <ExternalLink className="size-3.5" />
+                    {t('notes.linkButton')}
+                  </a>
                   <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
                     <SquarePen className="size-3.5" />
                     {t('actions.edit')}
