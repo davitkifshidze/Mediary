@@ -11,14 +11,16 @@ import {
   setGalleryPrimary,
   type GalleryDefaults,
   type GalleryImage,
+  type GalleryParentKind,
 } from '@/api/gallery'
 import { errorMessage } from '@/lib/errors'
 import type { MediaType } from '@/lib/media'
-import { useModules } from '@/lib/modules'
+import { isMediaKey, useModules } from '@/lib/modules'
 import { CastPhotoStacks } from '@/components/CastPhotoStacks'
 import { GalleryDownloadDialog } from '@/components/GalleryDownloadDialog'
 import { GalleryPanel } from '@/components/GalleryPanel'
 import { GalleryVideoList } from '@/components/gallery/GalleryVideoList'
+import { ParentGallery } from '@/components/gallery/ParentGallery'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
 import { Button } from '@/components/ui/button'
@@ -110,19 +112,37 @@ function useGalleryActions(invalidate: string[]) {
 }
 
 /**
- * ჩანაწერის გალერეა — ჩანაწერის საკუთარი კადრები/პოსტერები, **მსახიობების
- * ქვე-სექცია** (დაჯგუფებული/არეული) და ვიდეო-ბმულები.
+ * ჩანაწერის გალერეა — **ყველა მშობელს ერთი კომპონენტი** (Tasks §22.4).
+ *
+ * მედია-დომენზე (ფილმი, სერიალი, ანიმე) — ჩანაწერის საკუთარი კადრები/პოსტერები,
+ * მსახიობების ქვე-სექცია და TMDB-ის ჩამოტვირთვა (`/gallery/{type}/{id}`);
+ * დანარჩენ მშობლებზე (წიგნი, თამაში, ადგილი, ბუკმარკი, პირადი მოდული) —
+ * `ParentGallery`: ფოტოები `owner=` ფილტრით, ვებიდან ფოტოები/ვიდეოები.
+ * ⚠️ TMDB-ის ღილაკი მხოლოდ მედიაზეა — სხვას კოლექცია TMDB-ზე არ აქვს.
  */
 export function RecordGallery({
   type,
   id,
-  /** ცალკე გვერდზე სექციას თავისი ჩარჩო აქვს — ორმაგი ბარათი ზედმეტია */
   bare,
+  query,
+  terms,
 }: {
-  type: MediaType
+  type: GalleryParentKind
   id: number
+  /** ცალკე გვერდზე სექციას თავისი ჩარჩო აქვს — ორმაგი ბარათი ზედმეტია */
   bare?: boolean
+  /** არა-მედია მშობელი: ვებძებნის საწყისი შეკითხვა და სწრაფი ჩიპები (§22.2) */
+  query?: string
+  terms?: string[]
 }) {
+  if (!isMediaKey(type)) {
+    return <ParentGallery type={type} id={id} query={query ?? ''} terms={terms} />
+  }
+
+  return <MediaGallery type={type} id={id} bare={bare} />
+}
+
+function MediaGallery({ type, id, bare }: { type: MediaType; id: number; bare?: boolean }) {
   const { t } = useTranslation()
   const { has } = useModules()
   const qc = useQueryClient()

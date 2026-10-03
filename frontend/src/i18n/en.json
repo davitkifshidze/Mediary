@@ -1729,6 +1729,11 @@
     "deleteHint": "“{{name}}” moves to the trash — it comes back from there with its songs. The songs stay in your library."
   },
   "gallery": {
+    "uploadedBadge": "Uploaded",
+    "webBadge": "From the web",
+    "moduleOff": "Photos from the web and video links live in the gallery module — it is switched off.",
+    "moduleOffLink": "Enable it under Modules",
+    "moduleOffHint": "The gallery module collects every record's web photos in one library; without it the web-search buttons are not shown here.",
     "title": "Gallery",
     "fetchTitle": "Download photos",
     "fetch": "Download gallery",
@@ -2140,6 +2145,15 @@
       "ka": "Georgian",
       "en": "English",
       "ru": "Russian"
+    },
+    "galleryTitle": "Gallery",
+    "galleryHint": "Above are your uploaded photos (book files); below, photos downloaded from the web and video links kept in the gallery module. The web search starts with the title and author; the chips add characters, author, adaptation, covers and illustrations.",
+    "webChips": {
+      "characters": "characters",
+      "author": "author",
+      "adaptation": "film adaptation",
+      "covers": "book covers",
+      "illustrations": "illustrations"
     },
     "photosTitle": "Photos",
     "photosHint": "Photos you uploaded.",

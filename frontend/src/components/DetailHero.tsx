@@ -74,7 +74,7 @@ export function DetailSection({
   className,
   children,
 }: {
-  title: string
+  title: ReactNode
   hint?: string
   icon?: ReactNode
   action?: ReactNode
@@ -116,7 +116,8 @@ export function DetailPhotos({
   emptyTitle,
   deleteTitle,
 }: {
-  title: string
+  /** Tasks §22.3 — სათაურს ბეჯიც შეიძლება მოჰყვეს („ფოტოები · ატვირთული") */
+  title: ReactNode
   hint?: string
   items: ShowcaseItem[]
   loading?: boolean

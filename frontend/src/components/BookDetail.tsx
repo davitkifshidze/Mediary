@@ -20,11 +20,13 @@ import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
 import { RecordNotes } from '@/components/RecordNotes'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
+import { RecordGallery } from '@/components/RecordGallery'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -50,6 +52,9 @@ import { formatBytes } from '@/lib/utils'
    ორ ადგილას აღარ ჩანს.
    ============================================================ */
 
+/** §22.2 — სწრაფი ჩიპები ვებძებნისთვის (`books.webChips.*`) */
+const BOOK_WEB_TERMS = ['characters', 'author', 'adaptation', 'covers', 'illustrations'] as const
+
 export function BookDetail({ book, onClose }: { book: Book; onClose: () => void }) {
   // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favoriteQc = useQueryClient()
@@ -59,6 +64,8 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   })
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
+  // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
+  const fixedT = i18n.getFixedT(lang)
 
   const title = book.title_en || book.title_ka || '—'
   const description =
@@ -112,8 +119,23 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
 
         <ProgressCard book={book} />
 
-        {/* ---------- ფოტოები — ზემოთ და დიდად (§26.4) ---------- */}
-        <Photos book={book} />
+        {/* ---------- გალერეა (Tasks §22) — ორი საცავი ერთ ხედად: შენი ატვირთული
+            ფოტოები (`book_files image`) და ვებიდან ჩამოტვირთული (`gallery_images`,
+            გალერეის მოდული) ბეჯებით „ატვირთული" / „ვებიდან" ---------- */}
+        <DetailSection title={t('books.galleryTitle')} hint={t('books.galleryHint')}>
+          <div className="space-y-6">
+            <Photos book={book} />
+            <RecordGallery
+              type="book"
+              id={book.id}
+              bare
+              query={[lang === 'ka' ? book.title_ka || book.title_en : book.title_en || book.title_ka, book.author]
+                .filter(Boolean)
+                .join(' ')}
+              terms={BOOK_WEB_TERMS.map((key) => fixedT(`books.webChips.${key}`))}
+            />
+          </div>
+        </DetailSection>
 
         {description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>}
 
@@ -184,7 +206,13 @@ function Photos({ book }: { book: Book }) {
 
   return (
     <DetailPhotos
-      title={t('books.photosTitle')}
+      /* §22.3 — ორი საცავი ერთ ხედად: ეს ბლოკი „ატვირთულია", ქვემოთ — „ვებიდან" */
+      title={
+        <span className="inline-flex items-center gap-2">
+          {t('books.photosTitle')}
+          <Badge className="bg-secondary text-secondary-foreground">{t('gallery.uploadedBadge')}</Badge>
+        </span>
+      }
       hint={t('books.photosHint')}
       items={files
         .filter((file) => file.kind === 'image')

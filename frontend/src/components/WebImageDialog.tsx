@@ -115,6 +115,11 @@ export interface WebImageContext {
   castRecord?: { type: MediaType; id: number }
   /** მსახიობი დაემატა — გამომძახებელმა ჩანაწერის შემადგენლობა ხელახლა წაიკითხოს */
   onCastAdded?: () => void
+  /**
+   * Tasks §22.2 — სწრაფი ჩიპები შეკითხვისთვის („პერსონაჟები", „ყდები"…): იგივე
+   * გადამრთველები, რაც მსახიობებს, ოღონდ განაწილებაში არ მონაწილეობენ.
+   */
+  terms?: string[]
 }
 
 /** სენტინელი — „სერვერმა გადაწყვიტოს" */
@@ -491,6 +496,15 @@ export function WebImageDialog({
                       active={hasTerm(query, person.name)}
                       // ⚠️ „ფილმი + მსახიობი" სწორედ ის შეკითხვაა, რომელსაც §5.2 ითხოვს
                       onClick={() => setQuery((cur) => toggleTerm(cur, person.name, 'end'))}
+                    />
+                  ))}
+                  {/* §22.2 — თემატური ჩიპები (წიგნის პერსონაჟები, ყდები…) */}
+                  {(context.terms ?? []).map((term) => (
+                    <QueryChip
+                      key={term}
+                      label={term}
+                      active={hasTerm(query, term)}
+                      onClick={() => setQuery((cur) => toggleTerm(cur, term, 'end'))}
                     />
                   ))}
                 </ChipRow>
