@@ -38,6 +38,7 @@ use App\Models\NoteReminder;
 use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
+use App\Models\PlaceRoute;
 use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
@@ -123,6 +124,8 @@ final class TrashDomain
         'note_entry_file' => ['model' => NoteEntryFile::class, 'module' => 'note', 'parent' => 'noteEntry', 'size' => true],
         'course_file' => ['model' => CourseFile::class, 'module' => 'course', 'parent' => 'course', 'size' => true],
         'place_file' => ['model' => PlaceFile::class, 'module' => 'place', 'parent' => 'place', 'size' => true],
+        // Tasks §30.4 — შენახული მარშრუტი: ფაილი არ აქვს, ზომა არ ითვლება
+        'place_route' => ['model' => PlaceRoute::class, 'module' => 'place', 'parent' => 'place', 'size' => false],
         'database_backup' => ['model' => DatabaseBackup::class, 'module' => null, 'parent' => null, 'size' => true],
 
         // Tasks §29, ეტაპი 2 — ჩანაწერის ნაწილები

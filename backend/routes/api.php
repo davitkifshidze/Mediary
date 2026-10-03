@@ -74,6 +74,7 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PlaceCategoryController;
 use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlaceFileController;
+use App\Http\Controllers\Api\PlaceRouteController;
 use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\PublicShareController;
@@ -897,6 +898,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/places/{place}/files', [PlaceFileController::class, 'index']);
         Route::post('/places/{place}/files', [PlaceFileController::class, 'store']);
         Route::delete('/place-files/{placeFile}', [PlaceFileController::class, 'destroy']);
+
+        /* Tasks §30 — რუკა და მარშრუტები. `route` (მხოლობითი) **გამოთვლაა** ჩემი
+           მიმდინარე მდებარეობიდან და ჩანაწერს არ ქმნის (`candidates`-ის იგივე წესი —
+           POST-იდან `create` უფლება); `routes` — შენახული, ურნიანი ქვეჩანაწერები. */
+        Route::post('/places/{place}/route', [PlaceRouteController::class, 'compute']);
+        Route::get('/places/{place}/routes', [PlaceRouteController::class, 'index']);
+        Route::post('/places/{place}/routes', [PlaceRouteController::class, 'store']);
+        Route::patch('/place-routes/{placeRoute}', [PlaceRouteController::class, 'update']);
+        Route::delete('/place-routes/{placeRoute}', [PlaceRouteController::class, 'destroy']);
     });
 
     /* ---------- ინტერფეისიდან შექმნილი მოდულები (Tasks §37) ----------

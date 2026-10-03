@@ -57,6 +57,7 @@ use App\Models\NoteReminder;
 use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
+use App\Models\PlaceRoute;
 use App\Models\Playlist;
 use App\Models\RecordVisit;
 use App\Models\Role;
@@ -169,6 +170,8 @@ class AuditRegistry
         Place::class => 'place',
         PlaceCategory::class => 'place',
         PlaceFile::class => 'place',
+        // Tasks §30.4 — შენახული მარშრუტი ადგილის ნაწილია
+        PlaceRoute::class => 'place',
 
         /* ---- Tasks §37 — ინტერფეისიდან შექმნილი მოდულები.
            ⚠️ **მოდული რიგშია** (`module` — პირადი მოდულის გასაღები), ე.ი. აქ

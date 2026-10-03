@@ -13,6 +13,7 @@ use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\Place;
+use App\Models\PlaceRoute;
 use App\Models\Playlist;
 use App\Models\Series;
 use App\Models\Song;
@@ -68,6 +69,8 @@ class AppServiceProvider extends ServiceProvider
             'bookmark' => Bookmark::class,
             // FEAT-26 — ადგილი გალერეის მშობელია (`GalleryParent`)
             'place' => Place::class,
+            // Tasks §30.4 — შენახული მარშრუტი; ალიასი აუდიტის `subject_type`-იც არის
+            'place_route' => PlaceRoute::class,
             /* Tasks §6.1 — ⚠️ **კურსი აქამდე აკლდა** და ატვირთული ესკიზის
                შეცვლა/წაშლა `ColumnTrash::capture()`-ში `getMorphClass()`-ზე
                `ClassMorphViolationException`-ით ვარდებოდა. ახლა

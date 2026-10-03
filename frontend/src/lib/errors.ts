@@ -40,6 +40,10 @@ export const CODES = [
   'openlibrary_unavailable',
   // FEAT-26 — OSM Nominatim არ პასუხობს („ვერაფერი ვიპოვე“ სხვა ფაქტია)
   'nominatim_unavailable',
+  // Tasks §30 — OSRM-ის საჯარო სერვერი არ პასუხობს („მარშრუტი არ არის“ 200-ით, ცარიელი სიით მოდის)
+  'routing_unavailable',
+  // Tasks §30 — კოორდინატის გარეშე მარშრუტი ვერ ითვლება: ჩანაწერის მდგომარეობაა და არა ჩავარდნა
+  'place_without_coordinates',
   // §11 — RAWG **არ პასუხობს** (გასაღების არქონა §30-იდან `credential_missing`-ია)
   'rawg_unavailable',
   // §16.2 — დამთხვევა ორ **საჯარო** პროფილს შორის ითვლება

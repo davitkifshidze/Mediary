@@ -236,6 +236,81 @@ export async function deletePlaceFile(id: number): Promise<void> {
   await api.delete(`/place-files/${id}`)
 }
 
+/* ---------- რუკა და მარშრუტები (Tasks §30) ----------
+   ⚠️ გამოთვლა (`computePlaceRoute`) ჩანაწერს არ ქმნის — საწყისი წერტილი ყოველთვის
+   ჩემი მიმდინარე მდებარეობაა (ბრაუზერის გეოლოკაცია); შენახვა არჩეულის ასლია,
+   გეომეტრია polyline-ად (`lib/polyline.ts`). */
+export const ROUTE_PROFILES = ['driving', 'foot', 'bike'] as const
+export type RouteProfile = (typeof ROUTE_PROFILES)[number]
+
+export interface RouteOption {
+  index: number
+  distance_m: number
+  duration_s: number
+  /** encoded polyline, precision 5 */
+  geometry: string
+  summary: string | null
+}
+
+export interface RoutePlan {
+  profile: RouteProfile
+  from: { lat: number; lng: number }
+  to: { lat: number; lng: number }
+  /** პირველი უმოკლესია; ცარიელი = მარშრუტი არ არსებობს (სერვერი კი მუშაობს) */
+  routes: RouteOption[]
+}
+
+export interface PlaceRoute {
+  id: number
+  place_id: number
+  name: string
+  profile: RouteProfile
+  distance_m: number
+  duration_s: number
+  from_lat: number
+  from_lng: number
+  geometry: string
+  chosen_at: string | null
+  created_at: string | null
+}
+
+export interface PlaceRouteInput {
+  name: string
+  profile: RouteProfile
+  distance_m: number
+  duration_s: number
+  from_lat: number
+  from_lng: number
+  geometry: string
+}
+
+export async function computePlaceRoute(
+  placeId: number,
+  input: { from_lat: number; from_lng: number; profile: RouteProfile },
+): Promise<RoutePlan> {
+  const { data } = await api.post(`/places/${placeId}/route`, input)
+  return data.data
+}
+
+export async function fetchPlaceRoutes(placeId: number): Promise<PlaceRoute[]> {
+  const { data } = await api.get(`/places/${placeId}/routes`)
+  return data.data
+}
+
+export async function savePlaceRoute(placeId: number, input: PlaceRouteInput): Promise<PlaceRoute> {
+  const { data } = await api.post(`/places/${placeId}/routes`, input)
+  return data.data
+}
+
+export async function renamePlaceRoute(id: number, name: string): Promise<PlaceRoute> {
+  const { data } = await api.patch(`/place-routes/${id}`, { name })
+  return data.data
+}
+
+export async function deletePlaceRoute(id: number): Promise<void> {
+  await api.delete(`/place-routes/${id}`)
+}
+
 /* ---------- კატეგორიები (per-user ლექსიკონი) ---------- */
 
 export async function fetchPlaceCategories(): Promise<PlaceCategory[]> {

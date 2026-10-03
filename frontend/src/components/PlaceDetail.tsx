@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, Image as ImageIcon, Loader2, Map as MapIcon, MapPin, Upload } from 'lucide-react'
+import { FileText, Image as ImageIcon, Loader2, MapPin, Upload } from 'lucide-react'
 import {
   PLACE_FILE_KINDS,
   deletePlaceFile,
@@ -22,7 +22,7 @@ import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { EnumStatusBadge } from '@/components/StatusBadge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -30,15 +30,15 @@ import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/componen
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { cn } from '@/lib/utils'
+import { PlaceRoutes } from '@/components/PlaceRoutes'
 
 /**
  * **ადგილის ბარათი (FEAT-26).**
  *
- * ⚠️ **რუკა თვითონ არ იხატება** და ეს ტასქის საკუთარი სიტყვაა
- * („მოგვიანებით"): Leaflet ~40 kB-ია და ცალკე გადაწყვეტილებას იმსახურებს.
- * კოორდინატი ინახება და გარე რუკის ბმულად ჩანს — ე.ი. ფაქტი არ იკარგება
- * და ბიბლიოთეკა არ ემატება.
+ * ⚠️ **რუკა და მარშრუტები `PlaceRoutes`-შია** (Tasks §30): Leaflet ლეიზი
+ * ჩანკია და მხოლოდ აქ იტვირთება; ნავიგაცია ჩემი მიმდინარე მდებარეობიდან
+ * OSRM-ით, ალტერნატივებით და შენახვით; ღრმა ბმული Google Maps-ზე/OSM-ზე
+ * ყოველთვის რჩება. 2026-09-21-ის „მოგვიანებით" სწორედ ეს იყო.
  *
  * ⚠️ **ვებიდან მოტანილი ფოტო აქ არ ჩანს** — ის `gallery_images`-შია და
  * გალერეის სექციაში იხატება. აქ მხოლოდ ჩემი ატვირთვებია (`place_files`),
@@ -225,22 +225,9 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           <p className="whitespace-pre-line text-sm text-muted-foreground">{place.description}</p>
         )}
 
-        {/* §29.2 — რუკა ღილაკის ფორმით (`buttonVariants outline`); `<a>` რჩება, რადგან
-            `ui/button.tsx`-ს `asChild` არ აქვს. რუკა გარე სერვისია (OSM) — ბიბლიოთეკა არ ემატება. */}
-        {place.map_url && (
-          <a
-            href={place.map_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-fit')}
-          >
-            <MapIcon className="size-3.5" />
-            {t('places.openMap')}
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {place.lat}, {place.lng}
-            </span>
-          </a>
-        )}
+        {/* Tasks §30 — რუკა მარკერით, მარშრუტი ჩემი მდებარეობიდან, შენახული მარშრუტები;
+            ღრმა ბმულები (Google Maps · OSM) სექციის სათაურშია */}
+        <PlaceRoutes place={place} />
 
         {/* დოკუმენტები — ფოტოები ზემოთაა (§26.4) */}
         {filesQ.isLoading ? (

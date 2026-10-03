@@ -982,3 +982,51 @@
   --series-10: var(--series-10-dark);
   --series-11: var(--series-11-dark);
 }
+
+/* ============================================================
+   Leaflet — ადგილის რუკა (Tasks §30.2). ⚠️ მარკერი და მარშრუტი CSS-ითაა:
+   Leaflet-ის PNG მარკერი ბანდლერში ტყდება, SVG-ის `stroke` ატრიბუტში კი
+   `var()` არ მუშაობს — კლასის `stroke:` ატრიბუტს ფარავს და თემის ფერს აძლევს.
+   ============================================================ */
+.leaflet-container {
+  font: inherit;
+  background: var(--muted);
+}
+.leaflet-container .leaflet-control-attribution {
+  font-size: 10px;
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  color: var(--muted-foreground);
+}
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--muted-foreground);
+}
+.leaflet-container .leaflet-bar a {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+.mediary-pin-wrap {
+  background: transparent;
+  border: 0;
+}
+.mediary-pin {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 3px solid var(--card);
+  background: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 45%, transparent);
+}
+.mediary-pin--me {
+  background: var(--status-watching);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--status-watching) 45%, transparent);
+}
+.mediary-route {
+  stroke: var(--status-undecided);
+  stroke-opacity: 0.45;
+}
+.mediary-route--active {
+  stroke: var(--primary);
+  stroke-opacity: 0.9;
+}

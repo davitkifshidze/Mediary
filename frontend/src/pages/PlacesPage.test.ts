@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -72,6 +72,14 @@ if (!('ResizeObserver' in globalThis)) {
     disconnect() {}
   }
 }
+
+/* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი, `NoteReminders.test.ts`):
+   გვერდი დეტალის ფანჯარასთან ერთად Leaflet-ის ლეიზი საზღვარსაც იწევს და სრულ `npm test`-ში
+   პირველი ტესტი 5 წმ-ს სცდებოდა — ერთჯერადი იმპორტი ჰუკშია, თავისი ვადით. */
+beforeAll(async () => {
+  await import('@/pages/PlacesPage')
+}, 60_000)
+vi.setConfig({ testTimeout: 15_000 })
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null

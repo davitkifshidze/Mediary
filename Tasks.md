@@ -81,7 +81,7 @@
 | §27 | „მიწოდების არხები“ — ჩანაწერებიდან „მონაცემების“ გვერდზე | 🧩 | S | — | — | ✅ |
 | §28 | ბუკმარკები — ფანჯარა, რჩეული, სტატუსების ფერი და სიგანე | 🧩 | S | — | §5, §8, §16 | ✅ |
 | §29 | კურსები („პოდკასტი“) და ადგილები — ერთი სტილის მოქმედებების ზოლი | 🧩 | M | — | §8, §15, §16 | ✅ |
-| §30 | ადგილები — რუკა გვერდზე და ნავიგაცია მარშრუტებით | 🧩 | L | Q6 | §29 | ⬜ |
+| §30 | ადგილები — რუკა გვერდზე და ნავიგაცია მარშრუტებით | 🧩 | L | Q6 | §29 | ✅ |
 | §31 | სინქრონიზაცია და თარგმანები — დამუშავებულები სიიდან, გამორთვა, ცარიელი შედეგი ცალკე | 🧩 | M–L | — | §6.2 | ⬜ |
 | §32 | შექმნილი მოდულის წაშლა — უკვე არის; ხილვადობა და „მორიგეობის“ ძველი მოდული | 🧩 | S | — | §7 | ⬜ |
 | | **ფაზა 4 — პლატფორმა** | | | | | |
@@ -1446,25 +1446,51 @@ decimal(10,7)`, `osm_id/osm_type`; გეოკოდირება სერ�
       (`router.project-osrm.org`, უფასო, გასაღების გარეშე, `alternatives=true`, ფეხით/ველოსიპედით/მანქანით) ·
       OpenRouteService (უფასო გასაღებით — ახალი `CredentialProviders` ჩანაწერი) · მხოლოდ ღრმა ბმულები Google Maps-ის/
       OSM-ის ნავიგაციაზე (რუკის გარეშე).
-- [ ] **30.2** **რუკა დეტალში**: `PlaceDetail`-ში Leaflet-ის რუკა მარკერით (ლეიზი ჩანკი — ბანდლში მხოლოდ ადგილებზე
+- [x] **30.2** **რუკა დეტალში**: `PlaceDetail`-ში Leaflet-ის რუკა მარკერით (ლეიზი ჩანკი — ბანდლში მხოლოდ ადგილებზე
       იტვირთება; ფილები OSM-იდან, ატრიბუციით); ფორმაში — მარკერის გადათრევით კოორდინატების დაზუსტება.
-- [ ] **30.3** **ნავიგაცია**: ღილაკი „მარშრუტი ჩემი მდებარეობიდან“ → ბრაუზერის `geolocation` (ნებართვა, შეცდომები
+- [x] **30.3** **ნავიგაცია**: ღილაკი „მარშრუტი ჩემი მდებარეობიდან“ → ბრაუზერის `geolocation` (ნებართვა, შეცდომები
       ტოსტით) → `POST /places/{id}/route {from_lat, from_lng, profile}` → backend `RouteClient` (`SafeHttp`, `SourceLog`,
       ქეში 10 წთ, 503 `routing_unavailable`) → რუკაზე მთავარი მარშრუტი + **ალტერნატივები** ჩამქრალი ხაზებით; გვერდით სია:
       მანძილი, დრო, „არჩევა“; პროფილის ჩანართები (მანქანა · ფეხით · ველოსიპედი); „გახსნა Google Maps-ში / OSM-ში“
       ღრმა ბმულები ყოველთვის (სატელეფონო ნავიგაციისთვის).
-- [ ] **30.4** **მარშრუტის შენახვა**: ცხრილი `place_routes` (`place_id`, `user_id`, `name`, `profile`, `distance_m`,
+- [x] **30.4** **მარშრუტის შენახვა**: ცხრილი `place_routes` (`place_id`, `user_id`, `name`, `profile`, `distance_m`,
       `duration_s`, `from_lat/lng`, `geometry` polyline, `chosen_at`) — რამდენიმე თითო ადგილზე; სია დეტალში
       (გახსნა რუკაზე, გადარქმევა, წაშლა → ურნა); რეესტრები (`AuditRegistry`, `TrashDomain`, `ExportDomain`, `PurgeService`
       — `RegistryConsistencyTest`).
-- [ ] **30.5** ტესტები: `RouteClientTest` (`Http::fake`, ალტერნატივები, ჩავარდნა 503), `PlaceRouteTest` (შენახვა, 404
+- [x] **30.5** ტესტები: `RouteClientTest` (`Http::fake`, ალტერნატივები, ჩავარდნა 503), `PlaceRouteTest` (შენახვა, 404
       სხვისაზე), `PlaceMap.test.ts` (ლეიზი ჩატვირთვა, geolocation უარყოფა).
 
 **გადაწყვეტილება (Q6):** **Leaflet (OSM-ის ფილები) + OSRM-ის საჯარო სერვერი** (`router.project-osrm.org`, გასაღების
 გარეშე, ალტერნატივებით, მანქანა/ფეხით/ველოსიპედი) — ჩვენი სერვერის შუამავლობით (`SafeHttp`, ქეში, `SourceLog`, 503
 `routing_unavailable`); ყოველთვის რჩება „გახსნა Google Maps-ში / OSM-ში“ ღრმა ბმული; Leaflet ლეიზი ჩანკია, მხოლოდ ადგილებზე.
 
-**ზომა:** L · **დამოკიდებულება:** §29 · **სტატუსი:** ⬜
+**შესრულდა 2026-10-03.** **რუკა:** Leaflet 1.9 (`leaflet` + `@types/leaflet`) **ლეიზი ჩანკია** — `components/PlaceMap.tsx` მხოლოდ
+`import()`-ით იტვირთება (`PlaceMapLazy.tsx`: `MapFrame` Suspense-სკელეტით და `isolate`-ით, რომ Leaflet-ის z-index-ები მოდალს არ ეხებოდეს);
+ბანდლში ცალკე `PlaceMap-*.js` (~151 KB) და `PlaceMap-*.css`. OSM-ის ფილები ატრიბუციით; მარკერი `divIcon` + CSS (`.mediary-pin`, ორივე თემა —
+Leaflet-ის PNG მარკერი ბანდლერში ტყდება), მარშრუტის ფერი CSS-კლასით (`.mediary-route`, SVG-ის `stroke` ატრიბუტში `var()` არ მუშაობს).
+ფორმაში (`FormMapPick`) კოორდინატების ქვეშ რუკა მარკერით — გადათრევით ან დაწკაპუნებით კოორდინატი ზუსტდება; ორივე რიცხვის გარეშე მინიშნებაა.
+**ნავიგაცია** (`components/PlaceRoutes.tsx`, დეტალის სექცია „რუკა და მარშრუტი“ `DetailSection`-ით): „მარშრუტი ჩემი მდებარეობიდან“ → ბრაუზერის
+`getCurrentPosition` (მხოლოდ დაჭერიდან; უარყოფა/ჩავარდნა/მხარდაჭერის არქონა — სამი ცალკე ტოსტი) → `POST /places/{id}/route {from_lat, from_lng,
+profile}` → რუკაზე მთავარი მარშრუტი მკვეთრად, ალტერნატივები ჩამქრალი, ჩემი მდებარეობა ცალკე წერტილი; გვერდით სია (უმოკლესი · ალტერნატივა N,
+summary, მანძილი · დრო, არჩევა `aria-pressed`); პროფილის ჩანართები `CutTabs` (მანქანით · ფეხით · ველოსიპედით) — ნაპოვნი მდებარეობით მაშინვე
+ხელახლა ითვლის. ღრმა ბმულები **ყოველთვის** სექციის სათაურში: Google Maps (`dir/?api=1&destination=…&travelmode=…`, საწყისით როცა ნაპოვნია) და
+OSM (`directions?engine=fossgis_osrm_*` ან `?mlat=`). Backend: `Services/Places/RouteClient` — `router.project-osrm.org/route/v1/{profile}/lng,lat;lng,lat`
+`alternatives=true&overview=full&geometries=polyline`, `SourceLog::request` + UA, ქეში 10 წთ მხოლოდ წარმატებაზე (გასაღები 4 ათწილადით), `NoRoute` →
+ცარიელი სია (200), ჩავარდნა → `blocked` → 503 `routing_unavailable`; კოორდინატის გარეშე ადგილი → 422 `place_without_coordinates`; უცნობი პროფილი →
+`driving`. ⚠️ საჯარო სერვერზე `foot`/`bike` მიახლოებითია — `i` ამას ამბობს. **შენახვა:** მიგრაცია `2026_10_03_000006_create_place_routes_table`
+(`user_id`, `place_id`, `name`, `profile`, `distance_m`, `duration_s`, `from_lat/lng decimal(10,7)`, `geometry mediumText` polyline5, `chosen_at`,
+`trashed_at`); მოდელი `PlaceRoute` (`BelongsToUser`, `HasTrash`), `Place::routes()` + `deleting`-ჰუკი (ურნაში მყოფიც იშლება); `GET/POST
+/places/{id}/routes`, `PATCH /place-routes/{id}` (გადარქმევა), `DELETE` → ურნა; სია დეტალში (რუკაზე · გადარქმევა inline · წაშლა დასტურით), სახელი
+ნაგულისხმევად „პროფილი · მანძილი“. რეესტრები: `AuditRegistry::MODELS` (+ morph alias `place_route`, `audit.subjects.place_route`),
+`TrashDomain::ITEMS` (`place_route`, `size: false`, `trash.kinds.place_route`); `ExportDomain` — არა: ფაილების მსგავსად ქვეცხრილია და ადგილის
+ექსპორტი მას არ შეიცავს (ფაილების იგივე წესი); `PurgeService` — ადგილის წაშლა ჰუკით შლის. გეომეტრიის გაშლა კლიენტზე — `lib/polyline.ts`
+(precision 5, ბიბლიოთეკის გარეშე). i18n: `places.route.*`, `errors.routing_unavailable/place_without_coordinates`. ტესტები: `RouteClientTest` (5 —
+ნორმალიზება/ალტერნატივები, ქეში და პროფილის გარჩევა, `NoRoute` ≠ ჩავარდნა, 500 → blocked და არა ქეში, უცნობი პროფილი), `PlaceRouteTest` (8 —
+გამოთვლა, 503, 422 კოორდინატის გარეშე, ვალიდაცია, შენახვა/სია/გადარქმევა/ურნა, 404 სხვისაზე, ადგილთან ერთად წაშლა), `PlaceMap.test.ts` (3 —
+ლეიზი ჩანკი და ღრმა ბმულები, უარყოფილი გეოლოკაცია ტოსტით და რექვესთის გარეშე, ნაპოვნი მდებარეობიდან გამოთვლა/აქტიური/შენახვის ფორმა),
+`polyline.test.ts`; `RegistryConsistencyTest` მწვანეა.
+
+**ზომა:** L · **დამოკიდებულება:** §29 · **სტატუსი:** ✅
 
 ---
 

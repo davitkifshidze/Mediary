@@ -34,6 +34,7 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useDateFormat } from '@/lib/dates'
 import { useContentLang } from '@/lib/settings'
 import { PlaceDetail } from '@/components/PlaceDetail'
+import { FormMapPick } from '@/components/PlaceMapLazy'
 import { PendingFilesSection } from '@/components/PendingFiles'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
@@ -892,6 +893,12 @@ function PlaceForm({
                 onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
               />
             </div>
+            {/* Tasks §30.2 — რუკა მარკერით: გადათრევით ან დაწკაპუნებით კოორდინატი ზუსტდება (ლეიზი ჩანკი) */}
+            <FormMapPick
+              lat={form.lat}
+              lng={form.lng}
+              onPick={(lat, lng) => setForm((f) => ({ ...f, lat: lat.toFixed(6), lng: lng.toFixed(6) }))}
+            />
           </FormField>
         </FormSection>
 

@@ -87,6 +87,8 @@ class Place extends Model
                ბიბლიოთეკას ადმინის სესიიდან შლის — გაფილტრული კავშირი
                ცარიელს დააბრუნებდა და ფაილები დისკზე დარჩებოდა. */
             $place->files()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
+            // Tasks §30.4 — შენახული მარშრუტებიც, ურნაში მყოფიც
+            $place->routes()->withoutGlobalScopes(['owner', 'trash'])->get()->each->delete();
 
             $place->deleteGalleryMedia();
         });
@@ -102,6 +104,12 @@ class Place extends Model
     public function files(): HasMany
     {
         return $this->hasMany(PlaceFile::class)->orderByDesc('id');
+    }
+
+    /** Tasks §30.4 — შენახული მარშრუტები ჩემი მდებარეობიდან */
+    public function routes(): HasMany
+    {
+        return $this->hasMany(PlaceRoute::class)->orderByDesc('id');
     }
 
     /* ---------- helpers ---------- */
@@ -128,7 +136,7 @@ class Place extends Model
         $this->visited_at = null;
     }
 
-    /** გარე რუკის ბმული — ⚠️ რუკა თვითონ არ ემატება (იხ. მიგრაციის დოკბლოკი) */
+    /** გარე რუკის ბმული (OSM) — ღრმა ბმული ყოველთვის რჩება; რუკა თვითონ §30-დან Leaflet-ითაა */
     public function mapUrl(): ?string
     {
         if ($this->lat === null || $this->lng === null) {
