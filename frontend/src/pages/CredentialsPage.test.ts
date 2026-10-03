@@ -238,3 +238,45 @@ describe('CredentialsPage', () => {
     expect(document.body.textContent).toContain('YTDLP_BINARY')
   })
 })
+
+/* Tasks §27.2 — ბრაუზერის არხი „მონაცემებშია": ნებართვის მდგომარეობა, მოთხოვნა
+   დაჭერიდან, სატესტო შეტყობინება ნამდვილის გზით. ⚠️ jsdom-ს `Notification` არ
+   აქვს — ყალბი კლასი ნებართვას „default"-იდან „granted"-ზე გადაჰყავს. */
+describe('CredentialsPage — browser channel (§27.2)', () => {
+  it('asks for the permission from the card and then fires a test notification', async () => {
+    const created: string[] = []
+    class FakeNotification {
+      static permission = 'default'
+      static async requestPermission() {
+        FakeNotification.permission = 'granted'
+        return 'granted'
+      }
+      title: string
+      constructor(title: string) {
+        this.title = title
+        created.push(title)
+      }
+    }
+    ;(globalThis as unknown as { Notification: unknown }).Notification = FakeNotification
+
+    try {
+      await mount()
+
+      const card = document.querySelector<HTMLElement>('[data-testid="browser-channel"]')!
+      expect(card).not.toBeNull()
+      // ბარათი „შეტყობინებების" ჯგუფშია, Telegram-ის გვერდით
+      expect(card.closest('section')?.textContent).toContain(i18n.t('credentials.group.notify'))
+      expect(card.textContent).toContain(i18n.t('credentials.browser.state.default'))
+
+      await act(async () => buttonByText(i18n.t('credentials.browser.ask'))!.click())
+      await flush()
+      expect(card.textContent).toContain(i18n.t('credentials.browser.state.granted'))
+
+      await act(async () => buttonByText(i18n.t('credentials.browser.test'))!.click())
+      await flush()
+      expect(created).toEqual([i18n.t('credentials.browser.testTitle')])
+    } finally {
+      delete (globalThis as { Notification?: unknown }).Notification
+    }
+  })
+})

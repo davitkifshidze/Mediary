@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
@@ -84,7 +85,8 @@ async function render(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   await act(async () => {
-    root!.render(h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, node)))
+    // §27.1 — ფანჯარაში `Link`-ია („მონაცემებზე"), ე.ი. Router სჭირდება
+    root!.render(h(MemoryRouter, null, h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, node))))
   })
 
   // ⚠️ ერთი `act` არ კმარა: react-query-ის პასუხი მომდევნო tick-ზე ჯდება
@@ -210,6 +212,20 @@ describe('NoteReminders', () => {
     // რედაქტორი ნაგულისხმევად **დახურულია** — ეკრანი სიაა
     expect(node.textContent).not.toContain('შეხსენების რედაქტირება')
     expect(node.textContent).not.toContain('ახალი შეხსენება')
+  })
+
+  /* Tasks §27.1 — ტოკენი და chat id აქ აღარ იწერება: არხების ქვეშ ბმულია „მონაცემებზე" */
+  it('არხების ქვეშ „მონაცემების" ბმულია და ტოკენის ველი არ არის', async () => {
+    const node = await mount(5)
+
+    await act(async () => button(node, '09:00')!.click())
+    await flush()
+
+    const i18n = (await import('@/i18n')).default
+    const row = node.querySelector('[data-testid="reminder-channels-link"]')!
+    expect(row.textContent).toContain(i18n.t('notes.channelsLink'))
+    expect(row.querySelector('a')?.getAttribute('href')).toBe('/credentials')
+    expect(node.querySelector('input[type="password"]')).toBeNull()
   })
 
   it('ჯერ შეუნახავ ჩანაწერზე მინიშნებაა და რექვესთი არ მიდის', async () => {

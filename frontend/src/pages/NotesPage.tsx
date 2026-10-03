@@ -13,7 +13,6 @@ import {
   SquarePen,
   Plus,
   Search,
-  Settings2,
   Tags,
   Trash2,
 } from 'lucide-react'
@@ -31,7 +30,6 @@ import { errorMessage } from '@/lib/errors'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
-import { NoteChannelsDialog } from '@/components/NoteChannelsDialog'
 import { NoteNotificationsDialog } from '@/components/NoteNotificationsDialog'
 import { NoteDetail } from '@/components/NoteDetail'
 import { NoteForm } from '@/components/NoteForm'
@@ -108,7 +106,6 @@ export function NotesPage() {
   const [opened, setOpened] = useState<NoteEntry | null>(null)
   // ეტაპი 11 — ბეჯი პირდაპირ შეხსენებების ფანჯარას ხსნის (და აღარ ჩანაწერს)
   const [reminders, setReminders] = useState<NoteEntry | null>(null)
-  const [channels, setChannels] = useState(false)
   // §8.2 — შეხსენებების ჟურნალი: ელფოსტის არხის ჩამნაცვლებელი
   const [log, setLog] = useState(false)
 
@@ -277,10 +274,6 @@ export function NotesPage() {
                 ელფოსტის არხს ჰქონდა დახურული, ის კი ამოღებულია) */}
             <Button variant="outline" size="icon" onClick={() => setLog(true)} title={t('notes.logTitle')}>
               <BellRing className="size-4" />
-            </Button>
-            {/* §13.3 — არხების პარამეტრები (`module_user.settings`) */}
-            <Button variant="outline" size="icon" onClick={() => setChannels(true)} title={t('notes.channelsTitle')}>
-              <Settings2 className="size-4" />
             </Button>
             <Link
               to="/dictionaries/note-categories"
@@ -554,7 +547,6 @@ export function NotesPage() {
         />
       )}
 
-      {channels && <NoteChannelsDialog onClose={() => setChannels(false)} />}
       {log && <NoteNotificationsDialog onClose={() => setLog(false)} />}
     </PageContainer>
   )

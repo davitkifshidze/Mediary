@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ArrowLeft, BellPlus, Plus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, BellPlus, Plus, Send, X } from 'lucide-react'
 import {
   REMINDER_CHANNELS,
   REMINDER_MODES,
@@ -18,6 +19,7 @@ import { errorMessage } from '@/lib/errors'
 import { notificationPermission, requestNotificationPermission } from '@/lib/noteReminders'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { TimeWheelPopover } from '@/components/ui/time-wheel'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -624,6 +626,18 @@ function ReminderEditor({
             </label>
           ))}
         </div>
+
+        {/* Tasks §27.1 — ტოკენი და chat id აქ **აღარ იწერება**: ორივე „მონაცემების" გვერდზეა
+            (`/credentials`, ჯგუფი „შეტყობინებები"), იქვეა ბრაუზერის ნებართვის ბარათიც და
+            ორივე არხის შემოწმება. აქ მხოლოდ ბმულია — შეხსენების ფანჯარა პარამეტრების
+            ფორმად არ უნდა იქცეს. */}
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="reminder-channels-link">
+          <Send className="size-3.5 shrink-0" />
+          <Link to="/credentials" className="text-primary hover:text-primary/70">
+            {t('notes.channelsLink')}
+          </Link>
+          <InfoHint info={t('notes.channelsLinkHint')} />
+        </p>
 
         {needsPermission && (
           <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">

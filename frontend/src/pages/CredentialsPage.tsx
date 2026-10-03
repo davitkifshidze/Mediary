@@ -55,6 +55,12 @@ import {
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { modAccent } from '@/lib/modules'
+import {
+  notificationPermission,
+  requestNotificationPermission,
+  showTestNotification,
+  type NotificationPermissionState,
+} from '@/lib/noteReminders'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
@@ -160,7 +166,8 @@ export function CredentialsPage() {
             .map((p) => byProvider.get(p))
             .filter((c): c is Credential => c !== undefined)
 
-          if (!items.length) return null
+          /* §27.2 — „შეტყობინებების" ჯგუფს ბრაუზერის ბარათიც აქვს, ე.ი. წყაროების გარეშეც იხატება */
+          if (!items.length && group.key !== 'notify') return null
 
           const Icon = GROUP_ICON[group.key]
 
@@ -183,6 +190,7 @@ export function CredentialsPage() {
                     onOpen={() => setOpen(c.provider)}
                   />
                 ))}
+                {group.key === 'notify' && <BrowserChannelTile delay={Math.min(index++ * STAGGER_MS, STAGGER_MAX_MS)} />}
               </div>
             </section>
           )
@@ -261,6 +269,92 @@ function ProviderTile({
         <CheckLine credential={credential} state={state} />
       </div>
     </button>
+  )
+}
+
+/* ---------- ბრაუზერის არხი (Tasks §27.2) ----------
+   ⚠️ **გასაღები არაა და სერვერზე არაფერი იწერება**: ნებართვა ბრაუზერისაა და ამ
+   კომპიუტერზე ცხოვრობს. ბარათი აქ იმიტომაა, რომ შეხსენების ორივე არხი — ბრაუზერი
+   და ტელეგრამი — ერთ ადგილას მოწმდებოდეს და ჩანაწერების გვერდი პარამეტრებისგან
+   დაცლილიყო (აქამდე `NoteChannelsDialog` იყო, ტოკენის დუბლიკატი ფორმით).
+   ⚠️ ნებართვა **მხოლოდ დაჭერიდან** ითხოვება — სხვანაირად ბრაუზერები ბლოკავენ.
+   ⚠️ სატესტო შეტყობინება ნამდვილის გზით მიდის (`showTestNotification`). */
+const PERMISSION_TONE: Record<NotificationPermissionState, string> = {
+  granted: STATE_TONE.mine,
+  default: STATE_TONE.partial,
+  denied: STATE_TONE.undecryptable,
+  unsupported: STATE_TONE.none,
+}
+
+function BrowserChannelTile({ delay }: { delay: number }) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const [permission, setPermission] = useState<NotificationPermissionState>(notificationPermission())
+  const [busy, setBusy] = useState(false)
+
+  const ask = async () => {
+    setBusy(true)
+    try {
+      setPermission(await requestNotificationPermission())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const test = async () => {
+    setBusy(true)
+    try {
+      await showTestNotification(t('credentials.browser.testTitle'), t('credentials.browser.testBody'))
+      toast({ title: t('credentials.browser.sent'), variant: 'success' })
+    } catch (e) {
+      toast({ title: errorMessage(e), variant: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      data-testid="browser-channel"
+      style={{ ...modAccent('var(--cred-browser)'), animationDelay: `${delay}ms` }}
+      className="fb-card flex h-full flex-col rounded-2xl border border-border bg-card p-5 text-left"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)]">
+          <BellRing className="size-5 text-[var(--mod)]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-display text-base font-semibold tracking-tight">{t('credentials.browser.title')}</div>
+          <Badge className={cn('mt-1', PERMISSION_TONE[permission])}>{t(`credentials.browser.state.${permission}`)}</Badge>
+        </div>
+      </div>
+
+      <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{t('credentials.browser.desc')}</p>
+
+      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        {permission === 'default' && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={ask}>
+            <BellRing className="size-3.5" />
+            {t('credentials.browser.ask')}
+          </Button>
+        )}
+        {permission === 'granted' && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={test}>
+            <Send className="size-3.5" />
+            {t('credentials.browser.test')}
+          </Button>
+        )}
+        {permission === 'denied' && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-destructive">
+            <TriangleAlert className="size-3.5 shrink-0" />
+            {t('credentials.browser.deniedHint')}
+          </span>
+        )}
+        {permission === 'unsupported' && (
+          <span className="text-[11px] text-muted-foreground">{t('credentials.browser.unsupportedHint')}</span>
+        )}
+      </div>
+    </div>
   )
 }
 

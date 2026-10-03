@@ -147,6 +147,7 @@
   --cred-serper: #b8651c;
   --cred-youtube: #b8413b;
   --cred-telegram: #2383c2;
+  --cred-browser: #a8741a;
 
   /* **იმპორტის წყაროები (Tasks §31)** — თითო ბარათს თავისი ფერი.
      ⚠️ ბრენდის ფერი **მიახლოებითია**: IMDb-ის სუფთა ყვითელი თეთრ ფონზე არ
@@ -260,6 +261,7 @@
   --cred-serper: #eb9656;
   --cred-youtube: #ee7a74;
   --cred-telegram: #5db4ea;
+  --cred-browser: #e3b25a;
 
   --import-letterboxd: #4cd98a;
   --import-imdb: #f5c518;

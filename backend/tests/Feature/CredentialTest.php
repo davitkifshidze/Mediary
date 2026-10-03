@@ -8,6 +8,7 @@ use App\Models\TranslationUsage;
 use App\Models\User;
 use App\Models\UserCredential;
 use App\Services\Credentials\CredentialStore;
+use App\Services\Credentials\CredentialTester;
 use App\Services\Notes\NoteChannelSettings;
 use App\Services\Translation\Translator;
 use App\Support\CredentialProviders;
@@ -427,7 +428,11 @@ class CredentialTest extends TestCase
      * აგზავნის. აქამდე ტელეგრამის ბარათის „შემოწმება" `unknown_provider`-ს
      * აბრუნებდა — ბარათების ბადეზე ეს ღილაკი ყოველთვის ჩავარდებოდა.
      */
-    public function test_the_telegram_token_is_checked_with_get_me(): void
+    /**
+     * Tasks §27.3 — `getMe` ტოკენს ამოწმებს, `sendMessage` chat id-ს: ორივე
+     * მოწმდება და `verified_at` ივსება.
+     */
+    public function test_the_telegram_check_sends_a_test_message_to_the_chat(): void
     {
         Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['is_bot' => true]])]);
         $this->own($this->user, CredentialProviders::TELEGRAM, ['bot_token' => '123:ABC', 'chat_id' => '42']);
@@ -435,10 +440,39 @@ class CredentialTest extends TestCase
         $this->actingAs($this->user)
             ->postJson('/api/credentials/telegram/test')
             ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('data.last_error', null);
 
         Http::assertSent(fn ($r) => str_ends_with($r->url(), '/bot123:ABC/getMe'));
-        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'sendMessage'));
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/bot123:ABC/sendMessage')
+            && $r['chat_id'] === '42'
+            && $r['text'] === CredentialTester::TELEGRAM_TEST_TEXT);
+
+        $this->assertNotNull(
+            UserCredential::where('user_id', $this->user->id)->where('provider', 'telegram')->value('verified_at')
+        );
+    }
+
+    /**
+     * ⚠️ ტოკენი სწორია, chat id — არა: შემოწმება **ცალკე კოდით** ვარდება, რომ
+     * მომხმარებელმა ტოკენი არ გადაწეროს; `verified_at` ცარიელი რჩება.
+     */
+    public function test_a_wrong_chat_id_fails_the_telegram_check_with_its_own_code(): void
+    {
+        Http::fake(fn ($request) => str_contains($request->url(), 'sendMessage')
+            ? Http::response(['ok' => false, 'description' => 'Bad Request: chat not found'], 400)
+            : Http::response(['ok' => true, 'result' => ['is_bot' => true]]));
+        $this->own($this->user, CredentialProviders::TELEGRAM, ['bot_token' => '123:ABC', 'chat_id' => '0']);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/credentials/telegram/test')
+            ->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'chat_rejected');
+
+        $row = UserCredential::where('user_id', $this->user->id)->where('provider', 'telegram')->first();
+        $this->assertNull($row->verified_at);
+        $this->assertSame('chat_rejected', $row->last_error);
     }
 
     /**

@@ -50,24 +50,35 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
+/** service worker-ით, თუ არის; თორემ პირდაპირ გვერდიდან (desktop-ზე ისიც მუშაობს) */
+async function display(title: string, options: NotificationOptions) {
+  const reg = await registration()
+
+  if (reg?.showNotification) {
+    await reg.showNotification(title, options)
+    return
+  }
+
+  new Notification(title, options)
+}
+
 async function show(item: NoteNotification) {
-  const options: NotificationOptions = {
+  await display(item.title, {
     body: item.body ?? undefined,
     // ერთი და იმავე შეხსენების გამეორება ერთმანეთს ჩაანაცვლებს და არ დააგროვებს
     tag: `note-${item.note_entry_id}-${item.id}`,
     icon: '/favicon.svg',
     data: { url: '/notes' },
-  }
+  })
+}
 
-  const reg = await registration()
-
-  if (reg?.showNotification) {
-    await reg.showNotification(item.title, options)
-    return
-  }
-
-  // fallback — desktop-ზე გვერდიდანაც მუშაობს
-  new Notification(item.title, options)
+/**
+ * Tasks §27.2 — სატესტო შეტყობინება „მონაცემების" ბრაუზერის ბარათიდან.
+ * ⚠️ **იმავე გზით**, რითაც ნამდვილი შეხსენება მივა (service worker → გვერდი):
+ * სხვა გზით გაგზავნილი ტესტი იმას ამოწმებდა, რაც არ გამოიყენება.
+ */
+export async function showTestNotification(title: string, body: string) {
+  await display(title, { body, tag: 'mediary-test', icon: '/favicon.svg', data: { url: '/credentials' } })
 }
 
 /**

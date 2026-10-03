@@ -2323,6 +2323,8 @@
     "linkBecomesVideo": "On save it moves into the game's videos and plays in the player."
   },
   "notes": {
+    "channelsLink": "Telegram settings — in Credentials",
+    "channelsLinkHint": "The bot token and chat id are entered on the Credentials page and checked there with a test message. The browser permission card is there too.",
     "reminderChip": "Reminder",
     "linkButton": "Link",
     "title": "Notes",
@@ -2365,14 +2367,8 @@
     "reminderActive": "Active",
     "reminderDeleteTitle": "Delete this reminder?",
     "timezoneHint": "The time is stored in your timezone.",
-    "channelsTitle": "Delivery channels",
-    "channelsSaved": "Channels saved",
-    "browserHint": "Browser notifications work only while the app is open.",
     "permissionAsk": "Ask for permission",
     "permissionHint": "The browser must grant permission, otherwise nothing is shown.",
-    "telegramToken": "Bot token",
-    "telegramChat": "Chat id",
-    "telegramHint": "Your own bot — the token is stored on your account only.",
     "modes": {
       "once": "Once",
       "interval": "By interval",
@@ -2385,12 +2381,6 @@
       "browser": "Browser",
       "telegram": "Telegram",
       "email": "Email (no longer used)"
-    },
-    "permission": {
-      "granted": "Permission granted",
-      "denied": "Permission denied",
-      "default": "Permission not asked yet",
-      "unsupported": "Not supported by this browser"
     },
     "weekdays": {
       "0": "Sunday",
@@ -3166,6 +3156,23 @@
     "viewerFailed": "The file could not be loaded."
   },
   "credentials": {
+    "browser": {
+      "title": "Browser",
+      "desc": "Reminders as browser notifications — they work only while the app is open. No key needed: the permission belongs to the browser and stays on this computer.",
+      "ask": "Ask for permission",
+      "test": "Test notification",
+      "sent": "Test notification sent",
+      "testTitle": "Mediary",
+      "testBody": "A test notification from Mediary — the browser channel works.",
+      "deniedHint": "The browser refused — allow notifications in the site settings (the lock in the address bar) and reload.",
+      "unsupportedHint": "This browser has no notification support — try another one or turn on Telegram.",
+      "state": {
+        "granted": "permission granted",
+        "denied": "permission denied",
+        "default": "permission not asked yet",
+        "unsupported": "not supported by this browser"
+      }
+    },
     "title": "Credentials",
     "intro": "These are your keys. External sources — TMDB, Gemini, RAWG and the rest — work only with your own key: without one, that source stays off for you. Keys are stored encrypted, and the limit and the spend are yours — nobody else's requests touch them.",
     "getKey": "Get a key",
@@ -3206,9 +3213,10 @@
       "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
       "youtube": "Video duration and tags. Without a key the title and main photo still arrive.",
-      "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot."
+      "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot. The check sends a test message to the chat."
     },
     "error": {
+      "chat_rejected": "the token works but the chat id does not — message the bot first and check the number",
       "rejected": "the source rejected the key",
       "rate_limited": "the source rate-limited us — try again later",
       "unreachable": "the source is not answering",

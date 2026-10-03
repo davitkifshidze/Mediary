@@ -29,6 +29,9 @@ use Throwable;
  */
 class CredentialTester
 {
+    /** Telegram-ის სატესტო შეტყობინება — ქართულად, რადგან მომხმარებელი ჩატში ამას ხედავს (§27.3) */
+    public const TELEGRAM_TEST_TEXT = 'სატესტო შეტყობინება Mediary-დან';
+
     /** რომელი წყაროს შემოწმება ხარჯავს კვოტას */
     public static function costsCredit(string $provider): bool
     {
@@ -93,14 +96,14 @@ class CredentialTester
                     ])
                 ),
 
-                /* Tasks §30 — ბოტის `getMe` **უფასოა და არაფერს აგზავნის**:
-                   ტოკენის სისწორეს ამოწმებს, ჩატში კი შეტყობინება არ მიდის.
+                /* Tasks §27.3 — `getMe` მხოლოდ ტოკენს ამოწმებს, chat id-ს კი მხოლოდ
+                   ნამდვილი `sendMessage`: ამიტომ შემოწმება ჩატში სატესტო
+                   შეტყობინებას აგზავნის და „შემოწმდა" ორივეს ნიშნავს (აქამდე
+                   მხოლოდ `getMe` იყო — არასწორი id „მუშაობს"-ად ითვლებოდა).
                    ⚠️ ტოკენი მისამართშია (Telegram-ის ფორმატი), ამიტომ
                    გამონაკლისის ტექსტი პასუხში არ მიდის — `Redact` მას ლოგშიც
                    ნიღბავს (`/bot<id>:<secret>`). */
-                CredentialProviders::TELEGRAM => $this->check(
-                    SourceLog::request(15)->get('https://api.telegram.org/bot'.$value('bot_token').'/getMe')
-                ),
+                CredentialProviders::TELEGRAM => $this->telegram($value('bot_token'), $value('chat_id')),
 
                 default => ['ok' => false, 'error' => 'unknown_provider'],
             };
@@ -111,6 +114,41 @@ class CredentialTester
             // გაყოლილი გასაღები შეიძლება იდოს
             return ['ok' => false, 'error' => 'unreachable'];
         }
+    }
+
+    /**
+     * ტოკენი `getMe`-ით, chat id — სატესტო შეტყობინებით.
+     *
+     * ⚠️ ტოკენი უკვე გავლილია, ე.ი. `sendMessage`-ის 400 („chat not found") და
+     * 403 („bot was blocked", „can't initiate conversation") **id-ის ბრალია** —
+     * ცალკე კოდი, რომ მომხმარებელმა ტოკენი არ გადაწეროს. ⚠️ იგივე payload,
+     * რასაც `TelegramNotifier` აგზავნის — ტესტი ნამდვილ გზას ამოწმებს.
+     *
+     * @return array{ok: bool, error: ?string}
+     */
+    private function telegram(string $token, string $chatId): array
+    {
+        $me = $this->check(SourceLog::request(15)->get("https://api.telegram.org/bot{$token}/getMe"));
+
+        if (! $me['ok']) {
+            return $me;
+        }
+
+        $sent = SourceLog::request(15)
+            ->asJson()
+            ->post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => self::TELEGRAM_TEST_TEXT,
+                'disable_web_page_preview' => true,
+            ]);
+
+        if (! $sent->successful() && in_array($sent->status(), [400, 403], true)) {
+            SourceLog::status('credentials', $sent->status(), $sent->body(), ['step' => 'test']);
+
+            return ['ok' => false, 'error' => 'chat_rejected'];
+        }
+
+        return $this->check($sent);
     }
 
     /**
