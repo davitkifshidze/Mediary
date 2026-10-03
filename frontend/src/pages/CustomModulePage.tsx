@@ -46,8 +46,7 @@ import { useModules } from '@/lib/modules'
 import { useListLimit } from '@/lib/paged'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { useContentLang } from '@/lib/settings'
-import { statusByKey, statusName, statusTone, useStatuses } from '@/lib/statuses'
-import { STATUS_BADGE } from '@/lib/statusStyles'
+import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { dedupeTags } from '@/lib/tags'
 import { CustomCategoryDialog } from '@/components/CustomCategoryDialog'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
@@ -83,6 +82,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { cn } from '@/lib/utils'
+import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
    **ინტერფეისიდან შექმნილი მოდულის გვერდი (Tasks §37.3).**
@@ -498,16 +498,20 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                             label={t('customModules.statusChange')}
                             trigger={
                               <button type="button" className="cursor-pointer rounded-md">
-                                <Badge
-                                  size="row"
-                                  className={cn(
-                                    'min-w-28 justify-center',
-                                    record.status ? STATUS_BADGE[statusTone(record.status)] : 'bg-secondary',
-                                  )}
-                                >
-                                  {record.status ? statusName(record.status, lang) : t('customModules.noStatus')}
-                                  <ChevronDown className="size-3.5 opacity-70" />
-                                </Badge>
+                                {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
+                                {record.status ? (
+                                  <StatusBadge
+                                    status={record.status}
+                                    size="row"
+                                    className="min-w-36 justify-between"
+                                    trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
+                                  />
+                                ) : (
+                                  <Badge size="row" className="min-w-36 justify-between bg-secondary">
+                                    {t('customModules.noStatus')}
+                                    <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+                                  </Badge>
+                                )}
                               </button>
                             }
                           >
@@ -519,7 +523,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                                   onClick={() => status.mutate({ id: record.id, next: s.key })}
                                 >
                                   <Check className={cn('size-3.5', record.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
-                                  {statusName(s, lang)}
+                                  <StatusLabel status={s} />
                                 </button>
                               </ActionMenuClose>
                             ))}
@@ -932,7 +936,7 @@ function CustomRecordForm({
                 <SelectContent>
                   {statuses.map((s) => (
                     <SelectItem key={s.id} value={s.key}>
-                      {statusName(s, lang)}
+                      <StatusLabel status={s} />
                     </SelectItem>
                   ))}
                 </SelectContent>

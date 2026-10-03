@@ -41,8 +41,7 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { statusByKey, statusName, statusTone, useStatuses } from '@/lib/statuses'
-import { STATUS_BADGE } from '@/lib/statusStyles'
+import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
@@ -78,6 +77,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { cn } from '@/lib/utils'
+import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
    ბუკმარკების მოდული (`bookmark`, Tasks §18 — `DECISIONS.md` §10).
@@ -412,16 +412,20 @@ export function BookmarksPage() {
                       label={t('bookmarks.statusChange')}
                       trigger={
                         <button type="button" className="cursor-pointer rounded-md">
-                          <Badge
-                            size="row"
-                            className={cn(
-                              'min-w-28 justify-center',
-                              bookmark.status ? STATUS_BADGE[statusTone(bookmark.status)] : 'bg-secondary',
-                            )}
-                          >
-                            {bookmark.status ? statusName(bookmark.status, lang) : t('bookmarks.noStatus')}
-                            <ChevronDown className="size-3.5 opacity-70" />
-                          </Badge>
+                          {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
+                          {bookmark.status ? (
+                            <StatusBadge
+                              status={bookmark.status}
+                              size="row"
+                              className="min-w-36 justify-between"
+                              trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
+                            />
+                          ) : (
+                            <Badge size="row" className="min-w-36 justify-between bg-secondary">
+                              {t('bookmarks.noStatus')}
+                              <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+                            </Badge>
+                          )}
                         </button>
                       }
                     >
@@ -436,7 +440,7 @@ export function BookmarksPage() {
                             <Check
                               className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
                             />
-                            {statusName(s, lang)}
+                            <StatusLabel status={s} />
                           </button>
                         </ActionMenuClose>
                       ))}
@@ -823,7 +827,7 @@ function BookmarkForm({
               <SelectContent>
                 {statuses.map((s) => (
                   <SelectItem key={s.id} value={s.key}>
-                    {statusName(s, lang)}
+                    <StatusLabel status={s} />
                   </SelectItem>
                 ))}
               </SelectContent>

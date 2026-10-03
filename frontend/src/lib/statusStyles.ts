@@ -31,6 +31,15 @@ export const STATUS_INACTIVE: Record<string, string> = {
   favorite: 'border-dashed border-favorite/50 bg-favorite/10 text-favorite hover:bg-favorite/20',
 }
 
+/** Tasks §16.3 — აიქონის/ტექსტის ფერი ტონით (მენიუ, სელექტი); ლიტერალები, რომ Tailwind-მა დაინახოს */
+export const STATUS_TEXT: Record<string, string> = {
+  undecided: 'text-status-undecided',
+  towatch: 'text-status-towatch',
+  watching: 'text-status-watching',
+  watched: 'text-status-watched',
+  dropped: 'text-destructive',
+}
+
 /** ბეჯის რბილი ვარიანტი (`StatusBadge`, `EnumStatusBadge`) */
 export const STATUS_BADGE: Record<string, string> = {
   undecided: 'bg-status-undecided/15 text-status-undecided',

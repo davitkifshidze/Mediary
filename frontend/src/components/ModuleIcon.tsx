@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, type CSSProperties, lazy } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
@@ -211,16 +211,16 @@ export function iconId(name: string): string {
  */
 const DynamicIcon = lazy(() => import('lucide-react/dynamic').then((m) => ({ default: m.DynamicIcon })))
 
-export function ModuleIcon({ name, className }: { name?: string | null; className?: string }) {
+export function ModuleIcon({ name, className, style }: { name?: string | null; className?: string; style?: CSSProperties }) {
   const Icon = name ? ICONS[name] : undefined
-  if (Icon) return <Icon className={className} />
-  if (!name) return <LayoutGrid className={className} />
+  if (Icon) return <Icon className={className} style={style} />
+  if (!name) return <LayoutGrid className={className} style={style} />
 
-  const Fallback = () => <LayoutGrid className={className} />
+  const Fallback = () => <LayoutGrid className={className} style={style} />
 
   return (
-    <Suspense fallback={<LayoutGrid className={className} />}>
-      <DynamicIcon name={iconId(name) as never} className={className} fallback={Fallback} />
+    <Suspense fallback={<LayoutGrid className={className} style={style} />}>
+      <DynamicIcon name={iconId(name) as never} className={className} style={style} fallback={Fallback} />
     </Suspense>
   )
 }

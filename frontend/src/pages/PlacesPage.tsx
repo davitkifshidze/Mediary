@@ -400,7 +400,7 @@ export function PlacesPage() {
                         value={place.status}
                         onValueChange={(v) => status.mutate({ id: place.id, next: v as PlaceStatus })}
                       >
-                        <SelectTrigger className="h-9 w-32" aria-label={t('places.status')}>
+                        <SelectTrigger className="h-9 w-36" aria-label={t('places.status')}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

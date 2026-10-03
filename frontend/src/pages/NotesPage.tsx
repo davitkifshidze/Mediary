@@ -30,8 +30,7 @@ import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
-import { statusByKey, statusName, statusTone, useStatuses } from '@/lib/statuses'
-import { STATUS_BADGE } from '@/lib/statusStyles'
+import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { NoteChannelsDialog } from '@/components/NoteChannelsDialog'
 import { NoteNotificationsDialog } from '@/components/NoteNotificationsDialog'
 import { NoteDetail } from '@/components/NoteDetail'
@@ -58,7 +57,7 @@ import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
    ჩანაწერების მოდული (`note`, Tasks §13).
@@ -419,9 +418,8 @@ export function NotesPage() {
                 </div>
 
                 <span className="flex shrink-0 items-center gap-1">
-                  <Badge size="row" className={cn('mr-1', STATUS_BADGE[statusTone(note.status)] ?? 'bg-secondary')}>
-                    {statusName(note.status, lang)}
-                  </Badge>
+                  {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+                  <StatusBadge status={note.status} size="row" className="mr-1" />
                   {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით (ადგილს შემხსენებელთან §26 უცვლის) */}
                   <VisitCount value={note.visits_count} />
                   <FavoriteButton

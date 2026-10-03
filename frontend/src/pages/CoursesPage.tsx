@@ -369,7 +369,7 @@ export function CoursesPage() {
                         value={course.status}
                         onValueChange={(v) => status.mutate({ id: course.id, next: v as CourseStatus })}
                       >
-                        <SelectTrigger className="h-9 w-32" aria-label={t('courses.status')}>
+                        <SelectTrigger className="h-9 w-36" aria-label={t('courses.status')}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

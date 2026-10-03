@@ -396,7 +396,8 @@ class StatusController extends Controller
             // ⚠️ სავალდებულოა: სამი სერვისი მნიშვნელობას ეკითხება და არა სახელს
             'role' => ['required', Rule::in(StatusDomain::ROLES)],
             'icon' => ['nullable', 'string', 'max:60'],
-            'color' => ['nullable', 'string', 'max:20'],
+            // Tasks §16 — პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; სხვა არაფერი, თორემ ბეჭდვითი შეცდომა ბეჯს უფეროდ დატოვებდა
+            'color' => ['nullable', 'string', 'max:20', 'regex:/^(c([1-9]|1[0-2])|#[0-9a-fA-F]{6})$/'],
             'is_default' => ['nullable', 'boolean'],
         ]);
     }

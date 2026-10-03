@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowDownWideNarrow, ArrowLeft, ArrowUpNarrowWide, RotateCcw } from 'lucide-react'
 import { fetchStorageUsage } from '@/api/account'
 import { moduleName, useModules } from '@/lib/modules'
-import { statusName, useStatusMap } from '@/lib/statuses'
+import { useStatusMap } from '@/lib/statuses'
 import type { Status } from '@/api/types'
 import { formatDate } from '@/lib/dates'
 import {
@@ -19,7 +19,6 @@ import {
   POSTER_QUALITY_OPTIONS,
   SORT_FIELD_OPTIONS,
   TMDB_MAX_PAGE,
-  useContentLang,
   useSettings,
   type CardSize,
   type ContentLang,
@@ -42,6 +41,7 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { StatusLabel } from '@/components/StatusBadge'
 
 /* ============================================================
    პარამეტრების გვერდი (Tasks E1) — per-user, `users.settings`-ში.
@@ -50,9 +50,8 @@ import { Switch } from '@/components/ui/switch'
    ============================================================ */
 
 export function SettingsPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { settings, set, reset, isDirty } = useSettings()
-  const lang = useContentLang(i18n.language)
   const { mediaModules } = useModules()
 
   /* §6.4 — ნაგულისხმევი სექციის ვარიანტები **სამივე მედია-დომენის
@@ -114,7 +113,7 @@ export function SettingsPage() {
               <SelectItem value="all">{t('filter.all')}</SelectItem>
               {viewStatuses.map((s: Status) => (
                 <SelectItem key={s.key} value={s.key}>
-                  {statusName(s, lang)}
+                  <StatusLabel status={s} />
                 </SelectItem>
               ))}
               <SelectItem value="favorite">{t('filter.favorite')}</SelectItem>

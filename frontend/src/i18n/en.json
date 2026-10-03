@@ -2913,7 +2913,11 @@
       "done": "Finished"
     },
     "isDefault": "Default",
-    "isDefaultHint": "New records are created with this status."
+    "isDefaultHint": "New records are created with this status.",
+    "color": "Colour",
+    "colorRole": "Role colour",
+    "colorPick": "Colour {{n}}",
+    "colorHint": "By default the colour follows the role: amber for “not yet”, blue for “in progress”, green for “done”. An own colour overrides it so two statuses of one role (e.g. “Read” and “Archived”) can be told apart."
   },
   "list": {
     "showMore": "Show more",

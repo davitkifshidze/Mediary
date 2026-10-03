@@ -26,6 +26,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 import { statusName, useStatuses } from '@/lib/statuses'
 import { useContentLang } from '@/lib/settings'
+import { StatusLabel } from '@/components/StatusBadge'
 
 type Mode = 'by_status' | 'specific'
 /**
@@ -370,7 +371,7 @@ function BulkStatusPanel({
           <SelectContent>
             {statuses.map((s) => (
               <SelectItem key={s.id} value={s.key}>
-                {statusName(s, lang)}
+                <StatusLabel status={s} />
               </SelectItem>
             ))}
           </SelectContent>

@@ -359,7 +359,7 @@ function statusSegments(module: string, rows: StatStatus[], label: (s: StatStatu
     key: s.key ?? '—',
     label: label(s),
     value: s.count,
-    tone: statusFill(module, s.key, s.role),
+    tone: statusFill(module, s.key, s.role, s.color),
   }))
 }
 

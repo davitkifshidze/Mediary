@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type ReactNode, type ComponentType, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Check,
@@ -8,10 +8,9 @@ import {
   SquarePen,
   Star,
   Trash2,
-  type LucideIcon,
 } from 'lucide-react'
 import type { Status } from '@/api/types'
-import { statusName } from '@/lib/statuses'
+import { statusName, statusTone } from '@/lib/statuses'
 import { cn } from '@/lib/utils'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import {
@@ -24,6 +23,9 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { statusStyle } from '@/lib/statusColor'
+import { STATUS_TEXT } from '@/lib/statusStyles'
 
 /* ============================================================
    **ჩანაწერის მოქმედებების ერთი სია — ორი წარმოდგენა** (Tasks §7).
@@ -65,9 +67,12 @@ export const MENU_ICONS = {
 export interface MenuAction {
   key: string
   label: string
-  icon?: LucideIcon
+  /** lucide-ის აიქონი ან ნებისმიერი კომპონენტი, რომელიც `className`/`style`-ს იღებს (სტატუსის აიქონი სახელით) */
+  icon?: ComponentType<{ className?: string; style?: CSSProperties }>
   /** აიქონის დამატებითი კლასი — მაგ. შევსებული ვარსკვლავი რჩეულზე */
   iconClassName?: string
+  /** Tasks §16.3 — სტატუსის საკუთარი ფერი (`statusStyle(s, 'icon')`) */
+  iconStyle?: CSSProperties
   /** წითელი პუნქტი — წაშლა, მოხსნა */
   danger?: boolean
   disabled?: boolean
@@ -91,9 +96,13 @@ export function statusActions(
   return {
     key: 'status',
     label,
+    // Tasks §16.3 — თითო პუნქტს თავისი აიქონი და ფერი აქვს (ლექსიკონის `icon`/`color`, სხვაგვარად როლის ტონი)
     sub: statuses.map((s) => ({
       key: `status:${s.key}`,
       label: statusName(s, lang),
+      icon: (props: { className?: string; style?: CSSProperties }) => <ModuleIcon name={s.icon ?? 'Circle'} {...props} />,
+      iconClassName: STATUS_TEXT[statusTone(s)],
+      iconStyle: statusStyle(s, 'icon'),
       checked: current?.id === s.id,
       run: () => pick(s.key),
     })),
@@ -142,7 +151,7 @@ export function contextMenuItems(actions: MenuAction[]): ReactNode {
           onSelect={deferred(action.run)}
           className={cn(action.danger && 'text-destructive focus:bg-destructive/10 focus:text-destructive')}
         >
-          {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} />}
+          {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />}
           {action.label}
         </ContextMenuItem>
       )}
@@ -210,7 +219,7 @@ export function RecordActionMenu({
                 disabled={action.disabled}
                 onClick={deferred(action.run)}
               >
-                {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} />}
+                {action.icon && <action.icon className={cn('size-3.5', action.iconClassName)} style={action.iconStyle} />}
                 {action.label}
               </button>
             </ActionMenuClose>

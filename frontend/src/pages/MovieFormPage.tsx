@@ -44,6 +44,8 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 import { LinkField } from '@/components/ui/link-field'
+import { statusStyle } from '@/lib/statusColor'
+import { ModuleIcon } from '@/components/ModuleIcon'
 
 /** ⚠️ ღილაკების რიგი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
@@ -579,10 +581,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                     type="button"
                     onClick={() => set('status', s.key)}
                     className={cn(
-                      'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
                       form.status === s.key ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
+                    // Tasks §16.3 — საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
+                    style={statusStyle(s, form.status === s.key ? 'active' : 'inactive')}
                   >
+                    {s.icon && <ModuleIcon name={s.icon} className="size-3.5" />}
                     {statusName(s, lang)}
                   </button>
                 ))}

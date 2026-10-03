@@ -159,6 +159,18 @@ class Status extends Model
 
         $back = [];
 
+        /* Tasks §16.2 — არსებულ ნაგულისხმევს ფერი თუ არ აქვს, ნაკრებიდან ივსება: `color`
+           2026-10-03-მდე არავის ეწერა. ⚠️ query builder-ით — ფერის შევსება ადამიანის ქმედება
+           არაა და ჟურნალში „განახლდა“-დ არ უნდა ჩაიწეროს. */
+        foreach ($live as $status) {
+            $default = collect($defaults)->firstWhere('key', $status->key);
+
+            if ($default && $status->color === null && ! empty($default['color'])) {
+                static::withoutGlobalScopes()->whereKey($status->getKey())->update(['color' => $default['color']]);
+                $status->color = $default['color'];
+            }
+        }
+
         foreach ($defaults as $default) {
             $key = (string) $default['key'];
 

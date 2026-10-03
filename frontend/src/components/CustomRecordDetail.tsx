@@ -28,8 +28,6 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useModuleFields } from '@/lib/fields'
 import { useModules } from '@/lib/modules'
 import { useContentLang } from '@/lib/settings'
-import { statusName, statusTone } from '@/lib/statuses'
-import { STATUS_BADGE } from '@/lib/statusStyles'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
@@ -43,6 +41,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { cn, formatBytes } from '@/lib/utils'
+import { StatusBadge } from '@/components/StatusBadge'
 
 /* ============================================================
    **პირადი მოდულის ჩანაწერის ფანჯარა (Tasks §37.3).**
@@ -99,11 +98,8 @@ export function CustomRecordDetail({
             <>
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="custom_record" id={record.id} />
-              {record.status && (
-                <Badge size="row" className={STATUS_BADGE[statusTone(record.status)]}>
-                  {statusName(record.status, lang)}
-                </Badge>
-              )}
+              {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+              <StatusBadge status={record.status} size="row" />
               {record.is_favorite && (
                 <Badge size="row" className="bg-secondary">
                   <Star className="size-3.5 fill-current text-[var(--favorite)]" />

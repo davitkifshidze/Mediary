@@ -12,6 +12,7 @@ import {
   type StatusDomainKey,
 } from '@/api/statuses'
 import type { Status, StatusRole } from '@/api/types'
+import { resolveStatusColor } from '@/lib/statusColor'
 import { STATUS_FILL } from '@/lib/statusStyles'
 
 /* ============================================================
@@ -221,8 +222,12 @@ export function enumStatusTone(domain: EnumStatusDomain, status: string): string
  * არსად იხატება (ბეჯიც ტონს კითხულობს), ამიტომ აქაც არა — სხვაგვარად ერთი
  * სტატუსი ორ ფერში გამოჩნდებოდა.
  */
-export function statusFill(domain: string, key: string | null, role: string | null): string {
+export function statusFill(domain: string, key: string | null, role: string | null, color: string | null = null): string {
   if (!key) return STATUS_FILL.undecided
+
+  // Tasks §16 — სტატუსის საკუთარი ფერი (ბეჯის იგივე წესი), თუ არის
+  const own = resolveStatusColor(color)
+  if (own) return own
 
   const tone =
     domain in ENUM_STATUS_NS

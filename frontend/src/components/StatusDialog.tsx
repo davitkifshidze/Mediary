@@ -9,6 +9,7 @@ import {
 } from '@/api/statuses'
 import { isCustomModuleKey } from '@/lib/customModules'
 import { statusesQueryKey } from '@/lib/statuses'
+import { STATUS_PALETTE } from '@/lib/statusColor'
 import type { Status, StatusRole } from '@/api/types'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { ICON_NAMES } from '@/components/ModuleIcon'
@@ -58,6 +59,7 @@ export function StatusDialog({
     name_en: status?.name_en ?? '',
     role: status?.role ?? 'todo',
     icon: status?.icon ?? ICON_NAMES[0],
+    color: status?.color ?? null,
     is_default: status?.is_default ?? false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -143,6 +145,44 @@ export function StatusDialog({
             onChange={(icon) => setForm((f) => ({ ...f, icon }))}
             className="mt-1"
           />
+        </div>
+
+        {/* Tasks §16.1 — ფერი: 12 ტონის პალიტრა + „როლის ფერი" (ნაგულისხმევი) */}
+        <div>
+          <Label className="flex items-center gap-1.5">
+            {t('statuses.color')} <InfoHint info={t('statuses.colorHint')} />
+          </Label>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={t('statuses.color')}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!form.color}
+              onClick={() => setForm((f) => ({ ...f, color: null }))}
+              className={cn(
+                'h-8 cursor-pointer rounded-md border px-2.5 text-xs font-medium transition-colors',
+                !form.color ? 'border-primary bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
+              )}
+            >
+              {t('statuses.colorRole')}
+            </button>
+            {STATUS_PALETTE.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={form.color === key}
+                aria-label={t('statuses.colorPick', { n: key.slice(1) })}
+                title={t('statuses.colorPick', { n: key.slice(1) })}
+                onClick={() => setForm((f) => ({ ...f, color: key }))}
+                style={{ backgroundColor: `var(--status-${key})` }}
+                className={cn(
+                  'size-8 cursor-pointer rounded-md border-2 transition-transform',
+                  form.color === key ? 'scale-110 border-foreground' : 'border-transparent hover:scale-105',
+                )}
+              />
+            ))}
+          </div>
+          {errors.color && <p className="mt-1 text-xs text-destructive">{errors.color}</p>}
         </div>
 
         {/* ნაგულისხმევი — ახალი ჩანაწერი სწორედ მას იღებს */}

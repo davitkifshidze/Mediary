@@ -45,6 +45,20 @@
   --status-towatch: #b4791f;
   --status-watching: #2f6b8f;
   --status-watched: #3f7d42;
+  /* Tasks §16 — სტატუსის საკუთარი ფერების პალიტრა (`statuses.color = c1…c12`, `lib/statusColor.ts`).
+     ⚠️ c3/c4/c7/c9 ზუსტად როლის ტონებია — ნაგულისხმევი სტატუსი იმავე ფერში რჩება, რაშიც იყო. */
+  --status-c1: #b3261e;
+  --status-c2: #c2410c;
+  --status-c3: #b4791f;
+  --status-c4: #3f7d42;
+  --status-c5: #0f766e;
+  --status-c6: #0e7490;
+  --status-c7: #2f6b8f;
+  --status-c8: #4f46e5;
+  --status-c9: #7c6f9c;
+  --status-c10: #be185d;
+  --status-c11: #8a5a2b;
+  --status-c12: #6b7280;
   /* Tasks §8 — რჩეული წითელ-ვარდისფერია (შენი სიტყვებით), სტაფილოსფერი აღარ */
   --favorite: #c8355e;
 
@@ -159,6 +173,18 @@
   --status-towatch: #d0a24e;
   --status-watching: #6aa6c8;
   --status-watched: #6fb573;
+  --status-c1: #f08a80;
+  --status-c2: #fb923c;
+  --status-c3: #d0a24e;
+  --status-c4: #6fb573;
+  --status-c5: #5eead4;
+  --status-c6: #67e8f9;
+  --status-c7: #6aa6c8;
+  --status-c8: #a5b4fc;
+  --status-c9: #a596c9;
+  --status-c10: #f472b6;
+  --status-c11: #d4a373;
+  --status-c12: #9ca3af;
   --favorite: #f06a8a;
   /* ⚠️ მუქ თემაზე ღია სტაფილოსფერია (8.2:1 ფონზე), სავსე ფონზე კი ტექსტი
      მუქია — თეთრი იქ 2.3:1 იქნებოდა */

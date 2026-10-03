@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { StatusBadge } from '@/components/StatusBadge'
+import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -1180,7 +1180,7 @@ function VideoForm({
               <SelectContent>
                 {statuses.map((s) => (
                   <SelectItem key={s.id} value={s.key}>
-                    {statusName(s, lang)}
+                    <StatusLabel status={s} />
                   </SelectItem>
                 ))}
               </SelectContent>

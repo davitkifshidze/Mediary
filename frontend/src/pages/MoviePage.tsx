@@ -39,6 +39,8 @@ import { genreName, movieSubtitle, movieTitle } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { errorMessage } from '@/lib/errors'
+import { statusStyle } from '@/lib/statusColor'
+import { ModuleIcon } from '@/components/ModuleIcon'
 
 
 /** Tasks §8.1 — ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
@@ -251,10 +253,13 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                     key={s.id}
                     onClick={() => statusMut.mutate(s.key)}
                     className={cn(
-                      'cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
                       m.status?.id === s.id ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
+                    // Tasks §16.3 — საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
+                    style={statusStyle(s, m.status?.id === s.id ? 'active' : 'inactive')}
                   >
+                    {s.icon && <ModuleIcon name={s.icon} className="size-3.5" />}
                     {statusName(s, lang)}
                   </button>
                 ))}
