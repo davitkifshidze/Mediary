@@ -15,6 +15,7 @@ class BoardGameGenreResource extends JsonResource
             'name_ka' => $this->name_ka,
             'name_en' => $this->name_en,
             'icon' => $this->icon,
+            'color' => $this->color,
             'sort_order' => $this->sort_order,
             'board_games_count' => $this->whenCounted('boardGames'),
         ];

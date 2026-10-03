@@ -791,6 +791,9 @@
     "dismiss": "Dismiss"
   },
   "genres": {
+    "color": "Colour",
+    "colorNone": "No colour",
+    "colorHint": "The genre chip and card use this colour; without one they are grey.",
     "manage": "Manage genres",
     "title": "Manage genres",
     "add": "Add genre",
@@ -2183,6 +2186,10 @@
     "linksTitle": "Links"
   },
   "games": {
+    "platformsTitle": "Platforms",
+    "modesTitle": "Modes",
+    "genresTitle": "Genres",
+    "myPlatformHint": "Click a card to mark it as your platform (filled with a tick); click again to unmark.",
     "title": "Games",
     "add": "Add game",
     "count": "{{count}} game(s)",

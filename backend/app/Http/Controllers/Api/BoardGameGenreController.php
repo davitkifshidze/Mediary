@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BoardGameGenreResource;
 use App\Models\BoardGame;
 use App\Models\BoardGameGenre;
+use App\Support\DictionaryColor;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class BoardGameGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? null,
             'sort_order' => (int) BoardGameGenre::max('sort_order') + 1,
         ]);
 
@@ -49,6 +51,8 @@ class BoardGameGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $boardGameGenre->icon,
+            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            'color' => array_key_exists('color', $data) ? $data['color'] : $boardGameGenre->color,
         ])->save();
 
         return new BoardGameGenreResource($boardGameGenre);
@@ -120,6 +124,7 @@ class BoardGameGenreController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
+            'color' => DictionaryColor::RULE,
         ]);
     }
 }

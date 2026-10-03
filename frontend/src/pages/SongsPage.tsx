@@ -50,7 +50,9 @@ import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
 import { StarRating } from '@/components/ui/star-rating'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FieldAction, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { Chip } from '@/components/ui/chip'
+import { genreColor, tintStyle } from '@/lib/gameMeta'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -886,38 +888,38 @@ function SongForm({
           <FormField
             {...fields.field('genres')}
             error={errors.genre_ids}
-            action={
-              <FieldAction onClick={() => setNewGenre(true)} icon={<Plus className="size-3.5" />}>
-                {t('songGenres.add')}
-              </FieldAction>
-            }
           >
+            {/* Tasks §24.4 — ჟანრის ჩიპები აიქონით/ფერით, „დამატება" ღილაკი ჩიპების გვერდით */}
             <div
               className={cn(
-                'flex flex-wrap gap-1.5',
+                'flex flex-wrap items-center gap-1.5',
                 // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
                 errors.genre_ids && 'rounded-md border border-destructive p-1.5',
               )}
             >
-              {genres.map((genre) => (
-                <button
+              {genres.map((genre) => {
+                const on = genreIds.includes(genre.id)
+                const color = genreColor(genre)
+                return (
+                <Chip
                   key={genre.id}
-                  type="button"
+                  active={on}
                   onClick={() =>
                     setGenreIds((cur) =>
                       cur.includes(genre.id) ? cur.filter((id) => id !== genre.id) : [...cur, genre.id],
                     )
                   }
-                  className={cn(
-                    'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
-                    genreIds.includes(genre.id)
-                      ? 'border-primary bg-secondary font-medium'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
+                  icon={<ModuleIcon name={genre.icon} className="size-3.5" style={on ? undefined : (color ? { color } : undefined)} />}
+                  style={tintStyle(color, on)}
                 >
                   {dictionaryName(genre, lang)}
-                </button>
-              ))}
+                </Chip>
+                )
+              })}
+              <Button type="button" variant="outline" size="sm" onClick={() => setNewGenre(true)}>
+                <Plus className="size-3.5" />
+                {t('songGenres.add')}
+              </Button>
             </div>
           </FormField>
 

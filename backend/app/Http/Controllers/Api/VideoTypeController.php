@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoTypeResource;
 use App\Models\Video;
 use App\Models\VideoType;
+use App\Support\DictionaryColor;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
@@ -128,8 +129,8 @@ class VideoTypeController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
-            // Tasks §19.2 — სტატუსის ფერის იგივე წესი (`StatusController`)
-            'color' => ['nullable', 'string', 'max:20', 'regex:/^(c([1-9]|1[0-2])|#[0-9a-fA-F]{6})$/'],
+            // Tasks §19.2 → §24.3 — ლექსიკონის ფერის ერთი წესი
+            'color' => DictionaryColor::RULE,
         ]);
     }
 }

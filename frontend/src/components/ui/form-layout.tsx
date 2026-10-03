@@ -163,33 +163,6 @@ export function FormField({
   )
 }
 
-/**
- * ლეიბლის რიგის პატარა მოქმედება („+ ჟანრი", „+ ბმული") — ერთი სიმაღლე
- * ყველა ფორმაში, რომ რიგი არ გაიზარდოს.
- */
-export function FieldAction({
-  onClick,
-  icon,
-  children,
-  disabled,
-}: {
-  onClick: () => void
-  icon?: ReactNode
-  children: ReactNode
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex h-5 cursor-pointer items-center gap-1 rounded-md text-xs font-medium text-primary transition-colors hover:text-primary/70 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
 
 /**
  * **მიმაგრებული ქვედა ზოლი** — „გაუქმება" და „შენახვა".

@@ -10,31 +10,27 @@ import {
   deleteGameVideo,
   fetchGameFiles,
   fetchGameNotes,
-  updateGame,
   updateGameNote,
   fetchGameVideos,
   GAME_VIDEO_KINDS,
   uploadGameFiles,
   type Game,
   type GameFile,
-  type GamePlatform,
   type GameVideoKind,
   toggleGameFavorite,
 } from '@/api/games'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
+import { GameMetaSections } from '@/components/GameMetaCards'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
-import { videoTypeName as dictionaryName } from '@/lib/display'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RatingStars } from '@/components/ui/star-rating'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
-import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -69,45 +65,6 @@ import { LinkField } from '@/components/ui/link-field'
  * მოხსნის (`null`); სია `['games']`-ის გაუქმებით ახლდება და დეტალს ახალ
  * ობიექტს აწვდის (`GamesPage` მას id-ით პოულობს).
  */
-function MyPlatformChips({ game }: { game: Game }) {
-  const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
-
-  const pick = useMutation({
-    mutationFn: (platform: GamePlatform | null) => updateGame(game.id, { my_platform: platform }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['games'] }),
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
-
-  if (game.platforms.length === 0) return null
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {game.platforms.map((p) => {
-        const mine = p === game.my_platform
-
-        return (
-          <button
-            key={p}
-            type="button"
-            aria-pressed={mine}
-            disabled={pick.isPending}
-            title={t(mine ? 'games.myPlatformUnset' : 'games.myPlatformSet')}
-            onClick={() => pick.mutate(mine ? null : p)}
-            className={cn(
-              'cursor-pointer rounded-md px-2 py-0.5 text-xs transition-colors',
-              mine ? 'bg-primary/15 font-medium text-primary' : 'bg-muted text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t(`games.platforms.${p}`)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function GameDetail({ game, onClose }: { game: Game; onClose: () => void }) {
   // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
   const favoriteQc = useQueryClient()
@@ -147,21 +104,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           }
         >
 
-            {(game.genres ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {(game.genres ?? []).map((genre) => (
-                  <span
-                    key={genre.id}
-                    className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs"
-                  >
-                    <ModuleIcon name={genre.icon} className="size-3" />
-                    {dictionaryName(genre, lang)}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <MyPlatformChips game={game} />
+            {/* Tasks §24.2 — ჟანრები და პლატფორმები თავიდან ბარათებად გავიდა (ქვემოთ, `GameMetaSections`) */}
 
             {/* ---------- მოკლე ცნობები ---------- */}
             <DetailFacts>
@@ -183,6 +126,9 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               {game.size_gb != null && <span>{game.size_gb} GB</span>}
             </DetailFacts>
         </DetailHero>
+
+        {/* ---------- Tasks §24.2 — პლატფორმები („ჩემი" დაჭერით) · რეჟიმები · ჟანრები ბარათებად ---------- */}
+        <GameMetaSections game={game} />
 
         {/* ---------- სქრინშოტები — ზემოთ და დიდად (§22.2, Q35) ---------- */}
         <Screenshots game={game} />

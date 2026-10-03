@@ -9,6 +9,7 @@ import {
 } from '@/api/boardGames'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { ColorPick } from '@/components/ui/color-pick'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,6 +41,7 @@ export function BoardGameGenreDialog({
     name_ka: genre?.name_ka ?? '',
     name_en: genre?.name_en ?? '',
     icon: genre?.icon ?? 'Dices',
+    color: genre?.color ?? null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -98,6 +100,16 @@ export function BoardGameGenreDialog({
             className="mt-1"
           />
         </div>
+
+        {/* Tasks §24.3 — ფერი ჩიპისა და ბარათისთვის; იგივე პალიტრა, რაც სტატუსებს (§16) */}
+        <ColorPick
+          value={form.color ?? null}
+          onChange={(color) => setForm((f) => ({ ...f, color }))}
+          label={t('genres.color')}
+          hint={t('genres.colorHint')}
+          noneLabel={t('genres.colorNone')}
+          error={errors.color}
+        />
 
         <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>

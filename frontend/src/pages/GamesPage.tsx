@@ -34,7 +34,7 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { GameDetail } from '@/components/GameDetail'
 import { GameForm } from '@/components/GameForm'
-import { ModuleIcon } from '@/components/ModuleIcon'
+import { GenreChip, ModeChip, PlatformChip } from '@/components/GameMetaCards'
 import {
   FilterGroup,
   FilterOption,
@@ -54,7 +54,6 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 
@@ -369,29 +368,16 @@ export function GamesPage() {
                       )}
                     </p>
 
+                    {/* Tasks §24.2 — ჟანრები, პლატფორმები („ჩემი" სავსე) და რეჟიმები ერთი ფერებით, რაც დეტალის ბარათებს */}
                     <p className="mt-1 flex flex-wrap gap-1">
                       {(game.genres ?? []).slice(0, 4).map((genre) => (
-                        <span
-                          key={genre.id}
-                          className="inline-flex items-center gap-1 rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]"
-                        >
-                          <ModuleIcon name={genre.icon} className="size-3" />
-                          {dictionaryName(genre, lang)}
-                        </span>
+                        <GenreChip key={genre.id} genre={genre} />
                       ))}
                       {game.platforms.map((p) => (
-                        <span
-                          key={p}
-                          className={cn(
-                            'rounded-[5px] px-1.5 py-0.5 text-[11px]',
-                            // „ჩემი" პლატფორმა გამორჩეულია — სწორედ ის მაინტერესებს
-                            p === game.my_platform
-                              ? 'bg-primary/15 font-medium text-primary'
-                              : 'bg-muted text-muted-foreground',
-                          )}
-                        >
-                          {t(`games.platforms.${p}`)}
-                        </span>
+                        <PlatformChip key={p} platform={p} mine={p === game.my_platform} />
+                      ))}
+                      {game.modes.map((m) => (
+                        <ModeChip key={m} mode={m} />
                       ))}
                     </p>
                   </div>

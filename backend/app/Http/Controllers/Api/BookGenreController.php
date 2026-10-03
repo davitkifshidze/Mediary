@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookGenreResource;
 use App\Models\Book;
 use App\Models\BookGenre;
+use App\Support\DictionaryColor;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class BookGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? null,
             'sort_order' => (int) BookGenre::max('sort_order') + 1,
         ]);
 
@@ -49,6 +51,8 @@ class BookGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $bookGenre->icon,
+            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            'color' => array_key_exists('color', $data) ? $data['color'] : $bookGenre->color,
         ])->save();
 
         return new BookGenreResource($bookGenre);
@@ -120,6 +124,7 @@ class BookGenreController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
+            'color' => DictionaryColor::RULE,
         ]);
     }
 }

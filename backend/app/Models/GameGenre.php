@@ -31,21 +31,25 @@ class GameGenre extends Model
     /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
-    /** ახალ ანგარიშზე ავტომატურად შექმნილი ჟანრები (იგივე სია მიგრაციაშიც) */
+    /**
+     * ახალ ანგარიშზე ავტომატურად შექმნილი ჟანრები (იგივე სია მიგრაციაშიც).
+     * Tasks §24.3 — ხატულა (`ModuleIcon`-ის რუკიდან) და ფერი (`c1…c12`, `DictionaryColor`);
+     * აქამდე ყველა ერთი `LayoutGrid`-ით ჩანდა.
+     */
     public const DEFAULTS = [
-        ['key' => 'action', 'name_ka' => 'მოქმედება', 'name_en' => 'Action'],
-        ['key' => 'adventure', 'name_ka' => 'სათავგადასავლო', 'name_en' => 'Adventure'],
-        ['key' => 'rpg', 'name_ka' => 'როლური (RPG)', 'name_en' => 'RPG'],
-        ['key' => 'shooter', 'name_ka' => 'სროლა', 'name_en' => 'Shooter'],
-        ['key' => 'strategy', 'name_ka' => 'სტრატეგია', 'name_en' => 'Strategy'],
-        ['key' => 'simulation', 'name_ka' => 'სიმულატორი', 'name_en' => 'Simulation'],
-        ['key' => 'puzzle', 'name_ka' => 'თავსატეხი', 'name_en' => 'Puzzle'],
-        ['key' => 'platformer', 'name_ka' => 'პლატფორმერი', 'name_en' => 'Platformer'],
-        ['key' => 'racing', 'name_ka' => 'რბოლა', 'name_en' => 'Racing'],
-        ['key' => 'sports', 'name_ka' => 'სპორტი', 'name_en' => 'Sports'],
-        ['key' => 'fighting', 'name_ka' => 'ბრძოლა', 'name_en' => 'Fighting'],
-        ['key' => 'horror', 'name_ka' => 'საშინელება', 'name_en' => 'Horror'],
-        ['key' => 'indie', 'name_ka' => 'ინდი', 'name_en' => 'Indie'],
+        ['key' => 'action', 'name_ka' => 'მოქმედება', 'name_en' => 'Action', 'icon' => 'Zap', 'color' => 'c2'],
+        ['key' => 'adventure', 'name_ka' => 'სათავგადასავლო', 'name_en' => 'Adventure', 'icon' => 'Compass', 'color' => 'c5'],
+        ['key' => 'rpg', 'name_ka' => 'როლური (RPG)', 'name_en' => 'RPG', 'icon' => 'Swords', 'color' => 'c8'],
+        ['key' => 'shooter', 'name_ka' => 'სროლა', 'name_en' => 'Shooter', 'icon' => 'Crosshair', 'color' => 'c1'],
+        ['key' => 'strategy', 'name_ka' => 'სტრატეგია', 'name_en' => 'Strategy', 'icon' => 'Castle', 'color' => 'c7'],
+        ['key' => 'simulation', 'name_ka' => 'სიმულატორი', 'name_en' => 'Simulation', 'icon' => 'Plane', 'color' => 'c6'],
+        ['key' => 'puzzle', 'name_ka' => 'თავსატეხი', 'name_en' => 'Puzzle', 'icon' => 'Puzzle', 'color' => 'c3'],
+        ['key' => 'platformer', 'name_ka' => 'პლატფორმერი', 'name_en' => 'Platformer', 'icon' => 'Footprints', 'color' => 'c4'],
+        ['key' => 'racing', 'name_ka' => 'რბოლა', 'name_en' => 'Racing', 'icon' => 'Car', 'color' => 'c10'],
+        ['key' => 'sports', 'name_ka' => 'სპორტი', 'name_en' => 'Sports', 'icon' => 'Trophy', 'color' => 'c11'],
+        ['key' => 'fighting', 'name_ka' => 'ბრძოლა', 'name_en' => 'Fighting', 'icon' => 'Sword', 'color' => 'c9'],
+        ['key' => 'horror', 'name_ka' => 'საშინელება', 'name_en' => 'Horror', 'icon' => 'Ghost', 'color' => 'c12'],
+        ['key' => 'indie', 'name_ka' => 'ინდი', 'name_en' => 'Indie', 'icon' => 'Sparkles', 'color' => 'c6'],
     ];
 
     protected $guarded = ['id'];

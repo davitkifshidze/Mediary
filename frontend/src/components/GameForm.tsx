@@ -36,7 +36,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { FieldLabel } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FieldAction, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { Chip, ChipRow } from '@/components/ui/chip'
+import { ModuleIcon } from '@/components/ModuleIcon'
+import { genreColor, MODE_META, PLATFORM_META, tintStyle, type MetaLook } from '@/lib/gameMeta'
 import {
   QuickFill,
   QuickFillCandidate,
@@ -85,35 +88,39 @@ import { LinkField } from '@/components/ui/link-field'
    ============================================================ */
 
 /** მრავალარჩევანიანი ჩიპები — პლატფორმებსა და რეჟიმებს ერთი და იგივე სჭირდება */
+/* Tasks §24.4 — ⚠️ საერთო `Chip`-ით და არა ხელნაწერი პილულით: აიქონი და ფერი იმავე
+   რუკიდან მოდის, რაც დეტალის ბარათებს (`lib/gameMeta.ts`), არჩეული — სავსე ფონით. */
 function ChipGroup<T extends string>({
   values,
   selected,
   label,
   onToggle,
+  look,
 }: {
   values: readonly T[]
   selected: T[]
   label: (value: T) => string
   onToggle: (value: T) => void
+  look: (value: T) => MetaLook
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {values.map((value) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => onToggle(value)}
-          className={cn(
-            'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
-            selected.includes(value)
-              ? 'border-primary bg-secondary font-medium'
-              : 'border-border text-muted-foreground hover:bg-muted',
-          )}
-        >
-          {label(value)}
-        </button>
-      ))}
-    </div>
+    <ChipRow>
+      {values.map((value) => {
+        const { icon: Icon, color } = look(value)
+        const on = selected.includes(value)
+        return (
+          <Chip
+            key={value}
+            active={on}
+            onClick={() => onToggle(value)}
+            icon={<Icon className="size-3.5" style={on ? undefined : { color }} />}
+            style={tintStyle(color, on)}
+          >
+            {label(value)}
+          </Chip>
+        )
+      })}
+    </ChipRow>
   )
 }
 
@@ -566,37 +573,34 @@ export function GameForm({
           </FormField>
 
           {/* ჟანრები — per-user ლექსიკონი, ⚠️ **მრავალი** (11.1) */}
-          <FormField
-            {...fields.field('genres')}
-            error={errors.genre_ids}
-            action={
-              <FieldAction onClick={() => setNewGenre(true)} icon={<Plus className="size-3.5" />}>
-                {t('gameGenres.add')}
-              </FieldAction>
-            }
-          >
+          {/* Tasks §24.4 — „ჟანრის დამატება" ღილაკია ველის **ქვეშ**, ჩიპების გვერდით; ჩიპები ფერით და აიქონით */}
+          <FormField {...fields.field('genres')} error={errors.genre_ids}>
             <div
               className={cn(
-                'flex flex-wrap gap-1.5',
+                'flex flex-wrap items-center gap-1.5',
                 // ⚠️ აქ `Select` არ არის (ჭიპებია), ამიტომ წითელდება მთელ ბლოკს
                 errors.genre_ids && 'rounded-md border border-destructive p-1.5',
               )}
             >
-              {genres.map((genre) => (
-                <button
-                  key={genre.id}
-                  type="button"
-                  onClick={() => setGenreIds((cur) => toggleIn(cur, genre.id))}
-                  className={cn(
-                    'cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors',
-                    genreIds.includes(genre.id)
-                      ? 'border-primary bg-secondary font-medium'
-                      : 'border-border text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  {dictionaryName(genre, lang)}
-                </button>
-              ))}
+              {genres.map((genre) => {
+                const on = genreIds.includes(genre.id)
+                const color = genreColor(genre)
+                return (
+                  <Chip
+                    key={genre.id}
+                    active={on}
+                    onClick={() => setGenreIds((cur) => toggleIn(cur, genre.id))}
+                    icon={<ModuleIcon name={genre.icon} className="size-3.5" style={on ? undefined : (color ? { color } : undefined)} />}
+                    style={tintStyle(color, on)}
+                  >
+                    {dictionaryName(genre, lang)}
+                  </Chip>
+                )
+              })}
+              <Button type="button" variant="outline" size="sm" onClick={() => setNewGenre(true)}>
+                <Plus className="size-3.5" />
+                {t('gameGenres.add')}
+              </Button>
             </div>
           </FormField>
 
@@ -606,6 +610,7 @@ export function GameForm({
               selected={platforms}
               label={(p) => t(`games.platforms.${p}`)}
               onToggle={(p) => setPlatforms((cur) => toggleIn(cur, p))}
+              look={(p) => PLATFORM_META[p]}
             />
             {/* ⚠️ §5.1 — „სად ვთამაშობ" (`my_platform`) ფორმიდან მოიხსნა;
                 სვეტი და ძველი მნიშვნელობა რჩება (payload-ში ისევ მიდის) */}
@@ -617,6 +622,7 @@ export function GameForm({
               selected={modes}
               label={(m) => t(`games.modes.${m}`)}
               onToggle={(m) => setModes((cur) => toggleIn(cur, m))}
+              look={(m) => MODE_META[m]}
             />
           </FormField>
         </FormSection>

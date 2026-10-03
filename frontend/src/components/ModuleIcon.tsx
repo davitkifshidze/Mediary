@@ -92,6 +92,18 @@ import {
   Wallet,
   Wrench,
   Zap,
+  Monitor,
+  Gamepad,
+  Smartphone,
+  Sofa,
+  Crosshair,
+  Castle,
+  Car,
+  Ghost,
+  Compass,
+  Footprints,
+  Sword,
+  Target,
 } from 'lucide-react'
 
 /* ============================================================
@@ -138,7 +150,8 @@ const GROUPS = [
   },
   {
     key: 'games',
-    icons: { Gamepad2, Dices, Puzzle, Trophy, Swords, Joystick },
+    // Tasks §24 — პლატფორმები/რეჟიმები/ჟანრები (`lib/gameMeta.ts`, `GameGenre::DEFAULTS`)
+    icons: { Gamepad2, Gamepad, Dices, Puzzle, Trophy, Swords, Sword, Joystick, Monitor, Smartphone, Sofa, Crosshair, Castle, Car, Ghost, Compass, Footprints, Target },
   },
   {
     key: 'state',

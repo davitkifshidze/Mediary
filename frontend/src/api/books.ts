@@ -316,6 +316,8 @@ export interface BookGenre {
   name_ka: string
   name_en: string
   icon: string | null
+  /** Tasks §24.3 — ჟანრის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  color: string | null
   sort_order: number
   books_count?: number
 }
@@ -324,6 +326,7 @@ export interface BookGenreInput {
   name_ka: string
   name_en: string
   icon?: string | null
+  color?: string | null
 }
 
 export async function fetchBookGenres(): Promise<BookGenre[]> {

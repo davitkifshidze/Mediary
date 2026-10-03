@@ -68,6 +68,17 @@
   --platform-dailymotion: #0057bd;
   --platform-file: #6b7280;
   --platform-other: #7a6a5a;
+  /* Tasks §24.1 — თამაშის პლატფორმები და რეჟიმები (`lib/gameMeta.ts`) */
+  --game-pc: #4b6a8a;
+  --game-playstation: #1f5fbf;
+  --game-xbox: #2f8f3a;
+  --game-switch: #d12b2b;
+  --game-mobile: #7c4dbd;
+  --game-single: #4b6a8a;
+  --game-multi: #0f766e;
+  --game-coop-local: #b4791f;
+  --game-coop-online: #0e7490;
+  --game-pvp: #b3261e;
 
   /* **რედაქტირების ფერი** (2026-09-28, შენი არჩევანი): სტაფილოსფერი ჩარჩო
      და ტექსტი, ჰოვერზე — სავსე ღილაკი (`Button variant="edit"`).
@@ -199,6 +210,17 @@
   --platform-dailymotion: #6aa6ff;
   --platform-file: #9ca3af;
   --platform-other: #bfae9a;
+  /* §24.1 — იგივე მუქ ფონზე ოდნავ ღია */
+  --game-pc: #93b0cf;
+  --game-playstation: #6a9ff0;
+  --game-xbox: #6fb573;
+  --game-switch: #f07070;
+  --game-mobile: #b48ae6;
+  --game-single: #93b0cf;
+  --game-multi: #5eead4;
+  --game-coop-local: #d0a24e;
+  --game-coop-online: #67e8f9;
+  --game-pvp: #f08a80;
   /* ⚠️ მუქ თემაზე ღია სტაფილოსფერია (8.2:1 ფონზე), სავსე ფონზე კი ტექსტი
      მუქია — თეთრი იქ 2.3:1 იქნებოდა */
   --edit: #fb923c;

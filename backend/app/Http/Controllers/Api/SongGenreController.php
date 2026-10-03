@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SongGenreResource;
 use App\Models\Song;
 use App\Models\SongGenre;
+use App\Support\DictionaryColor;
 use App\Support\DictionaryRecords;
 use App\Support\DictionaryTrash;
 use Illuminate\Http\Request;
@@ -39,6 +40,7 @@ class SongGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? null,
             'sort_order' => (int) SongGenre::max('sort_order') + 1,
         ]);
 
@@ -53,6 +55,8 @@ class SongGenreController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $songGenre->icon,
+            // Tasks §24.3 — ⚠️ `array_key_exists`: ფერის მოხსნა (`null`) ცხადი არჩევანია
+            'color' => array_key_exists('color', $data) ? $data['color'] : $songGenre->color,
         ])->save();
 
         return new SongGenreResource($songGenre);
@@ -134,6 +138,7 @@ class SongGenreController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
+            'color' => DictionaryColor::RULE,
         ]);
     }
 }
