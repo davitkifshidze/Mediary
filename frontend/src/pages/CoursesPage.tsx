@@ -688,6 +688,8 @@ function CourseForm({
               value={form.url}
               onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               onBlur={(e) => void loadMeta(e.target.value)}
+              // Tasks §15.2 — paste-ზეც, არა მხოლოდ ველიდან გასვლაზე
+              onPaste={(e) => void loadMeta(e.clipboardData.getData('text'))}
             />
             {probing && (
               <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />

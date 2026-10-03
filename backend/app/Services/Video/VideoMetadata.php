@@ -2,6 +2,7 @@
 
 namespace App\Services\Video;
 
+use App\Services\Bookmarks\LinkMetadata;
 use App\Services\Credentials\CredentialStore;
 use App\Support\CredentialProviders;
 use App\Support\Redact;
@@ -58,7 +59,8 @@ class VideoMetadata
                     'https://www.dailymotion.com/services/oembed?format=json&url='.urlencode($url),
                     $meta,
                 ),
-                default => $meta,
+                // Tasks §15.1 — `other` ბმულზე გვერდის Open Graph იკითხება; `file`-ზე წასაკითხი არაფერია
+                default => $this->page($url, $meta),
             };
         } catch (\Throwable $e) {
             // მეტამონაცემი არასავალდებულოა — ბმული მაინც ინახება
@@ -74,6 +76,30 @@ class VideoMetadata
     }
 
     /* ---------- პლატფორმები ---------- */
+
+    /**
+     * Tasks §15.1 — `other` პლატფორმა (არა YouTube/Vimeo/Dailymotion/ფაილი): სათაური,
+     * აღწერა და ესკიზი გვერდის `<head>`-იდან (Open Graph) — აქამდე აქ არაფერი იყო
+     * და ვიდეოს/სიმღერის ფორმა ასეთ ბმულზე ცარიელი რჩებოდა.
+     */
+    private function page(string $url, array $meta): array
+    {
+        if ($meta['platform'] !== 'other') {
+            return $meta;
+        }
+
+        $page = app(LinkMetadata::class)->fetch($url);
+
+        $meta['title'] = $page['title'] ?? $meta['title'];
+        $meta['description'] = $page['description'] ?? $meta['description'];
+        $meta['thumbnail_url'] = $page['image_url'] ?? $meta['thumbnail_url'];
+
+        if ($page['title'] !== null || $page['image_url'] !== null) {
+            $meta['source'] = 'opengraph';
+        }
+
+        return $meta;
+    }
 
     private function youtube(string $url, ?string $id, array $meta): array
     {

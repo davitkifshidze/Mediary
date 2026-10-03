@@ -43,6 +43,7 @@ import { useContentLang } from '@/lib/settings'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { errorMessage, isApiCode } from '@/lib/errors'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
+import { LinkField } from '@/components/ui/link-field'
 
 /** ⚠️ ღილაკების რიგი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'media-form'
@@ -530,10 +531,11 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             htmlFor="m-ge-url"
             error={errors.ge_url?.[0]}
           >
-            <Input
+            {/* Tasks §15.3 — ბმულის მეტა-მონაცემი გაცნობისთვის: სწორი გვერდია თუ არა, აქვე ჩანს */}
+            <LinkField
               id="m-ge-url"
               value={form.ge_url}
-              onChange={(e) => set('ge_url', e.target.value)}
+              onChange={(v) => set('ge_url', v)}
               placeholder={fields.placeholder('ge_url') ?? 'https://…'}
             />
           </FormField>
@@ -545,10 +547,10 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             htmlFor="m-trailer"
             error={errors.trailer_url?.[0]}
           >
-            <Input
+            <LinkField
               id="m-trailer"
               value={form.trailer_url}
-              onChange={(e) => set('trailer_url', e.target.value)}
+              onChange={(v) => set('trailer_url', v)}
               placeholder={fields.placeholder('trailer_url') ?? 'https://www.youtube.com/watch?v=…'}
             />
           </FormField>

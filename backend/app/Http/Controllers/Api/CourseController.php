@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
 use App\Services\Bookmarks\LinkMetadata;
+use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
@@ -82,11 +83,12 @@ class CourseController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით და არა 5xx: კურსის გვერდი ბოტს
      * ხშირად 403-ს აძლევს და ეს ხელით შევსებას არ უნდა უშლიდეს (ბუკმარკის წესი).
      */
-    public function metadata(Request $request, LinkMetadata $meta)
+    /** Tasks §15.3 — კურსის ბმული ხშირად YouTube-ია („პოდკასტი“): `LinkResolver` oEmbed-ის ესკიზსაც აბრუნებს */
+    public function metadata(Request $request, LinkResolver $resolver)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
 
-        return response()->json($meta->fetch($data['url']));
+        return response()->json($resolver->resolve($data['url']));
     }
 
     public function store(Request $request)

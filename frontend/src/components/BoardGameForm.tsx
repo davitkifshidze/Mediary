@@ -44,6 +44,7 @@ import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { StarRating } from '@/components/ui/star-rating'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
    ბორდგეიმის ფორმა (Tasks §14).
@@ -652,11 +653,16 @@ export function BoardGameForm({
                       setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
                     }
                   />
-                  <Input
-                    placeholder="https://…"
+                  {/* Tasks §15.3 — ცარიელი წარწერა გვერდის სათაურით ივსება */}
+                  <LinkField
+                    className="min-w-0 flex-1"
                     value={link.url}
-                    onChange={(e) =>
-                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
+                    onChange={(url) => setLinks((all) => all.map((x, j) => (j === i ? { ...x, url } : x)))}
+                    onFound={(p) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: x.label || (p.title ?? '') } : x)))
+                    }
+                    onApply={(p) =>
+                      setLinks((all) => all.map((x, j) => (j === i ? { ...x, label: p.title ?? x.label } : x)))
                     }
                   />
                   <Input

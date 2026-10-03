@@ -753,6 +753,11 @@
   "alert": {
     "ok": "Got it"
   },
+  "links": {
+    "found": "Found",
+    "apply": "Insert",
+    "dismiss": "Dismiss"
+  },
   "genres": {
     "manage": "Manage genres",
     "title": "Manage genres",

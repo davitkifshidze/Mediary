@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\GameVideoController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\GenreItemController;
 use App\Http\Controllers\Api\ImportController;
+use App\Http\Controllers\Api\LinkResolverController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MediaSyncController;
@@ -314,6 +315,11 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **მოდულის ჯგუფის გარეთ**: კითხვა ყველა ჩართულ მოდულს ეხება და არა
        ერთს — რომელია ჩართული, ამას `GlobalSearch` წყვეტს. */
     Route::get('/search', [SearchController::class, 'index']);
+
+    /* ---------- ბმულის მეტა-მონაცემი (Tasks §15.1) ----------
+       ერთი კარი ყველა ფორმისთვის: oEmbed ვიდეო-პლატფორმაზე, Open Graph სხვაგან.
+       მოდულის middleware-ის გარეთ — ბმული ყველა მოდულს ეხება და POST არაფერს ქმნის. */
+    Route::post('/links/metadata', [LinkResolverController::class, 'resolve']);
 
     /* ---------- აუდიტ-ლოგი: სექციაში შესვლა (Tasks §4.1) ----------
        SPA-ს მარშრუტის შეცვლა HTTP რექვესთი არ არის, ე.ი. სიგნალი ცხადად

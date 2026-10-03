@@ -243,7 +243,7 @@ export interface VideoMetadata {
   thumbnail_url: string | null
   author: string | null
   /** საიდან წამოვიდა: oembed | youtube_api | null */
-  source: 'oembed' | 'youtube_api' | null
+  source: 'oembed' | 'youtube_api' | 'opengraph' | null
   /** შენი YouTube-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა (ხანგრძლივობა/ტეგებისთვის) */
   youtube_key: boolean
   /**

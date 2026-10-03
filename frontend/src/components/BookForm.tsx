@@ -44,6 +44,7 @@ import { useToast } from '@/components/ui/feedback'
 import { StarRating } from '@/components/ui/star-rating'
 import { TagSelect } from '@/components/TagSelect'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
    წიგნის ფორმა (Tasks §12).
@@ -547,12 +548,25 @@ export function BookForm({
           {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
               ebook ფაილს არ ცვლის — ეს გარე ბმულია (მაღაზია, ბიბლიოთეკა). */}
           <FormField {...fields.field('source_url')} htmlFor="b-source-url" error={errors.source_url}>
-            <Input
+            {/* Tasks §15.3 — paste/blur-ზე გვერდის მეტა-მონაცემი: ცარიელ სათაურს/აღწერას ავსებს, „ჩასმა" შევსებულსაც */}
+            <LinkField
               id="b-source-url"
-              type="url"
-              placeholder="https://…"
               value={form.source_url}
-              onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+              onChange={(source_url) => setForm((f) => ({ ...f, source_url }))}
+              onFound={(p) =>
+                setForm((f) => ({
+                  ...f,
+                  title_en: f.title_en || (p.title ?? ''),
+                  description_en: f.description_en || (p.description ?? ''),
+                }))
+              }
+              onApply={(p) =>
+                setForm((f) => ({
+                  ...f,
+                  title_en: p.title ?? f.title_en,
+                  description_en: p.description ?? f.description_en,
+                }))
+              }
             />
           </FormField>
         </FormSection>

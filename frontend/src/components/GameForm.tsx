@@ -54,6 +54,7 @@ import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
 import { StarRating } from '@/components/ui/star-rating'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
    თამაშის ფორმა (Tasks §11; ველების სია დამტკიცდა 19.1-ში).
@@ -687,12 +688,24 @@ export function GameForm({
                         <X className="size-4" />
                       </Button>
                     </div>
-                    <Input
-                      placeholder="https://…"
+                    {/* Tasks §15.3 — ბმულის მეტა-მონაცემი: ცარიელი წარწერა სათაურით ივსება, ვიდეო-ბმული „ტრეილერად" იწერება */}
+                    <LinkField
                       value={link.url}
-                      onChange={(e) =>
-                        setLinks((all) => all.map((x, j) => (j === i ? withUrl(x, e.target.value) : x)))
+                      onChange={(url) => setLinks((all) => all.map((x, j) => (j === i ? withUrl(x, url) : x)))}
+                      onFound={(p) =>
+                        setLinks((all) =>
+                          all.map((x, j) =>
+                            j === i
+                              ? {
+                                  ...x,
+                                  label: x.label || (p.title ?? ''),
+                                  kind: p.kind === 'video' && (x.kind ?? 'other') === 'other' ? 'trailer' : x.kind,
+                                }
+                              : x,
+                          ),
+                        )
                       }
+                      onApply={(p) => set({ label: p.title ?? link.label })}
                     />
                     {/* §22.4 — ⚠️ ასეთი ბმული ბმულად არ ინახება: სერვერი თამაშის ვიდეოდ აქცევს */}
                     {becomesVideo(link) && (

@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
-import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RatingStars } from '@/components/ui/star-rating'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
@@ -42,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { formatBytes } from '@/lib/utils'
+import { LinkField } from '@/components/ui/link-field'
 
 /* ============================================================
    თამაშის დეტალები — ვიდეოები (§11.2), სქრინშოტები (§11.3),
@@ -269,11 +269,12 @@ function Videos({ game }: { game: Game }) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Input
+        {/* Tasks §15.3 — ჩასმისთანავე სათაური, ესკიზი და ხანგრძლივობა ჩანს */}
+        <LinkField
           className="min-w-56 flex-1"
           placeholder={t('games.videoUrlPlaceholder')}
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={setUrl}
         />
         <Select value={kind} onValueChange={(v) => setKind(v as GameVideoKind)}>
           <SelectTrigger className="w-44">
