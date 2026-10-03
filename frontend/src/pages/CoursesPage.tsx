@@ -2,17 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ExternalLink,
-  GraduationCap,
-  Link2,
-  Loader2,
-  Paperclip,
-  Plus,
-  Search,
-  SquarePen,
-  Trash2,
-} from 'lucide-react'
+import { Award, ExternalLink, FileText, GraduationCap, Image as ImageIcon, Link2, Loader2, Plus, Search } from 'lucide-react'
 import {
   COURSE_STATUSES,
   createCourse,
@@ -25,9 +15,11 @@ import {
   updateCourse,
   type Course,
   type CourseCategory,
+  type CourseFileKind,
   type CourseFilters,
   type CourseInput,
   type CourseStatus,
+  uploadCourseFiles,
 } from '@/api/courses'
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
@@ -39,6 +31,9 @@ import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { CourseDetail } from '@/components/CourseDetail'
+import { PendingFilesSection } from '@/components/PendingFiles'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { EnumStatusMenu } from '@/components/StatusMenu'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
@@ -50,7 +45,6 @@ import {
   FilterPanel,
   FilterTrigger,
 } from '@/components/FilterPanel'
-import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
@@ -59,16 +53,16 @@ import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components
 import { ModalShell } from '@/components/ui/modal-shell'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { usePendingUploads } from '@/lib/pendingUploads'
+import { hostLabel } from '@/lib/platforms'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    კურსების მოდული (`course`, FEAT-25).
@@ -275,6 +269,17 @@ export function CoursesPage() {
             <>
               <ul className="space-y-3">
                 {courses.map((course) => {
+                  const askDelete = async () => {
+                    if (
+                      await confirm({
+                        title: t('courses.delete'),
+                        description: t('courses.deleteHint', { name: course.title }),
+                        variant: 'destructive',
+                      })
+                    ) {
+                      remove.mutate(course.id)
+                    }
+                  }
                   /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(course) },
@@ -293,23 +298,7 @@ export function CoursesPage() {
                     },
                     favoriteAction(course.is_favorite, () => favorite.mutate(course.id), t),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(course) },
-                    {
-                      key: 'delete',
-                      label: t('actions.delete'),
-                      icon: MENU_ICONS.delete,
-                      danger: true,
-                      run: async () => {
-                        if (
-                          await confirm({
-                            title: t('courses.delete'),
-                            description: t('courses.deleteHint', { name: course.title }),
-                            variant: 'destructive',
-                          })
-                        ) {
-                          remove.mutate(course.id)
-                        }
-                      },
-                    },
+                    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
                   <RecordContextMenu key={course.id} actions={actions}>
@@ -344,13 +333,14 @@ export function CoursesPage() {
                         >
                           {course.title}
                         </button>
-                        <EnumStatusBadge domain="course" status={course.status} />
-                        <VisibilityBadge value={course.visibility} />
+                        {/* §29.1 — სტატუსი მხოლოდ ზოლშია (აქამდე აქაც ბეჯი იყო და იქაც სელექთი) */}
+                        <VisibilityBadge value={course.visibility} size="row" />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {[
-                          course.platform,
+                          // §29.3 — ჰოსტის ნაცვლად პლატფორმის სახელი („YouTube“), უცნობზე ჰოსტივე
+                          hostLabel(course.platform, t),
                           course.category ? dictionaryName(course.category, lang) : null,
                         ]
                           .filter(Boolean)
@@ -364,86 +354,29 @@ export function CoursesPage() {
                       )}
                     </div>
 
-                    <div className="flex shrink-0 items-start gap-1">
-                      <Select
-                        value={course.status}
-                        onValueChange={(v) => status.mutate({ id: course.id, next: v as CourseStatus })}
-                      >
-                        <SelectTrigger className="h-9 w-36" aria-label={t('courses.status')}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COURSE_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {t(`courses.statuses.${s}`)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
-                          `asChild` არ აქვს; გარე ბმული ბუკმარკის იგივე ფორმაშია. */}
-                      {/* Tasks §14.2 — ბმულის სლოტი ყოველთვის ადგილზეა (უბმულოზე უხილავი), §14.3 — ყველა კონტროლი h-9 */}
-                      <a
-                        href={course.url ?? undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('courses.open')}
-                        aria-hidden={!course.url || undefined}
-                        className={cn(
-                          'grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
-                          !course.url && 'invisible pointer-events-none',
-                        )}
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-9"
-                        onClick={() => setDetail(course)}
-                        aria-label={t('courses.files')}
-                      >
-                        <Paperclip className="size-4" />
-                        <span className="w-3 text-[11px] tabular-nums">
-                          {course.files_count || ''}
-                        </span>
-                      </Button>
-                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                      <VisitCount value={course.visits_count} />
-                      <FavoriteButton
-                        active={course.is_favorite}
-                        pending={favorite.isPending && favorite.variables === course.id}
-                        onToggle={() => favorite.mutate(course.id)}
-                      />
-                      <Button
-                        variant="edit"
-                        size="sm"
-                        onClick={() => setEditing(course)}
-                      >
-                        <SquarePen className="size-3.5" />
-                        {t('actions.edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 text-destructive"
-                        onClick={async () => {
-                          if (
-                            await confirm({
-                              title: t('courses.delete'),
-                              description: t('courses.deleteHint', { name: course.title }),
-                              variant: 'destructive',
-                            })
-                          ) {
-                            remove.mutate(course.id)
-                          }
-                        }}
-                        aria-label={t('actions.delete')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
+                        ბმული (უბმულოზე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */}
+                    <RecordActionBar
+                      before={<VisitCount value={course.visits_count} />}
+                      status={
+                        <EnumStatusMenu
+                          domain="course"
+                          value={course.status}
+                          options={COURSE_STATUSES}
+                          label={t('courses.status')}
+                          onChange={(next) => status.mutate({ id: course.id, next })}
+                        />
+                      }
+                      favorite={{
+                        active: course.is_favorite,
+                        pending: favorite.isPending && favorite.variables === course.id,
+                        onToggle: () => favorite.mutate(course.id),
+                      }}
+                      files={{ count: course.files_count ?? 0, onOpen: () => setDetail(course) }}
+                      link={{ href: course.url, label: t('actions.link'), icon: ExternalLink, title: course.url ?? undefined }}
+                      onEdit={() => setEditing(course)}
+                      onDelete={() => void askDelete()}
+                    />
                   </li>
                   </RecordContextMenu>
                   )
@@ -577,6 +510,11 @@ function CourseForm({
   const qc = useQueryClient()
   // §26.5 — დამატებითი ველები ახალ კურსზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
   const extras = useRecordExtras('course', course)
+  /* Tasks §29.3 — ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`, ჩანაწერების §23.4-ის
+     პატერნი): შენახვამდე ბრაუზერშია, შენახვისას ჯერ კურსი, მერე ფაილები სათითაოდ.
+     ⚠️ ჩავარდნა კურსს არ აუქმებს — ფანჯარა ღია რჩება, ჩავარდნილი მიზეზით, „შენახვა" ხელახლა ცდის. */
+  const pending = usePendingUploads<CourseFileKind>()
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის წამოღებას.
@@ -614,6 +552,23 @@ function CourseForm({
         toast({ title: done.message, variant: 'error' })
 
         return
+      }
+
+      if (pending.items.length) {
+        const failed = await pending.run(
+          (kind, file) => uploadCourseFiles(saved.id, kind, [file]),
+          (done, total) => setProgress({ done, total }),
+        )
+        setProgress(null)
+        qc.invalidateQueries({ queryKey: ['course-files', saved.id] })
+        qc.invalidateQueries({ queryKey: ['courses'] })
+        qc.invalidateQueries({ queryKey: ['storage'] })
+
+        if (failed.length) {
+          toast({ title: t('uploads.failed', { names: failed.map((f) => f.file.name).join(', ') }), variant: 'error' })
+
+          return
+        }
       }
 
       toast({ title: t('courses.saved'), variant: 'success' })
@@ -790,6 +745,20 @@ function CourseForm({
             />
           </FormField>
         </FormSection>
+
+        {/* §29.3 — ფაილები ახალ კურსზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {!course && (
+          <PendingFilesSection
+            pending={pending}
+            title={t('courses.files')}
+            hint={t('uploads.pendingHint')}
+            kinds={[
+              { kind: 'certificate', label: t('courses.fileKinds.certificate'), icon: Award, limit: 'doc' },
+              { kind: 'image', label: t('courses.fileKinds.image'), icon: ImageIcon },
+              { kind: 'doc', label: t('courses.fileKinds.doc'), icon: FileText },
+            ]}
+          />
+        )}
       </form>
 
       {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ კურსზეც** (აქამდე მხოლოდ
@@ -800,6 +769,10 @@ function CourseForm({
         draft={extras.draft}
         className="mt-6"
       />
+
+      {progress && (
+        <p className="mt-3 text-xs text-muted-foreground">{t('uploads.progress', { done: progress.done, total: progress.total })}</p>
+      )}
 
       {/* ⚠️ „ინახება…" შენახვისას — აქამდე „შენახვა" ეწერა და ღილაკი უმოქმედოს ჰგავდა */}
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />

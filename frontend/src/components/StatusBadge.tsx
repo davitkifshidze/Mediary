@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Ban, BookOpen, BookOpenCheck, CheckCircle2, Clock, Gamepad2, MapPin, PlayCircle, type LucideIcon } from 'lucide-react'
+import { Ban, BookOpen, BookOpenCheck, CheckCircle2, Circle, Clock, Gamepad2, MapPin, PlayCircle, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge, type BadgeSize } from '@/components/ui/badge'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -84,6 +84,23 @@ export const ENUM_STATUS_ICON = {
 
 export function enumStatusIcon(domain: EnumStatusDomain, status: string): LucideIcon | null {
   return (ENUM_STATUS_ICON[domain] as Record<string, LucideIcon>)[status] ?? null
+}
+
+/**
+ * **enum-სტატუსის სახელი აიქონით და ფერით — მენიუს პუნქტებისთვის** (Tasks §29.1):
+ * `StatusLabel`-ის ზუსტი ანალოგი წიგნის/თამაშის/კურსის/ადგილის enum-ისთვის.
+ */
+export function EnumStatusLabel({ domain, status, className }: { domain: EnumStatusDomain; status: string; className?: string }) {
+  const { t } = useTranslation()
+  const key = enumStatusKey(domain, status)
+  const Icon = enumStatusIcon(domain, status) ?? Circle
+
+  return (
+    <span className={cn('inline-flex min-w-0 items-center gap-2', className)}>
+      <Icon className={cn('size-3.5 shrink-0', STATUS_TEXT[enumStatusTone(domain, status)])} />
+      <span className="truncate">{key ? t(key) : status}</span>
+    </span>
+  )
 }
 
 /**

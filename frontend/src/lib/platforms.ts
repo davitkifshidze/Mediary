@@ -40,3 +40,32 @@ export function platformLabel(platform: string | null | undefined, t: (key: stri
   const look = platformLook(platform)
   return look.i18n ? t(look.label) : look.label
 }
+
+/* Tasks §29.3 — **ჰოსტიდან პლატფორმა**: კურსის `platform` ჰოსტის სტრიქონია
+   („youtube.com“, `Course::applyUrl`), ვიდეოსი — enum. ერთი რუკა, რომ კურსის
+   სიაშიც და ფანჯარაშიც ბრენდის სახელი და ფერი ეწეროს, უცნობ ჰოსტს კი
+   თვითონ ჰოსტი („udemy.com“). */
+const HOSTS: Record<string, VideoPlatform> = {
+  'youtube.com': 'youtube',
+  'm.youtube.com': 'youtube',
+  'youtu.be': 'youtube',
+  'youtube-nocookie.com': 'youtube',
+  'vimeo.com': 'vimeo',
+  'player.vimeo.com': 'vimeo',
+  'dailymotion.com': 'dailymotion',
+  'dai.ly': 'dailymotion',
+}
+
+export function platformFromHost(host: string | null | undefined): VideoPlatform | null {
+  if (!host) return null
+
+  return HOSTS[host.toLowerCase().replace(/^www\./, '')] ?? null
+}
+
+/** ჰოსტის სახელი ეკრანისთვის — ცნობილი პლატფორმა ბრენდით, დანარჩენი ჰოსტივე */
+export function hostLabel(host: string | null | undefined, t: (key: string) => string): string | null {
+  if (!host) return null
+  const platform = platformFromHost(host)
+
+  return platform ? platformLabel(platform, t) : host
+}

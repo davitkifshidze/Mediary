@@ -10,11 +10,9 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
-  SquarePen,
   Plus,
   Search,
   Tags,
-  Trash2,
   Users,
 } from 'lucide-react'
 import {
@@ -49,11 +47,11 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Badge } from '@/components/ui/badge'
 import { RatingBadge } from '@/components/ui/star-rating'
+import { RecordActionBar } from '@/components/RecordActionBar'
 
 /* ============================================================
    ბორდგეიმების მოდული (`board_game`, Tasks §14).
@@ -360,53 +358,43 @@ export function BoardGamesPage() {
                     </p>
                   </div>
 
-                  <span className="flex shrink-0 items-center gap-1">
-                    {game.bgg_rating != null && (
-                      <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                        BGG {game.bgg_rating}
-                      </Badge>
-                    )}
-                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
-                    <RatingBadge value={game.rating} size="row" className="mr-1" />
-                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                    <VisitCount value={game.visits_count} />
-                    <FavoriteButton
-                      active={game.is_favorite}
-                      pending={favorite.isPending && favorite.variables === game.id}
-                      onToggle={() => favorite.mutate(game.id)}
-                    />
-                    {(game.links[0]?.url || game.bgg_url) && (
-                      <a
-                        href={game.links[0]?.url || game.bgg_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('books.openLink')}
-                        title={game.links[0]?.label || game.bgg_url || ''}
-                        className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
-                    )}
-                    <Button variant="edit" size="sm" onClick={() => setEditing(game)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: t('boardGames.deleteTitle'),
-                          description: t('boardGames.deleteHint', { name: game.title }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(game.id)
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </span>
+                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
+                      რედაქტირება · წაშლა; სამაგიდოს სტატუსი არ აქვს (დახურული გადაწყვეტილება) */}
+                  <RecordActionBar
+                    before={
+                      <>
+                        {game.bgg_rating != null && (
+                          <Badge size="row" className="mr-1 bg-secondary tabular-nums">
+                            BGG {game.bgg_rating}
+                          </Badge>
+                        )}
+                        {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
+                        <RatingBadge value={game.rating} size="row" className="mr-1" />
+                        <VisitCount value={game.visits_count} />
+                      </>
+                    }
+                    favorite={{
+                      active: game.is_favorite,
+                      pending: favorite.isPending && favorite.variables === game.id,
+                      onToggle: () => favorite.mutate(game.id),
+                    }}
+                    files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
+                    link={{
+                      href: game.links[0]?.url || game.bgg_url,
+                      label: t('actions.link'),
+                      icon: ExternalLink,
+                      title: game.links[0]?.label || game.bgg_url || undefined,
+                    }}
+                    onEdit={() => setEditing(game)}
+                    onDelete={async () => {
+                      const ok = await confirm({
+                        title: t('boardGames.deleteTitle'),
+                        description: t('boardGames.deleteHint', { name: game.title }),
+                        variant: 'destructive',
+                      })
+                      if (ok) remove.mutate(game.id)
+                    }}
+                  />
                 </li>
                 </RecordContextMenu>
               )

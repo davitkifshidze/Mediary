@@ -12,6 +12,7 @@ use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
+use App\Support\VideoUrl;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -202,6 +203,13 @@ class CourseController extends Controller
             $course->applyUrl($data['url']);
 
             if ($changed && $course->url) {
+                /* Tasks §29.3 — ვიდეო-პლატფორმის ბმულზე ესკიზი **ქსელის გარეშე** (`VideoUrl`, §15.1):
+                   YouTube-ის გვერდი ბოტს თანხმობის ეკრანს აძლევს და og:image არ მოდის,
+                   `i.ytimg.com`-ის ესკიზი კი ყოველთვის არსებობს. ატვირთულს ან უკვე მოტანილს არ გადააწერს. */
+                if (! $course->thumbnail_path && ! $course->image_url) {
+                    $course->image_url = VideoUrl::parse($course->url)['thumbnail_url'];
+                }
+
                 $this->autofill($course, $request);
             }
         }

@@ -9,12 +9,10 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  SquarePen,
   Plus,
   Quote,
   Search,
   Tags,
-  Trash2,
   BookOpenCheck,
   Images,
 } from 'lucide-react'
@@ -53,12 +51,11 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
-import { EnumStatusBadge } from '@/components/StatusBadge'
-import { cn } from '@/lib/utils'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { EnumStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
    წიგნების მოდული (`book`, Tasks §12).
@@ -421,56 +418,46 @@ export function BooksPage() {
                     )}
                   </div>
 
-                  <span className="flex shrink-0 items-center gap-1">
-                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
-                    <EnumStatusBadge domain="book" status={book.status} size="row" className="mr-1" />
-                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
-                    <RatingBadge value={book.rating} size="row" className="mr-1" />
-                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                    <VisitCount value={book.visits_count} />
-                    <FavoriteButton
-                      active={book.is_favorite}
-                      pending={favorite.isPending && favorite.variables === book.id}
-                      onToggle={() => favorite.mutate(book.id)}
-                    />
-                    {/* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი
-                        ჩანაწერებისთვის რჩება (მიგრაციამ პირველი ბმული გადმოიტანა,
-                        მაგრამ ხელახლა შეყვანილი ლინკი ახლა აქ წერია) */}
-                    {/* Tasks §14.2 — ბმულის სლოტი ყოველთვის ადგილზეა: უბმულო წიგნზე უხილავია, რომ ღილაკები არ გადაინაცვლონ */}
-                    <a
-                      href={book.source_url || book.links[0]?.url || undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t('books.openLink')}
-                      aria-hidden={!(book.source_url || book.links[0]?.url) || undefined}
-                      title={book.source_url || book.links[0]?.label || book.links[0]?.url}
-                      className={cn(
-                        'grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground',
-                        !(book.source_url || book.links[0]?.url) && 'invisible pointer-events-none',
-                      )}
-                    >
-                      <ExternalLink className="size-4" />
-                    </a>
-                    <Button variant="edit" size="sm" onClick={() => setEditing(book)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: t('books.deleteTitle'),
-                          description: t('books.deleteHint', { name: title(book) }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(book.id)
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </span>
+                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */}
+                  <RecordActionBar
+                    before={
+                      <>
+                        <RatingBadge value={book.rating} size="row" className="mr-1" />
+                        <VisitCount value={book.visits_count} />
+                      </>
+                    }
+                    status={
+                      <EnumStatusMenu
+                        domain="book"
+                        value={book.status}
+                        options={BOOK_STATUSES}
+                        label={t('form.status')}
+                        onChange={(next) => status.mutate({ id: book.id, next })}
+                      />
+                    }
+                    favorite={{
+                      active: book.is_favorite,
+                      pending: favorite.isPending && favorite.variables === book.id,
+                      onToggle: () => favorite.mutate(book.id),
+                    }}
+                    files={{ count: book.files_count ?? 0, onOpen: () => setOpened(book) }}
+                    /* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
+                    link={{
+                      href: book.source_url || book.links[0]?.url,
+                      label: t('actions.link'),
+                      icon: ExternalLink,
+                      title: book.source_url || book.links[0]?.label || book.links[0]?.url,
+                    }}
+                    onEdit={() => setEditing(book)}
+                    onDelete={async () => {
+                      const ok = await confirm({
+                        title: t('books.deleteTitle'),
+                        description: t('books.deleteHint', { name: title(book) }),
+                        variant: 'destructive',
+                      })
+                      if (ok) remove.mutate(book.id)
+                    }}
+                  />
                 </li>
                 </RecordContextMenu>
               )

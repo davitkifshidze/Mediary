@@ -68,6 +68,20 @@ class CourseModuleTest extends TestCase
             ->assertJsonPath('data.platform', 'udemy.com');
     }
 
+    /**
+     * Tasks §29.3 — YouTube-ის ბმულზე ესკიზი გვერდის გარეშე მოდის (`VideoUrl`):
+     * probe აქ 404-ს აბრუნებს (setUp), ესკიზი მაინც ივსება.
+     */
+    public function test_a_youtube_link_gets_its_thumbnail_without_the_page(): void
+    {
+        $this->postJson('/api/courses', $this->payload([
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        ]))
+            ->assertStatus(201)
+            ->assertJsonPath('data.platform', 'youtube.com')
+            ->assertJsonPath('data.image', 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+    }
+
     /** ⚠️ ბმული **არასავალდებულოა** — ოფლაინ კურსსაც ჩაწერ */
     public function test_a_course_without_a_link_is_legal(): void
     {

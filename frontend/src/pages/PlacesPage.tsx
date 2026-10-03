@@ -2,15 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  MapPin,
-  Map as MapIcon,
-  Paperclip,
-  Plus,
-  Search,
-  SquarePen,
-  Trash2,
-} from 'lucide-react'
+import { FileText, Image as ImageIcon, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
 import {
   PLACE_STATUSES,
   createPlace,
@@ -25,9 +17,11 @@ import {
   type Place,
   type PlaceCandidate,
   type PlaceCategory,
+  type PlaceFileKind,
   type PlaceFilters,
   type PlaceInput,
   type PlaceStatus,
+  uploadPlaceFiles,
 } from '@/api/places'
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
@@ -40,6 +34,9 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useDateFormat } from '@/lib/dates'
 import { useContentLang } from '@/lib/settings'
 import { PlaceDetail } from '@/components/PlaceDetail'
+import { PendingFilesSection } from '@/components/PendingFiles'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { EnumStatusMenu } from '@/components/StatusMenu'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
@@ -52,7 +49,6 @@ import {
   FilterTrigger,
 } from '@/components/FilterPanel'
 import { RatingBadge } from '@/components/ui/star-rating'
-import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -69,16 +65,15 @@ import {
   QuickFillSearch,
 } from '@/components/ui/quick-fill'
 import { useRecordExtras } from '@/lib/customFieldDraft'
+import { usePendingUploads } from '@/lib/pendingUploads'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { cn } from '@/lib/utils'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -299,6 +294,17 @@ export function PlacesPage() {
             <>
               <ul className="space-y-3">
                 {places.map((place) => {
+                  const askDelete = async () => {
+                    if (
+                      await confirm({
+                        title: t('places.delete'),
+                        description: t('places.deleteHint', { name: place.name }),
+                        variant: 'destructive',
+                      })
+                    ) {
+                      remove.mutate(place.id)
+                    }
+                  }
                   /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რუკა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
                   const actions: MenuAction[] = [
                     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(place) },
@@ -317,23 +323,7 @@ export function PlacesPage() {
                     },
                     favoriteAction(place.is_favorite, () => favorite.mutate(place.id), t),
                     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(place) },
-                    {
-                      key: 'delete',
-                      label: t('actions.delete'),
-                      icon: MENU_ICONS.delete,
-                      danger: true,
-                      run: async () => {
-                        if (
-                          await confirm({
-                            title: t('places.delete'),
-                            description: t('places.deleteHint', { name: place.name }),
-                            variant: 'destructive',
-                          })
-                        ) {
-                          remove.mutate(place.id)
-                        }
-                      },
-                    },
+                    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
                   <RecordContextMenu key={place.id} actions={actions}>
@@ -368,9 +358,8 @@ export function PlacesPage() {
                         >
                           {place.name}
                         </button>
-                        <EnumStatusBadge domain="place" status={place.status} />
-                        <RatingBadge value={place.rating} />
-                        <VisibilityBadge value={place.visibility} />
+                        {/* §29.1 — სტატუსი და ქულა ზოლშია (აქამდე სტატუსი ორჯერ იყო: ბეჯი აქ და სელექთი ზოლში) */}
+                        <VisibilityBadge value={place.visibility} size="row" />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -395,86 +384,34 @@ export function PlacesPage() {
                       )}
                     </div>
 
-                    <div className="flex shrink-0 items-start gap-1">
-                      <Select
-                        value={place.status}
-                        onValueChange={(v) => status.mutate({ id: place.id, next: v as PlaceStatus })}
-                      >
-                        <SelectTrigger className="h-9 w-36" aria-label={t('places.status')}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PLACE_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {t(`places.statuses.${s}`)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს
-                          `asChild` არ აქვს. რუკა გარე სერვისია (OSM). */}
-                      {/* Tasks §14.2 — რუკის სლოტი ყოველთვის ადგილზეა (კოორდინატის გარეშე უხილავი), §14.3 — ყველა კონტროლი h-9 */}
-                      <a
-                        href={place.map_url ?? undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('places.openMap')}
-                        aria-hidden={!place.map_url || undefined}
-                        className={cn(
-                          'grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground',
-                          !place.map_url && 'invisible pointer-events-none',
-                        )}
-                      >
-                        <MapIcon className="size-4" />
-                      </a>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-9"
-                        onClick={() => setDetail(place)}
-                        aria-label={t('places.files')}
-                      >
-                        <Paperclip className="size-4" />
-                        <span className="w-3 text-[11px] tabular-nums">
-                          {place.files_count || ''}
-                        </span>
-                      </Button>
-                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                      <VisitCount value={place.visits_count} />
-                      <FavoriteButton
-                        active={place.is_favorite}
-                        pending={favorite.isPending && favorite.variables === place.id}
-                        onToggle={() => favorite.mutate(place.id)}
-                      />
-                      <Button
-                        variant="edit"
-                        size="sm"
-                        onClick={() => setEditing(place)}
-                      >
-                        <SquarePen className="size-3.5" />
-                        {t('actions.edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 text-destructive"
-                        onClick={async () => {
-                          if (
-                            await confirm({
-                              title: t('places.delete'),
-                              description: t('places.deleteHint', { name: place.name }),
-                              variant: 'destructive',
-                            })
-                          ) {
-                            remove.mutate(place.id)
-                          }
-                        }}
-                        aria-label={t('actions.delete')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    {/* Tasks §29.1 — ერთი ზოლი: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · რუკა (კოორდინატის
+                        გარეშე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */}
+                    <RecordActionBar
+                      before={
+                        <>
+                          <RatingBadge value={place.rating} size="row" className="mr-1" />
+                          <VisitCount value={place.visits_count} />
+                        </>
+                      }
+                      status={
+                        <EnumStatusMenu
+                          domain="place"
+                          value={place.status}
+                          options={PLACE_STATUSES}
+                          label={t('places.status')}
+                          onChange={(next) => status.mutate({ id: place.id, next })}
+                        />
+                      }
+                      favorite={{
+                        active: place.is_favorite,
+                        pending: favorite.isPending && favorite.variables === place.id,
+                        onToggle: () => favorite.mutate(place.id),
+                      }}
+                      files={{ count: place.files_count ?? 0, onOpen: () => setDetail(place) }}
+                      link={{ href: place.map_url, label: t('actions.map'), icon: MapIcon, title: t('places.openMap') }}
+                      onEdit={() => setEditing(place)}
+                      onDelete={() => void askDelete()}
+                    />
                   </li>
                   </RecordContextMenu>
                   )
@@ -631,6 +568,10 @@ function PlaceForm({
   const qc = useQueryClient()
   // §26.5 — დამატებითი ველები ახალ ადგილზეც (აქამდე მხოლოდ რედაქტირებისას ჩანდა)
   const extras = useRecordExtras('place', place)
+  /* Tasks §29.3 — ფაილები **შექმნისთანავე** (`lib/pendingUploads.ts`): შენახვისას ჯერ ადგილი,
+     მერე ფაილები სათითაოდ; ჩავარდნა ადგილს არ აუქმებს — ფანჯარა ღია რჩება. */
+  const pending = usePendingUploads<PlaceFileKind>()
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   /* ---- Nominatim ---- */
   const [lookupQuery, setLookupQuery] = useState(place?.name ?? '')
@@ -675,6 +616,23 @@ function PlaceForm({
         toast({ title: done.message, variant: 'error' })
 
         return
+      }
+
+      if (pending.items.length) {
+        const failed = await pending.run(
+          (kind, file) => uploadPlaceFiles(saved.id, kind, [file]),
+          (done, total) => setProgress({ done, total }),
+        )
+        setProgress(null)
+        qc.invalidateQueries({ queryKey: ['place-files', saved.id] })
+        qc.invalidateQueries({ queryKey: ['places'] })
+        qc.invalidateQueries({ queryKey: ['storage'] })
+
+        if (failed.length) {
+          toast({ title: t('uploads.failed', { names: failed.map((f) => f.file.name).join(', ') }), variant: 'error' })
+
+          return
+        }
       }
 
       toast({ title: t('places.saved'), variant: 'success' })
@@ -936,6 +894,19 @@ function PlaceForm({
             </div>
           </FormField>
         </FormSection>
+
+        {/* §29.3 — ფაილები ახალ ადგილზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {!place && (
+          <PendingFilesSection
+            pending={pending}
+            title={t('places.files')}
+            hint={t('uploads.pendingHint')}
+            kinds={[
+              { kind: 'image', label: t('places.fileKinds.image'), icon: ImageIcon },
+              { kind: 'doc', label: t('places.fileKinds.doc'), icon: FileText },
+            ]}
+          />
+        )}
       </form>
 
       {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები **ახალ ადგილზეც** (აქამდე მხოლოდ
@@ -946,6 +917,10 @@ function PlaceForm({
         draft={extras.draft}
         className="mt-6"
       />
+
+      {progress && (
+        <p className="mt-3 text-xs text-muted-foreground">{t('uploads.progress', { done: progress.done, total: progress.total })}</p>
+      )}
 
       {/* ⚠️ „ინახება…" შენახვისას — აქამდე „შენახვა" ეწერა და ღილაკი უმოქმედოს ჰგავდა */}
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />

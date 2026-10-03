@@ -21,14 +21,16 @@ import { Badge } from '@/components/ui/badge'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { EnumStatusBadge } from '@/components/StatusBadge'
-import { Button } from '@/components/ui/button'
-import { InfoHint } from '@/components/ui/info-hint'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { DetailFacts, DetailHero, DetailPhotos } from '@/components/DetailHero'
+import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
+import { hostLabel, platformFromHost, platformLook } from '@/lib/platforms'
+import { cn } from '@/lib/utils'
 
 /**
  * **კურსის ბარათი (FEAT-25).**
@@ -95,46 +97,46 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
     const rows = files.filter((f) => f.kind === kind)
     const Icon = KIND_ICON[kind]
 
+    /* Tasks §29.2 — ხელნაწერი `<section>` → საერთო `DetailSection` + `EmptyState`
+       (ზუსტად ის, რაც წიგნის ფანჯარას აქვს) */
     return (
-      <section key={kind}>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            <Icon className="size-4 text-muted-foreground" />
-            {t(`courses.fileKinds.${kind}`)}
-            {kind === 'certificate' && <InfoHint info={t('courses.certificateHint')} />}
-          </h3>
+      <DetailSection
+        key={kind}
+        icon={<Icon className="size-4 text-muted-foreground" />}
+        title={t(`courses.fileKinds.${kind}`)}
+        hint={kind === 'certificate' ? t('courses.certificateHint') : undefined}
+        action={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => inputs.current[kind]?.click()}
+              disabled={upload.isPending}
+            >
+              {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {t('actions.upload')}
+            </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => inputs.current[kind]?.click()}
-            disabled={upload.isPending}
-          >
-            {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-            {t('actions.upload')}
-          </Button>
-
-          <input
-            ref={(el) => {
-              inputs.current[kind] = el
-            }}
-            type="file"
-            multiple
-            className="hidden"
-            accept={kind === 'image' ? 'image/*' : undefined}
-            onChange={(e) => {
-              const picked = Array.from(e.target.files ?? [])
-              if (picked.length) upload.mutate({ kind, files: picked })
-              e.target.value = ''
-            }}
-          />
-        </div>
-
+            <input
+              ref={(el) => {
+                inputs.current[kind] = el
+              }}
+              type="file"
+              multiple
+              className="hidden"
+              accept={kind === 'image' ? 'image/*' : undefined}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? [])
+                if (picked.length) upload.mutate({ kind, files: picked })
+                e.target.value = ''
+              }}
+            />
+          </>
+        }
+      >
         {rows.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-            {t('courses.noFiles')}
-          </p>
+          <EmptyState className="py-6" icon={<Icon className="size-5" />} title={t('courses.noFiles')} />
         ) : (
           <ul className="space-y-1">
             {rows.map((f: CourseFile) => (
@@ -160,7 +162,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
             ))}
           </ul>
         )}
-      </section>
+      </DetailSection>
     )
   }
 
@@ -194,7 +196,8 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           )}
           {course.platform && (
             <DetailFacts>
-              <Badge className="bg-secondary">{course.platform}</Badge>
+              {/* §29.3 — პლატფორმა ბრენდის სახელით, აიქონითა და ფერით (§19.1-ის რუკა); უცნობი ჰოსტი ჰოსტივე */}
+              <PlatformBadge host={course.platform} />
             </DetailFacts>
           )}
         </DetailHero>
@@ -216,15 +219,16 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           <p className="whitespace-pre-line text-sm text-muted-foreground">{course.description}</p>
         )}
 
-        {/* ⚠️ `<a>` და არა `Button asChild` — `ui/button.tsx`-ს `asChild` არ აქვს */}
+        {/* §29.2 — ბმული ღილაკის ფორმით (`buttonVariants outline`), არა ხელით ნახატი `<a>`;
+            `<a>` რჩება, რადგან `ui/button.tsx`-ს `asChild` არ აქვს */}
         {course.url && (
           <a
             href={course.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-fit')}
           >
-            <ExternalLink className="size-4" />
+            <ExternalLink className="size-3.5" />
             {t('courses.open')}
           </a>
         )}
@@ -255,5 +259,20 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
         />
       )}
     </ModalShell>
+  )
+}
+
+/** პლატფორმის ბეჯი — ცნობილზე ბრენდი (`lib/platforms`), უცნობზე ჰოსტი */
+function PlatformBadge({ host }: { host: string }) {
+  const { t } = useTranslation()
+  const platform = platformFromHost(host)
+  const look = platform ? platformLook(platform) : null
+  const Icon = look?.icon
+
+  return (
+    <Badge className="bg-secondary" style={look ? { color: look.color } : undefined}>
+      {Icon && <Icon className="size-3.5" />}
+      {hostLabel(host, t)}
+    </Badge>
   )
 }

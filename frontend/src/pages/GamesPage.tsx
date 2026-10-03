@@ -9,12 +9,10 @@ import {
   Gamepad2,
   Image as ImageIcon,
   Loader2,
-  SquarePen,
   Play,
   Plus,
   Search,
   Tags,
-  Trash2,
 } from 'lucide-react'
 import {
   deleteGame,
@@ -51,11 +49,11 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
-import { EnumStatusBadge } from '@/components/StatusBadge'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { EnumStatusMenu } from '@/components/StatusMenu'
 
 /* ============================================================
    თამაშების მოდული (`game`, Tasks §11).
@@ -388,55 +386,41 @@ export function GamesPage() {
                       იყოს". ბმული და ქულა ზოგს აქვს, ზოგს არა — მათ მარჯვნივ დგომისას
                       სტატუსი და ღილაკები რიგიდან რიგში ინაცვლებდა. სტატუსს ერთი მინიმალური
                       სიგანეც აქვს, რომ რჩეული ყველა რიგში ერთ სვეტში იდგეს. */}
-                  <span className="flex shrink-0 items-center gap-1">
-                    {store && (
-                      <a
-                        href={store.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={t('books.openLink')}
-                        title={store.label || store.url}
-                        className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
-                    )}
-                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
-                    <RatingBadge value={game.rating} size="row" className="mr-1" />
-                    {/* Tasks §21 — ფერი როლისაა (ლექსიკონის პალიტრა), ზომა — რიგის ღილაკისა */}
-                    <EnumStatusBadge
-                      domain="game"
-                      status={game.status}
-                      size="row"
-                      className="min-w-28 justify-center"
-                    />
-                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                    <VisitCount value={game.visits_count} />
-                    <FavoriteButton
-                      active={game.is_favorite}
-                      pending={favorite.isPending && favorite.variables === game.id}
-                      onToggle={() => favorite.mutate(game.id)}
-                    />
-                    <Button variant="edit" size="sm" onClick={() => setEditing(game)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: t('games.deleteTitle'),
-                          description: t('games.deleteHint', { name: title(game) }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(game.id)
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </span>
+                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
+                      მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — §22.1-ის „ხტომა" საბოლოოდ ქრება) · რედაქტირება · წაშლა */}
+                  <RecordActionBar
+                    before={
+                      <>
+                        <RatingBadge value={game.rating} size="row" className="mr-1" />
+                        <VisitCount value={game.visits_count} />
+                      </>
+                    }
+                    status={
+                      <EnumStatusMenu
+                        domain="game"
+                        value={game.status}
+                        options={GAME_STATUSES}
+                        label={t('form.status')}
+                        onChange={(next) => status.mutate({ id: game.id, next })}
+                      />
+                    }
+                    favorite={{
+                      active: game.is_favorite,
+                      pending: favorite.isPending && favorite.variables === game.id,
+                      onToggle: () => favorite.mutate(game.id),
+                    }}
+                    files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
+                    link={{ href: store?.url, label: t('actions.link'), icon: ExternalLink, title: store?.label || store?.url }}
+                    onEdit={() => setEditing(game)}
+                    onDelete={async () => {
+                      const ok = await confirm({
+                        title: t('games.deleteTitle'),
+                        description: t('games.deleteHint', { name: title(game) }),
+                        variant: 'destructive',
+                      })
+                      if (ok) remove.mutate(game.id)
+                    }}
+                  />
                 </li>
                 </RecordContextMenu>
               )

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
-import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, SquarePen, Play, Plus, Search, Tags, Trash2 } from 'lucide-react'
+import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, Play, Plus, Search, Tags } from 'lucide-react'
 import {
   createSong,
   deleteSong,
@@ -62,11 +62,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
+import { RecordActionBar } from '@/components/RecordActionBar'
 
 /* ============================================================
    სიმღერების მოდული (`song`, 2026-09-03).
@@ -431,46 +431,31 @@ export function SongsPage() {
                     )}
                   </div>
 
-                  <span className="flex shrink-0 items-center gap-1">
-                    {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან */}
-                    <RatingBadge value={song.rating} size="row" className="mr-1" />
-                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                    <VisitCount value={song.visits_count} />
-                    <FavoriteButton
-                      active={song.is_favorite}
-                      pending={favorite.isPending && favorite.variables === song.id}
-                      onToggle={() => favorite.mutate(song.id)}
-                    />
-                    <a
-                      href={song.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t('songs.source')}
-                      title={t('songs.source')}
-                      className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                    >
-                      <ExternalLink className="size-4" />
-                    </a>
-                    <Button variant="edit" size="sm" onClick={() => setEditing(song)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: t('songs.deleteTitle'),
-                          description: t('songs.deleteHint', { name: song.title }),
-                          variant: 'destructive',
-                        })
-                        if (ok) remove.mutate(song.id)
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </span>
+                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
+                      სიმღერას სტატუსი და ფაილები არ აქვს (დახურული გადაწყვეტილებები) */}
+                  <RecordActionBar
+                    before={
+                      <>
+                        <RatingBadge value={song.rating} size="row" className="mr-1" />
+                        <VisitCount value={song.visits_count} />
+                      </>
+                    }
+                    favorite={{
+                      active: song.is_favorite,
+                      pending: favorite.isPending && favorite.variables === song.id,
+                      onToggle: () => favorite.mutate(song.id),
+                    }}
+                    link={{ href: song.url, label: t('actions.link'), icon: ExternalLink, title: t('songs.source') }}
+                    onEdit={() => setEditing(song)}
+                    onDelete={async () => {
+                      const ok = await confirm({
+                        title: t('songs.deleteTitle'),
+                        description: t('songs.deleteHint', { name: song.title }),
+                        variant: 'destructive',
+                      })
+                      if (ok) remove.mutate(song.id)
+                    }}
+                  />
                 </li>
                 </RecordContextMenu>
               )
