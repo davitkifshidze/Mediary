@@ -138,6 +138,8 @@ export interface VideoType {
   name_ka: string
   name_en: string
   icon: string | null
+  /** Tasks §19.2 — ბეჯის ფერი: პალიტრის გასაღები (`c1…c12`) ან `#rrggbb`; `null` — ნაცრისფერი */
+  color: string | null
   sort_order: number
   videos_count?: number
 }
@@ -146,6 +148,7 @@ export interface VideoTypeInput {
   name_ka: string
   name_en: string
   icon?: string | null
+  color?: string | null
 }
 
 export async function fetchVideoTypes(): Promise<VideoType[]> {

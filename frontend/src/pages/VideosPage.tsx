@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
+import { StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,25 +7,15 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import {
-  CalendarDays,
-  Clock,
   Download,
-  ExternalLink,
-  Eye,
   FileX,
   Globe,
-  HardDriveDownload,
   Link2,
   ListVideo,
   Loader2,
-  SquarePen,
-  Play,
   Plus,
-  RotateCcw,
   Search,
   Tags,
-  Trash2,
-  TriangleAlert,
 } from 'lucide-react'
 import {
   createVideo,
@@ -41,7 +31,6 @@ import {
   startVideoDownload,
   toggleVideoFavorite,
   updateVideo,
-  videoDownloadUrl,
   type Video,
   type VideoFilters,
   type VideoInput,
@@ -50,7 +39,6 @@ import {
 } from '@/api/videos'
 import { fetchWebVideoDetails } from '@/api/web'
 import { storageUrl } from '@/lib/api'
-import { useDateFormat } from '@/lib/dates'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors, translateCode } from '@/lib/errors'
@@ -60,12 +48,12 @@ import { useContentLang } from '@/lib/settings'
 import { formatDuration, isDirectMediaUrl, probeMediaDuration } from '@/lib/videoDuration'
 import { usePlayer, videoItem } from '@/lib/player'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
-import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
 import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
 import { FloatingPick } from '@/components/FloatingPick'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
+import { VideoCard } from '@/components/VideoCard'
 import { VideoDetail } from '@/components/VideoDetail'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import {
@@ -92,10 +80,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitCount } from '@/components/RecordVisits'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
-import { cn, formatBytes } from '@/lib/utils'
+import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
+import { formatBytes } from '@/lib/utils'
 
 /* ============================================================
    ვიდეოების მოდული (I5) — Tasks 5.
@@ -123,7 +109,6 @@ export function VideosPage() {
   const { toast } = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
-  const fmt = useDateFormat()
 
   const [params, setParams] = useSearchParams()
   const search = params.toString()
@@ -272,6 +257,24 @@ export function VideosPage() {
     const timer = setInterval(() => void qc.invalidateQueries({ queryKey: ['videos'] }), 4000)
     return () => clearInterval(timer)
   }, [running, qc])
+
+  const askDelete = async (v: Video) => {
+    const ok = await confirm({
+      title: t('videos.deleteTitle'),
+      description: t('videos.deleteHint', { name: v.title }),
+      variant: 'destructive',
+    })
+    if (ok) remove.mutate(v.id)
+  }
+
+  const askDropDownload = async (v: Video) => {
+    const ok = await confirm({
+      title: t('videos.local.removeTitle'),
+      description: t('videos.local.removeHint', { name: v.title, size: formatBytes(v.download_size) }),
+      variant: 'destructive',
+    })
+    if (ok) dropDownload.mutate(v.id)
+  }
 
   /**
    * ჩამოწერის ახსნა tooltip-ისთვის.
@@ -447,7 +450,6 @@ export function VideosPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {videos.map((v, i) => {
-              const thumb = storageUrl(v.thumbnail)
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ ბარათზე: გახსნა · დაკვრა · წყარო ·
                  სტატუსი ▸ · რჩეული · (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
@@ -464,253 +466,38 @@ export function VideosPage() {
                 ...(!v.download_status || v.download_status === 'failed'
                   ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
                   : []),
+                /* §19.4 — ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
+                ...(v.download_status === 'ready'
+                  ? [{ key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) }]
+                  : []),
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
-                {
-                  key: 'delete',
-                  label: t('actions.delete'),
-                  icon: MENU_ICONS.delete,
-                  danger: true,
-                  run: async () => {
-                    const ok = await confirm({
-                      title: t('videos.deleteTitle'),
-                      description: t('videos.deleteHint', { name: v.title }),
-                      variant: 'destructive',
-                    })
-                    if (ok) remove.mutate(v.id)
-                  },
-                },
+                { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(v) },
               ]
               return (
-                <RecordContextMenu key={v.id} actions={actions}>
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                  {/* ⚠️ §35.6 — ფანჯრის გახსნა **ნახვად აღარ ითვლება**: ფანჯარაში
-                      ვიდეო აღარ იკვრება, ნახვას დამკვრელი ითვლის ჩართვაზე */}
-                  <button
-                    onClick={() => setDetail(v)}
-                    className="relative block aspect-video w-full cursor-pointer overflow-hidden bg-muted"
-                  >
-                    {thumb ? (
-                      <img src={thumb} alt="" className="size-full object-cover" loading="lazy" />
-                    ) : (
-                      <span className="grid size-full place-items-center text-muted-foreground">
-                        <Play className="size-8" />
-                      </span>
-                    )}
-                    <span className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition-opacity hover:opacity-100">
-                      <Play className="size-10 text-white" />
-                    </span>
-                    {v.duration && (
-                      <span className="absolute bottom-2 right-2 rounded-[5px] bg-black/75 px-1.5 py-0.5 text-xs text-white">
-                        {formatDuration(v.duration)}
-                      </span>
-                    )}
-                    {/* §7.1 — „ეს ლოკალურად მაქვს". ⚠️ ხატულა **საერთო სიაშიც**
-                        ჩანს და არა მარტო „ჩამოწერილების" სექციაში: სწორედ ეს
-                        იყო თასქის პირობა — ერთი შეხედვით უნდა იცოდე, რომელია. */}
-                    {v.download_status && (
-                      <span
-                        title={downloadHint(v)}
-                        className={cn(
-                          'absolute left-2 top-2 inline-flex items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-xs text-white',
-                          v.download_status === 'ready' && 'bg-emerald-600/90',
-                          v.download_status === 'running' && !v.download_stale && 'bg-black/75',
-                          v.download_status === 'running' && v.download_stale && 'bg-amber-600/90',
-                          v.download_status === 'failed' && 'bg-destructive/90',
-                        )}
-                      >
-                        {v.download_status === 'running' && !v.download_stale ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : v.download_status === 'failed' || v.download_stale ? (
-                          <TriangleAlert className="size-3" />
-                        ) : (
-                          <HardDriveDownload className="size-3" />
-                        )}
-                        {v.download_status === 'ready'
-                          ? formatBytes(v.download_size)
-                          : /* ⚠️ გაჭედილს **თავისი** წარწერა აქვს: „მიმდინარეობს…"
-                               მკვდარ პროცესზე პირდაპირი მოტყუება იყო */
-                            t(v.download_stale ? 'videos.local.stalled' : `videos.local.${v.download_status}`)}
-                      </span>
-                    )}
-                  </button>
-
-                  <div className="p-3">
-                    <div className="flex items-start gap-2">
-                      <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={v.title}>
-                        {v.title}
-                      </h3>
-                      <VisitCount value={v.visits_count} />
-                      {/* Tasks §8 — რჩეული ტექსტით და ფერით; ბარათის სათაურის ზოლში დაბალი ზომა */}
-                      <FavoriteButton
-                        size="xs"
-                        active={v.is_favorite}
-                        pending={favorite.isPending && favorite.variables === v.id}
-                        onToggle={() => favorite.mutate(v.id)}
-                      />
-                    </div>
-
-                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      {v.type && (
-                        <span className="inline-flex items-center gap-1">
-                          <ModuleIcon name={v.type.icon} className="size-3" />
-                          {videoTypeName(v.type, lang)}
-                        </span>
-                      )}
-                      {/* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა */}
-                      <StatusBadge status={v.status} />
-                      <span className="capitalize">{v.platform}</span>
-                      {/* Q52 — „ვისია" — ხშირად სწორედ ეს ამოგაცნობინებს ვიდეოს */}
-                      {v.channel && (
-                        <span className="max-w-40 truncate" title={v.channel}>
-                          {v.channel}
-                        </span>
-                      )}
-                      {v.published_at && (
-                        <span className="inline-flex items-center gap-1" title={t('fields.name.video.published_at')}>
-                          <CalendarDays className="size-3" />
-                          {fmt.date(v.published_at)}
-                        </span>
-                      )}
-                      {v.watch_count > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <Eye className="size-3" />
-                          {v.watch_count}
-                        </span>
-                      )}
-                      {v.watched_at && (
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {fmt.date(v.watched_at)}
-                        </span>
-                      )}
-                    </p>
-
-                    {v.tags.length > 0 && (
-                      <p className="mt-2 flex flex-wrap gap-1">
-                        {v.tags.map((tag) => (
-                          <span key={tag} className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
-                            #{tag}
-                          </span>
-                        ))}
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex items-center gap-1 border-t border-border pt-2">
-                      <a
-                        href={v.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <ExternalLink className="size-3.5" />
-                        {t('videos.source')}
-                      </a>
-                      {/* §7.2 — რიგში ჩართვა: აქედან **გაფილტრული სია** უკრავს
-                          რიგრიგობით, ე.ი. დამთავრებისას შემდეგი თავისით ჩაირთვება.
-                          ⚠️ სურათზე დაჭერა კვლავ დეტალებს ხსნის — ერთი ვიდეოს
-                          ყურება დიდ მოდალში ჯობია, ვიდრე ქვედა ზოლში. */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => playFrom(i)}
-                        aria-label={t('playback.playFromHere')}
-                        title={t('playback.playFromHere')}
-                      >
-                        <ListVideo className="size-3.5" />
-                      </Button>
-                      {/* §7.1 — ლოკალური ასლი. სამი სხვადასხვა მდგომარეობა,
-                          სამი სხვადასხვა ღილაკი: ჯერ „ჩამოწერა", მიმდინარეზე —
-                          დამტრიალებელი, მზაზე — გახსნა + მოშორება. */}
-                      {v.download_status === 'ready' ? (
-                        <>
-                          <a
-                            href={videoDownloadUrl(v.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t('videos.local.open')}
-                            title={`${t('videos.local.open')}${v.download_format ? ` · ${v.download_format}` : ''}`}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <HardDriveDownload className="size-3.5" />
-                            {formatBytes(v.download_size)}
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={dropDownload.isPending}
-                            aria-label={t('videos.local.remove')}
-                            title={t('videos.local.remove')}
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('videos.local.removeTitle'),
-                                description: t('videos.local.removeHint', {
-                                  name: v.title,
-                                  size: formatBytes(v.download_size),
-                                }),
-                                variant: 'destructive',
-                              })
-                              if (ok) dropDownload.mutate(v.id)
-                            }}
-                          >
-                            <FileX className="size-3.5" />
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={
-                            (v.download_status === 'running' && !v.download_stale) ||
-                            download.isPending
-                          }
-                          aria-label={t('videos.local.start')}
-                          title={
-                            ytdlpQ.data && !ytdlpQ.data.available
-                              ? t('videos.local.unavailable')
-                              : downloadHint(v)
-                          }
-                          onClick={() => {
-                            if (ytdlpQ.data && !ytdlpQ.data.available) {
-                              toast({ title: t('videos.local.unavailable'), variant: 'error' })
-                              return
-                            }
-                            download.mutate(v.id)
-                          }}
-                        >
-                          {v.download_status === 'running' && !v.download_stale ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : v.download_stale ? (
-                            /* ⚠️ დამტრიალებელი აქ ტყუილი იქნებოდა — არაფერი
-                               ტრიალებს; ხატულა „ხელახლა სცადე"-ს ამბობს */
-                            <RotateCcw className="size-3.5" />
-                          ) : (
-                            <Download className="size-3.5" />
-                          )}
-                        </Button>
-                      )}
-                      <Button variant="edit" size="sm" onClick={() => setEditing(v)}>
-                        <SquarePen className="size-3.5" />
-                        {t('actions.edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: t('videos.deleteTitle'),
-                            description: t('videos.deleteHint', { name: v.title }),
-                            variant: 'destructive',
-                          })
-                          if (ok) remove.mutate(v.id)
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                </RecordContextMenu>
+                <VideoCard
+                  key={v.id}
+                  video={v}
+                  actions={actions}
+                  lang={lang}
+                  onOpen={() => setDetail(v)}
+                  onPlay={() => void playFrom(i)}
+                  onEdit={() => setEditing(v)}
+                  onDelete={() => void askDelete(v)}
+                  onToggleFavorite={() => favorite.mutate(v.id)}
+                  favoritePending={favorite.isPending && favorite.variables === v.id}
+                  download={{
+                    hint: downloadHint(v),
+                    available: !ytdlpQ.data || ytdlpQ.data.available,
+                    pending: download.isPending,
+                    onStart: () => {
+                      if (ytdlpQ.data && !ytdlpQ.data.available) {
+                        toast({ title: t('videos.local.unavailable'), variant: 'error' })
+                        return
+                      }
+                      download.mutate(v.id)
+                    },
+                  }}
+                />
               )
             })}
           </div>
@@ -805,6 +592,11 @@ export function VideosPage() {
           onClose={() => setDetail(null)}
           // „მსგავსი ვიდეოზე" დაჭერა იმავე მოდალში გადაინაცვლებს (K4)
           onOpen={setDetail}
+          /* §19.6 — „რედაქტირება" ფანჯრიდან: ფანჯარა იხურება, ფორმა იხსნება */
+          onEdit={(v) => {
+            setDetail(null)
+            setEditing(v)
+          }}
           /* §35.6 — სიაში მყოფი ვიდეო **გაფილტრულ სიას** აქედან უშვებს (ისევე,
              როგორც ბარათის „აქედან დაკვრა"); სიის გარეთა — `?open=`, დუბლის
              „გახსნა", „მსგავსი" — მარტო საკუთარ თავს, რიგის ჩანაცვლებით. */

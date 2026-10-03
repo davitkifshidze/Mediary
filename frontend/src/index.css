@@ -61,6 +61,13 @@
   --status-c12: #6b7280;
   /* Tasks §8 — რჩეული წითელ-ვარდისფერია (შენი სიტყვებით), სტაფილოსფერი აღარ */
   --favorite: #c8355e;
+  /* Tasks §19.1 — ვიდეოს პლატფორმის ბეჯები (`lib/platforms.ts`): ბრენდის ფერები,
+     ფაილი — ნაცრისფერი, სხვა — მოყავისფრო ნაცრისფერი */
+  --platform-youtube: #d00000;
+  --platform-vimeo: #1296c4;
+  --platform-dailymotion: #0057bd;
+  --platform-file: #6b7280;
+  --platform-other: #7a6a5a;
 
   /* **რედაქტირების ფერი** (2026-09-28, შენი არჩევანი): სტაფილოსფერი ჩარჩო
      და ტექსტი, ჰოვერზე — სავსე ღილაკი (`Button variant="edit"`).
@@ -186,6 +193,12 @@
   --status-c11: #d4a373;
   --status-c12: #9ca3af;
   --favorite: #f06a8a;
+  /* §19.1 — იგივე ბრენდები მუქ ფონზე ოდნავ ღია, რომ ჩამქრალ ფონზე ტექსტი იკითხებოდეს */
+  --platform-youtube: #ff5a5a;
+  --platform-vimeo: #5ccbf0;
+  --platform-dailymotion: #6aa6ff;
+  --platform-file: #9ca3af;
+  --platform-other: #bfae9a;
   /* ⚠️ მუქ თემაზე ღია სტაფილოსფერია (8.2:1 ფონზე), სავსე ფონზე კი ტექსტი
      მუქია — თეთრი იქ 2.3:1 იქნებოდა */
   --edit: #fb923c;

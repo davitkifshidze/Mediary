@@ -136,6 +136,8 @@
     "resetOrderConfirm": "Go back"
   },
   "videos": {
+    "noType": "No type",
+    "noStatus": "No status",
     "title": "Videos",
     "count": "{{count}} videos",
     "add": "Add video",
@@ -1520,7 +1522,14 @@
     "willKeepPhotos": "{{count}} photos stay in the gallery",
     "keepGalleryWarn": "No space is freed — the files stay on disk."
   },
+  "videoPlatforms": {
+    "file": "File",
+    "other": "Other source"
+  },
   "videoTypes": {
+    "color": "Colour",
+    "colorNone": "No colour",
+    "colorHint": "The type badge on the card and in the detail window uses this colour; without one it is grey.",
     "title": "Video types",
     "manage": "Manage types",
     "add": "Add type",

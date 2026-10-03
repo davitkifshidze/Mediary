@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AudioLines, CalendarDays, Download, FileText, Play, Plus, Trash2, Tv, Upload } from 'lucide-react'
+import { AudioLines, CalendarDays, Download, FileText, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoFile,
@@ -24,6 +24,9 @@ import { usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Button } from '@/components/ui/button'
+import { VideoBadges } from '@/components/VideoBadges'
+import { useContentLang } from '@/lib/settings'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { PhotoGrid } from '@/components/ui/photo-grid'
@@ -61,6 +64,7 @@ export function VideoDetail({
   onClose,
   onOpen,
   onPlay,
+  onEdit,
 }: {
   video: Video
   onClose: () => void
@@ -71,8 +75,11 @@ export function VideoDetail({
    * ვიდეო **გაფილტრულ სიას** აქედან უშვებს, სიის გარეთა — მარტო საკუთარ თავს.
    */
   onPlay: (video: Video) => void
+  /** Tasks §19.6 — „რედაქტირება“ ფანჯრიდან; გვერდი წყვეტს, რა გაიხსნას */
+  onEdit?: (video: Video) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
   const { date } = useDateFormat()
   const qc = useQueryClient()
   // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ ბარათზე იყო)
@@ -142,12 +149,22 @@ export function VideoDetail({
     <ModalShell title={video.title} onClose={onClose} wide>
       {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
           `/profile`-ზეა, ე.ი. აქ მარტო ეს გადამრთველი ვერაფერს გამოაჩენს. */}
-      <div className="mt-4 flex items-center justify-end gap-2">
-        {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
-        <VisibilityBadge value={video.visibility} />
-        {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-        <VisitBadge type="video" id={video.id} />
-        <FavoriteButton size="xs" active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+      {/* Tasks §19.6 — სათაურის ქვეშ იგივე სამი ბეჯი, რაც ბარათზეა (ტიპი · სტატუსი · პლატფორმა), და „რედაქტირება“ */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <VideoBadges video={video} lang={lang} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
+          <VisibilityBadge value={video.visibility} />
+          {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
+          <VisitBadge type="video" id={video.id} />
+          <FavoriteButton size="xs" active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+          {onEdit && (
+            <Button variant="edit" size="sm" onClick={() => onEdit(video)}>
+              <SquarePen className="size-3.5" />
+              {t('actions.edit')}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />

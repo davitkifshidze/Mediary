@@ -26,10 +26,14 @@ class VideoType extends Model
     /** §B3 — უნიკალური `key` ერთ ალგორითმზეა (`DictionaryKey`) */
     use HasDictionaryKey;
 
-    /** ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (5.1) */
+    /**
+     * ახალ ანგარიშზე ავტომატურად შექმნილი ტიპები (5.1).
+     * Tasks §19.2 — `color` სტატუსის პალიტრის გასაღებია (`lib/statusColor.ts`):
+     * ინფორმაციული — ლურჯი, გასართობი — იისფერი.
+     */
     public const DEFAULTS = [
-        ['key' => 'info', 'name_ka' => 'ინფორმაციული', 'name_en' => 'Informational', 'icon' => 'BookOpen'],
-        ['key' => 'fun', 'name_ka' => 'გასართობი', 'name_en' => 'Entertainment', 'icon' => 'Clapperboard'],
+        ['key' => 'info', 'name_ka' => 'ინფორმაციული', 'name_en' => 'Informational', 'icon' => 'BookOpen', 'color' => 'c7'],
+        ['key' => 'fun', 'name_ka' => 'გასართობი', 'name_en' => 'Entertainment', 'icon' => 'Clapperboard', 'color' => 'c8'],
     ];
 
     protected $guarded = ['id'];

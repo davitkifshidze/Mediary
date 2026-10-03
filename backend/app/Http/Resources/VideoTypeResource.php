@@ -15,6 +15,8 @@ class VideoTypeResource extends JsonResource
             'name_ka' => $this->name_ka,
             'name_en' => $this->name_en,
             'icon' => $this->icon,
+            // Tasks §19.2 — ბეჯის ფერი (`c1…c12` ან `#rrggbb`), `null` — ნაცრისფერი
+            'color' => $this->color,
             'sort_order' => $this->sort_order,
             'videos_count' => $this->whenCounted('videos'),
         ];

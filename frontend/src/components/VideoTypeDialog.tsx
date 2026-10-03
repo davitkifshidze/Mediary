@@ -10,6 +10,7 @@ import {
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { ICON_NAMES } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
+import { ColorPick } from '@/components/ui/color-pick'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,6 +44,8 @@ export function VideoTypeDialog({
     name_ka: type?.name_ka ?? '',
     name_en: type?.name_en ?? '',
     icon: type?.icon ?? ICON_NAMES[0],
+    // Tasks §19.2 — ბეჯის ფერი; `null` — ნაცრისფერი
+    color: type?.color ?? null,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -102,6 +105,16 @@ export function VideoTypeDialog({
             className="mt-1"
           />
         </div>
+
+        {/* Tasks §19.2 — ფერი ბარათის ბეჯისთვის; იგივე პალიტრა, რაც სტატუსებს (§16) */}
+        <ColorPick
+          value={form.color ?? null}
+          onChange={(color) => setForm((f) => ({ ...f, color }))}
+          label={t('videoTypes.color')}
+          hint={t('videoTypes.colorHint')}
+          noneLabel={t('videoTypes.colorNone')}
+          error={errors.color}
+        />
 
         <ModalFooter>
           <Button type="button" variant="ghost" onClick={onClose}>

@@ -36,6 +36,7 @@ class VideoTypeController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? null,
             // ახალი ტიპი ბოლოში მიდგება
             'sort_order' => (int) VideoType::max('sort_order') + 1,
         ]);
@@ -51,6 +52,8 @@ class VideoTypeController extends Controller
             'name_ka' => $data['name_ka'],
             'name_en' => $data['name_en'],
             'icon' => $data['icon'] ?? $videoType->icon,
+            // ⚠️ `array_key_exists` და არა `??`: ფერის **მოხსნა** (`null`) ცხადი არჩევანია
+            'color' => array_key_exists('color', $data) ? $data['color'] : $videoType->color,
         ])->save();
 
         return new VideoTypeResource($videoType);
@@ -125,6 +128,8 @@ class VideoTypeController extends Controller
             'name_ka' => ['required', 'string', 'max:80'],
             'name_en' => ['required', 'string', 'max:80'],
             'icon' => ['nullable', 'string', 'max:60'],
+            // Tasks §19.2 — სტატუსის ფერის იგივე წესი (`StatusController`)
+            'color' => ['nullable', 'string', 'max:20', 'regex:/^(c([1-9]|1[0-2])|#[0-9a-fA-F]{6})$/'],
         ]);
     }
 }

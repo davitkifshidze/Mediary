@@ -9,11 +9,11 @@ import {
 } from '@/api/statuses'
 import { isCustomModuleKey } from '@/lib/customModules'
 import { statusesQueryKey } from '@/lib/statuses'
-import { STATUS_PALETTE } from '@/lib/statusColor'
 import type { Status, StatusRole } from '@/api/types'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { ICON_NAMES } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
+import { ColorPick } from '@/components/ui/color-pick'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -147,43 +147,15 @@ export function StatusDialog({
           />
         </div>
 
-        {/* Tasks §16.1 — ფერი: 12 ტონის პალიტრა + „როლის ფერი" (ნაგულისხმევი) */}
-        <div>
-          <Label className="flex items-center gap-1.5">
-            {t('statuses.color')} <InfoHint info={t('statuses.colorHint')} />
-          </Label>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={t('statuses.color')}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!form.color}
-              onClick={() => setForm((f) => ({ ...f, color: null }))}
-              className={cn(
-                'h-8 cursor-pointer rounded-md border px-2.5 text-xs font-medium transition-colors',
-                !form.color ? 'border-primary bg-secondary text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
-              )}
-            >
-              {t('statuses.colorRole')}
-            </button>
-            {STATUS_PALETTE.map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={form.color === key}
-                aria-label={t('statuses.colorPick', { n: key.slice(1) })}
-                title={t('statuses.colorPick', { n: key.slice(1) })}
-                onClick={() => setForm((f) => ({ ...f, color: key }))}
-                style={{ backgroundColor: `var(--status-${key})` }}
-                className={cn(
-                  'size-8 cursor-pointer rounded-md border-2 transition-transform',
-                  form.color === key ? 'scale-110 border-foreground' : 'border-transparent hover:scale-105',
-                )}
-              />
-            ))}
-          </div>
-          {errors.color && <p className="mt-1 text-xs text-destructive">{errors.color}</p>}
-        </div>
+        {/* Tasks §16.1 — ფერი: 12 ტონის პალიტრა + „როლის ფერი" (ნაგულისხმევი); ამრჩევი საერთოა (§19.2) */}
+        <ColorPick
+          value={form.color ?? null}
+          onChange={(color) => setForm((f) => ({ ...f, color }))}
+          label={t('statuses.color')}
+          hint={t('statuses.colorHint')}
+          noneLabel={t('statuses.colorRole')}
+          error={errors.color}
+        />
 
         {/* ნაგულისხმევი — ახალი ჩანაწერი სწორედ მას იღებს */}
         <div className="flex items-center gap-3 rounded-lg border border-border p-3">

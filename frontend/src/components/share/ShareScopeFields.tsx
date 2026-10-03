@@ -81,7 +81,10 @@ type ClassifiedDomain = Exclude<ShareDomainKey, MediaType | 'playlist'>
  * თვითონ აქ არ შემოდის: მას რვა რედაქტირების დიალოგი მოსდევს, ფანჯარას კი
  * მხოლოდ სია სჭირდება. ⚠️ `satisfies` ყოველ არა-მედია დომენს ითხოვს.
  */
-const CLASSIFIER_SOURCE = {
+/* ⚠️ ცხადი ტიპი და არა `satisfies` (Tasks §19.2): ვიდეოს ტიპს `color` დაემატა და
+   რვა `list`-ის კავშირი საერთო დაბრუნების ტიპზე ვეღარ იკეცებოდა — `useQuery` ვერ
+   ხედავდა, რა მოდის. აქ ყველა ერთი სახეა — `ClassifierEntry[]`. */
+const CLASSIFIER_SOURCE: Record<ClassifiedDomain, { queryKey: string[]; list: () => Promise<ClassifierEntry[]> }> = {
   game: { queryKey: ['game-genres'], list: fetchGameGenres },
   book: { queryKey: ['book-genres'], list: fetchBookGenres },
   board_game: { queryKey: ['board-game-genres'], list: fetchBoardGameGenres },
@@ -90,7 +93,7 @@ const CLASSIFIER_SOURCE = {
   song: { queryKey: ['song-genres'], list: fetchSongGenres },
   bookmark: { queryKey: ['bookmark-categories'], list: fetchBookmarkCategories },
   course: { queryKey: ['course-categories'], list: fetchCourseCategories },
-} satisfies Record<ClassifiedDomain, { queryKey: string[]; list: () => Promise<ClassifierEntry[]> }>
+}
 
 export function ShareScopeFields({
   domain,

@@ -187,6 +187,42 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('სათაურის ქვეშ სამი ბეჯია და „რედაქტირება" გვერდს გადასცემს (Tasks §19.6)', async () => {
+    const { VideoDetail } = await import('@/components/VideoDetail')
+    const onEdit = vi.fn()
+    const subject = video({
+      type: { id: 1, key: 'fun', name_ka: 'გასართობი', name_en: 'Entertainment', icon: 'Clapperboard', color: 'c8', sort_order: 1 },
+      status: { id: 2, key: 'to_watch', module: 'video', name_ka: 'სანახავი', name_en: 'To watch', role: 'todo', icon: null, color: null, is_default: true, sort_order: 0 },
+    })
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () => {
+      root!.render(
+        h(QueryClientProvider, {
+          client: qc,
+          children: h(TooltipProvider, {
+            children: h(PlayerProvider, {
+              children: h(VideoDetail, { video: subject, onClose: vi.fn(), onPlay: vi.fn(), onEdit }),
+            }),
+          }),
+        }),
+      )
+    })
+    await flush()
+
+    const row = [...document.querySelectorAll<HTMLElement>('[data-testid="video-badges"] > *')]
+    expect(row).toHaveLength(3)
+    expect(row[0].textContent).toContain('გასართობი')
+    expect(row[1].textContent).toContain('სანახავი')
+    expect(row[2].textContent).toContain('YouTube')
+
+    await act(async () => buttonWith('actions.edit')!.click())
+    expect(onEdit).toHaveBeenCalledWith(subject)
+  })
+
   it('ჩაუშენებელი წყარო ბმულად რჩება და დაკვრას არ გვთავაზობს', async () => {
     await mount(video({ platform: 'other', embed_url: null, url: 'https://example.com/v' }), {
       onPlay: vi.fn(),
