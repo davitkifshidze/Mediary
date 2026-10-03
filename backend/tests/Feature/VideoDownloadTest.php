@@ -355,6 +355,43 @@ class VideoDownloadTest extends TestCase
         $this->assertNotContains($plain->id, $ids);
     }
 
+    /** Tasks §21.3 — სექციის სათაური: რამდენი ასლია და რამდენი ადგილი უკავია (მხოლოდ მზა, მხოლოდ ჩემი) */
+    public function test_the_status_endpoint_sums_the_local_copies(): void
+    {
+        $this->fakeYtDlp(2048);
+        app(VideoDownloader::class)->run($this->makeVideo($this->user));
+        app(VideoDownloader::class)->run($this->makeVideo($this->user));
+        $this->makeVideo($this->user);
+        // სხვისი ასლი არ ითვლება
+        app(VideoDownloader::class)->run($this->makeVideo($this->makeUser('eka')));
+
+        $this->actingAs($this->user)
+            ->getJson('/api/videos/download-status')
+            ->assertOk()
+            ->assertJsonPath('downloaded_count', 2)
+            ->assertJsonPath('downloaded_size', 4096);
+    }
+
+    /** Tasks §21.3 — დახარისხება ზომით და ჩამოტვირთვის თარიღით */
+    public function test_local_copies_can_be_sorted_by_size_and_date(): void
+    {
+        $this->fakeYtDlp(1024);
+        $small = $this->makeVideo($this->user);
+        app(VideoDownloader::class)->run($small);
+        $this->fakeYtDlp(4096);
+        $big = $this->makeVideo($this->user);
+        app(VideoDownloader::class)->run($big);
+
+        $bySize = collect($this->actingAs($this->user)->getJson('/api/videos?downloaded=1&sort=size')->assertOk()->json('data'))
+            ->pluck('id')->all();
+        $this->assertSame([$big->id, $small->id], $bySize);
+
+        Video::whereKey($small->id)->update(['downloaded_at' => now()->addMinute()]);
+        $byDate = collect($this->actingAs($this->user)->getJson('/api/videos?downloaded=1&sort=downloaded')->assertOk()->json('data'))
+            ->pluck('id')->all();
+        $this->assertSame([$small->id, $big->id], $byDate);
+    }
+
     /** ⚠️ ორი პარალელური ჩამოწერა ერთსა და იმავე ვიდეოზე კვოტას ორჯერ დახარჯავდა */
     public function test_a_second_start_while_running_is_refused(): void
     {

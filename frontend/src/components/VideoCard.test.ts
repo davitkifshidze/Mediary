@@ -73,6 +73,7 @@ async function mount(subject: Video, overrides: Partial<VideoCardProps> = {}) {
     onDelete: vi.fn(),
     onToggleFavorite: vi.fn(),
     download: { hint: 'hint', available: true, pending: false, onStart: vi.fn() },
+    onPlayLocal: vi.fn(),
     ...overrides,
   }
   container = document.createElement('div')
@@ -136,16 +137,20 @@ describe('VideoCard', () => {
     expect(props.onEdit).toHaveBeenCalled()
   })
 
-  it('a downloaded video shows the local-copy badge and a link instead of the download button', async () => {
-    const { el } = await mount(video({ download_status: 'ready', download_size: 329 * 1024 * 1024, download_format: 'mp4' }))
+  it('a downloaded video shows the local-copy badge and opens the local player instead of downloading', async () => {
+    const { el, props } = await mount(video({ download_status: 'ready', download_size: 329 * 1024 * 1024, download_format: 'mp4' }))
 
     const badge = el.querySelector<HTMLElement>('[data-testid="download-badge"]')!
     expect(badge.className).toContain('rounded-md')
     expect(badge.className).toContain('bg-[var(--status-watched)]')
     expect(badge.textContent).toContain(i18n.t('videos.local.ready'))
 
-    const control = el.querySelector<HTMLAnchorElement>('a[data-testid="download-control"]')!
-    expect(control.getAttribute('href')).toContain('/videos/7/download')
-    expect(el.querySelector('button[data-testid="download-control"]')).toBeNull()
+    // Tasks §21.2 — მზა ასლი ცალკე ფლეერში იხსნება, არა ბრაუზერის მნახველში
+    const control = el.querySelector<HTMLButtonElement>('button[data-testid="download-control"][data-local="ready"]')!
+    expect(control.getAttribute('aria-label')).toBe(i18n.t('videos.local.play'))
+    expect(el.querySelector('a[href*="/download"]')).toBeNull()
+    await act(async () => control.click())
+    expect(props.onPlayLocal).toHaveBeenCalled()
+    expect(props.download.onStart).not.toHaveBeenCalled()
   })
 })

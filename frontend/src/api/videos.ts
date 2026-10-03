@@ -308,6 +308,9 @@ export interface VideoDownloadStatus {
   version: string | null
   /** ⚠️ ffmpeg-ის გარეშე „საუკეთესო" ერთფაილიან ვარიანტამდე ეცემა */
   ffmpeg: boolean
+  /** Tasks §21.3 — მზა ასლების რიცხვი და ჯამური ზომა (მხოლოდ ჩემი) */
+  downloaded_count: number
+  downloaded_size: number
 }
 
 /** ერთი ვიდეო id-ით — FEAT-17-ის „დუბლის გახსნა" (სიაში შეიძლება არც იყოს) */

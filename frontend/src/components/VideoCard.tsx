@@ -8,13 +8,14 @@ import {
   HardDriveDownload,
   ListVideo,
   Loader2,
+  MonitorPlay,
   Play,
   RotateCcw,
   SquarePen,
   Trash2,
   TriangleAlert,
 } from 'lucide-react'
-import { videoDownloadUrl, type Video } from '@/api/videos'
+import type { Video } from '@/api/videos'
 import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
@@ -65,6 +66,8 @@ export interface VideoCardProps {
   onToggleFavorite: () => void
   favoritePending?: boolean
   download: VideoCardDownload
+  /** Tasks §21.2 — მზა ლოკალური ასლი ცალკე ფლეერში იხსნება (არა ბრაუზერის მნახველში) */
+  onPlayLocal: () => void
 }
 
 export function VideoCard({
@@ -78,6 +81,7 @@ export function VideoCard({
   onToggleFavorite,
   favoritePending,
   download,
+  onPlayLocal,
 }: VideoCardProps) {
   const { t } = useTranslation()
   const fmt = useDateFormat()
@@ -207,23 +211,24 @@ export function VideoCard({
               <ListVideo className="size-3.5" />
             </Button>
 
-            {/* §7.1/§19.4 — ლოკალური ასლი ერთ ღილაკში; მზაზე — გახსნა, თორემ — ჩამოტვირთვა */}
+            {/* §7.1/§19.4 — ლოკალური ასლი ერთ ღილაკში; მზაზე — ლოკალური ფლეერი (§21.2), თორემ — ჩამოტვირთვა */}
             {v.download_status === 'ready' ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <a
-                    href={videoDownloadUrl(v.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t('videos.local.open')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('videos.local.play')}
                     data-testid="download-control"
-                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-[var(--status-watched)]')}
+                    data-local="ready"
+                    className="text-[var(--status-watched)]"
+                    onClick={onPlayLocal}
                   >
-                    <HardDriveDownload className="size-3.5" />
-                  </a>
+                    <MonitorPlay className="size-3.5" />
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {t('videos.local.open')} · {download.hint}
+                  {t('videos.local.play')} · {download.hint}
                 </TooltipContent>
               </Tooltip>
             ) : (

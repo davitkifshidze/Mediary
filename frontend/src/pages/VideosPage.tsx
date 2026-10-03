@@ -53,6 +53,7 @@ import { TagSelect } from '@/components/TagSelect'
 import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
 import { FloatingPick } from '@/components/FloatingPick'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
+import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
 import { VideoCard } from '@/components/VideoCard'
 import { VideoDetail } from '@/components/VideoDetail'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
@@ -66,6 +67,7 @@ import {
 import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { DatePicker } from '@/components/ui/date-picker'
 import { DurationInput } from '@/components/ui/duration-input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
@@ -94,10 +96,11 @@ import { formatBytes } from '@/lib/utils'
    5.5 — ხანგრძლივობის ხელით ველი მოიხსნა; ავტომატური probe რჩება.
    ============================================================ */
 
-const SORTS = ['newest', 'oldest', 'title', 'watched'] as const
+/* Tasks §21.3 — `size`/`downloaded` ლოკალური ასლების სექციისთვისაა, მაგრამ ყველგან მუშაობს */
+const SORTS = ['newest', 'oldest', 'title', 'watched', 'size', 'downloaded'] as const
 
 /** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
-const EMPTY_FILTERS = { types: [] as string[], tags: [] as string[] }
+const EMPTY_FILTERS = { types: [] as string[], tags: [] as string[], downloaded: false }
 type PanelFilters = typeof EMPTY_FILTERS
 
 export function VideosPage() {
@@ -117,6 +120,9 @@ export function VideosPage() {
   // მოქმედი ფილტრი მისამართშია (2.2-ის მოდელი): საიდბარი და პანელი ერთსა და იმავეს ხედავს
   const types = useMemo(() => new URLSearchParams(search).get('type')?.split(',').filter(Boolean) ?? [], [search])
   const tags = useMemo(() => new URLSearchParams(search).get('tag')?.split(',').filter(Boolean) ?? [], [search])
+  /* Tasks §21.3 — „მხოლოდ ჩამოტვირთული" პანელის გადამრთველია (`?downloaded=1`); საიდბარის
+     სექცია (`?view=downloaded`) იგივეს აკეთებს სათაურითა და ჯამური ზომით */
+  const downloadedParam = useMemo(() => new URLSearchParams(search).get('downloaded') === '1', [search])
 
   // მონახაზში სტატუსი/რჩეული აღარაა (Tasks 3) — ის საიდბარის სექციაა (`?view=`)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -128,6 +134,8 @@ export function VideosPage() {
   // დამკვრელშია** (§35: გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
   // აღწერა/ფაილები/ჩანიშვნები/მსგავსებია და ვიდეოს დამკვრელს გადასცემს.
   const [detail, setDetail] = useState<Video | null>(null)
+  /** Tasks §21.2 — ლოკალური ასლის ფლეერი (ცალკე მოდალი, არა საერთო დამკვრელი) */
+  const [local, setLocal] = useState<Video | null>(null)
   /** Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზეც; ბოლო პასუხის ჩანაწერები „გახსნა"-სთვის */
   const [pickOpen, setPickOpen] = useState(false)
   const picked = useRef<Record<number, Video>>({})
@@ -144,8 +152,8 @@ export function VideosPage() {
     type_id: types.length ? types.join(',') : undefined,
     tag: tags.length ? tags.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
-    // §7.1 — „ჩამოწერილები" საიდბარის სექციაა, ე.ი. `?view=`-ში ზის
-    downloaded: view === 'downloaded' ? true : undefined,
+    // §7.1 — „ჩამოწერილები" საიდბარის სექციაა, ე.ი. `?view=`-ში ზის; §21.3 — პანელის გადამრთველიც
+    downloaded: view === 'downloaded' || downloadedParam ? true : undefined,
     /* §6.4 — დანარჩენი `?view=` ლექსიკონის სტატუსია. ⚠️ „ყველა"/„რჩეული"/
        „ჩამოწერილი" სტატუსები არაა და ფილტრში არ უნდა გადავიდეს. */
     status:
@@ -211,12 +219,15 @@ export function VideosPage() {
     const open = Number(params.get('open'))
     if (!open) return
 
+    // Tasks §21.2 — `?open=<id>&local=1` ლოკალურ ფლეერს ხსნის (თუ ასლი მზადაა)
+    const wantLocal = params.get('local') === '1'
     const next = new URLSearchParams(params)
     next.delete('open')
+    next.delete('local')
     setParams(next, { replace: true })
 
     fetchVideo(open)
-      .then(setDetail)
+      .then((v) => (wantLocal && v.download_status === 'ready' ? setLocal(v) : setDetail(v)))
       .catch((e) => toast({ title: errorMessage(e), variant: 'error' }))
   }, [params, setParams, toast])
 
@@ -324,6 +335,7 @@ export function VideosPage() {
     if (view !== 'all') p.set('view', view)
     if (next.types.length) p.set('type', next.types.join(','))
     if (next.tags.length) p.set('tag', next.tags.join(','))
+    if (next.downloaded) p.set('downloaded', '1')
     setPanelOpen(false)
     navigate({ pathname: '/videos', search: p.toString() })
   }
@@ -333,7 +345,7 @@ export function VideosPage() {
      (მონახაზსაც და მისამართსაც) — ადრე მხოლოდ მისამართს წერდა და უკვე
      სუფთა მისამართზე დაჭერილი „გასუფთავება" ჩუმად არაფერს აკეთებდა. */
   const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(
-    { types, tags },
+    { types, tags, downloaded: downloadedParam },
     EMPTY_FILTERS,
     writeFilters,
   )
@@ -362,7 +374,12 @@ export function VideosPage() {
       <PageHeader
         module="video"
         title={heading}
-        subtitle={t('videos.count', { count: total })}
+        /* Tasks §21.3 — „ჩამოტვირთული" სექციას თავისი სათაური და ჯამური ზომა აქვს */
+        subtitle={
+          filters.downloaded
+            ? t('videos.local.total', { count: total, size: formatBytes(ytdlpQ.data?.downloaded_size ?? 0) })
+            : t('videos.count', { count: total })
+        }
         actions={
           <>
             {/* ძებნა — Tasks 4: განმარტება tooltip-ია და არა `title` */}
@@ -486,6 +503,7 @@ export function VideosPage() {
                   onDelete={() => void askDelete(v)}
                   onToggleFavorite={() => favorite.mutate(v.id)}
                   favoritePending={favorite.isPending && favorite.variables === v.id}
+                  onPlayLocal={() => setLocal(v)}
                   download={{
                     hint: downloadHint(v),
                     available: !ytdlpQ.data || ytdlpQ.data.available,
@@ -515,6 +533,18 @@ export function VideosPage() {
           open={panelOpen}
           onOpenChange={setPanelOpen}
         >
+          {/* Tasks §21.3 — „მხოლოდ ჩამოტვირთული" (`downloaded=1`); სექციიდან იგივე `?view=downloaded`-ით მოდის */}
+          <FilterGroup title={t('videos.local.tab')} count={draft.downloaded ? 1 : 0}>
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 text-sm">
+              <span>{t('videos.local.onlyDownloaded')}</span>
+              <Switch
+                checked={draft.downloaded}
+                onCheckedChange={(v) => setDraft((d) => ({ ...d, downloaded: v }))}
+                aria-label={t('videos.local.onlyDownloaded')}
+              />
+            </label>
+          </FilterGroup>
+
           {/* „ყველა"/„რჩეული" აქ განზრახ არ არის (Tasks 3) — ისინი საიდბარის სექციებია */}
           <FilterGroup title={t('filter.types')} count={draft.types.length}>
             <FilterOptionList>
@@ -585,6 +615,9 @@ export function VideosPage() {
           onClose={() => setPickOpen(false)}
         />
       )}
+
+      {/* Tasks §21.2 — ლოკალური ასლის ფლეერი; ფაილის წაშლაზე სია თავისით ახლდება */}
+      {local && <LocalVideoPlayer video={videos.find((v) => v.id === local.id) ?? local} onClose={() => setLocal(null)} />}
 
       {detail && (
         <VideoDetail

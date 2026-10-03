@@ -90,11 +90,19 @@ class VideoDownloadController extends Controller
      */
     public function status(YtDlp $ytdlp)
     {
+        /* Tasks §21.3 — „ჩამოტვირთული" სექციის სათაურისთვის: რამდენი ასლია და რამდენი
+           ადგილი უკავია. ⚠️ `owner` scope — მხოლოდ ჩემი; მხოლოდ **მზა** ასლები,
+           მიმდინარეს ზომა ჯერ არ აქვს. ცალკე endpoint-ი არ გაკეთდა — SPA ამას
+           ისედაც კითხულობს ღილაკისთვის. */
+        $ready = Video::where('download_status', Video::DOWNLOAD_READY);
+
         return response()->json([
             'available' => $ytdlp->available(),
             'version' => $ytdlp->version(),
             // ffmpeg-ის არქონა ხარისხს ჭრის და ეს ცხადად უნდა ეწეროს
             'ffmpeg' => $ytdlp->ffmpeg() !== null,
+            'downloaded_count' => (clone $ready)->count(),
+            'downloaded_size' => (int) (clone $ready)->sum('download_size'),
         ]);
     }
 }

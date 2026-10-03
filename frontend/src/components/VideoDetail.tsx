@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AudioLines, CalendarDays, Download, FileText, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
+import { AudioLines, CalendarDays, Download, FileText, FileX, MonitorPlay, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
+  deleteVideoDownload,
   deleteVideoFile,
   deleteVideoNote,
   fetchVideoFiles,
@@ -19,7 +20,9 @@ import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
 import { useDateFormat } from '@/lib/dates'
 import { isAllowedEmbed } from '@/lib/embed'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, translateCode } from '@/lib/errors'
+import { cn, formatBytes } from '@/lib/utils'
+import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
 import { usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
@@ -32,7 +35,7 @@ import { VisitBadge } from '@/components/RecordVisits'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
-import { useToast } from '@/components/ui/feedback'
+import { useConfirm, useToast } from '@/components/ui/feedback'
 
 /* ============================================================
    ვიდეოს დეტალური ხედი (K3): ვიდეო · ფოტოები · დოკუმენტები · ჩანიშვნები.
@@ -50,7 +53,7 @@ import { useToast } from '@/components/ui/feedback'
    ახლა დამკვრელშია (ჩართვაზე) და არა ფანჯრის გახსნაზე: გახსნა ყურება არაა.
    ============================================================ */
 
-type Tab = 'video' | 'images' | 'notes' | 'docs'
+type Tab = 'video' | 'images' | 'notes' | 'docs' | 'local'
 
 function bytes(n: number): string {
   if (n <= 0) return '0 KB'
@@ -89,6 +92,8 @@ export function VideoDetail({
   })
   const { toast } = useToast()
   const [tab, setTab] = useState<Tab>('video')
+  /** Tasks §21.2 — ლოკალური ფლეერი ფანჯრის თავზე (მოდალები ერთმანეთზე დგება) */
+  const [localOpen, setLocalOpen] = useState(false)
 
   const filesQ = useQuery({
     queryKey: ['video-files', video.id],
@@ -129,6 +134,8 @@ export function VideoDetail({
     { value: 'images', label: t('videos.tabImages'), badge: images.length || undefined },
     { value: 'docs', label: t('videos.tabDocs'), badge: docs.length || undefined },
     { value: 'notes', label: t('videos.tabNotes'), badge: notes.length || undefined },
+    // Tasks §21.4 — „ლოკალური ასლი" მხოლოდ მაშინ, როცა რამე არის სათქმელი
+    ...(video.download_status ? [{ value: 'local' as Tab, label: t('videos.local.tab') }] : []),
   ]
 
   const uploadButton = (kind: 'image' | 'doc') => (
@@ -170,6 +177,10 @@ export function VideoDetail({
       <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />
 
       <div className="mt-4">
+        {tab === 'local' && (
+          <LocalCopyTab video={video} onPlay={() => setLocalOpen(true)} />
+        )}
+
         {tab === 'video' && (
           <>
             <PlayInPlayer
@@ -306,6 +317,14 @@ export function VideoDetail({
 
       {/* ონლაინ მნახველი — ერთი კომპონენტი ყველა მოდულზე (2026-09-14) */}
       {viewer.node}
+
+      {localOpen && (
+        <LocalVideoPlayer
+          video={video}
+          onClose={() => setLocalOpen(false)}
+          onRemoved={() => setTab('video')}
+        />
+      )}
     </ModalShell>
   )
 }
@@ -433,5 +452,91 @@ function SimilarVideos({ video, onOpen }: { video: Video; onOpen?: (video: Video
         })}
       </ul>
     </section>
+  )
+}
+
+/**
+ * **„ლოკალური ასლი" ჩანართი** (Tasks §21.4) — მდგომარეობა, ზომა, ფორმატი, თარიღი,
+ * დაკვრა ლოკალურ ფლეერში და ფაილის წაშლა. ⚠️ ჩამოტვირთვის **დაწყება** აქ არ არის —
+ * ის ბარათზე და კონტექსტურ მენიუშია (`yt-dlp`-ის არსებობას გვერდი ამოწმებს).
+ */
+function LocalCopyTab({ video, onPlay }: { video: Video; onPlay: () => void }) {
+  const { t } = useTranslation()
+  const { date } = useDateFormat()
+  const qc = useQueryClient()
+  const confirm = useConfirm()
+  const { toast } = useToast()
+
+  const remove = useMutation({
+    mutationFn: () => deleteVideoDownload(video.id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['videos'] })
+      toast({ title: t('videos.local.removed'), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const askRemove = async () => {
+    const ok = await confirm({
+      title: t('videos.local.removeTitle'),
+      description: t('videos.local.removeHint', { name: video.title, size: formatBytes(video.download_size) }),
+      variant: 'destructive',
+    })
+    if (ok) remove.mutate()
+  }
+
+  const ready = video.download_status === 'ready'
+  const state = ready
+    ? t('videos.local.ready')
+    : video.download_status === 'failed'
+      ? t('videos.local.failed')
+      : video.download_stale
+        ? t('videos.local.stalled')
+        : t('videos.local.running')
+
+  return (
+    <div className="space-y-4">
+      <TabInfo>{t('videos.local.tabInfo')}</TabInfo>
+      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-xs text-muted-foreground">{t('form.status')}</dt>
+          <dd className={cn('font-medium', ready ? 'text-[var(--status-watched)]' : video.download_status === 'failed' && 'text-destructive')}>
+            {state}
+          </dd>
+        </div>
+        {ready && (
+          <div>
+            <dt className="text-xs text-muted-foreground">{t('videos.local.size')}</dt>
+            <dd className="font-medium">
+              {[formatBytes(video.download_size), video.download_format].filter(Boolean).join(' · ')}
+            </dd>
+          </div>
+        )}
+        {video.downloaded_at && (
+          <div>
+            <dt className="text-xs text-muted-foreground">{t('videos.local.date')}</dt>
+            <dd className="font-medium">{date(video.downloaded_at)}</dd>
+          </div>
+        )}
+        {video.download_status === 'failed' && video.download_error && (
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">{t('videos.local.error')}</dt>
+            <dd className="text-destructive">{translateCode(video.download_error) || video.download_error}</dd>
+          </div>
+        )}
+      </dl>
+      {ready && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={onPlay}>
+            <MonitorPlay className="size-4" />
+            {t('videos.local.play')}
+          </Button>
+          <Button variant="destructiveOutline" disabled={remove.isPending} onClick={() => void askRemove()}>
+            <FileX className="size-4" />
+            {t('videos.local.remove')}
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }

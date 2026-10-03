@@ -81,6 +81,9 @@ class VideoController extends Controller
             'title' => $query->orderBy('title'),
             'oldest' => $query->orderBy('id'),
             'watched' => $query->orderByDesc('watched_at'),
+            // Tasks §21.3 — „ჩამოტვირთული" სექციის დახარისხება ზომით / ჩამოტვირთვის თარიღით
+            'size' => $query->orderByDesc('download_size')->orderByDesc('id'),
+            'downloaded' => $query->orderByDesc('downloaded_at')->orderByDesc('id'),
             default => $query->orderByDesc('id'),
         };
 
