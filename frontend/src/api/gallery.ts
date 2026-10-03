@@ -888,8 +888,19 @@ export async function setGalleryPrimary(id: number): Promise<{ poster_path: stri
 
 /* ---------- ვიდეო-ბმულები (§8.1/§8.4) ---------- */
 
+/** Tasks §25.5 — ვიდეოების გვერდის პარამეტრები */
+export type GalleryVideoOwnerType = 'record' | 'actor'
+export type GalleryVideoSort = 'new' | 'old' | 'title'
+
 export async function fetchGalleryVideos(
-  params: { owner?: string; page?: number; per_page?: number } = {},
+  params: {
+    owner?: string
+    page?: number
+    per_page?: number
+    q?: string
+    owner_type?: GalleryVideoOwnerType
+    sort?: GalleryVideoSort
+  } = {},
 ): Promise<GalleryVideoPage> {
   const { data } = await api.get('/gallery/videos', { params })
   return data

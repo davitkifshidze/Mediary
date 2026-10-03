@@ -1733,6 +1733,20 @@
     "deleteHint": "“{{name}}” moves to the trash — it comes back from there with its songs. The songs stay in your library."
   },
   "gallery": {
+    "videoOwner": "Owner",
+    "videoOwnerRecord": "Record",
+    "videoOwnerActor": "Actor",
+    "videoSearch": "Search by title or channel…",
+    "videoSort": {
+      "new": "Newest",
+      "old": "Oldest",
+      "title": "By title"
+    },
+    "videoFlat": "Flat",
+    "videoByOwner": "By record",
+    "videoNoMatch": "No video matches",
+    "videoNoMatchHint": "Change the search or the owner filter.",
+    "fetchShort": "Download",
     "uploadedBadge": "Uploaded",
     "webBadge": "From the web",
     "moduleOff": "Photos from the web and video links live in the gallery module — it is switched off.",
@@ -1929,7 +1943,6 @@
       "year": "By year",
       "status": "By status"
     },
-    "moreFilters": "Filters",
     "inner": {
       "actors": "Actors"
     },

@@ -94,6 +94,7 @@ export function ParentGallery({
         title={title ?? <Badge className="bg-primary/15 text-foreground">{t('gallery.webBadge')}</Badge>}
         filters={{ owner }}
         cacheKey={owner}
+        categories
         emptyText={t('gallery.emptyRecord')}
         actions={
           <>

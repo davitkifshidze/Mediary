@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Boxes, Lock } from 'lucide-react'
@@ -32,7 +33,19 @@ import { Pager } from '@/components/ui/pager'
 export function ModulesCut() {
   const { t, i18n } = useTranslation()
   const { all } = useModules()
-  const [open, setOpen] = useState<GalleryGroup | null>(null)
+  /* Tasks §25.7 — ⚠️ **გახსნილი მოდული URL-შია** (`?open=<module>`, §3-ის პატერნი):
+     ფოტოების სიიდან „უკან" იმავე მოდულების ჭრილზე აბრუნებს და ბრაუზერის „უკან"-იც
+     მუშაობს; აქამდე `useState` იყო და დასტაზე დაჭერა ბადეს უსათაუროდ ანაცვლებდა —
+     „ეგრევე ფოტოებში ჩავარდნას" ჰგავდა. */
+  const [params, setParams] = useSearchParams()
+  const openKey = params.get('open')
+  const setOpen = (group: GalleryGroup | null) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (group?.module) next.set('open', group.module)
+      else next.delete('open')
+      return next
+    })
 
   const groupsQ = useQuery({
     queryKey: ['gallery-groups', 'module'],
@@ -44,11 +57,12 @@ export function ModulesCut() {
     return found ? moduleName(found, i18n.language) : (key ?? '—')
   }
 
-  if (open) return <ModulePhotos group={open} title={nameOf(open.module)} onBack={() => setOpen(null)} />
-
   const groups = groupsQ.data?.groups ?? []
+  const open = openKey ? (groups.find((group) => group.module === openKey) ?? null) : null
 
-  if (groupsQ.isLoading) return <GalleryStackSkeleton count={5} />
+  if (groupsQ.isLoading) return <GalleryStackSkeleton count={5} aspect="wide" />
+
+  if (open) return <ModulePhotos group={open} title={nameOf(open.module)} onBack={() => setOpen(null)} />
 
   if (!groups.length) {
     return (
@@ -113,17 +127,21 @@ function ModulePhotos({
 
   return (
     <section>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* §25.7 — სათაურის ზოლი: „← უკან · {მოდული} · N ფოტო"; ჩანაწერი თითო უჯრის ქვესათაურშია */}
+      <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="module-photos-header">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-4" />
           {t('actions.back')}
         </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-display text-lg font-semibold">{title}</h2>
-          <p className="truncate text-xs text-muted-foreground">
-            {t('gallery.photos', { count: meta?.total ?? 0 })}
-            {meta?.truncated ? ` · ${t('gallery.moduleTruncated')}` : ''}
-          </p>
+          <h2 className="flex items-center gap-2 truncate font-display text-lg font-semibold">
+            <span className="text-muted-foreground">{t('gallery.cut.modules')}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="truncate">{title}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-sm font-normal text-muted-foreground">{t('gallery.photos', { count: meta?.total ?? 0 })}</span>
+          </h2>
+          {meta?.truncated && <p className="truncate text-xs text-muted-foreground">{t('gallery.moduleTruncated')}</p>}
         </div>
       </div>
 

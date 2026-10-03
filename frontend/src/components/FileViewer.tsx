@@ -110,7 +110,7 @@ export function FileViewer({
         )}
 
         {src && kind === 'image' && (
-          <img src={src} alt={file.name ?? ''} className="max-h-[74vh] w-full object-contain" />
+          <img src={src} alt={file.name ?? ''} className="mx-auto max-h-[74vh] w-full object-contain" />
         )}
 
         {/* ⚠️ `controls` და არა ავტოგაშვება — ეს ბიბლიოთეკის პლეიერი არაა,

@@ -86,3 +86,38 @@ describe('PhotoStack', () => {
     expect(node.querySelectorAll('img').length).toBe(2)
   })
 })
+
+/* Tasks §25.1 — ბარათი თავიდან: მოდულის ფერის ზოლი, ჟანრების ჩიპები, მეტა-ხაზი, h-9 ზოლი, `contain` ფიტი */
+describe('PhotoStack — §25.1', () => {
+  it('draws the accent bar, chips, meta and an equal-height actions bar; contain fit keeps the photo whole', async () => {
+    const { PhotoStack } = await import('@/components/ui/photo-stack')
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () =>
+      root!.render(
+        h(PhotoStack, {
+          title: 'Dune',
+          label: '3 ფოტო',
+          images: ['gallery/a.jpg'],
+          aspect: 'wide',
+          fit: 'contain',
+          accent: '#6366f1',
+          chips: h('span', { 'data-testid': 'chip' }, 'Sci-fi'),
+          meta: h('span', { 'data-testid': 'meta' }, '2021'),
+          actions: h('button', { type: 'button' }, 'გახსნა'),
+        }),
+      ),
+    )
+
+    const accent = container.querySelector<HTMLElement>('[data-testid="stack-accent"]')
+    expect(accent).not.toBeNull()
+    expect(accent!.style.background).toContain('rgb(99, 102, 241)')
+    expect(container.querySelector('[data-testid="chip"]')?.textContent).toBe('Sci-fi')
+    expect(container.querySelector('[data-testid="meta"]')?.textContent).toBe('2021')
+    expect(container.querySelector('[data-testid="stack-actions"]')?.className).toContain('mt-auto')
+    expect(container.querySelector('img')?.className).toContain('object-contain')
+    // ბარათი სვეტია და მთელ სიმაღლეს იკავებს — ბადეში ყველა ერთი სიმაღლისაა
+    expect(container.firstElementChild?.className).toContain('h-full')
+  })
+})

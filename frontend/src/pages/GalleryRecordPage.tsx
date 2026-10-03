@@ -93,6 +93,7 @@ export function GalleryRecordPage() {
           title={passedTitle || t('gallery.recordPhotos')}
           filters={{ owner: `${kind}:${recordId}` }}
           cacheKey={`${kind}:${recordId}`}
+          categories
           actions={
             <>
               <Button variant="outline" size="sm" onClick={() => setWebOpen(true)}>

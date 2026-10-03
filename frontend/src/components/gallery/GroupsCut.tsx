@@ -1,8 +1,8 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, DownloadCloud, Globe, Images, Maximize2, Trash2, User, Video } from 'lucide-react'
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, DownloadCloud, Globe, Images, Maximize2, Search, Star, Trash2, User, Video } from 'lucide-react'
 import {
   fetchActorGalleryImages,
   fetchGalleryGroups,
@@ -16,7 +16,25 @@ import { MEDIA_NAV_KEY, type MediaType } from '@/lib/media'
 import type { PhotoAction } from '@/lib/photoActions'
 import { sectionGalleryGroups, sortGalleryGroups } from '@/lib/galleryGroups'
 import { useContentLang } from '@/lib/settings'
+import { isMediaKey, useModules } from '@/lib/modules'
+import { statusName, useMergedStatuses } from '@/lib/statuses'
+import { useFilterDraft } from '@/lib/filters'
+import { tintStyle } from '@/lib/gameMeta'
+import { fetchGenres } from '@/api/media'
 import { cn, formatBytes } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { StatusBadge } from '@/components/StatusBadge'
+import { FilterGroup, FilterOption, FilterOptionList, FilterPanel, FilterRange, FilterTrigger } from '@/components/FilterPanel'
+import { LayoutToggle } from '@/components/gallery/LayoutToggle'
+import {
+  GALLERY_GROUP_SECTIONS,
+  GALLERY_GROUP_SORTS,
+  type GalleryGroupSection,
+  type GalleryGroupSort,
+} from '@/lib/galleryGroups'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -25,7 +43,6 @@ import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-m
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { GroupPhotos } from '@/components/gallery/GroupPhotos'
-import { EMPTY_GROUP_FILTERS, GroupFilters, type GroupFilterState } from '@/components/gallery/GroupFilters'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { WebImageDialog } from '@/components/WebImageDialog'
 import { WebVideoDialog } from '@/components/WebVideoDialog'
@@ -60,6 +77,42 @@ import { WebVideoDialog } from '@/components/WebVideoDialog'
    ============================================================ */
 
 
+/** პანელის ფილტრები — „ცარიელი" და მისი ტიპი ერთ ადგილას (`lib/filters.ts`) */
+const EMPTY_PANEL = { genres: [] as string[], statuses: [] as string[], yearMin: '', yearMax: '' }
+
+/** მსახიობებს წელი არ აქვთ — „წლით" დალაგება ჩუმად არაფერს გააკეთებდა */
+const ACTOR_SORTS: readonly GalleryGroupSort[] = ['photos', 'photos_asc', 'title', 'bytes']
+
+function Pick({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (next: string) => void
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="hidden sm:inline">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 w-auto min-w-36 text-sm">
+          <SelectFitValue labels={options.map((option) => option.label)} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
 export function GroupsCut({
   by,
   type,
@@ -87,7 +140,24 @@ export function GroupsCut({
   const confirm = useConfirm()
   const { toast } = useToast()
 
-  const [filters, setFilters] = useState<GroupFilterState>(EMPTY_GROUP_FILTERS)
+  /* ---------- Tasks §25.2 — ფილტრები `FilterPanel` + `useFilterDraft`-ზე ----------
+     ⚠️ **„ფოტოიანი / უფოტო / ყველა“ URL-შია** (`?have=`): დომენის ბარათების
+     რიცხვებიც (`RecordsCut`) ამას კითხულობს, ე.ი. „უფოტოზე" გადასვლა მათაც
+     ცვლის — აქამდე ისინი `have:'with'`-ზე იყო მიბმული. ზოლის კონტროლები
+     (ძებნა, რჩეული, ხედი, დალაგება, დაჯგუფება) უმალ მოქმედებენ, პანელის
+     სია (ჟანრი, სტატუსი, წელი) კი „გაფილტვრა“-ზე. */
+  const { all: modules } = useModules()
+  const [q, setQ] = useState('')
+  const [favorite, setFavorite] = useState(false)
+  const [layout, setLayout] = useState<'grouped' | 'mixed'>('grouped')
+  const [sort, setSort] = useState<GalleryGroupSort>('photos')
+  const [section, setSection] = useState<GalleryGroupSection>('none')
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [applied, setApplied] = useState(EMPTY_PANEL)
+  const { draft, setDraft, dirty, apply, clear, activeCount } = useFilterDraft(applied, EMPTY_PANEL, (next) => {
+    setApplied(next)
+    setPanelOpen(false)
+  })
   const [gender, setGender] = useState<'all' | 'female' | 'male'>('all')
   /**
    * §28 — შეკრებილი სექციები.
@@ -104,6 +174,35 @@ export function GroupsCut({
      ითვლება — სიიდან, გასაღებით (`keyFor`). */
   const [params, setParams] = useSearchParams()
   const location = useLocation()
+  const haveParam = params.get('have')
+  const have: 'with' | 'without' | 'all' = haveParam === 'without' || haveParam === 'all' ? haveParam : 'with'
+  const setHave = (next: 'with' | 'without' | 'all') =>
+    setParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (next === 'with') n.delete('have')
+        else n.set('have', next)
+        n.delete('open')
+        return n
+      },
+      { replace: true },
+    )
+  const mediaDomains = (by === 'record' ? (domains ?? (type ? [type] : [])) : []).filter(isMediaKey)
+  const genresQ = useQuery({
+    queryKey: ['genres', mediaDomains.length === 1 ? mediaDomains[0] : 'all'],
+    // §25.2 — ერთი დომენი → **დომენის** ჟანრები; „ყველა" — გლობალური სია
+    queryFn: () => fetchGenres(mediaDomains.length === 1 ? mediaDomains[0] : undefined),
+    enabled: mediaDomains.length > 0,
+  })
+  const statuses = useMergedStatuses(mediaDomains)
+  const genreLabel = (slug: string) => {
+    const genre = genresQ.data?.find((g) => g.slug === slug)
+    return genre ? (lang === 'ka' ? genre.name_ka || genre.name_en : genre.name_en || genre.name_ka) || slug : slug
+  }
+  // პანელის სია დომენის ცვლილებაზე ინულდება — სხვა დომენის ჟანრი აქ არაფერს ჭრის
+  useEffect(() => {
+    setApplied(EMPTY_PANEL)
+  }, [type, from])
   const [webOn, setWebOn] = useState<GalleryGroup | null>(null)
   const [videoOn, setVideoOn] = useState<GalleryGroup | null>(null)
 
@@ -113,14 +212,14 @@ export function GroupsCut({
   const query = {
     type: by === 'record' ? type : undefined,
     from: by === 'actor' ? from : undefined,
-    q: filters.q.trim() || undefined,
+    q: q.trim() || undefined,
     gender: by === 'actor' && gender !== 'all' ? gender : undefined,
-    have: by === 'record' ? filters.have : undefined,
-    genre: by === 'record' && filters.genre ? filters.genre : undefined,
-    status: by === 'record' && filters.status ? filters.status : undefined,
-    favorite: by === 'record' && filters.favorite ? true : undefined,
-    year_min: by === 'record' && filters.yearMin ? Number(filters.yearMin) : undefined,
-    year_max: by === 'record' && filters.yearMax ? Number(filters.yearMax) : undefined,
+    have: by === 'record' ? have : undefined,
+    genre: by === 'record' && applied.genres.length ? applied.genres.join(',') : undefined,
+    status: by === 'record' && applied.statuses.length ? applied.statuses.join(',') : undefined,
+    favorite: by === 'record' && favorite ? true : undefined,
+    year_min: by === 'record' && applied.yearMin ? Number(applied.yearMin) : undefined,
+    year_max: by === 'record' && applied.yearMax ? Number(applied.yearMax) : undefined,
     previews: 5,
   } as const
 
@@ -294,16 +393,22 @@ export function GroupsCut({
   }
 
   const groups = useMemo(
-    () => sortGalleryGroups(groupsQ.data?.groups ?? [], filters.sort, titleOf, lang),
+    () => sortGalleryGroups(groupsQ.data?.groups ?? [], sort, titleOf, lang),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- titleOf ყოველ რენდერზე ახალია და მხოლოდ lang-ზეა დამოკიდებული
-    [groupsQ.data, filters.sort, lang],
+    [groupsQ.data, sort, lang],
   )
 
   const sections = useMemo(
-    () => sectionGalleryGroups(groups, by === 'record' ? filters.section : 'none', lang, t('gallery.unknownSection')),
+    () => sectionGalleryGroups(groups, by === 'record' ? section : 'none', lang, t('gallery.unknownSection')),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t ენის ცვლილებაზე იცვლება, რასაც lang უკვე ფარავს
-    [groups, filters.section, by, lang],
+    [groups, section, by, lang],
   )
+
+  // §25.1 — ბარათის აქცენტი მოდულის ფერია; მსახიობი გალერეის მოდულისაა
+  const accentOf = (group: GalleryGroup): string | null => {
+    const key = group.kind === 'actor' ? 'gallery' : group.from ? group.from : group.kind
+    return modules.find((m) => m.key === key)?.color ?? null
+  }
 
   /** ერთი სექციის შეკრება/გაშლა */
   const toggleSection = (key: string) =>
@@ -371,6 +476,8 @@ export function GroupsCut({
         filters={filtersFor(open)}
         cacheKey={keyFor(open)}
         onBack={() => setOpen(null)}
+        /* §25.4 — კადრი/პოსტერი/ლოგო/მსახიობი ჩანართები ბიბლიოთეკაშიც */
+        categories={isRecord}
         showOwner={!!open.from || !!open.provider}
         actions={
           <div className="flex flex-wrap items-center gap-1.5">
@@ -435,12 +542,15 @@ export function GroupsCut({
 
   const card = (group: GalleryGroup) => {
     const actions = groupActions(group)
-    const quick = actions.filter((action) => action.quick)
-    /** მიმდინარე წაშლა/ჩამოტვირთვა — ორმაგი დაჭერა ორ გაშვებას ნიშნავდა */
+    const fetch = actions.find((action) => action.key === 'fetch')
     const busy =
       (quickActor.isPending && quickActor.variables === group.id) ||
       (removeGroup.isPending && removeGroup.variables === group)
+    const accent = accentOf(group)
+    const isRecord = by === 'record'
 
+    /* §25.1 — ქვედა ზოლი ერთი სიმაღლის (h-9) ორი ღილაკით — „გახსნა", „ჩამოტვირთვა" —
+       და `⋯` მენიუთი (იგივე სია, რაც მარჯვენა კლიკს აქვს, §7) */
     return (
       <li key={keyFor(group)}>
         <PhotoStack
@@ -450,25 +560,62 @@ export function GroupsCut({
           count={group.photos}
           images={groupsQ.data?.previews[keyFor(group)] ?? []}
           aspect={by === 'actor' ? 'portrait' : 'wide'}
-          onClick={() => setOpen(group)}
-          actions={
-            quick.length ? (
+          // შერეული ფორმატი (წყარო/მომწოდებელი) — არ იჭრება, მუქ ფონზე ჯდება
+          fit={by === 'source' || by === 'provider' ? 'contain' : 'cover'}
+          accent={accent}
+          chips={
+            isRecord && group.genres?.length ? (
               <>
-                {quick.map((action) => (
-                  <Button
-                    key={action.key}
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    disabled={busy}
-                    onClick={action.run}
+                {group.genres.slice(0, 3).map((genre) => (
+                  <span
+                    key={genre.slug}
+                    className="inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px]"
+                    style={tintStyle(accent) ?? undefined}
                   >
-                    <action.icon className="size-3.5" />
-                    {action.label}
-                  </Button>
+                    {(lang === 'ka' ? genre.name_ka || genre.name_en : genre.name_en || genre.name_ka) || genre.slug}
+                  </span>
                 ))}
               </>
             ) : undefined
+          }
+          meta={
+            isRecord && (group.year || group.status || group.favorite) ? (
+              <>
+                {group.year ? <span className="tabular-nums">{group.year}</span> : null}
+                {group.status && <StatusBadge status={group.status} className="h-6 px-2 text-[11px]" />}
+                {group.favorite && <Star className="size-3.5 fill-current text-favorite" aria-label={t('filter.favorite')} />}
+              </>
+            ) : undefined
+          }
+          onClick={() => setOpen(group)}
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="min-w-0 flex-1" disabled={busy} onClick={() => setOpen(group)}>
+                <Maximize2 className="size-3.5" />
+                <span className="truncate">{t('actions.open')}</span>
+              </Button>
+              {fetch && (
+                <Button variant="outline" size="sm" className="min-w-0 flex-1" disabled={busy} onClick={fetch.run}>
+                  <DownloadCloud className="size-3.5" />
+                  <span className="truncate">{t('gallery.fetchShort')}</span>
+                </Button>
+              )}
+              <ActionMenu label={t('actions.more')}>
+                {actions.map((action) => (
+                  <ActionMenuClose key={action.key} asChild>
+                    <button
+                      type="button"
+                      className={actionItemClass(action.danger ? 'destructive' : undefined)}
+                      disabled={busy}
+                      onClick={action.run}
+                    >
+                      <action.icon className="size-3.5" />
+                      {action.label}
+                    </button>
+                  </ActionMenuClose>
+                ))}
+              </ActionMenu>
+            </>
           }
           menu={actions.map((action) => (
             <Fragment key={action.key}>
@@ -515,21 +662,135 @@ export function GroupsCut({
         )}
 
         {/* ⚠️ „წყაროს"/„მომწოდებლის" ჭრილში ჯგუფი **დომენია** — იქ არც ძებნას
-            აქვს აზრი და არც ჟანრს, ამიტომ ფილტრის ზოლი მხოლოდ ორ ჭრილშია */}
+            აქვს აზრი და არც ჟანრს, ამიტომ ფილტრის ზოლი მხოლოდ ორ ჭრილშია.
+            §25.2 — ზოლი ერთი სიმაღლისაა (h-10 ძებნა, h-9 კონტროლები), სია `FilterPanel`-შია. */}
+        {by === 'record' && (
+          <div className="mb-3">
+            <CutTabs
+              size="sm"
+              layout="inline"
+              options={(['with', 'without', 'all'] as const).map((key) => ({ key, label: t(`gallery.have.${key}`) }))}
+              value={have}
+              onChange={(key) => setHave(key as 'with' | 'without' | 'all')}
+            />
+          </div>
+        )}
+
         {(by === 'record' || by === 'actor') && (
-          <GroupFilters
-            value={filters}
-            onChange={setFilters}
-            domains={by === 'record' ? (domains ?? (type ? [type] : [])) : []}
-            showHave={by === 'record'}
-            /* მსახიობს არც წელი აქვს და არც ჟანრი — ის ორი პუნქტი აქ
-               ჩუმად არაფერს გააკეთებდა */
-            sorts={by === 'actor' ? ['photos', 'photos_asc', 'title', 'bytes'] : undefined}
-            showSections={by === 'record'}
-            /* ⚠️ სექციების შეკრება მხოლოდ მაშინ, როცა სექციები მართლა არსებობს */
-            onCollapseAll={sections.length ? () => toggleAll(sections.map((x) => x.key)) : undefined}
-            collapsed={sections.length > 0 && closed.size >= sections.length}
-          />
+          <div className="mb-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-0 flex-1 sm:max-w-xs">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('gallery.searchPlaceholder')} className="h-10 pl-8" />
+              </div>
+              {by === 'record' && (
+                /* §25.2 — რჩეული ზოლის ჩიპია ყველა დომენზე (წიგნზეც), h-9 */
+                <Chip active={favorite} className="h-9" icon={<Star className="size-3.5" />} onClick={() => setFavorite((v) => !v)}>
+                  {t('filter.favorite')}
+                </Chip>
+              )}
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <LayoutToggle value={layout} onChange={setLayout} />
+                <Pick
+                  label={t('gallery.groupSort.label')}
+                  value={sort}
+                  options={(by === 'actor' ? ACTOR_SORTS : GALLERY_GROUP_SORTS).map((key) => ({ value: key, label: t(`gallery.groupSort.${key}`) }))}
+                  onChange={(next) => setSort(next as GalleryGroupSort)}
+                />
+                {by === 'record' && (
+                  <Pick
+                    label={t('gallery.groupSection.label')}
+                    value={section}
+                    options={GALLERY_GROUP_SECTIONS.map((key) => ({ value: key, label: t(`gallery.groupSection.${key}`) }))}
+                    onChange={(next) => setSection(next as GalleryGroupSection)}
+                  />
+                )}
+                {sections.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => toggleAll(sections.map((x) => x.key))}>
+                    {closed.size >= sections.length ? <ChevronsUpDown className="size-4" /> : <ChevronsDownUp className="size-4" />}
+                    {t(closed.size >= sections.length ? 'gallery.expandAll' : 'gallery.collapseAll')}
+                  </Button>
+                )}
+                {mediaDomains.length > 0 && <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />}
+              </div>
+            </div>
+
+            {/* არჩეული — პანელის გარეთაც ჩანს (§2.3-ის წესი), ჯვრით */}
+            {activeCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {applied.genres.map((slug) => (
+                  <Chip key={slug} active remove onClick={() => setApplied({ ...applied, genres: applied.genres.filter((x) => x !== slug) })}>
+                    {genreLabel(slug)}
+                  </Chip>
+                ))}
+                {applied.statuses.map((key) => (
+                  <Chip key={key} active remove onClick={() => setApplied({ ...applied, statuses: applied.statuses.filter((x) => x !== key) })}>
+                    {statusName(statuses.find((status) => status.key === key), lang) || key}
+                  </Chip>
+                ))}
+                {(applied.yearMin || applied.yearMax) && (
+                  <Chip active remove onClick={() => setApplied({ ...applied, yearMin: '', yearMax: '' })}>
+                    {`${applied.yearMin || '…'} – ${applied.yearMax || '…'}`}
+                  </Chip>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mediaDomains.length > 0 && (
+          <FilterPanel
+            activeCount={activeCount}
+            dirty={dirty}
+            onApply={() => apply(draft)}
+            onClear={clear}
+            open={panelOpen}
+            onOpenChange={setPanelOpen}
+          >
+            <FilterGroup title={t('filter.genres')} count={draft.genres.length}>
+              <FilterOptionList>
+                {(genresQ.data ?? []).map((genre) => (
+                  <FilterOption
+                    key={genre.slug}
+                    label={genreLabel(genre.slug)}
+                    checked={draft.genres.includes(genre.slug)}
+                    onChange={(on) =>
+                      setDraft((d) => ({ ...d, genres: on ? [...d.genres, genre.slug] : d.genres.filter((x) => x !== genre.slug) }))
+                    }
+                  />
+                ))}
+              </FilterOptionList>
+            </FilterGroup>
+            {statuses.length > 0 && (
+              <FilterGroup title={t('filter.statuses')} count={draft.statuses.length}>
+                <FilterOptionList>
+                  {statuses.map((status) => (
+                    <FilterOption
+                      key={status.key}
+                      label={statusName(status, lang)}
+                      checked={draft.statuses.includes(status.key)}
+                      onChange={(on) =>
+                        setDraft((d) => ({ ...d, statuses: on ? [...d.statuses, status.key] : d.statuses.filter((x) => x !== status.key) }))
+                      }
+                    />
+                  ))}
+                </FilterOptionList>
+              </FilterGroup>
+            )}
+            <FilterGroup title={t('filter.year')} count={(draft.yearMin ? 1 : 0) + (draft.yearMax ? 1 : 0)}>
+              <FilterRange
+                label={t('filter.year')}
+                from={draft.yearMin}
+                to={draft.yearMax}
+                onFrom={(value) => setDraft((d) => ({ ...d, yearMin: value }))}
+                onTo={(value) => setDraft((d) => ({ ...d, yearMax: value }))}
+                fromPlaceholder={t('filter.from')}
+                toPlaceholder={t('filter.to')}
+                min={1888}
+                max={2100}
+              />
+            </FilterGroup>
+          </FilterPanel>
         )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -541,7 +802,7 @@ export function GroupsCut({
         </div>
 
         {/* §28 — „არეული": იმავე სკოუპის ფოტოები ბრტყელ ბადეზე */}
-        {filters.layout === 'mixed' && (by === 'record' || by === 'actor') ? (
+        {layout === 'mixed' && (by === 'record' || by === 'actor') ? (
           <GroupPhotos
             title={t('gallery.allPhotos')}
             hint={<InfoHint info={t('gallery.mixedHint')} />}
@@ -554,8 +815,8 @@ export function GroupsCut({
         ) :!groups.length ? (
           <EmptyState
             icon={<Images className="size-6" />}
-            title={filters.have === 'without' ? t('gallery.allHavePhotos') : t('gallery.noPhotosYet')}
-            hint={filters.q ? t('gallery.emptyFiltered') : t('gallery.emptyHint')}
+            title={have === 'without' ? t('gallery.allHavePhotos') : t('gallery.noPhotosYet')}
+            hint={q ? t('gallery.emptyFiltered') : t('gallery.emptyHint')}
           />
         ) : sections.length ? (
           <div className="space-y-6">

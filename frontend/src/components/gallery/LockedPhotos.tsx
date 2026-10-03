@@ -52,11 +52,8 @@ export function LockedPhotos({
 
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {photos.map((photo) => (
-          <li
-            key={photo.id}
-            className="overflow-hidden rounded-md border border-border bg-muted"
-            style={{ aspectRatio: photo.width && photo.height ? `${photo.width} / ${photo.height}` : '3 / 2' }}
-          >
+          /* §25.3 — ფიქსირებული ჩარჩო (`aspect-video`), როგორც ჩვეულებრივ უჯრას: განბლოკვის შემდეგ ზომა არ იცვლება */
+          <li key={photo.id} className="aspect-video overflow-hidden rounded-md border border-border bg-muted">
             <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
           </li>
         ))}

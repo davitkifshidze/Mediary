@@ -105,9 +105,12 @@ export function RecordsCut({
      გაფილტრულია — ერთმანეთში რომ აგვერია, არჩეული დომენის გარდა ყველა
      ბარათი ნულს აჩვენებდა. ესკიზები აქ არ იკითხება, ე.ი. ეს იაფი
      მოთხოვნაა და იმავე ქეშში ზის, რასაც „ყველა" ტაბი ისედაც კითხულობს. */
+  // §25.2 — დომენის რიცხვები „ფოტოიანი / უფოტო / ყველა" არჩევანს მიჰყვება (`?have=`)
+  const haveParam = params.get('have')
+  const have: 'with' | 'without' | 'all' = haveParam === 'without' || haveParam === 'all' ? haveParam : 'with'
   const facetsQ = useQuery({
-    queryKey: ['gallery-groups', 'record', { previews: 0, have: 'with' }],
-    queryFn: () => fetchGalleryGroups('record', { previews: 0, have: 'with' }),
+    queryKey: ['gallery-groups', 'record', { previews: 0, have }],
+    queryFn: () => fetchGalleryGroups('record', { previews: 0, have }),
   })
 
   const counts = facetsQ.data?.facets?.types ?? {}

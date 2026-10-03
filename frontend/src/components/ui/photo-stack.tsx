@@ -87,6 +87,10 @@ export function PhotoStack({
   open,
   onClick,
   aspect = 'portrait',
+  fit = 'cover',
+  accent,
+  chips,
+  meta,
   badge,
   locked,
   actions,
@@ -94,6 +98,17 @@ export function PhotoStack({
   className,
 }: {
   title: string
+  /**
+   * Tasks §25.1 — **ფოტოს ფიტი**: `cover` ჩვეულებრივი დასტაა; `contain` — შერეული
+   * ფორმატის ჯგუფზე (წყაროს/მომწოდებლის ჭრილი) პორტრეტი აღარ იჭრება, მუქ ფონზე ჯდება.
+   */
+  fit?: 'cover' | 'contain'
+  /** მოდულის ფერი — ზედა ზოლი და ჩარჩოს ტონი (`modules.color`) */
+  accent?: string | null
+  /** სათაურის ქვეშ ჩიპები (ჟანრები ≤3) */
+  chips?: ReactNode
+  /** წელი · სტატუსის ბეჯი · რჩეულის ნიშანი — ერთი ხაზი */
+  meta?: ReactNode
   /** ორიენტირი სათაურის ქვეშ (მეორე ენა, დომენი, არხი…) */
   subtitle?: ReactNode
   /** ქვედა ხაზი — „12 ფოტო · 4 MB" და მისთანები (ტექსტს **გამომძახებელი** წერს) */
@@ -132,18 +147,23 @@ export function PhotoStack({
   const [spread, setSpread] = useState(false)
   const cards = images.slice(0, STACK_CARDS)
 
+  /* §25.1 — ⚠️ ყველა ბარათი ერთი სიმაღლისაა: `flex h-full flex-col`, მოქმედებების ზოლი
+     `mt-auto`-თი ქვემოთ. ჩიპები/მეტა პირობითია, მაგრამ ზოლი მაინც ბოლოშია. */
   const card = (
     <div
       className={cn(
-        'group/stack relative rounded-2xl border bg-card p-4 transition-all duration-300',
+        'group/stack relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-4 transition-all duration-300',
         open
           ? 'border-primary shadow-lg'
           : 'border-border hover:border-primary/60 hover:shadow-lg',
         className,
       )}
+      style={accent && !open ? { borderColor: `color-mix(in oklab, ${accent} 35%, var(--border))` } : undefined}
       onMouseEnter={() => setSpread(true)}
       onMouseLeave={() => setSpread(false)}
     >
+      {/* მოდულის ფერის ზოლი ზემოთ (§25.1) */}
+      {accent && <span aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: accent }} data-testid="stack-accent" />}
       <button
         type="button"
         onFocus={() => setSpread(true)}
@@ -203,14 +223,14 @@ export function PhotoStack({
                 {/* ⚠️ პრივატული ფაილი blob-ად იკითხება — `<img src>`-ს
                     `/storage/*` პირად დისკამდე ვერ მიჰყავს (§17.5) */}
                 {isPrivate ? (
-                  <PrivateImage url={src} alt="" className="size-full object-cover" />
+                  <PrivateImage url={src} alt="" className={cn('size-full', fit === 'contain' ? 'object-contain bg-black/85' : 'object-cover')} />
                 ) : (
                   <img
                     src={storageUrl(src) ?? ''}
                     alt=""
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    className="size-full object-cover"
+                    className={cn('size-full', fit === 'contain' ? 'object-contain bg-black/85' : 'object-cover')}
                   />
                 )}
               </span>
@@ -242,6 +262,8 @@ export function PhotoStack({
           {subtitle && (
             <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
           )}
+          {chips && <span className="mt-1.5 flex flex-wrap gap-1">{chips}</span>}
+          {meta && <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{meta}</span>}
           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="min-w-0 truncate">{label}</span>
             {onClick &&
@@ -257,7 +279,7 @@ export function PhotoStack({
       {/* ⚠️ მოქმედებები **ღილაკის გარეთაა** — ჩადგმული `<button>` HTML-ში
           დაუშვებელია და კლიკიც ჯგუფის გახსნაზე გადიოდა */}
       {actions && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+        <div className="mt-auto flex items-center gap-1 border-t border-border pt-2 [&>*]:h-9" data-testid="stack-actions">
           {actions}
         </div>
       )}

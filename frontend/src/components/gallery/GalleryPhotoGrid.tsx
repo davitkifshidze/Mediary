@@ -185,10 +185,16 @@ export function GalleryStackSkeleton({ count = 8, aspect = 'portrait' }: { count
   return (
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
-        <li key={i} className="rounded-2xl border border-border bg-card p-4">
+        /* §25.6 — ჩონჩხი ბარათის ფორმას მიჰყვება: დასტა, სათაური, ჩიპები, ქვედა ზოლი */
+        <li key={i} className="flex flex-col rounded-2xl border border-border bg-card p-4">
           <div className={cn('animate-pulse rounded-xl bg-muted/60', aspect === 'wide' ? 'aspect-[16/10]' : 'aspect-[3/4]')} />
           <div className="mt-3 h-3 w-2/3 animate-pulse rounded bg-muted/60" />
+          <div className="mt-2 flex gap-1">
+            <div className="h-4 w-12 animate-pulse rounded bg-muted/50" />
+            <div className="h-4 w-10 animate-pulse rounded bg-muted/50" />
+          </div>
           <div className="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-muted/50" />
+          <div className="mt-3 h-9 animate-pulse rounded-md border border-border bg-muted/30" />
         </li>
       ))}
     </ul>

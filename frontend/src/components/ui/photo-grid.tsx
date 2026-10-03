@@ -134,6 +134,9 @@ export interface PhotoItem {
   albumId?: number | null
 }
 
+/** §25.3 — ამ სიგანიდან ფოტოს ზომა ლაითბოქსს გადაეცემა (ზუმის საზღვარი); ქვემოთ — ეკრანამდე იზრდება */
+const LIGHTBOX_NATIVE_FROM = 1200
+
 const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen]
 
 /**
@@ -433,8 +436,12 @@ export function PhotoGrid({
       viewable.map((item) => ({
         src: urlOf(item) ?? '',
         alt: item.title ?? '',
-        width: item.width ?? undefined,
-        height: item.height ?? undefined,
+        /* Tasks §25.3 — ⚠️ **პატარა ფოტოს ზომები არ გადაეცემა**: ლაითბოქსი ზუსტ ზომას
+           ზღვრად იღებს და 600-პიქსელიანი ფოტო ეკრანის შუაში პატარა რჩებოდა. ზომების
+           გარეშე ის ეკრანამდე იზრდება (`imageFit: contain`), დიდზე კი ზომა რჩება — ზუმის
+           საზღვრისთვის. */
+        width: item.width && item.width >= LIGHTBOX_NATIVE_FROM ? item.width : undefined,
+        height: item.width && item.width >= LIGHTBOX_NATIVE_FROM ? (item.height ?? undefined) : undefined,
       })),
     /* ⚠️ `resolved` ref-ია, ე.ი. deps-ში ვერ იქნება. ხელახლა გათვლა ორ
        მომენტზეა საჭირო და ორივე აქ წერია: ლაითბოქსის გახსნა/გადასვლა
@@ -659,6 +666,8 @@ export function PhotoGrid({
           on={{ view: ({ index }) => setOpen(index) }}
           slides={slides}
           plugins={PLUGINS}
+          // §25.3 — ფოტო ყოველთვის ცენტრშია და ეკრანამდე იზრდება
+          carousel={{ imageFit: 'contain' }}
           // ⚠️ „ყველას ჩვენება" — ესკიზების ზოლი გახსნილივე რჩება (§2.9)
           thumbnails={{ position: 'bottom', showToggle: true }}
           slideshow={{ delay: 3500 }}
@@ -708,6 +717,9 @@ export function PhotoGrid({
 function LockedPhotoCell({ item, onOpen }: { item: PhotoItem; onOpen: () => void }) {
   const { t } = useTranslation()
 
+  /* Tasks §25.3 — ⚠️ **ფიქსირებული ჩარჩო, როგორც ჩვეულებრივ უჯრას** (`object-cover`):
+     რეალური პროპორცია რიგებს უთანასწოროს ხდიდა და განბლოკვის შემდეგ უჯრა ფორმას
+     იცვლიდა — ბადე ხტებოდა. */
   return (
     <li className="relative overflow-hidden rounded-xl border border-border bg-muted">
       <button
@@ -719,9 +731,6 @@ function LockedPhotoCell({ item, onOpen }: { item: PhotoItem; onOpen: () => void
           'block w-full cursor-pointer',
           item.portrait ? 'aspect-[2/3]' : 'aspect-video',
         )}
-        style={
-          item.width && item.height ? { aspectRatio: `${item.width} / ${item.height}` } : undefined
-        }
       >
         <img src={LOCKED_PHOTO_PLACEHOLDER} alt="" aria-hidden className="size-full object-cover" />
         <span className="absolute inset-0 grid place-items-center">

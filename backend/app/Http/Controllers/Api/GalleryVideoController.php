@@ -8,6 +8,7 @@ use App\Models\CastMember;
 use App\Models\GalleryVideo;
 use App\Services\Serp\SerpApiClient;
 use App\Support\GalleryParent;
+use App\Support\Like;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,14 +53,34 @@ class GalleryVideoController extends Controller
         $data = $request->validate([
             'owner' => ['nullable', 'string', 'regex:/^('.$owners.'):\d+$/'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+            // Tasks §25.5 — ვიდეოების გვერდის ძებნა, მფლობელის სახე და დალაგება
+            'q' => ['nullable', 'string', 'max:200'],
+            'owner_type' => ['nullable', 'in:record,actor'],
+            'sort' => ['nullable', 'in:new,old,title'],
         ]);
 
-        $query = GalleryVideo::query()->orderByDesc('id');
+        $query = GalleryVideo::query();
+
+        match ($data['sort'] ?? 'new') {
+            'old' => $query->orderBy('id'),
+            'title' => $query->orderBy('title')->orderByDesc('id'),
+            default => $query->orderByDesc('id'),
+        };
 
         if ($owner = $data['owner'] ?? null) {
             [$kind, $id] = explode(':', $owner);
             $query->where('videoable_type', $kind === 'actor' ? GalleryParent::ACTOR : $kind)
                 ->where('videoable_id', (int) $id);
+        }
+
+        if ($ownerType = $data['owner_type'] ?? null) {
+            $ownerType === 'actor'
+                ? $query->where('videoable_type', GalleryParent::ACTOR)
+                : $query->where('videoable_type', '!=', GalleryParent::ACTOR);
+        }
+
+        if ($q = trim((string) ($data['q'] ?? ''))) {
+            $query->where(fn ($w) => $w->where('title', 'like', Like::contains($q))->orWhere('channel', 'like', Like::contains($q)));
         }
 
         $page = $query->paginate($data['per_page'] ?? 24)->withQueryString();

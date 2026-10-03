@@ -13,6 +13,7 @@ import { Pager } from '@/components/ui/pager'
 import { GalleryPhotoGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { LockedPhotos } from '@/components/gallery/LockedPhotos'
 import { SortPick } from '@/components/gallery/SortPick'
+import { CutTabs } from '@/components/ui/cut-tabs'
 
 /* ============================================================
    ერთი ჯგუფის შიგთავსი — **ერთი კომპონენტი ოთხივე ჭრილისთვის** (§8.5).
@@ -40,6 +41,7 @@ export function GroupPhotos({
   showOwner,
   emptyText,
   onUnlock,
+  categories,
 }: {
   title: ReactNode
   subtitle?: ReactNode
@@ -54,6 +56,11 @@ export function GroupPhotos({
   emptyText?: string
   /** §7.15 — ჩაკეტილ ალბომში „პაროლის შეყვანა" */
   onUnlock?: () => void
+  /**
+   * Tasks §25.4 — კადრი · პოსტერი · ლოგო · მსახიობი ჩანართები (`category` სერვერულ
+   * ფილტრად), რიცხვებით მთელი ჯგუფიდან. ჩანაწერის გვერდსა და ბიბლიოთეკას ერთი კომპონენტი.
+   */
+  categories?: boolean
 }) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
@@ -62,12 +69,15 @@ export function GroupPhotos({
   /* ⚠️ სიდი **ერთხელ იბადება** და გვერდებს შორის არ იცვლება: უამისოდ მე-2
      გვერდი პირველზე უკვე ნანახ ფოტოებს გამოიტანდა. */
   const [seed] = useState(() => Math.floor(Math.random() * 100000))
+  const [category, setCategory] = useState<string>('all')
+  const categoryFilter = categories && category !== 'all' ? { category } : {}
 
   const query = useQuery({
-    queryKey: ['gallery-photos', cacheKey, page, perPage, sort, seed],
+    queryKey: ['gallery-photos', cacheKey, category, page, perPage, sort, seed],
     queryFn: () =>
       fetchGalleryPhotos({
         ...filters,
+        ...categoryFilter,
         sort,
         seed: sort === 'random' ? seed : undefined,
         page,
@@ -94,7 +104,15 @@ export function GroupPhotos({
      ზომები), პაროლის ღილაკი კი აქვეა. */
   const locked = query.data && 'locked' in query.data ? query.data : null
   const photos = query.data && !('locked' in query.data) ? query.data.data : []
-  const lightbox = allQ.data && !('locked' in allQ.data) ? allQ.data.data : undefined
+  const everything = allQ.data && !('locked' in allQ.data) ? allQ.data.data : undefined
+  // §25.4 — ლაითბოქსი არჩეული ჩანართის ფოტოებს ფურცლავს, რიცხვები კი მთელი ჯგუფისაა
+  const lightbox =
+    everything && categories && category !== 'all'
+      ? everything.filter((image) => !image.locked && image.category === category)
+      : everything
+  const present = (['backdrop', 'poster', 'logo', 'actor'] as const)
+    .map((key) => ({ key, count: (everything ?? []).filter((image) => !image.locked && image.category === key).length }))
+    .filter((entry) => entry.count > 0)
 
   return (
     <section>
@@ -115,6 +133,24 @@ export function GroupPhotos({
         <SortPick value={sort} onChange={(next) => { setSort(next); setPage(1) }} />
         {actions}
       </div>
+
+      {categories && present.length > 1 && (
+        <div className="mb-4">
+          <CutTabs
+            size="sm"
+            layout="inline"
+            options={[
+              { key: 'all', label: t('filter.all'), count: everything?.length },
+              ...present.map((entry) => ({ key: entry.key, label: t(`gallery.category.${entry.key}`), count: entry.count })),
+            ]}
+            value={category}
+            onChange={(key) => {
+              setCategory(key)
+              setPage(1)
+            }}
+          />
+        </div>
+      )}
 
       {locked ? (
         <LockedPhotos photos={locked.data} total={locked.meta.total} onUnlock={onUnlock} />
