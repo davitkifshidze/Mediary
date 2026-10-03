@@ -54,6 +54,8 @@ class BookResource extends JsonResource
             'visibility' => $this->visibility,
             'files_count' => $this->whenCounted('files'),
             'notes_count' => $this->whenCounted('notes'),
+            // Tasks §23.2 — ციტატები ჩანიშვნებისგან ცალკე ჩანართია
+            'quotes_count' => $this->whenCounted('quotes'),
             // Tasks §6.8 — სიის ბრჭყალების აიქონი ციტატებს ითვლის და არა ყველა ჩანიშვნას
             'quotes_count' => $this->whenCounted('quotes'),
             'created_at' => $this->created_at?->toIso8601String(),

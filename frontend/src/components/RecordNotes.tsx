@@ -78,9 +78,7 @@ export function RecordNotes({
   queryKey,
   api,
   invalidate = [],
-  quotes,
   placeholder,
-  quotePlaceholder,
   addLabel,
   emptyTitle,
   emptyHint,
@@ -89,10 +87,7 @@ export function RecordNotes({
   api: RecordNotesApi
   /** დამატებით გასასუფთავებელი ქეშები (ჩანაწერების სია, სადაც `notes_count` ზის) */
   invalidate?: QueryKey[]
-  /** ციტატის ნიშანი და გვერდის ველი — მხოლოდ წიგნს */
-  quotes?: boolean
   placeholder: string
-  quotePlaceholder?: string
   addLabel: string
   emptyTitle: string
   emptyHint?: string
@@ -103,8 +98,6 @@ export function RecordNotes({
   const confirm = useConfirm()
 
   const [body, setBody] = useState('')
-  const [page, setPage] = useState('')
-  const [isQuote, setIsQuote] = useState(false)
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
 
@@ -117,17 +110,10 @@ export function RecordNotes({
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const add = useMutation({
-    mutationFn: () =>
-      api.create(
-        quotes
-          ? { body: body.trim(), is_quote: isQuote, page: page ? Number(page) : null }
-          : { body: body.trim() },
-      ),
+    // Tasks §23.2 — ციტატები აქედან გავიდა (`BookQuotes`): ჩანიშვნა ყველგან მხოლოდ ტექსტია
+    mutationFn: () => api.create({ body: body.trim() }),
     onSuccess: () => {
       setBody('')
-      setPage('')
-      // Tasks §6.8 — „ციტატაა" ჩექბოქსიც ინულდება, თორემ შემდეგი ჩანიშვნა უნებურად ციტატად ჩაიწერებოდა
-      setIsQuote(false)
       done()
     },
     onError: fail,
@@ -165,33 +151,11 @@ export function RecordNotes({
       <div className="mb-3 space-y-2">
         <Textarea
           rows={2}
-          placeholder={quotes && isQuote ? (quotePlaceholder ?? placeholder) : placeholder}
+          placeholder={placeholder}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
         <div className="flex flex-wrap items-center gap-2">
-          {quotes && (
-            <>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={isQuote}
-                  onChange={(e) => setIsQuote(e.target.checked)}
-                  className="cursor-pointer"
-                />
-                {t('books.isQuote')}
-              </label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                className="w-24"
-                placeholder={t('books.notePage')}
-                value={page}
-                onChange={(e) => setPage(e.target.value)}
-              />
-            </>
-          )}
           <Button
             size="sm"
             className="ml-auto"
@@ -305,7 +269,6 @@ export function RecordNotes({
       {open && (
         <RecordNoteDialog
           note={open}
-          quotes={quotes}
           busy={save.isPending || remove.isPending}
           onClose={() => setOpenId(null)}
           onSave={(input) => save.mutate({ id: open.id, input })}

@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Quote, SquarePen, Trash2 } from 'lucide-react'
+import { SquarePen, Trash2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm } from '@/components/ui/feedback'
@@ -38,15 +37,12 @@ import type { RecordNote, RecordNoteInput } from '@/components/RecordNotes'
 
 export function RecordNoteDialog({
   note,
-  quotes,
   onClose,
   onSave,
   onDelete,
   busy,
 }: {
   note: RecordNote
-  /** ციტატის/გვერდის კონტროლი — მხოლოდ წიგნს აქვს */
-  quotes?: boolean
   onClose: () => void
   onSave: (input: RecordNoteInput) => void
   onDelete: () => void
@@ -59,8 +55,6 @@ export function RecordNoteDialog({
 
   const [editing, setEditing] = useState(false)
   const [body, setBody] = useState(note.body)
-  const [page, setPage] = useState(note.page == null ? '' : String(note.page))
-  const [isQuote, setIsQuote] = useState(Boolean(note.is_quote))
 
   /* ⚠️ „შეიცვალა" **მხოლოდ მაშინ ჩანს, როცა მართლა შეიცვალა** — ორივე
      დროშტამპი შექმნისას იდენტურია, ე.ი. უპირობო ჩვენება ყოველ ჩანიშვნას
@@ -71,9 +65,8 @@ export function RecordNoteDialog({
   const save = () => {
     const text = body.trim()
     if (!text) return
-    onSave(
-      quotes ? { body: text, is_quote: isQuote, page: page ? Number(page) : null } : { body: text },
-    )
+    // Tasks §23.2 — ციტატას თავისი დიალოგი აქვს (`BookQuotes`); აქ მხოლოდ ტექსტია
+    onSave({ body: text })
     setEditing(false)
   }
 
@@ -105,28 +98,6 @@ export function RecordNoteDialog({
         {editing ? (
           <div className="space-y-2">
             <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
-            {quotes && (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={isQuote}
-                    onChange={(e) => setIsQuote(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                  {t('books.isQuote')}
-                </label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  className="w-24"
-                  placeholder={t('books.notePage')}
-                  value={page}
-                  onChange={(e) => setPage(e.target.value)}
-                />
-              </div>
-            )}
           </div>
         ) : (
           <div
@@ -140,17 +111,9 @@ export function RecordNoteDialog({
           </div>
         )}
 
-        {(note.is_quote || note.page != null) && !editing && (
+        {note.page != null && !editing && (
           <div className="flex flex-wrap items-center gap-2">
-            {note.is_quote && (
-              <Badge className="bg-secondary">
-                <Quote className="size-3.5" />
-                {t('books.isQuote')}
-              </Badge>
-            )}
-            {note.page != null && (
-              <Badge className="bg-secondary">{t('books.pageShort', { page: note.page })}</Badge>
-            )}
+            <Badge className="bg-secondary">{t('books.pageShort', { page: note.page })}</Badge>
           </div>
         )}
 
@@ -179,8 +142,6 @@ export function RecordNoteDialog({
                   variant="outline"
                   onClick={() => {
                     setBody(note.body)
-                    setPage(note.page == null ? '' : String(note.page))
-                    setIsQuote(Boolean(note.is_quote))
                     setEditing(false)
                   }}
                 >

@@ -255,13 +255,14 @@ export async function fetchBookFiles(bookId: number): Promise<BookFile[]> {
   return data.data
 }
 
+/** Tasks §23.1 — `kind` `null`-ზე სერვერი სახეს გაფართოებით ხვდება (ერთი ზონა ყველა ფაილისთვის) */
 export async function uploadBookFiles(
   bookId: number,
-  kind: BookFile['kind'],
+  kind: BookFile['kind'] | null,
   files: File[],
 ): Promise<BookFile[]> {
   const fd = new FormData()
-  fd.append('kind', kind)
+  if (kind) fd.append('kind', kind)
   files.forEach((file) => fd.append('files[]', file))
   const { data } = await api.post(`/books/${bookId}/files`, fd)
   return data.data

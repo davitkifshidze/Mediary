@@ -10,6 +10,8 @@ use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * წიგნის ფაილები (Tasks §12) — `book` = pdf/epub, `image`/`doc` = თანმხლები.
@@ -29,36 +31,44 @@ class BookFileController extends Controller
         return BookFileResource::collection($book->files()->get());
     }
 
+    /**
+     * Tasks §23.1 — ⚠️ **`kind` არჩევითია: სახეს სერვერი გაფართოებით ხვდება.**
+     * ფორმაში ერთი ზონაა („ჩააგდე ან აირჩიე"), სახის ჩიპები აღარ არის — `pdf/epub/
+     * mobi/azw3/djvu/txt` → `book`, სურათი → `image`, დანარჩენი → `doc`; ENUM და
+     * საქაღალდეები (`StorageFolder::bookFiles`) უცვლელია, ლიმიტი სახეზეა, როგორც იყო
+     * (თითო ფაილი თავისი სახის წესით მოწმდება). ცხადი `kind` ძველებურად მოქმედებს.
+     */
     public function store(Request $request, Book $book)
     {
-        $kind = $request->input('kind', 'book');
-
         $data = $request->validate([
-            'kind' => ['required', 'in:book,image,doc'],
+            'kind' => ['nullable', 'in:book,image,doc'],
             'files' => ['required', 'array', 'max:20'],
-            'files.*' => match ($kind) {
-                'image' => UploadLimits::rule('image', $request->user()),
-                'doc' => UploadLimits::rule('doc', $request->user()),
-                default => UploadLimits::rule('book', $request->user()),
-            },
+            'files.*' => ['file'],
         ]);
 
-        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
         $files = $request->file('files');
+        $kinds = [];
+        foreach ($files as $i => $file) {
+            $kind = $data['kind'] ?? self::inferKind($file);
+            Validator::make(['file' => $file], ['file' => UploadLimits::rule($kind, $request->user())], [], ['file' => "files.{$i}"])
+                ->validate();
+            $kinds[$i] = $kind;
+        }
+
+        // 17.3 — კვოტა **მთელ პაკეტზე** ჩაწერამდე
         $this->meter->guard($request->user(), array_sum(array_map(
             fn ($file) => (int) $file->getSize(),
             $files,
         )));
 
-        $folder = StorageFolder::bookFiles($data['kind']);
         $next = (int) $book->files()->max('sort_order');
 
         $created = [];
-        foreach ($files as $file) {
+        foreach ($files as $i => $file) {
             $created[] = $book->files()->create([
                 'user_id' => $request->user()->id,
-                'kind' => $data['kind'],
-                'path' => $this->meter->storeUpload($request->user(), $file, $folder),
+                'kind' => $kinds[$i],
+                'path' => $this->meter->storeUpload($request->user(), $file, StorageFolder::bookFiles($kinds[$i])),
                 'original_name' => $file->getClientOriginalName(),
                 'mime' => $file->getClientMimeType(),
                 'size' => $file->getSize(),
@@ -69,6 +79,21 @@ class BookFileController extends Controller
         return BookFileResource::collection(collect($created))
             ->response()
             ->setStatusCode(201);
+    }
+
+    /** გაფართოება → სახე: ე-წიგნის ფორმატები (+ pdf/txt) წიგნია, სურათი — ფოტო, დანარჩენი — დოკუმენტი */
+    public static function inferKind(UploadedFile $file): string
+    {
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+
+        if (in_array($ext, [...UploadLimits::CATALOG['ebook'], 'pdf', 'txt'], true)) {
+            return 'book';
+        }
+        if (in_array($ext, [...UploadLimits::CATALOG['image'], 'jpeg'], true)) {
+            return 'image';
+        }
+
+        return 'doc';
     }
 
     public function destroy(BookFile $bookFile)

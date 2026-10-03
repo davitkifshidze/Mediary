@@ -1,18 +1,20 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Download, ExternalLink, FileText, Paperclip, Trash2, Upload } from 'lucide-react'
+import { BookOpen, BookOpenCheck, Download, ExternalLink, FileText, Paperclip, Quote, Trash2, Upload } from 'lucide-react'
+import { useDropzone } from 'react-dropzone'
 import {
   createBookNote,
   deleteBookFile,
   deleteBookNote,
   fetchBookFiles,
   fetchBookNotes,
-  setBookProgress,
+  setBookStatus,
   updateBookNote,
+  BOOK_STATUSES,
+  type BookStatus,
   uploadBookFiles,
   type Book,
-  type BookFile,
   toggleBookFavorite,
 } from '@/api/books'
 import { storageUrl } from '@/lib/api'
@@ -21,6 +23,11 @@ import { errorMessage } from '@/lib/errors'
 import { RecordNotes } from '@/components/RecordNotes'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { RecordGallery } from '@/components/RecordGallery'
+import { ProgressCard, ProgressDialog } from '@/components/BookProgress'
+import { BookQuotes, QuoteDialog } from '@/components/BookQuotes'
+import { Tabs } from '@/components/ui/tabs'
+import { favoriteAction, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { cn } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { RatingStars } from '@/components/ui/star-rating'
@@ -28,10 +35,7 @@ import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -66,6 +70,15 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
   const lang = useContentLang(i18n.language)
   // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
   const fixedT = i18n.getFixedT(lang)
+  /* Tasks §23.4 — ციტატის/გვერდის დიალოგები მენიუდან */
+  const [quoteOpen, setQuoteOpen] = useState(false)
+  const [progressOpen, setProgressOpen] = useState(false)
+  const { toast: notify } = useToast()
+  const statusMut = useMutation({
+    mutationFn: (next: BookStatus) => setBookStatus(book.id, next),
+    onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['books'] }),
+    onError: (e) => notify({ title: errorMessage(e), variant: 'error' }),
+  })
 
   const title = book.title_en || book.title_ka || '—'
   const description =
@@ -76,10 +89,29 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
     ...book.links,
   ]
 
+  /* Tasks §23.4 — კონტექსტური მენიუ დეტალის სათაურზე: სტატუსი ▸ · რჩეული ·
+     ციტატის დამატება · გვერდის განახლება (იგივე პუნქტები, რაც სიის სტრიქონს აქვს) */
+  const heroActions: MenuAction[] = [
+    {
+      key: 'status',
+      label: t('form.status'),
+      sub: BOOK_STATUSES.map((s) => ({
+        key: `status:${s}`,
+        label: t(`books.statuses.${s}`),
+        checked: book.status === s,
+        run: () => statusMut.mutate(s),
+      })),
+    },
+    favoriteAction(book.is_favorite, () => favorite.mutate(), t),
+    { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteOpen(true) },
+    { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressOpen(true) },
+  ]
+
   return (
     <ModalShell title={title} onClose={onClose} wide>
       <div className="mt-4 space-y-6">
         {/* ---------- თავი: ყდა, სტატუსი, ჟანრი, მოკლე ცნობები (§26.4) ---------- */}
+        <RecordContextMenu actions={heroActions}>
         <DetailHero
           image={storageUrl(book.cover)}
           alt={title}
@@ -116,6 +148,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
             <span>{t(`books.formats.${book.format}`)}</span>
           </DetailFacts>
         </DetailHero>
+        </RecordContextMenu>
 
         <ProgressCard book={book} />
 
@@ -164,9 +197,12 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
         </DetailSection>
 
         <DetailSection title={t('books.notesTitle')} hint={t('books.notesHint')}>
-          <NotesCard book={book} />
+          <NotesCard book={book} onAddQuote={() => setQuoteOpen(true)} />
         </DetailSection>
       </div>
+
+      {quoteOpen && <QuoteDialog book={book} onClose={() => setQuoteOpen(false)} />}
+      {progressOpen && <ProgressDialog book={book} onClose={() => setProgressOpen(false)} />}
     </ModalShell>
   )
 }
@@ -228,108 +264,23 @@ function Photos({ book }: { book: Book }) {
   )
 }
 
-/* ---------- პროგრესი ---------- */
-
-function ProgressCard({ book }: { book: Book }) {
-  const { t } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
-
-  const [page, setPage] = useState(book.progress_page ? String(book.progress_page) : '')
-  const [percent, setPercent] = useState(book.progress_percent ? String(book.progress_percent) : '')
-
-  const save = useMutation({
-    // ⚠️ გვერდი უპირატესია, თუ საერთო რაოდენობა ცნობილია — backend ორივეს
-    // ერთმანეთს უსწორებს, ე.ი. ორი რიცხვი ვერასდროს დაშორდება
-    mutationFn: (input: { page?: number | null; percent?: number | null }) =>
-      setBookProgress(book.id, input),
-    onSuccess: (saved) => {
-      setPage(saved.progress_page ? String(saved.progress_page) : '')
-      setPercent(saved.progress_percent ? String(saved.progress_percent) : '')
-      qc.invalidateQueries({ queryKey: ['books'] })
-      toast({ title: t('books.progressSaved'), variant: 'success' })
-    },
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
-
-  return (
-    <section className="rounded-lg border border-border p-3">
-      <h3 className="mb-3 text-sm font-semibold">{t('books.progressTitle')}</h3>
-
-      <div className="flex flex-wrap items-end gap-3">
-        {book.pages ? (
-          <div>
-            <Label htmlFor="b-page">{t('books.progressPage', { total: book.pages })}</Label>
-            <Input
-              id="b-page"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={book.pages}
-              className="mt-1.5 w-28"
-              value={page}
-              onChange={(e) => setPage(e.target.value)}
-            />
-          </div>
-        ) : null}
-
-        <div>
-          <Label htmlFor="b-percent">{t('books.progressPercent')}</Label>
-          <Input
-            id="b-percent"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={100}
-            className="mt-1.5 w-24"
-            value={percent}
-            onChange={(e) => setPercent(e.target.value)}
-          />
-        </div>
-
-        <Button
-          variant="outline"
-          disabled={save.isPending}
-          onClick={() =>
-            save.mutate(
-              // ვგზავნით მხოლოდ იმას, რაც შეიცვალა — თორემ ორივე ერთად
-              // მიდის და backend-ს „რომელი ჯობია" ისევ უწევს გამოცნობა
-              page !== (book.progress_page ? String(book.progress_page) : '')
-                ? { page: page === '' ? null : Number(page) }
-                : { percent: percent === '' ? null : Number(percent) },
-            )
-          }
-        >
-          {t('actions.save')}
-        </Button>
-
-        <span className="ml-auto text-sm tabular-nums text-muted-foreground">
-          {book.progress_percent ?? 0}%
-        </span>
-      </div>
-
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-md bg-muted">
-        <div
-          className="h-full rounded-md bg-primary transition-[width]"
-          style={{ width: `${book.progress_percent ?? 0}%` }}
-        />
-      </div>
-    </section>
-  )
-}
-
 /* ---------- ფაილები ---------- */
 
-/** ⚠️ ფოტოები აქ აღარაა — ზემოთ ვიტრინად დგას (§26.4) */
-const FILE_KINDS: BookFile['kind'][] = ['book', 'doc']
+/**
+ * Tasks §23.1 — **„ფაილის მიმაგრება"**: ერთი კომპაქტური ზონა „ჩააგდე ან აირჩიე"
+ * და სია. სახის ჩიპები ქრება — სერვერი სახეს გაფართოებით ხვდება (`pdf/epub/…` →
+ * წიგნი, დანარჩენი → დოკუმენტი; ფოტო ზემოთ ვიტრინად დგას); `accept` ორივე სიის
+ * გაერთიანებაა, ლიმიტი სახეზე, როგორც იყო.
+ */
+const ATTACH_ACCEPT: Record<string, string[]> = {
+  'application/*': ['.pdf', '.epub', '.mobi', '.azw3', '.djvu', '.doc', '.docx', '.rtf', '.odt', '.xls', '.xlsx', '.ppt', '.pptx', '.zip'],
+  'text/*': ['.txt', '.csv'],
+}
 
 function FilesCard({ book }: { book: Book }) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const confirm = useConfirm()
-
-  const [kind, setKind] = useState<BookFile['kind']>('book')
-  const input = useRef<HTMLInputElement>(null)
 
   const { data: all = [], isLoading } = useQuery({
     queryKey: ['book-files', book.id],
@@ -342,7 +293,7 @@ function FilesCard({ book }: { book: Book }) {
   const fail = (e: unknown) => toast({ title: errorMessage(e), variant: 'error' })
 
   const upload = useMutation({
-    mutationFn: (picked: File[]) => uploadBookFiles(book.id, kind, picked),
+    mutationFn: (picked: File[]) => uploadBookFiles(book.id, null, picked),
     onSuccess: () => {
       done()
       toast({ title: t('books.fileUploaded'), variant: 'success' })
@@ -355,41 +306,31 @@ function FilesCard({ book }: { book: Book }) {
      მოდული **საჯარო დისკზეა**; დისკს backend წყვეტს და არა ფრონტი (§17.5). */
   const viewer = useFileViewer({ resolve: storageUrl, onDelete: (id) => remove.mutate(id) })
 
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop: (accepted) => {
+      if (accepted.length) upload.mutate(accepted)
+    },
+    accept: ATTACH_ACCEPT,
+    multiple: true,
+    disabled: upload.isPending,
+  })
 
   return (
     <div>
-      {/* ⚠️ სახეობის გადამრთველი `Chip`-ია და არა ხელით აწყობილი პილული
-          (Tasks §6.6) — `ui/chip.tsx` სწორედ იმისთვის გამოვიდა, რომ თორმეტი
-          ასლი ხუთი სხვადასხვა პადინგით არ ეხატა. */}
-      <ChipRow className="mb-3">
-        {FILE_KINDS.map((value) => (
-          <Chip key={value} active={kind === value} onClick={() => setKind(value)}>
-            {t(`books.fileKinds.${value}`)}
-          </Chip>
-        ))}
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="ml-auto"
-          disabled={upload.isPending}
-          onClick={() => input.current?.click()}
-        >
-          <Upload className="size-3.5" />
-          {upload.isPending ? t('actions.saving') : t('books.fileUpload')}
-        </Button>
-        <input
-          ref={input}
-          type="file"
-          multiple
-          hidden
-          onChange={(e) => {
-            const picked = Array.from(e.target.files ?? [])
-            if (picked.length) upload.mutate(picked)
-            e.target.value = ''
-          }}
-        />
-      </ChipRow>
+      <div
+        {...getRootProps()}
+        data-testid="attach-zone"
+        className={cn(
+          'mb-3 flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-3 py-2.5 text-sm transition-colors',
+          isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
+          upload.isPending && 'opacity-60',
+        )}
+      >
+        <input {...getInputProps()} />
+        <Paperclip className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1">{upload.isPending ? t('actions.saving') : t('books.dropHint')}</span>
+        <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{t('books.dropFormats')}</span>
+      </div>
 
       {isLoading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
       {!isLoading && !files.length && (
@@ -400,7 +341,7 @@ function FilesCard({ book }: { book: Book }) {
           title={t('books.filesEmpty')}
           hint={t('books.filesHint')}
           actions={
-            <Button variant="outline" size="sm" onClick={() => input.current?.click()}>
+            <Button variant="outline" size="sm" onClick={open}>
               <Upload className="size-3.5" />
               {t('books.fileUpload')}
             </Button>
@@ -465,29 +406,47 @@ function FilesCard({ book }: { book: Book }) {
 
 /* ---------- ჩანიშვნები და ციტატები ---------- */
 
-function NotesCard({ book }: { book: Book }) {
+function NotesCard({ book, onAddQuote }: { book: Book; onAddQuote: () => void }) {
   const { t } = useTranslation()
+  const [tab, setTab] = useState<'notes' | 'quotes'>('notes')
+  const { data: notes = [] } = useQuery({ queryKey: ['book-notes', book.id], queryFn: () => fetchBookNotes(book.id) })
+  const quotes = notes.filter((n) => n.is_quote).length
+  const plain = notes.length - quotes
 
-  /* ⚠️ სხეული გაზიარებულია (`components/RecordNotes.tsx`, Tasks §6.2/§6.7) —
-     წიგნი ერთადერთია, სადაც `quotes` ჩართულია: `is_quote` და `page` მხოლოდ
-     `book_notes`-ს აქვს. დანარჩენ ოთხ მოდულს ზუსტად იგივე კომპონენტი
-     ემსახურება ამ ორი ველის გარეშე. */
+  /* Tasks §23.2 — ⚠️ **ორი ჩანართი, ერთი ცხრილი**: `book_notes` ჩანიშვნასაც და
+     ციტატასაც ინახავს (`is_quote`), მაგრამ ეკრანზე ისინი სხვადასხვა რამაა.
+     ჩანიშვნების სხეული საერთოა (`RecordNotes`, ოთხი სხვა მოდულიც მას იყენებს),
+     ციტატები — `BookQuotes`. ⚠️ ქეშის გასაღებები: ყველა ჩანიშვნა `['book-notes', id]`,
+     გაფილტრული — `[..., 'notes']`; პრეფიქსით ორივე ინვალიდირდება. */
   return (
-    <RecordNotes
-      queryKey={['book-notes', book.id]}
-      invalidate={[['books']]}
-      api={{
-        list: () => fetchBookNotes(book.id),
-        create: (input) => createBookNote(book.id, input),
-        update: (id, input) => updateBookNote(id, input),
-        remove: deleteBookNote,
-      }}
-      quotes
-      placeholder={t('books.notePlaceholder')}
-      quotePlaceholder={t('books.quotePlaceholder')}
-      addLabel={t('actions.add')}
-      emptyTitle={t('books.notesEmpty')}
-      emptyHint={t('recordNotes.emptyHint')}
-    />
+    <div>
+      <Tabs
+        items={[
+          { value: 'notes', label: t('books.notesTab'), badge: plain || undefined },
+          { value: 'quotes', label: t('books.quotesTab'), badge: quotes || undefined },
+        ]}
+        value={tab}
+        onChange={setTab}
+        className="mb-3"
+      />
+      {tab === 'notes' ? (
+        <RecordNotes
+          queryKey={['book-notes', book.id, 'notes']}
+          invalidate={[['books'], ['book-notes', book.id]]}
+          api={{
+            list: async () => (await fetchBookNotes(book.id)).filter((n) => !n.is_quote),
+            create: (input) => createBookNote(book.id, input),
+            update: (id, input) => updateBookNote(id, input),
+            remove: deleteBookNote,
+          }}
+          placeholder={t('books.notePlaceholder')}
+          addLabel={t('actions.add')}
+          emptyTitle={t('books.notesEmpty')}
+          emptyHint={t('recordNotes.emptyHint')}
+        />
+      ) : (
+        <BookQuotes book={book} onAdd={onAddQuote} />
+      )}
+    </div>
   )
 }

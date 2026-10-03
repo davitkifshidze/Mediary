@@ -20,6 +20,8 @@ import i18n from '@/i18n'
 const mocks = vi.hoisted(() => ({
   fetchBookFiles: vi.fn(),
   fetchBookNotes: vi.fn(),
+  setBookProgress: vi.fn(),
+  createBookNote: vi.fn(),
   fetchGalleryPhotos: vi.fn(),
   fetchGalleryVideos: vi.fn(),
   gallery: true,
@@ -29,6 +31,8 @@ vi.mock('@/api/books', async (original) => ({
   ...(await original<typeof import('@/api/books')>()),
   fetchBookFiles: mocks.fetchBookFiles,
   fetchBookNotes: mocks.fetchBookNotes,
+  setBookProgress: mocks.setBookProgress,
+  createBookNote: mocks.createBookNote,
 }))
 
 vi.mock('@/api/gallery', async (original) => ({
@@ -98,7 +102,12 @@ const book = {
 async function mount(gallery: boolean) {
   mocks.gallery = gallery
   mocks.fetchBookFiles.mockResolvedValue([])
-  mocks.fetchBookNotes.mockResolvedValue([])
+  mocks.fetchBookNotes.mockResolvedValue([
+    { id: 1, body: 'ჩანიშვნა', is_quote: false, page: null, created_at: null, updated_at: null },
+    { id: 2, body: 'რასაცა გასცემ შენია', is_quote: true, page: 12, created_at: null, updated_at: null },
+  ])
+  mocks.setBookProgress.mockResolvedValue({ ...book, progress_percent: 100, progress_page: 412, status: 'read' })
+  mocks.createBookNote.mockResolvedValue({ id: 3 })
   mocks.fetchGalleryPhotos.mockResolvedValue({ data: [], meta: { page: 1, per_page: 60, total: 0, last_page: 1 } })
   mocks.fetchGalleryVideos.mockResolvedValue({ data: [], meta: { page: 1, per_page: 50, total: 0, last_page: 1 } })
 
@@ -153,5 +162,64 @@ describe('BookDetail — გალერეა (§22)', () => {
     expect(mocks.fetchGalleryPhotos).not.toHaveBeenCalled()
     // ატვირთული ფოტოების ბლოკი მაინც ადგილზეა
     expect(document.body.textContent).toContain(i18n.t('gallery.uploadedBadge'))
+  })
+})
+
+describe('BookDetail — ფაილები, ციტატები, პროგრესი (§23)', () => {
+  it('attaches files through one drop zone without kind chips', async () => {
+    await mount(true)
+
+    const zone = document.querySelector('[data-testid="attach-zone"]')!
+    expect(zone.textContent).toContain(i18n.t('books.dropHint'))
+    expect(zone.querySelector('input[type="file"]')).not.toBeNull()
+    // სახის ჩიპები აღარ არის
+    expect([...document.querySelectorAll('button[aria-pressed]')].some((b) => b.textContent?.trim() === 'წიგნი')).toBe(false)
+  })
+
+  it('quotes live in their own tab with page badges and a dialog for new ones', async () => {
+    await mount(true)
+
+    // ჩანიშვნების ჩანართში ციტატა არ ჩანს
+    expect(document.body.textContent).toContain('ჩანიშვნა')
+    expect(document.body.textContent).not.toContain('რასაცა გასცემ შენია')
+
+    await act(async () => button(i18n.t('books.quotesTab'))!.click())
+    await flush()
+    const card = document.querySelector('[data-testid="quote-card"]')!
+    expect(card.textContent).toContain('რასაცა გასცემ შენია')
+    expect(card.textContent).toContain(i18n.t('books.pageShort', { page: 12 }))
+
+    await act(async () => button(i18n.t('books.quoteNew'))!.click())
+    await flush()
+    const textarea = document.querySelector<HTMLTextAreaElement>('#quote-body')!
+    expect(textarea).not.toBeNull()
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(textarea, 'ახალი ციტატა')
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const page = document.querySelector<HTMLInputElement>('#quote-page')!
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(page, '40')
+      page.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => [...document.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].pop()!.click())
+    await flush()
+
+    expect(mocks.createBookNote).toHaveBeenCalledWith(5, { body: 'ახალი ციტატა', is_quote: true, page: 40 })
+  })
+
+  it('"finished" sends 100% and the toast names the new status', async () => {
+    await mount(true)
+
+    expect(document.querySelector('[data-testid="progress-card"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="page-stepper"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="progress-slider"]')?.getAttribute('max')).toBe('412')
+
+    await act(async () => button(i18n.t('books.markFinished'))!.click())
+    await flush()
+
+    expect(mocks.setBookProgress).toHaveBeenCalledWith(5, { percent: 100 })
   })
 })

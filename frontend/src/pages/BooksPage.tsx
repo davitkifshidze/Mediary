@@ -15,6 +15,8 @@ import {
   Search,
   Tags,
   Trash2,
+  BookOpenCheck,
+  Images,
 } from 'lucide-react'
 import {
   BOOK_STATUSES,
@@ -31,6 +33,8 @@ import { errorMessage } from '@/lib/errors'
 import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { BookDetail } from '@/components/BookDetail'
+import { ProgressDialog } from '@/components/BookProgress'
+import { QuoteDialog } from '@/components/BookQuotes'
 import { BookForm } from '@/components/BookForm'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import {
@@ -98,6 +102,9 @@ export function BooksPage() {
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Book | 'new' | null>(null)
   const [opened, setOpened] = useState<Book | null>(null)
+  /* Tasks §23.4 — კონტექსტური მენიუს დიალოგები სიიდან */
+  const [quoteFor, setQuoteFor] = useState<Book | null>(null)
+  const [progressFor, setProgressFor] = useState<Book | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -311,6 +318,10 @@ export function BooksPage() {
                   })),
                 },
                 favoriteAction(book.is_favorite, () => favorite.mutate(book.id), t),
+                /* Tasks §23.4 — წიგნის პუნქტები: ციტატა · გვერდი · გალერეა (დეტალში) */
+                { key: 'quote', label: t('books.menuAddQuote'), icon: Quote, separator: true, run: () => setQuoteFor(book) },
+                { key: 'progress', label: t('books.menuProgress'), icon: BookOpenCheck, run: () => setProgressFor(book) },
+                { key: 'gallery', label: t('books.menuGallery'), icon: Images, run: () => setOpened(book) },
                 { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(book) },
                 {
                   key: 'delete',
@@ -511,6 +522,9 @@ export function BooksPage() {
           </FilterGroup>
         </FilterPanel>
       </div>
+
+      {quoteFor && <QuoteDialog book={quoteFor} onClose={() => setQuoteFor(null)} />}
+      {progressFor && <ProgressDialog book={progressFor} onClose={() => setProgressFor(null)} />}
 
       {opened && (
         <BookDetail
