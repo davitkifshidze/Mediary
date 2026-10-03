@@ -177,10 +177,20 @@ class MovieController extends Controller
         return (new MovieResource($movie))->response()->setStatusCode(201);
     }
 
-    /** TMDB id-ით პირდაპირ დამატება (შემოთავაზებიდან) — ქმნის + ამდიდრებს */
+    /**
+     * TMDB id-ით პირდაპირ დამატება (შემოთავაზებიდან) — ქმნის + ამდიდრებს.
+     *
+     * Tasks §18.3 — `status` და `is_favorite` არჩევითია: ფრანჩაიზის პოპაპი
+     * ბიბლიოთეკაში არარსებულ ნაწილს არჩეული სტატუსით და რჩეულად ამატებს.
+     * ⚠️ უცნობი გასაღები ჩუმად ვარდება — ნაგულისხმევი სტატუსი რჩება.
+     */
     public function storeFromTmdb(Request $request, MovieEnricher $enricher)
     {
-        $data = $request->validate(['tmdb_id' => ['required', 'integer']]);
+        $data = $request->validate([
+            'tmdb_id' => ['required', 'integer'],
+            'status' => ['nullable', 'string', 'max:100'],
+            'is_favorite' => ['nullable', 'boolean'],
+        ]);
 
         if (! $enricher->configured()) {
             return MissingCredential::response(CredentialProviders::TMDB);
@@ -207,6 +217,17 @@ class MovieController extends Controller
                 return new MovieResource($existing);
             }
             $movie->sync_status = 'partial';
+            $movie->save();
+        }
+
+        // §18.3 — გამდიდრების **შემდეგ**: `enrichMovie()` თვითონ იძახებს `save()`-ს და სტატუსს არ ეხება
+        if (! empty($data['status'])) {
+            $movie->applyStatusKey($data['status']);
+        }
+        if (isset($data['is_favorite'])) {
+            $movie->is_favorite = (bool) $data['is_favorite'];
+        }
+        if ($movie->isDirty()) {
             $movie->save();
         }
 

@@ -9,20 +9,35 @@ use Illuminate\Http\Request;
 
 class MovieFavoriteController extends Controller
 {
-    /** რჩეულის ტოგლი (ან პირდაპირ დაყენება is_favorite-ით) */
+    /**
+     * რჩეულის ტოგლი (ან პირდაპირ დაყენება `is_favorite`-ით).
+     *
+     * Tasks §18.2 — ⚠️ **ჩუმი გავრცელება ფრანჩაიზზე აღარ არის.** აქამდე ფილმის
+     * რჩეულში ჩასმა იმავე კოლექციის ყველა ნანახ-არა ნაწილს უკითხავად აფერადებდა.
+     * ახლა დანარჩენი ნაწილები მხოლოდ **ცხადად ჩამოთვლილი** `parts[]`-ით ხდება
+     * რჩეული — ეს პოპაპის არჩევანია („მთელი ფრანჩაიზი", ჩექბოქსებით). უცხო id
+     * (სხვა კოლექცია, სხვისი ჩანაწერი — მას `owner` scope ისედაც არ ხედავს)
+     * ჩუმად ვარდება. **მოხსნა მხოლოდ ამ ფილმს ეხება** — `parts` მაშინ იგნორირდება.
+     */
     public function update(Request $request, Movie $movie)
     {
+        $data = $request->validate([
+            'is_favorite' => ['nullable', 'boolean'],
+            'parts' => ['nullable', 'array', 'max:50'],
+            'parts.*' => ['integer'],
+        ]);
+
         $movie->is_favorite = $request->has('is_favorite')
             ? $request->boolean('is_favorite')
             : ! $movie->is_favorite;
         $movie->save();
 
-        // ფრანჩაიზის propagation: მხოლოდ რჩეულში დამატებისას — ნანახ ნაწილებს არ ეხება.
-        if ($movie->is_favorite && $movie->tmdb_collection_id) {
+        $parts = array_values(array_unique(array_map('intval', $data['parts'] ?? [])));
+
+        if ($movie->is_favorite && $parts && $movie->tmdb_collection_id) {
             Movie::where('tmdb_collection_id', $movie->tmdb_collection_id)
-                ->where('id', '!=', $movie->id)
-                // §6.4 — „ნანახი" per-user სახელია; მნიშვნელობას მხოლოდ `role` ატარებს
-                ->whereDoesntHave('status', fn ($q) => $q->where('role', 'done'))
+                ->whereKey($parts)
+                ->whereKeyNot($movie->getKey())
                 ->update(['is_favorite' => true]);
         }
 

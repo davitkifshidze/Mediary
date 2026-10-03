@@ -557,7 +557,19 @@
     "noTmdbId": "This actor has no TMDB id — there is nothing to refresh from"
   },
   "franchise": {
-    "continue": "Continue franchise"
+    "continue": "Continue franchise",
+    "favoriteTitle": "Franchise — {{name}}",
+    "hint": "This film belongs to a franchise. Choose whether only it or the whole franchise goes into favourites — parts are ticked one by one; parts missing from the library are added from TMDB with the chosen status and become favourites right away. Removing from favourites always touches one film only.",
+    "onlyThis": "Only this film",
+    "onlyThisHint": "Only “{{title}}” will be added to favourites — the other parts stay as they are.",
+    "whole": "Whole franchise",
+    "thisOne": "This film",
+    "inLibrary": "In the library",
+    "willAdd": "Will be added",
+    "newStatus": "Status for new ones ({{count}})",
+    "addFavorites": "Add to favourites ({{count}})",
+    "added": "In favourites — {{count}} films",
+    "queued": "{{count}} parts are being added from TMDB"
   },
   "queue": {
     "adding": "Adding…",

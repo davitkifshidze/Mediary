@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
+import { FranchiseFavoriteDialog } from '@/components/FranchiseFavoriteDialog'
 import { VisitCount } from '@/components/RecordVisits'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -43,6 +45,13 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
   }
   const statusMut = useMutation({ mutationFn: (s: string) => api.setStatus(movie.id, s), onSuccess: inval })
   const favMut = useMutation({ mutationFn: () => api.toggleFavorite(movie.id), onSuccess: inval })
+  /* Tasks §18 — ფილმზე, რომელსაც ფრანჩაიზი აქვს, რჩეულში **დამატება** პოპაპს ხსნის
+     („მხოლოდ ეს ფილმი" / „მთელი ფრანჩაიზი"); მოხსნა და უფრანჩაიზო ფილმი — პირდაპირ. */
+  const [franchiseOpen, setFranchiseOpen] = useState(false)
+  const toggleFavorite = () => {
+    if (type === 'movie' && !movie.is_favorite && movie.collection_id) setFranchiseOpen(true)
+    else favMut.mutate()
+  }
   const delMut = useMutation({
     mutationFn: () => api.remove(movie.id),
     onSuccess: () => {
@@ -73,7 +82,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
       run: () => nav(`${detailBase}/${movie.id}`, { state: { from: loc.pathname + loc.search } }),
     },
     statusActions(t('form.status'), statuses, movie.status, lang, (key) => statusMut.mutate(key)),
-    favoriteAction(movie.is_favorite, () => favMut.mutate(), t),
+    favoriteAction(movie.is_favorite, toggleFavorite, t),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${movie.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]
@@ -183,6 +192,9 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
       </div>
 
       <ContextMenuContent>{contextMenuItems(actions)}</ContextMenuContent>
+      {franchiseOpen && (
+        <FranchiseFavoriteDialog movie={movie} onClose={() => setFranchiseOpen(false)} onDone={inval} />
+      )}
     </ContextMenu>
   )
 }

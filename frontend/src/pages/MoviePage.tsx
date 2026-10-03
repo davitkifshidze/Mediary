@@ -21,6 +21,7 @@ import { EpisodeTracker } from '@/components/EpisodeTracker'
 import { WatchLog } from '@/components/WatchLog'
 import { RecordGallery } from '@/components/RecordGallery'
 import { RecordCast } from '@/components/RecordCast'
+import { FranchiseFavoriteDialog } from '@/components/FranchiseFavoriteDialog'
 import { ShareRecordDialog } from '@/components/chat/ShareRecordDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -105,6 +106,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
   // FEAT-13 — გაზიარება ჩატში
   const [sharing, setSharing] = useState(false)
+  /* Tasks §18 — რჩეულში დამატება ფრანჩაიზიან ფილმზე პოპაპით; მოხსნა — პირდაპირ */
+  const [franchiseOpen, setFranchiseOpen] = useState(false)
+  const toggleFavorite = () => {
+    if (type === 'movie' && m && !m.is_favorite && m.collection_id) setFranchiseOpen(true)
+    else favMut.mutate()
+  }
 
   const askDelete = async () => {
     const ok = await confirm({
@@ -162,7 +169,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   /* Tasks §7 — მარჯვენა ღილაკი ჰეროზე (პოსტერი, სათაური): სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
   const heroActions: MenuAction[] = [
     statusActions(t('form.status'), statuses, m.status, lang, (key) => statusMut.mutate(key)),
-    favoriteAction(m.is_favorite, () => favMut.mutate(), t),
+    favoriteAction(m.is_favorite, toggleFavorite, t),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${m.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]
@@ -268,7 +275,7 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   className="ml-1"
                   active={m.is_favorite}
                   pending={favMut.isPending}
-                  onToggle={() => favMut.mutate()}
+                  onToggle={toggleFavorite}
                 />
 
                 {/* Tasks 16.1 — ხილვადობა: მესამე (ბოლო) ფენა. პროფილი და მოდული
@@ -444,6 +451,16 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
             ფილმზე არცერთი არ დაუდვია. */}
         <RecordCast type={type} recordId={m.id} cast={m.cast} detailKey={[type, 'detail', id]} />
 
+        {franchiseOpen && (
+          <FranchiseFavoriteDialog
+            movie={m}
+            onClose={() => setFranchiseOpen(false)}
+            onDone={() => {
+              qc.invalidateQueries({ queryKey: [type, 'detail', id] })
+              qc.invalidateQueries({ queryKey: [type] })
+            }}
+          />
+        )}
         {sharing && (
           <ShareRecordDialog
             domain={type}

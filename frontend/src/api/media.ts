@@ -34,6 +34,12 @@ export interface BulkStatusInput {
   from_status?: string
 }
 
+/** Tasks §18.3 — რიგით დამატებისას სტატუსი და რჩეული ერთეულს მიჰყვება */
+export interface AddFromTmdbOptions {
+  status?: string
+  favorite?: boolean
+}
+
 /** დომენზე მიბმული CRUD/სტატუსი/რჩეული/სინქრონი */
 export function createMediaApi(base: string) {
   return {
@@ -61,6 +67,15 @@ export function createMediaApi(base: string) {
     },
     setStatus: async (id: number, status: string): Promise<Movie> => {
       const { data } = await api.patch(`${base}/${id}/status`, { status })
+      return data.data
+    },
+    /**
+     * Tasks §18 — რჩეულის **ცხადი** დაყენება; `parts` — ფრანჩაიზის სხვა ნაწილების
+     * (ბიბლიოთეკაში არსებულების) id-ები, რომლებიც პოპაპში მოინიშნა. ⚠️ ჩუმი
+     * გავრცელება სერვერზე აღარ არის — რაც აქ არ ჩამოითვალა, არ შეიცვლება.
+     */
+    setFavorite: async (id: number, value: boolean, parts: number[] = []): Promise<Movie> => {
+      const { data } = await api.patch(`${base}/${id}/favorite`, { is_favorite: value, parts })
       return data.data
     },
     toggleFavorite: async (id: number): Promise<Movie> => {
@@ -94,9 +109,16 @@ export function createMediaApi(base: string) {
       const { data } = await api.get(base, { params: { ...rest, ...pickParams(opts) } })
       return data.data ?? []
     },
-    /** TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს) */
-    addFromTmdb: async (tmdbId: number): Promise<Movie> => {
-      const { data } = await api.post(`${base}/from-tmdb`, { tmdb_id: tmdbId })
+    /**
+     * TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს). Tasks §18.3 — `status` და
+     * `is_favorite` არჩევითია (ფრანჩაიზის პოპაპი ახალ ნაწილს ასე ამატებს).
+     */
+    addFromTmdb: async (tmdbId: number, extra: AddFromTmdbOptions = {}): Promise<Movie> => {
+      const { data } = await api.post(`${base}/from-tmdb`, {
+        tmdb_id: tmdbId,
+        ...(extra.status ? { status: extra.status } : {}),
+        ...(extra.favorite !== undefined ? { is_favorite: extra.favorite } : {}),
+      })
       return data.data
     },
   }
@@ -405,6 +427,8 @@ export interface CollectionPart {
   year: number | null
   rating: number | null
   poster: string | null
+  /** Tasks §18.3 — TMDB-ის აღწერა პოპაპის ორხაზიანი ხაზისთვის */
+  overview: string | null
   owned: boolean
   movie_id: number | null
 }

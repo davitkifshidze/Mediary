@@ -79,6 +79,13 @@ interface QItem {
   /** add — TMDB id */
   tmdbId?: number
   /**
+   * add — Tasks §18.3: ფრანჩაიზის პოპაპიდან ახალი ნაწილი არჩეული სტატუსით და
+   * რჩეულად ემატება. ⚠️ ერთეულს მიჰყვება და არა რიგს — თითო ჩანაწერი ცალკე
+   * რექვესთია, და შერეულ რიგში მეორე ფილმს სხვა არჩევანი შეიძლება ჰქონდეს.
+   */
+  addStatus?: string
+  addFavorite?: boolean
+  /**
    * add/import — იგივე ჩანაწერი მომხმარებლის **ურნაშია** (409 `record_in_trash`,
    * Tasks §40.1ა): მწკრივი „აღდგენას" სთავაზობს ახალი რიგის ნაცვლად.
    */
@@ -156,8 +163,16 @@ interface QItem {
   skipped?: boolean
 }
 
+/** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — §18.3 (არჩევითი) */
+export interface AddQueueItem {
+  tmdbId: number
+  title: string
+  status?: string
+  favorite?: boolean
+}
+
 interface QueueApi {
-  enqueue: (items: { tmdbId: number; title: string }[], mediaType?: MediaType) => void
+  enqueue: (items: AddQueueItem[], mediaType?: MediaType) => void
   /** სინქრონის რიგში ჩაყრა — `plan`-ის ჩანაწერები + ერთი და იგივე პარამეტრები */
   enqueueSync: (items: SyncPlanItem[], opts: SyncOptions) => void
   /** გალერეის ჩამოტვირთვა (Tasks 10) — იგივე მოდელი, რაც სინქრონზე */
@@ -273,7 +288,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }
 
   const enqueue = React.useCallback(
-    (toAdd: { tmdbId: number; title: string }[], mediaType: MediaType = 'movie') => {
+    (toAdd: AddQueueItem[], mediaType: MediaType = 'movie') => {
       setExpanded(false)
       setItems((cur) => {
         const base = freshBase(cur)
@@ -289,6 +304,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             kind: 'add' as QKind,
             tmdbId: a.tmdbId,
             title: a.title,
+            addStatus: a.status,
+            addFavorite: a.favorite,
             mediaType,
             status: 'pending' as QStatus,
           }))
@@ -566,7 +583,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       trashedId?: number
     }> = next.kind === 'add'
         ? mediaApi(next.mediaType)
-            .addFromTmdb(next.tmdbId!)
+            .addFromTmdb(next.tmdbId!, { status: next.addStatus, favorite: next.addFavorite })
             .then(() => ({ ok: true }))
         : next.kind === 'gallery'
           ? (next.galleryActor

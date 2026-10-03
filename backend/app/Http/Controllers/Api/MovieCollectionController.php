@@ -40,6 +40,8 @@ class MovieCollectionController extends Controller
                     'title' => $p['title'] ?? ($p['original_title'] ?? ''),
                     'year' => ! empty($p['release_date']) ? (int) substr($p['release_date'], 0, 4) : null,
                     'rating' => isset($p['vote_average']) ? round((float) $p['vote_average'], 1) : null,
+                    // Tasks §18.3 — პოპაპის ორხაზიანი აღწერა
+                    'overview' => $p['overview'] ?? null,
                     'poster' => 'https://image.tmdb.org/t/p/w342'.$p['poster_path'],
                     'owned' => $ownedId !== null,
                     'movie_id' => $ownedId,
