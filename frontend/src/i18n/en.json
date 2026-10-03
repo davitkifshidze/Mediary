@@ -991,7 +991,8 @@
       "emptyVideos": "No public video links yet.",
       "libraryHint": "A group holds the record’s own photos; its actors are in the “Actors” tab.",
       "watch": "Watch"
-    }
+    },
+    "personalEmpty": "This album is empty."
   },
   "matches": {
     "title": "Matches",
@@ -1145,6 +1146,11 @@
     "album_password_wrong": "Wrong password.",
     "account_password_wrong": "The account password is wrong.",
     "session_required": "Unlocking needs a browser session — reload the page and try again.",
+    "record_locked_not_public": "A locked album can't be public — remove the lock first.",
+    "record_password_required": "Locking needs a password.",
+    "record_password_wrong": "Wrong password.",
+    "record_temporarily_locked": "Too many wrong attempts — unlocking is blocked for a while. Try again later.",
+    "record_locked": "It's locked — unlock it with the password first.",
     "no_tags_given": "Name at least one tag.",
     "scope_required": "Pick which records this applies to.",
     "pin_limit_reached": "The pin limit is reached — unpin one first.",
@@ -4132,6 +4138,32 @@
       "open": "Change order",
       "title": "Album order",
       "hint": "Drag a thumbnail to its new place — the order saves at once and the album follows it."
+    },
+    "lock": {
+      "lock": "Lock",
+      "relock": "Lock again",
+      "relocked": "Locked again",
+      "unlock": "Unlock",
+      "password": "Password",
+      "title": "Lock with a password",
+      "hintPerson": "A locked person's photos, videos, albums, note and extra fields no longer leave the server — the grid shows only the name and count, with a padlock. Search and totals skip them too. Unlocking lasts for this session — signing out locks it again.",
+      "hintAlbum": "A locked album's photos and videos no longer leave the server — the grid shows only the name and count, with a padlock. A locked album can't be public. Unlocking lasts for this session — signing out locks it again.",
+      "lockedHint": "Locked. Changing or removing the password asks for your account password — unless you already unlocked it in this session.",
+      "accountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten password is not a dead end.",
+      "hintLabel": "Hint",
+      "hintHelp": "Optional — shown only to you when unlocking.",
+      "hintShown": "Hint: {{hint}}",
+      "remove": "Remove lock",
+      "removeHint": "The password is removed and the content shows everywhere again.",
+      "saved": "Lock saved",
+      "removed": "Lock removed",
+      "badgeLocked": "Locked",
+      "badgeOpen": "Unlocked",
+      "screenTitle": "Locked",
+      "forgot": "Change password",
+      "unlockHint": "Enter the password — unlocking lasts only for this session and signing out locks it again.",
+      "blockedUntil": "Too many wrong attempts — unlocking is blocked until {{time}}.",
+      "notPublic": "A locked album can't be public — remove the lock first."
     }
   },
   "courseCategories": {

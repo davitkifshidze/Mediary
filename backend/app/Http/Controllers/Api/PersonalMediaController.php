@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonalMediaResource;
+use App\Models\Person;
 use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
 use App\Services\Personal\MediaInspector;
@@ -11,6 +12,7 @@ use App\Services\Personal\PersonalGallery;
 use App\Services\Storage\StorageMeter;
 use App\Support\AppTime;
 use App\Support\Like;
+use App\Support\RecordLocks;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
@@ -19,11 +21,8 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
  * **ფოტო და ვიდეო პირად გალერეაში (Tasks §33.3/§33.6).**
@@ -109,7 +108,9 @@ class PersonalMediaController extends Controller
 
         // ადამიანის ალბომში ატვირთული ფოტო მისი ადამიანისაა (ინვარიანტი)
         if ($albumId !== null) {
-            $personId = PersonalAlbum::query()->whereKey($albumId)->value('person_id') ?? $personId;
+            $personId = $this->openTarget($personId, $albumId)?->person_id ?? $personId;
+        } else {
+            $this->openTarget($personId, null);
         }
 
         $meta = $this->inspector->inspect((string) $file->getRealPath(), $kind);
@@ -184,9 +185,28 @@ class PersonalMediaController extends Controller
 
         abort_if($changes === [], 422, 'nothing_to_move');
 
+        $this->openTarget($changes['person_id'] ?? null, $changes['album_id'] ?? null);
+
         $media = PersonalMedia::query()->whereIn('id', array_map('intval', $data['ids']))->get();
 
         return response()->json(['moved' => $this->gallery->move($media, $changes)]);
+    }
+
+    /**
+     * **დამალულ ადამიანში/ალბომში ჩაგდება 423-ია** (§33.7) — ფოტო მომხმარებლის
+     * თვალწინ უკვალოდ „გაქრებოდა"; ჯერ გახსნა. ⚠️ ალბომი `personal_lock`-ის
+     * გარეშე იკითხება: დამალული ადამიანის ალბომი scope-ით უბრალოდ „არ
+     * არსებობდა", ფოტო კი მის `album_id`-ს უადამიანოდ მიიღებდა.
+     */
+    private function openTarget(?int $personId, ?int $albumId): ?PersonalAlbum
+    {
+        $album = $albumId !== null ? PersonalAlbum::withoutGlobalScope('personal_lock')->find($albumId) : null;
+
+        RecordLocks::ensureOpen($album);
+        RecordLocks::ensureOpen($album?->person_id ? Person::query()->find($album->person_id) : null);
+        RecordLocks::ensureOpen($personId !== null ? Person::query()->find($personId) : null);
+
+        return $album;
     }
 
     /** მთელი რიგი ერთად — „ჩემი რიგით" ხედისთვის */
@@ -238,18 +258,7 @@ class PersonalMediaController extends Controller
      */
     public function file(Request $request, PersonalMedia $personalMedia): BinaryFileResponse
     {
-        $response = $this->serve((string) $personalMedia->path, (string) $personalMedia->original_name);
-
-        if ($request->boolean('download')) {
-            $name = (string) $personalMedia->original_name ?: basename((string) $personalMedia->path);
-            $response->setContentDisposition(
-                ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-                $name,
-                str_replace(['%', '/', '\\', '"'], '_', Str::ascii($name)) ?: 'file',
-            );
-        }
-
-        return $response;
+        return $this->gallery->fileResponse($personalMedia, $request->boolean('download'));
     }
 
     /**
@@ -259,12 +268,7 @@ class PersonalMediaController extends Controller
      */
     public function thumb(PersonalMedia $personalMedia): BinaryFileResponse
     {
-        abort_unless($personalMedia->thumb_path, 404);
-
-        $response = $this->serve((string) $personalMedia->thumb_path, basename((string) $personalMedia->thumb_path));
-        $response->headers->set('Cache-Control', 'private, max-age=2592000, immutable');
-
-        return $response;
+        return $this->gallery->thumbResponse($personalMedia, 'private, max-age=2592000, immutable');
     }
 
     /* ---------- დამხმარეები ---------- */
@@ -340,15 +344,5 @@ class PersonalMediaController extends Controller
         }
 
         return $moment && $moment->year > 1971 && $moment->lessThanOrEqualTo(now()->addDay()) ? $moment : null;
-    }
-
-    private function serve(string $path, string $name): BinaryFileResponse
-    {
-        abort_if($path === '', 404);
-
-        $disk = Storage::disk(StorageFolder::diskFor($path));
-        abort_unless($disk->fileExists($path), 404);
-
-        return SafeMime::fileResponse($disk, $path, $name);
     }
 }

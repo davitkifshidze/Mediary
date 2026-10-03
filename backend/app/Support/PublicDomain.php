@@ -495,13 +495,18 @@ final class PublicDomain
                 'photos' => (int) ($record->images_count ?? 0),
                 'locked' => $record->isLocked(),
             ],
-            /* Tasks §33 — ალბომის ფოტოები პირად დისკზეა: სურათს ბარათი არ ატარებს
-               (`gallery_album`-ის წესი), შიგთავსს საჯარო გვერდი თავისი მარშრუტით
-               კითხულობს და მხოლოდ ღია ალბომზე. */
+            /* Tasks §33 — ალბომის ფოტოები პირად დისკზეა: `image` ბარათს არ აქვს
+               (`/storage/*` მას ვერ კითხულობს). ყდა ფოტოს id-ია (`cover_id`) და
+               SPA მას საჯარო ფაილის მარშრუტით ხატავს
+               (`/public/profiles/{username}/personal-media/{id}/thumb`), რომელიც
+               ხილვადობას თავიდან ამოწმებს. ⚠️ ჩაკეტილი ალბომი აქ საერთოდ ვერ
+               მოხვდება (`PublicProfileService::personalAlbums()`). */
             'personal_album' => [
                 'title_en' => $record->name,
                 'subtitle' => $record->description,
-                'photos' => (int) ($record->media_count ?? 0),
+                'photos' => (int) ($record->photos_count ?? 0),
+                'videos' => (int) ($record->videos_count ?? 0),
+                'cover_id' => $record->public_cover_id !== null ? (int) $record->public_cover_id : null,
             ],
             'bookmark' => [
                 'title_en' => $record->title,

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Services\Modules\CustomFieldService;
 use App\Support\CustomFields;
+use App\Support\RecordLocks;
 use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
@@ -242,6 +243,10 @@ class CustomFieldController extends Controller
            იმავე ანგარიშის **სხვა** პირადი მოდულის ჩანაწერი ამ მოდულის
            ველებით არ უნდა იკითხებოდეს. */
         $query = CustomFields::recordQuery($module);
-        abort_unless($query && $query->whereKey($id)->exists(), 404);
+
+        /* ⚠️ §33.7 — **ჩაკეტილი და ამ სესიაში დაუხსნელი ჩანაწერის ველები** (და
+           მათი ფაილები — ფოტოც შეიძლება იყოს) გახსნამდე არ გამოდის და არ იცვლება:
+           ბოქლომიანი ბარათი ისედაც არაფერს ითხოვს, პირდაპირი მოთხოვნა კი 404-ია. */
+        abort_unless($query && RecordLocks::exceptHidden($query)->whereKey($id)->exists(), 404);
     }
 }

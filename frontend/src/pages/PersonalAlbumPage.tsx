@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowUpDown, Folders, Globe, SquarePen, Trash2, Upload, UserRound } from 'lucide-react'
-import { fetchPersonalAlbum, PERSONAL_KEY, updatePersonalAlbum } from '@/api/personal'
+import { fetchPersonalAlbum, isHidden, PERSONAL_KEY, updatePersonalAlbum } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal } from '@/lib/personal'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
+import { PersonalLockActions, PersonalLockedScreen } from '@/components/personal/PersonalLock'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 import { PersonalReorderDialog } from '@/components/personal/PersonalReorderDialog'
 import { PersonalUploader } from '@/components/personal/PersonalUploader'
@@ -25,6 +26,9 @@ import { PersonalUploader } from '@/components/personal/PersonalUploader'
    ⚠️ ატვირთვის ზონა ალბომშივე ტვირთავს; ადამიანის ალბომზე ფოტო მის ადამიანსაც
    ეკუთვნის (სერვერის ინვარიანტი). „უკან" — ადამიანის ალბომზე ადამიანის
    ალბომების ჩანართზე, „გარე" ალბომზე — ალბომების ჭრილზე.
+
+   ⚠️ **ჩაკეტილი და დაუხსნელი ალბომი (§33.7)** — ბოქლომიანი გვერდი; ბადე,
+   ატვირთვა და ღილაკები გახსნამდე არ ჩანს.
    ============================================================ */
 
 export function PersonalAlbumPage() {
@@ -82,6 +86,15 @@ export function PersonalAlbumPage() {
     )
   }
 
+  if (isHidden(album)) {
+    return (
+      <PageContainer>
+        <PageHeader module="personal" title={album.name} before={back} />
+        <PersonalLockedScreen kind="albums" record={album} summary={countLabel(t, album.photos, album.videos)} />
+      </PageContainer>
+    )
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -91,6 +104,7 @@ export function PersonalAlbumPage() {
         before={back}
         actions={
           <>
+            <PersonalLockActions kind="albums" record={album} />
             <Button variant="edit" onClick={() => setEditing(true)}>
               <SquarePen className="size-4" />
               {t('actions.edit')}

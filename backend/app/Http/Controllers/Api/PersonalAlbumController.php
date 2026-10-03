@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ManagesRecordLock;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonalAlbumResource;
+use App\Models\Person;
 use App\Models\PersonalAlbum;
 use App\Services\Personal\PersonalGallery;
 use App\Support\PublicDomain;
+use App\Support\RecordLocks;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -15,9 +19,15 @@ use Illuminate\Validation\Rule;
  *
  * `?person_id=5` — ერთი ადამიანის ალბომები; `?outside=1` — მხოლოდ „გარე".
  * ⚠️ გვერდებად არ იჭრება (ადამიანების წესი) — ალბომი ათეულებია.
+ *
+ * ⚠️ **ჩაკეტილი ალბომი (§33.7)**: დაუხსნელს ცვლილება არ ეხება (423), და ის
+ * **საჯარო ვერასდროს იქნება** (Q7) — ჩაკეტვა ჩამრთველს თიშავს, ჩაკეტილზე
+ * ჩართვა კი 422-ია.
  */
 class PersonalAlbumController extends Controller
 {
+    use ManagesRecordLock;
+
     public function __construct(private PersonalGallery $gallery) {}
 
     public function index(Request $request)
@@ -37,6 +47,9 @@ class PersonalAlbumController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+
+        // ⚠️ დამალულ ადამიანში შექმნილი ალბომი მაშინვე გაქრებოდა — ჯერ გახსნა
+        RecordLocks::ensureOpen(isset($data['person_id']) ? Person::query()->find($data['person_id']) : null);
 
         $album = PersonalAlbum::create([
             ...$data,
@@ -58,8 +71,21 @@ class PersonalAlbumController extends Controller
      */
     public function update(Request $request, PersonalAlbum $personalAlbum)
     {
+        RecordLocks::ensureOpen($personalAlbum);
+
         $data = $this->validated($request, $personalAlbum);
         $movesPerson = array_key_exists('person_id', $data) && $data['person_id'] !== $personalAlbum->person_id;
+
+        if ($movesPerson && $data['person_id'] !== null) {
+            RecordLocks::ensureOpen(Person::query()->find($data['person_id']));
+        }
+
+        // Q7 — ჩაკეტილი ალბომი საჯარო არასდროსაა
+        abort_if(
+            ($data['visibility'] ?? null) === 'public' && RecordLocks::isLocked($personalAlbum),
+            422,
+            'record_locked_not_public',
+        );
 
         $personalAlbum->update($data);
 
@@ -78,6 +104,9 @@ class PersonalAlbumController extends Controller
      */
     public function destroy(Request $request, PersonalAlbum $personalAlbum)
     {
+        // ⚠️ „ფოტოები დამიტოვე" დამალულ ფოტოებს ალბომის გარეთ გააშიშვლებდა
+        RecordLocks::ensureOpen($personalAlbum);
+
         if (! $request->boolean('with_media')) {
             $personalAlbum->release();
         }
@@ -85,6 +114,24 @@ class PersonalAlbumController extends Controller
         $personalAlbum->moveToTrash();
 
         return response()->noContent();
+    }
+
+    /** პაროლის დადება/შეცვლა/მოხსნა — `PUT /personal/albums/{album}/lock` */
+    public function setLock(Request $request, PersonalAlbum $personalAlbum)
+    {
+        return $this->putLock($request, $personalAlbum);
+    }
+
+    /** გახსნა ამ სესიაში — `POST /personal/albums/{album}/unlock` */
+    public function unlock(Request $request, PersonalAlbum $personalAlbum)
+    {
+        return $this->unlockRecord($request, $personalAlbum);
+    }
+
+    /** ისევ ჩაკეტვა — `POST /personal/albums/{album}/lock` */
+    public function relock(PersonalAlbum $personalAlbum)
+    {
+        return $this->relockRecord($personalAlbum);
     }
 
     public function reorder(Request $request)
@@ -130,6 +177,24 @@ class PersonalAlbumController extends Controller
         }
 
         return $data;
+    }
+
+    protected function lockResponse(Model $record): mixed
+    {
+        /** @var PersonalAlbum $record */
+        return new PersonalAlbumResource($this->fresh($record));
+    }
+
+    /**
+     * ⚠️ **ჩაკეტვა საჯაროობას თიშავს** (Q7) — ცხადად და არა მხოლოდ საჯარო
+     * query-ში: ჩამრთველი ტყუილს არ უნდა ამბობდეს, ლოკის მოხსნა კი ალბომს
+     * უკითხავად აღარ გამოაქვეყნებს.
+     */
+    protected function lockChanged(Model $record, bool $locked): void
+    {
+        if ($locked && $record->getAttribute('visibility') === 'public') {
+            $record->update(['visibility' => 'private']);
+        }
     }
 
     private function fresh(PersonalAlbum $album): PersonalAlbum

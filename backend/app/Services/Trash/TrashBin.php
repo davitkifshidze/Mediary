@@ -9,6 +9,7 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\Message;
 use App\Models\Module;
+use App\Models\PersonalMedia;
 use App\Models\TrashedFile;
 use App\Models\TrashedMessage;
 use App\Models\TrashEntry;
@@ -24,6 +25,7 @@ use App\Support\CustomModules;
 use App\Support\CustomModuleTrash;
 use App\Support\DictionaryTrash;
 use App\Support\MediaDomain;
+use App\Support\RecordLocks;
 use App\Support\SafeMime;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
@@ -256,7 +258,12 @@ final class TrashBin
     private function item(User $user, string $kind, Model $row, ?array $parent, array $recordSizes, array $locked, int $days): array
     {
         $category = TrashDomain::category($kind);
-        $isLocked = $row instanceof GalleryImage && $row->album_id && isset($locked[(int) $row->album_id]);
+        $isLocked = match (true) {
+            $row instanceof GalleryImage => $row->album_id && isset($locked[(int) $row->album_id]),
+            // §33.7 — ჩაკეტილი ადამიანის/ალბომის ფოტო ურნაშიც ბოქლომიანია (ესკიზის გარეშე)
+            $row instanceof PersonalMedia => self::personalHidden($row),
+            default => false,
+        };
         $blocked = $this->blocked($user, $kind, $row, $parent, strict: false);
         $byParent = in_array($kind, self::TITLED_BY_PARENT, true) && $parent;
         $chat = $row instanceof TrashedMessage;
@@ -595,6 +602,8 @@ final class TrashBin
             $album = GalleryAlbum::withoutGlobalScopes(['owner', 'trash'])->find($row->album_id);
             abort_if($album && ! AlbumLock::isUnlocked($album), 404);
         }
+
+        abort_if($row instanceof PersonalMedia && self::personalHidden($row), 404);
 
         // §33 — ზოგიერთი სახე ესკიზს აჩვენებს და არა თვითონ ფაილს (`PREVIEW_PATH`)
         $path = (string) $row->getAttribute(self::PREVIEW_PATH[$kind] ?? 'path');
@@ -1088,6 +1097,19 @@ final class TrashBin
         $other = $message?->conversation?->otherThan((int) $user->getKey());
 
         return $other ? ($other->name ?: $other->username) : null;
+    }
+
+    /**
+     * **პირადი გალერეის ფოტო დამალული ადამიანის ან ალბომისაა?** (§33.7)
+     *
+     * ⚠️ ურნის query ყველა scope-ს თიშავს (`HasTrash::trashOf()`), ე.ი.
+     * `personal_lock` აქ არ მუშაობს — ფოტო სიაში რჩება (ურნაშია და ვადა მასაც
+     * ეხება), ესკიზი და ფაილი კი გახსნამდე არ გამოდის.
+     */
+    private static function personalHidden(PersonalMedia $media): bool
+    {
+        return ($media->person_id && in_array((int) $media->person_id, RecordLocks::hiddenIds('personal'), true))
+            || ($media->album_id && in_array((int) $media->album_id, RecordLocks::hiddenIds('personal_album'), true));
     }
 
     /** მშობლის გარეშე ფოტოს ქვესათაური — ალბომის სახელი */

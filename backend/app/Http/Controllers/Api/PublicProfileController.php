@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GalleryAlbum;
+use App\Models\PersonalMedia;
 use App\Models\RecordVisit;
 use App\Models\User;
 use App\Services\Modules\FieldSettings;
+use App\Services\Personal\PersonalGallery;
 use App\Services\Profile\PublicGallery;
 use App\Services\Profile\PublicProfileService;
 use App\Services\Visits\RecordVisits;
@@ -31,11 +33,12 @@ use Illuminate\Validation\Rule;
  * (პროფილი → მოდული → ჩანაწერი), ყველა default-ით `private`, და მთელი მექანიზმი
  * ერთი გადამრთველით ითიშება: `PUBLIC_PROFILES=false` (`config/mediary.php`).
  *
- * ⚠️ **ცხრა მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
+ * ⚠️ **თერთმეტი მარშრუტია და ერთი მათგანი წერს** (Tasks DEBT-20; აქამდე ეს
  * კომენტარი „მხოლოდ ორი GET"-ს ამბობდა და ორივეში ცდებოდა; §32-მა კიდევ
- * სამი დაამატა, §33-მა — ფლეილისტის შიგთავსი). რვა GET-ია — პროფილის თავი,
- * გალერეის შეჯამება, ჯგუფები, ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები,
- * ფლეილისტის შიგთავსი და დომენის ბარათები — ხოლო
+ * სამი დაამატა, §33-მა — ფლეილისტის შიგთავსი, პირადი გალერეის ალბომი და
+ * მისი ფაილი). ათი GET-ია — პროფილის თავი, გალერეის შეჯამება, ჯგუფები,
+ * ფოტოების გვერდი, ერთი ფაილი, ვიდეო-ბმულები, ფლეილისტის შიგთავსი, პირადი
+ * ალბომის შიგთავსი და მისი ფაილი/ესკიზი, დომენის ბარათები — ხოლო
  * `unlockAlbum()` პაროლს ამოწმებს და **სერვერის სესიას ცვლის**. სწორედ
  * ამიტომ აქვს მას `throttle:album-unlock` (ანონიმზე IP + ალბომი) და ცხადი
  * შემოწმება, რომ ალბომი **ამ** პროფილისაა და საჯაროა — თორემ საჯარო კარი
@@ -51,6 +54,7 @@ class PublicProfileController extends Controller
         private FieldSettings $fields,
         private PublicGallery $gallery,
         private RecordVisits $visits,
+        private PersonalGallery $personal,
     ) {}
 
     /** პროფილის თავი: ავატარი/სახელი/ბიო + ხილვადი დომენები რაოდენობებით */
@@ -169,6 +173,101 @@ class PublicProfileController extends Controller
                 'total' => $page->total(),
             ],
         ]);
+    }
+
+    /**
+     * **პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7)** —
+     * `GET /public/profiles/{username}/personal-albums/{album}`.
+     *
+     * ალბომის ბარათი და მისი ფოტო/ვიდეო, ალბომის რიგით. ⚠️ **ფაილის გზა
+     * არასდროს გამოდის** — მხოლოდ საჯარო მარშრუტი (`personalMediaFile()`),
+     * რომელიც ხილვადობას თავიდან ამოწმებს. ⚠️ ჩაკეტილი ალბომი, ჩაკეტილი
+     * ადამიანის ალბომი, ურნაში მყოფი ან არასაჯარო — **404** (`playlist()`-ის
+     * წესი: „არსებობს" თვითონაც ინფორმაციაა). ⚠️ მოდელი როუტში არ იბმება —
+     * `EnsureRecordOwnership` ანონიმს ვერაფრის მფლობელად ჩათვლის.
+     *
+     * ⚠️ ფაილის ორიგინალი სახელი (`original_name`) არ იწერება — ის მოწყობილობის
+     * კვალია (`IMG_2024…`) და ალბომის შიგთავსს არაფერს მატებს.
+     */
+    public function personalAlbum(Request $request, string $username, int $album)
+    {
+        $user = $this->personalOwner($username);
+
+        $record = $this->profiles->personalAlbum($user, $album);
+        abort_unless($record, 404);
+
+        $page = $this->profiles->personalMedia($record->media(), $user)
+            ->orderBy('personal_media.sort_order')
+            ->orderByDesc('personal_media.taken_at')
+            ->orderByDesc('personal_media.id')
+            ->paginate($this->perPage($request));
+
+        $base = "/public/profiles/{$user->username}/personal-media";
+
+        return response()->json([
+            'album' => PublicDomain::card('personal_album', $record, $this->fields->hiddenOnPublic($user, 'personal')),
+            'data' => $page->getCollection()->map(fn (PersonalMedia $m) => [
+                'id' => (int) $m->id,
+                'kind' => $m->kind,
+                'width' => $m->width,
+                'height' => $m->height,
+                'duration' => $m->duration,
+                'taken_at' => $m->taken_at?->toIso8601String(),
+                'caption' => $m->caption,
+                'thumb' => $m->thumb_path ? "{$base}/{$m->id}/thumb" : null,
+                'url' => "{$base}/{$m->id}/file",
+            ])->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * **საჯარო ალბომის ფაილი ან ესკიზი (Tasks §33)** —
+     * `GET /public/profiles/{username}/personal-media/{media}/{file|thumb}`.
+     *
+     * ⚠️ ფაილი პირად დისკზეა და სხვაგან უცხოსთვის ვერსად გამოვა (შიდა
+     * `/personal/media/{id}/file` `auth:sanctum`-ის უკანაა). ⚠️ **ხილვადობა
+     * ყოველ მოთხოვნაზე თავიდან**: ფოტო უნდა იდოს საჯარო, არაჩაკეტილ ალბომში
+     * და მისი ადამიანიც არ უნდა იყოს ჩაკეტილი — ზუსტად ის query, რაც სიას
+     * აგებს (`PublicProfileService::personalMedia()`/`personalAlbum()`).
+     *
+     * ⚠️ `Cache-Control: private` და მოკლე ვადა — ალბომის დამალვის შემდეგ
+     * შუამავალს ის არ უნდა ჰქონდეს, ბრაუზერი კი მალე ისევ იკითხავს.
+     */
+    public function personalMediaFile(string $username, int $media, string $variant)
+    {
+        $user = $this->personalOwner($username);
+
+        $row = $this->profiles->personalMedia(PersonalMedia::query(), $user)->whereKey($media)->first();
+
+        abort_unless(
+            $row && $row->album_id && $this->profiles->personalAlbum($user, (int) $row->album_id),
+            404,
+        );
+
+        $response = $variant === 'thumb'
+            ? $this->personal->thumbResponse($row, 'private, max-age=600')
+            : $this->personal->fileResponse($row);
+
+        $response->headers->set('Cache-Control', 'private, max-age=600');
+
+        return $response;
+    }
+
+    /** პროფილი, რომლის პირადი გალერეა საჯაროა — თორემ 404 (`galleryOwner()`-ის ტყუპი) */
+    private function personalOwner(string $username): User
+    {
+        $user = $this->profiles->resolve($username);
+        abort_unless($user, 404);
+
+        abort_unless(in_array('personal_album', $this->profiles->domains($user), true), 404);
+
+        return $user;
     }
 
     /**

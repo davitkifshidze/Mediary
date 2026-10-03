@@ -22,6 +22,7 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { MatchPanel } from '@/components/MatchPanel'
 import { PublicGalleryTab } from '@/components/PublicGalleryTab'
 import { PublicPlaylistDialog } from '@/components/PublicPlaylistDialog'
+import { PublicPersonalAlbumDialog, PublicPersonalAlbumTile } from '@/components/public-gallery/PublicPersonalAlbum'
 import { useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +61,8 @@ export function PublicProfilePage() {
   const [view, setView] = useState<'records' | 'matches'>('records')
   // Tasks §33 — გახსნილი ფლეილისტი (მისი შიგთავსი და დაკვრა ფანჯარაშია)
   const [openPlaylist, setOpenPlaylist] = useState<PublicCard | null>(null)
+  // Tasks §33 (Q7) — პირადი გალერეის საჯარო ალბომი (ფოტო/ვიდეო ფანჯარაში)
+  const [openPersonalAlbum, setOpenPersonalAlbum] = useState<PublicCard | null>(null)
 
   const profileQuery = useQuery({
     queryKey: ['public-profile', username],
@@ -275,6 +278,13 @@ export function PublicProfilePage() {
                       card={card}
                       onOpen={() => setOpenPlaylist(card)}
                     />
+                  ) : card.domain === 'personal_album' ? (
+                    <PublicPersonalAlbumTile
+                      key={`${card.domain}-${card.id}`}
+                      username={profile.profile.username}
+                      card={card}
+                      onOpen={() => setOpenPersonalAlbum(card)}
+                    />
                   ) : (
                     <PublicCardTile key={`${card.domain}-${card.id}`} card={card} lang={lang} />
                   ),
@@ -287,6 +297,14 @@ export function PublicProfilePage() {
                 username={profile.profile.username}
                 playlist={openPlaylist}
                 onClose={() => setOpenPlaylist(null)}
+              />
+            )}
+
+            {openPersonalAlbum && (
+              <PublicPersonalAlbumDialog
+                username={profile.profile.username}
+                card={openPersonalAlbum}
+                onClose={() => setOpenPersonalAlbum(null)}
               />
             )}
 

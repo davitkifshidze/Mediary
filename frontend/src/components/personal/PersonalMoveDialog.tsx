@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MoveRight } from 'lucide-react'
-import { fetchPeople, fetchPersonalAlbums, movePersonalMedia, PERSONAL_KEY } from '@/api/personal'
+import { fetchPeople, fetchPersonalAlbums, isHidden, movePersonalMedia, PERSONAL_KEY } from '@/api/personal'
 import { errorMessage } from '@/lib/errors'
 import { invalidatePersonal } from '@/lib/personal'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
    ⚠️ **ადამიანის ალბომი ადამიანსაც ცვლის** — ინვარიანტი სერვერისაა, აქ
    მხოლოდ ქვესათაურია, რომ არჩევისას ჩანდეს, ვისი ალბომია.
+
+   ⚠️ **ჩაკეტილი და დაუხსნელი სამიზნე გათიშულია** (§33.7) — სერვერი მას 423-ით
+   უარყოფს: ფოტო მომხმარებლის თვალწინ „გაქრებოდა". ჯერ გახსნა.
    ============================================================ */
 
 const KEEP = 'keep'
@@ -74,8 +77,8 @@ export function PersonalMoveDialog({
               <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
               <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
               {(peopleQ.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
+                <SelectItem key={p.id} value={String(p.id)} disabled={isHidden(p)}>
+                  {isHidden(p) ? `${p.name} · ${t('personal.lock.badgeLocked')}` : p.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -91,8 +94,8 @@ export function PersonalMoveDialog({
               <SelectItem value={KEEP}>{t('personal.move.keep')}</SelectItem>
               <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
               {(albumsQ.data ?? []).map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.person ? `${a.name} · ${a.person.name}` : a.name}
+                <SelectItem key={a.id} value={String(a.id)} disabled={isHidden(a)}>
+                  {[a.name, a.person?.name, isHidden(a) ? t('personal.lock.badgeLocked') : null].filter(Boolean).join(' · ')}
                 </SelectItem>
               ))}
             </SelectContent>

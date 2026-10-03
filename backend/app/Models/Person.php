@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
+use App\Models\Concerns\HasRecordLock;
 use App\Models\Concerns\HasTrash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * ⚠️ **morph-ალიასი `personal`-ია** — მოდულის გასაღები, ზუსტად ისე, როგორც
  * `place` ადგილისაა: ურნის სახე, `trashed_files.record_type` და დამატებითი
  * ველების `record_type` ერთსა და იმავე სიტყვას კითხულობს.
+ *
+ * ⚠️ **ჩაკეტილი ადამიანი სიაში რჩება** (ბოქლომიანი ბარათი, Tasks §33.7) — მისი
+ * ფოტოები, ალბომები, ჩანიშვნა და დამატებითი ველები კი მხოლოდ ამ სესიაში
+ * გახსნის შემდეგ გამოდის (`RecordLocks`).
  */
 class Person extends Model
 {
@@ -32,6 +37,9 @@ class Person extends Model
 
     /** §33.4 — დამატებითი ველები ადამიანზე (წაშლა → ფაილი + კვოტა) */
     use HasCustomFields;
+
+    /** §33.7 — პაროლით ჩაკეტვა (`RecordLocks`); საბოლოო წაშლა ლოკსაც შლის */
+    use HasRecordLock;
 
     /** FEAT-11 — ურნა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;

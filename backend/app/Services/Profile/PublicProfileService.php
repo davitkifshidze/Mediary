@@ -3,11 +3,15 @@
 namespace App\Services\Profile;
 
 use App\Models\Module;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\Playlist;
 use App\Models\User;
 use App\Support\PublicDomain;
+use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use WeakMap;
 
@@ -270,7 +274,89 @@ class PublicProfileService
                 ->where('gallery_images.user_id', $user->id)]);
         }
 
+        if ($domain === 'personal_album') {
+            $this->personalAlbums($q, $user);
+        }
+
         return $q->orderByDesc('id');
+    }
+
+    /**
+     * **პირადი გალერეის საჯარო ალბომები (Tasks §33, Q7).**
+     *
+     * ⚠️ **ჩაკეტილი ალბომი და ჩაკეტილი ადამიანის ალბომი — არასდროს**, და
+     * სესიის მიუხედავად (`lockedIdsFor()`): მფლობელის გახსნილობა უცხოსთვის
+     * არაფერს ხსნის. `personal_lock` scope აქ იხსნება — ის **მნახველის** ლოკებს
+     * ითვლის (`Auth::id()`), ე.ი. შესულ უცხოზე სხვისი სიით იმუშავებდა.
+     *
+     * რიცხვები და ყდა (`public_cover_id` — ცხადად არჩეული, თუ ჩანს, თორემ
+     * უახლესი) იმავე განსაზღვრიდან დგება, რასაც ალბომის გვერდი და ფაილის
+     * მარშრუტი კითხულობს (`personalMedia()`) — ბარათზე რაც წერია, შიგნითაც ისაა.
+     */
+    private function personalAlbums(Builder $albums, User $user): void
+    {
+        $albums->withoutGlobalScope('personal_lock');
+        RecordLocks::exclude($albums, 'personal_album', 'personal_albums.id', session: false);
+        RecordLocks::exclude($albums, 'personal', 'personal_albums.person_id', session: false);
+
+        $albums->withCount([
+            'media as photos_count' => fn ($m) => $this->personalMedia($m, $user)->where('personal_media.kind', 'photo'),
+            'media as videos_count' => fn ($m) => $this->personalMedia($m, $user)->where('personal_media.kind', 'video'),
+        ]);
+
+        /* ყდა — ცხადად არჩეული, **თუ ის ამ ალბომშია და ჩანს**, თორემ უახლესი.
+           ⚠️ ორი ქვე-query `coalesce`-ით და არა ერთი `ORDER BY id = cover_media_id`:
+           sqlite გარე სვეტს ქვე-query-ის `ORDER BY`-ში ვერ ხედავს. ⚠️ „ამ ალბომშია"
+           სავალდებულოა — სხვაგან გადატანილი (შესაძლოა პირადი) ფოტო საჯარო ყდად
+           არ უნდა გამოჩნდეს. */
+        $visible = fn () => $this->personalMedia(PersonalMedia::query(), $user)
+            ->select('personal_media.id')
+            ->whereColumn('personal_media.album_id', 'personal_albums.id')
+            ->whereNotNull('personal_media.thumb_path')
+            ->limit(1);
+
+        $chosen = $visible()->whereColumn('personal_media.id', 'personal_albums.cover_media_id');
+        $latest = $visible()->orderByDesc('personal_media.taken_at')->orderByDesc('personal_media.id');
+
+        $albums->selectRaw(
+            'coalesce(('.$chosen->toSql().'), ('.$latest->toSql().')) as public_cover_id',
+            [...$chosen->getBindings(), ...$latest->getBindings()],
+        );
+    }
+
+    /**
+     * **საჯარო ალბომის ერთი ფოტო/ვიდეო** — ალბომის გვერდისა და ფაილის
+     * მარშრუტის ერთადერთი კარი (Tasks §33). ურნაში მყოფი, ჩაკეტილი ან
+     * არასაჯარო ალბომის — `null`.
+     */
+    public function personalAlbum(User $user, int $id): ?PersonalAlbum
+    {
+        /** @var ?PersonalAlbum */
+        return $this->query($user, 'personal_album')->find($id);
+    }
+
+    /**
+     * მფლობელის **გარეთ საჩვენებელი** ფოტოები — რიცხვი, ყდა, ალბომის გვერდი და
+     * ფაილი ერთ განსაზღვრას კითხულობს.
+     *
+     * ⚠️ `owner` იხსნება (კლასის docblock-ის ორმხრივი მიზეზი) და მფლობელი
+     * ცხადად იწერება; `personal_lock` — `personalAlbums()`-ის მიზეზით. `trash`
+     * და `personal_parent` რჩება: ურნაში მყოფი ფოტო და ურნაში მყოფი ადამიანის
+     * ფოტო არ ჩანს. ⚠️ **ჩაკეტილი ადამიანის ფოტო „გარე" საჯარო ალბომშიც არ
+     * ჩანს** — ალბომი ღიაა, ადამიანი კი არა.
+     *
+     * @template T of Builder|HasMany
+     *
+     * @param  T  $media
+     * @return T
+     */
+    public function personalMedia(Builder|HasMany $media, User $user): Builder|HasMany
+    {
+        $media->withoutGlobalScopes(['owner', 'personal_lock'])->where('personal_media.user_id', $user->id);
+
+        RecordLocks::exclude($media instanceof HasMany ? $media->getQuery() : $media, 'personal', 'personal_media.person_id', session: false);
+
+        return $media;
     }
 
     /**

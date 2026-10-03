@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasRecordLock;
 use App\Models\Concerns\HasTrash;
+use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,10 +24,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * წესი): კონტროლერი მათ ჯერ ათავისუფლებს (`release()`) და აღდგენა უკან აბამს.
  * „ფოტოებიც წაიშალოს" არჩევანზე ისინი ალბომთან ერთად რჩება — `personal_parent`
  * scope მათ მალავს, საბოლოო წაშლა კი შლის.
+ *
+ * ⚠️ **ჩაკეტვა (Tasks §33.7)**: ჩაკეტილი ალბომი სიაში ბოქლომიან ბარათად რჩება,
+ * მისი ფოტოები კი იმალება (`PersonalMedia::lockScope()`); ჩაკეტილი ადამიანის
+ * ალბომი საერთოდ არ ჩანს (`personal_lock`) — ის ადამიანის ნაწილია.
  */
 class PersonalAlbum extends Model
 {
-    use BelongsToUser, HasTrash;
+    use BelongsToUser, HasRecordLock, HasTrash;
 
     protected $guarded = ['id'];
 
@@ -48,6 +54,13 @@ class PersonalAlbum extends Model
                 ->whereNull("{$table}.person_id")
                 ->orWhereNotIn("{$table}.person_id", fn ($sub) => $sub->select('id')->from('persons')->whereNotNull('trashed_at')));
         });
+
+        // §33.7 — ჩაკეტილი (ამ სესიაში დაუხსნელი) ადამიანის ალბომი მასთან ერთად იმალება
+        static::addGlobalScope('personal_lock', fn (Builder $q) => RecordLocks::exclude(
+            $q,
+            'personal',
+            $q->getModel()->getTable().'.person_id',
+        ));
 
         /* ⚠️ **საბოლოო წაშლა ალბომთან ერთად დარჩენილ ფოტოებს შლის** — ესენი
            „ფოტოებიც წაიშალოს" არჩევანით ურნაში მასთან ერთად წასულებია

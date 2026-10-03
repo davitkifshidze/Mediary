@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { SquarePen, Trash2, UserPlus } from 'lucide-react'
-import { fetchPeople, PERSONAL_KEY, reorderPeople, type Person } from '@/api/personal'
+import { Lock, LockOpen, SquarePen, Trash2, UserPlus } from 'lucide-react'
+import { fetchPeople, isHidden, PERSONAL_KEY, reorderPeople, type Person } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal, privatePreview } from '@/lib/personal'
@@ -17,6 +17,7 @@ import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonDialog } from '@/components/personal/PersonDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
+import { LockBadge, PersonalUnlockDialog } from '@/components/personal/PersonalLock'
 
 /* ============================================================
    **„ადამიანები" (Tasks §33.5)** — ბარათები: მთავარი ფოტო, სახელი,
@@ -24,6 +25,10 @@ import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog
 
    ⚠️ **ვერტიკალური დასტაა** (`portrait`) — პორტრეტი, ალბომებისგან
    (ფართო კადრი) ერთი შეხედვით გასარჩევად. რიგი გადათრევით (§11).
+
+   ⚠️ **ჩაკეტილი და დაუხსნელი ადამიანი ბოქლომიანი ბარათია** (§33.7): ყდა
+   სერვერიდან არ მოდის, დაჭერა პაროლს ითხოვს, რედაქტირება/წაშლა კი გახსნამდე
+   არ ჩანს (სერვერი მათ 423-ით უარყოფს).
    ============================================================ */
 
 export function PersonalPeopleCut() {
@@ -35,6 +40,7 @@ export function PersonalPeopleCut() {
 
   const [editing, setEditing] = useState<{ person: Person | null } | null>(null)
   const [deleting, setDeleting] = useState<Person | null>(null)
+  const [unlocking, setUnlocking] = useState<Person | null>(null)
 
   const peopleQ = useQuery({ queryKey: [PERSONAL_KEY, 'people'], queryFn: fetchPeople })
 
@@ -58,6 +64,9 @@ export function PersonalPeopleCut() {
         />
       )}
       {deleting && <PersonalDeleteDialog target={{ kind: 'person', person: deleting }} onClose={() => setDeleting(null)} />}
+      {unlocking && (
+        <PersonalUnlockDialog kind="people" record={unlocking} onClose={() => setUnlocking(null)} onUnlocked={() => open(unlocking)} />
+      )}
     </>
   )
 
@@ -86,46 +95,63 @@ export function PersonalPeopleCut() {
     <section>
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         <Sortable ids={people.map((p) => p.id)} layout="grid" onReorder={(ids) => reorder.mutate(ids)}>
-          {people.map((person) => (
-            <SortableItem key={person.id} id={person.id}>
-              <PhotoStack
-                title={person.name}
-                subtitle={person.birthday ? t('personal.person.born', { date: date(person.birthday) }) : undefined}
-                label={[
-                  countLabel(t, person.photos, person.videos),
-                  person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                count={person.photos + person.videos}
-                images={privatePreview(person.cover)}
-                aspect="portrait"
-                onClick={() => open(person)}
-                menu={contextMenuItems([
-                  { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(person) },
-                  { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ person }) },
-                  { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(person) },
-                ])}
-                actions={
-                  <>
-                    <Button variant="edit" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditing({ person })}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto h-7 px-2 text-xs text-destructive"
-                      onClick={() => setDeleting(person)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      {t('confirm.delete')}
-                    </Button>
-                  </>
-                }
-              />
-            </SortableItem>
-          ))}
+          {people.map((person) => {
+            const hidden = isHidden(person)
+
+            return (
+              <SortableItem key={person.id} id={person.id}>
+                <PhotoStack
+                  title={person.name}
+                  subtitle={person.birthday ? t('personal.person.born', { date: date(person.birthday) }) : undefined}
+                  label={[
+                    countLabel(t, person.photos, person.videos),
+                    person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  count={person.photos + person.videos}
+                  images={privatePreview(person.cover)}
+                  aspect="portrait"
+                  locked={hidden}
+                  badge={person.locked ? <LockBadge hidden={hidden} /> : undefined}
+                  onClick={() => (hidden ? setUnlocking(person) : open(person))}
+                  menu={contextMenuItems(
+                    hidden
+                      ? [{ key: 'unlock', label: t('personal.lock.unlock'), icon: LockOpen, run: () => setUnlocking(person) }]
+                      : [
+                          { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(person) },
+                          { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ person }) },
+                          { key: 'delete', label: t('confirm.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(person) },
+                        ],
+                  )}
+                  actions={
+                    hidden ? (
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setUnlocking(person)}>
+                        <Lock className="size-3.5" />
+                        {t('personal.lock.unlock')}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="edit" size="sm" className="h-7 px-2 text-xs" onClick={() => setEditing({ person })}>
+                          <SquarePen className="size-3.5" />
+                          {t('actions.edit')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-7 px-2 text-xs text-destructive"
+                          onClick={() => setDeleting(person)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          {t('confirm.delete')}
+                        </Button>
+                      </>
+                    )
+                  }
+                />
+              </SortableItem>
+            )
+          })}
         </Sortable>
       </ul>
 

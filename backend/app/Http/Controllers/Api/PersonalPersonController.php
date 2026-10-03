@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ManagesRecordLock;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PersonResource;
 use App\Models\Person;
 use App\Services\Personal\PersonalGallery;
+use App\Support\RecordLocks;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -17,9 +20,14 @@ use Illuminate\Validation\Rule;
  *
  * ⚠️ **სია გვერდებად არ იჭრება** — ადამიანები ათეულებია და არა ათასები,
  * ხოლო ბადე, გადატანის ამრჩევი და ჯგუფები მთელ სიას ერთად ითხოვს.
+ *
+ * ⚠️ **ჩაკეტილი ადამიანი (§33.7)** სიაში რჩება, მაგრამ დაუხსნელს ცვლილება
+ * არ ეხება — რედაქტირება და წაშლა 423-ია (`RecordLocks::ensureOpen()`).
  */
 class PersonalPersonController extends Controller
 {
+    use ManagesRecordLock;
+
     public function __construct(private PersonalGallery $gallery) {}
 
     public function index()
@@ -55,6 +63,8 @@ class PersonalPersonController extends Controller
 
     public function update(Request $request, Person $person)
     {
+        RecordLocks::ensureOpen($person);
+
         $person->update($this->validated($request, $person));
 
         return new PersonResource($this->fresh($person));
@@ -67,6 +77,9 @@ class PersonalPersonController extends Controller
      */
     public function destroy(Request $request, Person $person)
     {
+        // ⚠️ „შიგთავსი დამიტოვე" დამალულ ფოტოებს უჯგუფოდ გააშიშვლებდა — ჯერ გახსნა
+        RecordLocks::ensureOpen($person);
+
         if ($request->boolean('keep')) {
             $person->release();
         }
@@ -74,6 +87,24 @@ class PersonalPersonController extends Controller
         $person->moveToTrash();
 
         return response()->noContent();
+    }
+
+    /** პაროლის დადება/შეცვლა/მოხსნა — `PUT /personal/people/{person}/lock` */
+    public function setLock(Request $request, Person $person)
+    {
+        return $this->putLock($request, $person);
+    }
+
+    /** გახსნა ამ სესიაში — `POST /personal/people/{person}/unlock` */
+    public function unlock(Request $request, Person $person)
+    {
+        return $this->unlockRecord($request, $person);
+    }
+
+    /** ისევ ჩაკეტვა — `POST /personal/people/{person}/lock` */
+    public function relock(Person $person)
+    {
+        return $this->relockRecord($person);
     }
 
     /** მთელი რიგი ერთად (`GalleryAlbumController::reorder()`-ის წესი) */
@@ -106,6 +137,12 @@ class PersonalPersonController extends Controller
                 Rule::exists('personal_media', 'id')->where('user_id', $userId)->whereNull('trashed_at'),
             ],
         ]);
+    }
+
+    protected function lockResponse(Model $record): mixed
+    {
+        /** @var Person $record */
+        return new PersonResource($this->fresh($record));
     }
 
     private function fresh(Person $person): Person

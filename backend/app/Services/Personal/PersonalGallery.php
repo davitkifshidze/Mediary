@@ -5,9 +5,15 @@ namespace App\Services\Personal;
 use App\Models\Person;
 use App\Models\PersonalAlbum;
 use App\Models\PersonalMedia;
+use App\Support\SafeMime;
+use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
  * **პირადი გალერეის საერთო წესები (Tasks §33)** — ყდები, მთვლელები და
@@ -20,16 +26,29 @@ use Illuminate\Support\Collection;
  */
 class PersonalGallery
 {
-    /** ადამიანების/ალბომების სიის მთვლელები — ფოტო · ვიდეო (· ალბომი) */
+    /**
+     * ადამიანების/ალბომების სიის მთვლელები — ფოტო · ვიდეო (· ალბომი).
+     *
+     * ⚠️ **ჩაკეტილი ბარათის საკუთარი რიცხვი ლოკის მიღმა იზომება** (§33.7):
+     * scope-ს რომ დამორჩილებოდა, ბოქლომიანი ბარათი „0 ფოტოს" იტყოდა. რიცხვი
+     * ფოტოს არ ამხელს. ⚠️ **სხვა ლოკები კი რჩება** (`lockScope($q, except:)`) —
+     * „გარე" ალბომის რიცხვში ჩაკეტილი ადამიანის ფოტო არ ითვლება, ადამიანისაში —
+     * მისი ჩაკეტილი ალბომისა, ე.ი. ბარათი იმას ამბობს, რასაც გახსნილი გვერდი აჩვენებს.
+     */
     public function withCounts(Builder $query, bool $albums = false): Builder
     {
+        $own = $query->getModel() instanceof Person ? 'person_id' : 'album_id';
+        $media = fn (string $kind) => fn (Builder $q) => PersonalMedia::lockScope($q->withoutGlobalScope('personal_lock'), except: $own)
+            ->where('kind', $kind);
+
         $counts = [
-            'media as photos_count' => fn ($q) => $q->where('kind', 'photo'),
-            'media as videos_count' => fn ($q) => $q->where('kind', 'video'),
+            'media as photos_count' => $media('photo'),
+            'media as videos_count' => $media('video'),
         ];
 
         if ($albums) {
-            $counts[] = 'albums';
+            // ჩაკეტილი ადამიანის ალბომებიც მისია — `personal_lock` მათ მხოლოდ სიებიდან მალავს
+            $counts['albums'] = fn (Builder $q) => $q->withoutGlobalScope('personal_lock');
         }
 
         return $query->withCount($counts);
@@ -151,6 +170,48 @@ class PersonalGallery
         }
 
         return $moved;
+    }
+
+    /**
+     * **ფაილი** — Range-ით (ვიდეოს გადახვევა), `SafeMime`-ით; `$download` —
+     * `attachment` ორიგინალი სახელით. ⚠️ მფლობელის მარშრუტიც და საჯარო ალბომისაც
+     * ამ ერთ პასუხს აბრუნებს — ხილვადობას გამომძახებელი ამოწმებს.
+     */
+    public function fileResponse(PersonalMedia $media, bool $download = false): BinaryFileResponse
+    {
+        $response = $this->serve((string) $media->path, (string) $media->original_name);
+
+        if ($download) {
+            $name = (string) $media->original_name ?: basename((string) $media->path);
+            $response->setContentDisposition(
+                ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                $name,
+                str_replace(['%', '/', '\\', '"'], '_', Str::ascii($name)) ?: 'file',
+            );
+        }
+
+        return $response;
+    }
+
+    /** ესკიზი; `$cache` — `Cache-Control` (მფლობელს — თვე, საჯაროს — მოკლედ) */
+    public function thumbResponse(PersonalMedia $media, string $cache): BinaryFileResponse
+    {
+        abort_unless($media->thumb_path, 404);
+
+        $response = $this->serve((string) $media->thumb_path, basename((string) $media->thumb_path));
+        $response->headers->set('Cache-Control', $cache);
+
+        return $response;
+    }
+
+    private function serve(string $path, string $name): BinaryFileResponse
+    {
+        abort_if($path === '', 404);
+
+        $disk = Storage::disk(StorageFolder::diskFor($path));
+        abort_unless($disk->fileExists($path), 404);
+
+        return SafeMime::fileResponse($disk, $path, $name);
     }
 
     /**

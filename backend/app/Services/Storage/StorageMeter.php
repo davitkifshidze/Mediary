@@ -1531,7 +1531,14 @@ class StorageMeter
      */
     public function library(User $user): array
     {
-        $marked = $this->markTrash($user, $this->files($user));
+        /* §33.7 — **ჩაკეტილი (ამ სესიაში დაუხსნელი) ადამიანის/ალბომის ფაილი
+           ბიბლიოთეკაში არ ჩანს** — არც სიაში, არც „ყველას ჩამოტვირთვაში"
+           (`pickPaths()`); გალერეის ჩაკეტილი ალბომის ტყუპი. ⚠️ `files()` თვითონ
+           სრული რჩება: კვოტის გადათვლა მასზე დგას, დამალული ფაილი კი ადგილს იკავებს. */
+        $hidden = $this->hiddenPersonalMedia($user);
+
+        $marked = $this->markTrash($user, $this->files($user))
+            ->reject(fn (array $f) => $f['owner_type'] === 'personal_media' && isset($hidden[(int) $f['owner_id']]));
         $inTrash = $marked->whereNotNull('trash');
 
         return [
@@ -1544,6 +1551,28 @@ class StorageMeter
                 ->values(),
             'trash' => ['files' => $inTrash->count(), 'bytes' => (int) $inTrash->sum('size')],
         ];
+    }
+
+    /**
+     * დამალული ადამიანის/ალბომის ფოტოები — `id => true` (`personal_lock`-ის
+     * პასუხი: ყველა მინუს ხილული; ურნის/მშობლის scope-ები აქ არ მონაწილეობს).
+     *
+     * @return array<int, true>
+     */
+    private function hiddenPersonalMedia(User $user): array
+    {
+        $all = PersonalMedia::withoutGlobalScopes()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (int) $id);
+
+        if ($all->isEmpty()) {
+            return [];
+        }
+
+        $visible = PersonalMedia::withoutGlobalScopes(['owner', 'trash', 'personal_parent'])
+            ->where('user_id', $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        return array_fill_keys($all->diff($visible)->values()->all(), true);
     }
 
     /**

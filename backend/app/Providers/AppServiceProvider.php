@@ -245,5 +245,20 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)
                 ->by('album-unlock:'.($r->user()?->getAuthIdentifier() ?? $r->ip()).':'.$id);
         });
+
+        /*
+         * Tasks §33.7 — **ჩანაწერის ლოკის გახსნა** (`RecordLocks`): ალბომის ჭერის
+         * ტყუპი — 10/წთ, გასაღები user + მარშრუტი + ჩანაწერი (ერთ ადამიანზე
+         * შეცდომა მეორეს არ კეტავს). ⚠️ `route()` მოდელიც შეიძლება იყოს და id-იც
+         * (middleware-ის რიგი) — ორივე ერთ გასაღებს იძლევა.
+         */
+        RateLimiter::for('record-unlock', function (Request $r) {
+            $type = $r->route('person') !== null ? 'personal' : 'personal_album';
+            $record = $r->route('person') ?? $r->route('personalAlbum');
+            $id = is_object($record) ? $record->getKey() : $record;
+
+            return Limit::perMinute(10)
+                ->by('record-unlock:'.($r->user()?->getAuthIdentifier() ?? $r->ip()).":{$type}:{$id}");
+        });
     }
 }

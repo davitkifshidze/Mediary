@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Cake, Film, Folders, Image, SquarePen, Trash2, Upload, UserRound } from 'lucide-react'
-import { fetchPersonalAlbums, fetchPerson, PERSONAL_KEY, updatePerson } from '@/api/personal'
+import { fetchPersonalAlbums, fetchPerson, isHidden, PERSONAL_KEY, updatePerson } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { countLabel, invalidatePersonal } from '@/lib/personal'
@@ -20,6 +20,7 @@ import { PersonalAlbumCards } from '@/components/personal/PersonalAlbumCards'
 import { AddAlbumButton } from '@/components/personal/PersonalAlbumsCut'
 import { PersonDialog } from '@/components/personal/PersonDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
+import { PersonalLockActions, PersonalLockedScreen } from '@/components/personal/PersonalLock'
 import { PersonalMediaGrid } from '@/components/personal/PersonalMediaGrid'
 import { PersonalUploader } from '@/components/personal/PersonalUploader'
 import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog'
@@ -36,6 +37,10 @@ import { PersonalUploadDialog } from '@/components/personal/PersonalUploadDialog
 
    ⚠️ **მთავარი ფოტო ბადიდან ირჩევა** („მთავარად დაყენება") — ცალკე
    ატვირთვა ორ სხვადასხვა „პორტრეტს" გააჩენდა.
+
+   ⚠️ **ჩაკეტილი და დაუხსნელი ადამიანი (§33.7)** — მხოლოდ სახელი, რიცხვი და
+   ბოქლომი (`PersonalLockedScreen`); ჰერო, ველები, ჩანართები და ღილაკები
+   გახსნამდე არ იხატება — სერვერი მათ შიგთავსს ისედაც არ აგზავნის.
    ============================================================ */
 
 type Tab = 'photos' | 'videos' | 'albums'
@@ -77,10 +82,11 @@ export function PersonalPersonPage() {
     enabled: Number.isFinite(personId),
     retry: false,
   })
+  const hidden = !!personQ.data && isHidden(personQ.data)
   const albumsQ = useQuery({
     queryKey: [PERSONAL_KEY, 'albums', { person_id: personId }],
     queryFn: () => fetchPersonalAlbums({ person_id: personId }),
-    enabled: tab === 'albums' && Number.isFinite(personId),
+    enabled: tab === 'albums' && Number.isFinite(personId) && !hidden,
   })
 
   const setCover = useMutation({
@@ -118,6 +124,19 @@ export function PersonalPersonPage() {
     )
   }
 
+  const summary = [countLabel(t, person.photos, person.videos), person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null]
+    .filter(Boolean)
+    .join(' · ')
+
+  if (hidden) {
+    return (
+      <PageContainer>
+        <PageHeader module="personal" title={person.name} before={back} />
+        <PersonalLockedScreen kind="people" record={person} summary={summary} />
+      </PageContainer>
+    )
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -126,6 +145,7 @@ export function PersonalPersonPage() {
         before={back}
         actions={
           <>
+            <PersonalLockActions kind="people" record={person} />
             <Button variant="edit" onClick={() => setEditing(true)}>
               <SquarePen className="size-4" />
               {t('actions.edit')}
@@ -155,11 +175,7 @@ export function PersonalPersonPage() {
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {[countLabel(t, person.photos, person.videos), person.albums > 0 ? t('personal.albumsCount', { count: person.albums }) : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
+          <p className="text-sm text-muted-foreground">{summary}</p>
           {person.birthday && (
             <p className="flex items-center gap-1.5 text-sm">
               <Cake className="size-4 text-muted-foreground" />

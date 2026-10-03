@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { FeedbackProvider } from '@/components/ui/feedback'
 import type { Person, PersonalMedia } from '@/api/personal'
@@ -17,6 +17,10 @@ import i18n from '@/i18n'
    სერვერის ჯგუფებს ითხოვს და თვის სახელს ხატავს; ატვირთვა **სათითაოდ** მიდის,
    ადამიანის კონტექსტით, ზედმეტად დიდი კი სერვერამდე არ მიდის; ბადის უჯრა —
    ესკიზი ბადეში, სრული ფოტო ლაითბოქსში, ვიდეო პირდაპირი მისამართით.
+
+   §33.7 — ჩაკეტილი ადამიანი ბოქლომიანი ბარათია: დაჭერა პაროლს ითხოვს და არა
+   გვერდს ხსნის, გვერდი კი მხოლოდ ბოქლომს ხატავს (ბადე საერთოდ არ ითხოვება).
+   Q7 — საჯარო ალბომის ყდა საჯარო ფაილის მარშრუტიდან მოდის.
    ============================================================ */
 
 function person(id: number, over: Partial<Person> = {}): Person {
@@ -32,6 +36,11 @@ function person(id: number, over: Partial<Person> = {}): Person {
     albums: 0,
     sort_order: id,
     created_at: null,
+    locked: false,
+    unlocked: true,
+    lock_hint: null,
+    failed_unlocks: 0,
+    unlock_blocked_until: null,
     ...over,
   }
 }
@@ -84,6 +93,8 @@ const mocks = vi.hoisted(() => ({
   fetchPersonalMedia: vi.fn(),
   fetchPersonalGroups: vi.fn(),
   fetchPersonalAlbums: vi.fn(),
+  fetchPerson: vi.fn(),
+  unlockPersonal: vi.fn(),
   uploadPersonalMedia: vi.fn(),
   fetchUploadLimits: vi.fn(),
 }))
@@ -95,6 +106,8 @@ vi.mock('@/api/personal', async (original) => ({
   fetchPersonalMedia: mocks.fetchPersonalMedia,
   fetchPersonalGroups: mocks.fetchPersonalGroups,
   fetchPersonalAlbums: mocks.fetchPersonalAlbums,
+  fetchPerson: mocks.fetchPerson,
+  unlockPersonal: mocks.unlockPersonal,
   uploadPersonalMedia: mocks.uploadPersonalMedia,
 }))
 
@@ -302,5 +315,72 @@ describe('personalPhotoItem', () => {
     expect(item.full).toBeUndefined()
     expect(item.video).toMatchObject({ mime: 'video/mp4', duration: 42 })
     expect(item.video!.src).toMatch(/\/api\/personal\/media\/4\/file$/)
+  })
+})
+
+/** React-ის კონტროლირებად ველში აკრეფა — `value`-ს მშობლიური setter + `input` */
+function typeInto(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+describe('locks (§33.7)', () => {
+  const hidden = person(3, { name: 'ანა', locked: true, unlocked: false, lock_hint: 'ზღვა', photos: 5 })
+
+  it('draws a hidden person as a padlock card and asks for the password instead of opening it', async () => {
+    defaults()
+    mocks.fetchPeople.mockResolvedValue([person(1), hidden])
+    mocks.unlockPersonal.mockResolvedValue({ ...hidden, unlocked: true })
+    const { PersonalPage } = await import('@/pages/PersonalPage')
+    await render(h(PersonalPage, { cut: 'people' }))
+
+    const card = [...container!.querySelectorAll('li')].find((li) => li.textContent?.includes('ანა'))!
+    expect(card.textContent).toContain(i18n.t('personal.lock.badgeLocked'))
+    // რედაქტირება/წაშლა გახსნამდე არ ჩანს — სერვერი მათ 423-ით უარყოფს
+    expect(card.textContent).not.toContain(i18n.t('actions.edit'))
+
+    await act(async () => (card.querySelector('button') as HTMLButtonElement).click())
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('personal.lock.hintShown', { hint: 'ზღვა' }))
+
+    await act(async () => typeInto(document.getElementById('personal-unlock') as HTMLInputElement, 'secret1'))
+    await act(async () => (document.getElementById('personal-unlock-form') as HTMLFormElement).requestSubmit())
+    await flush()
+
+    expect(mocks.unlockPersonal).toHaveBeenCalledWith('people', 3, 'secret1')
+  })
+
+  it('shows only the padlock on a hidden person page and never asks for the grid', async () => {
+    defaults()
+    mocks.fetchPerson.mockResolvedValue(hidden)
+    const { PersonalPersonPage } = await import('@/pages/PersonalPersonPage')
+    await render(
+      h(Routes, null, h(Route, { path: '/personal/people/:id', element: h(PersonalPersonPage) })),
+      '/personal/people/3',
+    )
+
+    expect(container!.querySelector('[data-testid="personal-locked"]')).toBeTruthy()
+    expect(container!.textContent).toContain(i18n.t('personal.photos', { count: 5 }))
+    expect(mocks.fetchPersonalMedia).not.toHaveBeenCalled()
+    expect(container!.textContent).not.toContain(i18n.t('actions.upload'))
+  })
+})
+
+describe('PublicPersonalAlbumTile', () => {
+  it('takes the cover from the public file route', async () => {
+    const { PublicPersonalAlbumTile } = await import('@/components/public-gallery/PublicPersonalAlbum')
+    await render(
+      h(PublicPersonalAlbumTile, {
+        username: 'nino',
+        card: { id: 7, domain: 'personal_album', title_en: 'ზღვა', photos: 3, videos: 1, cover_id: 12 },
+        onOpen: () => {},
+      }),
+    )
+
+    const img = container!.querySelector('img')!
+    expect(img.getAttribute('src')).toMatch(/\/api\/public\/profiles\/nino\/personal-media\/12\/thumb$/)
+    expect(container!.textContent).toContain('ზღვა')
+    expect(container!.textContent).toContain(i18n.t('personal.photos', { count: 3 }))
   })
 })

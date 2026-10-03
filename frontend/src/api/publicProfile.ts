@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
 import { isCustomModuleKey, type CustomModuleKey } from '@/lib/customModules'
 import type { Status } from '@/api/types'
 import type { GalleryParentKind, GallerySort } from '@/api/gallery'
@@ -114,6 +114,10 @@ export interface PublicCard {
   duration?: number | null
   /** §37.4 — პირადი მოდულის ბარათი: რომელ მოდულს ეკუთვნის (დამთხვევაში სხვადასხვა მოდულიდან მოდის) */
   module?: string | null
+  /** Tasks §33 — პირადი გალერეის ალბომი: ფოტო · ვიდეო და ყდის ფოტოს id (`publicPersonalUrl()`) */
+  photos?: number
+  videos?: number
+  cover_id?: number | null
 }
 
 export interface PublicProfile {
@@ -180,6 +184,59 @@ export async function fetchPublicPlaylist(
     { params: { page, per_page: perPage } },
   )
   return data
+}
+
+/* ---------- პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7) ---------- */
+
+/**
+ * ერთი ფოტო/ვიდეო საჯარო ალბომში. ⚠️ `thumb`/`url` **საჯარო API-ის გზებია**
+ * (`/public/profiles/{username}/personal-media/{id}/…`) — ფაილი პირად დისკზეა
+ * და სერვერი ხილვადობას ყოველ მოთხოვნაზე თავიდან ამოწმებს. დისკის გზა და
+ * ფაილის ორიგინალი სახელი გარეთ არ გამოდის.
+ */
+export interface PublicPersonalMedia {
+  id: number
+  kind: 'photo' | 'video'
+  width: number | null
+  height: number | null
+  duration: number | null
+  taken_at: string | null
+  caption: string | null
+  thumb: string | null
+  url: string
+}
+
+export interface PublicPersonalAlbumPage {
+  album: PublicCard
+  data: PublicPersonalMedia[]
+  meta: PublicItems['meta']
+}
+
+/** ⚠️ ჩაკეტილი, პირადი ან ურნაში მყოფი ალბომი 404-ია */
+export async function fetchPublicPersonalAlbum(
+  username: string,
+  albumId: number,
+  page = 1,
+  perPage = 60,
+): Promise<PublicPersonalAlbumPage> {
+  const { data } = await api.get(
+    `/public/profiles/${encodeURIComponent(username)}/personal-albums/${albumId}`,
+    { params: { page, per_page: perPage } },
+  )
+  return data
+}
+
+/**
+ * საჯარო ფაილის **პირდაპირი** მისამართი — `<img>`/`<video src>`-ისთვის.
+ * ⚠️ ავტორიზაცია არ სჭირდება (blob აქ ზედმეტია); ვიდეო Range-ით უკრავს.
+ */
+export function publicPersonalUrl(path: string): string {
+  return `${API_URL}/api${path}`
+}
+
+/** ყდის ესკიზი ბარათისთვის — `cover_id`-ით */
+export function publicPersonalThumb(username: string, mediaId: number): string {
+  return publicPersonalUrl(`/public/profiles/${encodeURIComponent(username)}/personal-media/${mediaId}/thumb`)
 }
 
 /* ---------- დამთხვევები (Tasks §16.2) ---------- */

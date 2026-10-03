@@ -156,7 +156,7 @@ Route::middleware('throttle:login')->group(function () {
 });
 
 /* ---------- საჯარო პროფილი (Tasks §16.1) — ავტორიზაციის გარეშე ----------
-   ⚠️ **ეს ცხრა endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
+   ⚠️ **ეს თერთმეტი endpoint-ია `auth:sanctum`-ის გარეთ არსებული დომენური
    ზედაპირი**; მის გარეთ ღიაა კიდევ ხუთი — `/health`, `register`, `login`
    და FEAT-16-ის აღდგენის წყვილი (`GET|POST /auth/reset/{token}`, ორივე
    `throttle:login`-ის უკან). ეს ყველაზე სენსიტიური სიაა პროექტში —
@@ -169,10 +169,12 @@ Route::middleware('throttle:login')->group(function () {
      5. `GET  /public/profiles/{username}/gallery-photos/{image}/file` — ერთი ფაილი
      6. `GET  /public/profiles/{username}/gallery-videos`            — ვიდეო-ბმულები (§32)
      7. `GET  /public/profiles/{username}/playlists/{playlist}`      — ფლეილისტის შიგთავსი (§33)
-     8. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
-     9. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
+     8. `GET  /public/profiles/{username}/personal-albums/{album}`   — პირადი გალერეის ალბომი (Tasks §33, Q7)
+     9. `GET  /public/profiles/{username}/personal-media/{media}/{file|thumb}` — მისი ფაილი/ესკიზი
+    10. `POST /public/profiles/{username}/albums/{album}/unlock`     — **ერთადერთი write**
+    11. `GET  /public/profiles/{username}/{domain}`                  — დომენის ბარათები
 
-   ⚠️ **რვა read-only-ია, მეცხრე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
+   ⚠️ **ათი read-only-ია, მეთერთმეტე — არა** (Tasks GAP-06; კომენტარი ადრე „ორივე
    read-only-ია"-ს ამბობდა, რაც ორმაგად მცდარი იყო). `unlockAlbum` პაროლს
    ამოწმებს და **სერვერის სესიას ცვლის**; მისი ორი დამცავია
    `throttle:album-unlock` (ანონიმზე გასაღები IP + ალბომი) და ცხადი შემოწმება,
@@ -180,8 +182,8 @@ Route::middleware('throttle:login')->group(function () {
    პირადი ალბომის პაროლის გამოცნობის კარი იქნებოდა. სესიის გარეშე პაროლი
    საერთოდ არ იცდება (BUG-02, 409 `session_required`).
 
-   ცხრავე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
-   default-ით `private`, და ცხრავე `PublicProfileService::resolve()`-ზე გადის —
+   თერთმეტივე სამ ფენას ერთდროულად ითხოვს (პროფილი → მოდული → ჩანაწერი), ყველა
+   default-ით `private`, და თერთმეტივე `PublicProfileService::resolve()`-ზე გადის —
    ე.ი. მთელი მექანიზმი ერთი ცვლადით ითიშება: `PUBLIC_PROFILES=false`.
    ⚠️ §32-ის სამი ახალი endpoint ხილვადობას **ერთ სერვისში** ითვლის
    (`PublicGallery`) — ოთხი გალერეის მარშრუტი ერთსა და იმავე სამ წესს კითხულობს.
@@ -203,6 +205,14 @@ Route::get('/public/profiles/{username}/gallery-photos/{image}/file', [PublicPro
    ვერაფრის მფლობელია) — `{playlist}` უბრალო რიცხვია და ხილვადობას სერვისი წყვეტს. */
 Route::get('/public/profiles/{username}/playlists/{playlist}', [PublicProfileController::class, 'playlist'])
     ->whereNumber('playlist');
+/* Tasks §33 (Q7) — პირადი გალერეის საჯარო ალბომი და მისი ფაილი. ⚠️ ფაილი
+   პირად დისკზეა და უცხოსთვის მხოლოდ აქედან გამოდის; ჩაკეტილი ალბომი ან
+   ჩაკეტილი ადამიანის ფოტო — 404, სესიის მიუხედავად. მოდელი არ იბმება. */
+Route::get('/public/profiles/{username}/personal-albums/{album}', [PublicProfileController::class, 'personalAlbum'])
+    ->whereNumber('album');
+Route::get('/public/profiles/{username}/personal-media/{media}/{variant}', [PublicProfileController::class, 'personalMediaFile'])
+    ->whereNumber('media')
+    ->whereIn('variant', ['file', 'thumb']);
 Route::post('/public/profiles/{username}/albums/{album}/unlock', [PublicProfileController::class, 'unlockAlbum'])
     ->whereNumber('album')
     // §7.13 — ანონიმზე გასაღები IP + ალბომია; უამისოდ ოთხსიმბოლოიანი პაროლი წუთებში ცვივა
@@ -212,11 +222,11 @@ Route::get('/public/profiles/{username}/{domain}', [PublicProfileController::cla
 
 /* ---------- გაზიარების ბმული (Tasks §40.6) — ავტორიზაციის გარეშე ----------
    ⚠️ **კიდევ სამი read-only endpoint `auth:sanctum`-ის გარეთ** (ზედა სიას
-   ემატება — სულ თორმეტი დომენური მარშრუტი):
+   ემატება — სულ თოთხმეტი დომენური მარშრუტი):
 
-    10. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
-    11. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
-    12. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით (§40.13)
+    12. `GET  /public/shares/{token}`                      — ვინ გაგიზიარა, სექციები რაოდენობებით
+    13. `GET  /public/shares/{token}/{domain}`             — სექციის ბარათები (ძებნა, ჟანრი, გვერდები)
+    14. `GET  /public/shares/{token}/playlists/{playlist}` — პლეილისტის სიმღერები რიგით (§40.13)
 
    ⚠️ **სამ ფენას არ ეკითხება** — ბმული თვითონაა მფლობელის თანხმობა, ე.ი. ფარგალში
    მოხვედრილი პირადი ჩანაწერიც ჩანს. დაცვა: 48-სიმბოლოიანი შემთხვევითი ტოკენი
@@ -927,7 +937,11 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ `move`/`reorder` `POST`-ია და `UPDATE_ENDPOINTS`-შია → `update` უფლება;
        მონიშნულების წაშლა `DELETE /personal/media`-ა (`delete` უფლება) და არა
        `POST …/bulk-delete` — ის `create`-ად წაიკითხებოდა.
-       ⚠️ ფაილი (`file`) და ესკიზი (`thumb`) მხოლოდ აქედან გადის — სხვისი 404. */
+       ⚠️ ფაილი (`file`) და ესკიზი (`thumb`) მხოლოდ აქედან გადის — სხვისი 404.
+       ⚠️ §33.7 — ჩაკეტვა: `PUT …/lock` (დადება/შეცვლა/მოხსნა), `POST …/unlock`
+       (`throttle:record-unlock` — ოთხნიშნა პაროლს სკრიპტი წუთებში გატეხდა) და
+       `POST …/lock` (ისევ ჩაკეტვა). სამივე `update`-ია: `PUT` თავისით, `unlock`/
+       `lock` კი `UPDATE_ENDPOINTS`-შია. */
     Route::middleware(['module:personal', 'permission:personal'])->group(function () {
         Route::get('/personal/summary', [PersonalGalleryController::class, 'summary']);
 
@@ -937,6 +951,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/people/{person}', [PersonalPersonController::class, 'show'])->whereNumber('person');
         Route::match(['put', 'patch'], '/personal/people/{person}', [PersonalPersonController::class, 'update'])->whereNumber('person');
         Route::delete('/personal/people/{person}', [PersonalPersonController::class, 'destroy'])->whereNumber('person');
+        Route::put('/personal/people/{person}/lock', [PersonalPersonController::class, 'setLock'])->whereNumber('person');
+        Route::post('/personal/people/{person}/unlock', [PersonalPersonController::class, 'unlock'])
+            ->whereNumber('person')
+            ->middleware('throttle:record-unlock');
+        Route::post('/personal/people/{person}/lock', [PersonalPersonController::class, 'relock'])->whereNumber('person');
 
         Route::get('/personal/albums', [PersonalAlbumController::class, 'index']);
         Route::post('/personal/albums', [PersonalAlbumController::class, 'store']);
@@ -944,6 +963,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'show'])->whereNumber('personalAlbum');
         Route::match(['put', 'patch'], '/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'update'])->whereNumber('personalAlbum');
         Route::delete('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'destroy'])->whereNumber('personalAlbum');
+        Route::put('/personal/albums/{personalAlbum}/lock', [PersonalAlbumController::class, 'setLock'])->whereNumber('personalAlbum');
+        Route::post('/personal/albums/{personalAlbum}/unlock', [PersonalAlbumController::class, 'unlock'])
+            ->whereNumber('personalAlbum')
+            ->middleware('throttle:record-unlock');
+        Route::post('/personal/albums/{personalAlbum}/lock', [PersonalAlbumController::class, 'relock'])->whereNumber('personalAlbum');
 
         Route::get('/personal/media', [PersonalMediaController::class, 'index']);
         Route::get('/personal/media/groups', [PersonalGalleryController::class, 'groups']);

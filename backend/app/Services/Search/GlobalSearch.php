@@ -25,6 +25,7 @@ use App\Models\Video;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\Like;
+use App\Support\RecordLocks;
 use App\Support\Snippet;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -336,13 +337,16 @@ class GlobalSearch
 
             /* Tasks §33 — პირადი გალერეა: ადამიანი (სახელი, შენიშვნა, დამატებითი
                ველები), ალბომი და ფოტოს წარწერა. ⚠️ სურათი ძებნის ბარათს **არ**
-               ახლავს — ესკიზი პირად დისკზეა და `/storage/*`-ით ვერ დაიხატება. */
+               ახლავს — ესკიზი პირად დისკზეა და `/storage/*`-ით ვერ დაიხატება.
+               ⚠️ §33.7 (Q9) — ჩაკეტილი და დაუხსნელი ადამიანი/ალბომი ძებნაში არ
+               ჩანს (`exceptHidden`); ფოტოს `personal_lock` scope თვითონ მალავს. */
             'personal' => [
                 'module' => 'personal',
                 'model' => Person::class,
                 'custom' => 'personal',
                 'title_rank' => ['columns' => ['name']],
                 'columns' => ['title' => ['name'], 'description' => ['note']],
+                'scope' => fn (Builder $q) => RecordLocks::exceptHidden($q),
             ],
 
             'personal_album' => [
@@ -350,6 +354,7 @@ class GlobalSearch
                 'model' => PersonalAlbum::class,
                 'title_rank' => ['columns' => ['name']],
                 'columns' => ['title' => ['name'], 'description' => ['description']],
+                'scope' => fn (Builder $q) => RecordLocks::exceptHidden($q),
             ],
 
             'personal_media' => [

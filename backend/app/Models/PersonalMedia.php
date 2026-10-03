@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\StoredFile;
 use App\Services\Storage\StorageMeter;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,10 @@ use Illuminate\Support\Facades\Storage;
  * ⚠️ **ადამიანისა და ალბომის ნაწილია**: ურნაში მყოფი ადამიანის ან ალბომის
  * ფოტო არსად ჩანს (`personal_parent`), თვითონ კი ურნის ცალკე ელემენტია
  * (`TrashDomain::ITEMS['personal_media']`, მშობელი — ადამიანი).
+ *
+ * ⚠️ **ჩაკეტილი ადამიანის ან ალბომის ფოტოც არსად ჩანს** (`personal_lock`,
+ * Tasks §33.7), სანამ ის ამ სესიაში არ გაიხსნა — სია, ჯგუფები, ძებნა,
+ * ჯამები, ფაილის მარშრუტი (მიბმა 404-ს აძლევს).
  */
 class PersonalMedia extends Model
 {
@@ -67,6 +72,11 @@ class PersonalMedia extends Model
                     ->orWhereNotIn("{$table}.album_id", fn ($sub) => $sub->select('id')->from('personal_albums')->whereNotNull('trashed_at')));
         });
 
+        /* **ჩაკეტილი ადამიანის ან ალბომის ფოტო (Tasks §33.7)** — სერვერიდან
+           საერთოდ არ გამოდის, სანამ ამ სესიაში არ გაიხსნა (`AlbumLock`-ის წესი:
+           რაც პასუხში არ მოვიდა, იმას ინსპექტორი ვერ იპოვის). */
+        static::addGlobalScope('personal_lock', fn (Builder $q) => self::lockScope($q));
+
         /* ⚠️ ესკიზი `StoredFile`-ის გარეთაა (ის მხოლოდ `path`/`size`-ს იცნობს):
            ფაილი აქ იშლება, ბაიტები — `deleted`-ზე. ყდაც აქ თავისუფლდება, რომ
            ადამიანი/ალბომი არარსებულ ფოტოზე არ მიუთითებდეს. */
@@ -100,6 +110,27 @@ class PersonalMedia extends Model
     public function album(): BelongsTo
     {
         return $this->belongsTo(PersonalAlbum::class, 'album_id');
+    }
+
+    /**
+     * დამალული ადამიანებისა და ალბომების ფოტოების გარიცხვა.
+     *
+     * `$except` — რომელი მშობლის ლოკი **არ** ითვლება (`person_id`/`album_id`):
+     * ჩაკეტილი ბარათის საკუთარი რიცხვი ლოკის მიღმა იზომება (ბარათი „0 ფოტოს"
+     * იტყუებოდა — `GalleryAlbumController::imagesCount()`-ის წესი), სხვა ლოკები
+     * კი რჩება — „გარე" ალბომში ჩაკეტილი ადამიანის ფოტოც დევს.
+     */
+    public static function lockScope(Builder $q, ?string $except = null): Builder
+    {
+        $table = $q->getModel()->getTable();
+
+        foreach (['person_id' => 'personal', 'album_id' => 'personal_album'] as $column => $type) {
+            if ($column !== $except) {
+                RecordLocks::exclude($q, $type, "{$table}.{$column}");
+            }
+        }
+
+        return $q;
     }
 
     /* ---------- helpers ---------- */

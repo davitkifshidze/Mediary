@@ -5,6 +5,7 @@ import { Globe } from 'lucide-react'
 import {
   createPersonalAlbum,
   fetchPeople,
+  isHidden,
   PERSONAL_KEY,
   updatePersonalAlbum,
   type PersonalAlbum,
@@ -29,7 +30,9 @@ import { Textarea } from '@/components/ui/textarea'
 
    ⚠️ **საჯაროობა ალბომის დონეზეა** (Q7) — ადამიანი და ცალკეული ფოტო საჯარო
    ვერ გახდება; პროფილზე ის მაშინ ჩანს, როცა „პირადი გალერეა" პროფილის
-   მოდულებშიც ჩართულია (სამი ფენა, §16).
+   მოდულებშიც ჩართულია (სამი ფენა, §16). ⚠️ **ჩაკეტილი ალბომი — არასდროს**:
+   გადამრთველი გათიშულია (სერვერი 422-ს აბრუნებს), ჩაკეტილი და დაუხსნელი
+   ადამიანი კი „ვისია"-ში ვერ აირჩევა (423).
    ============================================================ */
 
 const FORM_ID = 'personal-album-form'
@@ -107,8 +110,8 @@ export function PersonalAlbumDialog({
               <SelectContent>
                 <SelectItem value={NO_PERSON}>{t('personal.album.outside')}</SelectItem>
                 {(peopleQ.data ?? []).map((person) => (
-                  <SelectItem key={person.id} value={String(person.id)}>
-                    {person.name}
+                  <SelectItem key={person.id} value={String(person.id)} disabled={isHidden(person)}>
+                    {isHidden(person) ? `${person.name} · ${t('personal.lock.badgeLocked')}` : person.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -131,9 +134,14 @@ export function PersonalAlbumDialog({
               <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
                 <Globe className={isPublic ? 'size-4 text-primary' : 'size-4 text-muted-foreground'} />
                 {t('personal.album.public')}
-                <InfoHint info={t('personal.album.publicHint')} />
+                <InfoHint info={t(album?.locked ? 'personal.lock.notPublic' : 'personal.album.publicHint')} />
               </div>
-              <Switch checked={isPublic} onCheckedChange={setIsPublic} aria-label={t('personal.album.public')} />
+              <Switch
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+                disabled={!!album?.locked}
+                aria-label={t('personal.album.public')}
+              />
             </div>
           </FormField>
         </FormSection>
