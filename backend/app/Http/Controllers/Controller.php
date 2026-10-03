@@ -28,6 +28,23 @@ abstract class Controller
      *
      * @return list<string>
      */
+    /**
+     * Tasks §17.5 — სტატუსის გასაღებები **ორივე ფორმით**: მძიმით გამოყოფილი
+     * სტრიქონი (`?status=a,b` — საიდბარი და ფილტრების პანელი) და მასივი
+     * (`?status[]=a&status[]=b` — „რა ვნახო დღეს" დიალოგის მრავალარჩევი).
+     * ⚠️ `$request->string('status')` მასივზე „Array to string"-ით ვარდებოდა.
+     */
+    protected function statusKeys(Request $request): array
+    {
+        $raw = $request->input('status');
+
+        if (is_array($raw)) {
+            $raw = implode(',', array_filter($raw, 'is_scalar'));
+        }
+
+        return $this->slugList(is_scalar($raw) ? (string) $raw : null);
+    }
+
     protected function slugList(?string $value): array
     {
         if ($value === null || trim($value) === '') {

@@ -1,4 +1,5 @@
 import { API_URL, api } from '@/lib/api'
+import { pickParams, type PickOptions } from '@/lib/pick'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
@@ -262,6 +263,24 @@ export interface VideoMetadata {
 export async function fetchVideoMetadata(url: string, exclude?: number): Promise<VideoMetadata> {
   const { data } = await api.post('/videos/metadata', { url, ...(exclude ? { exclude } : {}) })
   return data
+}
+
+/**
+ * Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზე: N შემთხვევითი, სტატუსები და
+ * გამორიცხვა სერვერზე. სიის `status` (`?view=`) ვარდება — დიალოგის ჩიპები
+ * მასზე მაღლა დგას; `all` აქ აზრს მოკლებულია.
+ */
+export async function pickRandomVideos(filters: VideoFilters, opts: PickOptions = {}): Promise<Video[]> {
+  const { favorite, downloaded, all: _all, status: _status, per_page: _per, ...rest } = filters
+  const { data } = await api.get('/videos', {
+    params: {
+      ...rest,
+      ...(favorite ? { favorite: 1 } : {}),
+      ...(downloaded ? { downloaded: 1 } : {}),
+      ...pickParams(opts),
+    },
+  })
+  return data.data ?? []
 }
 
 export async function fetchVideos(filters: VideoFilters = {}): Promise<Page<Video>> {

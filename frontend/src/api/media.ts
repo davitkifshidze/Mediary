@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { pickParams, type PickOptions } from '@/lib/pick'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { MEDIA, type MediaType } from '@/lib/media'
 import type { Genre, Movie, MovieListItem } from './types'
@@ -82,15 +83,16 @@ export function createMediaApi(base: string) {
      * უნდა მოდიოდეს, რომელსაც ეკრანზე ხედავ.
      * ⚠️ **`null` ნორმალური პასუხია** — „ფილტრში არაფერია" და არა შეცდომა.
      */
-    pickRandom: async (filters: MediaFilters = {}, exclude: number[] = []): Promise<Movie | null> => {
-      // ⚠️ `all` განზრახ ვარდება: შემთხვევითი არჩევა სერვერზე ხდება, ე.ი.
-      // მთელი სიის ჩამოტვირთვას აზრი არ აქვს (და `all=1` `meta`-საც შლის)
-      const { all: _all, ...rest } = filters
-      // Tasks §6.5 — უკვე ნაჩვენებები სერვერზე გამოირიცხება, რომ „სხვა" იგივეს არ დააბრუნებდეს
-      const { data } = await api.get(base, {
-        params: { ...rest, pick: 'random', ...(exclude.length ? { exclude } : {}) },
-      })
-      return data.data ?? null
+    /**
+     * „რა ვნახო დღეს" — **N შემთხვევითი ჩანაწერი** (Tasks §17.5). ⚠️ `all`
+     * განზრახ ვარდება: არჩევა სერვერზე ხდება, ე.ი. მთელი სიის ჩამოტვირთვას
+     * აზრი არ აქვს. `status` — დიალოგის ჩიპები (სიის `?view=`-ზე მაღლა დგას),
+     * `exclude` — უკვე ნაჩვენებები (§6.5), რომ „სხვა" იგივეს არ დააბრუნებდეს.
+     */
+    pickRandom: async (filters: MediaFilters = {}, opts: PickOptions = {}): Promise<Movie[]> => {
+      const { all: _all, status: _status, ...rest } = filters
+      const { data } = await api.get(base, { params: { ...rest, ...pickParams(opts) } })
+      return data.data ?? []
     },
     /** TMDB id-ით პირდაპირ დამატება (ქმნის + ამდიდრებს) */
     addFromTmdb: async (tmdbId: number): Promise<Movie> => {

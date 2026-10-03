@@ -3616,12 +3616,17 @@
   },
   "pick": {
     "title": "What should I watch",
-    "hint": "Picks one record at random from the current filter. With no section chosen it only considers what you have not started.",
-    "again": "Another",
+    "hint": "Picks a few records at random from the current filter. How many and from which statuses you choose right here, and it is remembered; at least one status stays selected.",
+    "count": "How many",
+    "from": "From",
+    "againN": "Another {{count}}",
     "start": "Start it",
     "started": "The status has changed — enjoy!",
     "emptyTitle": "Nothing matches this filter",
-    "emptyHint": "Change the filter or the section and try again."
+    "emptyHint": "Change the filter, the statuses or the section and try again.",
+    "exhaustedTitle": "Everything has been shown",
+    "exhaustedHint": "Nothing else is left in this scope — start over or select more statuses.",
+    "restart": "Start over"
   },
   "goals": {
     "title": "Goals for {{year}}",

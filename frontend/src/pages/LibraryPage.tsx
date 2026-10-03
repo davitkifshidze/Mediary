@@ -9,7 +9,6 @@ import {
   ArrowUpNarrowWide,
   ChevronLeft,
   ChevronRight,
-  Dices,
   Layers,
   Plus,
   Search,
@@ -43,6 +42,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { FloatingPick } from '@/components/FloatingPick'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -339,25 +339,6 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
                 </TooltipContent>
               </Tooltip>
             )}
-            {/* FEAT-20 — „რა ვნახო დღეს". ⚠️ **ფილტრის ჩამრთველის გვერდით**:
-                არჩევანი ზუსტად მიმდინარე ფილტრის ფარგლებშია, ე.ი. ღილაკი
-                იმ კონტროლებს ეკუთვნის, რომლებიც სიას განსაზღვრავენ. */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPickOpen(true)}
-                  aria-label={t('pick.title')}
-                >
-                  <Dices className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-sm">
-                <p className="font-medium">{t('pick.title')}</p>
-                <p className="mt-1 text-muted-foreground">{t('pick.hint')}</p>
-              </TooltipContent>
-            </Tooltip>
             {/* ვიწრო ეკრანზე ფილტრები უჯრაშია — დესკტოპზე პანელი მარჯვნივ დგას */}
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button variant="outline" onClick={() => setDiscoverOpen(true)}>
@@ -487,9 +468,37 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         </FilterPanel>
       </div>
 
-      {/* FEAT-20 — არჩევანი სერვერზე ხდება, იმავე ფილტრით, რაც სიას აქვს */}
+      {/* FEAT-20 → Tasks §17 — „რა ვნახო დღეს": მოტივტივე კამათელი მარჯვენა ქვედა
+          კუთხეში (სათაურის ზოლიდან აქ გადმოვიდა); არჩევანი სერვერზე ხდება, იმავე
+          ფილტრით, რაც სიას აქვს — სტატუსს კი დიალოგის ჩიპები წყვეტენ. */}
+      <FloatingPick module={type} onOpen={() => setPickOpen(true)} />
       {pickOpen && (
-        <RandomPickDialog type={type} filters={filters} onClose={() => setPickOpen(false)} />
+        <RandomPickDialog
+          source={{
+            domain: type,
+            currentStatus: filters.status ?? null,
+            filterKey: JSON.stringify(filters),
+            fetch: async (opts) =>
+              (await api.pickRandom(filters, opts)).map((m) => ({
+                id: m.id,
+                title: (lang === 'ka' ? m.title_ka : m.title_en) || m.title_en || m.title_ka || '',
+                poster: m.poster,
+                shape: 'poster',
+                year: m.year,
+                rating: m.rating,
+                meta: m.genres.map((g) => (lang === 'ka' ? g.name_ka || g.name_en : g.name_en)),
+                description: (lang === 'ka' ? m.description_ka : m.description_en) ?? null,
+                statusKey: m.status?.key ?? null,
+              })),
+            setStatus: (id, key) => api.setStatus(id, key),
+            open: (record) => {
+              setPickOpen(false)
+              navigate(`${detailBase}/${record.id}`)
+            },
+            invalidate: [[type]],
+          }}
+          onClose={() => setPickOpen(false)}
+        />
       )}
 
       <DiscoverModal

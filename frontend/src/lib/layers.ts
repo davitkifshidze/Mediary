@@ -21,6 +21,7 @@
    | sticky save bar        | 30     | `SettingsSaveBar`, `RolePage` |
    | ჰედერი                 | 40     | `Header` |
    | **დამკვრელი**          | **50** | `Player` — ზოლი ან გვერდითა პანელი (§7.2/§35) |
+   | **მოტივტივე ღილაკი**   | **55** | `FloatingPick` — კამათელი მარჯვენა ქვედა კუთხეში (Tasks §17.2) |
    | მოდალი                 | 60/61  | `ModalShell`, `dialog.tsx` |
    | რიგის ტოსტი            | 70     | `ui/queue.tsx`, `ui/feedback.tsx` |
    | drawer / lightbox      | 80/81  | `Sidebar`, `FilterPanel`, `GalleryPanel` |
@@ -53,6 +54,13 @@
  *    იხურება** (§35.6): მოდალის ქვეშ მდგარ პანელში ვიდეო არ ჩანდა.
  */
 export const LAYER_PLAYER = 'z-50'
+
+/**
+ * Tasks §17.2 — მოტივტივე ღილაკი (კამათელი): დამკვრელის ზოლზე **მაღლა** (მის
+ * `--player-h`-ით იწევს და არ უნდა დაიფაროს), მოდალზე კი **დაბლა** — გახსნილი
+ * დიალოგის ფარდა მასაც უნდა ფარავდეს, თორემ მოდალის თავზე „ტივტივებდა".
+ */
+export const LAYER_FLOAT = 'z-[55]'
 
 /** ჩამოსაშლელი/popover/მენიუ — ყველა მოდალზე და lightbox-ზე ზემოთ */
 export const LAYER_POPUP = 'z-[100]'

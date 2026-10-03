@@ -376,7 +376,23 @@
   .fb-player[data-layout='side'] { animation: fb-player-side-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
   .fb-player[data-layout='bar'] { animation: fb-player-bar-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
+/* ---- მოტივტივე კამათელი (Tasks §17.2/§17.3) ----
+   ღილაკი ზემოდან „ჩამოვარდება" და ოდნავ ამოხტება; ბუშტის კურსორი ციმციმებს,
+   სანამ ტექსტი იწერება. ⚠️ ორივე მოძრაობა `prefers-reduced-motion`-ის ქვეშაა —
+   ტექსტი თვითონ კომპონენტში უმალ სრულად იწერება (`matchMedia`). */
+@keyframes fb-float-in {
+  from { opacity: 0; transform: translateY(-1.5rem) scale(0.9); }
+  70%  { opacity: 1; transform: translateY(0.25rem) scale(1.02); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fb-caret {
+  0%, 45%  { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100%     { opacity: 1; }
+}
 @media (prefers-reduced-motion: no-preference) {
+  .fb-float { animation: fb-float-in 480ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+  .fb-caret { animation: fb-caret 900ms steps(1) infinite; }
   .fb-header { animation: fb-header-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
   .fb-header-icon { animation: fb-header-icon-in 340ms cubic-bezier(0.16, 1, 0.3, 1) 80ms backwards; }
   .fb-card { animation: fb-card-in 300ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }

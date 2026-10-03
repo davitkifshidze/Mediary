@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\PicksRandomRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAnimeRequest;
 use App\Http\Requests\UpdateAnimeRequest;
@@ -31,6 +32,8 @@ use Illuminate\Support\Str;
  */
 class AnimeController extends Controller
 {
+    use PicksRandomRecords;
+
     public function __construct(private StorageMeter $meter) {}
 
     /** ანიმეების სია (ფილტრი: status, genre, favorite, q, sort) */
@@ -40,8 +43,11 @@ class AnimeController extends Controller
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.
-        foreach ($this->slugList($request->string('status')->toString()) as $key) {
-            $query->statusKey($key);
+        /* Tasks §17.5 — ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
+           ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
+           ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
+        if ($keys = $this->statusKeys($request)) {
+            $query->statusKey($keys);
         }
 
         if ($request->boolean('favorite')) {
@@ -186,37 +192,14 @@ class AnimeController extends Controller
     /* ---------- დამხმარეები ---------- */
 
     /**
-     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერი (FEAT-20).**
-     *
-     * ⚠️ **`role = todo` ნაგულისხმევია და არა მყარი**: კითხვა „ჯერ რა არ
-     * მინახავს"-ია, მაგრამ ცხადად არჩეული სექცია (`?status=`) მასზე მაღლა
-     * დგას — თორემ „დაწყებულებიდან აირჩიე" შეუძლებელი იქნებოდა.
-     * ⚠️ **როლი და არა გასაღები** (§6.4): სტატუსი per-user ლექსიკონია,
-     * ე.ი. ჩემი „საყურებელი" და შენი „ვნახავ" ერთი და იგივეა მხოლოდ
-     * `role`-ის დონეზე.
-     *
-     * ⚠️ **`inRandomOrder()` და არა PHP-ში არჩევა**: სიის მთლიანად
-     * წამოღება მხოლოდ ერთი ჩანაწერის ასარჩევად ზუსტად ის არის, რის
-     * წინააღმდეგაც პაგინაცია დაიწერა.
-     *
-     * ⚠️ **ცარიელი შედეგი `data: null`-ია და არა 404**: „ფილტრში არაფერია"
-     * ნორმალური მდგომარეობაა და ეკრანზე `EmptyState`-ად იხატება, შეცდომად კი არა.
+     * **„რა ვნახო დღეს" — შემთხვევითი ჩანაწერები** (FEAT-20 → Tasks §17.5):
+     * ლოგიკა `PicksRandomRecords`-შია, აქ მხოლოდ რესურსია. ⚠️ პასუხი
+     * **სიაა** (`data: []`) — დიალოგი 1–5 ბარათს აჩვენებს; ცარიელი სია
+     * მდგომარეობაა და არა შეცდომა.
      */
     private function randomPick(Request $request, $query)
     {
-        if (! $request->filled('status') && ! $request->boolean('favorite')) {
-            $query->statusRole('todo');
-        }
-
-        // Tasks §6.5 — უკვე ნაჩვენებები გამოირიცხება (იხ. `MovieController::randomPick()`)
-        $exclude = array_filter(array_map('intval', (array) $request->input('exclude', [])));
-        if ($exclude) {
-            $query->whereNotIn('animes.id', $exclude);
-        }
-
-        $record = $query->reorder()->inRandomOrder()->first();
-
-        return response()->json(['data' => $record ? new AnimeResource($record->load(['genres', 'cast'])) : null]);
+        return AnimeResource::collection($this->randomRecords($request, $query, 'animes.id')->load(['genres', 'cast']));
     }
 
     private function applyData(Anime $anime, Request $request): void

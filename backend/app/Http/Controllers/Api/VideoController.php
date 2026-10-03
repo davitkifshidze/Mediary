@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\PicksRandomRecords;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoResource;
 use App\Models\Status;
@@ -11,6 +12,7 @@ use App\Services\Video\VideoMetadata;
 use App\Services\Video\VideoSearch;
 use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
+use App\Support\Like;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use App\Support\VideoUrl;
@@ -24,6 +26,8 @@ use Illuminate\Validation\Rule;
  */
 class VideoController extends Controller
 {
+    use PicksRandomRecords;
+
     public function __construct(private StorageMeter $meter) {}
 
     public function index(Request $request, VideoSearch $search)
@@ -56,9 +60,23 @@ class VideoController extends Controller
         }
         /* §6.4 — სტატუსი: ამ მოდულს ის ახლა გაუჩნდა. საიდბარის სექციაც
            `?status=<key>`-ით მოდის, ე.ი. ფილმის/სერიალის იგივე ნიმუშია. */
-        foreach ($this->slugList($request->string('status')->toString()) as $key) {
-            $query->statusKey($key);
+        /* Tasks §17.5 — ⚠️ რამდენიმე სტატუსი **ან**-ითაა და არა „და"-თი: ჩანაწერს
+           ერთი სტატუსი აქვს, ე.ი. თითო გასაღებზე ცალკე `whereHas` ყოველთვის
+           ცარიელს დააბრუნებდა (ასე იყო მძიმით გამოყოფილ სიაზეც). */
+        if ($keys = $this->statusKeys($request)) {
+            $query->statusKey($keys);
         }
+        /* Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზეც. ⚠️ **ფილტრების შემდეგ და
+           დალაგებამდე**, ფილმის იგივე წესით; ძებნა აქ უბრალო `LIKE`-ია და არა
+           `VideoSearch` — ის კოლექციას აბრუნებს, შემთხვევითი არჩევა კი ბაზაში ხდება. */
+        if ($request->string('pick')->toString() === 'random') {
+            if ($term = $request->string('q')->toString()) {
+                $query->where('title', 'like', Like::contains($term));
+            }
+
+            return VideoResource::collection($this->randomRecords($request, $query, 'videos.id'));
+        }
+
         match ($request->string('sort')->toString()) {
             'title' => $query->orderBy('title'),
             'oldest' => $query->orderBy('id'),

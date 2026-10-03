@@ -30,6 +30,7 @@ import {
 import {
   createVideo,
   deleteVideo,
+  pickRandomVideos,
   setVideoStatus,
   deleteVideoDownload,
   fetchVideoDownloadStatus,
@@ -63,6 +64,8 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
 import { DuplicateLinkNotice } from '@/components/DuplicateLinkNotice'
+import { FloatingPick } from '@/components/FloatingPick'
+import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { VideoDetail } from '@/components/VideoDetail'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import {
@@ -140,6 +143,9 @@ export function VideosPage() {
   // დამკვრელშია** (§35: გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
   // აღწერა/ფაილები/ჩანიშვნები/მსგავსებია და ვიდეოს დამკვრელს გადასცემს.
   const [detail, setDetail] = useState<Video | null>(null)
+  /** Tasks §17 (Q4) — „რა ვნახო დღეს" ვიდეოებზეც; ბოლო პასუხის ჩანაწერები „გახსნა"-სთვის */
+  const [pickOpen, setPickOpen] = useState(false)
+  const picked = useRef<Record<number, Video>>({})
   const player = usePlayer()
 
   // ძებნა აკრეფისას (K4) — ჩამორჩენილი 350ms, backend ეძებს ყველა ველში
@@ -754,6 +760,43 @@ export function VideosPage() {
           </FilterGroup>
         </FilterPanel>
       </div>
+
+      {/* Tasks §17 (Q4) — მოტივტივე კამათელი და დიალოგი ფილმების იგივე კომპონენტებით;
+          „გახსნა" აქ ფანჯარაა (`VideoDetail`) და არა გვერდი. */}
+      <FloatingPick module="video" onOpen={() => setPickOpen(true)} />
+      {pickOpen && (
+        <RandomPickDialog
+          source={{
+            domain: 'video',
+            currentStatus: filters.status ?? null,
+            filterKey: JSON.stringify(filters),
+            fetch: async (opts) => {
+              const list = await pickRandomVideos(filters, opts)
+              picked.current = Object.fromEntries(list.map((v) => [v.id, v]))
+              return list.map((v) => ({
+                id: v.id,
+                title: v.title,
+                poster: storageUrl(v.thumbnail),
+                shape: 'wide',
+                year: v.published_at ? Number(v.published_at.slice(0, 4)) || null : null,
+                rating: null,
+                meta: [v.channel, v.type ? videoTypeName(v.type, lang) : null].filter((x): x is string => !!x),
+                description: v.description,
+                statusKey: v.status?.key ?? null,
+              }))
+            },
+            setStatus: (id, key) => setVideoStatus(id, key),
+            open: (record) => {
+              const video = picked.current[record.id]
+              if (!video) return
+              setPickOpen(false)
+              setDetail(video)
+            },
+            invalidate: [['videos']],
+          }}
+          onClose={() => setPickOpen(false)}
+        />
+      )}
 
       {detail && (
         <VideoDetail
