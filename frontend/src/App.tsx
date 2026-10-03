@@ -71,6 +71,12 @@ const NoteRemindersPage = lazy(() =>
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })))
 const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ default: m.CoursesPage })))
 const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
+// Tasks §33 — პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
+const PersonalPage = lazy(() => import('@/pages/PersonalPage').then((m) => ({ default: m.PersonalPage })))
+const PersonalPersonPage = lazy(() =>
+  import('@/pages/PersonalPersonPage').then((m) => ({ default: m.PersonalPersonPage })),
+)
+const PersonalAlbumPage = lazy(() => import('@/pages/PersonalAlbumPage').then((m) => ({ default: m.PersonalAlbumPage })))
 // Tasks §37 — ინტერფეისიდან შექმნილი მოდულების **ერთი** ზოგადი გვერდი
 const CustomModulePage = lazy(() =>
   import('@/pages/CustomModulePage').then((m) => ({ default: m.CustomModulePage })),
@@ -156,6 +162,8 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   course: <CoursesPage />,
   // FEAT-26 — ადგილები
   place: <PlacesPage />,
+  // Tasks §33 — პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
+  personal: <PersonalPage cut="people" />,
   // Tasks 10 — გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
   gallery: <GalleryPage />,
 }
@@ -277,6 +285,14 @@ function AppShell() {
           {has('gallery') && <Route path="gallery/videos" element={<GalleryPage cut="videos" />} />}
           {has('gallery') && <Route path="gallery/sources" element={<GalleryPage cut="sources" />} />}
           {has('gallery') && <Route path="gallery/modules" element={<GalleryPage cut="modules" />} />}
+
+          {/* ---------- პირადი გალერეა (Tasks §33.5) ----------
+              ჭრილები `PERSONAL_CUTS`-ის მისამართებია (საიდბარის ქვე-მენიუც იგივეა);
+              ადამიანისა და ალბომის გვერდი — `:id`. */}
+          {has('personal') && <Route path="personal/albums" element={<PersonalPage cut="albums" />} />}
+          {has('personal') && <Route path="personal/media" element={<PersonalPage cut="media" />} />}
+          {has('personal') && <Route path="personal/people/:id" element={<PersonalPersonPage />} />}
+          {has('personal') && <Route path="personal/albums/:id" element={<PersonalAlbumPage />} />}
 
           {/* სიმღერების ქვე-გვერდები: პლეილისტები (ჟანრები ლექსიკონებშია) */}
           {pageModules.some((m) => m.key === 'song') && (

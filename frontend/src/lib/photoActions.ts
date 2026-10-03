@@ -44,6 +44,8 @@ export interface PhotoAction {
   danger?: boolean
   /** უჯრის ქვედა ზოლშიც ჩანს ხატულად (დანარჩენი მხოლოდ მენიუშია) */
   quick?: boolean
+  /** აიქონის დამატებითი კლასი — მაგ. შევსებული ვარსკვლავი რჩეულზე */
+  iconClassName?: string
 }
 
 export interface PhotoActionsInput {
@@ -70,6 +72,11 @@ export interface PhotoActionsInput {
   /** §26.3 — გადატანა სხვა მშობელზე/ალბომში/უკატეგორიოში */
   onMove?: () => void
   onDelete?: () => void
+  /** Tasks §33/§8 — რჩეულის გადართვა; `favorite` — ახლანდელი მდგომარეობა */
+  onFavorite?: () => void
+  favorite?: boolean
+  /** მოდულის საკუთარი პუნქტები — გადატანისა და წაშლის წინ (Tasks §33: წარწერა) */
+  extra?: PhotoAction[]
 }
 
 export function photoActions({
@@ -87,6 +94,9 @@ export function photoActions({
   onToggle,
   onMove,
   onDelete,
+  onFavorite,
+  favorite,
+  extra,
 }: PhotoActionsInput): PhotoAction[] {
   const many = count > 1
   const list: PhotoAction[] = [
@@ -99,6 +109,19 @@ export function photoActions({
   // მდგომარეობას ვარსკვლავის ნიშანი ამბობს უჯრაზე
   if (onPrimary && !isPrimary) {
     list.push({ key: 'primary', label: t('gallery.setPrimary'), icon: Star, run: onPrimary, quick: true })
+  }
+
+  /* Tasks §33 — რჩეული (§8-ის ვარსკვლავი და ფერი); ⚠️ `quick` — უჯრის ზოლშიც,
+     როგორც ჩანაწერის ბარათზე */
+  if (onFavorite) {
+    list.push({
+      key: 'favorite',
+      label: t(favorite ? 'actions.unfavorite' : 'actions.favorite'),
+      icon: Star,
+      iconClassName: favorite ? 'fill-current text-favorite' : undefined,
+      run: onFavorite,
+      quick: true,
+    })
   }
 
   if (onDownload) {
@@ -122,6 +145,8 @@ export function photoActions({
       run: onToggle,
     })
   }
+
+  if (extra?.length) list.push(...extra)
 
   /* ⚠️ **გადატანა წაშლის ზემოთ დგას და `danger` არ არის** (§26.3): ფოტო
      არსად ქრება — მხოლოდ მშობელი და ალბომი იცვლება. წითლად რომ დაგვეხატა,

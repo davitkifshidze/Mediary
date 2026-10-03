@@ -234,6 +234,12 @@ class PersonalGalleryTest extends TestCase
         $thumb = $this->get("/api/personal/media/{$media->id}/thumb");
         $thumb->assertOk();
         $this->assertStringContainsString('max-age=2592000', (string) $thumb->headers->get('Cache-Control'));
+
+        // ჩამოტვირთვა — ორიგინალი სახელით, `attachment`
+        $download = $this->get("/api/personal/media/{$media->id}/file?download=1");
+        $download->assertOk();
+        $this->assertStringStartsWith('attachment', (string) $download->headers->get('Content-Disposition'));
+        $this->assertStringContainsString($media->original_name, (string) $download->headers->get('Content-Disposition'));
     }
 
     public function test_another_account_gets_404_and_moves_nothing(): void

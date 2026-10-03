@@ -47,6 +47,7 @@ import { fetchPendingCount, type ModuleInfo } from '@/api/account'
 import { ModuleIcon } from './ModuleIcon'
 // §8.5 — გალერეის ჭრილების ერთადერთი სია (გვერდზეც იგივეა)
 import { GALLERY_CUTS } from '@/lib/galleryCuts'
+import { PERSONAL_CUTS } from '@/lib/personalCuts'
 import { cn } from '@/lib/utils'
 import { statusName, useCustomStatusMap, useStatusMap } from '@/lib/statuses'
 import { arrangeSections, layoutFor, pseudoSectionsFor, sectionSearch } from '@/lib/statusSections'
@@ -597,6 +598,49 @@ export function Sidebar({
                       იგებოდა, რაც ტაბისთვის გრძელი იყო და მაინც
                       არასრული — შიგნით სიმღერაც ზის და წიგნიც */}
                   <span className="min-w-0 truncate">{t(`gallery.cut.${cut.key}`)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    /* ---------- პირადი გალერეა: ქვე-მენიუ (Tasks §33.5) ----------
+       ⚠️ გალერეის ფორმა — სია `PERSONAL_CUTS`-იდან (გვერდის სეგმენტებიც იგივეა);
+       ადამიანისა და ალბომის გვერდზე შესაბამისი ჭრილი რჩება მონიშნული. */
+    if (m.key === 'personal') {
+      const sectionOpen = !!open.personal
+      const onPersonal = location.pathname === '/personal' || location.pathname.startsWith('/personal/')
+      const activeCut = location.pathname.startsWith('/personal/albums')
+        ? 'albums'
+        : location.pathname.startsWith('/personal/media')
+          ? 'media'
+          : 'people'
+
+      return (
+        <div key={m.key} style={modAccent(m.color)}>
+          <button
+            onClick={() => setOpen((o) => ({ ...o, personal: !o.personal }))}
+            aria-expanded={sectionOpen}
+            className={cn(MODULE_ROW, onPersonal ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
+          >
+            <ModuleIcon name={m.icon} className="size-4 shrink-0 text-[var(--mod)]" />
+            <span className="flex-1 text-left">{moduleName(m, i18n.language)}</span>
+            <ChevronDown className={cn('size-4 shrink-0 transition-transform', sectionOpen ? '' : '-rotate-90')} />
+          </button>
+
+          {sectionOpen && (
+            <div className="mb-1 ml-2 space-y-0.5 border-l border-border pl-2">
+              {PERSONAL_CUTS.map((cut) => (
+                <Link
+                  key={cut.key}
+                  to={cut.path}
+                  onClick={() => setDrawerOpen(false)}
+                  className={subRow(onPersonal && activeCut === cut.key)}
+                >
+                  <cut.icon className="size-4 shrink-0" />
+                  <span className="min-w-0 truncate">{t(`personal.cut.${cut.key}`)}</span>
                 </Link>
               ))}
             </div>

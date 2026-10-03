@@ -41,6 +41,23 @@ export function formatDateTime(
   })}`
 }
 
+/**
+ * **თვე და წელი — „ივლისი 2024"** (Tasks §33: პირადი გალერეის თვეები).
+ *
+ * ⚠️ შესავალი `YYYY-MM`-ია (სერვერის ჯგუფის გასაღები) და არა მომენტი —
+ * `new Date('2024-07')` UTC-ის შუაღამეა და დასავლეთის ზონაში წინა თვე
+ * გამოჩნდებოდა; ამიტომ თარიღი ადგილობრივად, თვის შუა რიცხვზე იგება.
+ * ⚠️ ლოკალი ინტერფეისის ენაა (`formatRelative()`-ის წესი) — თვის სახელი სიტყვაა.
+ */
+export function formatMonth(yearMonth: string, locale: string): string {
+  const [year, month] = yearMonth.split('-').map(Number)
+  if (!year || !month) return yearMonth
+
+  const text = new Date(year, month - 1, 15).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
 /** რამდენად შორია მომენტი — დიდიდან პატარისკენ, პირველი რომელიც „ეტევა" */
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 24 * 60 * 60_000],

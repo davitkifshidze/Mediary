@@ -71,6 +71,11 @@ export function resultPath(item: SearchItem, routeBase: string | undefined): str
   if (item.domain === 'cast') return `/actors/${item.id}`
   if (item.domain === 'playlist') return `/playlists/${item.id}`
   if (item.domain === 'gallery') return '/gallery/videos'
+  /* Tasks §33 — პირადი გალერეა: ადამიანსა და ალბომს თავისი გვერდი აქვს, ფოტო კი
+     „ფოტო & ვიდეო"-ს ძებნით იხსნება (წარწერა) */
+  if (item.domain === 'personal') return `/personal/people/${item.id}`
+  if (item.domain === 'personal_album') return `/personal/albums/${item.id}`
+  if (item.domain === 'personal_media') return `/personal/media?q=${encodeURIComponent(item.title)}`
 
   if (!routeBase) return null
 

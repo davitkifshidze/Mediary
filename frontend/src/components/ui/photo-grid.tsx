@@ -5,13 +5,16 @@ import Counter from 'yet-another-react-lightbox/plugins/counter'
 import Fullscreen from 'yet-another-react-lightbox/plugins/fullscreen'
 import Slideshow from 'yet-another-react-lightbox/plugins/slideshow'
 import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails'
+import Video from 'yet-another-react-lightbox/plugins/video'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import {
   CheckSquare,
   Download,
+  Film,
   ImageOff,
   Lock,
   MoveRight,
+  Play,
   Square,
   SquareDashed,
   Star,
@@ -20,7 +23,8 @@ import {
 } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
-import { photoActions } from '@/lib/photoActions'
+import { photoActions, type PhotoAction } from '@/lib/photoActions'
+import { formatDuration } from '@/lib/videoDuration'
 import { EmptyState } from '@/components/ui/empty-state'
 import { NumberPick } from '@/components/ui/number-pick'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
@@ -132,12 +136,36 @@ export interface PhotoItem {
   locked?: boolean
   /** რომელი ალბომის პაროლი უნდა იკითხოს `onLocked`-მა */
   albumId?: number | null
+  /**
+   * **ვიდეო (Tasks §33)** — უჯრა მის ესკიზს (`src`) ხატავს „▶"-ით და
+   * ხანგრძლივობით, ლაითბოქსი კი `<video>`-ით უკრავს.
+   *
+   * ⚠️ `video.src` **პირდაპირი მისამართია** და არა blob: 300-მეგაბაიტიანი
+   * ფაილი დაკვრამდე მთლიანად მეხსიერებაში ჩაიტვირთებოდა; პირდაპირ მისამართს
+   * ბრაუზერი Range-ით კითხულობს (გადახვევაც ასე მუშაობს).
+   */
+  video?: { src: string; mime?: string | null; duration?: number | null }
+  /** Tasks §33/§8 — რჩეულია (`onFavorite` ცვლის) */
+  favorite?: boolean
+  /**
+   * **სრული ზომის ფოტო ლაითბოქსისთვის** (Tasks §33) — ბადე `src`-ს (ესკიზს)
+   * ხატავს, გახსნილი ხედი კი ამას. ⚠️ პირდაპირი მისამართია (ქუქით, როგორც
+   * `video.src`): 15-მეგაბაიტიანი ფოტოს blob-ად წაკითხვა ყოველ გადასვლაზე
+   * მეხსიერებას შეჭამდა.
+   */
+  full?: string
+  /**
+   * **ჩამოტვირთვის პირდაპირი მისამართი** (Tasks §33) — სერვერი `attachment`-ით
+   * და ორიგინალი სახელით აბრუნებს; ⚠️ blob-ის გარეშე, რადგან 300-მეგაბაიტიანი
+   * ვიდეო მეხსიერებაში არ უნდა ჩაიტვირთოს.
+   */
+  downloadUrl?: string
 }
 
 /** §25.3 — ამ სიგანიდან ფოტოს ზომა ლაითბოქსს გადაეცემა (ზუმის საზღვარი); ქვემოთ — ეკრანამდე იზრდება */
 const LIGHTBOX_NATIVE_FROM = 1200
 
-const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen]
+const PLUGINS = [Slideshow, Zoom, Thumbnails, Counter, Fullscreen, Video]
 
 /**
  * „რამდენი ფოტო გამოჩნდეს" — **ერთი ნაკრები ყველგან, სადაც ფოტო ჩანს**
@@ -230,6 +258,8 @@ export function PhotoGrid({
   onLocked,
   onPrimary,
   primaryId,
+  onFavorite,
+  extraActions,
   emptyText,
   emptyIcon,
   emptyHint,
@@ -287,6 +317,13 @@ export function PhotoGrid({
   onLocked?: (item: PhotoItem) => void
   onPrimary?: (id: number) => void
   primaryId?: number | null
+  /** Tasks §33/§8 — რჩეულის გადართვა (უჯრის ნიშანი და მენიუს პუნქტი) */
+  onFavorite?: (id: number) => void
+  /**
+   * **მოდულის საკუთარი პუნქტები** (Tasks §33 — წარწერა) — გადატანისა და
+   * წაშლის **წინ** ჯდება; `targets` მონიშვნის წესითაა (იხ. `photoActions()`).
+   */
+  extraActions?: (item: PhotoItem, targets: number[]) => PhotoAction[]
   emptyText?: string
   /** ცარიელი მდგომარეობის ხატულა/ახსნა/ღილაკები — იხ. `ui/empty-state.tsx` */
   emptyIcon?: ReactNode
@@ -341,6 +378,7 @@ export function PhotoGrid({
   const remove = readOnly ? undefined : onDelete
   const move = readOnly ? undefined : onMove
   const makePrimary = readOnly ? undefined : onPrimary
+  const favorite = readOnly ? undefined : onFavorite
 
   const controlled = !!onPageSizeChange
   const size = controlled ? (pageSize ?? PHOTO_PAGE_DEFAULT) : ownSize
@@ -433,8 +471,17 @@ export function PhotoGrid({
 
   const slides: Slide[] = useMemo(
     () =>
-      viewable.map((item) => ({
-        src: urlOf(item) ?? '',
+      viewable.map((item): Slide => item.video ? {
+        /* Tasks §33 — ვიდეო `<video>`-ით; ⚠️ ზომა აუცილებელია (ბიბლიოთეკა ჩარჩოს მისით
+           ზომავს), უცნობზე — 16:9 */
+        type: 'video',
+        sources: [{ src: item.video.src, type: item.video.mime ?? 'video/mp4' }],
+        poster: urlOf(item) || undefined,
+        width: item.width ?? 1280,
+        height: item.height ?? 720,
+      } : {
+        // §33 — სრული ფოტო, თუ არის (ბადეში ესკიზია)
+        src: item.full ?? urlOf(item) ?? '',
         alt: item.title ?? '',
         /* Tasks §25.3 — ⚠️ **პატარა ფოტოს ზომები არ გადაეცემა**: ლაითბოქსი ზუსტ ზომას
            ზღვრად იღებს და 600-პიქსელიანი ფოტო ეკრანის შუაში პატარა რჩებოდა. ზომების
@@ -442,7 +489,7 @@ export function PhotoGrid({
            საზღვრისთვის. */
         width: item.width && item.width >= LIGHTBOX_NATIVE_FROM ? item.width : undefined,
         height: item.width && item.width >= LIGHTBOX_NATIVE_FROM ? (item.height ?? undefined) : undefined,
-      })),
+      }),
     /* ⚠️ `resolved` ref-ია, ე.ი. deps-ში ვერ იქნება. ხელახლა გათვლა ორ
        მომენტზეა საჭირო და ორივე აქ წერია: ლაითბოქსის გახსნა/გადასვლა
        (`open`) და გახსნილზე ახალი მისამართის მოსვლა (`slideVersion`). */
@@ -488,6 +535,18 @@ export function PhotoGrid({
       if (!item) return
 
       setTimeout(async () => {
+        /* §33 — ორიგინალი პირდაპირი მისამართით (`attachment`); ესკიზის blob-ს არ ვიღებთ */
+        if (item.downloadUrl) {
+          const link = document.createElement('a')
+          link.href = item.downloadUrl
+          link.download = item.title ?? String(id)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+
+          return
+        }
+
         const ready = urlOf(item)
         const fetched = ready || !isPrivate(item) ? null : await fetchPrivateObjectUrl(item.src)
         const url = ready ?? fetched
@@ -644,6 +703,8 @@ export function PhotoGrid({
               onPrimary={
                 makePrimary && item.canPrimary !== false ? () => makePrimary(item.id) : undefined
               }
+              onFavorite={favorite ? () => favorite(item.id) : undefined}
+              extraActions={readOnly ? undefined : extraActions}
               onMove={move}
               onDelete={remove}
               onResolved={noteResolved}
@@ -672,6 +733,7 @@ export function PhotoGrid({
           thumbnails={{ position: 'bottom', showToggle: true }}
           slideshow={{ delay: 3500 }}
           zoom={{ maxZoomPixelRatio: 4 }}
+          video={{ controls: true, playsInline: true, preload: 'metadata' }}
           toolbar={{
             buttons: [
               ...(lightboxExtra && viewable[open]
@@ -755,6 +817,8 @@ function PhotoCell({
   onToggle,
   onDownload,
   onPrimary,
+  onFavorite,
+  extraActions,
   onMove,
   onDelete,
   onResolved,
@@ -777,6 +841,8 @@ function PhotoCell({
   /** მითითების გარეშე (კითხვის რეჟიმი) ჩამოტვირთვის პუნქტი არ იხატება */
   onDownload?: (ids: number[]) => void
   onPrimary?: () => void
+  onFavorite?: () => void
+  extraActions?: (item: PhotoItem, targets: number[]) => PhotoAction[]
   onMove?: (ids: number[]) => void
   onDelete?: (ids: number[]) => void
   /** ⚠️ id-საც გადმოსცემს, რომ მშობლის callback სტაბილური იყოს (PERF-13) */
@@ -816,6 +882,9 @@ function PhotoCell({
        ფოტოს სანახავად ლაითბოქსი საკმარისია (zoom · სრული ეკრანი). */
     onOriginal: !readOnly && url ? () => window.open(url, '_blank', 'noopener,noreferrer') : undefined,
     onToggle,
+    onFavorite,
+    favorite: item.favorite,
+    extra: extraActions?.(item, targets),
     onMove: onMove && (() => onMove(targets)),
     onDelete: onDelete && (() => onDelete(targets)),
   })
@@ -851,7 +920,7 @@ function PhotoCell({
             onClick={picking ? onToggle : onOpen}
             aria-label={item.title ?? String(index + 1)}
             /* ფიქსირებული ჩარჩო — რეალური ზომა ბადეს არ ცვლის (§2.9) */
-            className={cn('block w-full cursor-pointer bg-muted', item.portrait ? 'aspect-[2/3]' : 'aspect-video')}
+            className={cn('relative block w-full cursor-pointer bg-muted', item.portrait ? 'aspect-[2/3]' : 'aspect-video')}
           >
             {url && (
               <img
@@ -861,7 +930,33 @@ function PhotoCell({
                 className="size-full object-cover transition-transform group-hover:scale-[1.02]"
               />
             )}
+            {/* Tasks §33 — ვიდეო: ესკიზის გარეშე (ffmpeg არ არის) — ხატულა; ესკიზზე — „▶" და ხანგრძლივობა */}
+            {item.video && !url && (
+              <span className="absolute inset-0 grid place-items-center text-muted-foreground">
+                <Film className="size-8" />
+              </span>
+            )}
+            {item.video && (
+              <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                <span className="grid size-11 place-items-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-sm">
+                  <Play className="ml-0.5 size-5 fill-current" />
+                </span>
+              </span>
+            )}
+            {item.video?.duration ? (
+              <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+                {formatDuration(item.video.duration)}
+              </span>
+            ) : null}
           </button>
+          {item.favorite && (
+            <span
+              className="pointer-events-none absolute left-2 top-2 grid size-6 place-items-center rounded-md bg-black/55 text-favorite"
+              title={t('filter.favorite')}
+            >
+              <Star className="size-3.5 fill-current" />
+            </span>
+          )}
 
           {/* ⚠️ **`checked`-იც ხატავს ნიშანს და არა მხოლოდ `picking`** (შენი
               მითითება, 2026-09-14): მარჯვენა კლიკით მონიშნულ ფოტოს ჩარჩო
@@ -949,7 +1044,7 @@ function PhotoCell({
                         : 'hover:bg-muted hover:text-foreground',
                     )}
                   >
-                    <action.icon className="size-3.5" />
+                    <action.icon className={cn('size-3.5', action.iconClassName)} />
                   </button>
                 ))}
 
@@ -964,7 +1059,7 @@ function PhotoCell({
                           onClick={action.run}
                           className={actionItemClass(action.danger ? 'destructive' : undefined)}
                         >
-                          <action.icon className="size-3.5" />
+                          <action.icon className={cn('size-3.5', action.iconClassName)} />
                           {action.label}
                         </button>
                       </ActionMenuClose>
@@ -987,7 +1082,7 @@ function PhotoCell({
               onSelect={action.run}
               className={action.danger ? 'text-destructive focus:bg-destructive/10' : undefined}
             >
-              <action.icon className="size-3.5" />
+              <action.icon className={cn('size-3.5', action.iconClassName)} />
               {action.label}
             </ContextMenuItem>
           </Fragment>

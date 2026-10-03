@@ -112,7 +112,9 @@ export function GlobalSearch() {
 
   /** ჯგუფის სახელი: მოდულისა — ბაზიდან, სამი „უმოდულო" დომენისა — i18n-იდან */
   const labelOf = (group: SearchGroup) => {
-    if (group.key === 'cast' || group.key === 'playlist' || group.key === 'gallery') {
+    /* Tasks §33 — პირადი გალერეის სამი ჯგუფი ერთი მოდულისაა: მოდულის სახელი სამივეს
+       ერთნაირად დაარქმევდა, ამიტომ თითოს თავისი სახელი აქვს */
+    if (['cast', 'playlist', 'gallery', 'personal', 'personal_album', 'personal_media'].includes(group.key)) {
       return t(`search.group.${group.key}`)
     }
     const found = modules.find((m) => m.key === group.module)

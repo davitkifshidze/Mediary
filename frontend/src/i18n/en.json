@@ -426,7 +426,10 @@
     "group": {
       "cast": "Cast",
       "playlist": "Playlists",
-      "gallery": "Gallery videos"
+      "gallery": "Gallery videos",
+      "personal": "People (personal gallery)",
+      "personal_album": "Albums (personal gallery)",
+      "personal_media": "Photos & videos (personal gallery)"
     },
     "field": {
       "title": "Title",
@@ -1405,6 +1408,11 @@
         "photo": "Main photo",
         "description": "Description",
         "tags": "Tags"
+      },
+      "personal": {
+        "name": "Name",
+        "birthday": "Birthday",
+        "note": "Note"
       }
     },
     "desc": {
@@ -1554,7 +1562,8 @@
       "bookmark": "Bookmarks",
       "anime": "Anime",
       "course": "Courses",
-      "place": "Places"
+      "place": "Places",
+      "personal": "Personal gallery (people)"
     },
     "targetHint": {
       "movie": "The film along with its genres, cast links and gallery.",
@@ -1570,7 +1579,8 @@
       "anime": "Anime records — poster, genres, cast and gallery.",
       "course": "The course together with its certificate and attached files.",
       "place": "The place together with its photos and files.",
-      "custom": "A personal module of this account — its records, with their files and notes, go to the owner's trash; the statuses and the classifier stay."
+      "custom": "A personal module of this account — its records, with their files and notes, go to the owner's trash; the statuses and the classifier stay.",
+      "personal": "A person together with their photos, videos and albums; photos without a person and “outside” albums stay."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -3710,7 +3720,9 @@
       "custom_category": "Personal module classifier",
       "custom_record_file": "Custom module files",
       "custom_record_note": "Custom module notes",
-      "custom_module": "Modules"
+      "custom_module": "Modules",
+      "personal_media": "Personal gallery photos and videos",
+      "personal_album": "Personal gallery albums"
     },
     "when": {
       "media_watch": "Watched: {{date}}",
@@ -3978,6 +3990,149 @@
     "addPhotos": "Upload photos",
     "photosEmpty": "No photos yet.",
     "photoDeleteTitle": "Delete the photo?"
+  },
+  "personal": {
+    "hint": "Photos and videos of your people — persons, albums and uploads from your device. Everything lives on a private disk and only you see it; the public profile shows only an album you open yourself.",
+    "cut": {
+      "people": "People",
+      "albums": "Albums",
+      "media": "Photos & videos"
+    },
+    "stat": {
+      "people": "People",
+      "albums": "Albums",
+      "photos": "Photos",
+      "videos": "Videos",
+      "ungrouped": "Ungrouped",
+      "size": "Space"
+    },
+    "photos": "{{count}} photo(s)",
+    "videos": "{{count}} video(s)",
+    "albumsCount": "{{count}} album(s)",
+    "emptyCount": "Empty",
+    "coverSet": "Main photo set",
+    "tabs": {
+      "photos": "Photos",
+      "videos": "Videos",
+      "albums": "Albums"
+    },
+    "kind": {
+      "all": "All",
+      "photo": "Photos",
+      "video": "Videos"
+    },
+    "sort": {
+      "taken": "By date taken",
+      "added": "By date added",
+      "manual": "My order"
+    },
+    "groups": {
+      "label": "Grouping",
+      "all": "All",
+      "person": "By person",
+      "album": "By album",
+      "month": "By month",
+      "ungrouped": "Ungrouped",
+      "noPerson": "Without a person",
+      "noAlbum": "Without an album",
+      "undated": "Undated"
+    },
+    "info": {
+      "file": "File",
+      "size": "Size",
+      "dimensions": "Dimensions",
+      "duration": "Duration",
+      "taken": "Taken"
+    },
+    "person": {
+      "add": "Add person",
+      "edit": "Edit person",
+      "hint": "A person is your private list — no other account sees it. The main photo is one of their photos: “Set as main” in the grid.",
+      "created": "Person added",
+      "saved": "Person saved",
+      "born": "Born {{date}}",
+      "age": "{{count}} years old",
+      "noPhotos": "No photos yet — drop them above.",
+      "noVideos": "No videos yet — drop them above.",
+      "noAlbums": "No albums yet.",
+      "notFound": "Person not found — it may be in the trash."
+    },
+    "people": {
+      "empty": "You have not added anyone yet",
+      "emptyHint": "Add a person and upload photos and videos on their page — in separate tabs."
+    },
+    "album": {
+      "add": "Add album",
+      "edit": "Edit album",
+      "created": "Album created",
+      "saved": "Album saved",
+      "name": "Name",
+      "description": "Description",
+      "owner": "Belongs to",
+      "ownerHint": "An album lives “outside” or inside a person. Moving it to another person takes its photos along.",
+      "outside": "Outside (nobody)",
+      "public": "On the public profile",
+      "publicHint": "The album shows on your public profile when “Personal gallery” is also on among the profile modules. A person or a single photo cannot become public.",
+      "publicBadge": "Public",
+      "uploadHere": "Upload to this album",
+      "empty": "The album is empty — drop photos above or move them in from “Photos & videos”.",
+      "notFound": "Album not found — it may be in the trash."
+    },
+    "albums": {
+      "empty": "You have not created an album yet",
+      "emptyHint": "An album can live “outside” or inside a person — photos land in it on upload or when moved.",
+      "outside": "Outside albums",
+      "outsideHint": "Albums that belong to nobody — they may hold photos of different people."
+    },
+    "media": {
+      "empty": "No photos or videos yet",
+      "emptyHint": "Upload with the header button or from a person’s or an album’s page.",
+      "emptyUngrouped": "No ungrouped photos — each belongs to a person or an album.",
+      "search": "Search captions and file names",
+      "caption": "Caption and date",
+      "captionLabel": "Caption",
+      "taken": "Date taken",
+      "saved": "Saved",
+      "deleteTitle": "Delete {{count}} photo(s)/video(s)?",
+      "deleteHint": "They go to the trash — you can bring them back; the space stays taken until the final delete.",
+      "deleted": "Moved to the trash: {{count}}"
+    },
+    "move": {
+      "title": "Move ({{count}})",
+      "hint": "A photo moved into a person’s album automatically belongs to that person too.",
+      "person": "Person",
+      "album": "Album",
+      "keep": "Leave as is",
+      "noPerson": "No person",
+      "noAlbum": "No album",
+      "followsAlbum": "This is {{name}}’s album — the photo will belong to them too.",
+      "done": "Moved: {{count}}"
+    },
+    "delete": {
+      "personTitle": "Delete “{{name}}”?",
+      "albumTitle": "Delete the album “{{name}}”?",
+      "toTrash": "It goes to the trash and can be restored for {{days}} days.",
+      "keepPerson": "Keep the photos and albums — ungrouped",
+      "keepAlbum": "Keep the photos — without an album",
+      "withContents": "Delete the contents too",
+      "withContentsHint": "They go to the trash together and come back together on restore.",
+      "done": "“{{name}}” moved to the trash"
+    },
+    "upload": {
+      "title": "Upload",
+      "hint": "Drop photos and videos together — they upload one by one, with progress. The date taken is read from the file.",
+      "drop": "Drop photos and videos or click to choose",
+      "dropActive": "Release here",
+      "status": "Uploaded {{done}} / {{total}}",
+      "clearDone": "Clear finished",
+      "retry": "Try again",
+      "cappedHint": "The server’s `php.ini` caps the video size — to upload up to 300 MB, raise `upload_max_filesize` and `post_max_size`."
+    },
+    "reorder": {
+      "open": "Change order",
+      "title": "Album order",
+      "hint": "Drag a thumbnail to its new place — the order saves at once and the album follows it."
+    }
   },
   "courseCategories": {
     "title": "Course categories",

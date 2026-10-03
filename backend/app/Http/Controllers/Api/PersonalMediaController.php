@@ -20,8 +20,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
  * **ფოტო და ვიდეო პირად გალერეაში (Tasks §33.3/§33.6).**
@@ -227,10 +229,27 @@ class PersonalMediaController extends Controller
         return response()->json(['trashed' => $count]);
     }
 
-    /** ფაილი — Range-ით (ვიდეოს გადახვევა), `SafeMime`-ით */
-    public function file(PersonalMedia $personalMedia): BinaryFileResponse
+    /**
+     * ფაილი — Range-ით (ვიდეოს გადახვევა), `SafeMime`-ით.
+     *
+     * `?download=1` — ჩამოტვირთვა ორიგინალი სახელით (`attachment`): SPA მას
+     * პირდაპირი ბმულით იძახებს და არა blob-ით — 300-მეგაბაიტიანი ვიდეო
+     * მეხსიერებაში არ უნდა ჩაიტვირთოს.
+     */
+    public function file(Request $request, PersonalMedia $personalMedia): BinaryFileResponse
     {
-        return $this->serve((string) $personalMedia->path, (string) $personalMedia->original_name);
+        $response = $this->serve((string) $personalMedia->path, (string) $personalMedia->original_name);
+
+        if ($request->boolean('download')) {
+            $name = (string) $personalMedia->original_name ?: basename((string) $personalMedia->path);
+            $response->setContentDisposition(
+                ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                $name,
+                str_replace(['%', '/', '\\', '"'], '_', Str::ascii($name)) ?: 'file',
+            );
+        }
+
+        return $response;
     }
 
     /**
