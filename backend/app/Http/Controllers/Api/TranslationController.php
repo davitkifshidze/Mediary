@@ -13,6 +13,7 @@ use App\Support\AuditRegistry;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
 use App\Support\Redact;
+use App\Support\SyncOutcome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -60,6 +61,8 @@ class TranslationController extends Controller
             'include_genres' => ['nullable', 'boolean'],
             // `review` — TMDB-ის ქართული აღწერის გადამოწმება (2026-09-14)
             'review' => ['nullable', 'boolean'],
+            // Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნის დამალვა
+            'hide_processed' => ['nullable', 'boolean'],
         ]);
 
         // მხოლოდ ჩართული მოდულების დომენები — გეგმა ორივეს ერთდროულად ეხება,
@@ -74,6 +77,7 @@ class TranslationController extends Controller
             'favorite' => $request->boolean('favorite'),
             'genres' => $data['genres'] ?? [],
             'ids' => $data['ids'] ?? [],
+            'hide_processed' => $request->boolean('hide_processed'),
         ], $request->boolean('review'));
 
         $genres = $request->boolean('include_genres') ? $plan['genres'] : 0;
@@ -141,6 +145,8 @@ class TranslationController extends Controller
             'skipped' => $result['skipped'],
             'changed' => $result['changed'],
             'providers' => $result['providers'],
+            // Tasks §31.4 — `updated` · `empty` · `failed` (`SyncOutcome`); გამოტოვებაზე `null`
+            'result' => $result['result'] ?? null,
             'error' => $result['error'],
             'title' => $item->title_ka ?: ($item->title_en ?: '#'.$item->id),
         ]);
@@ -234,9 +240,31 @@ class TranslationController extends Controller
                 'at' => $row->created_at?->toIso8601String(),
             ]);
 
+        /* Tasks §31.4 — **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ლოგი მხოლოდ შეცვლილს
+           წერს (300 „გამოვტოვე" რიგი არავის სჭირდება), ეს სია კი ჩანაწერის კვალიდან
+           მოდის (`last_translated_at`/`last_translate_result`) — ის, რაც ვერ შეივსო. */
+        $unfilled = collect(TranslationScanner::TYPES)
+            ->flatMap(fn (string $type) => MediaDomain::query($type)
+                ->with('translations')
+                ->whereIn('last_translate_result', SyncOutcome::RETRY)
+                ->orderByDesc('last_translated_at')
+                ->limit(30)
+                ->get()
+                ->map(fn ($row) => [
+                    'type' => $type,
+                    'record_id' => $row->id,
+                    'title' => $row->title_ka ?: $row->title_en,
+                    'result' => $row->last_translate_result,
+                    'at' => $row->last_translated_at?->toIso8601String(),
+                ]))
+            ->sortByDesc('at')
+            ->take(30)
+            ->values();
+
         return response()->json([
             'gemini' => $translator->usage(),
             'recent' => $recent,
+            'unfilled' => $unfilled,
         ]);
     }
 

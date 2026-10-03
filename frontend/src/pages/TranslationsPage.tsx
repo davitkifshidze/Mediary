@@ -41,6 +41,8 @@ export function TranslationsPage() {
   const usageQ = useQuery({ queryKey: ['translations', 'usage'], queryFn: fetchTranslationUsage })
   const gemini = usageQ.data?.gemini
   const recent = usageQ.data?.recent ?? []
+  // Tasks §31.4 — ბოლო გაშვებებზე ვერაფერი შეივსო (ცარიელი · ჩავარდნილი)
+  const unfilled = usageQ.data?.unfilled ?? []
 
   const rows: { key: string; label: string; count: number }[] = [
     { key: 'movie', label: t('nav.movies'), count: data?.movie ?? 0 },
@@ -193,6 +195,34 @@ export function TranslationsPage() {
                       {t(`translate.field.${field}`, field)} · {t(`translate.source.${provider}`)}
                     </span>
                   ))}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{dateTime(row.at)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Tasks §31.4 — **ცარიელი და ჩავარდნილი გაშვებებიც ჩანს**: ზემოთა სია ლოგიდან მხოლოდ
+          შეცვლილს აჩვენებს, ეს კი ჩანაწერის კვალიდან მოდის — რაც ვერ შეივსო, ქარვისფერია,
+          რაც ჩავარდა — წითელი; ორივე გეგმაში ისევ ზის. */}
+      {unfilled.length > 0 && (
+        <section className="mt-3 rounded-xl border border-border bg-card p-5" data-testid="unfilled">
+          <h2 className="flex items-center gap-1.5 text-sm font-medium">
+            {t('translate.unfilledTitle')}
+            <InfoHint info={t('translate.unfilledHint')} />
+          </h2>
+          <ul className="mt-3 divide-y divide-border text-sm">
+            {unfilled.map((row) => (
+              <li key={`${row.type}:${row.record_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                <span className="min-w-0 flex-1 truncate font-medium">{row.title ?? `#${row.record_id}`}</span>
+                <span
+                  className={cn(
+                    'rounded-md px-1.5 py-0.5 text-[11px]',
+                    row.result === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-status-towatch/15 text-status-towatch',
+                  )}
+                >
+                  {t(`translate.result.${row.result}`)}
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground">{dateTime(row.at)}</span>
               </li>

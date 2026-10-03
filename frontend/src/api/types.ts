@@ -110,6 +110,19 @@ export interface Movie extends MovieListItem {
   episodes?: number | null
   cast: CastMember[]
   sync_status: string
+  /** Tasks §31.3 — „აღარ განაახლო": მასობრივი გეგმები და რიგი ამ ჩანაწერს გამოტოვებენ */
+  sync_paused: boolean
+  /** Tasks §31.1 — ბოლო სინქრონი/თარგმანი და მისი შედეგი */
+  last_synced_at: string | null
+  last_sync_result: SyncOutcome | null
+  last_translated_at: string | null
+  last_translate_result: SyncOutcome | null
   watched_at: string | null
   created_at: string
 }
+
+/**
+ * Tasks §31 — გაშვების შედეგი ჩანაწერზე (`SyncOutcome` backend-ზე): განახლდა ·
+ * უცვლელი · ცარიელი პასუხი (დამუშავებულად **არ** ითვლება) · ჩავარდა.
+ */
+export type SyncOutcome = 'updated' | 'unchanged' | 'empty' | 'failed'

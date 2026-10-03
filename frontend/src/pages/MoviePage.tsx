@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react'
-import { fetchMovieCollection, mediaApi } from '@/api/media'
+import { fetchMovieCollection, mediaApi, setSyncPaused } from '@/api/media'
 import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { NotFound } from '@/pages/NotFoundPage'
 import { PosterImage } from '@/components/PosterImage'
@@ -28,6 +28,7 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitBadge } from '@/components/RecordVisits'
@@ -91,6 +92,18 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const resyncMut = useMutation({
     mutationFn: () => api.resync(Number(id)),
     onSuccess: onMutated,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+  /* Tasks §31.3 — „აღარ განაახლო": მასობრივი სინქრონი, თარგმანი და გალერეის ჩამოტვირთვა
+     ამ ჩანაწერს გამოტოვებს; ზემოთა ერთეულოვანი ღილაკი მაინც მუშაობს */
+  const pauseMut = useMutation({
+    mutationFn: (paused: boolean) => setSyncPaused(type, Number(id), paused),
+    onSuccess: (r) => {
+      qc.setQueryData<{ sync_paused: boolean } | undefined>([type, 'detail', id], (cur) =>
+        cur ? { ...cur, sync_paused: r.sync_paused } : cur,
+      )
+      qc.invalidateQueries({ queryKey: [type] })
+    },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
   const delMut = useMutation({
@@ -296,6 +309,15 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   {resyncMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
                 </Button>
+                {/* Tasks §31.3 — გადამრთველი „სინქრონიზაცია შეჩერებულია" */}
+                <label
+                  className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
+                  data-testid="sync-paused"
+                >
+                  <Switch checked={m.sync_paused} disabled={pauseMut.isPending} onCheckedChange={(v) => pauseMut.mutate(v)} />
+                  {t('detail.syncPaused')}
+                  <InfoHint info={t('detail.syncPausedHint')} />
+                </label>
                 <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'edit' })}>
                   <SquarePen className="size-4" />
                   {t('actions.edit')}

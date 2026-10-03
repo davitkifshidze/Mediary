@@ -19,6 +19,7 @@ use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\BookNote;
 use App\Models\CastMember;
+use App\Models\CastMemberSyncPref;
 use App\Models\CastMemberTag;
 use App\Models\CastMemberTranslation;
 use App\Models\Conversation;
@@ -244,6 +245,8 @@ class AuditRegistry
      */
     public const NOT_LOGGED = [
         AuditLog::class => 'ლოგის ლოგირება უსასრულო ციკლია',
+        // Tasks §31.3 — „აღარ განაახლო" მსახიობზე: პარამეტრია და არა შიგთავსი (ჩანაწერზე იგივე გადამრთველი სვეტია და ილოგება)
+        CastMemberSyncPref::class => 'თითო მომხმარებლის გადამრთველი — პარამეტრია, არა შიგთავსი',
 
         // მანქანის წერილი — ადამიანის ქმედება არაა
         NoteNotification::class => 'მიწოდების რიგი; მანქანა წერს და წუთში ერთხელ იცვლება',

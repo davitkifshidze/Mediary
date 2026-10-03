@@ -24,6 +24,13 @@ use Illuminate\Database\Eloquent\Model;
  */
 class AuditObserver
 {
+    /**
+     * მანქანის სვეტები — მათი ცვლილება ლოგს არ ბადებს. Tasks §31.1 — სინქრონის/თარგმანის
+     * კვალი (`SyncOutcome::stamp()` ისედაც ობსერვერის გარეშე წერს; ეს სარეზერვოა, რომ
+     * ჩვეულებრივ `save()`-ში მოყოლილი კვალი ყოველ გაშვებაზე „განახლდა" რიგად არ ჩაიწეროს).
+     */
+    private const MACHINE_COLUMNS = ['updated_at', 'last_synced_at', 'last_sync_result', 'last_translated_at', 'last_translate_result'];
+
     public function __construct(private AuditLogger $audit) {}
 
     public function created(Model $model): void
@@ -34,7 +41,9 @@ class AuditObserver
     public function updated(Model $model): void
     {
         $changes = $model->getChanges();
-        unset($changes['updated_at']);
+        foreach (self::MACHINE_COLUMNS as $column) {
+            unset($changes[$column]);
+        }
 
         if ($changes === []) {
             return;

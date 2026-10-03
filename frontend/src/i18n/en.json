@@ -551,6 +551,8 @@
     "episodes": "{{count}} episodes",
     "sync": "Sync",
     "syncing": "Syncing…",
+    "syncPaused": "Sync paused",
+    "syncPausedHint": "While on, the bulk sync, the translations and the gallery download skip this record; the “Sync” button here still works.",
     "noDescription": "No description.",
     "trailer": "Trailer",
     "sourceUnknown": "Source of this text is unknown",
@@ -614,6 +616,20 @@
     "handOff": "Run on the server",
     "handedOff": "{{count}} items handed to the server — you can close the tab now",
     "itemSkipped": "The record was gone — skipped",
+    "skipPaused": "Paused (“don’t update again”) — skipped",
+    "pauseOne": "Don’t update again",
+    "pausedOne": "“{{title}}” is paused — it leaves the next plans",
+    "result": {
+      "updated": "Updated: {{fields}}",
+      "unchanged": "Unchanged — everything was already so",
+      "empty": "Empty answer — TMDB returned nothing, the record does not count as processed"
+    },
+    "summary": {
+      "updated": "updated {{count}}",
+      "unchanged": "unchanged {{count}}",
+      "empty": "empty {{count}}",
+      "failed": "failed {{count}}"
+    },
     "importing": "Importing…",
     "importDone": "Import finished",
     "castSyncing": "Updating actors…",
@@ -741,6 +757,29 @@
     "media": "Media — poster and cast photos",
     "onlyMissing": "Only missing files",
     "onlyMissingHint": "Records whose files are all present are skipped without touching TMDB — much faster.",
+    "hideProcessed": "Hide the processed",
+    "hideProcessedHint": "Records that were updated or found unchanged leave the list; an empty answer and a failure are offered again. Turn it off to see every record.",
+    "processedHidden": "{{count}} already processed — hidden",
+    "pausedSkipped": "{{count}} paused (“don’t update again”)",
+    "changed": {
+      "title_en": "title (en)",
+      "title_ka": "title (ka)",
+      "description_en": "description (en)",
+      "description_ka": "description (ka)",
+      "year": "year",
+      "rating": "rating",
+      "imdb": "IMDb",
+      "runtime": "runtime",
+      "seasons": "seasons",
+      "episodes": "episodes",
+      "next_air": "next episode",
+      "collection": "collection",
+      "trailer": "trailer",
+      "genres": "genres",
+      "cast": "cast",
+      "poster": "poster",
+      "photos": "photos"
+    },
     "fields": "Text and metadata",
     "field": {
       "title": "Title",
@@ -1617,6 +1656,13 @@
     "quotaHint": "This counter is ours: Google exposes no usage API, so calls made by other programs do not show here. The limit resets once a day, at midnight Pacific time.",
     "quotaRpm": "In the last minute: {{used}} / {{limit}}",
     "recentTitle": "Recent translations",
+    "hideProcessedHint": "Records translated successfully on the last run leave the list; empty and failed ones are offered again.",
+    "unfilledTitle": "Nothing was filled on the last runs",
+    "unfilledHint": "The source returned nothing (empty) or the run failed — these records do not count as processed and stay in the plan.",
+    "result": {
+      "empty": "empty",
+      "failed": "failed"
+    },
     "field": {
       "title_ka": "Title (ka)",
       "title_en": "Title (en)",

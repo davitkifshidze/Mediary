@@ -7,6 +7,7 @@ use App\Services\Sync\ItemSyncer;
 use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
+use App\Support\SyncOutcome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -38,6 +39,8 @@ class MediaSyncController extends Controller
             'genres.*' => ['string'],
             'ids' => ['nullable', 'array'],
             'missing_media_only' => ['nullable', 'boolean'],
+            // Tasks §31.2 — დამუშავებულების (წარმატებით განახლებული/უცვლელი) დამალვა
+            'hide_processed' => ['nullable', 'boolean'],
         ]);
 
         // მხოლოდ ჩართული მოდულების დომენები (I3) — გეგმა ორივე დომენს ერთდროულად ეხება,
@@ -46,9 +49,11 @@ class MediaSyncController extends Controller
         $ids = $data['ids'] ?? [];
         $missingOnly = $request->boolean('missing_media_only');
 
+        $hideProcessed = $request->boolean('hide_processed');
         $items = [];
         $withoutTmdb = 0;
-
+        $paused = 0;
+        $processed = 0;
         foreach ($types as $type) {
             $query = MediaDomain::query($type);
 
@@ -65,6 +70,16 @@ class MediaSyncController extends Controller
                 $query->whereIn('id', array_map('intval', $ids[$type]));
             }
 
+            /* Tasks §31.3 — „აღარ განაახლო" გეგმაში არ ზის; §31.2 — დამუშავებული (წარმატებით
+               განახლებული ან უცვლელი) `hide_processed`-ზე იმალება, ცარიელი და ჩავარდნილი კი
+               რჩება — ისინი დამუშავებულად არ ითვლება. ⚠️ `clone` — `count()` builder-ს
+               ადგილზე ცვლის. */
+            $paused += (clone $query)->where('sync_paused', true)->count();
+            $query->where('sync_paused', false);
+            if ($hideProcessed) {
+                $processed += (clone $query)->whereNotNull('last_synced_at')->whereNotIn('last_sync_result', SyncOutcome::RETRY)->count();
+                $query->where(fn ($w) => $w->whereNull('last_synced_at')->orWhereIn('last_sync_result', SyncOutcome::RETRY));
+            }
             $rows = $query->with(['translations', 'cast'])->orderBy('id')->get();
 
             foreach ($rows as $row) {
@@ -91,6 +106,9 @@ class MediaSyncController extends Controller
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
             'skipped_without_tmdb' => $withoutTmdb,
+            // Tasks §31 — რამდენი დაიმალა და რამდენია შეჩერებული (ფანჯარა ამას ციფრით ამბობს)
+            'skipped_processed' => $processed,
+            'skipped_paused' => $paused,
             /* Tasks §30.6 — ⚠️ **გეგმა თვითონ ამბობს, რომ გასაღები არ მაქვს**:
                §30-იდან ის ანგარიშისაა, ე.ი. მის გარეშე ფანჯარა გაშვებამდე უნდა
                თქვას „ჩაწერე" — და არა 300 ერთნაირი ჩავარდნის შემდეგ. */
@@ -141,8 +159,34 @@ class MediaSyncController extends Controller
             'ok' => $result['ok'],
             'skipped' => $result['skipped'],
             'changed' => $result['changed'],
+            // Tasks §31.4 — ოთხი შედეგი ცალკე (`SyncOutcome`)
+            'result' => $result['result'],
             'error' => $result['error'],
             'title' => $item->title_ka ?: ($item->title_en ?: '#'.$item->id),
         ]);
+    }
+
+    /**
+     * Tasks §31.3 — „აღარ განაახლო": გეგმები (სინქრონი, თარგმანი, გალერეა) და worker-ი
+     * შეჩერებულ ჩანაწერს გამოტოვებენ; დეტალის ერთეულოვანი ღილაკი მაინც მუშაობს.
+     * ⚠️ `PATCH` — არსებული ჩანაწერის ცვლილებაა (`update` უფლება), ე.ი. ლოგშიც ჩანს.
+     */
+    public function pause(Request $request, string $type, int $id)
+    {
+        if (! MediaDomain::has($type)) {
+            return response()->json(['message' => 'invalid_type'], 422);
+        }
+
+        $data = $request->validate(['paused' => ['required', 'boolean']]);
+
+        $item = MediaDomain::model($type)::find($id);
+        if (! $item) {
+            return response()->json(['message' => 'not_found'], 404);
+        }
+
+        $item->sync_paused = (bool) $data['paused'];
+        $item->save();
+
+        return response()->json(['ok' => true, 'sync_paused' => (bool) $item->sync_paused]);
     }
 }

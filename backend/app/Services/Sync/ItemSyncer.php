@@ -12,8 +12,10 @@ use App\Support\Lang;
 use App\Support\MediaDomain;
 use App\Support\Redact;
 use App\Support\StorageFolder;
+use App\Support\SyncOutcome;
 use App\Support\Trailer;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -44,7 +46,11 @@ class ItemSyncer
 
     /**
      * @param  array{fields?:array<string>, media?:bool, overwrite?:bool, only_missing?:bool}  $opts
-     * @return array{ok:bool, skipped:bool, changed:array<string>, error:?string}
+     *                                                                                                Tasks §31.1 — `result` ოთხი ფაქტიდან ერთია (`SyncOutcome`): `updated` ·
+     *                                                                                                `unchanged` · `empty` (TMDB-მ არაფერი დააბრუნა — ჩანაწერი დამუშავებულად **არ**
+     *                                                                                                ითვლება, `sync_status` უცვლელი) · `failed`; გამოტოვებაზე `null`. კვალი
+     *                                                                                                (`last_synced_at`/`last_sync_result`) ყოველ ცდაზე იწერება.
+     * @return array{ok:bool, skipped:bool, changed:array<string>, error:?string, result:?string}
      */
     public function sync(Model $item, array $opts): array
     {
@@ -74,6 +80,15 @@ class ItemSyncer
 
         try {
             $d = $isSeries ? $this->tmdb->tvDetails($item->tmdb_id) : $this->tmdb->details($item->tmdb_id);
+
+            /* Tasks §31.1 — **ცარიელი პასუხი ცალკე ფაქტია**: TMDB-მ არაფერი დააბრუნა, ე.ი.
+               ჩანაწერი დამუშავებულად არ ითვლება — `sync_status` არ იწერება, შედეგი `empty`,
+               გეგმა მას ისევ სთავაზობს. აქამდე ეს `ok:true, changed:[]` იყო — სიაში მწვანე ✓. */
+            if (empty($d['id'])) {
+                SyncOutcome::stamp($item, 'sync', SyncOutcome::EMPTY);
+
+                return $this->result(true, false, [], null, SyncOutcome::EMPTY);
+            }
 
             $needsCredits = $wantMedia || in_array('cast', $fields, true);
             $credits = $needsCredits
@@ -120,11 +135,29 @@ class ItemSyncer
 
             $item->sync_status = 'synced';
             $item->save();
+
+            // §31.1 — კვალი ჩანაწერზე: განახლდა თუ უბრალოდ შევამოწმეთ და ყველაფერი ისე იყო
+            $outcome = $changed ? SyncOutcome::UPDATED : SyncOutcome::UNCHANGED;
+            SyncOutcome::stamp($item, 'sync', $outcome);
+        } catch (RequestException $e) {
+            // TMDB-მ ეს id არ იცის (404) — ცარიელია და არა ჩავარდნა (`CastEnricher`-ის იგივე წესი)
+            if ($e->response?->status() === 404) {
+                SyncOutcome::stamp($item, 'sync', SyncOutcome::EMPTY);
+
+                return $this->result(true, false, [], null, SyncOutcome::EMPTY);
+            }
+
+            SyncOutcome::stamp($item, 'sync', SyncOutcome::FAILED);
+
+            return $this->result(false, false, $changed, Redact::secrets($e->getMessage()), SyncOutcome::FAILED);
         } catch (Throwable $e) {
-            return $this->result(false, false, $changed, Redact::secrets($e->getMessage()));
+            // ⚠️ ჩავარდნაც იწერება (დრო + კოდი) — „ბოლოს როდის ვცადე" ამაზეც პასუხია
+            SyncOutcome::stamp($item, 'sync', SyncOutcome::FAILED);
+
+            return $this->result(false, false, $changed, Redact::secrets($e->getMessage()), SyncOutcome::FAILED);
         }
 
-        return $this->result(true, false, array_values(array_unique($changed)), null);
+        return $this->result(true, false, array_values(array_unique($changed)), null, $outcome);
     }
 
     /* ---------- ველების გამოყენება ---------- */
@@ -449,8 +482,8 @@ class ItemSyncer
         return ! $path || ! Storage::disk(StorageFolder::diskFor($path))->exists($path);
     }
 
-    private function result(bool $ok, bool $skipped, array $changed, ?string $error): array
+    private function result(bool $ok, bool $skipped, array $changed, ?string $error, ?string $result = null): array
     {
-        return ['ok' => $ok, 'skipped' => $skipped, 'changed' => $changed, 'error' => $error];
+        return ['ok' => $ok, 'skipped' => $skipped, 'changed' => $changed, 'error' => $error, 'result' => $result];
     }
 }

@@ -569,4 +569,58 @@ class BatchQueueTest extends TestCase
 
         $this->assertSame('skipped', $items[0]['status']);
     }
+
+    /* ================= Tasks §31.4/§31.6 — შედეგი სერვერულ რიგში ================= */
+
+    /** ცარიელი და უცვლელი **გამოტოვებაა მიზეზით** — ✓-ად აღარ ითვლება */
+    public function test_an_empty_or_unchanged_result_is_skipped_with_its_reason(): void
+    {
+        $empty = $this->makeMovie($this->alice, 'Empty');
+        $same = $this->makeMovie($this->alice, 'Same');
+
+        $this->mock(ItemSyncer::class, function ($mock) use ($empty) {
+            $mock->shouldReceive('sync')->andReturnUsing(fn ($record) => (int) $record->id === (int) $empty->id
+                ? ['ok' => true, 'skipped' => false, 'changed' => [], 'error' => null, 'result' => 'empty']
+                : ['ok' => true, 'skipped' => false, 'changed' => [], 'error' => null, 'result' => 'unchanged']);
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [['type' => 'movie', 'id' => $empty->id], ['type' => 'movie', 'id' => $same->id]],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $items = collect($this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->assertJsonPath('failed', 0)->json('items'))->keyBy('id');
+
+        $this->assertSame('skipped', $items[$empty->id]['status']);
+        $this->assertSame('empty', $items[$empty->id]['error']);
+        $this->assertSame('skipped', $items[$same->id]['status']);
+        $this->assertSame('unchanged', $items[$same->id]['error']);
+    }
+
+    /** Tasks §31.3 — „აღარ განაახლო" ჩანაწერი პარტიაშიც გამოტოვებაა, სერვისს არც ეხება */
+    public function test_a_paused_record_is_skipped_by_the_worker(): void
+    {
+        $paused = $this->makeMovie($this->alice, 'Paused');
+        $paused->forceFill(['sync_paused' => true])->save();
+
+        $this->mock(ItemSyncer::class, function ($mock) {
+            $mock->shouldReceive('sync')->never();
+        });
+
+        $id = $this->actingAs($this->alice)->postJson('/api/batches', [
+            'kind' => 'sync',
+            'items' => [['type' => 'movie', 'id' => $paused->id]],
+            'options' => ['fields' => ['title']],
+        ])->assertStatus(202)->json('id');
+
+        Artisan::call('queue:work', ['--stop-when-empty' => true, '--max-time' => 20, '--tries' => 1]);
+
+        $items = $this->actingAs($this->alice)->getJson("/api/batches/{$id}")->assertOk()->json('items');
+
+        $this->assertSame('skipped', $items[0]['status']);
+        $this->assertSame('sync_paused', $items[0]['error']);
+    }
 }

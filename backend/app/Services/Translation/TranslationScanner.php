@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Models\Series;
+use App\Support\SyncOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -148,7 +149,12 @@ class TranslationScanner
             if (! empty($ids[$type])) {
                 $query->whereIn('id', array_map('intval', $ids[$type]));
             }
-
+            /* Tasks §31.3 — „აღარ განაახლო" თარგმანსაც ეხება; §31.2 — ბოლო გაშვებაზე
+               წარმატებით ნათარგმნი `hide_processed`-ზე იმალება, ცარიელი და ჩავარდნილი რჩება */
+            $query->where('sync_paused', false);
+            if (! empty($filters['hide_processed'])) {
+                $query->where(fn ($w) => $w->whereNull('last_translated_at')->orWhereIn('last_translate_result', SyncOutcome::RETRY));
+            }
             foreach ($query->get() as $row) {
                 $missing = self::missing($row);
                 /* ⚠️ `review`-ზე სრულად შევსებული ჩანაწერიც სამუშაოა — მაგრამ

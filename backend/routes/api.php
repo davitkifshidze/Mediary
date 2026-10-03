@@ -1049,6 +1049,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/media/sync/{type}/{id}', [MediaSyncController::class, 'item'])
         ->middleware(['module:@type', 'permission:@type,update'])
         ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+    // Tasks §31.3 — „აღარ განაახლო" გადამრთველი; `PATCH` → `update`
+    Route::patch('/media/sync/{type}/{id}/pause', [MediaSyncController::class, 'pause'])
+        ->middleware(['module:@type', 'permission:@type,update'])
+        ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
 
     /* ---------- სეზონები და ეპიზოდები (FEAT-09) ----------
        ⚠️ **მხოლოდ TV-დომენები** (`MediaDomain::TV_TYPES`): ფილმს სეზონი
@@ -1253,6 +1257,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cast/sync/{castMember}', [CastSyncController::class, 'item'])
         ->whereNumber('castMember')
         ->middleware('throttle:tmdb-person');
+    // Tasks §31.3 — მსახიობზე „აღარ განაახლო" **ჩემი** პარამეტრია (`cast_member_sync_prefs`)
+    Route::patch('/cast/sync/{castMember}/pause', [CastSyncController::class, 'pause'])->whereNumber('castMember');
     Route::get('/cast/{castMember}', [CastController::class, 'show'])->whereNumber('castMember');
     /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).

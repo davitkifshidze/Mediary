@@ -1370,8 +1370,8 @@ class GalleryController extends Controller
         $recordIds = [];
 
         foreach ($types as $type) {
-            $query = GalleryScope::query($type, $data);
-
+            // Tasks §31.3 — „აღარ განაახლო" გალერეის გეგმასაც ეხება
+            $query = GalleryScope::query($type, $data)->where('sync_paused', false);
             if ($request->boolean('skip_with_photos')) {
                 /* ⚠️ **გამოტოვებული ცხადად ითვლება.** უამისოდ „ჩანაწერი 0"
                    ორ სრულიად სხვადასხვა მდგომარეობას ნიშნავდა — „სკოუპში

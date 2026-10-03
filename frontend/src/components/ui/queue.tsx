@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, RotateCcw, Server, SkipForward, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Loader2, Minus, Pause, RotateCcw, Server, SkipForward, X } from 'lucide-react'
 import { purgeItem, type PurgePlanItem, type PurgeTargetKey } from '@/api/account'
 import { fetchBatch, startBatch, type BatchItemResult, type BatchKind } from '@/api/batches'
 import { errorMessage, isApiCode, translateCode } from '@/lib/errors'
@@ -17,6 +17,8 @@ import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/s
 import { restoreFromTrash } from '@/api/trash'
 import {
   mediaApi,
+  setActorSyncPaused,
+  setSyncPaused,
   syncActor,
   syncItem,
   type CastSyncOptions,
@@ -31,6 +33,7 @@ import {
   type TranslationPlanItem,
   type TranslationSource,
 } from '@/api/translations'
+import type { SyncOutcome } from '@/api/types'
 import type { MediaType } from '@/lib/media'
 import { isMediaKey } from '@/lib/modules'
 import { shareMeta } from '@/lib/shareLinks'
@@ -161,6 +164,14 @@ interface QItem {
   ms?: number
   /** ჩანაწერზე არაფერი შეიცვალა (მაგ. მედია უკვე ადგილზე იყო) */
   skipped?: boolean
+  /**
+   * sync/translate — Tasks §31.4: ოთხი შედეგი ცალკე (განახლდა · უცვლელი · ცარიელი ·
+   * ჩავარდა) და რა შეიცვალა (`changed` — `sync.changed.*`).
+   */
+  result?: SyncOutcome | null
+  changed?: string[]
+  /** Tasks §31.3 — „აღარ განაახლო" უკვე დაჭერილია ამ რიგზე */
+  paused?: boolean
 }
 
 /** რიგში დასამატებელი TMDB ჩანაწერი; `status`/`favorite` — §18.3 (არჩევითი) */
@@ -581,6 +592,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       skipped?: boolean
       castResult?: CastSyncResult
       trashedId?: number
+      result?: SyncOutcome | null
+      changed?: string[]
     }> = next.kind === 'add'
         ? mediaApi(next.mediaType)
             .addFromTmdb(next.tmdbId!, { status: next.addStatus, favorite: next.addFavorite })
@@ -614,7 +627,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             ? (next.genresDict
                 ? translateGenres(next.sources, ctrl.signal)
                 : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal)
-              ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped }))
+              ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped, result: r.result ?? null, changed: r.changed }))
             : next.kind === 'import'
               ? importRow(next.importSource!, next.importRow!, ctrl.signal).then((r) => ({
                   ok: r.ok,
@@ -658,10 +671,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   ok: r.ok,
                   error: r.error ?? undefined,
                   skipped: r.skipped,
+                  // Tasks §31.4 — შედეგი და „რა შეიცვალა" რიგამდე აღწევს (აქამდე იკარგებოდა)
+                  result: r.result ?? null,
+                  changed: r.changed,
                 }))
 
     job
-      .then(({ ok, error, skipped, castResult, trashedId }) => {
+      .then(({ ok, error, skipped, castResult, trashedId, result, changed }) => {
         ;[
           next.mediaType,
           'discover',
@@ -711,6 +727,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     skipped,
                     castResult,
                     trashedId,
+                    result,
+                    changed,
                     ms: performance.now() - started,
                   }
                 : i,
@@ -840,6 +858,28 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
      ⚠️ `add`/`purge` არასდროს გადადის: პირველი ერთ რექვესთში სრულდება,
      მეორე კი დესტრუქციულია და ცხად დადასტურებაზე დგას. */
   const { toast } = useToast()
+
+  /* Tasks §31.3 — „აღარ განაახლო" რიგის სტრიქონიდან: შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს.
+     ⚠️ მსახიობზე **ჩემი** პარამეტრია (`cast_member_sync_prefs`), ჩანაწერზე — სვეტი. */
+  const pauseOne = React.useCallback(
+    async (it: QItem) => {
+      try {
+        if (it.kind === 'cast') await setActorSyncPaused(it.itemId!, true)
+        else await setSyncPaused(it.mediaType, it.itemId!, true)
+        setItems((cur) => cur.map((i) => (i.id === it.id ? { ...i, paused: true } : i)))
+        qc.invalidateQueries({ queryKey: [it.mediaType] })
+        toast({ title: t('queue.pausedOne', { title: it.title }), variant: 'success' })
+      } catch (e) {
+        toast({ title: errorMessage(e), variant: 'error' })
+      }
+    },
+    [qc, t, toast],
+  )
+  const canPause = (it: QItem) =>
+    (it.status === 'done' || it.status === 'error') &&
+    !it.paused &&
+    it.itemId != null &&
+    (it.kind === 'sync' || it.kind === 'translate' || it.kind === 'cast' || (it.kind === 'gallery' && !it.galleryActor))
   const [handingOff, setHandingOff] = React.useState(false)
 
   /**
@@ -1037,7 +1077,29 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         ? t('castSync.result.tmdbEmpty')
         : code === 'no_tmdb_id'
           ? t('castSync.result.noTmdbId')
-          : null
+          // Tasks §31.4 — ჩანაწერის სერვერული გამოტოვების მიზეზები (`RunBatchItem`)
+          : code === 'empty'
+            ? t('queue.result.empty')
+            : code === 'sync_paused'
+              ? t('queue.skipPaused')
+              : null
+
+  /**
+   * Tasks §31.4 — სინქრონის/თარგმანის შედეგი სტრიქონზე: „განახლდა: პოსტერი, აღწერა (ka)" ·
+   * „უცვლელი" · „ცარიელი პასუხი" (ქარვისფერი — დამუშავებულად არ ჩაითვალა). ჩავარდნა
+   * `error`-ის გზით ჩანს.
+   */
+  const outcomeLabel = (it: QItem): string | null => {
+    if (it.result === 'updated') {
+      const fields = (it.changed ?? []).map((code) => t(`sync.changed.${code}`, code)).join(', ')
+
+      return fields ? t('queue.result.updated', { fields }) : null
+    }
+    if (it.result === 'unchanged') return t('queue.result.unchanged')
+    if (it.result === 'empty') return t('queue.result.empty')
+
+    return null
+  }
 
   /**
    * **მსახიობების გაშვების შეჯამება** (Tasks §39.6) — „განახლდა N ·
@@ -1058,6 +1120,33 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       count('updated') > 0 && t('castSync.summary.updated', { count: count('updated') }),
       count('unchanged') > 0 && t('castSync.summary.unchanged', { count: count('unchanged') }),
       count('tmdb_empty') > 0 && t('castSync.summary.empty', { count: count('tmdb_empty') }),
+    ].filter(Boolean)
+
+    return parts.length ? parts.join(' · ') : null
+  }, [items, serverItems, t])
+
+  /**
+   * **სინქრონის/თარგმანის შეჯამება** (Tasks §31.4) — „განახლდა N · უცვლელი U ·
+   * ცარიელი E · ჩავარდა F". ⚠️ სერვერულიც ითვლება: იქ `ok` განახლებაა, გამოტოვების
+   * მიზეზი (`unchanged`/`empty`) `error`-ში ზის, `failed` — ჩავარდნა.
+   */
+  const syncSummary = React.useMemo(() => {
+    const client = items.filter((i) => (i.kind === 'sync' || i.kind === 'translate') && (i.status === 'done' || i.status === 'error'))
+    const server = serverItems.filter((s) => s.type !== 'actor' && s.status !== 'running')
+    if (!client.length && !server.length) return null
+
+    const codes = [
+      ...client.map((i) => (i.status === 'error' ? 'failed' : (i.result ?? (i.skipped ? 'unchanged' : 'updated')))),
+      ...server.map((s) =>
+        s.status === 'failed' ? 'failed' : s.status === 'ok' ? 'updated' : s.error === 'empty' ? 'empty' : 'unchanged',
+      ),
+    ]
+    const count = (code: string) => codes.filter((c) => c === code).length
+    const parts = [
+      count('updated') > 0 && t('queue.summary.updated', { count: count('updated') }),
+      count('unchanged') > 0 && t('queue.summary.unchanged', { count: count('unchanged') }),
+      count('empty') > 0 && t('queue.summary.empty', { count: count('empty') }),
+      count('failed') > 0 && t('queue.summary.failed', { count: count('failed') }),
     ].filter(Boolean)
 
     return parts.length ? parts.join(' · ') : null
@@ -1086,6 +1175,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       .filter(Boolean)
       .join(' · ')
   }, [items, t])
+
+  /* სათაურის ქვეშ — სახეობის შეჯამება: მსახიობები (§39.6), ბმული (§40.9), სინქრონი/თარგმანი (§31.4) */
+  const summary =
+    headlineKind === 'cast'
+      ? castSummary
+      : headlineKind === 'share'
+        ? shareSummary
+        : headlineKind === 'sync' || headlineKind === 'translate'
+          ? syncSummary
+          : null
 
   return (
     <QueueContext.Provider value={api}>
@@ -1128,11 +1227,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 {running ? (
                   <p className="truncate text-xs text-muted-foreground">{running.title}</p>
                 ) : (
-                  (headlineKind === 'cast' ? castSummary : headlineKind === 'share' ? shareSummary : null) && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {headlineKind === 'cast' ? castSummary : shareSummary}
-                    </p>
-                  )
+                  summary && <p className="truncate text-xs text-muted-foreground">{summary}</p>
                 )}
               </span>
               <span className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground">
@@ -1164,11 +1259,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     {it.status === 'running' ? (
                       <Loader2 className="size-3.5 animate-spin text-status-watching" />
                     ) : it.status === 'done' ? (
-                      it.skipped ? (
-                        <SkipForward className="size-3.5 text-muted-foreground" />
-                      ) : (
-                        <Check className="size-3.5 text-status-watched" />
-                      )
+                      <OutcomeIcon result={it.result} skipped={it.skipped} />
                     ) : it.status === 'error' ? (
                       <AlertCircle className="size-3.5 text-destructive" />
                     ) : (
@@ -1200,7 +1291,28 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                         {castSkipLabel(it.castResult)}
                       </span>
                     )}
+                    {/* Tasks §31.4 — სინქრონის/თარგმანის შედეგი სამფერად; ცარიელი ქარვისფერია */}
+                    {it.status === 'done' && outcomeLabel(it) && (
+                      <span
+                        className={cn('block truncate text-xs', it.result === 'empty' ? 'text-status-towatch' : 'text-muted-foreground')}
+                        title={it.result === 'empty' ? t('queue.result.empty') : undefined}
+                      >
+                        {outcomeLabel(it)}
+                      </span>
+                    )}
                   </span>
+                  {/* Tasks §31.3 — „აღარ განაახლო": შემდეგ გეგმებში ეს ჩანაწერი აღარ ჩანს */}
+                  {canPause(it) && (
+                    <button
+                      type="button"
+                      onClick={() => void pauseOne(it)}
+                      title={t('queue.pauseOne')}
+                      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <Pause className="size-3" />
+                      {t('queue.pauseOne')}
+                    </button>
+                  )}
                   {it.status === 'error' && it.trashedId != null && (
                     <button
                       onClick={() => restoreTrashed(it)}
@@ -1236,7 +1348,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     ) : row.status === 'error' ? (
                       <AlertCircle className="size-3.5 text-destructive" />
                     ) : row.skipped ? (
-                      <SkipForward className="size-3.5 text-muted-foreground" />
+                      <OutcomeIcon
+                        result={row.error === 'empty' ? 'empty' : row.error === 'unchanged' ? 'unchanged' : null}
+                        skipped
+                      />
                     ) : (
                       <Check className="size-3.5 text-status-watched" />
                     )}
@@ -1257,7 +1372,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                     )}
                     {/* ⚠️ გამოტოვება **ჩავარდნა არაა** — ხელახლა გაშვება არაფერს შეცვლის */}
                     {row.skipped && (
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className={cn('block truncate text-xs', row.error === 'empty' ? 'text-status-towatch' : 'text-muted-foreground')}>
                         {castSkipLabel(row.error) ?? t('queue.itemSkipped')}
                       </span>
                     )}
@@ -1311,4 +1426,13 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       )}
     </QueueContext.Provider>
   )
+}
+
+/** Tasks §31.4 — დასრულებულის ნიშანი: ✓ განახლდა · − უცვლელი · ⚠ ცარიელი · ⏭ გამოტოვდა */
+function OutcomeIcon({ result, skipped }: { result?: SyncOutcome | null; skipped?: boolean }) {
+  if (result === 'unchanged') return <Minus className="size-3.5 text-muted-foreground" />
+  if (result === 'empty') return <AlertTriangle className="size-3.5 text-status-towatch" />
+  if (skipped) return <SkipForward className="size-3.5 text-muted-foreground" />
+
+  return <Check className="size-3.5 text-status-watched" />
 }

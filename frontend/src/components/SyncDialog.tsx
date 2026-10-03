@@ -16,6 +16,8 @@ import { useModules } from '@/lib/modules'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { InfoHint } from '@/components/ui/info-hint'
+import { Switch } from '@/components/ui/switch'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -141,6 +143,9 @@ function RecordsFlow({
   const [status, setStatus] = useState<string>('')
   const [genres, setGenres] = useState<string[]>([])
   const [ids, setIds] = useState<Record<MediaType, number[]>>(emptyMediaIds)
+  /* Tasks §31.2 — **ნაგულისხმევად ჩართული**: წარმატებით განახლებული და უცვლელი აღარ ჩანს,
+     ცარიელი პასუხი და ჩავარდნა კი კვლავ შემოთავაზებაა; გამორთვით — ყველა */
+  const [hideProcessed, setHideProcessed] = useState(true)
 
   // --- რა განახლდეს ---
   const [media, setMedia] = useState(true)
@@ -159,8 +164,9 @@ function RecordsFlow({
       ids: scope === 'specific' ? ids : undefined,
       // მხოლოდ დაკარგული ფაილები რიგსაც ამცირებს, არა მხოლოდ სამუშაოს
       missing_media_only: media && onlyMissing && fields.length === 0 ? true : undefined,
+      hide_processed: hideProcessed,
     }),
-    [types, scope, status, genres, ids, media, onlyMissing, fields.length],
+    [types, scope, status, genres, ids, media, onlyMissing, fields.length, hideProcessed],
   )
 
   const planQ = useQuery({
@@ -232,6 +238,18 @@ function RecordsFlow({
             </ScopeRow>
           </RadioGroup>
         </div>
+
+        {/* Tasks §31.2 — დამუშავებულების დამალვა */}
+        <label
+          className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
+          data-testid="hide-processed"
+        >
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            {t('sync.hideProcessed')}
+            <InfoHint info={t('sync.hideProcessedHint')} />
+          </span>
+          <Switch checked={hideProcessed} onCheckedChange={setHideProcessed} />
+        </label>
 
         {/* ---------- რა განახლდეს ---------- */}
         <div>
@@ -309,6 +327,17 @@ function RecordsFlow({
               {plan.skipped_without_tmdb > 0 && (
                 <span className="block text-xs text-muted-foreground">
                   {t('sync.noTmdb', { count: plan.skipped_without_tmdb })}
+                </span>
+              )}
+              {/* Tasks §31 — რამდენი დაიმალა და რამდენია შეჩერებული */}
+              {plan.skipped_processed > 0 && (
+                <span className="block text-xs text-muted-foreground">
+                  {t('sync.processedHidden', { count: plan.skipped_processed })}
+                </span>
+              )}
+              {plan.skipped_paused > 0 && (
+                <span className="block text-xs text-muted-foreground">
+                  {t('sync.pausedSkipped', { count: plan.skipped_paused })}
                 </span>
               )}
             </>

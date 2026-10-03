@@ -42,6 +42,12 @@ class MovieResource extends JsonResource
             'visibility' => $this->visibility,
             'watched_at' => $this->watched_at,
             'sync_status' => $this->sync_status,
+            // Tasks §31 — „აღარ განაახლო" და ბოლო სინქრონის/თარგმანის კვალი
+            'sync_paused' => (bool) $this->sync_paused,
+            'last_synced_at' => $this->last_synced_at?->toIso8601String(),
+            'last_sync_result' => $this->last_sync_result,
+            'last_translated_at' => $this->last_translated_at?->toIso8601String(),
+            'last_translate_result' => $this->last_translate_result,
             'collection_id' => $this->tmdb_collection_id,
             'collection_name' => $this->collection_name,
             'franchise_next' => (bool) ($this->franchise_next ?? false),

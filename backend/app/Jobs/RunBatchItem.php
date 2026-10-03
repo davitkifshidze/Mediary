@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Anime;
 use App\Models\BatchItem;
 use App\Models\CastMember;
+use App\Models\CastMemberSyncPref;
 use App\Models\Movie;
 use App\Models\Series;
 use App\Models\User;
@@ -17,6 +18,7 @@ use App\Services\Translation\ItemTranslator;
 use App\Support\MediaDomain;
 use App\Support\Redact;
 use App\Support\SourceLog;
+use App\Support\SyncOutcome;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -221,6 +223,13 @@ class RunBatchItem implements ShouldQueue
             return false;
         }
 
+        /* Tasks §31.3 — „აღარ განაახლო": გეგმა შეჩერებულს არ სვამს, მაგრამ პირდაპირ
+           id-ებით გაშვებულ პარტიაში შეიძლება მოხვდეს — გამოტოვებაა მიზეზით, არა ჩავარდნა */
+        if ((bool) ($record->sync_paused ?? false)) {
+            $item?->update(['title' => $this->titleOf($record), 'status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
+
+            return false;
+        }
         // ⚠️ სათაური **გაშვების მომენტში** იწერება: ჩანაწერი მოგვიანებით
         // შეიძლება წაიშალოს, სიაში კი „რა იყო ეს" უნდა დარჩეს
         $item?->update(['title' => $this->titleOf($record)]);
@@ -260,6 +269,14 @@ class RunBatchItem implements ShouldQueue
 
                 return false;
             }
+            /* Tasks §31.4 — „უცვლელი" და „ცარიელი" **გამოტოვებაა მიზეზით** (მსახიობების
+               `unchanged`/`tmdb_empty`-ის იგივე წესი): სერვერულ სიაში ისინი ✓-ად აღარ ითვლება.
+               ⚠️ `result` არჩევითია — ძველი შედეგის ფორმა (ტესტები, სხვა სერვისი) `OK`-ად რჩება. */
+            if (in_array($result['result'] ?? null, [SyncOutcome::UNCHANGED, SyncOutcome::EMPTY], true)) {
+                $item?->update(['status' => BatchItem::SKIPPED, 'error' => $result['result']]);
+
+                return false;
+            }
         }
 
         return true;
@@ -288,6 +305,12 @@ class RunBatchItem implements ShouldQueue
         }
 
         $item?->update(['title' => mb_substr($member->name_ka ?: (string) $member->name, 0, 200)]);
+        // Tasks §31.3 — ჩემი „აღარ განაახლო" ამ მსახიობზე — გამოტოვებაა მიზეზით
+        if (CastMemberSyncPref::withoutGlobalScope('owner')->where('user_id', $this->userId)->where('cast_member_id', $member->getKey())->exists()) {
+            $item?->update(['status' => BatchItem::SKIPPED, 'error' => 'sync_paused']);
+
+            return false;
+        }
 
         $result = app(AuditLogger::class)->suppress(fn () => $enricher->run(
             $member,

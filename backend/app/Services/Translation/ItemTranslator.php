@@ -8,6 +8,7 @@ use App\Support\Lang;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
 use App\Support\Redact;
+use App\Support\SyncOutcome;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
@@ -97,7 +98,9 @@ class ItemTranslator
 
             $this->persist($item, $filled, $providers);
         } catch (Throwable $e) {
-            return $this->result(false, false, array_keys($filled), Redact::secrets($e->getMessage()), $providers);
+            SyncOutcome::stamp($item, 'translate', SyncOutcome::FAILED);
+
+            return $this->result(false, false, array_keys($filled), Redact::secrets($e->getMessage()), $providers, SyncOutcome::FAILED);
         }
 
         $changed = array_keys($filled);
@@ -107,7 +110,9 @@ class ItemTranslator
            „გამოტოვებული" — თორემ რიგი დაწერდა „შესრულდა" და ბიბლიოთეკა
            უთარგმნელი დარჩებოდა. */
         if (! $changed && ($reason = $this->translator->lastError()) === 'gemini_quota_exceeded') {
-            return $this->result(false, false, [], $reason, $providers);
+            SyncOutcome::stamp($item, 'translate', SyncOutcome::FAILED);
+
+            return $this->result(false, false, [], $reason, $providers, SyncOutcome::FAILED);
         }
 
         /* ⚠️ **არჩეული წყაროებიდან არცერთის გასაღები არ მაქვს — ესეც შეცდომაა**
@@ -115,10 +120,17 @@ class ItemTranslator
            მდგომარეობაა ყველასთვის, ვისაც ჯერ არ ჩაუწერია; „გამოტოვებულად"
            ჩათვლა რიგს 300-ჯერ „შესრულდა"-ს ათქმევინებდა უთარგმნელ ბიბლიოთეკაზე. */
         if (! $changed && ! $this->anyConfigured($sources)) {
-            return $this->result(false, false, [], MissingCredential::CODE, $providers);
+            SyncOutcome::stamp($item, 'translate', SyncOutcome::FAILED);
+
+            return $this->result(false, false, [], MissingCredential::CODE, $providers, SyncOutcome::FAILED);
         }
 
-        return $this->result(true, $changed === [], $changed, null, $providers);
+        /* Tasks §31.1 — კვალი ჩანაწერზე: შეივსო (`updated`) თუ წყარომ არაფერი დააბრუნა
+           (`empty` — გეგმა მას ისევ სთავაზობს). ⚠️ გამოტოვება (ნაკლული არაფერია) კვალს არ წერს. */
+        $outcome = $changed ? SyncOutcome::UPDATED : SyncOutcome::EMPTY;
+        SyncOutcome::stamp($item, 'translate', $outcome);
+
+        return $this->result(true, $changed === [], $changed, null, $providers, $outcome);
     }
 
     /**
@@ -447,7 +459,7 @@ class ItemTranslator
         return $locale === 'ka' && ! Lang::georgian($value) ? '' : $value;
     }
 
-    private function result(bool $ok, bool $skipped, array $changed, ?string $error, array $providers = []): array
+    private function result(bool $ok, bool $skipped, array $changed, ?string $error, array $providers = [], ?string $result = null): array
     {
         return [
             'ok' => $ok,
@@ -456,6 +468,8 @@ class ItemTranslator
             // „რა რითი ითარგმნა" — ველი => წყარო (ლოგისა და ინტერფეისისთვის)
             'providers' => $providers,
             'error' => $error,
+            // Tasks §31.4 — `updated` · `empty` · `failed`; გამოტოვებაზე `null`
+            'result' => $result,
         ];
     }
 }

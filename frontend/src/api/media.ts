@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import type { SyncOutcome } from '@/api/types'
 import { pickParams, type PickOptions } from '@/lib/pick'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import { MEDIA, type MediaType } from '@/lib/media'
@@ -157,6 +158,8 @@ export interface SyncPlanFilters {
   ids?: Partial<Record<MediaType, number[]>>
   /** მხოლოდ ისინი, ვისაც პოსტერი ან მსახიობის ფოტო აკლია */
   missing_media_only?: boolean
+  /** Tasks §31.2 — წარმატებით განახლებული/უცვლელი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
+  hide_processed?: boolean
 }
 
 export interface SyncPlanItem {
@@ -174,6 +177,9 @@ export interface SyncPlan {
   skipped_without_tmdb: number
   /** Tasks §30.6 — ჩემი TMDB-ის გასაღები მაქვს? (`false` — გაშვება ვერ დაიწყება) */
   tmdb: boolean
+  /** Tasks §31 — რამდენი დაიმალა „დამუშავებულების დამალვით" და რამდენია შეჩერებული */
+  skipped_processed: number
+  skipped_paused: number
 }
 
 /** ფილტრები → დასამუშავებელი რიგი (გაშვებამდე ჩვენებისთვის) */
@@ -218,6 +224,8 @@ export interface SyncItemResult {
   ok: boolean
   skipped: boolean
   changed: string[]
+  /** Tasks §31.4 — ოთხი შედეგი ცალკე; გამოტოვებაზე `null` */
+  result: SyncOutcome | null
   error: string | null
   title: string
 }
@@ -230,6 +238,18 @@ export async function syncItem(
   signal?: AbortSignal,
 ): Promise<SyncItemResult> {
   const { data } = await api.post(`/media/sync/${type}/${id}`, opts, { signal })
+  return data
+}
+
+/** Tasks §31.3 — „აღარ განაახლო" ჩანაწერზე: გეგმები და რიგი მას გამოტოვებენ */
+export async function setSyncPaused(type: MediaType, id: number, paused: boolean): Promise<{ ok: boolean; sync_paused: boolean }> {
+  const { data } = await api.patch(`/media/sync/${type}/${id}/pause`, { paused })
+  return data
+}
+
+/** Tasks §31.3 — იგივე მსახიობზე; **ჩემი** პარამეტრია (მსახიობი გლობალურია) */
+export async function setActorSyncPaused(id: number, paused: boolean): Promise<{ ok: boolean; paused: boolean }> {
+  const { data } = await api.patch(`/cast/sync/${id}/pause`, { paused })
   return data
 }
 
@@ -587,6 +607,8 @@ export interface CastSyncCandidate {
 }
 
 export interface CastSyncPlan {
+  /** Tasks §31.3 — რამდენი მსახიობია შეჩერებული ამ ფარგლებში */
+  skipped_paused?: number
   types: MediaType[]
   items: CastSyncPlanItem[]
   count: number

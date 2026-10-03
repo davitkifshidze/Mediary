@@ -261,3 +261,71 @@ describe('queue: the share kind', () => {
     expect(shareMocks.restoreFromTrash).toHaveBeenCalledWith('book', 78)
   })
 })
+
+/* ============================================================
+   **სინქრონის ოთხი შედეგი რიგში** (Tasks §31.4/§31.6).
+
+   ⚠️ აქამდე `changed` endpoint-იდან მოდიოდა და რიგი აგდებდა; ცარიელი TMDB-პასუხი
+   მწვანე ✓ იყო, განახლებულის იდენტური. მოწმდება: განახლდა — რა შეიცვალა;
+   უცვლელი — ტექსტით; ცარიელი — ქარვისფერი და არა წარმატება; ჩავარდა — ითვლება.
+   ============================================================ */
+async function runOneSync() {
+  const { QueueProvider, useQueue } = await import('@/components/ui/queue')
+
+  function Starter() {
+    const { enqueueSync } = useQueue()
+
+    useEffect(() => {
+      enqueueSync([{ type: 'movie', id: 7, title: 'Dune', year: 2021 }], { fields: ['title'] })
+    }, [enqueueSync])
+
+    return null
+  }
+
+  return render(h(QueueProvider, null, h(Starter)))
+}
+
+describe('queue: the four sync outcomes (Tasks §31.4)', () => {
+  it('names what changed on an updated record', async () => {
+    mocks.syncItem.mockResolvedValue({ ok: true, skipped: false, changed: ['poster', 'description_ka'], result: 'updated', error: null, title: 'Dune' })
+
+    const text = (await runOneSync()).textContent ?? ''
+
+    expect(text).toContain(i18n.t('sync.changed.poster'))
+    expect(text).toContain(i18n.t('sync.changed.description_ka'))
+    expect(text).toContain(i18n.t('queue.summary.updated', { count: 1 }))
+  })
+
+  it('an unchanged record is grey and says so', async () => {
+    mocks.syncItem.mockResolvedValue({ ok: true, skipped: false, changed: [], result: 'unchanged', error: null, title: 'Dune' })
+
+    const text = (await runOneSync()).textContent ?? ''
+
+    expect(text).toContain(i18n.t('queue.result.unchanged'))
+    expect(text).toContain(i18n.t('queue.summary.unchanged', { count: 1 }))
+    expect(text).not.toContain(i18n.t('queue.summary.updated', { count: 1 }))
+  })
+
+  it('an empty answer is amber and is not a success', async () => {
+    mocks.syncItem.mockResolvedValue({ ok: true, skipped: false, changed: [], result: 'empty', error: null, title: 'Dune' })
+
+    const el = await runOneSync()
+    const text = el.textContent ?? ''
+
+    expect(text).toContain(i18n.t('queue.result.empty'))
+    expect(text).toContain(i18n.t('queue.summary.empty', { count: 1 }))
+    expect(text).not.toContain(i18n.t('queue.summary.updated', { count: 1 }))
+    expect(el.querySelector('.text-status-towatch')).not.toBeNull()
+    // §31.3 — „აღარ განაახლო" სტრიქონზევეა
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent?.includes(i18n.t('queue.pauseOne')))).toBe(true)
+  })
+
+  it('a failure shows its reason and counts as failed', async () => {
+    mocks.syncItem.mockResolvedValue({ ok: false, skipped: false, changed: [], result: 'failed', error: 'tmdb_unavailable', title: 'Dune' })
+
+    const text = (await runOneSync()).textContent ?? ''
+
+    expect(text).toContain(i18n.t('queue.summary.failed', { count: 1 }))
+    expect(text).toContain(i18n.t('queue.failed', { count: 1 }))
+  })
+})

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\CastMember;
+use App\Models\CastMemberSyncPref;
 use App\Services\Audit\AuditLogger;
 use App\Services\Cast\CastEnricher;
 use App\Services\Cast\CastPool;
@@ -94,7 +95,14 @@ class CastSyncController extends Controller
         // ⚠️ **ყოველ ჭრილს ახალი query** — `where`/`count` builder-ს ადგილზე
         // ცვლის, ე.ი. ერთი საერთო ობიექტი შემდეგ დათვლას ჩუმად დააბინძურებდა
         // (FEAT-08-ის გაკვეთილი)
-        $scoped = fn () => $this->scoped(CastPool::query($types), $scope, $days, $ids);
+        /* Tasks §31.3 — „აღარ განაახლო" **ჩემი** პარამეტრია (მსახიობი გლობალურია): ჩემს გეგმაში
+           შეჩერებული არ ზის, სხვისას არ ეხება */
+        $userId = (int) $request->user()->getKey();
+        $notPaused = fn ($q) => $q->whereDoesntHave('syncPauses', fn ($p) => $p->where('user_id', $userId));
+        $scoped = fn () => $notPaused($this->scoped(CastPool::query($types), $scope, $days, $ids));
+        $pausedCount = $this->scoped(CastPool::query($types), $scope, $days, $ids)
+            ->whereHas('syncPauses', fn ($p) => $p->where('user_id', $userId))
+            ->count();
 
         // TMDB-ის id-ის გარეშე განახლება შეუძლებელია — ჩუმად არ ვაგდებთ, ვითვლით
         $withoutTmdb = $scoped()->whereNull('tmdb_person_id')->count();
@@ -137,6 +145,8 @@ class CastSyncController extends Controller
             'count' => count($items),
             'eta_seconds' => (int) ceil(count($items) * 60 / self::ITEMS_PER_MINUTE),
             'skipped_without_tmdb' => $withoutTmdb,
+            // Tasks §31.3 — რამდენია შეჩერებული ამ ფარგლებში
+            'skipped_paused' => $pausedCount,
             // ⚠️ ფარგლების გარეშე — „ბიბლიოთეკაში სულ N მსახიობია", ე.ი.
             // ნულოვანი გეგმა თავის მიზეზს ატარებს („ყველას უკვე განახლებია")
             'pool_total' => CastPool::query($types)->count(),
@@ -182,6 +192,24 @@ class CastSyncController extends Controller
             'error' => $result === CastEnricher::FAILED ? ($enricher->lastError() ?? 'tmdb_unavailable') : null,
             'title' => $castMember->refresh()->name_ka ?: $castMember->name,
         ]);
+    }
+
+    /**
+     * Tasks §31.3 — „აღარ განაახლო" მსახიობზე: რიგი არსებობს = შეჩერებულია, მოხსნა რიგს შლის.
+     * ⚠️ თითო მომხმარებლის პარამეტრია — სვეტი `cast_members`-ზე სხვის გეგმას შეცვლიდა.
+     */
+    public function pause(Request $request, CastMember $castMember): JsonResponse
+    {
+        $data = $request->validate(['paused' => ['required', 'boolean']]);
+        $key = ['user_id' => (int) $request->user()->getKey(), 'cast_member_id' => (int) $castMember->getKey()];
+
+        if ($data['paused']) {
+            CastMemberSyncPref::withoutGlobalScope('owner')->updateOrCreate($key, ['paused_at' => now()]);
+        } else {
+            CastMemberSyncPref::withoutGlobalScope('owner')->where($key)->delete();
+        }
+
+        return response()->json(['ok' => true, 'paused' => (bool) $data['paused']]);
     }
 
     /** ფარგლების ფილტრი ავზზე */

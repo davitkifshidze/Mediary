@@ -17,6 +17,7 @@ import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { RadioGroup } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
@@ -79,6 +80,8 @@ export function TranslateDialog({
      ტექსტს გადაწერს — ჩართული ნაგულისხმევი ზუსტად „თავისით არ უნდა
      ხდებოდეს"-ს არღვევდა. */
   const [review, setReview] = useState(false)
+  // Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს (ნაგულისხმევად ჩართული)
+  const [hideProcessed, setHideProcessed] = useState(true)
 
   const summaryQ = useQuery({
     queryKey: ['translations', 'summary'],
@@ -96,8 +99,9 @@ export function TranslateDialog({
       ids: scope === 'specific' ? ids : undefined,
       include_genres: withGenres,
       review,
+      hide_processed: hideProcessed,
     }),
-    [types, scope, status, genreSlugs, ids, withGenres, review],
+    [types, scope, status, genreSlugs, ids, withGenres, review, hideProcessed],
   )
 
   const planQ = useQuery({
@@ -223,6 +227,18 @@ export function TranslateDialog({
               </p>
             )}
           </div>
+
+          {/* Tasks §31.2 — დამუშავებულების დამალვა */}
+          <label
+            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
+            data-testid="hide-processed"
+          >
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              {t('sync.hideProcessed')}
+              <InfoHint info={t('translate.hideProcessedHint')} />
+            </span>
+            <Switch checked={hideProcessed} onCheckedChange={setHideProcessed} />
+          </label>
 
           {/* ---------- დომენი ----------
               Tasks §20.1 — იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —

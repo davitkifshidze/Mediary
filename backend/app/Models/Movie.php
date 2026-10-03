@@ -67,6 +67,10 @@ class Movie extends Model
         'my_rating' => RatingCast::class,
         'runtime' => 'integer',
         'is_favorite' => 'boolean',
+        // Tasks §31 — სინქრონის კვალი და „აღარ განაახლო"
+        'sync_paused' => 'boolean',
+        'last_synced_at' => 'datetime',
+        'last_translated_at' => 'datetime',
         'watched_at' => 'datetime',
         'sort_order' => 'integer',
     ];

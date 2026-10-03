@@ -92,6 +92,12 @@ class CastMember extends Model
 
     /* ---------- translation accessor (name = canonical column) ---------- */
 
+    /** Tasks §31.3 — „აღარ განაახლო" თითო მომხმარებლისგან (`cast_member_sync_prefs`) */
+    public function syncPauses(): HasMany
+    {
+        return $this->hasMany(CastMemberSyncPref::class)->withoutGlobalScope('owner');
+    }
+
     public function getNameKaAttribute(): ?string
     {
         return $this->translations->firstWhere('locale', 'ka')?->name;

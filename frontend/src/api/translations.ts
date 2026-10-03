@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import type { SyncOutcome } from '@/api/types'
 import type { MediaType } from '@/lib/media'
 
 /* ============================================================
@@ -48,6 +49,8 @@ export interface TranslationPlanFilters {
   include_genres?: boolean
   /** TMDB-ის ქართული აღწერის გადამოწმება Gemini-თ (2026-09-14) */
   review?: boolean
+  /** Tasks §31.2 — ბოლო გაშვებაზე ნათარგმნი აღარ ჩანს; ცარიელი და ჩავარდნილი რჩება */
+  hide_processed?: boolean
 }
 
 export interface TranslationPlan {
@@ -66,6 +69,8 @@ export interface TranslateResult {
   changed?: string[]
   /** ველი → წყარო — „რა რითი ითარგმნა" */
   providers?: Record<string, TranslationProvider>
+  /** Tasks §31.4 — `updated` · `empty` · `failed`; გამოტოვებაზე `null` */
+  result?: SyncOutcome | null
   error: string | null
   title?: string
 }
@@ -110,6 +115,14 @@ export interface TranslationUsage {
     title: string | null
     /** ველი → წყარო */
     fields: Record<string, TranslationProvider>
+    at: string | null
+  }[]
+  /** Tasks §31.4 — ბოლო გაშვებებზე ვერაფერი შეივსო: ცარიელი ან ჩავარდნილი */
+  unfilled: {
+    type: string
+    record_id: number
+    title: string | null
+    result: SyncOutcome
     at: string | null
   }[]
 }

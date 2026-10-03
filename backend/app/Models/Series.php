@@ -69,6 +69,10 @@ class Series extends Model
         'seasons' => 'integer',
         'episodes' => 'integer',
         'is_favorite' => 'boolean',
+        // Tasks §31 — სინქრონის კვალი და „აღარ განაახლო"
+        'sync_paused' => 'boolean',
+        'last_synced_at' => 'datetime',
+        'last_translated_at' => 'datetime',
         'watched_at' => 'datetime',
         // FEAT-10 — შემდეგი ეპიზოდის ეთერი (TMDB-ის `next_episode_to_air`)
         'next_air_at' => 'date',
