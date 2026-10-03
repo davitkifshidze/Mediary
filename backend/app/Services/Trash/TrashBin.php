@@ -95,6 +95,17 @@ final class TrashBin
     ];
 
     /**
+     * **რიგიანი ელემენტი, რომლის გადახედვა ფაილი კი არა, მისი ესკიზია** (Tasks §33).
+     *
+     * ⚠️ პირადი გალერეის ფოტო 15 MB-მდეა, ვიდეო — 300 MB: ურნის სიაში ესკიზად
+     * მთელი ფაილის გაგზავნა ზედმეტი (და ვიდეოზე უაზრო) იქნებოდა. ორივე პირად
+     * დისკზეა, ე.ი. ურნის საკუთარი მარშრუტით გამოდის (`file()`).
+     *
+     * @var array<string, string>
+     */
+    private const PREVIEW_PATH = ['personal_media' => 'thumb_path'];
+
+    /**
      * სახეები, რომელთა სათაური **მშობლისაა** — თვითონ მომენტია (ნახვა,
      * შეხსენება), რომელსაც გვერდი `when`-იდან ხატავს.
      */
@@ -585,7 +596,8 @@ final class TrashBin
             abort_if($album && ! AlbumLock::isUnlocked($album), 404);
         }
 
-        $path = (string) $row->getAttribute('path');
+        // §33 — ზოგიერთი სახე ესკიზს აჩვენებს და არა თვითონ ფაილს (`PREVIEW_PATH`)
+        $path = (string) $row->getAttribute(self::PREVIEW_PATH[$kind] ?? 'path');
         abort_if($path === '', 404);
 
         $disk = Storage::disk(StorageFolder::diskFor($path));
@@ -1137,6 +1149,16 @@ final class TrashBin
 
         if (! $this->hasFile($kind)) {
             return null;
+        }
+
+        // §33 — ესკიზი (ვიდეოსაც აქვს კადრი); ესკიზის გარეშე — გადახედვის გარეშე
+        if (isset(self::PREVIEW_PATH[$kind])) {
+            $thumb = (string) $row->getAttribute(self::PREVIEW_PATH[$kind]);
+
+            return $thumb === '' ? null : [
+                'src' => StorageFolder::isPrivate($thumb) ? "/trash/{$kind}/{$row->getKey()}/file" : $thumb,
+                'private' => StorageFolder::isPrivate($thumb),
+            ];
         }
 
         $path = (string) $row->getAttribute('path');

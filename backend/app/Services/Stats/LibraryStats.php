@@ -13,6 +13,7 @@ use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
@@ -92,6 +93,9 @@ class LibraryStats
         'course' => ['model' => Course::class, 'year' => null, 'done_at' => 'finished_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'course_categories'], 'rating' => null],
         // ⚠️ `done_at` = `visited_at` — „წელს სად ვიყავი“ სწორედ ეს კითხვაა
         'place' => ['model' => Place::class, 'year' => null, 'done_at' => 'visited_at', 'genres' => ['kind' => 'column', 'column' => 'category_id', 'table' => 'place_categories'], 'rating' => 'rating'],
+        /* Tasks §33 — პირადი გალერეა ფოტოებსა და ვიდეოებს ითვლის (და არა ადამიანებს);
+           თვეების ჭრილი „როდის გადავიღე"-ა (`taken_at`). */
+        'personal' => ['model' => PersonalMedia::class, 'year' => null, 'done_at' => 'taken_at', 'genres' => null, 'rating' => null],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */

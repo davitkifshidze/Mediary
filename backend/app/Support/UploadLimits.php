@@ -150,6 +150,15 @@ final class UploadLimits
         ],
         // FEAT-07 — CSV-ის იმპორტი (ადრე `ImportSource::MAX_KB`)
         'import' => ['max_kb' => 10240, 'formats' => ['csv', 'txt'], 'families' => [], 'locked' => true],
+        /* Tasks §33 — პირადი გალერეა: ფოტო 15 MB, ვიდეო 300 MB (Q7).
+           ⚠️ `heic`/`heif` ნაგულისხმევში **არ არის**: ბრაუზერი (Safari-ს გარდა)
+           მას ვერ ხატავს და სერვერი ესკიზს ვერ ამოიღებს (GD ვერ კითხულობს) —
+           ფაილი შეინახებოდა, ბადეში კი ცარიელ უჯრად დარჩებოდა. iPhone-ი
+           ბრაუზერიდან ატვირთვისას JPEG-ად თვითონ გადაიყვანს; სუპერადმინს მისი
+           ჩართვა მაინც შეუძლია (`/settings`). ⚠️ ვიდეოს ზღვარს PHP-იც ჭრის
+           (`upload_max_filesize`) — `effectiveKb()` ამას ცხადად ამბობს. */
+        'personal_photo' => ['max_kb' => 15360, 'formats' => ['jpg', 'png', 'gif', 'webp', 'avif'], 'families' => ['image']],
+        'personal_video' => ['max_kb' => 307200, 'formats' => ['mp4', 'webm', 'mov', 'm4v'], 'families' => ['video']],
     ];
 
     /** ერთ მოთხოვნაში რამდენი ფაილი — `max_file_uploads`-საც ეთანხმება */

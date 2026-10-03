@@ -56,6 +56,9 @@ use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Models\NoteNotification;
 use App\Models\NoteReminder;
+use App\Models\Person;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
@@ -176,6 +179,11 @@ class AuditRegistry
         BookmarkFile::class => 'bookmark',
         // Tasks §30.4 — შენახული მარშრუტი ადგილის ნაწილია
         PlaceRoute::class => 'place',
+
+        // ---- Tasks §33 — პირადი გალერეა
+        Person::class => 'personal',
+        PersonalAlbum::class => 'personal',
+        PersonalMedia::class => 'personal',
 
         /* ---- Tasks §37 — ინტერფეისიდან შექმნილი მოდულები.
            ⚠️ **მოდული რიგშია** (`module` — პირადი მოდულის გასაღები), ე.ი. აქ

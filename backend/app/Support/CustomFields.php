@@ -11,6 +11,7 @@ use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Person;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
@@ -86,6 +87,8 @@ final class CustomFields
         'bookmark_field_values' => 'bookmarks',
         'course_field_values' => 'courses',
         'place_field_values' => 'places',
+        // Tasks §33 — ადამიანი პირად გალერეაში („ნათესაობა", „ქალაქი"…)
+        'personal_field_values' => 'persons',
         /* Tasks §37 — **ერთი ცხრილი ყველა პირად მოდულზე**. ⚠️ ის მოდულის
            გასაღებს ატარებს (`module`), რადგან ველის წაშლა მნიშვნელობებს
            `field_key`-ით შლის — იხ. `scope()`. */
@@ -106,6 +109,7 @@ final class CustomFields
         'bookmark' => 'bookmark_field_values',
         'course' => 'course_field_values',
         'place' => 'place_field_values',
+        'personal' => 'personal_field_values',
     ];
 
     /**
@@ -130,6 +134,8 @@ final class CustomFields
             'bookmark' => Bookmark::class,
             'course' => Course::class,
             'place' => Place::class,
+            // Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია
+            'personal' => Person::class,
             // §37 — პირადი მოდულის ჩანაწერი; მოდულს `recordQuery()` ჭრის
             default => CustomModules::exists($module) ? CustomRecord::class : null,
         };

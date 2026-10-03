@@ -664,6 +664,8 @@ export const CUSTOM_FIELD_MODULES = [
   'bookmark',
   'course',
   'place',
+  // Tasks §33 — ადამიანი პირად გალერეაში
+  'personal',
 ] as const
 
 /** აქვს თუ არა მოდულს დამატებითი ველები — საბაზისო სიიდან ან პირადი მოდულის ფორმით */
@@ -1120,6 +1122,8 @@ export const PURGE_TARGETS = [
   'course',
   // FEAT-26 — ადგილები
   'place',
+  // Tasks §33 — პირადი გალერეა (ჩანაწერი ადამიანია; ფოტოები მასთან ერთად მიდის)
+  'personal',
   'gallery',
 ] as const
 export type PurgeTarget = (typeof PURGE_TARGETS)[number]
@@ -1164,6 +1168,8 @@ export const PURGE_TARGET_MODES = {
   course: ['ids', 'type', 'tag', 'status', 'all'],
   // FEAT-26 — ადგილზეც კატეგორიაა (`places.category_id`)
   place: ['ids', 'type', 'tag', 'status', 'all'],
+  // Tasks §33 — სტატუსი, ტეგი და კლასიფიკატორი არ აქვს
+  personal: ['ids', 'all'],
   gallery: ['ids', 'genre', 'status', 'all'],
 } as const satisfies Record<PurgeTarget, readonly PurgeMode[]>
 
@@ -1351,7 +1357,20 @@ export async function fetchPurgeTargets(userId?: number): Promise<PurgeCustomTar
  * ამ სიას წყაროდან კითხულობს, ე.ი. ახალი სახეობა სახელისა და აიქონის
  * გარეშე ვერ გავა.
  */
-export const UPLOAD_KINDS = ['image', 'primary', 'video', 'doc', 'book', 'rules', 'field', 'chat', 'import'] as const
+export const UPLOAD_KINDS = [
+  'image',
+  'primary',
+  'video',
+  'doc',
+  'book',
+  'rules',
+  'field',
+  'chat',
+  'import',
+  // Tasks §33 — პირადი გალერეა (ფოტო 15 MB, ვიდეო 300 MB)
+  'personal_photo',
+  'personal_video',
+] as const
 export type UploadKind = (typeof UPLOAD_KINDS)[number]
 
 /** ვისზე ვრცელდება დამტკიცებული ატვირთვის მოთხოვნა (§34.5, Q42) */

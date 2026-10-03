@@ -235,6 +235,13 @@ final class FieldCatalog
             ['key' => 'description', 'type' => 'text', 'sort_order' => 110],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 120],
         ],
+        /* Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია (ფოტოს ფორმა არ აქვს —
+           ფოტო ატვირთვით ჩნდება). ⚠️ სახელის გარეშე ადამიანი არ არსებობს. */
+        'personal' => [
+            ['key' => 'name', 'type' => 'text', 'locked' => true, 'sort_order' => 10],
+            ['key' => 'birthday', 'type' => 'date', 'sort_order' => 20],
+            ['key' => 'note', 'type' => 'text', 'sort_order' => 30],
+        ],
     ];
 
     /**

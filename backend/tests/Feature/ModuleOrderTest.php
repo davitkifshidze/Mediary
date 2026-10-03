@@ -34,6 +34,8 @@ class ModuleOrderTest extends TestCase
     private const SEEDED = [
         'movie', 'series', 'anime', 'video', 'song', 'book', 'board_game',
         'game', 'gallery', 'note', 'bookmark', 'course', 'place',
+        // Tasks §33 — პირადი გალერეა (`sort_order` 45)
+        'personal',
     ];
 
     protected function setUp(): void

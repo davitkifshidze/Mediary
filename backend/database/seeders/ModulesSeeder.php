@@ -35,6 +35,8 @@ class ModulesSeeder extends Seeder
         // FEAT-25 — ტეალი; მეზობლებისგან (ბუკმარკის ცისფერი) გასარჩევად
         'course' => '#0ea5a4',
         'place' => '#f97316',
+        // Tasks §33 — ლაიმი; მეზობლებს (ადგილის ნარინჯისფერი, გალერეის იისფერი) არ ჰგავს
+        'personal' => '#84cc16',
     ];
 
     public function run(): void
@@ -239,6 +241,21 @@ class ModulesSeeder extends Seeder
                 'morph_alias' => 'place',
                 'enabled_by_default' => false,
                 'sort_order' => 44,
+            ],
+            [
+                /* Tasks §33 (Q7) — პირადი გალერეა: ადამიანები, ალბომები, ფოტო და
+                   ვიდეო მოწყობილობიდან. ფაილები პირად დისკზეა (`personal/`). */
+                'key' => 'personal',
+                'name_ka' => 'პირადი გალერეა',
+                'name_en' => 'Personal gallery',
+                'description_ka' => 'ახლობლების ფოტოები და ვიდეოები — ადამიანები, ალბომები, ატვირთვა მოწყობილობიდან, პირად დისკზე.',
+                'description_en' => 'Photos and videos of your people — persons, albums, uploads from your device, on a private disk.',
+                'icon' => 'Camera',
+                'route_base' => '/personal',
+                'api_base' => '/personal',
+                'morph_alias' => 'personal',
+                'enabled_by_default' => false,
+                'sort_order' => 45,
             ],
         ];
 

@@ -23,6 +23,8 @@ use App\Models\GameNote;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Person;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\PlaceFile;
 use App\Models\Series;
@@ -71,7 +73,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PurgeService
 {
-    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'gallery'];
+    public const TARGETS = ['movie', 'series', 'anime', 'video', 'song', 'book', 'board_game', 'game', 'note', 'bookmark', 'course', 'place', 'personal', 'gallery'];
 
     public const MODES = ['all', 'ids', 'genre', 'status', 'type', 'tag'];
 
@@ -124,6 +126,9 @@ class PurgeService
         // FEAT-25 — „ტიპი“ აქაც კატეგორიაა (`courses.category_id`)
         'course' => ['ids', 'type', 'tag', 'status', 'all'],
         'place' => ['ids', 'type', 'tag', 'status', 'all'],
+        /* Tasks §33 — ჩანაწერი ადამიანია: სტატუსი, ტეგი და კლასიფიკატორი არ აქვს.
+           ⚠️ მისი ფოტოები და ალბომები მასთან ერთად მიდის (ნაწილებია). */
+        'personal' => ['ids', 'all'],
         'gallery' => ['ids', 'genre', 'status', 'all'],
     ];
 
@@ -277,6 +282,8 @@ class PurgeService
         'place' => [PlaceFile::class, null, 'place_id'],
         // Tasks §36.4 — ბუკმარკს ფოტოები აქვს, ჩანიშვნები კი არა
         'bookmark' => [BookmarkFile::class, null, 'bookmark_id'],
+        // Tasks §33 — ადამიანის ფოტოები და ვიდეოები (ესკიზის ბაიტებიც — `recordTotals()`)
+        'personal' => [PersonalMedia::class, null, 'person_id'],
     ];
 
     /**
@@ -565,11 +572,14 @@ class PurgeService
         // მიმაგრებული ფაილები/ჩანიშვნები — მხოლოდ იმ სექციებს, ვისაც თავისი ცხრილი აქვს
         [$fileModel, $noteModel, $foreignKey] = self::sectionTables($target);
 
+        /* ⚠️ Tasks §33 — პირადი გალერეის ფოტოს **ორი** ფაილი აქვს (თვითონ და
+           ესკიზი) და ორივე კვოტაშია; `withoutGlobalScopes()` — მშობლის
+           ურნისგან დამალულიც (`personal_parent`) მასთან ერთად იშლება. */
         $files = $fileModel
-            ? $fileModel::withoutGlobalScopes(['owner', 'trash'])
+            ? $fileModel::withoutGlobalScopes()
                 ->where('user_id', $user->getKey())
                 ->whereIn($foreignKey, $ids)
-                ->get(['id', 'size'])
+                ->get($fileModel === PersonalMedia::class ? ['id', 'size', 'thumb_size'] : ['id', 'size'])
             : collect();
 
         return [
@@ -581,7 +591,7 @@ class PurgeService
                არსად გაჩნდებოდა. */
             'photo_bytes' => (int) $photos->sum('size'),
             // ვიდეოს თამბნეილი და ხელით ატვირთული პოსტერი/ყდაც კვოტაშია
-            'bytes' => (int) $photos->sum('size') + (int) $files->sum('size')
+            'bytes' => (int) $photos->sum('size') + (int) $files->sum('size') + (int) $files->sum('thumb_size')
                 + $this->ownUploadBytes($user, $target, $ids)
                 + $this->customFieldBytes($user, $target, $ids),
             'notes' => $noteModel
@@ -853,6 +863,7 @@ class PurgeService
             'bookmark' => Bookmark::class,
             'course' => Course::class,
             'place' => Place::class,
+            'personal' => Person::class,
             default => Movie::class,
         };
 
@@ -897,6 +908,7 @@ class PurgeService
             'bookmark' => 'bookmark',
             'course' => 'course',
             'place' => 'place',
+            'personal' => 'personal',
             default => 'movie',
         };
     }

@@ -12,6 +12,7 @@ use App\Models\CustomRecord;
 use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
+use App\Models\PersonalAlbum;
 use App\Models\Place;
 use App\Models\Playlist;
 use App\Models\Series;
@@ -69,6 +70,10 @@ final class PublicDomain
            ალბომია. `playlist`-ის ზუსტი ფორმა: მოდული `gallery`-ია,
            იდენტობა (`MATCH`) — არ აქვს. */
         'gallery_album' => ['model' => GalleryAlbum::class, 'module' => 'gallery'],
+        /* Tasks §33 (Q7) — პირადი გალერეიდან **მხოლოდ ალბომი** შეიძლება გახდეს
+           საჯარო, თავისი ჩამრთველით (`gallery_album`-ის ფორმა: იდენტობა არ აქვს).
+           ⚠️ ჩაკეტილი ალბომი (ან ჩაკეტილი ადამიანის ალბომი) — არასდროს. */
+        'personal_album' => ['model' => PersonalAlbum::class, 'module' => 'personal'],
     ];
 
     /**
@@ -147,6 +152,7 @@ final class PublicDomain
         'course' => ['relation' => null, 'columns' => ['title']],
         'place' => ['relation' => null, 'columns' => ['name']],
         'gallery_album' => ['relation' => null, 'columns' => ['name']],
+        'personal_album' => ['relation' => null, 'columns' => ['name']],
     ];
 
     /**
@@ -488,6 +494,14 @@ final class PublicDomain
                 'subtitle' => $record->description,
                 'photos' => (int) ($record->images_count ?? 0),
                 'locked' => $record->isLocked(),
+            ],
+            /* Tasks §33 — ალბომის ფოტოები პირად დისკზეა: სურათს ბარათი არ ატარებს
+               (`gallery_album`-ის წესი), შიგთავსს საჯარო გვერდი თავისი მარშრუტით
+               კითხულობს და მხოლოდ ღია ალბომზე. */
+            'personal_album' => [
+                'title_en' => $record->name,
+                'subtitle' => $record->description,
+                'photos' => (int) ($record->media_count ?? 0),
             ],
             'bookmark' => [
                 'title_en' => $record->title,

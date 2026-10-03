@@ -12,6 +12,9 @@ use App\Models\CustomRecord;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Person;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\PlaceRoute;
 use App\Models\Playlist;
@@ -71,6 +74,13 @@ class AppServiceProvider extends ServiceProvider
             'place' => Place::class,
             // Tasks §30.4 — შენახული მარშრუტი; ალიასი აუდიტის `subject_type`-იც არის
             'place_route' => PlaceRoute::class,
+            /* Tasks §33 — პირადი გალერეა. ⚠️ **ადამიანი მოდულის ჩანაწერია** და
+               ალიასი მოდულის გასაღებია (`place`-ის წესი): ურნის სახე, დამატებითი
+               ველების `record_type` და `ColumnTrash` ერთ სიტყვას კითხულობს.
+               ალბომი და ფოტო მისი ნაწილებია — ალიასი აუდიტისა და ურნისთვის. */
+            'personal' => Person::class,
+            'personal_album' => PersonalAlbum::class,
+            'personal_media' => PersonalMedia::class,
             /* Tasks §6.1 — ⚠️ **კურსი აქამდე აკლდა** და ატვირთული ესკიზის
                შეცვლა/წაშლა `ColumnTrash::capture()`-ში `getMorphClass()`-ზე
                `ClassMorphViolationException`-ით ვარდებოდა. ახლა

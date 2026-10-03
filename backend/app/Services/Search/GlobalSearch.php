@@ -13,6 +13,9 @@ use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\Person;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\Playlist;
 use App\Models\Series;
@@ -329,6 +332,31 @@ class GlobalSearch
                 'title_rank' => ['columns' => ['title']],
                 'columns' => ['title' => ['title'], 'channel' => ['channel'], 'url' => ['url']],
                 'image_url' => 'thumbnail_url',
+            ],
+
+            /* Tasks §33 — პირადი გალერეა: ადამიანი (სახელი, შენიშვნა, დამატებითი
+               ველები), ალბომი და ფოტოს წარწერა. ⚠️ სურათი ძებნის ბარათს **არ**
+               ახლავს — ესკიზი პირად დისკზეა და `/storage/*`-ით ვერ დაიხატება. */
+            'personal' => [
+                'module' => 'personal',
+                'model' => Person::class,
+                'custom' => 'personal',
+                'title_rank' => ['columns' => ['name']],
+                'columns' => ['title' => ['name'], 'description' => ['note']],
+            ],
+
+            'personal_album' => [
+                'module' => 'personal',
+                'model' => PersonalAlbum::class,
+                'title_rank' => ['columns' => ['name']],
+                'columns' => ['title' => ['name'], 'description' => ['description']],
+            ],
+
+            'personal_media' => [
+                'module' => 'personal',
+                'model' => PersonalMedia::class,
+                'title_rank' => ['columns' => ['caption']],
+                'columns' => ['title' => ['caption'], 'file' => ['original_name']],
             ],
 
             'cast' => [
@@ -709,7 +737,9 @@ class GlobalSearch
         $title = match ($domain) {
             'movie', 'series', 'anime', 'book', 'game' => $record->title_ka ?: $record->title_en,
             'cast' => $record->name_ka ?: $record->name,
-            'playlist' => $record->name,
+            'playlist', 'personal', 'personal_album' => $record->name,
+            // §33 — წარწერის გარეშე ფოტო ფაილის სახელით ჩანს
+            'personal_media' => $record->caption ?: $record->original_name,
             default => $record->title,
         };
 
@@ -731,6 +761,8 @@ class GlobalSearch
             'bookmark' => $record->domain,
             'cast' => $record->known_for,
             'gallery' => $record->channel,
+            // §33 — ფოტო/ვიდეოს გადაღების თარიღი
+            'personal_media' => $record->taken_at?->toDateString(),
             default => null,
         };
 

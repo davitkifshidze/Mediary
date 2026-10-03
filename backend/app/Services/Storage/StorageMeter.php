@@ -14,6 +14,7 @@ use App\Models\GalleryImage;
 use App\Models\GameFile;
 use App\Models\Message;
 use App\Models\NoteEntryFile;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\PlaceFile;
 use App\Models\TrashedFile;
@@ -542,6 +543,33 @@ class StorageMeter
             ]);
         }
 
+        /* Tasks §33 — პირადი გალერეის ფოტო და ვიდეო (პირად დისკზე).
+           ⚠️ **ერთი რიგი ორ ფაილზე**: ესკიზი ფაილის ნაწილია (ცალკე წაშლა მას
+           აზრს უკარგავდა), ამიტომ ზომა `size + thumb_size`-ია — `recalculate()`
+           ზუსტად იმას ითვლის, რაც ატვირთვამ დაიკავა (`storeUpload` +
+           `storeContents`). ⚠️ `withoutGlobalScopes()` — ურნაში მყოფიც და
+           ურნაში მყოფი ადამიანის/ალბომის გამო დამალულიც დისკზეა და კვოტაშია;
+           ურნის მშობელი ადამიანია (`personal`), თუ ფოტო მისია. */
+        $personalMedia = $skip('personal') ? collect() : PersonalMedia::withoutGlobalScopes()
+            ->where('user_id', $user->id)
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'thumb_size', 'created_at', 'trashed_at', 'person_id']);
+
+        foreach ($personalMedia as $m) {
+            $add([
+                'kind' => $m->kind === 'video' ? 'video' : 'image',
+                'module' => 'personal',
+                'owner_type' => 'personal_media',
+                'owner_id' => (int) $m->id,
+                'path' => $m->path,
+                'name' => $m->original_name,
+                'size' => (int) $m->size + (int) $m->thumb_size,
+                'mime' => $m->mime,
+                'created_at' => $m->created_at,
+                'trashed' => $m->trashed_at !== null,
+                'parent' => $m->person_id ? ['personal', (int) $m->person_id] : null,
+            ]);
+        }
+
         // ჩანაწერების ატვირთვები (§13.1) — სქრინშოტი/ვიდეო/დოკუმენტი
         $noteFiles = $skip('note') ? collect() : NoteEntryFile::withoutGlobalScopes(['owner', 'trash'])
             ->where('user_id', $user->id)
@@ -880,6 +908,8 @@ class StorageMeter
         'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
         // Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო და (§37.5) მიმაგრებული ფაილი
         'custom_record', 'custom_record_file',
+        // Tasks §33 — პირადი გალერეის ფოტო/ვიდეო
+        'personal_media',
     ];
 
     /**
@@ -1008,6 +1038,8 @@ class StorageMeter
             'place_file' => PlaceFile::class,
             'bookmark_file' => BookmarkFile::class,
             'custom_record_file' => CustomRecordFile::class,
+            // Tasks §33 — წაშლა ორივე ფაილს (თვითონ + ესკიზი) და ორივე ზომას ათავისუფლებს
+            'personal_media' => PersonalMedia::class,
             'gallery_image' => GalleryImage::class,
             /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
                ბიბლიოთეკაში ფაილი ჩანდა, „წაშლა" კი ჩუმად აბრუნებდა `false`-ს
@@ -1452,6 +1484,10 @@ class StorageMeter
             'place_files.path',
             // Tasks §36.4 — ბუკმარკის ჩემი ფოტოები
             'bookmark_files.path',
+            /* Tasks §33 — პირადი გალერეა: ფაილი და მისი ესკიზი. ⚠️ ესკიზის
+               დავიწყება მას ობლად აქცევდა და „გასუფთავება" ბადეს გატეხავდა */
+            'personal_media.path',
+            'personal_media.thumb_path',
             'gallery_images.path',
             'messages.attachment_path',
             'cast_members.photo_path',

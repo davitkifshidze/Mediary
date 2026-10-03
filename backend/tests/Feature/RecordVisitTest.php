@@ -179,7 +179,7 @@ class RecordVisitTest extends TestCase
 
     public function test_every_visitable_model_uses_the_trait(): void
     {
-        foreach (Visitable::TYPES as $type => $model) {
+        foreach (Visitable::types() as $type => $model) {
             $this->assertContains(HasVisits::class, class_uses_recursive($model), "{$type} ({$model}) `HasVisits`-ის გარეშეა");
         }
 

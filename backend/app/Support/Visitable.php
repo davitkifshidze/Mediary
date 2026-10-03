@@ -28,21 +28,36 @@ final class Visitable
         'custom_record' => CustomRecord::class,
     ];
 
+    /**
+     * **ჩანაწერიანი მოდული მთვლელის გარეშე** (Tasks §33 ← §43).
+     *
+     * ⚠️ §43 ხილულ მთვლელს ყველგან აუქმებს (ჟურნალი სუპერადმინს რჩება), ე.ი.
+     * ახალ მოდულს ის აღარ უკეთდება — `TYPES` კი `TrashDomain::MODELS`-ს
+     * იმეორებს და ახალ ჩანაწერს თავისით შემოიყვანდა.
+     */
+    public const NOT_VISITED = ['personal'];
+
+    /** @return array<string, class-string<Model>> */
+    public static function types(): array
+    {
+        return array_diff_key(self::TYPES, array_flip(self::NOT_VISITED));
+    }
+
     public static function has(string $type): bool
     {
-        return isset(self::TYPES[$type]);
+        return isset(self::types()[$type]);
     }
 
     /** @return list<string> */
     public static function keys(): array
     {
-        return array_keys(self::TYPES);
+        return array_keys(self::types());
     }
 
     /** @return class-string<Model> */
     public static function model(string $type): string
     {
-        return self::TYPES[$type];
+        return self::types()[$type];
     }
 
     /** რომელი მოდულის უფლება სჭირდება ამ ჩანაწერს */

@@ -42,6 +42,9 @@ export const PUBLIC_DOMAINS = [
      სჭირდება — **უმშობლო** ფოტოს კი მემკვიდრეობით არაფერი მოსდის და
      ერთადერთი, რითიც ის შეიძლება გაზიარდეს, ალბომია. */
   'gallery_album',
+  /* Tasks §33 (Q7) — პირადი გალერეიდან მხოლოდ **ალბომი** ხდება საჯარო, თავისი
+     ჩამრთველით; ჩაკეტილი — არასდროს. */
+  'personal_album',
 ] as const
 type BasePublicDomainKey = (typeof PUBLIC_DOMAINS)[number]
 /**
@@ -71,6 +74,8 @@ export const DOMAIN_MODULE: Record<BasePublicDomainKey, string> = {
   course: 'course',
   place: 'place',
   gallery_album: 'gallery',
+  // Tasks §33 — პირადი გალერეის ალბომი
+  personal_album: 'personal',
 }
 
 /** დომენის მოდული — პირადი მოდულის დომენი თვითონ მოდულის გასაღებია (§37.4) */

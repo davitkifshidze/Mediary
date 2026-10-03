@@ -730,6 +730,7 @@ class RegistryConsistencyTest extends TestCase
         'bookmark_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'course_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         'place_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
+        'personal_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
         // Tasks §37 — ყველა პირადი მოდულის ველების საერთო ცხრილი; იგივე წესი
         'custom_record_field_values' => 'ფაილი `trashed_files`-შია; ტექსტი ჩანაწერის რედაქტირებაა',
 
@@ -1015,8 +1016,10 @@ class RegistryConsistencyTest extends TestCase
     public function test_every_module_with_images_is_in_the_gallery_module_cut(): void
     {
         /* ⚠️ `gallery` განზრახ არ არის: **ის თვითონაა გალერეა** — მისი
-           ფოტოები `gallery_images`-ია და საკუთარი ჭრილები აქვს. */
-        $excluded = ['gallery'];
+           ფოტოები `gallery_images`-ია და საკუთარი ჭრილები აქვს. ⚠️ Tasks §33 —
+           `personal` იგივე მიზეზით: თვითონ გალერეაა (პირად დისკზე), და შენი
+           სიტყვით მისი ფოტოები „მხოლოდ ამ გალერეაში" ცხოვრობს. */
+        $excluded = ['gallery', 'personal'];
 
         $covered = ModuleImages::modules();
         $missing = [];

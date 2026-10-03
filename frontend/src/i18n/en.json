@@ -1803,7 +1803,7 @@
     "fetchShort": "Download",
     "uploadedBadge": "Uploaded",
     "webBadge": "From the web",
-    "moduleOff": "Photos from the web and video links live in the gallery module — it is switched off.",
+    "moduleOff": "The “Gallery” module is off — saving photos and video links needs it.",
     "moduleOffLink": "Enable it under Modules",
     "moduleOffHint": "The gallery module collects every record's web photos in one library; without it the web-search buttons are not shown here.",
     "title": "Gallery",
@@ -2009,7 +2009,6 @@
     "deleteGroupTitle": "Delete every photo in this group?",
     "deleteGroupHint": "“{{name}}” — {{count}} photos move to the trash; they can be restored from there. The record itself stays.",
     "groupDeleted": "{{count}} photos deleted",
-    "moduleOff": "The “Gallery” module is off — saving photos and video links needs it.",
     "categoryScope": "Kind of photo",
     "sourceScope": "Which cut",
     "sourceByHint": {
@@ -2897,6 +2896,9 @@
       "place_file": "Place file",
       "bookmark_file": "Bookmark photo",
       "place_route": "Place route",
+      "personal": "Person (personal gallery)",
+      "personal_album": "Personal gallery album",
+      "personal_media": "Personal gallery photo/video",
       "app_setting": "Installation setting",
       "custom_record": "Custom module record",
       "custom_category": "Custom module classifier",
@@ -3175,7 +3177,9 @@
       "primary": "Main photo & avatar",
       "field": "Extra field file",
       "chat": "Chat file",
-      "import": "CSV import"
+      "import": "CSV import",
+      "personal_photo": "Personal gallery photo",
+      "personal_video": "Personal gallery video"
     },
     "hintWarn": "The real ceiling is the app limit and PHP's `php.ini` together — a limit above `php.ini` can't take effect, and raising that means editing the server file.",
     "tooLarge": "“{{name}}” is too large — the maximum is {{max}}.",
@@ -3190,7 +3194,9 @@
       "rules": "A board game's rules.",
       "field": "The “file” type of an extra field.",
       "chat": "A file sent in chat (other than photos and videos).",
-      "import": "The CSV file of “Export & import” — the format is fixed."
+      "import": "The CSV file of “Export & import” — the format is fixed.",
+      "personal_photo": "A photo uploaded from your device to the personal gallery — kept on a private disk.",
+      "personal_video": "A video uploaded from your device to the personal gallery — kept on a private disk."
     },
     "family": {
       "image": "Image",

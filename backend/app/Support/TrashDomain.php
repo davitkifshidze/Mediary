@@ -36,6 +36,9 @@ use App\Models\NoteCategory;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
 use App\Models\NoteReminder;
+use App\Models\Person;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\PlaceFile;
@@ -96,6 +99,8 @@ final class TrashDomain
         'bookmark' => Bookmark::class,
         'course' => Course::class,
         'place' => Place::class,
+        // Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია (ალბომი და ფოტო — მისი ნაწილები)
+        'personal' => Person::class,
     ];
 
     /**
@@ -130,6 +135,11 @@ final class TrashDomain
         // Tasks §30.4 — შენახული მარშრუტი: ფაილი არ აქვს, ზომა არ ითვლება
         'place_route' => ['model' => PlaceRoute::class, 'module' => 'place', 'parent' => 'place', 'size' => false],
         'database_backup' => ['model' => DatabaseBackup::class, 'module' => null, 'parent' => null, 'size' => true],
+        /* Tasks §33 — პირადი გალერეის ფოტო/ვიდეო და ალბომი; მშობელი ადამიანია
+           (`person`, ჩანაწერი `personal`). ⚠️ ფოტოს ესკიზი პირად დისკზეა —
+           ურნის გადახედვა მას თავისი მარშრუტით კითხულობს (`TrashBin::PREVIEW_PATH`). */
+        'personal_media' => ['model' => PersonalMedia::class, 'module' => 'personal', 'parent' => 'person', 'size' => true],
+        'personal_album' => ['model' => PersonalAlbum::class, 'module' => 'personal', 'parent' => 'person', 'size' => false],
 
         // Tasks §29, ეტაპი 2 — ჩანაწერის ნაწილები
         'video_note' => ['model' => VideoNote::class, 'module' => 'video', 'parent' => 'video', 'size' => false],

@@ -34,6 +34,7 @@ namespace App\Support;
  *   gallery/images         — `gallery_images` (polymorphic — Tasks 10)
  *   chat/files/{images,videos,docs} — `messages.attachment_path` (§16.3, **პრივატული**)
  *   cast/photos            — მსახიობის ფოტო (გლობალური ლექსიკონი, არა მოდული)
+ *   personal/{photos,videos,thumbs} — პირადი გალერეა (Tasks §33, **პრივატული**)
  *
  * ⚠️ ეს კლასი **ერთადერთი წყაროა**: ატვირთვა პირდაპირ სტრიქონს არ წერს.
  * ახალი მოდული ერთ ფესვს ამატებს `ROOTS`-ში და თავის კონსტანტას აქ.
@@ -139,6 +140,20 @@ final class StorageFolder
     public const CAST_PHOTOS = 'cast/photos';
 
     /**
+     * **პირადი გალერეა (Tasks §33, Q7) — მთელი ფესვი პირად დისკზეა.**
+     *
+     * ⚠️ ახლობლების ფოტოები და ვიდეოებია — `/storage/*`-ით ღიად დადება მათ
+     * ინტერნეტში გამოიტანდა (ჩატის/ჩანაწერების წესი). ფაილი მხოლოდ
+     * მფლობელობაშემოწმებული მარშრუტით გამოდის (`PersonalMediaController`).
+     */
+    public const PERSONAL_PHOTOS = 'personal/photos';
+
+    public const PERSONAL_VIDEOS = 'personal/videos';
+
+    /** ფოტოს შემცირებული ასლი და ვიდეოს კადრი — ბადეები და დასტები ამას ხატავს */
+    public const PERSONAL_THUMBS = 'personal/thumbs';
+
+    /**
      * **ბაზის დამპი** (Tasks §22).
      *
      * ⚠️ **პრივატულ დისკზეა და ეს არ განიხილება.** ფაილი მთელი ბაზის ასლია —
@@ -154,6 +169,8 @@ final class StorageFolder
      */
     public const ROOTS = [
         'account', 'movies', 'series', 'anime', 'videos', 'songs', 'books', 'boardgames', 'games', 'notes', 'bookmarks', 'courses', 'places', 'gallery', 'chat', 'cast', 'backups',
+        // Tasks §33 — პირადი გალერეა (პრივატული ფესვი)
+        'personal',
         // Tasks §37 — ყველა პირადი მოდული ერთ ფესვში, `custom/{key}/…`
         CustomModules::ROOT,
     ];
@@ -170,7 +187,7 @@ final class StorageFolder
      * სურათებია და საჯარო პროფილზეც ჩანს (§16.1). პრივატულია ის, რაც
      * user-ის **პირადი დოკუმენტია** — `notes/`.
      */
-    public const PRIVATE_ROOTS = ['notes', 'chat', 'backups'];
+    public const PRIVATE_ROOTS = ['notes', 'chat', 'backups', 'personal'];
 
     /**
      * **პრივატული ქვესაქაღალდე საჯარო ფესვში (Tasks §7.1).**
@@ -219,6 +236,8 @@ final class StorageFolder
         'bookmarks' => 'bookmark',
         'courses' => 'course',
         'places' => 'place',
+        // Tasks §33 — ფესვი და მოდული ერთი სიტყვაა (ლიმიტი §17.2 და კვოტის ჯამი ერთს ითვლის)
+        'personal' => 'personal',
         'gallery' => 'gallery',
         'account' => 'account',
         'chat' => 'chat',
@@ -327,6 +346,12 @@ final class StorageFolder
             'image' => self::PLACE_IMAGES,
             default => self::PLACE_DOCS,
         };
+    }
+
+    /** Tasks §33 — პირადი გალერეის ფაილი სახის მიხედვით (`photo` · `video`) */
+    public static function personalMedia(string $kind): string
+    {
+        return $kind === 'video' ? self::PERSONAL_VIDEOS : self::PERSONAL_PHOTOS;
     }
 
     /** `board_game_files.kind` → საქაღალდე */

@@ -15,6 +15,7 @@ use App\Models\Game;
 use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
@@ -57,6 +58,10 @@ class DashboardController extends Controller
         'bookmark' => Bookmark::class,
         'course' => Course::class,
         'place' => Place::class,
+        /* Tasks §33 — ბარათი **ფოტოებსა და ვიდეოებს** ითვლის და არა ადამიანებს:
+           „რა მაქვს გალერეაში" ფაილების რიცხვია. `owner`/`trash`/`personal_parent`
+           scope-ები თავისით მოქმედებს (ქვე-query მოდელიდანაა). */
+        'personal' => PersonalMedia::class,
         /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
            გალერეა ფოტოებით სავსეა (ნანახი 2026-09-14). მიზეზი დაშვება იყო,
            რომ „გალერეას საკუთარი ჩანაწერი არ აქვს" — აქვს: `gallery_images`

@@ -17,6 +17,8 @@ use App\Models\Module;
 use App\Models\Movie;
 use App\Models\NoteEntry;
 use App\Models\NoteEntryFile;
+use App\Models\Person;
+use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
@@ -778,6 +780,19 @@ class StorageManagementTest extends TestCase
             'user_id' => $u->id, 'kind' => 'image',
             'path' => 'places/files/images/p.jpg', 'size' => 36,
             'original_name' => 'p.jpg',
+        ]);
+
+        /* Tasks §33 — პირადი გალერეა: ადამიანის ფოტო (ესკიზით) და უადამიანო ვიდეო.
+           ⚠️ ესკიზი ფაილის ნაწილია და ცალკე რიგად არ ჩანს — ზომა ჯამშია. */
+        $person = Person::create(['user_id' => $u->id, 'name' => 'დედა']);
+        PersonalMedia::create([
+            'user_id' => $u->id, 'person_id' => $person->id, 'kind' => 'photo',
+            'path' => 'personal/photos/p.jpg', 'original_name' => 'p.jpg', 'size' => 40,
+            'thumb_path' => 'personal/thumbs/p.webp', 'thumb_size' => 4,
+        ]);
+        PersonalMedia::create([
+            'user_id' => $u->id, 'kind' => 'video',
+            'path' => 'personal/videos/v.mp4', 'original_name' => 'v.mp4', 'size' => 400,
         ]);
 
         $note = NoteEntry::create(['user_id' => $u->id, 'title' => 'n']);

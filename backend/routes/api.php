@@ -72,6 +72,10 @@ use App\Http\Controllers\Api\NoteEntryFileController;
 use App\Http\Controllers\Api\NoteReminderController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PersonalAlbumController;
+use App\Http\Controllers\Api\PersonalGalleryController;
+use App\Http\Controllers\Api\PersonalMediaController;
+use App\Http\Controllers\Api\PersonalPersonController;
 use App\Http\Controllers\Api\PlaceCategoryController;
 use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlaceFileController;
@@ -913,6 +917,45 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/places/{place}/routes', [PlaceRouteController::class, 'store']);
         Route::patch('/place-routes/{placeRoute}', [PlaceRouteController::class, 'update']);
         Route::delete('/place-routes/{placeRoute}', [PlaceRouteController::class, 'destroy']);
+    });
+
+    /* ---------- პირადი გალერეა (module: personal, Tasks §33) ----------
+       ადამიანები · ალბომები · ფოტო და ვიდეო მოწყობილობიდან — **პირად დისკზე**.
+
+       ⚠️ სიტყვიერი სეგმენტები (`summary`, `groups`, `reorder`, `move`) `{id}`-ზე
+       **ზემოთაა** და `{…}` `whereNumber`-ითაა, თორემ ისინი id-ად წაიკითხებოდა.
+       ⚠️ `move`/`reorder` `POST`-ია და `UPDATE_ENDPOINTS`-შია → `update` უფლება;
+       მონიშნულების წაშლა `DELETE /personal/media`-ა (`delete` უფლება) და არა
+       `POST …/bulk-delete` — ის `create`-ად წაიკითხებოდა.
+       ⚠️ ფაილი (`file`) და ესკიზი (`thumb`) მხოლოდ აქედან გადის — სხვისი 404. */
+    Route::middleware(['module:personal', 'permission:personal'])->group(function () {
+        Route::get('/personal/summary', [PersonalGalleryController::class, 'summary']);
+
+        Route::get('/personal/people', [PersonalPersonController::class, 'index']);
+        Route::post('/personal/people', [PersonalPersonController::class, 'store']);
+        Route::post('/personal/people/reorder', [PersonalPersonController::class, 'reorder']);
+        Route::get('/personal/people/{person}', [PersonalPersonController::class, 'show'])->whereNumber('person');
+        Route::match(['put', 'patch'], '/personal/people/{person}', [PersonalPersonController::class, 'update'])->whereNumber('person');
+        Route::delete('/personal/people/{person}', [PersonalPersonController::class, 'destroy'])->whereNumber('person');
+
+        Route::get('/personal/albums', [PersonalAlbumController::class, 'index']);
+        Route::post('/personal/albums', [PersonalAlbumController::class, 'store']);
+        Route::post('/personal/albums/reorder', [PersonalAlbumController::class, 'reorder']);
+        Route::get('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'show'])->whereNumber('personalAlbum');
+        Route::match(['put', 'patch'], '/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'update'])->whereNumber('personalAlbum');
+        Route::delete('/personal/albums/{personalAlbum}', [PersonalAlbumController::class, 'destroy'])->whereNumber('personalAlbum');
+
+        Route::get('/personal/media', [PersonalMediaController::class, 'index']);
+        Route::get('/personal/media/groups', [PersonalGalleryController::class, 'groups']);
+        Route::post('/personal/media', [PersonalMediaController::class, 'store']);
+        Route::post('/personal/media/move', [PersonalMediaController::class, 'move']);
+        Route::post('/personal/media/reorder', [PersonalMediaController::class, 'reorder']);
+        Route::delete('/personal/media', [PersonalMediaController::class, 'destroyMany']);
+        Route::match(['put', 'patch'], '/personal/media/{personalMedia}', [PersonalMediaController::class, 'update'])->whereNumber('personalMedia');
+        Route::patch('/personal/media/{personalMedia}/favorite', [PersonalMediaController::class, 'toggleFavorite'])->whereNumber('personalMedia');
+        Route::delete('/personal/media/{personalMedia}', [PersonalMediaController::class, 'destroy'])->whereNumber('personalMedia');
+        Route::get('/personal/media/{personalMedia}/file', [PersonalMediaController::class, 'file'])->whereNumber('personalMedia');
+        Route::get('/personal/media/{personalMedia}/thumb', [PersonalMediaController::class, 'thumb'])->whereNumber('personalMedia');
     });
 
     /* ---------- ინტერფეისიდან შექმნილი მოდულები (Tasks §37) ----------

@@ -7,6 +7,8 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Module;
+use App\Models\PersonalAlbum;
+use App\Models\PersonalMedia;
 use App\Models\User;
 use App\Services\Purge\PurgeService;
 use App\Services\Storage\StorageMeter;
@@ -44,6 +46,7 @@ class AccountEraser
     public function erase(User $user): void
     {
         $this->purgeModules($user);
+        $this->purgePersonal($user);
         $this->purgeGallery($user);
         $this->sweepRemainingFiles($user);
         $this->dropEmptyConversations($user);
@@ -92,6 +95,24 @@ class AccountEraser
             ->all();
 
         return [...array_values(array_diff(PurgeService::TARGETS, ['gallery'])), ...$custom];
+    }
+
+    /**
+     * **Tasks §33 — პირადი გალერეის უადამიანო ფოტოები და ალბომები.**
+     *
+     * ⚠️ `purgeModules()` ადამიანს შლის და მასთან ერთად — მის ნაწილებს;
+     * „გარე" ალბომი და უადამიანო ფოტო მისი ნაწილი არაა, ე.ი. აქ იშლება —
+     * **მოდელით** (ფაილი, ესკიზი, კვოტა, აუდიტის კვალი), ურნაში მყოფიც.
+     */
+    private function purgePersonal(User $user): void
+    {
+        foreach (PersonalMedia::withoutGlobalScopes()->where('user_id', $user->getKey())->cursor() as $media) {
+            $media->delete();
+        }
+
+        foreach (PersonalAlbum::withoutGlobalScopes()->where('user_id', $user->getKey())->cursor() as $album) {
+            $album->delete();
+        }
     }
 
     /**
