@@ -66,6 +66,13 @@ export interface Settings {
   autoResync: boolean
   /** თარიღის ფორმატი — `lib/dates.ts::useDateFormat()` კითხულობს */
   dateFormat: DateFormat
+  /**
+   * Tasks §20.2 — დამკვრელის გვერდითა პანელის **მაქსიმალური** სიგანე (px).
+   * ⚠️ ეს ჭერია და არა თვითონ სიგანე: ხელით გაწეული სიგანე მოწყობილობისაა
+   * (`localStorage['player.width']`, `lib/player.tsx`), ჭერი კი — ანგარიშის
+   * პარამეტრი, რომელსაც ის ვერ გადააჭარბებს. ჭერის შემცირება სიგანეს ჭრის.
+   */
+  playerMaxWidth: number
 
   /* ---------- FEAT-21 ---------- */
   /**
@@ -133,6 +140,7 @@ const DEFAULT_SETTINGS: Settings = {
   posterQuality: 'w500',
   autoResync: true,
   dateFormat: 'ka-GE',
+  playerMaxWidth: 560,
   goals: {},
   trashDays: 30,
 }
@@ -144,6 +152,8 @@ export const GROUP_BY_OPTIONS: GroupBy[] = ['off', 'genre', 'year', 'status']
 export const CARD_SIZE_OPTIONS: CardSize[] = ['compact', 'medium', 'large']
 export const POSTER_QUALITY_OPTIONS: PosterQuality[] = ['w342', 'w500', 'w780']
 export const DATE_FORMAT_OPTIONS: DateFormat[] = ['ka-GE', 'en-GB', 'iso']
+/** Tasks §20.2 — პანელის ჭერი; ქვედა ზღვარი პანელის უმცირესი სიგანეა (`PANEL_MIN_WIDTH`) */
+export const PLAYER_MAX_WIDTH_OPTIONS = [480, 560, 640, 720, 800]
 
 /** TMDB-ის მყარი ლიმიტი: `page` ≤ 500 (discover-იც და search-იც) */
 export const TMDB_MAX_PAGE = 500

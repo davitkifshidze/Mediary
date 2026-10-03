@@ -28,6 +28,7 @@ import {
   type PosterQuality,
   type Settings,
   type SortField,
+  PLAYER_MAX_WIDTH_OPTIONS,
 } from '@/lib/settings'
 import { NumberSelect, SettingRow as Row } from '@/components/SettingRow'
 import { SettingsSaveBar } from '@/components/SettingsSaveBar'
@@ -333,6 +334,29 @@ export function SettingsPage() {
               aria-label={t('settings.autoResync')}
             />
           </div>
+        </Row>
+      </section>
+
+      {/* ---------- დამკვრელი (Tasks §20.2) ----------
+          ⚠️ მხოლოდ **ჭერი** ინახება აქ: ხელით გაწეული სიგანე მოწყობილობისაა
+          (`localStorage`, `lib/player.tsx`) და პარამეტრების ზოლს არ ანთებს. */}
+      <section className="mb-6 rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-2 flex items-center gap-1.5 font-display text-lg font-semibold tracking-tight">
+          {t('settings.player')}
+          <InfoHint info={t('settings.playerHint')} />
+        </h2>
+
+        <Row
+          label={t('settings.playerMaxWidth')}
+          hint={t('settings.playerMaxWidthHint')}
+          dirty={isDirty('playerMaxWidth')}
+        >
+          <NumberSelect
+            value={settings.playerMaxWidth}
+            options={PLAYER_MAX_WIDTH_OPTIONS}
+            onChange={(v) => set('playerMaxWidth', v)}
+            labelOf={(v) => `${v} px`}
+          />
         </Row>
       </section>
 

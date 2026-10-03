@@ -33,6 +33,15 @@ export function safeSet(key: string, value: string): void {
   }
 }
 
+/** Tasks §20.3 — ხელით დაყენებულის მოხსნა (დამკვრელის სიგანე ნაგულისხმევზე) */
+export function safeRemove(key: string): void {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // იხ. ზემოთ
+  }
+}
+
 /* Tasks §10 — ერთი სესიის ფარგლებში „უკვე გავაკეთე" ნიშნები (შესვლის
    მთვლელი): ტაბის დახურვაზე ქრება, სწორედ ეს გვინდა. იგივე წესები. */
 export function sessionGet(key: string): string | null {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { storageUrl } from '@/lib/api'
 import { LAYER_PLAYER } from '@/lib/layers'
-import { usePlayer } from '@/lib/player'
+import { PANEL_MIN_WIDTH, usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { PlayerQueue } from '@/components/PlayerQueue'
 import { PlayerStage } from '@/components/PlayerStage'
@@ -53,6 +53,7 @@ export function Player() {
   const [queueOpen, setQueueOpen] = useState(false)
 
   const { current, queue, index, playing, expanded, layout, wide } = player
+  const asideRef = useRef<HTMLElement>(null)
   if (!current || !layout) return null
 
   const side = layout === 'side'
@@ -62,6 +63,7 @@ export function Player() {
 
   return (
     <aside
+      ref={asideRef}
       data-player
       data-layout={layout}
       aria-label={t('playback.player')}
@@ -73,8 +75,11 @@ export function Player() {
           : 'inset-x-0 bottom-0 items-center gap-3 border-t border-border bg-card/95 px-3 py-2 shadow-[0_-2px_12px_rgba(0,0,0,0.12)] backdrop-blur',
       )}
     >
-      {/* ---------- სცენა (ყოველთვის პირველი შვილი — იხ. ზემოთ) ---------- */}
-      <div className={side ? 'shrink-0 px-3 pt-3' : 'shrink-0'}>
+      {/* ---------- სცენა (ყოველთვის პირველი შვილი — იხ. ზემოთ) ----------
+          ⚠️ Tasks §20.1 — გადათრევისას სცენას გამჭვირვალე ფენა ეფარება: iframe
+          მაუსის მოვლენებს „ჭამს" და სახელური მასზე გადასვლისას დაკარგავდა. */}
+      <div className={cn('relative', side ? 'shrink-0 px-3 pt-3' : 'shrink-0')}>
+        {player.resizing && <div aria-hidden className="absolute inset-0 z-10 cursor-col-resize" />}
         <PlayerStage
           item={current}
           playing={playing}
@@ -224,6 +229,51 @@ export function Player() {
           ზოლის სიმაღლე შეიცვლებოდა, `--player-h` კი იმავე რიცხვს ეუბნებოდა
           გვერდს — ე.ი. ქვედა ჩანაწერი ზოლის უკან მოექცეოდა. */}
       {(side || (queueOpen && many)) && <PlayerQueue layout={layout} />}
+
+      {/* ---------- Tasks §20 — სიგანის სახელური (მხოლოდ გვერდითა პანელზე) ----------
+          მარცხენა კიდეზე 6 px ზონა, `cursor: col-resize`; მარცხნივ გაწევა
+          აფართოებს. სიგანე `usePlayer().setWidth`-ით იწერება და `--player-w`
+          მხოლოდ პროვაიდერის `useLayoutEffect`-იდან მოდის — გვერდი და ჰედერი
+          თავისით მიჰყვებიან. ორმაგი დაწკაპუნება — ნაგულისხმევზე. */}
+      {side && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('playback.resize')}
+          title={t('playback.resizeHint', { max: player.maxWidth })}
+          data-resize-handle
+          onDoubleClick={player.resetWidth}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return
+            const startX = e.clientX
+            // ⚠️ გაუზომავზე (0) — მიმდინარე რიცხვითი სიგანე ან მინიმუმი, არა ჭერი
+            const measured = asideRef.current?.getBoundingClientRect().width ?? 0
+            const startWidth = measured > 0 ? measured : (player.width ?? PANEL_MIN_WIDTH)
+            const target = e.currentTarget
+            if (typeof target.setPointerCapture === 'function') target.setPointerCapture(e.pointerId)
+            player.setResizing(true)
+            document.body.style.cursor = 'col-resize'
+            document.body.style.userSelect = 'none'
+
+            const move = (ev: PointerEvent) => player.setWidth(startWidth + (startX - ev.clientX))
+            const stop = () => {
+              window.removeEventListener('pointermove', move)
+              window.removeEventListener('pointerup', stop)
+              window.removeEventListener('pointercancel', stop)
+              player.setResizing(false)
+              document.body.style.cursor = ''
+              document.body.style.userSelect = ''
+            }
+            window.addEventListener('pointermove', move)
+            window.addEventListener('pointerup', stop)
+            window.addEventListener('pointercancel', stop)
+          }}
+          className={cn(
+            'absolute inset-y-0 left-0 w-1.5 cursor-col-resize transition-colors hover:bg-primary/40',
+            player.resizing && 'bg-primary/40',
+          )}
+        />
+      )}
     </aside>
   )
 }

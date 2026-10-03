@@ -368,3 +368,68 @@ describe('Player — რიგი', () => {
     expect(labels().some((l) => l.includes(i18n.t('playback.moveLater')))).toBe(true)
   })
 })
+
+/* Tasks §20 — პანელის სიგანე: შენახული, ჭერით ჩაჭრილი, სახელურით გაწეული, ორმაგი დაწკაპუნებით ნაგულისხმევი */
+describe('Player — სიგანე (Tasks §20)', () => {
+  const handle = () => document.querySelector<HTMLElement>('aside[data-player] [data-resize-handle]')
+
+  it('შენახული სიგანე პანელს ეძლევა, ჭერზე მეტი კი ჭერზე იჭრება', async () => {
+    localStorage.setItem('player.width', '500')
+    mocks.media.wide = true
+    await mount()
+    await play()
+    expect(cssVar('--player-w')).toBe('500px')
+
+    act(() => root?.unmount())
+    localStorage.setItem('player.width', '900')
+    await mount()
+    await play()
+    // ნაგულისხმევი ჭერი 560 px-ია (`settings.playerMaxWidth`)
+    expect(cssVar('--player-w')).toBe('560px')
+  })
+
+  it('სახელურით გაწევა სიგანეს ცვლის და ინახავს; ორმაგი დაწკაპუნება ნაგულისხმევს აბრუნებს', async () => {
+    mocks.media.wide = true
+    await mount()
+    await play()
+    expect(cssVar('--player-w')).toBe(PANEL_WIDTH)
+    expect(handle()?.getAttribute('aria-orientation')).toBe('vertical')
+
+    const Pointer = (type: string, clientX: number) =>
+      new MouseEvent(type, { bubbles: true, clientX, button: 0 }) as unknown as PointerEvent
+
+    // jsdom-ს ზომები არ აქვს — საწყისი სიგანე მინიმუმია (384); 100 px მარცხნივ → 484
+    await act(async () => {
+      handle()!.dispatchEvent(Pointer('pointerdown', 800))
+    })
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointermove', 700))
+    })
+    expect(cssVar('--player-w')).toBe('484px')
+
+    // 300 px მარცხნივ → 684 → ჭერზე (560) იჭრება
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointermove', 500))
+    })
+    expect(cssVar('--player-w')).toBe('560px')
+
+    // 200 px მარჯვნივ → 184 → მინიმუმზე (384) იჭრება
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointermove', 1000))
+    })
+    expect(cssVar('--player-w')).toBe('384px')
+    expect(localStorage.getItem('player.width')).toBe('384')
+
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointerup', 1000))
+    })
+    expect(document.body.style.cursor).toBe('')
+
+    await act(async () => {
+      handle()!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    })
+    await flush()
+    expect(cssVar('--player-w')).toBe(PANEL_WIDTH)
+    expect(localStorage.getItem('player.width')).toBeNull()
+  })
+})

@@ -635,6 +635,10 @@
     "added": "Added"
   },
   "settings": {
+    "player": "Player",
+    "playerHint": "Limits of the right-hand panel. The width itself is dragged with the handle and kept on this device — only the ceiling lives here.",
+    "playerMaxWidth": "Maximum panel width",
+    "playerMaxWidthHint": "The handle cannot make the panel wider than this; lowering the ceiling trims a width already dragged out.",
     "title": "Settings",
     "subtitle": "Saved in this browser.",
     "reset": "Reset to defaults",
@@ -2889,6 +2893,8 @@
     "defaultsSkipped": "{{count}} not added — you already have a status with that name"
   },
   "playback": {
+    "resize": "Resize the panel",
+    "resizeHint": "Drag left or right; double-click for the default width. The maximum of {{max}} px is set in Settings.",
     "play": "Play",
     "pause": "Pause",
     "next": "Next",

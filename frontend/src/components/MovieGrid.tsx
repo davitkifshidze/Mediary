@@ -16,10 +16,13 @@ import type { MovieListItem } from '@/api/types'
    ============================================================ */
 
 /** ბარათის ზომა = სვეტების რაოდენობა; `medium` ისტორიული ნაგულისხმევია */
+/* Tasks §20.4 — ⚠️ **კონტეინერის** ზღვრები და არა ეკრანისა: `<main>` `@container`-ია
+   და დამკვრელის პანელით მიწოლილ გვერდზე სვეტები თავისით იკლებს. `@2xl`=42rem ≈ `sm`,
+   `@3xl`=48rem ≈ `md`, `@5xl`=64rem ≈ `lg`, `@7xl`=80rem = `xl` (1280px). */
 const COLUMNS: Record<CardSize, string> = {
-  compact: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10',
-  medium: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6',
-  large: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4',
+  compact: 'grid-cols-3 @2xl:grid-cols-4 @3xl:grid-cols-6 @5xl:grid-cols-8 @7xl:grid-cols-10',
+  medium: 'grid-cols-2 @2xl:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-5 @7xl:grid-cols-6',
+  large: 'grid-cols-1 @2xl:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4 @7xl:grid-cols-4',
 }
 
 interface Section {

@@ -15,7 +15,8 @@ import { markVideoWatched, type Video, type VideoPlatform } from '@/api/videos'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { EmbedEvent } from '@/lib/embed'
 import { removeEntry, reorderEntries } from '@/lib/playerQueue'
-import { safeGet, safeSet } from '@/lib/storage'
+import { PLAYER_MAX_WIDTH_OPTIONS, useSettings } from '@/lib/settings'
+import { safeGet, safeRemove, safeSet } from '@/lib/storage'
 
 /* ============================================================
    ერთიანი დამკვრელი — მუსიკაც და ვიდეოც (Tasks §7.2 → §35).
@@ -82,6 +83,50 @@ export type PlayerLayout = 'side' | 'bar'
  */
 export const PANEL_MIN_VIEWPORT = 1664
 
+/* ---------- Tasks §20 — პანელის სიგანე რეგულირდება ----------
+   შენი სიტყვები: „მარჯვენა კონტექსტის ფანჯარა შეიძლებოდეს რეგულირება —
+   გაზარდო უფრო სიგანეში, ოღონდ რაღაც ფიქსირებული ზომა იყოს, რაზეც მეტად ვერ
+   გაზრდი — ეგ იწერებოდეს პარამეტრებში; და ბოლოს რაც ხელით გაზარდე, ეგ
+   შეინახოს სადმე".
+
+   ⚠️ **ორი ფაქტი, ორი ადგილი**: ჭერი ანგარიშის პარამეტრია (`users.settings.
+   playerMaxWidth`, ცხადი შენახვით), ხელით გაწეული სიგანე კი **მოწყობილობისაა**
+   (`localStorage` — `player.dock`-ის პრეცედენტი: `users.settings`-ში ჩაწერა
+   პარამეტრების „შესანახ" ზოლს აანთებდა და აუდიტში მთელ ბლობს ჩაწერდა).
+   ჭერის შემცირება შენახულ სიგანეს ჭრის და არა შლის — ჭერის უკან აწევაზე
+   ძველი სიგანე ბრუნდება.
+
+   ⚠️ **გვერდითა განლაგების ზღვარი სიგანეზეა დამოკიდებული** (§20.4): 1280 +
+   მიმდინარე სიგანე, და არა მუდმივი 1664 — ფართო პანელი ვიწრო ეკრანზე გვერდს
+   1280-ზე ქვემოთ ჩაწურავდა. */
+
+/** პანელის უმცირესი სიგანე (24rem) — ქვემოთ სცენა და რიგი ვეღარ ეტევა */
+export const PANEL_MIN_WIDTH = 384
+const WIDTH_KEY = 'player.width'
+
+/** ჭერი პარამეტრებიდან — უცნობი/ძველი მნიშვნელობა ნაგულისხმევზე ბრუნდება */
+export function panelCeiling(setting: number | null | undefined): number {
+  const n = Number(setting)
+  if (!Number.isFinite(n)) return 560
+  return Math.min(Math.max(n, PLAYER_MAX_WIDTH_OPTIONS[0]), PLAYER_MAX_WIDTH_OPTIONS[PLAYER_MAX_WIDTH_OPTIONS.length - 1])
+}
+
+/** ხელით დაყენებული სიგანე ზღვრებში — ქვემოთ მინიმუმი, ზემოთ ჭერი */
+export function clampPanelWidth(width: number, ceiling: number): number {
+  return Math.min(Math.max(Math.round(width), PANEL_MIN_WIDTH), Math.max(ceiling, PANEL_MIN_WIDTH))
+}
+
+/** შენახული სიგანე (px) ან `null` — ნაგულისხმევი `clamp()` მოქმედებს */
+export function readSavedWidth(): number | null {
+  const raw = Number(safeGet(WIDTH_KEY))
+  return Number.isFinite(raw) && raw >= PANEL_MIN_WIDTH ? Math.round(raw) : null
+}
+
+/** CSS-მნიშვნელობა `--player-w`-სთვის: ხელით დაყენებული (ჭერით ჩაჭრილი) ან ნაგულისხმევი */
+export function panelWidthValue(width: number | null, ceiling: number): string {
+  return width === null ? PANEL_WIDTH : `${clampPanelWidth(width, ceiling)}px`
+}
+
 /**
  * პანელის სიგანე — `--player-w`-ის მნიშვნელობა; `<main>`-ის `padding`-იც ამას
  * კითხულობს, ე.ი. ორი სიგანე ვერასდროს დაშორდება ერთმანეთს.
@@ -120,6 +165,14 @@ interface PlayerApi {
   wide: boolean
   /** ფართო ეკრანზე არჩეული განლაგება */
   dock: PlayerLayout
+  /** Tasks §20 — ხელით დაყენებული სიგანე (px) ან `null` = ნაგულისხმევი */
+  width: number | null
+  /** პანელის ჭერი (px) — `users.settings.playerMaxWidth` */
+  maxWidth: number
+  /** `--player-w`-ის მიმდინარე მნიშვნელობა */
+  panelWidth: string
+  /** გადათრევა მიმდინარეობს — სცენაზე გამჭვირვალე ფენა, რომ iframe-მა მაუსი არ „შეჭამოს" */
+  resizing: boolean
   play: (items: PlayerItem[], startAt?: number, source?: string | null) => void
   toggle: () => void
   next: () => void
@@ -132,6 +185,11 @@ interface PlayerApi {
   close: () => void
   setExpanded: (value: boolean) => void
   setDock: (value: PlayerLayout) => void
+  /** Tasks §20.1/§20.3 — სიგანე px-ში (ზღვრებში ჩაიჭრება და მოწყობილობაზე ინახება) */
+  setWidth: (px: number) => void
+  /** ორმაგი დაწკაპუნება სახელურზე — ნაგულისხმევზე დაბრუნება */
+  resetWidth: () => void
+  setResizing: (value: boolean) => void
   /** სცენის ანგარიში (`ended` → შემდეგზე გადასვლა) */
   report: (event: EmbedEvent) => void
 }
@@ -208,7 +266,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const [source, setSource] = useState<string | null>(null)
   const [dock, setDockState] = useState<PlayerLayout>(() => (safeGet(DOCK_KEY) === 'bar' ? 'bar' : 'side'))
-  const wide = useMediaQuery(`(min-width: ${PANEL_MIN_VIEWPORT}px)`)
+  /* Tasks §20 — სიგანე მოწყობილობისაა, ჭერი — ანგარიშისა (იხ. ზემოთ) */
+  const [width, setWidthState] = useState<number | null>(readSavedWidth)
+  const [resizing, setResizing] = useState(false)
+  const maxWidth = panelCeiling(useSettings().settings.playerMaxWidth)
+  const panelWidth = panelWidthValue(width, maxWidth)
+  const effectiveWidth = width === null ? PANEL_MIN_WIDTH : clampPanelWidth(width, maxWidth)
+  // §20.4 — ზღვარი მიმდინარე სიგანეს მიჰყვება: 1280 + პანელი
+  const wide = useMediaQuery(`(min-width: ${PANEL_MIN_VIEWPORT - PANEL_MIN_WIDTH + effectiveWidth}px)`)
+
+  const setWidth = useCallback(
+    (px: number) => {
+      const next = clampPanelWidth(px, maxWidth)
+      setWidthState(next)
+      safeSet(WIDTH_KEY, String(next))
+    },
+    [maxWidth],
+  )
+
+  const resetWidth = useCallback(() => {
+    setWidthState(null)
+    safeRemove(WIDTH_KEY)
+  }, [])
 
   /**
    * მრიცხველი, რომელიც **ყოველ ჩართვაზე** იზრდება.
@@ -358,14 +437,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const style = document.documentElement.style
     style.removeProperty('--player-w')
     style.removeProperty('--player-h')
-    if (layout === 'side') style.setProperty('--player-w', PANEL_WIDTH)
+    if (layout === 'side') style.setProperty('--player-w', panelWidth)
     if (layout === 'bar') style.setProperty('--player-h', expanded ? BAR_HEIGHT.expanded : BAR_HEIGHT.compact)
 
     return () => {
       style.removeProperty('--player-w')
       style.removeProperty('--player-h')
     }
-  }, [layout, expanded])
+  }, [layout, expanded, panelWidth])
 
   const value = useMemo<PlayerApi>(
     () => ({
@@ -378,6 +457,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       layout,
       wide,
       dock,
+      width,
+      maxWidth,
+      panelWidth,
+      resizing,
       play,
       toggle,
       next,
@@ -388,6 +471,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       close,
       setExpanded,
       setDock,
+      setWidth,
+      resetWidth,
+      setResizing,
       report,
     }),
     [
@@ -400,6 +486,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       layout,
       wide,
       dock,
+      width,
+      maxWidth,
+      panelWidth,
+      resizing,
       play,
       toggle,
       next,
@@ -409,6 +499,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       reorder,
       close,
       setDock,
+      setWidth,
+      resetWidth,
       report,
     ],
   )

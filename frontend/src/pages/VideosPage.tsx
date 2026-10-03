@@ -448,7 +448,8 @@ export function VideosPage() {
             />
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {/* §20.4 — სვეტები `main`-ის სიგანეზე (`@container`), არა ეკრანისაზე */}
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @7xl:grid-cols-3">
             {videos.map((v, i) => {
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ ბარათზე: გახსნა · დაკვრა · წყარო ·
                  სტატუსი ▸ · რჩეული · (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
