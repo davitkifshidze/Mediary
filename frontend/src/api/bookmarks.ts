@@ -20,6 +20,26 @@ import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemove
  */
 export type BookmarkStatus = string
 
+/**
+ * **დამატებითი ბმულის „რა არის"** (Tasks §36.3) — `Bookmark::LINK_KINDS`-ის სარკე
+ * (`RegistryConsistencyTest`). აიქონი და ფერი — `lib/bookmarkLinks.ts`.
+ */
+export const BOOKMARK_LINK_KINDS = ['shop', 'price', 'review', 'video', 'docs', 'other'] as const
+export type BookmarkLinkKind = (typeof BOOKMARK_LINK_KINDS)[number]
+
+/** ფასი მხოლოდ ამ ტიპებზე ინახება — `Bookmark::PRICED_LINK_KINDS`-ის სარკე */
+export const BOOKMARK_PRICED_LINK_KINDS = ['shop', 'price'] as const
+
+export interface BookmarkLink {
+  label: string | null
+  url: string
+  kind: BookmarkLinkKind
+  /** ხელით ჩაწერილი ფასი („49 ₾") — მხოლოდ მაღაზიისა და ფასის ბმულზე */
+  price?: string | null
+  /** §15-ის მეტა-მონაცემიდან — ბმულის ჩასმისას ივსება */
+  favicon_url?: string | null
+}
+
 export interface Bookmark {
   id: number
   title: string
@@ -30,9 +50,14 @@ export interface Bookmark {
   category_id: number | null
   category?: BookmarkCategory | null
   tags: string[]
-  /** ატვირთული ფოტოს გზა ან გვერდის og:image */
+  /** Tasks §36.3 — დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…) */
+  links: BookmarkLink[]
+  /** ატვირთული ფოტოს გზა, გალერეიდან არჩეული ფოტოს გზა ან გვერდის og:image */
   image: string | null
   favicon_url: string | null
+  /** Tasks §36.4 — ჩემი ფოტოები (`bookmark_files`) და ვებიდან მოტანილი (გალერეა) — სიაში */
+  files_count?: number
+  photos_count?: number
   status: Status | null
   is_favorite: boolean
   /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
@@ -62,6 +87,8 @@ export interface BookmarkInput {
   description?: string | null
   category_id?: number | null
   tags?: string[]
+  /** `undefined` — „არ შეეხო"; ცარიელი სია — „ყველა მოხსენი" */
+  links?: BookmarkLink[]
   status?: BookmarkStatus
   visibility?: 'private' | 'public'
   image_url?: string | null
@@ -91,7 +118,19 @@ function toFormData(input: BookmarkInput): FormData {
   if (input.visibility) fd.append('visibility', input.visibility)
   if (input.image_url) fd.append('image_url', input.image_url)
   if (input.favicon_url) fd.append('favicon_url', input.favicon_url)
+  /* ⚠️ ცარიელი სია ცარიელ სტრიქონად იგზავნება (კურსისა და ადგილის წესი): multipart-ში
+     ცარიელი მასივი საერთოდ არ გადის, ე.ი. ბოლო ტეგის/ბმულის მოხსნა შენახვის შემდეგ
+     ჩუმად უკან ბრუნდებოდა. */
+  if (input.tags !== undefined && input.tags.length === 0) fd.append('tags', '')
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
+  if (input.links !== undefined && input.links.length === 0) fd.append('links', '')
+  ;(input.links ?? []).forEach((link, i) => {
+    fd.append(`links[${i}][url]`, link.url)
+    fd.append(`links[${i}][label]`, link.label ?? '')
+    fd.append(`links[${i}][kind]`, link.kind)
+    fd.append(`links[${i}][price]`, link.price ?? '')
+    fd.append(`links[${i}][favicon_url]`, link.favicon_url ?? '')
+  })
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)
   if (input.remove_thumbnail) fd.append('remove_thumbnail', '1')
   return fd
@@ -145,6 +184,47 @@ export async function setBookmarkStatus(id: number, status: BookmarkStatus): Pro
 export async function markBookmarkVisited(id: number): Promise<Bookmark> {
   const { data } = await api.post(`/bookmarks/${id}/visited`)
   return data.data
+}
+
+/**
+ * Tasks §36.5 — ბმულების სიის შეცვლა ფორმის გარეშე („ბმულის დამატება" მენიუდან).
+ * ⚠️ JSON `PATCH` და არა multipart: მხოლოდ `links` იგზავნება, დანარჩენ ველებს
+ * სერვერი არ ეხება (`BookmarkController::apply()` გასაღების არსებობას ამოწმებს).
+ */
+export async function setBookmarkLinks(id: number, links: BookmarkLink[]): Promise<Bookmark> {
+  const { data } = await api.patch(`/bookmarks/${id}`, { links })
+  return data.data
+}
+
+/* ---------- ფოტოები — Tasks §36.4 ---------- */
+
+/** ბუკმარკზე მიმაგრებული ჩემი ფოტო („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
+export interface BookmarkFile {
+  id: number
+  kind: 'image'
+  path: string
+  url: string
+  original_name: string | null
+  mime: string | null
+  size: number
+  created_at: string | null
+}
+
+export async function fetchBookmarkFiles(bookmarkId: number): Promise<BookmarkFile[]> {
+  const { data } = await api.get(`/bookmarks/${bookmarkId}/files`)
+  return data.data
+}
+
+export async function uploadBookmarkFiles(bookmarkId: number, files: File[]): Promise<BookmarkFile[]> {
+  const fd = new FormData()
+  fd.append('kind', 'image')
+  files.forEach((file) => fd.append('files[]', file))
+  const { data } = await api.post(`/bookmarks/${bookmarkId}/files`, fd)
+  return data.data
+}
+
+export async function deleteBookmarkFile(id: number): Promise<void> {
+  await api.delete(`/bookmark-files/${id}`)
 }
 
 /* ---------- კატეგორიები — per-user ლექსიკონი ---------- */

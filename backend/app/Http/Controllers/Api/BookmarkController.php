@@ -32,7 +32,8 @@ class BookmarkController extends Controller
 
     public function index(Request $request)
     {
-        $query = Bookmark::query()->with('category')->withCount('visits');
+        // Tasks §36 — ფაილებისა და გალერეის ფოტოების რიცხვი რიგის „ფაილები"-სთვის
+        $query = Bookmark::query()->with('category')->withCount(['visits', 'files', 'galleryImages']);
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
@@ -77,9 +78,12 @@ class BookmarkController extends Controller
         return BookmarkResource::collection($this->paginated($request, $query));
     }
 
+    /** Tasks §36.1 — დეტალის ფანჯარა `?open=<id>`-ით ჩანაწერს id-ით კითხულობს */
     public function show(Bookmark $bookmark)
     {
-        return new BookmarkResource($bookmark->load('category'));
+        return new BookmarkResource(
+            $bookmark->load('category')->loadCount(['visits', 'files', 'galleryImages']),
+        );
     }
 
     /**
@@ -186,6 +190,20 @@ class BookmarkController extends Controller
             'favicon_url' => ['nullable', 'string', 'max:500', 'url'],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
+            /* Tasks §36.3 — დამატებითი ბმულები (წიგნის წესი: `url`, `max:1000`).
+               ⚠️ `SafeHttp` არ სჭირდება — ბმული მხოლოდ ინახება და სერვერი მას არ
+               ხსნის; მეტა-მონაცემი ფორმაში `/links/metadata`-ით მოდის (§15).
+               ⚠️ მხოლოდ `http(s)` — ბმული `<a href>`-ად იხატება, ე.ი. სხვა სქემა აქ არ შედის.
+               ⚠️ წარწერა 255-მდეა და არა 60-მდე: ის ხშირად გვერდის სათაურიდან ივსება.
+               ⚠️ ხატულა **არ** მოწმდება `url`-ით: ის კოსმეტიკაა და გვერდიდან მოდის
+               (`data:`-ზე აგებული გრძელი ხატულაც გვხვდება) — უვარგისს `normalizeLinks()`
+               ჩუმად ჭრის, ბუკმარკის შენახვას კი 422-ით არ აჩერებს. */
+            'links' => ['nullable', 'array', 'max:'.Bookmark::MAX_LINKS],
+            'links.*.label' => ['nullable', 'string', 'max:255'],
+            'links.*.url' => ['required_with:links', 'string', 'max:1000', 'url:http,https'],
+            'links.*.kind' => ['nullable', Rule::in(Bookmark::LINK_KINDS)],
+            'links.*.price' => ['nullable', 'string', 'max:40'],
+            'links.*.favicon_url' => ['nullable', 'string', 'max:4000'],
         ]);
     }
 
@@ -207,6 +225,14 @@ class BookmarkController extends Controller
         }
         if (array_key_exists('tags', $data)) {
             $bookmark->tags = Bookmark::normalizeTags($data['tags'] ?? []);
+        }
+        if (array_key_exists('links', $data)) {
+            /* ⚠️ **`ksort` აუცილებელია** (თამაშის §22.3-ის გაკვეთილი): `validate()`
+               wildcard-ის მასივს **წესების** რიგით აგებს, ე.ი. სხვადასხვა ველიანი
+               რიგების გასაღებები 1, 3, 0, 2-ად მოდის და `array_values` ბმულებს აურევდა. */
+            $raw = $data['links'] ?? [];
+            ksort($raw);
+            $bookmark->links = Bookmark::normalizeLinks(array_values($raw));
         }
         if ($request->has('is_favorite')) {
             $bookmark->is_favorite = $request->boolean('is_favorite');

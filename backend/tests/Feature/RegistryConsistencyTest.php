@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Api\DashboardController;
+use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
@@ -520,6 +521,19 @@ class RegistryConsistencyTest extends TestCase
     {
         $this->assertSame(GalleryParent::recordKeys(), $this->tsConstList('api/gallery.ts', 'GALLERY_PARENTS'));
         $this->assertSame(GalleryParent::keys(), $this->tsConstList('api/web.ts', 'SERP_IMPORT_TARGETS'));
+    }
+
+    /**
+     * **ბუკმარკის დამატებითი ბმულის ტიპები SPA-შიც წერია** (Tasks §36.3).
+     *
+     * ⚠️ ახალი ტიპი, რომელიც მხოლოდ backend-შია, ფორმაში არ გამოჩნდებოდა, ხოლო
+     * ფასიანი ტიპების სხვაობა ფორმას ფასის ველს დაახატინებდა, რომელსაც სერვერი
+     * ჩუმად ჭრის (`Bookmark::normalizeLinks()`).
+     */
+    public function test_the_spa_bookmark_link_kinds_mirror_the_backend(): void
+    {
+        $this->assertSame(Bookmark::LINK_KINDS, $this->tsConstList('api/bookmarks.ts', 'BOOKMARK_LINK_KINDS'));
+        $this->assertSame(Bookmark::PRICED_LINK_KINDS, $this->tsConstList('api/bookmarks.ts', 'BOOKMARK_PRICED_LINK_KINDS'));
     }
 
     /**

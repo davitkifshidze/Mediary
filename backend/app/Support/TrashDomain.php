@@ -12,6 +12,7 @@ use App\Models\BookFile;
 use App\Models\BookGenre;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
+use App\Models\BookmarkFile;
 use App\Models\BookNote;
 use App\Models\Course;
 use App\Models\CourseCategory;
@@ -124,6 +125,8 @@ final class TrashDomain
         'note_entry_file' => ['model' => NoteEntryFile::class, 'module' => 'note', 'parent' => 'noteEntry', 'size' => true],
         'course_file' => ['model' => CourseFile::class, 'module' => 'course', 'parent' => 'course', 'size' => true],
         'place_file' => ['model' => PlaceFile::class, 'module' => 'place', 'parent' => 'place', 'size' => true],
+        // Tasks §36.4 — ბუკმარკის ჩემი ფოტოები
+        'bookmark_file' => ['model' => BookmarkFile::class, 'module' => 'bookmark', 'parent' => 'bookmark', 'size' => true],
         // Tasks §30.4 — შენახული მარშრუტი: ფაილი არ აქვს, ზომა არ ითვლება
         'place_route' => ['model' => PlaceRoute::class, 'module' => 'place', 'parent' => 'place', 'size' => false],
         'database_backup' => ['model' => DatabaseBackup::class, 'module' => null, 'parent' => null, 'size' => true],

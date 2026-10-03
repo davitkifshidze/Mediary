@@ -248,11 +248,14 @@ class WebImportTest extends TestCase
         ])->assertStatus(403);
     }
 
-    /** უცნობი დომენი 422-ია და არა ჩუმად გამოტოვებული */
+    /**
+     * უცნობი დომენი 422-ია და არა ჩუმად გამოტოვებული.
+     * ⚠️ Tasks §36.4 — ბუკმარკი ახლა გალერეის მშობელია, ე.ი. „უცნობს" კურსი ასახიერებს.
+     */
     public function test_an_unknown_target_is_rejected(): void
     {
         $this->actingAs($this->user)->postJson('/api/web/import', [
-            'target' => 'bookmark',
+            'target' => 'course',
             'id' => 1,
             'images' => [['original' => 'https://203.0.113.10/a.jpg']],
         ])->assertStatus(422);

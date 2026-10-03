@@ -166,6 +166,8 @@ final class ExportDomain
             'with' => ['status', 'category'],
             'fields' => [
                 'id', 'title', 'url', 'domain', 'category', 'status', 'status_name', 'tags',
+                // Tasks §36.3 — დამატებითი ბმულები (CSV-ში JSON-ად, `RecordExporter::flat()`)
+                'links',
                 'description', 'is_favorite', 'visit_count', 'visited_at',
                 'thumbnail_path', 'image_url', 'visibility', 'created_at',
             ],

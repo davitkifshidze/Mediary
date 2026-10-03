@@ -740,9 +740,14 @@ class StorageManagementTest extends TestCase
         // Tasks §11 — სიმღერას „მასალა“ აღარ აქვს; მხოლოდ მთავარი ფოტო
         Song::create(['user_id' => $u->id, 'title' => 's', 'url' => 'https://youtu.be/dQw4w9WgXcQ', 'thumbnail_path' => 'songs/thumbnails/s.jpg']);
 
-        Bookmark::create([
+        $bookmark = Bookmark::create([
             'user_id' => $u->id, 'title' => 'b', 'url' => 'https://example.com',
             'thumbnail_path' => 'bookmarks/thumbnails/b.jpg',
+        ]);
+        // Tasks §36.4 — ბუკმარკის ჩემი ფოტო („შოპინგის" სკრინშოტი)
+        $bookmark->files()->create([
+            'user_id' => $u->id, 'kind' => 'image',
+            'path' => 'bookmarks/files/images/b.png', 'original_name' => 'b.png', 'size' => 24,
         ]);
 
         $book = Book::create(['user_id' => $u->id, 'title_en' => 'b', 'cover_path' => 'books/covers/b.jpg', 'cover_source' => 'upload']);

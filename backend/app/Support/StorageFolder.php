@@ -27,6 +27,7 @@ namespace App\Support;
  *   games/files/{images,docs} — `game_files` (ატვირთული სქრინშოტი/დოკუმენტი)
  *   notes/files/{images,videos,docs} — `note_entry_files` (Tasks §13)
  *   bookmarks/thumbnails   — `bookmarks.thumbnail_path` (Tasks §18)
+ *   bookmarks/files/images — `bookmark_files.path` (Tasks §36.4 — ჩემი ფოტოები)
  *   courses/thumbnails     — `courses.thumbnail_path` (FEAT-25)
  *   courses/files/*        — `course_files.path` (`certificate`/`image`/`doc`)
  *   {მოდულის ფესვი}/fields — `<module>_field_values.value_path` (§6 ფაზა 4b)
@@ -90,6 +91,9 @@ final class StorageFolder
 
     /** ბუკმარკის ატვირთული ფოტო (og:image **არ** ჩამოგვაქვს — ის დაშორებული URL-ია) */
     public const BOOKMARK_THUMBNAILS = 'bookmarks/thumbnails';
+
+    /** Tasks §36.4 — ბუკმარკზე მიმაგრებული ჩემი ფოტოები („შოპინგის" სკრინშოტი) */
+    public const BOOKMARK_IMAGES = 'bookmarks/files/images';
 
     /** FEAT-25 — კურსის ესკიზი (og:image დაშორებული რჩება, ბუკმარკის წესი) */
     public const COURSE_THUMBNAILS = 'courses/thumbnails';

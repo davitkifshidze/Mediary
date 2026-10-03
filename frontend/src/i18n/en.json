@@ -1371,7 +1371,8 @@
         "title": "Title",
         "status": "Status",
         "category": "Category",
-        "thumbnail": "Main photo"
+        "thumbnail": "Main photo",
+        "links": "Links"
       },
       "course": {
         "title": "Name",
@@ -1465,7 +1466,8 @@
       "bookmark": {
         "description": "A short summary — filled in from the page automatically.",
         "tags": "Free-form tags used by the filter.",
-        "url": "The link is the bookmark's identity — that is what a match compares."
+        "url": "The link is the bookmark's identity — that is what a match compares.",
+        "links": "Extra links — shop, price, review; shown as cards in the detail window."
       },
       "course": {
         "url": "The link is optional — an offline course has none."
@@ -1564,7 +1566,7 @@
       "game": "The game along with its videos, screenshots and notes.",
       "note": "The note along with its files and reminders.",
       "gallery": "Photos only — the records themselves stay.",
-      "bookmark": "The bookmark together with its uploaded image.",
+      "bookmark": "The bookmark together with its main photo, photos and gallery.",
       "anime": "Anime records — poster, genres, cast and gallery.",
       "course": "The course together with its certificate and attached files.",
       "place": "The place together with its photos and files.",
@@ -2647,7 +2649,6 @@
     "searchPlaceholder": "Search by title, domain…",
     "searchHint": "Searches the title, description, URL, domain and tags.",
     "thumbnailHint": "Upload an image or keep the page's own picture.",
-    "open": "Open",
     "visits": "{{count}} visit(s)",
     "saved": "Saved",
     "deleted": "Bookmark deleted",
@@ -2663,7 +2664,44 @@
     },
     "status": "Status",
     "statusChange": "Change status",
-    "noStatus": "No status"
+    "noStatus": "No status",
+    "addedOn": "Added {{date}}",
+    "lastOpened": "Last opened {{date}}",
+    "linkCopied": "Link copied",
+    "copyFailed": "Could not copy — select it and copy by hand",
+    "linksTitle": "Links",
+    "linksHint": "Extra links — shop, price, review, video, docs. The bookmark's own link is above; a price is written on shop and price links.",
+    "linksEmpty": "No extra links yet.",
+    "linksCount": "{{count}} link(s)",
+    "addLink": "Add link",
+    "linkKind": "Link type",
+    "linkKinds": {
+      "shop": "Shop",
+      "price": "Price",
+      "review": "Review",
+      "video": "Video",
+      "docs": "Docs",
+      "other": "Other"
+    },
+    "linkLabel": "Label",
+    "linkLabelPlaceholder": "Label (optional)",
+    "linkPrice": "Price",
+    "linkPricePlaceholder": "e.g. $49",
+    "linkUrlRequired": "Paste a link",
+    "linkSaved": "Link added",
+    "galleryTitle": "Gallery",
+    "galleryHint": "Above are your uploaded photos (a shop screenshot, for example); below, photos downloaded from the web and video links kept in the gallery module. The web search starts with the title and domain; the chips add product, photos, logo and review.",
+    "photosTitle": "Photos",
+    "photosHint": "Photos you uploaded — a shop or product screenshot, for example.",
+    "addPhotos": "Upload photos",
+    "photosEmpty": "No photos yet.",
+    "photoDeleteTitle": "Delete the photo?",
+    "webChips": {
+      "product": "product",
+      "photos": "photos",
+      "logo": "logo",
+      "review": "review"
+    }
   },
   "bookmarkCategories": {
     "title": "Bookmark categories",
@@ -2857,6 +2895,7 @@
       "place": "Place",
       "place_category": "Place category",
       "place_file": "Place file",
+      "bookmark_file": "Bookmark photo",
       "place_route": "Place route",
       "app_setting": "Installation setting",
       "custom_record": "Custom module record",
@@ -3633,6 +3672,7 @@
       "note_entry_file": "Note files",
       "course_file": "Course files",
       "place_file": "Place files",
+      "bookmark_file": "Bookmark photos",
       "place_route": "Place routes",
       "database_backup": "Database backups",
       "chat_file": "Chat files",

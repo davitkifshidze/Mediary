@@ -36,6 +36,8 @@ export interface ActionBarLink {
   label: string
   icon: LucideIcon
   title?: string
+  /** Tasks §36.2 — დაჭერისას (ბუკმარკის „გახსნის" მთვლელი); ბმული მაინც ახალ ჩანართში იხსნება */
+  onOpen?: () => void
 }
 
 export function RecordActionBar({
@@ -94,6 +96,7 @@ export function RecordActionBar({
           title={link.title}
           aria-hidden={link.href ? undefined : true}
           tabIndex={link.href ? undefined : -1}
+          onClick={link.href ? link.onOpen : undefined}
           data-testid="link-slot"
           className={cn(
             buttonVariants({ variant: 'outline', size: 'sm' }),

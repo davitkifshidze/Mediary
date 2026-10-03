@@ -210,8 +210,8 @@ export function readGalleryDefaults(raw?: Record<string, unknown> | null): Galle
 /* Tasks §4.10 — `place` აკლდა (FEAT-26-იდან backend-ში დგას), ამიტომ ადგილის
    ჩანართი არ ჩანდა და ფოტოს მასზე ვერ გადაიტანდი. ⚠️ სია
    `RegistryConsistencyTest`-ით `GalleryParent::recordKeys()`-ს ედარება. */
-// Tasks §11 — `song` გავიდა (Q9)
-export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'book', 'game', 'place'] as const
+// Tasks §11 — `song` გავიდა (Q9); Tasks §36.4 — ბუკმარკი დაემატა
+export const GALLERY_PARENTS = ['movie', 'series', 'anime', 'book', 'game', 'place', 'bookmark'] as const
 /**
  * მშობლის სახე — საბაზისოები და (§37.4) **პირადი მოდულები, თავისი გასაღებით**.
  * ⚠️ `GALLERY_PARENTS` მხოლოდ საბაზისოებს ჩამოთვლის (ტესტი მას ადარებს);

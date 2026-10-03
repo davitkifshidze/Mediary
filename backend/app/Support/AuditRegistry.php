@@ -17,6 +17,7 @@ use App\Models\BookFile;
 use App\Models\BookGenre;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
+use App\Models\BookmarkFile;
 use App\Models\BookNote;
 use App\Models\CastMember;
 use App\Models\CastMemberSyncPref;
@@ -171,6 +172,8 @@ class AuditRegistry
         Place::class => 'place',
         PlaceCategory::class => 'place',
         PlaceFile::class => 'place',
+        // Tasks §36.4 — ბუკმარკის ფოტოები
+        BookmarkFile::class => 'bookmark',
         // Tasks §30.4 — შენახული მარშრუტი ადგილის ნაწილია
         PlaceRoute::class => 'place',
 

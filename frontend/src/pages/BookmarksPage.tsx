@@ -9,17 +9,18 @@ import {
   ChevronDown,
   ExternalLink,
   Globe,
+  Image as ImageIcon,
+  Images,
   Link2,
   Loader2,
-  SquarePen,
   Plus,
   Search,
   Tags,
-  Trash2,
 } from 'lucide-react'
 import {
   createBookmark,
   deleteBookmark,
+  fetchBookmark,
   fetchBookmarkCategories,
   fetchBookmarks,
   fetchLinkMetadata,
@@ -27,14 +28,19 @@ import {
   setBookmarkStatus,
   toggleBookmarkFavorite,
   updateBookmark,
+  uploadBookmarkFiles,
   type Bookmark,
   type BookmarkCategory,
   type BookmarkFilters,
   type BookmarkInput,
+  type BookmarkLink,
   type BookmarkStatus,
   type LinkMetadata,
 } from '@/api/bookmarks'
 import { storageUrl } from '@/lib/api'
+import { bookmarkKey, useBookmarkRefresh } from '@/lib/bookmarks'
+import { usePendingUploads } from '@/lib/pendingUploads'
+import { keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { useModuleFields } from '@/lib/fields'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
@@ -43,7 +49,11 @@ import { videoTypeName as dictionaryName } from '@/lib/display'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
+import { BookmarkDetail } from '@/components/BookmarkDetail'
+import { BookmarkLinkDialog, BookmarkLinksEditor } from '@/components/BookmarkLinks'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { PendingFilesSection } from '@/components/PendingFiles'
+import { RecordActionBar } from '@/components/RecordActionBar'
 import { PosterUploader } from '@/components/PosterUploader'
 import { BookmarkCategoryDialog } from '@/components/BookmarkCategoryDialog'
 import { TagSelect } from '@/components/TagSelect'
@@ -59,8 +69,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
-import { contextMenuItems, favoriteAction, MENU_ICONS, statusActions } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormGrid, FormSection } from '@/components/ui/form-layout'
@@ -74,7 +83,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { FavoriteButton } from '@/components/ui/favorite-button'
 import { VisitCount } from '@/components/RecordVisits'
 import { cn } from '@/lib/utils'
 import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
@@ -84,6 +92,10 @@ import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
    ⚠️ სექციები საიდბარშია (`?view=`) და პანელში მხოლოდ კატეგორია/ტეგია —
    Tasks 3-ის წესი, იგივე რაც ჩანაწერებზე.
+
+   ⚠️ Tasks §36.1 — **სათაურსა და ფოტოზე დაჭერა ფანჯარას ხსნის და არა ბმულს**
+   (`BookmarkDetail`); გარე ბმული რიგის „ბმული" ღილაკით (§29-ის ზოლი) და
+   ფანჯრის შიგნით იხსნება — ორივე იმავე „გახსნის" მთვლელს ზრდის.
    ============================================================ */
 
 const SORTS = ['newest', 'oldest', 'title', 'domain', 'visited', 'visits'] as const
@@ -101,7 +113,7 @@ export function BookmarksPage() {
   const { toast } = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
 
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -121,6 +133,11 @@ export function BookmarksPage() {
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Bookmark | 'new' | null>(null)
+  /* Tasks §36.1 — დეტალის ფანჯარა id-ით: ჩანაწერი სიიდან იკითხება, ფილტრს მიღმა
+     მდგომი კი (`?open=<id>`) — ცალკე (`['bookmark', id]`) */
+  const [detail, setDetail] = useState<{ id: number; focus?: 'gallery'; seed?: Bookmark } | null>(null)
+  // Tasks §36.5 — „ბმულის დამატება" მარჯვენა კლიკიდან, ფორმის გარეშე
+  const [linkFor, setLinkFor] = useState<Bookmark | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -160,7 +177,40 @@ export function BookmarksPage() {
     }
   }, [params, navigate])
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['bookmarks'] })
+  /* Tasks §36.1 — ღრმა ბმული `?open=<id>` (ვიდეოს §19.6-ის პატერნი). ⚠️ პარამეტრი
+     მაშინვე იშლება, თორემ ფანჯრის დახურვა და „უკან" მას ხელახლა გახსნიდა. */
+  useEffect(() => {
+    const open = Number(params.get('open'))
+    if (!open) return
+
+    const next = new URLSearchParams(params)
+    next.delete('open')
+    setParams(next, { replace: true })
+    setDetail({ id: open })
+  }, [params, setParams])
+
+  const listed = detail ? bookmarks.find((b) => b.id === detail.id) : undefined
+  const detailQ = useQuery({
+    queryKey: bookmarkKey(detail?.id ?? 0),
+    queryFn: () => fetchBookmark(detail!.id),
+    // სიაში მყოფს ცალკე მოთხოვნა არ სჭირდება — ფანჯარა სიის ახალ ობიექტს ხედავს
+    enabled: detail != null && !listed,
+  })
+  /* ⚠️ `seed` — გახსნისას ნანახი ობიექტი: სექციიდან გასული ჩანაწერი (მაგ. „რჩეულში"
+     რჩეულის მოხსნა) ფანჯარას ცალკე წაკითხვამდე არ უნდა აქრობდეს და თავიდან ხატავდეს */
+  const shown = detail ? (listed ?? detailQ.data ?? detail.seed ?? null) : null
+
+  // ⚠️ სხვისი ან წაშლილი ბუკმარკი 404-ია — ფანჯარა ცარიელი არ უნდა დარჩეს
+  useEffect(() => {
+    if (!detailQ.error) return
+    toast({ title: errorMessage(detailQ.error), variant: 'error' })
+    setDetail(null)
+  }, [detailQ.error, toast])
+
+  const openDetail = (bookmark: Bookmark, focus?: 'gallery') => setDetail({ id: bookmark.id, focus, seed: bookmark })
+
+  // ⚠️ სიაც და ცალკე წაკითხული ჩანაწერიც (`lib/bookmarks.ts`)
+  const invalidate = useBookmarkRefresh()
 
   const favorite = useMutation({
     mutationFn: toggleBookmarkFavorite,
@@ -181,9 +231,11 @@ export function BookmarksPage() {
   })
   const remove = useMutation({
     mutationFn: deleteBookmark,
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       invalidate()
       qc.invalidateQueries({ queryKey: ['bookmark-categories'] })
+      // წაშლილის ფანჯარა იხურება — ურნაში გადასული ჩანაწერი აღარ ჩანს
+      setDetail((d) => (d?.id === id ? null : d))
       toast({ title: t('bookmarks.deleted'), variant: 'success' })
     },
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
@@ -333,21 +385,40 @@ export function BookmarksPage() {
           <ul className="space-y-2">
             {bookmarks.map((bookmark) => {
               const image = storageUrl(bookmark.image)
+              /* Tasks §7 → §36.5 — ერთი სია (`record-menu`): გახსნა (ფანჯარა) · ბმულის გახსნა ·
+                 სტატუსი ▸ · რჩეული · ბმულის დამატება · გალერეა · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => openDetail(bookmark) },
+                {
+                  key: 'link',
+                  label: t('actions.openLink'),
+                  icon: MENU_ICONS.link,
+                  run: () => {
+                    window.open(bookmark.url, '_blank', 'noopener,noreferrer')
+                    visited.mutate(bookmark.id)
+                  },
+                },
+                statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) =>
+                  status.mutate({ id: bookmark.id, next: key }),
+                ),
+                favoriteAction(bookmark.is_favorite, () => favorite.mutate(bookmark.id), t),
+                { key: 'add-link', label: t('bookmarks.addLink'), icon: Plus, run: () => setLinkFor(bookmark) },
+                { key: 'gallery', label: t('bookmarks.galleryTitle'), icon: Images, run: () => openDetail(bookmark, 'gallery') },
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(bookmark) },
+                { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(bookmark) },
+              ]
               return (
-                /* Tasks §24.1 — მარჯვენა კლიკის მენიუ (`MovieCard`-ის ყალიბით): გახსნა ·
-                   სტატუსი · რჩეული · რედაქტირება · წაშლა */
-                <ContextMenu key={bookmark.id}>
-                <ContextMenuTrigger asChild>
+                <RecordContextMenu key={bookmark.id} actions={actions}>
                 <li
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
                 >
-                  <a
-                    href={bookmark.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => visited.mutate(bookmark.id)}
-                    aria-label={t('bookmarks.open')}
-                    className="group relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted"
+                  {/* Tasks §36.1 — ფოტო და სათაური **ფანჯარას** ხსნის და არა ბმულს */}
+                  <button
+                    type="button"
+                    onClick={() => openDetail(bookmark)}
+                    aria-label={t('actions.open')}
+                    className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted"
+                    data-testid="bookmark-thumb"
                   >
                     {image ? (
                       <img src={image} alt="" className="h-full w-full object-cover" />
@@ -356,22 +427,18 @@ export function BookmarksPage() {
                     ) : (
                       <Globe className="size-5 text-muted-foreground" />
                     )}
-                    <span className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                      <ExternalLink className="size-5 text-white" />
-                    </span>
-                  </a>
+                  </button>
 
                   <div className="min-w-0 flex-1">
-                    <a
-                      href={bookmark.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => visited.mutate(bookmark.id)}
-                      className="block truncate text-sm font-medium hover:text-primary"
+                    <button
+                      type="button"
+                      onClick={() => openDetail(bookmark)}
+                      className="block max-w-full truncate text-left text-sm font-medium hover:text-primary"
                       title={bookmark.title}
+                      data-testid="bookmark-title"
                     >
                       {bookmark.title}
-                    </a>
+                    </button>
                     <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
                       {bookmark.domain && <span className="truncate">{bookmark.domain}</span>}
                       {bookmark.category && (
@@ -382,6 +449,13 @@ export function BookmarksPage() {
                       )}
                       {bookmark.visit_count > 0 && (
                         <span>{t('bookmarks.visits', { count: bookmark.visit_count })}</span>
+                      )}
+                      {/* Tasks §36.3 — დამატებითი ბმულების რიცხვი */}
+                      {(bookmark.links?.length ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <Link2 className="size-3" />
+                          {t('bookmarks.linksCount', { count: bookmark.links.length })}
+                        </span>
                       )}
                     </p>
                     {bookmark.description && (
@@ -403,97 +477,79 @@ export function BookmarksPage() {
                     )}
                   </div>
 
-                  {/* Tasks §24.2 — ⚠️ **ერთი სიმაღლე რიგში**: სტატუსი, „საჯარო" და ღილაკები
-                      `sm`-ის ზომისაა (აქამდე 32px სელექთი, 20px ნიშანი და 40px ღილაკები
-                      ერთმანეთის გვერდით). სტატუსი ახლა **ნიშანია**, რომელიც დაჭერით
-                      სტატუსების მენიუს ხსნის — სელექთი ქრება. */}
-                  <div className="flex shrink-0 items-center gap-1">
-                    <ActionMenu
-                      label={t('bookmarks.statusChange')}
-                      trigger={
-                        <button type="button" className="cursor-pointer rounded-md">
-                          {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
-                          {bookmark.status ? (
-                            <StatusBadge
-                              status={bookmark.status}
-                              size="row"
-                              className="min-w-36 justify-between"
-                              trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
-                            />
-                          ) : (
-                            <Badge size="row" className="min-w-36 justify-between bg-secondary">
-                              {t('bookmarks.noStatus')}
-                              <ChevronDown className="size-3.5 shrink-0 opacity-70" />
-                            </Badge>
-                          )}
-                        </button>
-                      }
-                    >
-                      {/* §6.4 — სია ლექსიკონიდან */}
-                      {statuses.map((s) => (
-                        <ActionMenuClose key={s.id} asChild>
-                          <button
-                            type="button"
-                            className={actionItemClass()}
-                            onClick={() => status.mutate({ id: bookmark.id, next: s.key })}
-                          >
-                            <Check
-                              className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
-                            />
-                            <StatusLabel status={s} />
+                  {/* Tasks §29.1 → §36.2 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული ·
+                      ფაილები (ფოტოები — ფანჯარა გალერეაზე) · ბმული (იგივე „გახსნის" მთვლელით) ·
+                      რედაქტირება · წაშლა. ⚠️ ბმულის პატარა ღილაკი რჩება — ვინც პირდაპირ გახსნას
+                      ეჩვევა, ერთი დაჭერით მიდის. */}
+                  <RecordActionBar
+                    before={
+                      <>
+                        {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
+                        <VisibilityBadge value={bookmark.visibility} size="row" />
+                        <VisitCount value={bookmark.visits_count} />
+                      </>
+                    }
+                    status={
+                      <ActionMenu
+                        label={t('bookmarks.statusChange')}
+                        trigger={
+                          <button type="button" className="cursor-pointer rounded-md">
+                            {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით, ისარი ბოლოში */}
+                            {bookmark.status ? (
+                              <StatusBadge
+                                status={bookmark.status}
+                                size="row"
+                                className="min-w-36 justify-between"
+                                trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
+                              />
+                            ) : (
+                              <Badge size="row" className="min-w-36 justify-between bg-secondary">
+                                {t('bookmarks.noStatus')}
+                                <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+                              </Badge>
+                            )}
                           </button>
-                        </ActionMenuClose>
-                      ))}
-                    </ActionMenu>
-
-                    {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
-                    <VisibilityBadge value={bookmark.visibility} size="row" />
-
-                    {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                    <VisitCount value={bookmark.visits_count} />
-                    <FavoriteButton
-                      active={bookmark.is_favorite}
-                      pending={favorite.isPending && favorite.variables === bookmark.id}
-                      onToggle={() => favorite.mutate(bookmark.id)}
-                    />
-                    <Button variant="edit" size="sm" onClick={() => setEditing(bookmark)}>
-                      <SquarePen className="size-3.5" />
-                      {t('actions.edit')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      aria-label={t('actions.delete')}
-                      onClick={() => askDelete(bookmark)}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
+                        }
+                      >
+                        {/* §6.4 — სია ლექსიკონიდან */}
+                        {statuses.map((s) => (
+                          <ActionMenuClose key={s.id} asChild>
+                            <button
+                              type="button"
+                              className={actionItemClass()}
+                              onClick={() => status.mutate({ id: bookmark.id, next: s.key })}
+                            >
+                              <Check
+                                className={cn('size-3.5', bookmark.status?.id === s.id ? 'opacity-100' : 'opacity-0')}
+                              />
+                              <StatusLabel status={s} />
+                            </button>
+                          </ActionMenuClose>
+                        ))}
+                      </ActionMenu>
+                    }
+                    favorite={{
+                      active: bookmark.is_favorite,
+                      pending: favorite.isPending && favorite.variables === bookmark.id,
+                      onToggle: () => favorite.mutate(bookmark.id),
+                    }}
+                    // §36.4 — ჩემი ფოტოები + ვებიდან მოტანილი: ფანჯარა გალერეის სექციაზე იხსნება
+                    files={{
+                      count: (bookmark.files_count ?? 0) + (bookmark.photos_count ?? 0),
+                      onOpen: () => openDetail(bookmark, 'gallery'),
+                    }}
+                    link={{
+                      href: bookmark.url,
+                      label: t('actions.link'),
+                      icon: ExternalLink,
+                      title: bookmark.url,
+                      onOpen: () => visited.mutate(bookmark.id),
+                    }}
+                    onEdit={() => setEditing(bookmark)}
+                    onDelete={() => void askDelete(bookmark)}
+                  />
                 </li>
-                </ContextMenuTrigger>
-
-                {/* Tasks §7 — ერთი სია (`record-menu`): ბმულის გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */}
-                <ContextMenuContent>
-                  {contextMenuItems([
-                    {
-                      key: 'open',
-                      label: t('bookmarks.open'),
-                      icon: MENU_ICONS.link,
-                      run: () => {
-                        window.open(bookmark.url, '_blank', 'noopener,noreferrer')
-                        visited.mutate(bookmark.id)
-                      },
-                    },
-                    statusActions(t('bookmarks.status'), statuses, bookmark.status, lang, (key) =>
-                      status.mutate({ id: bookmark.id, next: key }),
-                    ),
-                    favoriteAction(bookmark.is_favorite, () => favorite.mutate(bookmark.id), t),
-                    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(bookmark) },
-                    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => askDelete(bookmark) },
-                  ])}
-                </ContextMenuContent>
-                </ContextMenu>
+                </RecordContextMenu>
               )
             })}
           </ul>
@@ -538,6 +594,24 @@ export function BookmarksPage() {
           </FilterGroup>
         </FilterPanel>
       </div>
+
+      {/* Tasks §36.1 — დეტალის ფანჯარა; რედაქტირება მის თავზე იხსნება (მოდალები ეწყობა) */}
+      {detail && shown && (
+        <BookmarkDetail
+          bookmark={shown}
+          focus={detail.focus}
+          onClose={() => setDetail(null)}
+          onEdit={() => setEditing(shown)}
+          onDelete={() => void askDelete(shown)}
+        />
+      )}
+
+      {linkFor && (
+        <BookmarkLinkDialog
+          bookmark={bookmarks.find((b) => b.id === linkFor.id) ?? linkFor}
+          onClose={() => setLinkFor(null)}
+        />
+      )}
 
       {editing && (
         <BookmarkForm
@@ -593,8 +667,12 @@ function BookmarkForm({
     status: bookmark?.status?.key ?? '',
     tags: bookmark?.tags ?? [],
   })
+  /* ⚠️ Tasks §36.4 — `image` სამიდან ერთია: ატვირთული ფოტოს გზა (`bookmarks/…`),
+     გალერეიდან არჩეულის გზა (`gallery/…`) ან გვერდის og:image. დაშორებულად მხოლოდ
+     `http(s)` ითვლება — თორემ გალერეის გზა `image_url`-ად გაიგზავნებოდა და `url`-ის
+     წესი შენახვას 422-ით ჩააგდებდა. */
   const [imageUrl, setImageUrl] = useState<string | null>(
-    bookmark?.image && !bookmark.image.startsWith('bookmarks/') ? bookmark.image : null,
+    bookmark?.image && /^https?:\/\//i.test(bookmark.image) ? bookmark.image : null,
   )
   const [faviconUrl, setFaviconUrl] = useState<string | null>(bookmark?.favicon_url ?? null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
@@ -608,6 +686,14 @@ function BookmarkForm({
   const qc = useQueryClient()
   // §26.5 — დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('bookmark', bookmark)
+  /* Tasks §36.3 — დამატებითი ბმულები; რიგს სტაბილური გასაღები აქვს (`lib/rowKeys.ts`),
+     გაგზავნამდე იჭრება (`unkeyRows`) */
+  const [links, setLinks] = useState<Keyed<BookmarkLink>[]>(() => keyRows(bookmark?.links ?? []))
+  /* Tasks §36.4 — ფოტოები **შექმნისთანავე** (კურსისა და ადგილის §29.3-ის პატერნი): შენახვამდე
+     ბრაუზერშია, შენახვისას ჯერ ბუკმარკი, მერე ფოტოები სათითაოდ. ⚠️ ჩავარდნა ბუკმარკს არ
+     აუქმებს — ფანჯარა ღია რჩება, „შენახვა" ხელახლა ცდის. */
+  const pending = usePendingUploads<'image'>()
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   /**
    * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/აღწერის/ფოტოს წამოღებას.
@@ -645,6 +731,23 @@ function BookmarkForm({
         toast({ title: done.message, variant: 'error' })
 
         return
+      }
+
+      if (pending.items.length) {
+        const failed = await pending.run(
+          (_kind, file) => uploadBookmarkFiles(saved.id, [file]),
+          (done, total) => setProgress({ done, total }),
+        )
+        setProgress(null)
+        qc.invalidateQueries({ queryKey: ['bookmark-files', saved.id] })
+        qc.invalidateQueries({ queryKey: ['bookmarks'] })
+        qc.invalidateQueries({ queryKey: ['storage'] })
+
+        if (failed.length) {
+          toast({ title: t('uploads.failed', { names: failed.map((f) => f.file.name).join(', ') }), variant: 'error' })
+
+          return
+        }
       }
 
       toast({ title: t('bookmarks.saved'), variant: 'success' })
@@ -701,6 +804,8 @@ function BookmarkForm({
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status || undefined,
       tags,
+      // Tasks §36.3 — ცარიელმისამართიანი რიგი არ იგზავნება
+      links: unkeyRows(links.filter((l) => l.url.trim())),
       image_url: imageUrl,
       favicon_url: faviconUrl,
       thumbnail,
@@ -860,6 +965,29 @@ function BookmarkForm({
             </FormField>
           </FormGrid>
         </div>
+
+        {/* Tasks §36.3 — დამატებითი ბმულები სრული სიგანით (მაღაზია, ფასი, მიმოხილვა…);
+            ჩასმისას §15-ის მეტა-მონაცემი წარწერას და favicon-ს ავსებს */}
+        <FormSection
+          title={t('form.sections.details')}
+          className={cn('lg:col-span-12', !fields.shows('links') && 'hidden')}
+        >
+          <FormField {...fields.field('links')}>
+            <BookmarkLinksEditor links={links} onChange={setLinks} errors={errors} />
+          </FormField>
+        </FormSection>
+
+        {/* §36.4 — ფოტოები ახალ ბუკმარკზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {!bookmark && (
+          <div className="lg:col-span-12">
+            <PendingFilesSection
+              pending={pending}
+              title={t('bookmarks.photosTitle')}
+              hint={t('uploads.pendingHint')}
+              kinds={[{ kind: 'image', label: t('bookmarks.photosTitle'), icon: ImageIcon }]}
+            />
+          </div>
+        )}
       </form>
 
       {/* §6 ფაზა 3 → §26.5 — დამატებითი ველები; ახალ ჩანაწერზე მონახაზი */}
@@ -869,6 +997,10 @@ function BookmarkForm({
         draft={extras.draft}
         className="mt-6"
       />
+
+      {progress && (
+        <p className="mt-3 text-xs text-muted-foreground">{t('uploads.progress', { done: progress.done, total: progress.total })}</p>
+      )}
 
       <FormFooter formId={FORM_ID} onCancel={onClose} saving={save.isPending} />
 

@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\BookFileController;
 use App\Http\Controllers\Api\BookGenreController;
 use App\Http\Controllers\Api\BookmarkCategoryController;
 use App\Http\Controllers\Api\BookmarkController;
+use App\Http\Controllers\Api\BookmarkFileController;
 use App\Http\Controllers\Api\BookNoteController;
 use App\Http\Controllers\Api\CastController;
 use App\Http\Controllers\Api\CastSyncController;
@@ -835,6 +836,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ „visited" `EnsureModulePermission::UPDATE_ENDPOINTS`-შიც უნდა იყოს,
         // თორემ POST-იდან `create` გამოვიდოდა და view+update უფლება 403-ს მიიღებდა
         Route::post('/bookmarks/{bookmark}/visited', [BookmarkController::class, 'markVisited']);
+
+        /* Tasks §36.4 — ჩემი ფოტოები („შოპინგის" სკრინშოტი); ვებიდან მოტანილი გალერეაშია */
+        Route::get('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'index']);
+        Route::post('/bookmarks/{bookmark}/files', [BookmarkFileController::class, 'store']);
+        Route::delete('/bookmark-files/{bookmarkFile}', [BookmarkFileController::class, 'destroy']);
     });
 
     /* ---------- კურსები (module: course, FEAT-25) ----------

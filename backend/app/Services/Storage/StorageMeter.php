@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use App\Models\BoardGameFile;
 use App\Models\BookFile;
+use App\Models\BookmarkFile;
 use App\Models\Course;
 use App\Models\CourseFile;
 use App\Models\CustomRecord;
@@ -297,9 +298,13 @@ class StorageMeter
 
         // ბუკმარკის ატვირთული ფოტო — იმავე წესით, რაც სიმღერის თამბნეილი.
         // ⚠️ og:image აქ **არ ხვდება**: ის დაშორებული URL-ია და დისკს არ იკავებს.
+        /* ⚠️ Tasks §36.4 — გალერეიდან „მთავარად დაყენებული" ფოტო აქ **არ** ითვლება
+           (ადგილის წესი): ბუკმარკს `thumbnail_source` არ აქვს, ე.ი. სვეტი გალერეის
+           ფაილზეც მიუთითებს — მას გალერეის რიგი უკვე ითვლის და ჯამში ორჯერ ჩაჯდებოდა. */
         $bookmarks = $skip('bookmark') ? collect() : $user->bookmarks()
             ->withoutGlobalScopes(['owner', 'trash'])
             ->whereNotNull('thumbnail_path')
+            ->where('thumbnail_path', 'not like', 'gallery/%')
             ->get(['id', 'title', 'thumbnail_path', 'created_at']);
 
         foreach ($bookmarks as $bookmark) {
@@ -311,6 +316,27 @@ class StorageMeter
                 'path' => $bookmark->thumbnail_path,
                 'name' => $bookmark->title,
                 'created_at' => $bookmark->created_at,
+            ]);
+        }
+
+        // Tasks §36.4 — ბუკმარკზე მიმაგრებული ჩემი ფოტოები („შოპინგის" სკრინშოტი)
+        $bookmarkFiles = $skip('bookmark') ? collect() : BookmarkFile::withoutGlobalScopes(['owner', 'trash'])
+            ->where('user_id', $user->id)
+            ->get(['id', 'kind', 'path', 'original_name', 'mime', 'size', 'created_at', 'trashed_at', 'bookmark_id']);
+
+        foreach ($bookmarkFiles as $f) {
+            $add([
+                'kind' => 'image',
+                'module' => 'bookmark',
+                'owner_type' => 'bookmark_file',
+                'owner_id' => (int) $f->id,
+                'path' => $f->path,
+                'name' => $f->original_name,
+                'size' => $f->size,
+                'mime' => $f->mime,
+                'created_at' => $f->created_at,
+                'trashed' => $f->trashed_at !== null,
+                'parent' => ['bookmark', (int) $f->bookmark_id],
             ]);
         }
 
@@ -849,7 +875,7 @@ class StorageMeter
      */
     private const TRASHED_ON_DELETE = [
         'video_file', 'book_file', 'board_game_file', 'game_file', 'note_entry_file',
-        'course_file', 'place_file', 'gallery_image', 'database_backup', 'field_value', 'message',
+        'course_file', 'place_file', 'bookmark_file', 'gallery_image', 'database_backup', 'field_value', 'message',
         // ეტაპი 4 — სვეტის ფაილი: მთავარი ფოტო და ავატარი
         'user', 'movie', 'series', 'anime', 'video', 'song', 'bookmark', 'course', 'place', 'book', 'board_game', 'game',
         // Tasks §37 — პირადი მოდულის ჩანაწერის მთავარი ფოტო და (§37.5) მიმაგრებული ფაილი
@@ -980,6 +1006,7 @@ class StorageMeter
             'note_entry_file' => NoteEntryFile::class,
             'course_file' => CourseFile::class,
             'place_file' => PlaceFile::class,
+            'bookmark_file' => BookmarkFile::class,
             'custom_record_file' => CustomRecordFile::class,
             'gallery_image' => GalleryImage::class,
             /* §22 — ბაზის დამპი. ⚠️ აქ არყოფნა ნიშნავდა, რომ საცავის
@@ -1423,6 +1450,8 @@ class StorageMeter
             'note_entry_files.path',
             'course_files.path',
             'place_files.path',
+            // Tasks §36.4 — ბუკმარკის ჩემი ფოტოები
+            'bookmark_files.path',
             'gallery_images.path',
             'messages.attachment_path',
             'cast_members.photo_path',

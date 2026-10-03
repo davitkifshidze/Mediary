@@ -27,9 +27,15 @@ class BookmarkResource extends JsonResource
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => new BookmarkCategoryResource($this->category)),
             'tags' => $this->tags ?? [],
+            // Tasks §36.3 — დამატებითი ბმულები (`Bookmark::normalizeLinks()`-ის ფორმა)
+            'links' => $this->links ?? [],
             // ატვირთული ფოტო → /storage/…; თუ არაა — გვერდის og:image
             'image' => $this->thumbnail_path ?: $this->image_url,
             'favicon_url' => $this->favicon_url,
+            /* Tasks §36.4 — ჩემი ფოტოები (`bookmark_files`) და ვებიდან მოტანილი
+               (`gallery_images`) — ორი ცალკე ფაქტი, მხოლოდ `withCount`-იან კითხვაზე */
+            'files_count' => $this->whenCounted('files'),
+            'photos_count' => $this->whenCounted('galleryImages'),
             /* §6.4 — სტატუსი per-user ლექსიკონის რიგია, ე.ი. **ობიექტი** და არა
                სტრიქონი: მხოლოდ გასაღები უცხო პროფილზე წასაკითხი არ იქნებოდა
                (სახელი მფლობელის ლექსიკონშია), ორივეს ცალკე ველად დაბრუნება კი

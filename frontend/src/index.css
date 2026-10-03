@@ -79,6 +79,13 @@
   --game-coop-local: #b4791f;
   --game-coop-online: #0e7490;
   --game-pvp: #b3261e;
+  /* Tasks §36.3 — ბუკმარკის დამატებითი ბმულის ტიპები (`lib/bookmarkLinks.ts`) */
+  --link-shop: #0f766e;
+  --link-price: #b4791f;
+  --link-review: #7c4dbd;
+  --link-video: #d00000;
+  --link-docs: #1f5fbf;
+  --link-other: #7a6a5a;
 
   /* **რედაქტირების ფერი** (2026-09-28, შენი არჩევანი): სტაფილოსფერი ჩარჩო
      და ტექსტი, ჰოვერზე — სავსე ღილაკი (`Button variant="edit"`).
@@ -222,6 +229,13 @@
   --game-coop-local: #d0a24e;
   --game-coop-online: #67e8f9;
   --game-pvp: #f08a80;
+  /* §36.3 — იგივე მუქ ფონზე ოდნავ ღია */
+  --link-shop: #5eead4;
+  --link-price: #d0a24e;
+  --link-review: #b48ae6;
+  --link-video: #ff5a5a;
+  --link-docs: #6a9ff0;
+  --link-other: #bfae9a;
   /* ⚠️ მუქ თემაზე ღია სტაფილოსფერია (8.2:1 ფონზე), სავსე ფონზე კი ტექსტი
      მუქია — თეთრი იქ 2.3:1 იქნებოდა */
   --edit: #fb923c;

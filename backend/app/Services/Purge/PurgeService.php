@@ -9,6 +9,7 @@ use App\Models\BoardGameNote;
 use App\Models\Book;
 use App\Models\BookFile;
 use App\Models\Bookmark;
+use App\Models\BookmarkFile;
 use App\Models\BookNote;
 use App\Models\Course;
 use App\Models\CourseFile;
@@ -274,6 +275,8 @@ class PurgeService
         // FEAT-25 — კურსს ფაილები აქვს, ჩანიშვნები კი არა
         'course' => [CourseFile::class, null, 'course_id'],
         'place' => [PlaceFile::class, null, 'place_id'],
+        // Tasks §36.4 — ბუკმარკს ფოტოები აქვს, ჩანიშვნები კი არა
+        'bookmark' => [BookmarkFile::class, null, 'bookmark_id'],
     ];
 
     /**

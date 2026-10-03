@@ -203,6 +203,8 @@ final class FieldCatalog
             ['key' => 'thumbnail', 'type' => 'file', 'sort_order' => 50],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 60],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 70],
+            // Tasks §36.3 — დამატებითი ბმულები (მაღაზია, ფასი, მიმოხილვა…)
+            ['key' => 'links', 'type' => 'list', 'sort_order' => 80],
         ],
         /* FEAT-25 — კურსები. ⚠️ `url` **`locked` არ არის** (ბუკმარკისგან
            განსხვავებით): ოფლაინ კურსსაც მისამართი არ აქვს და ჩანაწერი მის

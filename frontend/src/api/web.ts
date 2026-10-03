@@ -237,6 +237,8 @@ export const SERP_IMPORT_TARGETS = [
   'game',
   // Tasks §4.10 — ადგილი `GalleryParent`-ში FEAT-26-იდან დგას
   'place',
+  // Tasks §36.4 — ბუკმარკი („შოპინგის" ფოტოები, პროდუქტი, სკრინშოტები)
+  'bookmark',
 ] as const
 /** §37.4 — პირადი მოდულის ჩანაწერიც სამიზნეა, მოდულის გასაღებით */
 export type SerpImportTarget = (typeof SERP_IMPORT_TARGETS)[number] | CustomModuleKey

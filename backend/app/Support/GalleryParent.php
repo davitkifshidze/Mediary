@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Anime;
 use App\Models\Book;
+use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\CustomRecord;
 use App\Models\Game;
@@ -97,6 +98,14 @@ final class GalleryParent
         'place' => [
             'model' => Place::class, 'module' => 'place', 'category' => 'backdrop',
             'primary' => ['path' => 'photo_path', 'source' => null, 'value' => null],
+        ],
+        /* Tasks §36.4 — ბუკმარკი: „შოპინგის" ფოტოები, პროდუქტი, სკრინშოტები ვებიდან.
+           ⚠️ ადგილის წესი — `thumbnail_source` სვეტი არ არსებობს, ე.ი. გალერეიდან
+           არჩეული მთავარი ფოტო კვოტაში მეორედ არ ითვლება (`StorageMeter::files()`
+           გალერეის ფესვს გამოტოვებს), `Bookmark::deleteThumbnail()` კი მას არ შლის. */
+        'bookmark' => [
+            'model' => Bookmark::class, 'module' => 'bookmark', 'category' => 'backdrop',
+            'primary' => ['path' => 'thumbnail_path', 'source' => null, 'value' => null],
         ],
     ];
 

@@ -65,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
             'game' => Game::class,
             // §13 — ჩანაწერები; ცხრილი `note_entries`-ია, alias კი მოდულის key
             'note' => NoteEntry::class,
-            // §18 — ბუკმარკები (გალერეა არ ეკიდება, მაგრამ alias `modules`-შია)
+            // §18 — ბუკმარკები; Tasks §36.4-იდან გალერეის მშობელიცაა (`GalleryParent`)
             'bookmark' => Bookmark::class,
             // FEAT-26 — ადგილი გალერეის მშობელია (`GalleryParent`)
             'place' => Place::class,

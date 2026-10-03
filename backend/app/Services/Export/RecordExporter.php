@@ -221,6 +221,14 @@ class RecordExporter
         }
 
         if (is_array($value)) {
+            /* ⚠️ Tasks §36.3 — **ობიექტების სია (ბუკმარკის `links`) JSON-ად იწერება**:
+               `strval()` მასივზე „Array to string conversion"-ით ვარდებოდა, ხოლო
+               ბრტყელი წებო ლეიბლს, ბმულსა და ფასს ერთმანეთში აურევდა. `[`-ით
+               დაწყებული უჯრა ფორმულად არ იკითხება, ე.ი. `deFormula()` არ სჭირდება. */
+            if (array_filter($value, 'is_array') !== []) {
+                return (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
             return implode(self::LIST_GLUE, array_map('strval', $value));
         }
 
