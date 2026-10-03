@@ -14,6 +14,9 @@ import i18n from '@/i18n'
    ⚠️ სელექთი ქრება და სტატუსი ნიშნით იცვლება; იგივე ცვლილება კონტექსტური
    მენიუდანაც. ორივე გზამ **ერთი და იგივე** `setBookmarkStatus(id, key)`
    უნდა დაუძახოს — ეს მხოლოდ მონტირებით ჩანს.
+
+   Tasks §28 — რიგზე ერთი სიგანის სტატუს-ჩამოსაშლელი (§16.4) და ტექსტიანი
+   რჩეული (§8); ფორმა ორ სვეტად — სქროლის გარეშე.
    ============================================================ */
 
 const statuses: Status[] = [
@@ -52,6 +55,14 @@ vi.mock('@/api/bookmarks', async (original) => ({
   setBookmarkStatus: mocks.setBookmarkStatus,
   fetchBookmarks: mocks.fetchBookmarks,
   fetchBookmarkCategories: mocks.fetchBookmarkCategories,
+}))
+
+/* §28.1 — ფორმა იხსნება: ველების კატალოგი და დამატებითი ველები ცარიელი მოდის */
+vi.mock('@/api/account', async (original) => ({
+  ...(await original<typeof import('@/api/account')>()),
+  fetchModuleFields: vi.fn().mockResolvedValue([]),
+  fetchCustomFields: vi.fn().mockResolvedValue([]),
+  fetchCustomFieldValues: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/lib/statuses', async (original) => ({
@@ -156,5 +167,52 @@ describe('BookmarksPage row', () => {
         label,
       ).toBe(true)
     }
+  })
+})
+
+/* Tasks §28.2/§28.3 — რიგზე სტატუსი ერთი სიგანის ჩამოსაშლელია, რჩეული ტექსტით და ერთი სიმაღლით;
+   შიშველი აიქონ-ვარსკვლავი აღარ არის */
+describe('BookmarksPage row — status width and favourite (§28)', () => {
+  it('draws the wide status dropdown and the labelled favourite button', async () => {
+    const el = await mount()
+
+    const mark = el.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('bookmarks.statusChange')}"]`)!
+    expect(mark.querySelector('.min-w-36')).not.toBeNull()
+
+    const favorite = el.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('actions.favorite')}"]`)!
+    expect(favorite.textContent).toContain(i18n.t('filter.favorite'))
+    expect(favorite.className).toContain('h-9')
+    expect(el.querySelector('button.size-9')).toBeNull()
+  })
+})
+
+/* Tasks §28.1 — ფორმა ორ სვეტად: მარცხნივ ბმული/სათაური/აღწერა, მარჯვნივ ფოტო (`fill`, ველების
+   სიმაღლე) კატეგორიისა და სტატუსის გვერდით, ტეგები ქვემოთ */
+describe('BookmarksPage form (§28.1)', () => {
+  it('opens as two columns with the link on the left and the photo beside category and status on the right', async () => {
+    const el = await mount()
+
+    const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === i18n.t('bookmarks.add'))!
+    await act(async () => add.click())
+    await flush()
+
+    const grid = document.querySelector<HTMLElement>('[data-testid="bookmark-form-grid"]')!
+    expect(grid).not.toBeNull()
+    expect(grid.className).toContain('lg:grid-cols-12')
+
+    const left = grid.querySelector<HTMLElement>('[data-testid="bookmark-form-left"]')!
+    const right = grid.querySelector<HTMLElement>('[data-testid="bookmark-form-right"]')!
+    expect(left.querySelector('#b-url')).not.toBeNull()
+    expect(left.querySelector('#b-title')).not.toBeNull()
+    expect(left.querySelector('#b-desc')).not.toBeNull()
+
+    const media = right.querySelector<HTMLElement>('[data-testid="form-media-row"]')!
+    expect(media).not.toBeNull()
+    expect(media.querySelector('input[type="file"]')).not.toBeNull()
+    expect(media.querySelector('#b-category')).not.toBeNull()
+    expect(media.querySelector('#b-status')).not.toBeNull()
+    // ტეგები მედია-რიგის **ქვემოთაა**, სრული სიგანით
+    expect(right.querySelector('#b-tags')).not.toBeNull()
+    expect(media.querySelector('#b-tags')).toBeNull()
   })
 })
