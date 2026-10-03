@@ -137,7 +137,7 @@ describe('ModulePage — deleting a private module', () => {
     await i18n.changeLanguage('en')
     await mount()
 
-    const del = button(i18n.t('customModules.delete'))
+    const del = button(i18n.t('customModules.deleteToTrash'))
     expect(del).toBeDefined()
 
     await act(async () => del!.click())
@@ -164,7 +164,7 @@ describe('ModulePage — deleting a private module', () => {
     await i18n.changeLanguage('en')
     await mount()
 
-    await act(async () => button(i18n.t('customModules.delete'))!.click())
+    await act(async () => button(i18n.t('customModules.deleteToTrash'))!.click())
     await flush()
     await act(async () => button(i18n.t('actions.cancel'))!.click())
     await flush()

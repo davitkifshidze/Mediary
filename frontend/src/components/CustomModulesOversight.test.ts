@@ -113,7 +113,7 @@ describe('CustomModulesOversight', () => {
 
     // ⚠️ წაშლა მხოლოდ მფლობელისაა
     expect(button(i18n.t('actions.delete'))).toBeUndefined()
-    expect(button(i18n.t('customModules.delete'))).toBeUndefined()
+    expect(button(i18n.t('customModules.deleteToTrash'))).toBeUndefined()
   })
 
   it('asks before disabling someone else’s module and names its owner', async () => {

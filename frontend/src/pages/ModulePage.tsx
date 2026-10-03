@@ -141,6 +141,13 @@ export function ModulePage() {
     onError: fail,
   })
 
+  /* §32.2 — ურნის ვადა `i`-სთვის; წაშლისას რიცხვები მაინც ახლად იკითხება */
+  const countsQ = useQuery({
+    queryKey: ['custom-module-counts', key],
+    queryFn: () => fetchCustomModuleCounts(key),
+    enabled: isCustomModule(module),
+  })
+
   const askDelete = async () => {
     let counts
     try {
@@ -236,10 +243,12 @@ export function ModulePage() {
               <SquarePen className="size-4" />
               {t('customModules.editTitle')}
             </Button>
+            {/* Tasks §32.2 — ტექსტი ამბობს, რომ ურნაში მიდის; `i` — რამდენ დღეში აღდგება */}
             <Button variant="destructive" disabled={remove.isPending} onClick={askDelete}>
               <Trash2 className="size-4" />
-              {t('customModules.delete')}
+              {t('customModules.deleteToTrash')}
             </Button>
+            <InfoHint info={t('customModules.deleteInfo', { days: countsQ.data?.keep_days ?? 30 })} />
           </div>
         )}
       </div>

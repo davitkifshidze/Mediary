@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Ban, Check, Clock, Lock, Plus, RotateCcw, UserRound, UsersRound } from 'lucide-react'
 import {
+  deleteCustomModule,
+  fetchCustomModuleCounts,
   fetchAdminModules,
   fetchMyRequests,
   resetModuleOrder,
@@ -32,7 +34,7 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { InfoHint } from '@/components/ui/info-hint'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 
 /* ============================================================
    მოდულების სექცია (Tasks 1.4) — **ერთი** გვერდი ორის ნაცვლად.
@@ -162,6 +164,43 @@ export function ModulesPage() {
 
   const navigate = useNavigate()
 
+  /* Tasks §32.1 — **წაშლა იქ, სადაც მოდულს ხედავ**: ბარათის მენიუში, იმავე დადასტურებით,
+     რაც მოდულის გვერდზე (`ModulePage::askDelete`) — ჩანაწერების რიცხვი, ზომა, ურნის ვადა.
+     ⚠️ რიცხვი წაშლის წინ იკითხება (`/details`) და ჩანაწერი ურნაში მიდის (§37.7, Q31). */
+  const remove = useMutation({
+    mutationFn: (key: string) => deleteCustomModule(key),
+    onSuccess: (res) => {
+      refresh()
+      qc.invalidateQueries({ queryKey: ['trash'] })
+      toast({ title: t('customModules.deleted', { count: res.records }), variant: 'success' })
+    },
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  const askDelete = async (m: ModuleInfo) => {
+    let counts
+    try {
+      counts = await fetchCustomModuleCounts(m.key)
+    } catch (e) {
+      toast({ title: errorMessage(e), variant: 'error' })
+
+      return
+    }
+
+    const ok = await confirm({
+      title: t('customModules.deleteTitle', { name: moduleName(m, i18n.language) }),
+      description: t('customModules.deleteHint', {
+        count: counts.records,
+        size: formatBytes(counts.bytes),
+        days: counts.keep_days,
+      }),
+      confirmText: t('customModules.deleteConfirm'),
+      variant: 'destructive',
+    })
+
+    if (ok) remove.mutate(m.key)
+  }
+
   const askReset = async () => {
     const ok = await confirm({
       title: t('modules.resetOrderTitle'),
@@ -239,9 +278,22 @@ export function ModulesPage() {
         {list.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
-          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა (წაშლა პირადზე — §32.1); „წინ/უკან" §12-ით წავიდა — რიგი სახელურითაა */
+          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · წაშლა (წითელი, მხოლოდ პირადზე — §32.1; ჩაშენებულზე
+             პუნქტი არ ჩანს, მიზეზს ბარათის `i` ამბობს); „წინ/უკან" §12-ით წავიდა — რიგი სახელურითაა */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
+            ...(isCustomModule(m)
+              ? [
+                  {
+                    key: 'delete',
+                    label: t('customModules.deleteToTrash'),
+                    icon: MENU_ICONS.delete,
+                    danger: true,
+                    separator: true,
+                    run: () => void askDelete(m),
+                  } satisfies MenuAction,
+                ]
+              : []),
           ]
           return (
             <RecordContextMenu key={m.id} actions={actions}>
@@ -284,6 +336,8 @@ export function ModulesPage() {
                   <s.icon className="size-3.5" />
                   {s.label}
                 </span>
+                {/* Tasks §32.1 — ჩაშენებულს წაშლა არ აქვს: მხოლოდ გამორთვა */}
+                {!isCustomModule(m) && <InfoHint info={t('modules.builtInDeleteHint')} />}
 
                 {/* ადმინის ინფო — გლობალური მდგომარეობა (პირად მოდულზე უაზროა — ერთი მფლობელია) */}
                 {isAdmin && !isCustomModule(m) && (

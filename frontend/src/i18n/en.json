@@ -102,6 +102,7 @@
   },
   "modules": {
     "title": "Modules",
+    "builtInDeleteHint": "A built-in module is removed only by turning it off — the data stays.",
     "subtitle": "What you have enabled, and what you can ask the admin to enable.",
     "enabled": "On",
     "disabledByMe": "Off (you can turn it back on)",
@@ -4095,8 +4096,9 @@
     "notesTitle": "Notes",
     "notePlaceholder": "e.g. “add the salt last”",
     "notesEmpty": "No notes yet.",
-    "delete": "Delete module",
     "deleteTitle": "Delete “{{name}}”?",
+    "deleteToTrash": "Delete the module (to the trash)",
+    "deleteInfo": "The module and its records go to the trash — you can restore them within {{days}} days, then they are deleted for good.",
     "deleteHint": "The module and its records ({{count}}) will go to the trash, files included ({{size}}). You can restore it within {{days}} days — after that everything is deleted for good.",
     "deleteConfirm": "Move to trash",
     "deleted": "The module and its records ({{count}}) are in the trash — restore them from there",

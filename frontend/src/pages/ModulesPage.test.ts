@@ -53,6 +53,8 @@ const mocks = vi.hoisted(() => ({
   saveOrder: vi.fn(),
   resetOrder: vi.fn(),
   saveDefault: vi.fn(),
+  // §32 — პირადი მოდულის წაშლა ბარათის მენიუდან
+  deleteModule: vi.fn(async () => ({ trashed: true, records: 3, trash_id: 9 })),
 }))
 
 vi.mock('@/api/account', async (original) => ({
@@ -65,6 +67,8 @@ vi.mock('@/api/account', async (original) => ({
   saveModuleOrder: mocks.saveOrder,
   resetModuleOrder: mocks.resetOrder,
   saveDefaultModuleOrder: mocks.saveDefault,
+  deleteCustomModule: mocks.deleteModule,
+  fetchCustomModuleCounts: async () => ({ records: 3, bytes: 2048, keep_days: 30 }),
 }))
 
 vi.mock('@/lib/auth', () => ({ useAuth: () => mocks.auth.value }))
@@ -238,5 +242,55 @@ describe('ModulesPage — order', () => {
 
     expect(mocks.saveDefault).toHaveBeenCalledTimes(1)
     expect(mocks.saveDefault.mock.calls[0][0]).toEqual(['series', 'anime', 'movie', 'video'])
+  })
+})
+
+/* ============================================================
+   **პირადი მოდულის წაშლა ბარათიდან** (Tasks §32.1/§32.4).
+
+   ⚠️ წაშლის პუნქტი **მხოლოდ პირად** მოდულზეა (`c{owner}-{slug}`); ჩაშენებულზე მენიუში
+   არ ჩანს (იშლება მხოლოდ გამორთვით). დადასტურება იგივეა, რაც მოდულის გვერდზე —
+   რიცხვი, ზომა, ურნის ვადა — და `DELETE /modules/{key}` ზუსტად ერთხელ მიდის.
+   ============================================================ */
+const WORK = moduleRow('c1-work', 40, 16)
+
+async function openMenu(key: string) {
+  await act(async () => {
+    card(key).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+  })
+  await flush()
+
+  return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+}
+
+describe('ModulesPage — delete (§32)', () => {
+  it('offers “delete to the trash” only on a personal module and sends one DELETE after the confirmation', async () => {
+    serve([MOVIE, WORK])
+    await mount()
+
+    // ჩაშენებულზე — არა
+    const movieItems = (await openMenu('movie')).map((m) => m.textContent?.trim())
+    expect(movieItems).toContain(i18n.t('actions.open'))
+    expect(movieItems).not.toContain(i18n.t('customModules.deleteToTrash'))
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await flush()
+
+    // პირადზე — კი, და დადასტურებაში რიცხვი, ზომა და ვადა წერია
+    const items = await openMenu('c1-work')
+    const del = items.find((m) => m.textContent?.includes(i18n.t('customModules.deleteToTrash')))
+    expect(del).toBeDefined()
+    await click(del!)
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('customModules.deleteTitle', { name: 'c1-work' }))
+    expect(document.body.textContent).toContain('2.0 KB')
+
+    await click(buttons(i18n.t('customModules.deleteConfirm'))[0])
+    await flush()
+
+    expect(mocks.deleteModule).toHaveBeenCalledTimes(1)
+    expect(mocks.deleteModule).toHaveBeenCalledWith('c1-work')
   })
 })
