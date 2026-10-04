@@ -14,6 +14,9 @@ import i18n from '@/i18n'
    სლოტი მაინც სამია; ტეგების სლოტი ტეგების გარეშეც ადგილზეა (`min-h-7`);
    მოქმედებების ზოლში ყველა კონტროლი `h-9`-ია და ჩამოტვირთვა ერთი ღილაკია
    (მზაზე — ბმული ლოკალურ ფაილზე, თორემ — ჩამოტვირთვის ღილაკი).
+   Tasks §53 (Q14) — ზოლში ზუსტად ოთხი ღილაკია (რჩეული · ჩამოტვირთვა ·
+   რედაქტირება · წაშლა), „წყარო" კონტექსტურ მენიუშია, ესკიზი და სათაური
+   ფანჯარას ხსნის.
    ============================================================ */
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -68,7 +71,6 @@ async function mount(subject: Video, overrides: Partial<VideoCardProps> = {}) {
     actions: [],
     lang: 'ka',
     onOpen: vi.fn(),
-    onPlay: vi.fn(),
     onEdit: vi.fn(),
     onDelete: vi.fn(),
     onToggleFavorite: vi.fn(),
@@ -120,14 +122,26 @@ describe('VideoCard', () => {
     expect(meta.textContent).toContain('Studio')
   })
 
-  it('the actions bar sits at the bottom with h-9 controls and one download control', async () => {
+  it('the actions bar sits at the bottom with four h-9 controls that never get cut (§53.2)', async () => {
     const { el, props } = await mount(video())
 
     const bar = el.querySelector<HTMLElement>('[data-testid="video-actions"]')!
     expect(bar.className).toContain('mt-auto')
+    // ჭრის ნაცვლად — მეორე ხაზი
+    expect(bar.className).toContain('flex-wrap')
+    expect(bar.className).toContain('min-w-0')
     const controls = [...bar.querySelectorAll<HTMLElement>('a, button')]
-    expect(controls.length).toBeGreaterThanOrEqual(5)
+    // რჩეული · ჩამოტვირთვა · რედაქტირება · წაშლა — „წყარო" და „აქედან დაკვრა" ზოლში აღარ არის
+    expect(controls).toHaveLength(4)
     for (const c of controls) expect(c.className).toContain('h-9')
+    expect(bar.querySelector('a')).toBeNull()
+    expect(bar.querySelector(`[aria-label="${i18n.t('playback.playFromHere')}"]`)).toBeNull()
+    expect(controls[0].textContent).toContain(i18n.t('filter.favorite'))
+    expect(controls[3].getAttribute('aria-label')).toBe(i18n.t('actions.delete'))
+
+    // რჩეული ზოლშია და არა სათაურის ხაზზე
+    await act(async () => controls[0].click())
+    expect(props.onToggleFavorite).toHaveBeenCalled()
 
     const download = el.querySelector<HTMLButtonElement>('button[data-testid="download-control"]')!
     await act(async () => download.click())
@@ -152,5 +166,29 @@ describe('VideoCard', () => {
     await act(async () => control.click())
     expect(props.onPlayLocal).toHaveBeenCalled()
     expect(props.download.onStart).not.toHaveBeenCalled()
+  })
+
+  it('the thumbnail and the title open the window; the source link lives in the context menu (§53, Q14)', async () => {
+    const openSource = vi.fn()
+    const { el, props } = await mount(video(), {
+      actions: [
+        { key: 'open', label: i18n.t('actions.open'), run: vi.fn() },
+        { key: 'source', label: i18n.t('videos.source'), run: openSource },
+      ],
+    })
+
+    await act(async () => el.querySelector<HTMLButtonElement>('button[aria-label="Talk"]')!.click())
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="video-title"]')!.click())
+    expect(props.onOpen).toHaveBeenCalledTimes(2)
+
+    const card = el.querySelector<HTMLElement>('[data-testid="video-card"]')!
+    await act(async () => {
+      card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    const items = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    expect(items.some((i) => i.textContent?.includes(i18n.t('videos.source')))).toBe(true)
   })
 })

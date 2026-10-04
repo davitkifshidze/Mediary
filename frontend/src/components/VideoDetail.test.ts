@@ -246,9 +246,14 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     const favorite = document.querySelector<HTMLElement>(`button[aria-label="${i18n.t('actions.favorite')}"]`)!
     const visibility = [...document.querySelectorAll<HTMLElement>('span')].find((s) => s.textContent === i18n.t('visibility.public'))!
     const edit = buttonWith('actions.edit')!
+    // Tasks §53 (Q14) — „ბმულის გახსნა" ბარათის ზოლიდან აქ გადმოვიდა
+    const link = document.querySelector<HTMLAnchorElement>('[data-testid="video-open-link"]')!
+    expect(link.getAttribute('href')).toBe('https://youtu.be/talk')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.textContent).toContain(i18n.t('actions.openLink'))
 
     // ადრე: რჩეული `xs` (28 px), „საჯარო" ~20 px, რედაქტირება `sm` (36 px)
-    for (const el of [favorite, visibility, edit]) expect(el.className).toContain('h-9')
+    for (const el of [favorite, visibility, edit, link]) expect(el.className).toContain('h-9')
     expect(favorite.className).not.toContain('h-7')
   })
 

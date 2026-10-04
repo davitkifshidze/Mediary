@@ -3,10 +3,8 @@ import {
   CalendarDays,
   Clock,
   Download,
-  ExternalLink,
   Eye,
   HardDriveDownload,
-  ListVideo,
   Loader2,
   MonitorPlay,
   Play,
@@ -20,7 +18,7 @@ import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { cn, formatBytes } from '@/lib/utils'
 import { formatDuration } from '@/lib/videoDuration'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -43,6 +41,15 @@ import { VideoBadges } from '@/components/VideoBadges'
 
    ⚠️ ჩამოტვირთვის ბეჯი ესკიზზე თემის ფერებზეა (§19.5): მზა — `--status-watched`,
    გაჩერებული — `--status-towatch`, ჩავარდნილი — `--destructive`; `rounded-md`.
+
+   ⚠️ **Tasks §53 (Q14) — ზოლში ოთხი ღილაკია: რჩეული · ჩამოტვირთვა ·
+   რედაქტირება · წაშლა.** ადრე იქ „წყარო“ და „აქედან დაკვრაც“ იდგა და
+   ვიწრო ბარათზე ზოლი ბოლოში იჭრებოდა. ესკიზი და სათაური ფანჯარას ხსნის —
+   დაკვრა იქაა (§48), ბმული — ფანჯრის „ბმულის გახსნა“ და კონტექსტური მენიუ
+   (იქვეა „აქედან დაკვრაც“). რჩეული სათაურის ხაზიდან ზოლში ჩამოვიდა (`h-9`).
+   ზოლი არასოდეს იჭრება: ღილაკები `shrink-0`-ია და უკიდურესად ვიწროზე ზოლი
+   მეორე ხაზზე გადადის (`flex-wrap`); ბადის სვეტი კი ბარათს ~340 px-ზე ნაკლებს
+   არ აძლევს (`VideosPage`).
    ============================================================ */
 
 export interface VideoCardDownload {
@@ -59,7 +66,6 @@ export interface VideoCardProps {
   actions: MenuAction[]
   lang: 'ka' | 'en'
   onOpen: () => void
-  onPlay: () => void
   onEdit: () => void
   onDelete: () => void
   onToggleFavorite: () => void
@@ -74,7 +80,6 @@ export function VideoCard({
   actions,
   lang,
   onOpen,
-  onPlay,
   onEdit,
   onDelete,
   onToggleFavorite,
@@ -140,13 +145,18 @@ export function VideoCard({
         </button>
 
         <div className="flex flex-1 flex-col p-3">
-          <div className="flex items-start gap-2">
-            <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={v.title}>
+          {/* §53 (Q14) — სათაურიც ფანჯარას ხსნის, როგორც ესკიზი */}
+          <h3 className="min-w-0 text-sm font-medium">
+            <button
+              type="button"
+              onClick={onOpen}
+              title={v.title}
+              data-testid="video-title"
+              className="block w-full cursor-pointer truncate text-left hover:text-primary"
+            >
               {v.title}
-            </h3>
-            {/* Tasks §8 — რჩეული ტექსტით და ფერით; ბარათის სათაურის ზოლში დაბალი ზომა */}
-            <FavoriteButton size="xs" active={v.is_favorite} pending={favoritePending} onToggle={onToggleFavorite} />
-          </div>
+            </button>
+          </h3>
 
           {/* §19.3 — სამი ბეჯი ერთი ზომით, ზევით-ქვევით მეტი დაშორებით */}
           <VideoBadges video={v} lang={lang} className="my-3" />
@@ -194,20 +204,13 @@ export function VideoCard({
             ))}
           </div>
 
-          <div className="mt-auto flex items-center gap-1 border-t border-border pt-2" data-testid="video-actions">
-            <a
-              href={v.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-muted-foreground')}
-            >
-              <ExternalLink className="size-3.5" />
-              {t('videos.source')}
-            </a>
-            {/* §7.2 — რიგში ჩართვა: აქედან **გაფილტრული სია** უკრავს რიგრიგობით */}
-            <Button variant="ghost" size="sm" onClick={onPlay} aria-label={t('playback.playFromHere')}>
-              <ListVideo className="size-3.5" />
-            </Button>
+          {/* §53.2 — ოთხი ღილაკი; `min-w-0` + `shrink-0` + `flex-wrap`: ჭრის ნაცვლად მეორე ხაზი */}
+          <div
+            className="mt-auto flex min-w-0 flex-wrap items-center gap-1 border-t border-border pt-2 [&>*]:shrink-0"
+            data-testid="video-actions"
+          >
+            {/* Tasks §8 — რჩეული ტექსტით და ფერით (§53 — სათაურის ხაზიდან აქ ჩამოვიდა, `h-9`) */}
+            <FavoriteButton active={v.is_favorite} pending={favoritePending} onToggle={onToggleFavorite} />
 
             {/* §7.1/§19.4 — ლოკალური ასლი ერთ ღილაკში; მზაზე — ლოკალური ფლეერი (§21.2), თორემ — ჩამოტვირთვა */}
             {v.download_status === 'ready' ? (

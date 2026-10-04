@@ -536,9 +536,11 @@ export function VideosPage() {
           )}
 
           {/* Tasks §45 — ბარათები `VideoCard`-ითაა (ახლანდელი, §19), ბადე და სტრიქონები — `RecordView`-ით;
-              მენიუ ერთია (`videoActions`). §20.4 — სვეტები `main`-ის სიგანეზე (`@container`) */}
+              მენიუ ერთია (`videoActions`). §53.3 — სვეტების რიცხვს **ბადის** სიგანე წყვეტს და არა
+              `main`-ისა (ადრე `@container`-ით — ფილტრების 280 px-იანი პანელიც ითვლებოდა და ბარათი
+              ~300 px-მდე ვიწროვდებოდა): ბარათი ~340 px-ზე ვიწრო არ ხდება; ტელეფონზე — ერთი სვეტი */}
           {layout === 'cards' ? (
-            <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @7xl:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,21.25rem),1fr))] gap-4" data-testid="video-grid">
               {videos.map((v) => (
                 <VideoCard
                   key={v.id}
@@ -546,7 +548,6 @@ export function VideosPage() {
                   actions={videoActions(v)}
                   lang={lang}
                   onOpen={() => setDetail(v)}
-                  onPlay={() => playHere(v)}
                   onEdit={() => setEditing(v)}
                   onDelete={() => void askDelete(v)}
                   onToggleFavorite={() => favorite.mutate(v.id)}

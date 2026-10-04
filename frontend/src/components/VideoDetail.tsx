@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Download, FileText, FileX, MonitorPlay, PictureInPicture2, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
+import { CalendarDays, Download, ExternalLink, FileText, FileX, MonitorPlay, PictureInPicture2, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoDownload,
@@ -29,7 +29,7 @@ import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Markdown } from '@/components/ui/markdown'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { VideoBadges } from '@/components/VideoBadges'
 import { useContentLang } from '@/lib/settings'
 import { FavoriteButton } from '@/components/ui/favorite-button'
@@ -171,6 +171,20 @@ export function VideoDetail({
         <div className="flex flex-wrap items-center gap-2">
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={video.visibility} />
+          {/* Tasks §53 (Q14) — ბმული ბარათის ზოლიდან აქ გადმოვიდა (და კონტექსტურ მენიუშია) */}
+          {video.url && (
+            <a
+              href={video.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={video.url}
+              data-testid="video-open-link"
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <ExternalLink className="size-3.5" />
+              {t('actions.openLink')}
+            </a>
+          )}
           <FavoriteButton active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
           {inline && (
             <Button variant="outline" size="sm" onClick={player.popOut}>
