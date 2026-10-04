@@ -65,6 +65,16 @@ import { cn } from '@/lib/utils'
 
    ⚠️ **`disabled`** — ელემენტი სიაშია, მაგრამ არ ითრევა და ვერც გადაინაცვლებს
    (დამალული მსახიობები); `SortableItem` ასეთზე სენსორებს არ აკიდებს.
+
+   ⚠️ **Tasks §58.1 — `motion="slow"`**: ნელი, რბილი გადანაცვლება (350 ms,
+   `ease-out`; ჩაგდება 300 ms) — მხოლოდ მოდულების გვერდზე (შენი სიტყვები:
+   „როდესაც სრულდება და ცვლიან ადგილებს — უფრო სლოუ, სმუზ ანიმაცია");
+   დანარჩენი სიები ნაგულისხმევ 150 ms-ზე რჩება. ნელ რეჟიმში
+   `prefers-reduced-motion` ანიმაციას საერთოდ თიშავს. სიჩქარე ელემენტებს
+   კონტექსტით ჩადის — `useSortable` მას თითო ელემენტზე ითხოვს.
+   ⚠️ მაუსთან ასლს (`DragOverlay`) `fb-sortable-ghost` აქვს: ასლი ბარათის
+   `outerHTML`-ია და `fb-card`-ის შემოსვლის ანიმაციასაც ატარებდა — აღებისას
+   ბარათი თავიდან „შემოდიოდა" და dnd-kit-ის გადაადგილებას ებრძოდა.
    ============================================================ */
 
 export type SortableId = UniqueIdentifier
@@ -72,7 +82,38 @@ export type SortableId = UniqueIdentifier
 /** აღებული ელემენტი თავის ახალ სლოტზე — გაფერმკრთალებული და წყვეტილი */
 const SLOT_CLASS = 'opacity-40 grayscale border-dashed! border-2! border-primary/60! bg-primary/5!'
 
-const TRANSITION = { duration: 150, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }
+/** გადანაცვლების სიჩქარე — `quick` ყველა სიისაა, `slow` მოდულების გვერდისა (§58.1) */
+export type SortableMotion = 'quick' | 'slow'
+
+interface MotionSpec {
+  duration: number
+  /** ჩაგდების (`DragOverlay`) ხანგრძლივობა */
+  drop: number
+  easing: string
+}
+
+const MOTIONS: Record<SortableMotion, MotionSpec> = {
+  quick: { duration: 150, drop: 150, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' },
+  // რბილი `ease-out` — ბოლოს ნელდება და ადგილზე „ჯდება"
+  slow: { duration: 350, drop: 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+}
+
+/**
+ * რა სიჩქარით გადაინაცვლოს. `null` — ანიმაციის გარეშე: ნელ რეჟიმში
+ * `prefers-reduced-motion`-ზე (სწრაფი სიები ძველებურად რჩება).
+ */
+export function sortableMotion(motion: SortableMotion, reducedMotion: boolean): MotionSpec | null {
+  if (motion === 'slow' && reducedMotion) return null
+
+  return MOTIONS[motion]
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+const MotionContext = createContext<MotionSpec | null>(MOTIONS.quick)
 
 interface HandleContextValue {
   attributes: Record<string, unknown>
@@ -105,6 +146,7 @@ export function Sortable<T extends SortableId>({
   ids,
   onReorder,
   layout = 'list',
+  motion = 'quick',
   children,
 }: {
   ids: readonly T[]
@@ -112,10 +154,13 @@ export function Sortable<T extends SortableId>({
   onReorder: (ids: T[]) => void
   /** `list` — ვერტიკალური სია; `grid` — ბადე (მოდულები, მსახიობები, ალბომები) */
   layout?: 'list' | 'grid'
+  /** §58.1 — `slow`: ნელი, რბილი გადანაცვლება (მოდულები) */
+  motion?: SortableMotion
   children?: ReactNode
 }) {
   const { t } = useTranslation()
   const [ghost, setGhost] = useState<Ghost | null>(null)
+  const spec = useMemo(() => sortableMotion(motion, prefersReducedMotion()), [motion])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -161,14 +206,15 @@ export function Sortable<T extends SortableId>({
       accessibility={{ announcements, screenReaderInstructions: { draggable: t('sortable.instructions') } }}
     >
       <SortableContext items={ids as T[]} strategy={layout === 'grid' ? rectSortingStrategy : verticalListSortingStrategy}>
-        {children}
+        <MotionContext.Provider value={spec}>{children}</MotionContext.Provider>
       </SortableContext>
 
-      <DragOverlay dropAnimation={{ duration: 150, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }}>
+      <DragOverlay dropAnimation={spec ? { duration: spec.drop, easing: spec.easing } : null}>
         {ghost && (
           <div
             data-testid="sortable-ghost"
-            className="pointer-events-none scale-[1.02] cursor-grabbing rounded-xl shadow-lg"
+            data-motion={motion}
+            className="fb-sortable-ghost pointer-events-none scale-[1.02] cursor-grabbing rounded-xl shadow-lg"
             style={{ width: ghost.width, height: ghost.height }}
             // ⚠️ ჩვენივე DOM-ის ასლია (React-ის მიერ უკვე დაცული ტექსტით) და არა გარე სტრიქონი
             dangerouslySetInnerHTML={{ __html: ghost.html }}
@@ -192,10 +238,12 @@ type ItemProps = Omit<HTMLAttributes<HTMLElement>, 'id'> & {
 }
 
 export function SortableItem({ id, as: Tag = 'li', disabled = false, handle = false, className, style, children, ref, ...rest }: ItemProps) {
+  // §58.1 — სიჩქარე სიისაა (`Sortable motion`); `null` — ანიმაციის გარეშე
+  const motion = useContext(MotionContext)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
-    transition: TRANSITION,
+    transition: motion ? { duration: motion.duration, easing: motion.easing } : null,
   })
 
   const { onPointerDown, onKeyDown, ...otherListeners } = (listeners ?? {}) as {

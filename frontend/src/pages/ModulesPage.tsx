@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,9 +23,10 @@ import {
 import { useAuth } from '@/lib/auth'
 import { errorMessage } from '@/lib/errors'
 import { arrangeByKeys, isCustomOrder } from '@/lib/moduleOrder'
-import { isCustomModule, isCustomModuleKey } from '@/lib/customModules'
+import { isCustomModule } from '@/lib/customModules'
 import { CustomModuleDialog } from '@/components/CustomModuleDialog'
 import { CustomModulesOversight } from '@/components/CustomModulesOversight'
+import { MyModulesDialog } from '@/components/MyModulesDialog'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
 import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
@@ -75,11 +76,22 @@ import { cn, formatBytes } from '@/lib/utils'
    `/dashboard` უკვე დალაგებული მოდის) — აქ მხოლოდ ოპტიმისტური ქეშია, რომ
    ჩამოგდებული ბარათი პასუხამდე უკან არ ხტებოდეს და საიდბარიც იმავე წამს
    შეიცვალოს.
+
+   **Tasks §58 — ნელი, რბილი გადანაცვლება და პირადი მოდულები ცალკე.**
+   ⚠️ ბადეში **მხოლოდ ჩაშენებული** მოდულებია (Q15); პირადები — „ჩემი მოდულები
+   (N)"-ის ფანჯარაში (`MyModulesDialog`), თავისი რიგით. რიგი მაინც ერთი სიაა:
+   გვერდი აგზავნის `[...ჩაშენებულები, ...პირადები]`-ს.
+   ⚠️ **`fb-card` მხოლოდ პირველ ჩვენებაზე**: გადალაგებისას React ბარათის DOM-
+   კვანძს გადაადგილებს, ხელახლა ჩასმული ელემენტი კი CSS-ანიმაციას თავიდან
+   იწყებს — ჩამოგდებული ბარათი ისევ „შემოდიოდა" და dnd-kit-ის გადაადგილებას
+   ებრძოდა. შემოსვლის შემდეგ კლასი იხსნება (`entered`).
    ============================================================ */
 
 /** ბარათის შემოსვლის საფეხური და ჭერი (იხ. `index.css`-ის `fb-card`) */
 const STAGGER_MS = 40
 const STAGGER_MAX_MS = 240
+/** შემოსვლის ანიმაციის ბოლო: ჭერი + თვითონ ანიმაცია (300 ms) + მარაგი */
+const ENTER_DONE_MS = STAGGER_MAX_MS + 400
 
 /** ერთდროული გადალაგებების მთვლელის გასაღები (იხ. `onSettled`) */
 const ORDER_MUTATION = ['module-order'] as const
@@ -95,6 +107,15 @@ export function ModulesPage() {
   const { data: requests = [] } = useQuery({ queryKey: ['my-requests'], queryFn: fetchMyRequests })
   // Tasks §37.2 — ახალი მოდულის ოსტატი
   const [creating, setCreating] = useState(false)
+  // Tasks §58.3 — „ჩემი მოდულები" და პირადი მოდულის რედაქტირება
+  const [mineOpen, setMineOpen] = useState(false)
+  const [editing, setEditing] = useState<ModuleInfo | null>(null)
+  // §58.1 — `fb-card` მხოლოდ პირველ ჩვენებაზე (იხ. ზემოთ)
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEntered(true), ENTER_DONE_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   /**
    * `GET /modules` მხოლოდ **აქტიურ** მოდულებს აბრუნებს და `users_count`-ს არ იცის.
@@ -116,7 +137,11 @@ export function ModulesPage() {
     return adminModules.map((m) => ({ ...m, ...(mine.get(m.key) ?? {}), ...{ users_count: m.users_count } }))
   }, [isAdmin, adminModules, all])
 
-  const keys = useMemo(() => list.map((m) => m.key), [list])
+  // §58.3 — ბადეში ჩაშენებულები, პირადები — ფანჯარაში; რიგი ერთია
+  const builtIns = useMemo(() => list.filter((m) => !isCustomModule(m)), [list])
+  const mine = useMemo(() => list.filter((m) => isCustomModule(m)), [list])
+  const keys = useMemo(() => builtIns.map((m) => m.key), [builtIns])
+  const mineKeys = useMemo(() => mine.map((m) => m.key), [mine])
   // ჩემი რიგი საერთოსგან განსხვავდება — მაშინ ჩანს „ნაგულისხმევი რიგი"
   const custom = useMemo(() => isCustomOrder(list), [list])
 
@@ -217,8 +242,8 @@ export function ModulesPage() {
       confirmText: t('modules.setDefaultOrder'),
     })
     /* ⚠️ §37 — საერთო რიგი **საბაზისო** მოდულებისაა: პირადი მოდული სხვას არ
-       უჩანს, და backend მის გასაღებს უცნობად (422) წაიკითხავდა */
-    if (ok) makeDefault.mutate(keys.filter((k) => !isCustomModuleKey(k)))
+       უჩანს, და backend მის გასაღებს უცნობად (422) წაიკითხავდა (`keys` ბადისაა — §58) */
+    if (ok) makeDefault.mutate(keys)
   }
 
   const pendingFor = (m: ModuleInfo) =>
@@ -261,6 +286,11 @@ export function ModulesPage() {
                 )}
               </>
             )}
+            {/* Tasks §58.3 — პირადი მოდულები ცალკე ფანჯარაში (Q15) */}
+            <Button variant="outline" onClick={() => setMineOpen(true)}>
+              <UserRound className="size-4" />
+              {t('customModules.mine', { count: mine.length })}
+            </Button>
             {/* Tasks §37 — ყოველი მომხმარებელი თავისთვის ქმნის (Q28) */}
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
@@ -274,26 +304,15 @@ export function ModulesPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {/* Tasks §11 — ბადის drag & drop ერთი კომპონენტით; კლავიატურა სახელურზეა */}
-        <Sortable ids={keys} layout="grid" onReorder={(next) => order.mutate(next)}>
-        {list.map((m, i) => {
+        {/* §58.1 — ნელი, რბილი გადანაცვლება; პირადები რიგის ბოლოში რჩებიან */}
+        <Sortable ids={keys} layout="grid" motion="slow" onReorder={(next) => order.mutate([...next, ...mineKeys])}>
+        {builtIns.map((m, i) => {
           const s = state(m)
           const name = moduleName(m, i18n.language)
-          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა · წაშლა (წითელი, მხოლოდ პირადზე — §32.1; ჩაშენებულზე
-             პუნქტი არ ჩანს, მიზეზს ბარათის `i` ამბობს); „წინ/უკან" §12-ით წავიდა — რიგი სახელურითაა */
+          /* Tasks §7 — მარჯვენა ღილაკი: გახსნა; ჩაშენებულს წაშლა არ აქვს (მიზეზს ბარათის `i` ამბობს),
+             პირადი მოდულის წაშლა „ჩემი მოდულების" ფანჯარაშია (§58.3); „წინ/უკან" §12-ით წავიდა */
           const actions: MenuAction[] = [
             { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => navigate(`/modules/${m.key}`) },
-            ...(isCustomModule(m)
-              ? [
-                  {
-                    key: 'delete',
-                    label: t('customModules.deleteToTrash'),
-                    icon: MENU_ICONS.delete,
-                    danger: true,
-                    separator: true,
-                    run: () => void askDelete(m),
-                  } satisfies MenuAction,
-                ]
-              : []),
           ]
           return (
             <RecordContextMenu key={m.id} actions={actions}>
@@ -308,7 +327,10 @@ export function ModulesPage() {
                 ...(modAccent(m.color) ?? MODULE_ACCENT_FALLBACK),
                 animationDelay: `${Math.min(i * STAGGER_MS, STAGGER_MAX_MS)}ms`,
               }}
-              className="fb-card group flex flex-col rounded-2xl border border-border bg-card transition-[border-color,translate,opacity] hover:-translate-y-0.5 hover:border-[var(--mod)]"
+              className={cn(
+                !entered && 'fb-card',
+                'group flex flex-col rounded-2xl border border-border bg-card transition-[border-color,translate,opacity] hover:-translate-y-0.5 hover:border-[var(--mod)]',
+              )}
             >
               <Link to={`/modules/${m.key}`} draggable={false} className="block flex-1 cursor-pointer p-5 pb-0">
                 <div className="flex items-center gap-3">
@@ -316,13 +338,6 @@ export function ModulesPage() {
                     <ModuleIcon name={m.icon} className="size-5 text-[var(--mod)]" />
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
-                  {/* §37 — პირადი მოდული: სხვას არ უჩანს */}
-                  {isCustomModule(m) && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
-                      <UserRound className="size-3" />
-                      {t('customModules.personal')}
-                    </span>
-                  )}
                   <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>
 
@@ -337,10 +352,10 @@ export function ModulesPage() {
                   {s.label}
                 </span>
                 {/* Tasks §32.1 — ჩაშენებულს წაშლა არ აქვს: მხოლოდ გამორთვა */}
-                {!isCustomModule(m) && <InfoHint info={t('modules.builtInDeleteHint')} />}
+                <InfoHint info={t('modules.builtInDeleteHint')} />
 
-                {/* ადმინის ინფო — გლობალური მდგომარეობა (პირად მოდულზე უაზროა — ერთი მფლობელია) */}
-                {isAdmin && !isCustomModule(m) && (
+                {/* ადმინის ინფო — გლობალური მდგომარეობა */}
+                {isAdmin && (
                   <span className="flex flex-wrap items-center gap-1.5">
                     {!m.is_active && (
                       <span className="rounded-md border border-destructive/40 px-2 py-0.5 leading-relaxed text-destructive">
@@ -376,7 +391,18 @@ export function ModulesPage() {
       {/* §37.8 — სხვების პირადი მოდულები: აგრეგატები და გამორთვა, შიგთავსი არა (Q41) */}
       {isAdmin && <CustomModulesOversight />}
 
+      {mineOpen && (
+        <MyModulesDialog
+          modules={mine}
+          onClose={() => setMineOpen(false)}
+          onReorder={(next) => order.mutate([...keys, ...next])}
+          onCreate={() => setCreating(true)}
+          onEdit={setEditing}
+          onDelete={(m) => void askDelete(m)}
+        />
+      )}
       {creating && <CustomModuleDialog onClose={() => setCreating(false)} />}
+      {editing && <CustomModuleDialog module={editing} onClose={() => setEditing(null)} />}
     </PageContainer>
   )
 }

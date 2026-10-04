@@ -163,3 +163,20 @@ describe('Sortable', () => {
     expect(el.querySelector('[data-sortable-id="a"]')?.className).toContain('cursor-grab')
   })
 })
+
+/* Tasks §58.1 — მოდულების ნელი, რბილი გადანაცვლება; დანარჩენი სიები უცვლელი */
+describe('sortableMotion', () => {
+  it('keeps the quick lists as they were and slows the modules down', async () => {
+    const { sortableMotion } = await import('@/components/ui/sortable')
+
+    expect(sortableMotion('quick', false)).toEqual({ duration: 150, drop: 150, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' })
+    // შემცირებული მოძრაობა სწრაფ სიებს არ ეხება — მათი ქცევა უცვლელია
+    expect(sortableMotion('quick', true)?.duration).toBe(150)
+
+    const slow = sortableMotion('slow', false)!
+    expect(slow.duration).toBe(350)
+    expect(slow.drop).toBe(300)
+    // ⚠️ ნელ რეჟიმში `prefers-reduced-motion` — ანიმაციის გარეშე
+    expect(sortableMotion('slow', true)).toBeNull()
+  })
+})

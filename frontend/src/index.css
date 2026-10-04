@@ -480,6 +480,11 @@
   /* Tasks §7.3 — `AutoHeight`-ის რბილი სიმაღლე; შემცირებული მოძრაობისას — გარეშე */
   .fb-autoheight { transition: height 200ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
+/* Tasks §58.1 — გადათრევის ასლი ბარათის `outerHTML`-ია: შემოსვლის ანიმაცია მასზე
+   თავიდან არ უნდა გაეშვას (აღებისას ბარათი „შემოდიოდა" და გადაადგილებას ებრძოდა) */
+.fb-sortable-ghost > .fb-card {
+  animation: none;
+}
 
 .fb-overlay { animation: fb-fade-in 150ms ease-out; }
 .fb-content { animation: fb-pop-in 160ms cubic-bezier(0.16, 1, 0.3, 1); }

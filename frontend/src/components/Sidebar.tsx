@@ -671,6 +671,10 @@ export function Sidebar({
     )
   }
 
+  /* Tasks §58.3 — ჩაშენებულები და პირადები ცალ-ცალკე (პირადები — ქვემოთ, ჯგუფად) */
+  const builtInModules = enabled.filter((m) => !isCustomModule(m))
+  const myModules = enabled.filter((m) => isCustomModule(m))
+
   /* Tasks §35.2 — მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია */
   const lastMediaKey = [...enabled].reverse().find((m) => isMediaKey(m.key))?.key
   const ActorsIcon = TOOL_SECTIONS.actors.icon
@@ -713,15 +717,11 @@ export function Sidebar({
             ⚠️ გვერდის გარეშე მოდული (ვერც მედიაა, ვერც `PAGE_MODULE_KEYS`-შია)
             არ იხატება — მისი მარშრუტი `App.tsx`-ში არ არსებობს. */}
         {/* ⚠️ §37 — პირადი მოდული „ყველა · სტატუსები · რჩეული · დამატება"-ს იღებს
-            (ჩანაწერისა და ბუკმარკის წესი), სექციები — მისივე ლექსიკონიდან. */}
-        {enabled.map((m) => {
-          const row = isMediaKey(m.key)
-            ? mediaSection(m, m.key)
-            : PAGE_KEYS.has(m.key)
-              ? pageSection(m)
-              : isCustomModule(m)
-                ? moduleSection(m, sectionsFor(m.key as StatusDomainKey))
-                : null
+            (ჩანაწერისა და ბუკმარკის წესი), სექციები — მისივე ლექსიკონიდან.
+            ⚠️ Tasks §58.3 (Q15) — პირადები **ჩაშენებულების ქვემოთ, ცალკე ჯგუფად**
+            („ჩემი მოდულები"), თავისი რიგით; ჩაშენებულები — თავისით. */}
+        {builtInModules.map((m) => {
+          const row = isMediaKey(m.key) ? mediaSection(m, m.key) : PAGE_KEYS.has(m.key) ? pageSection(m) : null
 
           /* Tasks §35.2 — „მსახიობები" მედიის ქვეშაა: **ბოლო მედია-მოდულის შემდეგ**
              (რიგი პირადია, §36.2 — მედია შეიძლება სხვებში იყოს გაბნეული). */
@@ -734,6 +734,13 @@ export function Sidebar({
             row
           )
         })}
+
+        {myModules.length > 0 && (
+          <div className="pt-2" data-testid="sidebar-my-modules">
+            <p className="px-3 pb-1 text-[11px] font-medium text-muted-foreground">{t('customModules.mineTitle')}</p>
+            {myModules.map((m) => moduleSection(m, sectionsFor(m.key as StatusDomainKey)))}
+          </div>
+        )}
 
         <div className="my-2 border-t border-border" />
 

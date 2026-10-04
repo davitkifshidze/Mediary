@@ -245,6 +245,22 @@ describe('Sidebar module order', () => {
     ])
   })
 
+  /* Tasks §58.3 (Q15) — პირადი მოდულები ჩაშენებულების ქვემოთ, ცალკე ჯგუფად
+     („ჩემი მოდულები"), თავისი რიგით — სერვერის რიგში ჩაშენებულებს შორისაც რომ იდგნენ */
+  it('draws the personal modules below the built-in ones, as a group of their own', async () => {
+    const recipes = { ...moduleRow('c7-recipes', '/c/c7-recipes', 2), is_custom: true, morph_alias: null }
+    const trips = { ...moduleRow('c7-trips', '/c/c7-trips', 4), is_custom: true, morph_alias: null }
+    const el = await mount('/', [moduleRow('song', '/songs', 1), recipes, moduleRow('book', '/books', 3), trips])
+
+    const rows = [...el.querySelectorAll<HTMLButtonElement>('button[aria-expanded]')].map((b) => b.textContent?.trim())
+    expect(rows).toEqual(['song', 'book', 'c7-recipes', 'c7-trips'])
+
+    const group = el.querySelector<HTMLElement>('[data-testid="sidebar-my-modules"]')!
+    expect(group.textContent).toContain(i18n.t('customModules.mineTitle'))
+    expect(moduleButton(group, 'c7-recipes')).toBeTruthy()
+    expect(moduleButton(group, 'song')).toBeFalsy()
+  })
+
   it('skips a module that has no page of its own', async () => {
     const el = await mount('/', [moduleRow('mystery', '/mystery', 1), moduleRow('song', '/songs', 2)])
 

@@ -263,8 +263,16 @@ async function openMenu(key: string) {
   return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')]
 }
 
-describe('ModulesPage — delete (§32)', () => {
-  it('offers “delete to the trash” only on a personal module and sends one DELETE after the confirmation', async () => {
+/** Tasks §58.3 — „ჩემი მოდულები (N)" */
+async function openMine(count: number) {
+  await click(buttons(i18n.t('customModules.mine', { count }))[0])
+  await flush()
+
+  return document.body.querySelector<HTMLElement>('[data-testid="my-modules"]')
+}
+
+describe('ModulesPage — delete (§32 → §58.3)', () => {
+  it('a built-in card has no delete; a personal module is deleted from “my modules” after the confirmation', async () => {
     serve([MOVIE, WORK])
     await mount()
 
@@ -277,9 +285,9 @@ describe('ModulesPage — delete (§32)', () => {
     })
     await flush()
 
-    // პირადზე — კი, და დადასტურებაში რიცხვი, ზომა და ვადა წერია
-    const items = await openMenu('c1-work')
-    const del = items.find((m) => m.textContent?.includes(i18n.t('customModules.deleteToTrash')))
+    // პირადი — „ჩემი მოდულების" ფანჯარაში; დადასტურებაში რიცხვი, ზომა და ვადა წერია
+    const list = (await openMine(1))!
+    const del = [...list.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t('customModules.deleteToTrash')))
     expect(del).toBeDefined()
     await click(del!)
     await flush()
@@ -292,5 +300,79 @@ describe('ModulesPage — delete (§32)', () => {
 
     expect(mocks.deleteModule).toHaveBeenCalledTimes(1)
     expect(mocks.deleteModule).toHaveBeenCalledWith('c1-work')
+  })
+})
+
+/* ============================================================
+   **Tasks §58 — ბადეში მხოლოდ ჩაშენებულები, პირადები — ფანჯარაში.**
+   ============================================================ */
+const HOBBY = moduleRow('c1-hobby', 50, 17)
+
+describe('ModulesPage — my modules (§58)', () => {
+  it('the grid shows only the built-in modules and moves slowly', async () => {
+    serve([MOVIE, WORK, SERIES, HOBBY])
+    await mount()
+
+    expect(shown()).toEqual(['movie', 'series'])
+    expect(buttons(i18n.t('customModules.mine', { count: 2 }))).toHaveLength(1)
+  })
+
+  it('“my modules” lists the personal modules with their size and keeps their own order after the built-ins', async () => {
+    serve([MOVIE, WORK, SERIES, HOBBY])
+    mocks.saveOrder.mockImplementation(() => new Promise(() => {}))
+    await mount()
+
+    const list = (await openMine(2))!
+    const rows = [...list.querySelectorAll<HTMLElement>('[data-sortable-id]')]
+    expect(rows.map((r) => r.dataset.sortableId)).toEqual(['c1-work', 'c1-hobby'])
+    expect(rows[0].querySelector('[data-testid="my-module-facts"]')?.textContent).toContain('2.0 KB')
+    expect(rows[0].querySelector('[data-testid="my-module-facts"]')?.textContent).toContain(i18n.t('customModules.count', { count: 3 }))
+
+    // კლავიატურა სახელურზე: „hobby" ერთი ადგილით ზემოთ
+    const original = Element.prototype.getBoundingClientRect
+    mockGridRects(1)
+    try {
+      const handle = rows[1].querySelector<HTMLElement>('[data-sortable-handle]')!
+      const key = async (code: string) => {
+        await act(async () => {
+          handle.dispatchEvent(new KeyboardEvent('keydown', { code, key: code === 'Space' ? ' ' : code, bubbles: true, cancelable: true }))
+        })
+        await flush()
+      }
+      await key('Space')
+      await key('ArrowUp')
+      await key('Space')
+    } finally {
+      Element.prototype.getBoundingClientRect = original
+    }
+
+    // ⚠️ ერთი რიგი: ჯერ ჩაშენებულები (უცვლელი), მერე — პირადები ახალი რიგით
+    expect(mocks.saveOrder).toHaveBeenCalledTimes(1)
+    expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['movie', 'series', 'c1-hobby', 'c1-work'])
+  })
+
+  it('moving a built-in card keeps the personal modules at the end of the one order', async () => {
+    serve([MOVIE, SERIES, WORK])
+    mocks.saveOrder.mockImplementation(() => new Promise(() => {}))
+    await mount()
+
+    const original = Element.prototype.getBoundingClientRect
+    mockGridRects()
+    try {
+      const handle = card('series').querySelector<HTMLElement>('[data-sortable-handle]')!
+      const key = async (code: string) => {
+        await act(async () => {
+          handle.dispatchEvent(new KeyboardEvent('keydown', { code, key: code === 'Space' ? ' ' : code, bubbles: true, cancelable: true }))
+        })
+        await flush()
+      }
+      await key('Space')
+      await key('ArrowLeft')
+      await key('Space')
+    } finally {
+      Element.prototype.getBoundingClientRect = original
+    }
+
+    expect(mocks.saveOrder.mock.calls[0][0]).toEqual(['series', 'movie', 'c1-work'])
   })
 })
