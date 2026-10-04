@@ -13,7 +13,7 @@ import {
 } from '@/api/media'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { useModules } from '@/lib/modules'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InfoHint } from '@/components/ui/info-hint'
@@ -92,29 +92,29 @@ export function SyncDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     </>
   )
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogTitle>{t('sync.title')}</DialogTitle>
+  /* Tasks §37.6 — საერთო `ModalShell` (`DialogContent` წაიშალა): იგივე სიმაღლე
+     შიგთავსის მიხედვით, სიგანე ეკრანის მიხედვით და მიმაგრებული ქვედა ზოლი */
+  if (!open) return null
 
-        {/* ⚠️ თავი მხოლოდ აქტიურ ნაკადს გადაეცემა — ორჯერ დახატული ბარათები
-            ფარულშიც დეშბორდის რექვესთს დაუშვებდა */}
-        <RecordsFlow
-          open={open}
-          active={flow === 'records'}
-          types={types}
-          header={flow === 'records' ? header : null}
-          onClose={close}
-        />
-        <CastSyncFlow
-          open={open}
-          active={flow === 'cast'}
-          types={types}
-          header={flow === 'cast' ? header : null}
-          onClose={close}
-        />
-      </DialogContent>
-    </Dialog>
+  return (
+    <ModalShell title={t('sync.title')} onClose={close} wide>
+      {/* ⚠️ თავი მხოლოდ აქტიურ ნაკადს გადაეცემა — ორჯერ დახატული ბარათები
+          ფარულშიც დეშბორდის რექვესთს დაუშვებდა */}
+      <RecordsFlow
+        open={open}
+        active={flow === 'records'}
+        types={types}
+        header={flow === 'records' ? header : null}
+        onClose={close}
+      />
+      <CastSyncFlow
+        open={open}
+        active={flow === 'cast'}
+        types={types}
+        header={flow === 'cast' ? header : null}
+        onClose={close}
+      />
+    </ModalShell>
   )
 }
 
@@ -197,9 +197,9 @@ function RecordsFlow({
 
   return (
     // ⚠️ `contents` — ფარულ ნაკადს მდგომარეობა რჩება, ხილული კი ფანჯრის
-    // flex-სვეტში ჩვეულებრივად დგება (გადახვევადი შუა + მიმაგრებული ქვედა)
+    // სხეულში ჩვეულებრივად დგება (`ModalFooter` — ბოლო ხილული ელემენტი)
     <div className={active ? 'contents' : 'hidden'}>
-      <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+      <div className="mt-4 space-y-5">
         {header}
 
         {noKey && <CredentialMissingNotice provider="tmdb" />}
@@ -312,7 +312,7 @@ function RecordsFlow({
       </div>
 
       {/* ---------- შეჯამება + გაშვება ---------- */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <ModalFooter className="justify-between gap-3">
         <div className="min-w-0 text-sm">
           {planQ.isFetching ? (
             <span className="text-muted-foreground">{t('api.loading')}</span>
@@ -352,7 +352,7 @@ function RecordsFlow({
             {isBusy ? t('sync.addToQueue') : t('sync.run')}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </div>
   )
 }

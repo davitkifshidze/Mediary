@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useId, useLayoutEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ArrowLeft, X } from 'lucide-react'
@@ -22,6 +22,12 @@ import { InfoHint } from '@/components/ui/info-hint'
  * ველების ორსვეტიანი ფორმები და ფოტოების ბადეები ვიწრო „მილში" იკუმშებოდა.
  * იმავე დღეს დაემატა მესამე ზომა — **`full`** (`max-w-7xl`): ფაილის მნახველს
  * PDF-იც, ვიდეოც და სურათიც ერთ ეკრანზე უნდა დაეტიოს.
+ *
+ * ⚠️ **Tasks §37.6 — სიგანე ეკრანს მიჰყვება** („სიგანეში უნდა გაიზარდოს ეს
+ * პოპაპი მონიტორის შესაბამისად"): ფიქსირებული ჭერი დიდ მონიტორზე არ
+ * იზრდებოდა და ვიდეოს ფორმის „ხანგრძლივობა" ~314 px-ში იკეცებოდა. ახლა
+ * `xl`-დან (1280 px) და `2xl`-დან (1536 px — 1920-იანი მონიტორი 100/125 %-ზე)
+ * ერთი საფეხურით მეტია; ფორმის 12-სვეტიანი ბადე თავისით ფართოვდება.
  */
 
 /* ============================================================
@@ -95,9 +101,60 @@ function useIsTopModal(id: string) {
 export type ModalSize = 'default' | 'wide' | 'full'
 
 const SIZES: Record<ModalSize, string> = {
-  default: 'max-w-xl',
-  wide: 'max-w-5xl',
-  full: 'max-w-7xl',
+  default: 'max-w-xl xl:max-w-2xl', // 576 → 672
+  wide: 'max-w-5xl xl:max-w-6xl 2xl:max-w-7xl', // 1024 → 1152 → 1280
+  full: 'max-w-7xl 2xl:max-w-[88rem]', // 1280 → 1408
+}
+
+/* ============================================================
+   **Tasks §37.4 — ზედა კიდე ადგილზე რჩება.**
+
+   ფანჯარა ადრე `top-1/2 -translate-y-1/2`-ით იდგა, ე.ი. სიმაღლის ყოველი
+   ცვლილება (ჩანართი, ჩატვირთვა, რუკის გამოჩენა) ზედა და ქვედა კიდეს ერთად
+   აძრავებდა — „მარჯვნიდან და ქვევიდან ხტუნაობს". ახლა ცენტრირება მხოლოდ
+   გახსნისას ხდება; მერე იძვრის მხოლოდ ქვედა კიდე, ზედა კი მაღლა მხოლოდ
+   იმდენით იწევს, რამდენიც ფანჯარას ეკრანზე დასატევად სჭირდება.
+
+   ⚠️ **პოზიცია პირდაპირ DOM-ში იწერება და არა state-ში**: ზრდის ანიმაციისას
+   `ResizeObserver` ყოველ კადრზე მოდის — state მთელ მოდალს (ფორმას)
+   ყოველ კადრზე თავიდან დახატავდა.
+   ⚠️ **ref-callback და არა effect**: Radix-ის პორტალი შიგთავსს მეორე
+   რენდერზე ამონტაჟებს, ე.ი. მშობლის effect-ის დროს ელემენტი ჯერ არ არსებობს;
+   callback კი პირველივე დახატვამდე მუშაობს (ნახტომი არ ჩანს).
+   ============================================================ */
+
+/** ზედა კიდე: პირველად — ცენტრი; მერე — იგივე, ეკრანს თუ სცდება — საჭირო ოდენობით მაღლა (5vh-იანი კიდით) */
+export function anchorTop(prev: number | null, height: number, viewport: number): number {
+  const margin = Math.round(viewport * 0.05)
+  if (prev == null) return Math.max(margin, Math.round((viewport - height) / 2))
+  return Math.max(margin, Math.min(prev, viewport - margin - height))
+}
+
+function useAnchoredTop() {
+  return useCallback((el: HTMLDivElement | null) => {
+    // jsdom-ს განლაგება და `ResizeObserver` არ აქვს — იქ CSS-ის `top` რჩება
+    if (!el || typeof ResizeObserver === 'undefined') return
+    let top: number | null = null
+
+    const place = () => {
+      const height = el.offsetHeight // ⚠️ განლაგების სიმაღლე — გახსნის `scale` მასზე არ მოქმედებს
+      if (!height) return // დასტაში დამალულია — ადგილი რჩება
+      const next = anchorTop(top, height, window.innerHeight)
+      if (next === top) return
+      top = next
+      el.style.top = `${next}px`
+    }
+
+    place()
+    const ro = new ResizeObserver(place)
+    ro.observe(el)
+    window.addEventListener('resize', place)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', place)
+    }
+  }, [])
 }
 
 export function ModalShell({
@@ -109,6 +166,7 @@ export function ModalShell({
   size,
   hint,
   aside,
+  fill,
   children,
 }: {
   title: string
@@ -124,7 +182,7 @@ export function ModalShell({
   destructive?: boolean
   /** `size="wide"`-ის მოკლე ჩანაწერი — ოცამდე გამომძახებელი ასე წერია */
   wide?: boolean
-  /** `default` (max-w-xl) · `wide` (5xl) · `full` (7xl) */
+  /** `default` (max-w-xl → 2xl) · `wide` (5xl → 7xl) · `full` (7xl → 88rem) — §37.6 */
   size?: ModalSize
   /** Tasks §8.3 — მოდალის შესავალი ახსნა: i სათაურის გვერდით და არა აბზაცი */
   hint?: string
@@ -136,11 +194,19 @@ export function ModalShell({
    * ბოლომდე შეკუმშავდა.
    */
   aside?: ReactNode
+  /**
+   * **ფიქსირებული სიმაღლე (90vh)** — მხოლოდ იქ, სადაც ეს შენი გადაწყვეტილებაა
+   * („აღმოჩენა", 2026-09-14: რიგების რაოდენობა `per_page`-ზეა და ჩატვირთვაზე
+   * ფანჯარა ხტებოდა). სხეული flex-სვეტია: შიგთავსი თავის გადასახვევ შუა
+   * ნაწილს თვითონ აწყობს (`min-h-0 flex-1 overflow-y-auto`).
+   */
+  fill?: boolean
   children: ReactNode
 }) {
   const { t } = useTranslation()
   const id = useId()
   const { top, nested } = useIsTopModal(id)
+  const anchor = useAnchoredTop()
 
   const back = onBack ?? (nested ? onClose : undefined)
 
@@ -166,9 +232,12 @@ export function ModalShell({
             ქვედა ზოლი (`ModalFooter`) კი `sticky`-ით ბოლოში რჩება. ⚠️ სწორედ ეს
             უშვებს ფიქსირებულ სიმაღლეს: ადრე მთელი ფანჯარა ერთად იხვეოდა და
             ღილაკები გადახვევაში იმალებოდა. */}
+        {/* §37.4 — `top`-ს ref-ი წერს (`useAnchoredTop`); `top-[5vh]` მხოლოდ სათადარიგოა */}
         <DialogPrimitive.Content
+          ref={anchor}
           className={cn(
-            'fb-content fixed left-1/2 top-1/2 z-[61] flex max-h-[90vh] w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl focus:outline-none',
+            'fb-content fixed left-1/2 top-[5vh] z-[61] flex max-h-[90vh] w-[92vw] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl focus:outline-none',
+            fill && 'h-[90vh]',
             SIZES[size ?? (wide ? 'wide' : 'default')],
             hidden && 'hidden',
           )}
@@ -216,10 +285,16 @@ export function ModalShell({
 
           {/* ⚠️ **ფიქსირებული სიმაღლე უარყოფილია** (შენი შესწორება, 2026-09-27:
               „ყველგან შესაბამისი სიმაღლის უნდა იყოს") — ფანჯარა შიგთავსს მიჰყვება
-              და ცვლილებისას რბილად იზრდება ან პატარავდება. */}
-          <AutoHeight scroll innerClassName="px-6 pb-6">
-            {children}
-          </AutoHeight>
+              და ცვლილებისას რბილად იზრდება ან პატარავდება. §37 — პადინგი,
+              ზოლის მუდმივი ადგილი და ზრდისას ზოლის დამალვა `index.css`-შია
+              (`.fb-modal-body`, `.fb-modal-pad`). */}
+          {fill ? (
+            <div className="fb-modal-pad flex min-h-0 flex-1 flex-col">{children}</div>
+          ) : (
+            <AutoHeight scroll className="fb-modal-body" innerClassName="fb-modal-pad">
+              {children}
+            </AutoHeight>
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -234,14 +309,16 @@ export function ModalShell({
    `form="<id>"`-ს მოითხოვდა. `sticky bottom-0` მიმაგრებულია იმავე
    ადგილიდან — ფორმა ბოლომდე გრძელდება, ამიტომ ზოლი ხილვის ბოლოში რჩება.
 
-   ⚠️ `-mx-6 -mb-6` ზოლს სხეულის პადინგამდე ჭიმავს — ის **ბოლო** ელემენტი
-   უნდა იყოს, თორემ ქვედა კიდეს ვერ მიეკვრება.
+   ⚠️ `-mb-6` და `.fb-modal-bleed` ზოლს სხეულის პადინგამდე ჭიმავს — ის
+   **ბოლო** ელემენტი უნდა იყოს, თორემ ქვედა კიდეს ვერ მიეკვრება. §37 —
+   გვერდებზე ჭიმვა სქროლბარის ადგილს ითვალისწინებს (`--modal-pad-end`), ე.ი.
+   ხაზი ორივე მხარეს თანაბრად მთავრდება და ჰორიზონტალური სქროლი არ ჩნდება.
    ============================================================ */
 export function ModalFooter({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        'sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-6 py-4',
+        'fb-modal-bleed sticky bottom-0 z-10 -mb-6 mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background py-4',
         className,
       )}
     >

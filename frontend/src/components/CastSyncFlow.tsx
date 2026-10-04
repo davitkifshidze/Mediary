@@ -22,6 +22,7 @@ import { RadioGroup } from '@/components/ui/radio-group'
 import { ScopeRow } from '@/components/ui/scope-row'
 import { useQueue } from '@/components/ui/queue'
 import { useToast } from '@/components/ui/feedback'
+import { ModalFooter } from '@/components/ui/modal-shell'
 import { CredentialMissingNotice } from '@/components/CredentialMissingNotice'
 
 /* ============================================================
@@ -160,9 +161,9 @@ export function CastSyncFlow({
 
   return (
     // ⚠️ `contents` — ორივე ნაკადი დამონტაჟებულია (მდგომარეობა არ იკარგება),
-    // ხილული კი მხოლოდ აქტიურია; `contents` ფანჯრის flex-სვეტს არ არღვევს
+    // ხილული კი მხოლოდ აქტიურია; `ModalFooter` ფანჯრის ბოლო ხილული ელემენტი რჩება
     <div className={active ? 'contents' : 'hidden'}>
-      <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+      <div className="mt-4 space-y-5">
         {header}
 
         {/* ---------- რომელი მსახიობები (§39.1) ---------- */}
@@ -289,7 +290,7 @@ export function CastSyncFlow({
       </div>
 
       {/* ---------- შეჯამება + გაშვება ---------- */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <ModalFooter className="justify-between gap-3">
         <div className="min-w-0 text-sm">
           {/* ⚠️ დომენის გარეშე გეგმა არ ითვლება — `placeholderData` კი ძველ
               რიცხვს დატოვებდა; მიზეზს დომენის ბარათები თვითონ ამბობს */}
@@ -322,7 +323,7 @@ export function CastSyncFlow({
             {isBusy ? t('sync.addToQueue') : t('sync.run')}
           </Button>
         </div>
-      </div>
+      </ModalFooter>
     </div>
   )
 }

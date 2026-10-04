@@ -78,6 +78,62 @@ const titles = () => visible().map((el) => el.textContent).filter(Boolean)
 
 const dialogs = visible
 
+describe('ModalShell — §37', () => {
+  function render(props: Record<string, unknown>) {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => root!.render(h(ModalShell, { title: 't', onClose: () => {}, children: h('p', { className: 'mt-4' }, 'x'), ...props })))
+    return visible()[0] as HTMLElement
+  }
+
+  it('grows with the screen: default 576 → 672, wide 1024 → 1152 → 1280 (§37.6)', () => {
+    const dialog = render({})
+    expect(dialog.className).toContain('max-w-xl')
+    expect(dialog.className).toContain('xl:max-w-2xl')
+    act(() => root?.unmount())
+
+    const wide = render({ wide: true })
+    for (const cls of ['max-w-5xl', 'xl:max-w-6xl', '2xl:max-w-7xl']) expect(wide.className).toContain(cls)
+  })
+
+  it('is no longer centred by CSS — the top edge is placed once and stays (§37.4)', () => {
+    const dialog = render({})
+    expect(dialog.className).not.toContain('top-1/2')
+    expect(dialog.className).not.toContain('-translate-y-1/2')
+  })
+
+  it('anchorTop: centred on open, then only the bottom edge moves', async () => {
+    const { anchorTop } = await import('@/components/ui/modal-shell')
+
+    // 1000 px-იანი ეკრანი: 300 px-იანი ფანჯარა გახსნისას ცენტრშია
+    expect(anchorTop(null, 300, 1000)).toBe(350)
+    // ჩანართი გაიზარდა 500-მდე — ზედა კიდე იგივეა
+    expect(anchorTop(350, 500, 1000)).toBe(350)
+    // 800-მდე — ქვემოთ აღარ ეტევა: მაღლა მხოლოდ საჭირო ოდენობით (ქვედა კიდე 950-ზე)
+    expect(anchorTop(350, 800, 1000)).toBe(150)
+    // ისევ დაპატარავდა — ზედა კიდე არ ბრუნდება ცენტრში
+    expect(anchorTop(150, 300, 1000)).toBe(150)
+    // 5vh-ზე მაღლა არასდროს
+    expect(anchorTop(null, 900, 1000)).toBe(50)
+  })
+
+  it('scrolls the body with a stable scrollbar gutter and a margin-safe inner box (§37.2/§37.3)', () => {
+    const dialog = render({})
+    const body = dialog.querySelector('.fb-modal-body') as HTMLElement
+    expect(body.className).toContain('overflow-y-auto')
+    expect((body.firstElementChild as HTMLElement).className).toContain('flow-root')
+    expect((body.firstElementChild as HTMLElement).className).toContain('fb-modal-pad')
+  })
+
+  it('fill — a fixed 90vh window whose body is a flex column (discover)', () => {
+    const dialog = render({ wide: true, fill: true })
+    expect(dialog.className).toContain('h-[90vh]')
+    expect(dialog.querySelector('.fb-modal-body')).toBeNull()
+    expect(dialog.querySelector('.fb-modal-pad')?.className).toContain('flex-col')
+  })
+})
+
 describe('ModalShell — მოდალების დასტა', () => {
   it('ერთი მოდალი იხატება ჩვეულებრივ', () => {
     mount()

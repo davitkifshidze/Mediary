@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /* ============================================================
-   სიმაღლის რბილი ცვლილება (Tasks §7.3/§7.4 → Tasks §5).
+   სიმაღლის რბილი ცვლილება (Tasks §7.3/§7.4 → Tasks §5 → Tasks §37).
 
    შენი მოთხოვნა: „შიგნით რამის გაკეთების შემდეგ ზომები რბილად
    იცვლებოდეს". ⚠️ `height: auto` CSS-ით არ ანიმირდება, ხოლო
@@ -12,31 +12,60 @@ import { cn } from '@/lib/utils'
 
    ⚠️ **პირველი გაზომვა არ ანიმირდება**: გახსნისას ფანჯარა 0-დან არ
    უნდა „ამოიზარდოს" — ამოხტომის ანიმაცია (`.fb-content`) უკვე არსებობს.
-   გადასვლა მხოლოდ მეორე გაზომვიდან ირთვება.
 
    ⚠️ **`max-h`-ს არ ეჯახება**: `scroll` რეჟიმში გარე ყუთი flex-ის
    ელემენტია `min-h-0`-ით, ე.ი. მშობლის ზღვარს მიღწეული ზრდას წყვეტს
    და შიგნით გადახვევას იწყებს — სიმაღლე მხოლოდ ზღვრამდე იცვლება.
 
-   ## Tasks §5 — „პატარა, ცარიელი სქროლი" (ბუკმარკის რედაქტირება)
-   ⚠️ **წილადი სიმაღლე ზევით მრგვალდება** (`fitHeight`): `offsetHeight`
-   მთელი რიცხვია და Windows-ის 125/150 % მასშტაბზე 612.4 px-იანი შიგთავსი
-   612-ზე დგებოდა — ~1 px გადმოდიოდა და გადახვევის ზოლი ჩნდებოდა, რომელიც
-   არაფერს სქროლავდა. ახლა `getBoundingClientRect().height` + `ceil` + 1 px მარაგი.
-   ⚠️ **ზრდის ანიმაციისას გადახვევა გამორთულია** (`settling`): 200 ms-ში
-   შიგთავსი ყუთზე მაღალია და ზოლი ციმციმებდა — `transitionend`-ზე (ან
-   სათადარიგო ტაიმერით) ბრუნდება.
    ⚠️ **0 არ ითვლება**: ზემოდან გახსნილი დიალოგი ამ მოდალს მალავს და
    გაზომვა 0-ს აბრუნებს — ბოლო ცნობილი სიმაღლე რჩება, თორემ დაბრუნებისას
    ფანჯარა 0-დან „ამოიზრდებოდა".
 
+   ## Tasks §37 — „ხტუნაობს, ცახცახებს, სქროლს უკეთებს" (ოთხი მიზეზი, ოთხი წესი)
+   1. **გაზომვა ტრანსფორმაციის გარეშე** (`layoutHeight`): გახსნისას ფანჯარა
+      `scale(0.96)`-დანაა, `getBoundingClientRect` კი ტრანსფორმაციას ითვლიდა —
+      პირველი გაზომვა ~4%-ით მოკლე იყო და ფანჯარა ასე რჩებოდა. ახლა
+      განლაგების სიმაღლე წილადით (`getComputedStyle`), ზევით მრგვალდება
+      (§5-ის 612.4 px → 613); „+1 px"-ის მარაგი აღარ სჭირდება.
+   2. **შიდა ყუთი მარჯინს აღარ უშვებს** (`flow-root`): ზედა პადინგი არ
+      აქვს, ამიტომ პირველი შვილის `mt-4` მისგან „გადმოდიოდა" — გაზომვაში
+      არ შედიოდა და პატარა ფანჯარაშიც ~15 px-იანი სქროლი ჩნდებოდა.
+   3. **სქროლბარი სიგანეს აღარ ცვლის** (`scrollbar-gutter: stable`,
+      `.fb-modal-body`): ზოლი სიგანეს ჭამდა → `aspect-video`/გადატანილი
+      ტექსტი სიმაღლეს იცვლიდა → ახალი გაზომვა → `overflow-hidden` → ზოლი
+      ქრებოდა → … ყოველ ~250 ms-ში, უსასრულოდ. ზოლის ადგილი ახლა მუდმივია
+      (მისი სიგანე `--sb-gutter`-ად იწერება, რომ მოდალმა მარჯვენა პადინგს
+      გამოაკლოს და კიდეები სიმეტრიული დარჩეს).
+   4. **სქროლი ყოველთვის მუშაობს**: სხეული მუდამ `overflow-y-auto`-ა.
+      ზრდის ანიმაციისას შიგთავსი ~200 ms-ით ყუთზე მაღალია — ზოლი ამ დროს
+      მხოლოდ **ვიზუალურად** იმალება (`data-settling` → `clip-path` ზოლის
+      ზოლზე), განლაგება და ბორბალი კი უცვლელია. ⚠️ ზოლი არ იმალება, თუ
+      ყუთი უკვე ზღვარზე იყო (ზოლი ლეგიტიმურად ჩანდა) — თორემ ციმციმებდა.
+   ⚠️ **რამდენიმე px-ის რყევა უანიმაციოდ** (`JITTER_PX`); გაშვებულ
+   ანიმაციას კი პატარა ცვლილებაც აგრძელებს, თორემ შუა გზაზე გაწყდებოდა.
+
    ⚠️ `prefers-reduced-motion`-ზე გადასვლა CSS-შივე ითიშება.
    ============================================================ */
 
-/** გაზომილი სიმაღლე → ყუთის სიმაღლე: ზევით დამრგვალება + 1 px; 0/უსასრულო → `null` */
+/** ელემენტის **განლაგების** სიმაღლე — წილადით და ტრანსფორმაციის (`scale`) გარეშე */
+export function layoutHeight(el: HTMLElement): number {
+  const h = Number.parseFloat(getComputedStyle(el).height)
+  return Number.isFinite(h) ? h : el.offsetHeight
+}
+
+/** გაზომილი სიმაღლე → ყუთის სიმაღლე: ზევით დამრგვალება; 0/უსასრულო → `null` */
 export function fitHeight(measured: number): number | null {
   if (!Number.isFinite(measured) || measured <= 0) return null
-  return Math.ceil(measured) + 1
+  return Math.ceil(measured)
+}
+
+/** ამაზე ნაკლები ცვლილება უანიმაციოდ იწერება (§37.3) */
+const JITTER_PX = 4
+
+/** ანიმირდეს თუ არა: პირველი გაზომვა — არა; რყევა — არა; გაშვებული ანიმაცია — კი */
+export function shouldAnimate(prev: number | null, next: number, running: boolean): boolean {
+  if (prev == null) return false
+  return running || Math.abs(next - prev) > JITTER_PX
 }
 
 /** გადასვლის ხანგრძლივობაზე ოდნავ მეტი — `transitionend` რომ არ მოვიდეს (reduced motion) */
@@ -56,57 +85,82 @@ export function AutoHeight({
   /** გარე ყუთი თვითონ გადაიხვევა (მოდალის სხეული) */
   scroll?: boolean
 }) {
+  const outer = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const last = useRef<number | null>(null)
+  const running = useRef(false)
   const [height, setHeight] = useState<number | null>(null)
   const [animate, setAnimate] = useState(false)
   const [settling, setSettling] = useState(false)
 
+  const settle = () => {
+    running.current = false
+    setSettling(false)
+  }
+
   useLayoutEffect(() => {
+    const box = outer.current
     const el = inner.current
-    if (!el) return
+    if (!box || !el) return
+    let timer: number | undefined
 
     const measure = () => {
-      const next = fitHeight(el.getBoundingClientRect().height)
-      if (next == null || next === last.current) return false
+      /* ზოლის ადგილი (`scrollbar-gutter: stable`-ით ზოლის გარეშეც დაკავებულია).
+         ⚠️ **პირდაპირ DOM-ში და სიმაღლის გაზომვამდე**: state-ით პადინგი ერთი
+         რენდერით გვიან შეიცვლებოდა — პირველი გაზომვა ძველ პადინგს დაინახავდა
+         და გახსნისთანავე ზედმეტი ანიმაცია მოჰყვებოდა. */
+      if (scroll) {
+        const gutter = `${Math.max(0, box.offsetWidth - box.clientWidth)}px`
+        if (box.style.getPropertyValue('--sb-gutter') !== gutter) box.style.setProperty('--sb-gutter', gutter)
+      }
+
+      const next = fitHeight(layoutHeight(el))
+      const prev = last.current
+      if (next == null || next === prev) return
       last.current = next
+
+      const anim = shouldAnimate(prev, next, running.current)
+      setAnimate(anim)
       setHeight(next)
-      return true
+      if (!anim) return
+
+      // ზრდისას შიგთავსი ანიმაციის ბოლომდე ყუთზე მაღალია — ზოლი დროებით იმალება,
+      // თუ ყუთი ზღვარზე უკვე არ იყო (მაშინ ზოლი ისედაც ჩანდა და უნდა დარჩეს)
+      if (scroll && prev != null && next > prev && prev <= box.clientHeight + 1) setSettling(true)
+      running.current = true
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        running.current = false
+        setSettling(false)
+      }, SETTLE_FALLBACK_MS)
     }
 
     measure()
     // jsdom-ში `ResizeObserver` არ არსებობს — იქ უბრალოდ `auto` რჩება
     if (typeof ResizeObserver === 'undefined') return
 
-    let timer: number | undefined
-    const ro = new ResizeObserver(() => {
-      if (!measure()) return
-      setAnimate(true)
-      setSettling(true)
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => setSettling(false), SETTLE_FALLBACK_MS)
-    })
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
 
     return () => {
       ro.disconnect()
       window.clearTimeout(timer)
     }
-  }, [])
+  }, [scroll])
 
   return (
     <div
-      className={cn(
-        scroll ? cn('min-h-0', settling ? 'overflow-hidden' : 'overflow-y-auto') : 'overflow-hidden',
-        animate && 'fb-autoheight',
-        className,
-      )}
+      ref={outer}
+      data-settling={settling || undefined}
+      className={cn(scroll ? 'min-h-0 overflow-y-auto' : 'overflow-hidden', animate && 'fb-autoheight', className)}
+      // ⚠️ `--sb-gutter`-ს `measure` წერს — React-ის `style`-ში არ უნდა იყოს, თორემ გადაეწერება
       style={height == null ? undefined : { height }}
       onTransitionEnd={(e) => {
-        if (e.propertyName === 'height') setSettling(false)
+        // ⚠️ მხოლოდ საკუთარი გადასვლა — ჩადგმული `AutoHeight`-ის მოვლენაც ამოდის აქამდე
+        if (e.target === e.currentTarget && e.propertyName === 'height') settle()
       }}
     >
-      <div ref={inner} className={innerClassName}>
+      <div ref={inner} className={cn('flow-root', innerClassName)}>
         {children}
       </div>
     </div>

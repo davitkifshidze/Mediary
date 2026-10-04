@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PlaceMapProps } from '@/components/PlaceMap'
 import { cn } from '@/lib/utils'
@@ -34,12 +34,26 @@ export function FormMapPick({ lat, lng, onPick }: { lat: string; lng: string; on
   const b = Number(lng)
   const ready = lat !== '' && lng !== '' && Number.isFinite(a) && Number.isFinite(b)
 
+  /* Tasks §37.5 — „რუკა ქვემოთ გამოდის, მარა არ ჩანს": მეორე კოორდინატის ჩაწერისას
+     ფანჯარა რუკაზე რბილად ჩადის. ⚠️ მხოლოდ გადასვლაზე (არა → კი) და არა გახსნისას —
+     კოორდინატიანი ადგილის რედაქტირება თავიდან იწყება. ⚠️ ფანჯრის ზრდის ანიმაციის
+     (~200 ms) შემდეგ: თუ ყველაფერი დაეტია, `nearest` არაფერს აკეთებს. */
+  const frame = useRef<HTMLDivElement>(null)
+  const was = useRef(ready)
+  useEffect(() => {
+    const appeared = ready && !was.current
+    was.current = ready
+    if (!appeared) return
+    const timer = window.setTimeout(() => frame.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 260)
+    return () => window.clearTimeout(timer)
+  }, [ready])
+
   if (!ready) {
     return <p className="mt-2 text-xs text-muted-foreground">{t('places.route.mapNeedsCoords')}</p>
   }
 
   return (
-    <div className="mt-2" data-testid="form-map">
+    <div ref={frame} className="mt-2" data-testid="form-map">
       <MapFrame center={[a, b]} draggable onMove={onPick} zoom={15} className="h-56" />
       <p className="mt-1 text-xs text-muted-foreground">{t('places.route.dragHint')}</p>
     </div>

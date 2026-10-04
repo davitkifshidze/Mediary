@@ -483,6 +483,27 @@
 .fb-toast { animation: fb-toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 .fb-drawer { animation: fb-drawer-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 
+/* ---- მოდალის სხეული (Tasks §37) ----
+   ⚠️ **ზოლის ადგილი მუდმივია** (`scrollbar-gutter: stable`): ზოლის გამოჩენა
+   სიგანეს აღარ ცვლის, ე.ი. `aspect-video`-ს და გადატანილ ტექსტს სიმაღლე აღარ
+   ეცვლება და `AutoHeight`-ის ციკლი („ცახცახი") წყდება.
+   ⚠️ ზოლის სიგანე (`--sb-gutter`, `AutoHeight` ზომავს) **მარჯვენა პადინგს
+   აკლდება**: ტექსტი ორივე კიდიდან 1.5rem-ზეა, ზოლით თუ მის გარეშე;
+   `.fb-modal-bleed` (`ModalFooter`) ზოლს ორივე მხარეს თანაბრად ჭიმავს.
+   ⚠️ `data-settling` — ზრდის ანიმაციის ~200 ms-ში ზოლი მხოლოდ **ვიზუალურად**
+   იმალება (`clip-path` ზოლის ადგილზე); `overflow` არ იცვლება — ბორბალი მუშაობს
+   და სიგანე არ ხტება. */
+.fb-modal-body {
+  scrollbar-gutter: stable;
+  --modal-pad-end: max(0px, calc(1.5rem - var(--sb-gutter, 0px)));
+}
+.fb-modal-body[data-settling] { clip-path: inset(0 var(--sb-gutter, 0px) 0 0); }
+.fb-modal-pad { padding: 0 var(--modal-pad-end, 1.5rem) 1.5rem 1.5rem; }
+.fb-modal-bleed {
+  margin-inline: calc(-1 * var(--modal-pad-end, 1.5rem));
+  padding-inline: var(--modal-pad-end, 1.5rem);
+}
+
 /* ============================================================
    აიქონების ჰოვერი და სემანტიკური ფერი — **ერთი ადგილი მთელ აპზე** (2026-09-14).
 

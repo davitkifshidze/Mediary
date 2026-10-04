@@ -14,7 +14,7 @@ import {
 } from '@/api/translations'
 import { useModules } from '@/lib/modules'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
@@ -131,206 +131,202 @@ export function TranslateDialog({
     onOpenChange(false)
   }
 
+  /* Tasks §37.6 — საერთო `ModalShell` (`DialogContent` წაიშალა) */
+  if (!open) return null
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogTitle className="flex items-center gap-1.5">
-          {t('translate.title')}
-          <InfoHint info={t('translate.howItWorks')} />
-        </DialogTitle>
+    <ModalShell title={t('translate.title')} hint={t('translate.howItWorks')} onClose={() => onOpenChange(false)} wide>
+      <div className="mt-4 space-y-5">
+        {/* ---------- რითი ითარგმნება ---------- */}
 
-        <div className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
-          {/* ---------- რითი ითარგმნება ---------- */}
+        {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა.
+            ⚠️ Tasks §30.6 — გასაღები ანგარიშისაა, ე.ი. „მონაცემების" ბმულიც აქვეა */}
+        {summaryQ.data && !summaryQ.data.translator_configured && (
+          <CredentialMissingNotice provider="gemini">{t('translate.noKey')}</CredentialMissingNotice>
+        )}
+        {summaryQ.data && !summaryQ.data.tmdb_configured && (
+          <CredentialMissingNotice provider="tmdb">{t('translate.noTmdbKey')}</CredentialMissingNotice>
+        )}
 
-          {/* გასაღები არ არის — ვამბობთ პირდაპირ, რომ მხოლოდ TMDB-ის ტექსტი მოვა.
-              ⚠️ Tasks §30.6 — გასაღები ანგარიშისაა, ე.ი. „მონაცემების" ბმულიც აქვეა */}
-          {summaryQ.data && !summaryQ.data.translator_configured && (
-            <CredentialMissingNotice provider="gemini">{t('translate.noKey')}</CredentialMissingNotice>
-          )}
-          {summaryQ.data && !summaryQ.data.tmdb_configured && (
-            <CredentialMissingNotice provider="tmdb">{t('translate.noTmdbKey')}</CredentialMissingNotice>
-          )}
+        {/* ---------- წყაროები (შენი მითითება, 2026-09-14) ----------
 
-          {/* ---------- წყაროები (შენი მითითება, 2026-09-14) ----------
+            ⚠️ **ბარათებია და არა ჩიპები**: თითოეულმა თვითონ უნდა თქვას, რას
+            ნიშნავს — „TMDB-ის ოფიციალური ტექსტი" და „მანქანური თარგმანი"
+            სხვადასხვა ხარისხისა და ხარჯის რამეა, ე.ი. არჩევანი ინფორმირებული
+            უნდა იყოს. ⚠️ **ორივეს მოხსნა აკრძალულია** (ღილაკი ითიშება):
+            წყაროს გარეშე გაშვება სერვერზე 422-ია. */}
+        <div>
+          <Label className="mb-2 block">{t('translate.sourcesTitle')}</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {TRANSLATION_SOURCES.map((source) => {
+              const on = sources.includes(source)
+              const Icon = source === 'tmdb' ? Languages : Sparkles
+              // Gemini-ის გასაღების გარეშე ეს წყარო ვერაფერს გააკეთებს
+              const dead = source === 'gemini' && summaryQ.data?.translator_configured === false
 
-              ⚠️ **ბარათებია და არა ჩიპები**: თითოეულმა თვითონ უნდა თქვას, რას
-              ნიშნავს — „TMDB-ის ოფიციალური ტექსტი" და „მანქანური თარგმანი"
-              სხვადასხვა ხარისხისა და ხარჯის რამეა, ე.ი. არჩევანი ინფორმირებული
-              უნდა იყოს. ⚠️ **ორივეს მოხსნა აკრძალულია** (ღილაკი ითიშება):
-              წყაროს გარეშე გაშვება სერვერზე 422-ია. */}
-          <div>
-            <Label className="mb-2 block">{t('translate.sourcesTitle')}</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {TRANSLATION_SOURCES.map((source) => {
-                const on = sources.includes(source)
-                const Icon = source === 'tmdb' ? Languages : Sparkles
-                // Gemini-ის გასაღების გარეშე ეს წყარო ვერაფერს გააკეთებს
-                const dead = source === 'gemini' && summaryQ.data?.translator_configured === false
-
-                return (
-                  <button
-                    key={source}
-                    type="button"
-                    aria-pressed={on}
-                    disabled={dead}
-                    onClick={() =>
-                      setSources((cur) =>
-                        cur.includes(source) ? cur.filter((x) => x !== source) : [...cur, source],
-                      )
-                    }
-                    className={cn(
-                      'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                      on ? 'border-primary bg-secondary/60' : 'border-border hover:border-primary/40',
-                    )}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                        {t(`translate.source.${source}`)}
-                      </span>
-                      {on && <Check className="size-4 shrink-0 text-primary" />}
+              return (
+                <button
+                  key={source}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={dead}
+                  onClick={() =>
+                    setSources((cur) =>
+                      cur.includes(source) ? cur.filter((x) => x !== source) : [...cur, source],
+                    )
+                  }
+                  className={cn(
+                    'flex cursor-pointer flex-col gap-1.5 rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    on ? 'border-primary bg-secondary/60' : 'border-border hover:border-primary/40',
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className={cn('size-4 shrink-0', on ? 'text-primary' : 'text-muted-foreground')} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {t(`translate.source.${source}`)}
                     </span>
-                    <span className="text-xs leading-snug text-muted-foreground">
-                      {t(`translate.sourceHint.${source}`)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {sources.length === 0 && (
-              <p className="mt-1.5 text-xs text-destructive">{t('translate.sourcesRequired')}</p>
-            )}
+                    {on && <Check className="size-4 shrink-0 text-primary" />}
+                  </span>
+                  <span className="text-xs leading-snug text-muted-foreground">
+                    {t(`translate.sourceHint.${source}`)}
+                  </span>
+                </button>
+              )
+            })}
           </div>
+          {sources.length === 0 && (
+            <p className="mt-1.5 text-xs text-destructive">{t('translate.sourcesRequired')}</p>
+          )}
+        </div>
 
-          {/* ---------- გადამოწმება (`review`, 2026-09-14) ----------
+        {/* ---------- გადამოწმება (`review`, 2026-09-14) ----------
 
-              ⚠️ **ცალკე ჩამრთველია და არა მესამე წყარო.** წყაროები *ცარიელ*
-              ველს ავსებენ, ეს კი **არსებულ** ტექსტს ეხება — ე.ი. სხვა ღერძია
-              და „მარტო TMDB + გადამოწმება" სავსებით ნორმალური არჩევანია.
-              ⚠️ ფრთხილების ტექსტი ცხადად წერს, რომ ტექსტი **გადაიწერება** —
-              ეს პროექტში ერთადერთი ასეთი ადგილია. */}
-          <div className={cn('rounded-lg border p-3', review ? 'border-primary bg-secondary/50' : 'border-border')}>
-            <label className={cn('flex items-start gap-2 text-sm', reviewDead ? 'opacity-50' : 'cursor-pointer')}>
-              <Checkbox
-                checked={review}
-                disabled={reviewDead}
-                onCheckedChange={() => setReview((v) => !v)}
-              />
-              <span>
-                <span className="font-medium">{t('translate.review')}</span>
-                <span className="block text-xs text-muted-foreground">{t('translate.reviewHint')}</span>
-              </span>
-            </label>
-            {review && (
-              <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
-                {t('translate.reviewWarn')}
-              </p>
-            )}
-          </div>
-
-          {/* Tasks §31.2 — დამუშავებულების დამალვა */}
-          <label
-            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
-            data-testid="hide-processed"
-          >
-            <span className="inline-flex items-center gap-1.5 font-medium">
-              {t('sync.hideProcessed')}
-              <InfoHint info={t('translate.hideProcessedHint')} />
+            ⚠️ **ცალკე ჩამრთველია და არა მესამე წყარო.** წყაროები *ცარიელ*
+            ველს ავსებენ, ეს კი **არსებულ** ტექსტს ეხება — ე.ი. სხვა ღერძია
+            და „მარტო TMDB + გადამოწმება" სავსებით ნორმალური არჩევანია.
+            ⚠️ ფრთხილების ტექსტი ცხადად წერს, რომ ტექსტი **გადაიწერება** —
+            ეს პროექტში ერთადერთი ასეთი ადგილია. */}
+        <div className={cn('rounded-lg border p-3', review ? 'border-primary bg-secondary/50' : 'border-border')}>
+          <label className={cn('flex items-start gap-2 text-sm', reviewDead ? 'opacity-50' : 'cursor-pointer')}>
+            <Checkbox
+              checked={review}
+              disabled={reviewDead}
+              onCheckedChange={() => setReview((v) => !v)}
+            />
+            <span>
+              <span className="font-medium">{t('translate.review')}</span>
+              <span className="block text-xs text-muted-foreground">{t('translate.reviewHint')}</span>
             </span>
-            <Switch checked={hideProcessed} onCheckedChange={setHideProcessed} />
           </label>
-
-          {/* ---------- დომენი ----------
-              Tasks §20.1 — იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —
-              ერთი სახე); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
-          {available.length > 1 && (
-            <div>
-              <Label className="mb-2 block">{t('sync.domains')}</Label>
-              <MediaDomainCards value={types} onToggle={toggleType} enabled={open} />
-            </div>
+          {review && (
+            <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+              {t('translate.reviewWarn')}
+            </p>
           )}
+        </div>
 
-          {/* ---------- სკოუპი ---------- */}
-          {types.length > 0 && (
-            <div>
-              <Label className="mb-2 block">{t('sync.scope')}</Label>
-              <RadioGroup value={scope} onValueChange={(v) => setScope(v as Scope)} className="gap-2">
-                <ScopeRow value="all" active={scope} label={t('sync.scopeAll')} />
-                <ScopeRow value="status" active={scope} label={t('sync.scopeStatus')}>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('sync.statusPick')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* §6.4 — სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
-                      {statuses.map((s) => (
-                        <SelectItem key={s.key} value={s.key}>
-                          {statusName(s, lang)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </ScopeRow>
-                <ScopeRow value="favorite" active={scope} label={t('sync.scopeFavorite')} />
-                <ScopeRow value="genre" active={scope} label={t('sync.scopeGenre')}>
-                  <GenreSelect genres={genresQ.data ?? []} value={genreSlugs} onChange={setGenreSlugs} />
-                </ScopeRow>
-                <ScopeRow value="specific" active={scope} label={t('sync.scopeSpecific')}>
-                  <MediaRecordPicker
-                    types={types}
-                    ids={ids}
-                    enabled={open && scope === 'specific'}
-                    onChange={(type, next) => setIds((c) => ({ ...c, [type]: next }))}
-                  />
-                </ScopeRow>
-              </RadioGroup>
-            </div>
-          )}
+        {/* Tasks §31.2 — დამუშავებულების დამალვა */}
+        <label
+          className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm"
+          data-testid="hide-processed"
+        >
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            {t('sync.hideProcessed')}
+            <InfoHint info={t('translate.hideProcessedHint')} />
+          </span>
+          <Switch checked={hideProcessed} onCheckedChange={setHideProcessed} />
+        </label>
 
-          {/* ---------- ჟანრების ლექსიკონი ---------- */}
-          <div className="rounded-lg border border-border p-3">
-            <label className="flex cursor-pointer items-start gap-2 text-sm">
-              <Checkbox checked={withGenres} onCheckedChange={() => setWithGenres((v) => !v)} />
-              <span>
-                <span className="font-medium">{t('translate.withGenres')}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {plan
-                    ? t('translate.genresPending', { count: plan.genres_pending })
-                    : t('translate.withGenresHint')}
-                </span>
+        {/* ---------- დომენი ----------
+            Tasks §20.1 — იგივე ბარათები, რაც სინქრონიზაციაში (ერთი კითხვა —
+            ერთი სახე); ერთი დომენის შემთხვევაში არჩევანი არ არსებობს */}
+        {available.length > 1 && (
+          <div>
+            <Label className="mb-2 block">{t('sync.domains')}</Label>
+            <MediaDomainCards value={types} onToggle={toggleType} enabled={open} />
+          </div>
+        )}
+
+        {/* ---------- სკოუპი ---------- */}
+        {types.length > 0 && (
+          <div>
+            <Label className="mb-2 block">{t('sync.scope')}</Label>
+            <RadioGroup value={scope} onValueChange={(v) => setScope(v as Scope)} className="gap-2">
+              <ScopeRow value="all" active={scope} label={t('sync.scopeAll')} />
+              <ScopeRow value="status" active={scope} label={t('sync.scopeStatus')}>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('sync.statusPick')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* §6.4 — სია არჩეული დომენების ლექსიკონების გაერთიანებაა */}
+                    {statuses.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>
+                        {statusName(s, lang)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ScopeRow>
+              <ScopeRow value="favorite" active={scope} label={t('sync.scopeFavorite')} />
+              <ScopeRow value="genre" active={scope} label={t('sync.scopeGenre')}>
+                <GenreSelect genres={genresQ.data ?? []} value={genreSlugs} onChange={setGenreSlugs} />
+              </ScopeRow>
+              <ScopeRow value="specific" active={scope} label={t('sync.scopeSpecific')}>
+                <MediaRecordPicker
+                  types={types}
+                  ids={ids}
+                  enabled={open && scope === 'specific'}
+                  onChange={(type, next) => setIds((c) => ({ ...c, [type]: next }))}
+                />
+              </ScopeRow>
+            </RadioGroup>
+          </div>
+        )}
+
+        {/* ---------- ჟანრების ლექსიკონი ---------- */}
+        <div className="rounded-lg border border-border p-3">
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <Checkbox checked={withGenres} onCheckedChange={() => setWithGenres((v) => !v)} />
+            <span>
+              <span className="font-medium">{t('translate.withGenres')}</span>
+              <span className="block text-xs text-muted-foreground">
+                {plan
+                  ? t('translate.genresPending', { count: plan.genres_pending })
+                  : t('translate.withGenresHint')}
               </span>
-            </label>
-          </div>
+            </span>
+          </label>
         </div>
+      </div>
 
-        {/* ---------- შეჯამება + გაშვება ---------- */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <div className="min-w-0 text-sm">
-            {planQ.isFetching ? (
-              <span className="text-muted-foreground">{t('api.loading')}</span>
-            ) : plan ? (
-              <>
-                <span className="font-medium">{t('sync.affected', { count: plan.count })}</span>
-                {totalUnits > 0 && (
-                  <span className="ml-1.5 text-muted-foreground">≈ {eta(plan.eta_seconds)}</span>
-                )}
-                {totalUnits === 0 && (
-                  <span className="block text-xs text-muted-foreground">{t('translate.nothingToDo')}</span>
-                )}
-              </>
-            ) : null}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('confirm.cancel')}
-            </Button>
-            <Button onClick={run} disabled={!canRun}>
-              {planQ.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
-              {isBusy ? t('sync.addToQueue') : t('translate.run')}
-            </Button>
-          </div>
+      {/* ---------- შეჯამება + გაშვება ---------- */}
+      <ModalFooter className="justify-between gap-3">
+        <div className="min-w-0 text-sm">
+          {planQ.isFetching ? (
+            <span className="text-muted-foreground">{t('api.loading')}</span>
+          ) : plan ? (
+            <>
+              <span className="font-medium">{t('sync.affected', { count: plan.count })}</span>
+              {totalUnits > 0 && (
+                <span className="ml-1.5 text-muted-foreground">≈ {eta(plan.eta_seconds)}</span>
+              )}
+              {totalUnits === 0 && (
+                <span className="block text-xs text-muted-foreground">{t('translate.nothingToDo')}</span>
+              )}
+            </>
+          ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {t('confirm.cancel')}
+          </Button>
+          <Button onClick={run} disabled={!canRun}>
+            {planQ.isFetching ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
+            {isBusy ? t('sync.addToQueue') : t('translate.run')}
+          </Button>
+        </div>
+      </ModalFooter>
+    </ModalShell>
   )
 }
