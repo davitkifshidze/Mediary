@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { cardRatings, formatRating, parseRating, ratingFromStar, starFill } from '@/lib/rating'
+import { cardRatings, formatRating, parseRating, starFill } from '@/lib/rating'
 
 /* ============================================================
-   **ქულის არითმეტიკა** (Tasks §9) — ვარსკვლავების შევსება, დაჭერა → ქულა,
+   **ქულის არითმეტიკა** (Tasks §9 → §42) — ვარსკვლავების შევსება (ჩვენება),
    ხელით აკრეფილი ტექსტი → ქულა, საჯარო ბარათზე TMDB-ის საშუალოსა და
    შენი ქულის გარჩევა.
    ============================================================ */
@@ -29,15 +29,6 @@ describe('starFill', () => {
     expect(starFill(1, 0)).toBe(0.5)
     expect(starFill(10, 4)).toBe(1)
     expect(starFill(null, 0)).toBe(0)
-  })
-})
-
-describe('ratingFromStar', () => {
-  it('maps a star half to one point and a full star to two', () => {
-    expect(ratingFromStar(0, true)).toBe(1)
-    expect(ratingFromStar(0, false)).toBe(2)
-    expect(ratingFromStar(3, true)).toBe(7)
-    expect(ratingFromStar(4, false)).toBe(10)
   })
 })
 

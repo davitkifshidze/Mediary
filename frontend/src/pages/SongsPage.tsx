@@ -48,7 +48,7 @@ import { useFilterDraft } from '@/lib/filters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Chip } from '@/components/ui/chip'
@@ -850,7 +850,7 @@ function SongForm({
           </FormField>
 
           <FormField size="half" {...fields.field('rating')} htmlFor="s-rating" error={errors.rating}>
-            <StarRating
+            <RatingSelect
               id="s-rating"
               value={form.rating}
               invalid={!!errors.rating}

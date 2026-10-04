@@ -55,7 +55,7 @@ import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
 import { cn } from '@/lib/utils'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 
@@ -555,7 +555,7 @@ export function GameForm({
           {/* ⚠️ §5.1 — OpenCritic და მოთამაშეების ქულა ფორმის გარეთ რჩება (payload-ში
               ისევ მიდის); „ჩემი ქულა" Tasks §25.4-ით ბრუნდება — სტატუსის გვერდით */}
           <FormField size="third" {...fields.field('rating')} htmlFor="g-rating" error={errors.rating}>
-            <StarRating
+            <RatingSelect
               id="g-rating"
               value={form.rating}
               invalid={!!errors.rating}

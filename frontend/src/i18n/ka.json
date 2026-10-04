@@ -521,10 +521,9 @@
     }
   },
   "rating": {
-    "mine": "ჩემი ქულა",
     "tmdbAverage": "TMDB-ის საშუალო",
-    "clear": "ქულის წაშლა",
-    "setTo": "შეფასება {{value}} / 10"
+    "manual": "ხელით ჩაწერილი ქულა — მაგ. 7.5",
+    "manualApply": "ჩასმა"
   },
   "visits": {
     "count": "შევედი {{count}}-ჯერ",

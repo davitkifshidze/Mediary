@@ -41,7 +41,7 @@ import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { TagSelect } from '@/components/TagSelect'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
@@ -476,7 +476,7 @@ export function BookForm({
 
           {/* Tasks §25.4 — „ჩემი ქულა" ერთი ამრჩევით (ხუთივე ფორმაში იგივე) */}
           <FormField size="third" {...fields.field('rating')} htmlFor="b-rating" error={errors.rating}>
-            <StarRating
+            <RatingSelect
               id="b-rating"
               value={form.rating}
               invalid={!!errors.rating}

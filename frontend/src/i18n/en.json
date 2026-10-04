@@ -521,10 +521,9 @@
     }
   },
   "rating": {
-    "mine": "My rating",
     "tmdbAverage": "TMDB average",
-    "clear": "Clear the rating",
-    "setTo": "Rate {{value}} / 10"
+    "manual": "Type a score — e.g. 7.5",
+    "manualApply": "Apply"
   },
   "visits": {
     "count": "Opened {{count}} times",

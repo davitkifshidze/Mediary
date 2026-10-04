@@ -56,7 +56,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { ModalShell } from '@/components/ui/modal-shell'
 import {
   QuickFill,
@@ -783,10 +783,10 @@ function PlaceForm({
 
         {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
             მოდის (სავალდებულობას `pickErrors` ამოწმებს, როგორც ყველა ფორმაში) */}
-        {/* Tasks §38.6 — სტატუსი · კლასიფიკატორი · ვიზიტი სამად, შეფასება · ტეგები ორად: შეფასება
-            (ვარსკვლავები + ველი + ქულა) მეოთხედში იკეცებოდა. ჩამოსაშლელზე §42-ით გადავა. */}
+        {/* Tasks §38.6 → §42.2 — სტატუსი · კლასიფიკატორი · შეფასება · ვიზიტი ოთხ მეოთხედად, ტეგები ქვემოთ:
+            შეფასების ჩამოსაშლელი (`RatingSelect`) მეოთხედში ეტევა და მეზობლების `h-10`-ისაა */}
         <FormSection title={t('form.sections.classification')}>
-          <FormField size="third" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
+          <FormField size="quarter" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as PlaceStatus }))}>
               <SelectTrigger id="p-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
@@ -801,7 +801,7 @@ function PlaceForm({
             </Select>
           </FormField>
 
-          <FormField size="third" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
+          <FormField size="quarter" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
             <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
               <SelectTrigger id="p-category" className={errors.category_id ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
@@ -816,17 +816,9 @@ function PlaceForm({
             </Select>
           </FormField>
 
-          <FormField size="third" {...fields.field('visited_at')} htmlFor="p-visited">
-            <DatePicker
-              id="p-visited"
-              value={form.visitedAt}
-              onChange={(v) => setForm((f) => ({ ...f, visitedAt: v ?? '' }))}
-            />
-          </FormField>
-
-          {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
-          <FormField size="half" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
-            <StarRating
+          {/* Tasks §25.2 → §42 — ჩამოსაშლელი „★ 1…10" + ხელით ჩასაწერი წილადი */}
+          <FormField size="quarter" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
+            <RatingSelect
               id="p-rating"
               value={form.rating}
               invalid={!!errors.rating}
@@ -834,7 +826,15 @@ function PlaceForm({
             />
           </FormField>
 
-          <FormField size="half" {...fields.field('tags')} htmlFor="p-tags">
+          <FormField size="quarter" {...fields.field('visited_at')} htmlFor="p-visited">
+            <DatePicker
+              id="p-visited"
+              value={form.visitedAt}
+              onChange={(v) => setForm((f) => ({ ...f, visitedAt: v ?? '' }))}
+            />
+          </FormField>
+
+          <FormField {...fields.field('tags')} htmlFor="p-tags">
             <TagSelect
               inputId="p-tags"
               value={form.tags}

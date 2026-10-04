@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { LinkField } from '@/components/ui/link-field'
 
@@ -538,7 +538,7 @@ export function BoardGameForm({
 
           {/* Tasks §25.4 — „ჩემი ქულა"; BGG-ის ქულა (`bgg_rating`) ცალკეა და წყაროდან მოდის */}
           <FormField size="half" {...fields.field('rating')} htmlFor="bg-rating" error={errors.rating}>
-            <StarRating
+            <RatingSelect
               id="bg-rating"
               value={form.rating}
               invalid={!!errors.rating}

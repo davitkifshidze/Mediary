@@ -17,7 +17,7 @@ import { useSettings } from '@/lib/settings'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
-import { StarRating } from '@/components/ui/star-rating'
+import { RatingSelect } from '@/components/ui/rating-select'
 import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -505,8 +505,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
                     <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
                       {fields.label('rating')}
                     </FieldLabel>
-                    {/* Tasks §9 (Q1) — ვარსკვლავები `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
-                    <StarRating
+                    {/* Tasks §9 (Q1) → §42 — ჩამოსაშლელი „★ 1…10" + წილადი `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
+                    <RatingSelect
                       id="m-rating"
                       value={form.my_rating}
                       invalid={!!errors.my_rating}

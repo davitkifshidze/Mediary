@@ -7,6 +7,9 @@
    ერთი. ეს ფაილი მხოლოდ არითმეტიკაა, რომ ვიჯეტი და ტესტი ერთსა და იმავეს
    ითვლიდნენ.
 
+   ⚠️ Tasks §42 — მინიჭება ჩამოსაშლელია (`RatingSelect`: 1…10 + წილადი), ვარსკვლავები
+   მხოლოდ ჩვენებაშია; ამიტომ „ვარსკვლავზე დაჭერა → ქულა" აქ აღარ არის.
+
    ⚠️ **ფილმზე ორი ქულაა** (Q1): `rating` TMDB-ის საშუალოა (სტრიქონი, API-ის
    ძველი ფორმა), `my_rating` — შენი. `cardRatings()` საჯარო/გაზიარების
    ბარათზე ამ ორს ერთმანეთისგან არჩევს, რომ TMDB-ის 6.8 „შენს ქულად" არ
@@ -27,11 +30,6 @@ export function formatRating(value: number): string {
 export function starFill(value: number | null, index: number): number {
   if (value == null) return 0
   return Math.min(1, Math.max(0, value / POINTS_PER_STAR - index))
-}
-
-/** ვარსკვლავზე დაჭერა → ქულა: მარცხენა ნახევარი ნახევარი ვარსკვლავია */
-export function ratingFromStar(index: number, half: boolean): number {
-  return (index + (half ? 0.5 : 1)) * POINTS_PER_STAR
 }
 
 /**
