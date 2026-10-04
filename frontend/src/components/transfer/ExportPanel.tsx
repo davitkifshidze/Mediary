@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { Download, FileArchive, PackageOpen } from 'lucide-react'
-import { downloadExport, fetchExportModules, type ExportFormat, type ExportModule } from '@/api/export'
+import { Archive, Download, FileArchive, PackageOpen } from 'lucide-react'
+import { downloadArchive, downloadExport, fetchExportModules, type ExportFormat, type ExportModule } from '@/api/export'
 import { downloadStorageFiles, fetchStorageFiles } from '@/api/account'
 import { errorMessage } from '@/lib/errors'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
 import { cn, formatBytes } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { useToast } from '@/components/ui/feedback'
@@ -31,14 +32,20 @@ import { useToast } from '@/components/ui/feedback'
    (სათაური, სტატუსი, ჟანრი…), ქვემოთ ატვირთული **ფაილები** ZIP-ად.
    ორივე „ჩემი ბიბლიოთეკაა" და ერთმანეთს ავსებს — CSV-ის `poster_path`
    სწორედ იმ არქივის ფაილს უთითებს.
+
+   ⚠️ Tasks §59.5 — თავში **„ჩემი სრული ექსპორტი"**: ყველა მოდული ერთ ZIP-ში
+   (ჩანაწერები „დამატებებით" + მათი ფაილები) — ზუსტად ის, რასაც „იმპორტი"
+   უკან შემოიტანს. მოდულის ბარათები რჩება: ერთი მოდულის წაღებას ZIP არ სჭირდება.
    ============================================================ */
 
 export function ExportPanel() {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
 
-  /** რომელი ღილაკი მუშაობს: `movie:csv` · `zip` */
+  /** რომელი ღილაკი მუშაობს: `movie:csv` · `zip` · `archive` */
   const [busy, setBusy] = useState<string | null>(null)
+  /** სრულ ექსპორტს ფაილებიც მიჰყვეს (ნაგულისხმევად — კი) */
+  const [withFiles, setWithFiles] = useState(true)
 
   /* ⚠️ გასაღები `['export', …]`-ია განზრახ: იმპორტის რიგი ჩანაწერის
      შექმნისას `['export']`-ს აუქმებს, ე.ი. ბარათის რიცხვი თავისით ახლდება. */
@@ -60,6 +67,7 @@ export function ExportPanel() {
   const modules = data?.data ?? []
   const formats = data?.formats ?? (['json', 'csv'] as ExportFormat[])
   const fileCount = filesQ.data?.total ?? 0
+  const recordCount = modules.reduce((sum, m) => sum + m.count, 0)
 
   const run = async (key: string, job: () => Promise<void>) => {
     setBusy(key)
@@ -74,6 +82,49 @@ export function ExportPanel() {
 
   return (
     <div className="space-y-8">
+      {/* ---------- Tasks §59.5 — ჩემი სრული ექსპორტი ---------- */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">
+          <Archive className="size-5 text-muted-foreground" />
+          {t('transfer.archive.title')}
+          <InfoHint info={t('transfer.archive.hint')} />
+        </h2>
+
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4',
+            !isLoading && recordCount === 0 && 'opacity-60',
+          )}
+          style={modAccent('var(--tool-backups)')}
+          data-testid="export-archive"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[var(--mod-soft)] [&>svg]:size-5 [&>svg]:text-[var(--mod)]">
+            <Archive />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">{t('transfer.archive.card')}</span>
+            <span className="block text-xs text-muted-foreground">
+              {isLoading
+                ? t('common.loading')
+                : t('transfer.archive.count', { records: recordCount, modules: modules.length })}
+            </span>
+          </span>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox checked={withFiles} onCheckedChange={(v) => setWithFiles(v === true)} />
+            {t('transfer.archive.withFiles')}
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            disabled={recordCount === 0 || busy !== null}
+            onClick={() => run('archive', () => downloadArchive(withFiles))}
+          >
+            <Download className="size-4" />
+            {busy === 'archive' ? t('transfer.zipBuilding') : 'ZIP'}
+          </Button>
+        </div>
+      </section>
+
       {/* ---------- ჩანაწერები ---------- */}
       <section>
         <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">

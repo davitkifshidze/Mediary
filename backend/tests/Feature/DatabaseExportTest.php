@@ -3,15 +3,23 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\DatabaseBackup;
 use App\Models\Movie;
 use App\Models\User;
+use App\Models\Video;
+use App\Services\Backup\DatabaseDumper;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Mockery;
 use Tests\TestCase;
 use ZipArchive;
 
 /**
- * **Tasks §59.4 — მთლიანი ბაზის / ცხრილების ექსპორტი (სუპერადმინი).**
+ * **Tasks §59.4 — მთლიანი ბაზის / ცხრილების ექსპორტი (სუპერადმინი)** და
+ * **§59.6ბ — იმავე JSON-ის ZIP-ით ცხრილების ჩანაცვლება** (უსაფრთხოების ასლით).
  */
 class DatabaseExportTest extends TestCase
 {
@@ -97,5 +105,102 @@ class DatabaseExportTest extends TestCase
         $this->postJson('/api/admin/database/export', ['tables' => ['movies'], 'format' => 'sql'])
             ->assertStatus(503)
             ->assertJsonPath('message', 'mysqldump_unavailable');
+    }
+
+    /* ---------- §59.6ბ — ჩანაცვლება JSON-ის ZIP-ით ---------- */
+
+    public function test_only_the_super_admin_replaces_tables(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->post('/api/admin/database/import', [])->assertForbidden();
+        $this->postJson('/api/admin/database/import/'.str_repeat('a', 40), ['tables' => ['movies'], 'confirm' => 'REPLACE'])
+            ->assertForbidden();
+    }
+
+    /**
+     * ⚠️ ჩანაცვლება: აკრეფილი `REPLACE`, ჯერ შემოწმება (აკრძალულ ცხრილზე ასლიც კი
+     * არ იქმნება), მერე **უსაფრთხოების ასლი**, მერე ცხრილი არქივის რიგებით.
+     */
+    public function test_a_json_archive_replaces_the_chosen_tables_after_a_safety_backup(): void
+    {
+        Storage::fake('local');
+        Storage::fake('private');
+        $this->fakeDumper();
+        $this->actingAs($this->admin);
+
+        $video = Video::create(['user_id' => $this->admin->id, 'title' => 'Talk', 'url' => 'https://example.com/v']);
+        $video->notes()->create(['user_id' => $this->admin->id, 'body' => 'original']);
+
+        $res = $this->post('/api/admin/database/export', ['tables' => ['video_notes', 'users'], 'format' => 'json'])->assertOk();
+        $zipPath = $res->baseResponse->getFile()->getPathname();
+
+        // ბაზა მერე შეიცვალა
+        DB::table('video_notes')->delete();
+        $video->notes()->create(['user_id' => $this->admin->id, 'body' => 'later']);
+
+        $inspect = $this->post('/api/admin/database/import', [
+            'file' => new UploadedFile($zipPath, 'mediary-database.zip', 'application/zip', null, true),
+        ])->assertOk()->json();
+        @unlink($zipPath);
+
+        $tables = collect($inspect['tables'])->keyBy('table');
+        $this->assertSame(1, $tables['video_notes']['rows']);
+        $this->assertTrue($tables['video_notes']['exists']);
+        $this->assertFalse($tables['video_notes']['blocked']);
+        $this->assertTrue($tables['users']['blocked']);
+
+        $url = '/api/admin/database/import/'.$inspect['token'];
+        $backups = DatabaseBackup::count();
+
+        $this->postJson($url, ['tables' => ['video_notes'], 'confirm' => 'yes'])->assertStatus(422);
+        $this->postJson($url, ['tables' => ['users'], 'confirm' => 'REPLACE'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'table_restore_blocked');
+        $this->assertSame($backups, DatabaseBackup::count());
+
+        $result = $this->postJson($url, ['tables' => ['video_notes'], 'confirm' => 'REPLACE'])->assertOk()->json();
+
+        $this->assertSame(['deleted' => 1, 'inserted' => 1, 'dropped_columns' => []], $result['data']['video_notes']);
+        $this->assertSame(['original'], DB::table('video_notes')->pluck('body')->all());
+        $this->assertSame($backups + 1, DatabaseBackup::count());
+        $this->assertSame($result['safety_backup_id'], DatabaseBackup::max('id'));
+        $this->assertTrue(AuditLog::where('action', AuditLog::ACTION_IMPORT)->where('module', 'database')->exists());
+
+        // ატვირთული არქივი ჩანაცვლების შემდეგ იშლება
+        $this->postJson($url, ['tables' => ['video_notes'], 'confirm' => 'REPLACE'])->assertStatus(410);
+    }
+
+    /** „ჩემი სრული ექსპორტის" ZIP აქ არ შემოდის — ის ჩვეულებრივ იმპორტშია (დამატებით) */
+    public function test_a_library_archive_is_refused_here(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->admin);
+
+        $path = tempnam(sys_get_temp_dir(), 'mediary-lib-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('manifest.json', (string) json_encode(['app' => 'mediary', 'kind' => 'library', 'format' => 1]));
+        $zip->close();
+
+        $this->post('/api/admin/database/import', ['file' => new UploadedFile($path, 'mediary-all.zip', 'application/zip', null, true)])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'database_archive_library');
+    }
+
+    /** `DatabaseDumper`-ის ყალბი — უსაფრთხოების ასლი ჩვეულებრივ გზაზე (`DatabaseBackupTest`-ის წესი) */
+    private function fakeDumper(): void
+    {
+        $dumper = Mockery::mock(DatabaseDumper::class);
+        $dumper->shouldReceive('available')->andReturn(true);
+        $dumper->shouldReceive('restoreAvailable')->andReturn(true);
+        $dumper->shouldReceive('driver')->andReturn('mysql');
+        $dumper->shouldReceive('dump')->andReturnUsing(function (string $path) {
+            file_put_contents($path, str_repeat("CREATE TABLE movies (id int);\n", 20));
+
+            return ['tables' => 1];
+        });
+
+        $this->swap(DatabaseDumper::class, $dumper);
     }
 }

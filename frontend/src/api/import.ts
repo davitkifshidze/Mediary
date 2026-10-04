@@ -1,90 +1,82 @@
 import { api } from '@/lib/api'
 
 /* ============================================================
-   გარე სერვისის CSV-ის იმპორტი (FEAT-07).
+   იმპორტი — მხოლოდ შენი მონაცემის ფაილებიდან (Tasks §59.6).
 
-   ⚠️ **ეს „ლინკების ბოტი" არ არის** (2026-09-05-ს სამუდამოდ მოხსნილი):
-   იქ აპი თვითონ დაეძებდა ყურების ბმულებს უცხო საიტებზე; აქ მომხმარებელი
-   თავისივე ექსპორტის ფაილს ტვირთავს და აპი მხოლოდ კითხულობს.
+   Mediary-ის საკუთარი ექსპორტი: მოდულის JSON/CSV ან „ჩემი სრული ექსპორტის"
+   ZIP — **დამატებით** (ახალი ემატება, არსებული გამოტოვდება). ⚠️ Letterboxd/
+   IMDb/Goodreads/Steam-ის იმპორტი წაშლილია: ის TMDB-ზე და სხვა საიტებზე ეძებდა.
 
-   ⚠️ **ორი ბიჯი, ზუსტად `/sync`-ის ფორმით**: გეგმა ერთი ატვირთვით მოდის,
-   შესრულება კი თითო რიგზე თითო მოკლე რექვესთია — ე.ი. პროგრესი ჩანს,
-   გაჩერება შესაძლებელია და `syncDelayMs`-ის პაუზაც მოქმედებს.
+   ⚠️ **სამი ბიჯი, `/sync`-ის ფორმით**: გეგმა ფაილს ერთხელ ტვირთავს (სერვერი
+   დროებით ინახავს — ZIP-ის ფაილებს ერთეულის ბიჯი სჭირდება), შესრულება კი
+   თითო ჩანაწერზე თითო მოკლე მოთხოვნაა — პროგრესი ჩანს, გაჩერება შეიძლება.
    ============================================================ */
 
 /**
- * ცნობადი წყაროები — `ImportSource::SOURCES`-ის სარკე (Tasks §31).
- *
- * ⚠️ **სია აქაც წერია, რადგან თითო წყაროს ბარათს თავისი ფერი, ხატულა და
- * „როგორ მივიღო ფაილი" აქვს** — ეს SPA-ის ცოდნაა და სერვერი მას ვერ
- * გადმოსცემს. `RegistryConsistencyTest` სარკეს წყაროდან კითხულობს, ე.ი.
- * backend-ის ახალი წყარო ბარათის გარეშე ვერ დარჩება ჩუმად.
+ * ცნობადი წყაროები — `ImportSource::SOURCES`-ის სარკე (`RegistryConsistencyTest`).
+ * ⚠️ Tasks §59.6 — მხოლოდ ერთი: Mediary-ის საკუთარი ექსპორტი.
  */
-export const IMPORT_SOURCES = ['letterboxd', 'imdb', 'goodreads', 'steam'] as const
+export const IMPORT_SOURCES = ['mediary'] as const
 
-export type ImportSourceKey = (typeof IMPORT_SOURCES)[number]
-
-/** ერთი ცნობადი ფორმატი */
-export interface ImportSourceInfo {
-  key: string
-  label: string
-  module: string
-  /** ჩვენი ველები, რომლებიც ამ წყაროზე ცნობადია — რუკის ფორმას სჭირდება */
-  columns: string[]
+export interface ImportSourcesInfo {
+  data: { key: string; label: string; formats: string[] }[]
+  max_rows: number
+  /** ზღვარი KB-ში (PHP-ის ჭერით): JSON/CSV და ZIP */
+  limits: { file: number; archive: number }
 }
 
-/** გეგმის ერთი რიგი — უკვე ნორმალიზებული, სერვერის მიერ */
+/** გეგმის ერთი რიგი — სერვერის მიერ შემოწმებული */
 export interface ImportPlanItem {
-  line: number
+  /** რიგის ნომერი მოდულის ფაილში (0-დან) — ერთეულის ბიჯი მას აგზავნის */
+  index: number
   title: string
   year: number | null
-  imdb_id: string | null
-  isbn: string | null
-  author: string | null
-  external_id: string | null
-  rating: number | null
-  status: string | null
-  done_at: string | null
-  /** `new` — დაემატება · `duplicate` — უკვე მაქვს · `invalid` — ვერ წავიკითხე */
+  /** `new` — დაემატება · `duplicate` — უკვე მაქვს / ფაილში ორჯერაა · `invalid` — ვერ ჩაიწერება */
   state: 'new' | 'duplicate' | 'invalid'
+  /** `exists` · `in_trash` · `in_file` · `missing_title` · `missing_field` */
+  reason: string | null
+}
+
+/** ფაილის ერთი მოდული */
+export interface ImportPlanModule {
+  /** ფაილის გასაღები — ერთეულის ბიჯი მას აგზავნის */
+  source: string
+  /** ჩემი მოდული (პირადი მოდული სახელით შეიძლება სხვა გასაღებზე დაჯდეს) */
+  module: string | null
+  /** რატომ ვერ შემოვა: `module_disabled` · `forbidden` · `custom_module_missing` · `module_unknown` */
+  reason: string | null
+  name_ka: string | null
+  name_en: string | null
+  total: number
+  counts: { new: number; duplicate: number; invalid: number }
+  items: ImportPlanItem[]
 }
 
 export interface ImportPlan {
-  source: string
-  module: string
-  headers: string[]
-  /** ჩვენი ველი → ფაილის სვეტი */
-  mapping: Record<string, string>
-  items: ImportPlanItem[]
-  counts: { new: number; duplicate: number; invalid: number }
-  total: number
-  /** ფაილი ჭერს გასცდა — სიაში ყველა რიგი არ არის */
+  /** დროებითი ასლის გასაღები */
+  token: string
+  kind: 'json' | 'csv' | 'zip'
+  name: string | null
+  /** ZIP-ში რამდენი ფაილია */
+  files: number
   truncated: boolean
+  max_rows: number
+  modules: ImportPlanModule[]
 }
 
-export async function fetchImportSources(): Promise<{ data: ImportSourceInfo[]; max_rows: number }> {
+export async function fetchImportSources(): Promise<ImportSourcesInfo> {
   const res = await api.get('/import/sources')
   return res.data
 }
 
 /**
- * ფაილი → გეგმა.
- *
- * ⚠️ **ფაილი სერვერზე არ ინახება**, ამიტომ რუკის შეცვლა იმავე ფაილის
- * ხელახალი გაგზავნაა — ის ბრაუზერში ისედაც ხელთაა. სანაცვლოდ არც დროებითი
- * საქაღალდეა, არც კვოტა და არც გასუფთავების ვადა.
+ * ფაილი → გეგმა. `module` — CSV-ის ორაზროვნებაზე (`import_module_ambiguous`:
+ * სერიალი · ანიმე) შენი არჩევანი.
  */
-export async function planImport(
-  file: File,
-  source?: string,
-  mapping?: Record<string, string>,
-): Promise<ImportPlan> {
+export async function planImport(file: File, module?: string): Promise<ImportPlan> {
   const body = new FormData()
   body.append('file', file)
-  if (source) body.append('source', source)
-  Object.entries(mapping ?? {}).forEach(([field, column]) => {
-    if (column) body.append(`mapping[${field}]`, column)
-  })
+  if (module) body.append('module', module)
 
   const res = await api.post('/import/plan', body)
   return res.data
@@ -96,13 +88,15 @@ export interface ImportItemResult {
   error: string | null
   id: number | null
   title: string | null
+  module: string | null
 }
 
-export async function importRow(
-  source: string,
-  row: ImportPlanItem,
-  signal?: AbortSignal,
-): Promise<ImportItemResult> {
-  const res = await api.post('/import/item', { source, row }, { signal })
+export async function importItem(token: string, module: string, index: number, signal?: AbortSignal): Promise<ImportItemResult> {
+  const res = await api.post('/import/item', { token, module, index }, { signal })
   return res.data
+}
+
+/** დროებითი ასლის წაშლა — „გაუქმება" */
+export async function discardImport(token: string): Promise<void> {
+  await api.delete(`/import/${token}`)
 }

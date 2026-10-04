@@ -63,50 +63,62 @@ final class ExportDomain
      * შეიძლება. ერთი მათგანი ან წასაკითხს კარგავს, ან სტაბილურობას.
      *
      * ⚠️ **ფაილის გზა (`poster_path`, `cover_path`…) განზრახ გადის.**
-     * ფაილები აქ **არ იფუთება** — ამისთვის `POST /storage/files/download`
-     * უკვე არსებობს; გზა კი ის ერთადერთი რამაა, რაც არქივის ფაილს
-     * ჩანაწერს უკავშირებს. მის გარეშე ორივე ექსპორტი ცალკე დგება.
+     * ცალკე ფაილი (JSON/CSV) ფაილებს **არ ფუთავს**; გზა კი ის ერთადერთი რამაა,
+     * რაც არქივის ფაილს ჩანაწერს უკავშირებს — „ჩემი სრული ექსპორტის" ZIP-ში
+     * (Tasks §59.5) ფაილი ზუსტად ამ გზით დევს (`files/<გზა>`).
+     *
+     * ⚠️ **Tasks §59.5 — ბოლო ველები ჩანაწერის „დამატებებია"** (`EXTRAS`):
+     * დამატებითი ველები, მიმაგრებული ფაილები, ჩანიშვნები, გალერეა, მსახიობები,
+     * მარშრუტები, თამაშის ვიდეოები, ნახვების ჟურნალი, ეპიზოდები — რელაციიდან
+     * აწყობილი სიები (`RecordExtras`), რომ ექსპორტი **უკან შემოვიდეს**
+     * (`MediaryImporter`). CSV-ში ისინი JSON-ის უჯრებია (`RecordExporter::flat()`).
+     * ფოტოს წყარო (`poster_source`…) იმიტომ გადის, რომ იმპორტმა იცოდეს —
+     * ფაილი ატვირთვაა (კვოტაში) თუ TMDB-ის საერთო ფაილი (კვოტის გარეშე).
      *
      * @var array<string, array{model: class-string<Model>, fields: list<string>, with: list<string>}>
      */
     public const MODULES = [
         'movie' => [
             'model' => Movie::class,
-            'with' => ['translations', 'status', 'genres.translations'],
+            'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
                 'rating', 'my_rating', 'runtime', 'is_favorite', 'watched_at', 'imdb_id', 'tmdb_id',
                 'imdb_url', 'ge_url', 'collection_name', 'trailer_url',
-                'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
+                'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
+                'custom_fields', 'cast', 'gallery', 'watches',
             ],
         ],
         'series' => [
             'model' => Series::class,
-            'with' => ['translations', 'status', 'genres.translations'],
+            'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
                 'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
-                'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
+                'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
+                'custom_fields', 'cast', 'gallery', 'watches', 'episode_watches',
             ],
         ],
         'anime' => [
             'model' => Anime::class,
-            'with' => ['translations', 'status', 'genres.translations'],
+            'with' => ['translations', 'status', 'genres.translations', 'castLinks', 'galleryImages', 'galleryVideos', 'watches'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'year', 'genres', 'status', 'status_name',
                 'rating', 'my_rating', 'runtime', 'seasons', 'episodes', 'is_favorite', 'watched_at',
                 'imdb_id', 'tmdb_id', 'imdb_url', 'ge_url', 'trailer_url',
-                'description_ka', 'description_en', 'poster_path', 'visibility', 'created_at',
+                'description_ka', 'description_en', 'poster_path', 'poster_source', 'visibility', 'created_at',
+                'custom_fields', 'cast', 'gallery', 'watches', 'episode_watches',
             ],
         ],
         'video' => [
             'model' => Video::class,
-            'with' => ['status', 'type'],
+            'with' => ['status', 'type', 'files', 'notes'],
             'fields' => [
                 'id', 'title', 'type', 'status', 'status_name', 'tags', 'url', 'platform',
-                'external_id', 'channel', 'published_at', 'duration', 'is_favorite', 'watch_count',
-                'watched_at', 'description', 'thumbnail_path', 'download_name', 'visibility', 'created_at',
+                'external_id', 'embed_url', 'channel', 'published_at', 'duration', 'is_favorite', 'watch_count',
+                'watched_at', 'description', 'thumbnail_path', 'thumbnail_url', 'download_name', 'visibility', 'created_at',
+                'custom_fields', 'files', 'notes',
             ],
         ],
         'song' => [
@@ -114,41 +126,45 @@ final class ExportDomain
             'with' => ['genres'],
             'fields' => [
                 'id', 'title', 'artist', 'album', 'year', 'genres', 'tags', 'duration',
-                'url', 'platform', 'external_id', 'rating', 'is_favorite', 'play_count',
-                'played_at', 'thumbnail_path', 'visibility', 'created_at',
+                'url', 'platform', 'external_id', 'embed_url', 'rating', 'is_favorite', 'play_count',
+                'played_at', 'thumbnail_path', 'thumbnail_url', 'visibility', 'created_at',
+                'custom_fields',
             ],
         ],
         'book' => [
             'model' => Book::class,
-            'with' => ['genre'],
+            'with' => ['genre', 'files', 'notes'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'author', 'publisher', 'year', 'genre',
                 'status', 'finished_at', 'rating', 'is_favorite', 'progress_page', 'progress_percent',
                 'pages', 'language', 'format', 'isbn', 'series_name', 'series_number',
-                'tags', 'openlibrary_id', 'source_url',
-                'description_ka', 'description_en', 'cover_path', 'visibility', 'created_at',
+                'tags', 'links', 'openlibrary_id', 'source_url',
+                'description_ka', 'description_en', 'cover_path', 'cover_url', 'cover_source', 'visibility', 'created_at',
+                'custom_fields', 'files', 'notes',
             ],
         ],
         'board_game' => [
             'model' => BoardGame::class,
-            'with' => ['genre'],
+            'with' => ['genre', 'files', 'notes'],
             'fields' => [
-                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'rating',
+                'id', 'title', 'designer', 'publisher', 'year', 'genre', 'mechanics', 'rating',
                 'is_favorite', 'players_min', 'players_max', 'age_min', 'playtime_min',
-                'playtime_max', 'complexity', 'bgg_id', 'bgg_rating',
-                'description', 'image_path', 'visibility', 'created_at',
+                'playtime_max', 'complexity', 'bgg_id', 'bgg_rating', 'links',
+                'description', 'image_path', 'image_url', 'image_source', 'visibility', 'created_at',
+                'custom_fields', 'files', 'notes',
             ],
         ],
         'game' => [
             'model' => Game::class,
-            'with' => ['genres'],
+            'with' => ['genres', 'files', 'notes', 'videos'],
             'fields' => [
                 'id', 'title_ka', 'title_en', 'release_date', 'genres', 'status', 'finished_at', 'rating',
                 'is_favorite', 'developer', 'publisher', 'franchise', 'platforms',
                 'my_platform', 'modes',
                 'opencritic', 'users_score', 'age_rating',
-                'size_gb', 'rawg_id', 'igdb_id',
-                'description_ka', 'description_en', 'cover_path', 'visibility', 'created_at',
+                'size_gb', 'rawg_id', 'rawg_slug', 'igdb_id', 'igdb_slug', 'links',
+                'description_ka', 'description_en', 'cover_path', 'cover_url', 'cover_source', 'visibility', 'created_at',
+                'custom_fields', 'files', 'notes', 'videos',
             ],
         ],
         /* ⚠️ **ჩანიშვნები ექსპორტში არიან, საჯარო პროფილზე კი — არასდროს.**
@@ -156,35 +172,38 @@ final class ExportDomain
            საკუთარი ტექსტი". §16.5 პირველს კრძალავს, მეორეს — არა. */
         'note' => [
             'model' => NoteEntry::class,
-            'with' => ['status', 'category'],
+            'with' => ['status', 'category', 'files'],
             'fields' => [
                 'id', 'title', 'category', 'status', 'status_name', 'finished_at', 'tags', 'description',
-                'due_at', 'is_favorite', 'visibility', 'created_at',
+                'links', 'due_at', 'is_favorite', 'visibility', 'created_at',
+                'custom_fields', 'files',
             ],
         ],
         'bookmark' => [
             'model' => Bookmark::class,
-            'with' => ['status', 'category'],
+            'with' => ['status', 'category', 'files', 'galleryImages', 'galleryVideos'],
             'fields' => [
                 'id', 'title', 'url', 'domain', 'category', 'status', 'status_name', 'tags',
                 // Tasks §36.3 — დამატებითი ბმულები (CSV-ში JSON-ად, `RecordExporter::flat()`)
                 'links',
                 'description', 'is_favorite', 'visit_count', 'visited_at',
-                'thumbnail_path', 'image_url', 'visibility', 'created_at',
+                'thumbnail_path', 'image_url', 'favicon_url', 'visibility', 'created_at',
+                'custom_fields', 'files', 'gallery',
             ],
         ],
         'course' => [
             'model' => Course::class,
-            'with' => ['category'],
+            'with' => ['category', 'files'],
             'fields' => [
                 'id', 'title', 'url', 'platform', 'category', 'status',
                 'status_name', 'tags', 'description', 'is_favorite', 'started_at', 'finished_at',
                 'thumbnail_path', 'image_url', 'visibility', 'created_at',
+                'custom_fields', 'files',
             ],
         ],
         'place' => [
             'model' => Place::class,
-            'with' => ['category'],
+            'with' => ['category', 'files', 'routes', 'galleryImages', 'galleryVideos'],
             'fields' => [
                 'id', 'name', 'category', 'status', 'status_name', 'tags',
                 'address', 'city', 'country', 'lat', 'lng', 'osm_id', 'osm_type',
@@ -192,6 +211,7 @@ final class ExportDomain
                 'phone', 'website', 'opening_hours', 'source_rating', 'source_rating_count',
                 'rating', 'description', 'is_favorite', 'visited_at',
                 'photo_path', 'visibility', 'created_at',
+                'custom_fields', 'files', 'gallery', 'routes',
             ],
         ],
         /* Tasks §34.5ა — მორიგეობა CSV-ით (კალკულატორის „ექსპორტი“): სამსახური
@@ -202,8 +222,42 @@ final class ExportDomain
             'fields' => [
                 'id', 'date', 'start_time', 'workplace_name', 'type', 'hours', 'pay',
                 'note', 'is_favorite', 'created_at',
+                'custom_fields',
             ],
         ],
+    ];
+
+    /**
+     * **Tasks §59.5 — ჩანაწერის „დამატებები"**: ველები, რომლებიც სვეტი კი არა,
+     * რელაციიდან აწყობილი სიაა (`RecordExtras`) და იმპორტი მათ ცალკე წერს.
+     *
+     * ⚠️ `episode_watches` და არა `episodes` — ეს უკანასკნელი სერიალის **სვეტია**
+     * (ეპიზოდების რაოდენობა); ეპიზოდების ნახვა კი `episode_watches`-ია.
+     */
+    public const EXTRAS = ['custom_fields', 'files', 'notes', 'gallery', 'cast', 'routes', 'videos', 'watches', 'episode_watches'];
+
+    /**
+     * **Tasks §59.5 — ჩანაწერის მთავარი ფოტო**: სვეტი და (თუ აქვს) წყაროს სვეტი.
+     *
+     * ⚠️ წყარო განსაზღვრავს, ვისია ფაილი: `upload` — ჩემი ატვირთვაა (კვოტაში),
+     * სხვა (`tmdb`, `openlibrary`, `rawg`, `bgg`) — საერთო ფაილია და კვოტას
+     * არ ეხება (`StorageMeter::files()`). წყაროს გარეშე მოდულის ფოტო ყოველთვის
+     * მფლობელისაა. პირადი მოდული — `photo_path` (`photo()`).
+     *
+     * @var array<string, array{0: string, 1: string|null}>
+     */
+    public const PHOTOS = [
+        'movie' => ['poster_path', 'poster_source'],
+        'series' => ['poster_path', 'poster_source'],
+        'anime' => ['poster_path', 'poster_source'],
+        'video' => ['thumbnail_path', null],
+        'song' => ['thumbnail_path', null],
+        'book' => ['cover_path', 'cover_source'],
+        'board_game' => ['image_path', 'image_source'],
+        'game' => ['cover_path', 'cover_source'],
+        'bookmark' => ['thumbnail_path', null],
+        'course' => ['thumbnail_path', null],
+        'place' => ['photo_path', null],
     ];
 
     /**
@@ -230,16 +284,16 @@ final class ExportDomain
         'personal' => 'files_are_exported_as_a_zip',
     ];
 
-    /** @return list<string> */
     /**
      * **Tasks §37 — ინტერფეისიდან შექმნილი მოდულის ველები.** ერთი სია ყველა
      * პირად მოდულზე — ჩანაწერის სვეტები ერთია (`custom_records`).
-     * ⚠️ დამატებითი ველები აქ **არ** შედის — არც ერთ საბაზისო მოდულზე არ
-     * შედის (ისინი ცალკე ცხრილშია და ფორმა მფლობელზეა დამოკიდებული).
+     * ⚠️ Tasks §59.5 — დამატებითი ველები ახლა **შედის** (`custom_fields`), ისევე
+     * როგორც ყველა საბაზისო მოდულზე: ექსპორტი უკან უნდა შემოვიდეს.
      */
     public const CUSTOM_FIELDS = [
-        'id', 'title', 'url', 'platform', 'category', 'status', 'status_name', 'tags',
+        'id', 'title', 'url', 'platform', 'external_id', 'embed_url', 'category', 'status', 'status_name', 'tags',
         'description', 'is_favorite', 'finished_at', 'photo_path', 'image_url', 'visibility', 'created_at',
+        'custom_fields', 'files', 'notes', 'gallery',
     ];
 
     /** **საბაზისო** მოდულები (პირადს `has()` ცალკე ცნობს) */
@@ -274,6 +328,64 @@ final class ExportDomain
     /** @return list<string> */
     public static function with(string $module): array
     {
-        return self::MODULES[$module]['with'] ?? (CustomModules::isKey($module) ? ['status', 'category'] : []);
+        return self::MODULES[$module]['with']
+            ?? (CustomModules::isKey($module) ? ['status', 'category', 'files', 'notes', 'galleryImages', 'galleryVideos'] : []);
+    }
+
+    /** Tasks §59.5 — ამ მოდულის „დამატებები" (ველების სიის რიგით) */
+    public static function extras(string $module): array
+    {
+        return array_values(array_intersect(self::fields($module), self::EXTRAS));
+    }
+
+    /**
+     * Tasks §59.5 — მთავარი ფოტოს სვეტი და წყაროს სვეტი (ან `null`).
+     *
+     * @return array{0: string, 1: string|null}|null
+     */
+    public static function photo(string $module): ?array
+    {
+        return self::PHOTOS[$module] ?? (CustomModules::isKey($module) ? ['photo_path', null] : null);
+    }
+
+    /**
+     * **Tasks §59.5 — ექსპორტის ერთი რიგის ყველა ფაილი** (ZIP-ში ჩასადები):
+     * მთავარი ფოტო, მიმაგრებული ფაილები, გალერეის ფოტოები, `file` ტიპის
+     * დამატებითი ველები და მსახიობების ფოტოები.
+     *
+     * @param  array<string, mixed>  $row
+     * @return list<string>
+     */
+    public static function paths(string $module, array $row): array
+    {
+        $out = [];
+
+        if (($photo = self::photo($module)) && is_string($row[$photo[0]] ?? null)) {
+            $out[] = $row[$photo[0]];
+        }
+
+        foreach (['files', 'gallery'] as $list) {
+            foreach ((array) ($row[$list] ?? []) as $item) {
+                if (is_array($item) && is_string($item['path'] ?? null)) {
+                    $out[] = $item['path'];
+                }
+            }
+        }
+
+        foreach ((array) ($row['custom_fields'] ?? []) as $value) {
+            foreach (is_array($value) ? $value : [] as $file) {
+                if (is_array($file) && is_string($file['path'] ?? null)) {
+                    $out[] = $file['path'];
+                }
+            }
+        }
+
+        foreach ((array) ($row['cast'] ?? []) as $member) {
+            if (is_array($member) && is_string($member['photo_path'] ?? null)) {
+                $out[] = $member['photo_path'];
+            }
+        }
+
+        return array_values(array_unique(array_filter($out, fn (string $path) => $path !== '')));
     }
 }

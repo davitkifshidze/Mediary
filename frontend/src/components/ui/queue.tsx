@@ -12,7 +12,7 @@ import {
   type GalleryOptions,
   type GalleryPlanItem,
 } from '@/api/gallery'
-import { importRow, type ImportPlanItem } from '@/api/import'
+import { importItem, type ImportPlanItem } from '@/api/import'
 import { addShareItem, type ShareDomainKey, type ShareStatusMode } from '@/api/shareLinks'
 import { restoreFromTrash } from '@/api/trash'
 import {
@@ -129,14 +129,14 @@ interface QItem {
   /** purge — რა სამიზნეზე და ვისთან იშლება (20.2) */
   purgeOpts?: PurgeQueueOptions
   /**
-   * import — გეგმის რიგი და წყარო (FEAT-07).
+   * import — Tasks §59.6: დროებითი ასლის გასაღები, ფაილის მოდული და რიგის ნომერი.
    *
-   * ⚠️ **მთელი რიგი მიჰყვება ერთეულს და არა მხოლოდ id.** ჩანაწერი ჯერ
-   * არ არსებობს — სწორედ ამ მონაცემიდან უნდა შეიქმნას; ფაილი კი
-   * სერვერზე არ ინახება, ე.ი. სხვა წყარო მას აღარ აქვს.
+   * ⚠️ **რიგი სერვერზეა** (დროებითი ასლი) და არა ერთეულზე — ZIP-ის ფაილებს
+   * (პოსტერი, დოკუმენტები) ბრაუზერი ყოველ ჩანაწერზე ვერ გამოგზავნიდა.
    */
-  importRow?: ImportPlanItem
+  importToken?: string
   importSource?: string
+  importIndex?: number
   /** cast — რა განახლდეს (§39.2); ერთეულზეა იმავე მიზეზით, რაც `sources` */
   castOpts?: CastSyncOptions
   /**
@@ -197,8 +197,8 @@ interface QueueApi {
   ) => void
   /** ⚠️ მასობრივი წაშლა (20.2) — მხოლოდ დადასტურებული სკოუპით */
   enqueuePurge: (items: PurgePlanItem[], opts: PurgeQueueOptions) => void
-  /** CSV-ის იმპორტი (FEAT-07) — გეგმის რიგები + წყარო */
-  enqueueImport: (items: ImportPlanItem[], source: string) => void
+  /** იმპორტი (Tasks §59.6) — დროებითი ასლი, ფაილის მოდული, ჩემი მოდული და გეგმის ახალი რიგები */
+  enqueueImport: (token: string, source: string, module: string, items: ImportPlanItem[]) => void
   /** მსახიობების მონაცემები (§39) — გეგმის მსახიობები + ველები */
   enqueueCast: (items: CastSyncPlanItem[], opts: CastSyncOptions) => void
   /** Tasks §40.9 — ბმულიდან საკუთარ ბიბლიოთეკაში დამატება */
@@ -259,6 +259,30 @@ const HEADLINES: Record<QKind, { busy: string; done: string }> = {
  * სახეობა `HEADLINES`-ში უნდა ჩაჯდეს (ტიპი აიძულებს), და აქაც თავისით
  * მოხვდება. `add` სარეზერვოა — ის ყველაზე ზოგადი სათაურია.
  */
+/**
+ * **იმპორტის მოდული → მისი სიის ქეშის გასაღებები** (Tasks §59.6).
+ * ⚠️ პირადი მოდულის ჩანაწერები ერთ სიაშია (`custom-records`).
+ */
+const IMPORT_LIST_KEYS: Record<string, string[]> = {
+  movie: ['movie'],
+  series: ['series'],
+  anime: ['anime'],
+  video: ['videos'],
+  song: ['songs'],
+  book: ['books'],
+  board_game: ['board-games'],
+  game: ['games'],
+  note: ['notes'],
+  bookmark: ['bookmarks'],
+  course: ['courses'],
+  place: ['places'],
+  duty: ['duty'],
+}
+
+function importListKeys(module: string): string[] {
+  return IMPORT_LIST_KEYS[module] ?? ['custom-records']
+}
+
 export function headlineKindOf(kinds: Iterable<QKind>): QKind {
   const present = new Set(kinds)
   return (Object.keys(HEADLINES) as QKind[]).find((k) => k !== 'add' && present.has(k)) ?? 'add'
@@ -277,8 +301,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   /**
    * პაუზა ერთეულის **სახეობის** მიხედვით (Tasks 7):
    * `add`/`purge` — ჩვენივე ბაზაა, ლოდინი არ სჭირდება; `translate` — Gemini-ის
-   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`import`/`cast` — TMDB
-   * (იმპორტი გარე წყაროს რიგზე ერთხელ ეკითხება, ე.ი. იმავე ტემპს ემორჩილება).
+   * ლიმიტი, ამიტომ ცალკე პარამეტრი; `sync`/`gallery`/`cast` — TMDB.
+   * ⚠️ `import` (Tasks §59.6) გარე წყაროს აღარ ეკითხება, მაგრამ იმავე ტემპზე
+   * რჩება: ფაილიდან ჩაწერა სწრაფია და პაუზის გარეშე `api`-ის 600/წთ ჭერს
+   * (`AppServiceProvider`) გადააჭარბებდა — რიგი 429-ზე შუაში გაწყდებოდა.
    */
   const paceOf = React.useCallback(
     (kind: QKind) =>
@@ -459,32 +485,34 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   /**
-   * CSV-ის რიგები რიგში (FEAT-07).
+   * იმპორტის რიგები რიგში (Tasks §59.6).
    *
-   * ⚠️ **დუბლის გასაღები ფაილის ხაზია და არა ჩანაწერის id** — ჩანაწერი
-   * ჯერ არ არსებობს, ხოლო ერთი და იგივე სათაური ფაილში ორჯერაც შეიძლება
+   * ⚠️ **დუბლის გასაღები ასლი + მოდული + რიგის ნომერია** და არა ჩანაწერის id —
+   * ჩანაწერი ჯერ არ არსებობს, ერთი და იგივე სათაური კი ფაილში ორჯერაც შეიძლება
    * იყოს (და ორივე ნამდვილად უნდა შემოვიდეს, თუ სხვადასხვა წელია).
    */
-  const enqueueImport = React.useCallback((rows: ImportPlanItem[], source: string) => {
+  const enqueueImport = React.useCallback((token: string, source: string, module: string, rows: ImportPlanItem[]) => {
     setExpanded(true) // იმპორტი გრძელია — პროგრესი მაშინვე ჩანს
     setItems((cur) => {
       const base = freshBase(cur)
       const busy = new Set(
         cur
           .filter((i) => i.kind === 'import' && (i.status === 'pending' || i.status === 'running'))
-          .map((i) => `${i.importSource}:${i.importRow?.line}`),
+          .map((i) => `${i.importToken}:${i.importSource}:${i.importIndex}`),
       )
       const fresh = rows
-        .filter((r) => !busy.has(`${source}:${r.line}`))
+        .filter((r) => !busy.has(`${token}:${source}:${r.index}`))
         .map((r) => ({
           id: nextId++,
           kind: 'import' as QKind,
           title: r.year ? `${r.title} (${r.year})` : r.title,
-          // ⚠️ ქეშის გასუფთავებას ემსახურება; იმპორტი მხოლოდ ერთ მოდულს ეხება
-          mediaType: 'movie' as MediaType,
+          /* ⚠️ მოდულის გასაღები — ქეშის გასუფთავებას და ურნიდან აღდგენას ემსახურება
+             (`restoreFromTrash(mediaType, …)`); იმპორტი ნებისმიერ მოდულს ეხება */
+          mediaType: module as MediaType,
           status: 'pending' as QStatus,
-          importRow: r,
+          importToken: token,
           importSource: source,
+          importIndex: r.index,
         }))
       return fresh.length ? [...base, ...fresh] : base
     })
@@ -629,7 +657,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 : translateItem(next.mediaType, next.itemId!, next.sources, next.review, ctrl.signal)
               ).then((r) => ({ ok: r.ok, error: r.error ?? undefined, skipped: r.skipped, result: r.result ?? null, changed: r.changed }))
             : next.kind === 'import'
-              ? importRow(next.importSource!, next.importRow!, ctrl.signal).then((r) => ({
+              ? importItem(next.importToken!, next.importSource!, next.importIndex!, ctrl.signal).then((r) => ({
                   ok: r.ok,
                   error: r.error ?? undefined,
                   // ⚠️ „უკვე მაქვს" ჩავარდნა არ არის — სერვერის მეორე შემოწმებაა
@@ -692,9 +720,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           ...(next.kind === 'purge'
             ? ['video', 'videos', 'songs', 'books', 'board-games', 'playlists', 'dashboard', 'purge-plan', 'custom-records']
             : []),
-          /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს,
-             ე.ი. სამივე შესაძლო სია და დეშბორდის მრიცხველი ერთად ახლდება */
-          ...(next.kind === 'import' ? ['books', 'games', 'dashboard', 'export'] : []),
+          /* იმპორტი ახალ ჩანაწერს ქმნის — რომელ მოდულში, ფაილი წყვეტს (Tasks §59.6):
+             იმ მოდულის სია, დეშბორდი, ექსპორტის რიცხვები, საცავი (ZIP-ის ფაილები) */
+          ...(next.kind === 'import' ? [...importListKeys(next.mediaType), 'dashboard', 'export', 'storage-files'] : []),
           // მსახიობის გვერდი (`actor`) ზემოთაა; გეგმის რიცხვები კი იცვლება
           ...(next.kind === 'cast' ? ['cast-sync-plan'] : []),
           /* §40.9 — ახალი ჩანაწერი: დეშბორდის მთვლელი და ბმულის გვერდის „უკვე გაქვს ✓";

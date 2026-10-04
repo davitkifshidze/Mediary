@@ -223,14 +223,14 @@ class UploadLimitsTest extends TestCase
         $this->assertSame(0, AppSetting::count());
     }
 
-    /** ⚠️ იმპორტის ფორმატი ფიქსირებულია — ზომა იცვლება, ფორმატი კი ისევ csv/txt */
+    /** ⚠️ იმპორტის ფორმატი ფიქსირებულია — ზომა იცვლება, ფორმატი კი ისევ txt/csv/json (Tasks §59.6) */
     public function test_a_locked_kind_keeps_its_formats(): void
     {
         $this->actingAs($this->root)->putJson('/api/admin/uploads/limits', [
             'kinds' => ['import' => ['max_kb' => 20480, 'formats' => ['pdf']]],
         ])->assertOk();
 
-        $this->assertSame(['txt', 'csv'], UploadLimits::installation('import')['formats']);
+        $this->assertSame(['txt', 'csv', 'json'], UploadLimits::installation('import')['formats']);
         $this->assertSame(20480, UploadLimits::installation('import')['max_kb']);
     }
 

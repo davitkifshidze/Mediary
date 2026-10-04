@@ -3,6 +3,7 @@
 namespace App\Services\Backup;
 
 use App\Models\DatabaseBackup;
+use App\Models\User;
 use App\Services\Notify\Notifier;
 use App\Services\Storage\StorageMeter;
 use App\Support\NotificationType;
@@ -104,10 +105,11 @@ class BackupRunner
      * ⚠️ **საჯარო გახდა §11.4-ისთვის**: ერთი ცხრილის აღდგენა იმავე დაცვას
      * საჭიროებს, რასაც სრული — და მისი მეორედ დაწერა ერთ დღეს გაშორდებოდა.
      */
-    public function safetyDump(DatabaseBackup $for, string $note): ?DatabaseBackup
+    public function safetyDump(DatabaseBackup|User $for, string $note): ?DatabaseBackup
     {
         $safety = DatabaseBackup::create([
-            'user_id' => $for->user_id,
+            // Tasks §59.6 — JSON-ის ZIP-ით ჩანაცვლებას ასლი არ აქვს, ე.ი. მფლობელი პირდაპირ მოდის
+            'user_id' => $for instanceof User ? $for->getKey() : $for->user_id,
             'name' => 'mediary-before-restore-'.now()->format('Y-m-d-Hi').'.sql',
             'status' => DatabaseBackup::STATUS_RUNNING,
             'driver' => $this->dumper->driver(),

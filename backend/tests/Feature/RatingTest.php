@@ -100,7 +100,7 @@ class RatingTest extends TestCase
             ->assertJsonPath('data.rating', 4.7);
     }
 
-    /** ცარიელი სტრიქონი და 0 — ქულის წაშლაა (`ImportSource::rating()`-ის იგივე წესი) */
+    /** ცარიელი სტრიქონი და 0 — ქულის წაშლაა (`Rating`-ის წესი) */
     public function test_empty_and_zero_clear_the_rating(): void
     {
         $id = $this->actingAs($this->user)

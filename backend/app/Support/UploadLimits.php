@@ -148,8 +148,16 @@ final class UploadLimits
             ],
             'families' => null,
         ],
-        // FEAT-07 — CSV-ის იმპორტი (ადრე `ImportSource::MAX_KB`)
-        'import' => ['max_kb' => 10240, 'formats' => ['csv', 'txt'], 'families' => [], 'locked' => true],
+        /* Tasks §59.6 — Mediary-ის ექსპორტის ფაილი (JSON · CSV) იმპორტისთვის.
+           ⚠️ `json` ოჯახში არ ზის — ფორმატი ჩაკეტილია და მხოლოდ აქ ცხოვრობს;
+           შიგთავსიდან `text/plain`-ად ამოცნობილ JSON-ს `txt` ფარავს. 25 MB —
+           ფაილი ახლა „დამატებებსაც" ატარებს (მსახიობები, გალერეა, ველები). */
+        'import' => ['max_kb' => 25600, 'formats' => ['json', 'csv', 'txt'], 'families' => [], 'locked' => true],
+        /* Tasks §59.6 — „ჩემი სრული ექსპორტის" ZIP (ჩანაწერები + ფაილები).
+           ⚠️ ცალკე სახეობა და არა `import`-ის ზრდა: ფაილებიანი არქივი ასობით MB-ია,
+           CSV-ის ზღვრის იქამდე აწევა კი უაზრო ფაილს გაატარებდა. ნამდვილ ჭერს
+           PHP-ის `upload_max_filesize` ჭრის (`effectiveKb()`). */
+        'import_archive' => ['max_kb' => 1048576, 'formats' => ['zip'], 'families' => [], 'locked' => true],
         /* Tasks §33 — პირადი გალერეა: ფოტო 15 MB, ვიდეო 300 MB (Q7).
            ⚠️ `heic`/`heif` ნაგულისხმევში **არ არის**: ბრაუზერი (Safari-ს გარდა)
            მას ვერ ხატავს და სერვერი ესკიზს ვერ ამოიღებს (GD ვერ კითხულობს) —
@@ -577,8 +585,12 @@ final class UploadLimits
     private static function ordered(array $formats): array
     {
         $all = array_merge(...array_values(self::CATALOG));
+        $formats = array_unique($formats);
 
-        return array_values(array_intersect($all, array_unique($formats)));
+        /* ⚠️ Tasks §59.6 — კატალოგის გარეთ მყოფი ფორმატი (`json` — მხოლოდ ჩაკეტილ
+           `import`-ში) ბოლოს რჩება და აღარ იკარგება. ის მხოლოდ კოდიდან მოდის:
+           შენახული პარამეტრი მას ვერ შემოიტანს (`cleanFormats()` `selectable()`-ით ფილტრავს). */
+        return array_values([...array_intersect($all, $formats), ...array_diff($formats, $all)]);
     }
 
     /** „8M" / „256K" / „1G" → ბაიტები */

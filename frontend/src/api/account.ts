@@ -1378,6 +1378,8 @@ export const UPLOAD_KINDS = [
   'field',
   'chat',
   'import',
+  // Tasks §59.6 — „ჩემი სრული ექსპორტის" ZIP (ცალკე, დიდი ზღვარი)
+  'import_archive',
   // Tasks §33 — პირადი გალერეა (ფოტო 15 MB, ვიდეო 300 MB)
   'personal_photo',
   'personal_video',

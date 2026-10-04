@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Module;
 use App\Services\Audit\AuditLogger;
+use App\Services\Export\LibraryArchive;
 use App\Services\Export\RecordExporter;
 use App\Support\CustomModules;
 use App\Support\ExportDomain;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -130,5 +134,43 @@ class ExportController extends Controller
             // ბრაუზერს ტიპის გამოცნობა ეკრძალება (`SetSecurityHeaders`-ის იგივე წესი)
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * **Tasks §59.5 — „ჩემი სრული ექსპორტი"**: ყველა ჩემი მოდული ერთ ZIP-ში
+     * (JSON + ფაილები) — ისე, რომ „იმპორტმა" უკან შემოიტანოს.
+     *
+     * ⚠️ **`LibraryArchive` მეთოდით და არა კონსტრუქტორით** — კონტროლერი
+     * მარშრუტზე ინახება, არქივის სერვისი კი პორციის მდგომარეობას ატარებს.
+     *
+     * ⚠️ **ლოგი ჩამოტვირთვამდე** (`show()`-ის წესი) — რამდენი ჩანაწერი და
+     * ფაილი წავიდა, მოთხოვნის ფაქტია.
+     */
+    public function archive(Request $request, LibraryArchive $archive): BinaryFileResponse|JsonResponse
+    {
+        $user = $request->user();
+        $withFiles = $request->boolean('files', true);
+
+        try {
+            $built = $archive->build($user, $withFiles);
+        } catch (RuntimeException) {
+            return response()->json(['message' => 'export_failed'], 500);
+        }
+
+        $this->audit->log(AuditLog::ACTION_EXPORT, [
+            'module' => 'all',
+            'subject_label' => 'all',
+            'new_values' => [
+                'format' => 'zip',
+                'records' => $built['records'],
+                'files' => $built['files'],
+                'missing_files' => $built['missing'],
+            ],
+        ]);
+
+        return response()->download($built['path'], 'mediary-all-'.now()->format('Y-m-d').'.zip', [
+            'Content-Type' => 'application/zip',
+            'X-Content-Type-Options' => 'nosniff',
+        ])->deleteFileAfterSend();
     }
 }

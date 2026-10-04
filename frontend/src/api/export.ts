@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/dates'
 
@@ -55,5 +56,38 @@ export async function downloadExport(module: string, format: ExportFormat): Prom
   a.click()
   a.remove()
   // ⚠️ ბლობი ხელით უნდა გათავისუფლდეს, თორემ ფაილი მეხსიერებაში რჩება
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * **Tasks §59.5 — „ჩემი სრული ექსპორტი"**: ყველა მოდული ერთ ZIP-ში (JSON +
+ * ფაილები) — ის, რასაც „იმპორტი" უკან შემოიტანს. `files: false` — მხოლოდ ჩანაწერები.
+ *
+ * ⚠️ შეცდომის სხეულიც ბლობად მოდის — კოდი (`export_failed`) JSON-ად გადაიკითხება,
+ * თორემ `errorMessage()` მას ვერ დაინახავდა (`downloadDatabase()`-ის წესი).
+ */
+export async function downloadArchive(files: boolean): Promise<void> {
+  let blob: Blob
+  try {
+    const res = await api.post('/export/archive', { files }, { responseType: 'blob' })
+    blob = res.data as Blob
+  } catch (e) {
+    if (isAxiosError(e) && e.response?.data instanceof Blob) {
+      try {
+        e.response.data = JSON.parse(await e.response.data.text())
+      } catch {
+        // სხეული JSON არ იყო — შეცდომა ისე რჩება
+      }
+    }
+    throw e
+  }
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `mediary-all-${formatDate(new Date(), 'iso')}.zip`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
   URL.revokeObjectURL(url)
 }

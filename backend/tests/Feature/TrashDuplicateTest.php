@@ -9,7 +9,9 @@ use App\Models\Series;
 use App\Models\User;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -127,17 +129,30 @@ class TrashDuplicateTest extends TestCase
         $this->assertSame(1, Movie::withoutGlobalScopes()->count());
     }
 
-    /** იმპორტი იმავე ბრმა წერტილზე იდგა — `imdb_id`-იანი რიგი პირველივე `save()`-ზე ვარდებოდა */
+    /**
+     * იმპორტი იმავე ბრმა წერტილზე იდგა — `imdb_id`-იანი რიგი პირველივე `save()`-ზე ვარდებოდა.
+     * Tasks §59.6 — ახლა Mediary-ის ფაილით: გეგმა „ურნაშია"-ს ამბობს, ერთეული კი id-ს აბრუნებს.
+     */
     public function test_import_names_a_trashed_duplicate(): void
     {
+        Storage::fake('local');
+
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603, 'imdb_id' => 'tt0133093']);
         $this->actingAs($this->user);
         $movie->moveToTrash();
 
-        $this->postJson('/api/import/item', [
-            'source' => 'imdb',
-            'row' => ['title' => 'The Matrix', 'imdb_id' => 'tt0133093'],
-        ])
+        $path = (string) tempnam(sys_get_temp_dir(), 'mediary-');
+        file_put_contents($path, (string) json_encode([
+            'module' => 'movie',
+            'records' => [['title_en' => 'The Matrix', 'imdb_id' => 'tt0133093']],
+        ]));
+
+        $plan = $this->post('/api/import/plan', ['file' => new UploadedFile($path, 'mediary-movie.json', null, null, true)])
+            ->assertOk()
+            ->assertJsonPath('modules.0.items.0.reason', 'in_trash')
+            ->json();
+
+        $this->postJson('/api/import/item', ['token' => $plan['token'], 'module' => 'movie', 'index' => 0])
             ->assertOk()
             ->assertJson(['ok' => false, 'error' => 'record_in_trash', 'id' => $movie->id]);
 

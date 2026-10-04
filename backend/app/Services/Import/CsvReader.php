@@ -10,10 +10,9 @@ use Illuminate\Http\UploadedFile;
  *
  * ერთადერთი ადგილი, სადაც ატვირთული ფაილი ტექსტიდან რიგებად იქცევა.
  *
- * ⚠️ **ფაილი არსად არ ინახება.** ის შემოსული მონაცემია და არა ბიბლიოთეკის
- * ფაილი: `StorageMeter`-ზე არ გადის, კვოტას არ ხარჯავს და რექვესთის
- * დასრულებისთანავე ქრება. სწორედ ამიტომ გეგმა **სრულ სიას** აბრუნებს
- * პასუხში — რიგის შესრულებას ფაილი მეორედ აღარ სჭირდება.
+ * ⚠️ **ფაილი ბიბლიოთეკის ფაილი არ არის** — `StorageMeter`-ზე არ გადის და კვოტას
+ * არ ხარჯავს. Tasks §59.6 — Mediary-ის CSV დროებით ასლში (`MediaryPackage`)
+ * ნაწილებად იწერება და ერთეულის ბიჯი მხოლოდ თავის ნაწილს კითხულობს.
  *
  * ⚠️ **BOM ხელით იჭრება.** Excel-ში შენახული CSV სამი ბაიტით იწყება და
  * პირველი სვეტის სახელი `\u{FEFF}Name` ხდება — ე.ი. **ხელმოწერის ამოცნობა
@@ -33,9 +32,9 @@ class CsvReader
     /**
      * @return array{headers: list<string>, rows: list<array<string, string>>, total: int, truncated: bool}
      */
-    public function read(UploadedFile $file): array
+    public function read(UploadedFile|string $file): array
     {
-        $handle = fopen($file->getRealPath(), 'r');
+        $handle = fopen($file instanceof UploadedFile ? $file->getRealPath() : $file, 'r');
 
         if (! $handle) {
             return ['headers' => [], 'rows' => [], 'total' => 0, 'truncated' => false];

@@ -8,6 +8,7 @@ import { ExportPanel } from '@/components/transfer/ExportPanel'
 import { ImportPanel } from '@/components/transfer/ImportPanel'
 import { BackupsPanel } from '@/components/backups/BackupsPanel'
 import { DatabaseExportCard } from '@/components/backups/DatabaseExportCard'
+import { DatabaseImportCard } from '@/components/backups/DatabaseImportCard'
 import { useAuth } from '@/lib/auth'
 
 /* ============================================================
@@ -86,8 +87,10 @@ export function TransferPage() {
       {/* §59.2 — ბაზა: მხოლოდ სუპერადმინს (ასლების ჩამოთვლაც მისი უფლებაა) */}
       {isAdmin && (
         <div hidden={tab !== 'database'}>
-          {/* §59.4 — მთლიანი ბაზა / ცხრილები (საჭიროებებით); ქვემოთ — ასლები */}
+          {/* §59.4 — მთლიანი ბაზა / ცხრილები (საჭიროებებით); §59.6ბ — იმავე ZIP-ით
+              ჩანაცვლება; ქვემოთ — ასლები (`.sql`/`.gz` ატვირთვა, ცხრილის აღდგენა) */}
           <DatabaseExportCard />
+          <DatabaseImportCard />
           <BackupsPanel />
         </div>
       )}

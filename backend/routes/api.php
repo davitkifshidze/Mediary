@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\CustomRecordNoteController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DatabaseExportController;
+use App\Http\Controllers\Api\DatabaseImportController;
 use App\Http\Controllers\Api\DiscoverController;
 use App\Http\Controllers\Api\DutyController;
 use App\Http\Controllers\Api\DutyShiftController;
@@ -481,15 +482,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('token', '[A-Za-z0-9]{20,100}');
 
     Route::get('/export', [ExportController::class, 'index']);
+    // Tasks §59.5 — „ჩემი სრული ექსპორტი": ყველა მოდული ერთ ZIP-ში (JSON + ფაილები)
+    Route::post('/export/archive', [ExportController::class, 'archive']);
     Route::get('/export/{module}', [ExportController::class, 'show']);
 
-    /* ---------- გარე სერვისის CSV-ის იმპორტი (FEAT-07) ----------
-       ⚠️ **ეს „ლინკების ბოტი" არ არის** (2026-09-05-ს სამუდამოდ მოხსნილი):
-       იქ აპი თვითონ დაეძებდა ბმულებს უცხო საიტებზე, აქ კი მომხმარებელი
-       საკუთარ ფაილს ტვირთავს.
-       ⚠️ **ჯგუფის middleware არ ადევს**: მოდული ფაილის შიგთავსიდან
-       ირკვევა და არა მისამართიდან, ე.ი. `@type`-ს წასაკითხი არაფერი აქვს —
-       ორივე შემოწმება (წვდომა + უფლება) კონტროლერშია, ცხადად. */
     /* ---------- სტატისტიკა (FEAT-08) ----------
        ⚠️ **დეშბორდს არ ცვლის**: ის „რა მაქვს"-ს პასუხობს, ეს — „რა გავაკეთე".
        ⚠️ ერთი რექვესთი ყველა ჩართულ მოდულზე; ჩაურთველი სიიდან თვითონ ცვივა. */
@@ -521,9 +517,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trash/{domain}/{id}/file', [TrashController::class, 'file'])->whereNumber('id');
     Route::delete('/trash/{domain}/{id}', [TrashController::class, 'destroy'])->whereNumber('id');
 
+    /* ---------- იმპორტი — მხოლოდ Mediary-ის საკუთარი ექსპორტიდან (Tasks §59.6) ----------
+       ⚠️ **ჯგუფის middleware არ ადევს**: მოდული ფაილის შიგთავსიდან ირკვევა და
+       არა მისამართიდან — წვდომა და უფლება იმპორტერშია (`MediaryTargets`).
+       ⚠️ ჩანაცვლება აქ არ არის — მხოლოდ სუპერადმინს (`/admin/database/import`). */
     Route::get('/import/sources', [ImportController::class, 'sources']);
     Route::post('/import/plan', [ImportController::class, 'plan']);
     Route::post('/import/item', [ImportController::class, 'item']);
+    Route::delete('/import/{token}', [ImportController::class, 'discard'])->where('token', '[A-Za-z0-9]{40}');
 
     /* ---------- ფილმები (module: movie) ---------- */
     Route::middleware(['module:movie', 'permission:movie'])->group(function () {
@@ -1547,6 +1548,11 @@ Route::middleware('auth:sanctum')->group(function () {
            არჩეული ცხრილების ექსპორტი (JSON-ის ZIP · SQL) — იგივე `super_admin` */
         Route::get('/database/tables', [DatabaseExportController::class, 'tables']);
         Route::post('/database/export', [DatabaseExportController::class, 'export']);
+        /* Tasks §59.6ბ — იმავე JSON-ის ZIP-ის უკან შემოტანა: ატვირთვა → არჩეული ცხრილების
+           **ჩანაცვლება** (აკრეფილი `REPLACE`, უსაფრთხოების ასლით) */
+        Route::post('/database/import', [DatabaseImportController::class, 'inspect']);
+        Route::post('/database/import/{token}', [DatabaseImportController::class, 'replace'])->where('token', '[A-Za-z0-9]{40}');
+        Route::delete('/database/import/{token}', [DatabaseImportController::class, 'discard'])->where('token', '[A-Za-z0-9]{40}');
 
         Route::get('/backups', [DatabaseBackupController::class, 'index']);
         Route::post('/backups', [DatabaseBackupController::class, 'store']);

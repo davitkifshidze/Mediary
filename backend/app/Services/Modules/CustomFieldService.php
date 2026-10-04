@@ -198,6 +198,139 @@ class CustomFieldService
     }
 
     /**
+     * **Tasks §59.5 — ბევრი ჩანაწერის მნიშვნელობა ერთი query-ით** (ექსპორტი).
+     *
+     * `values()`-ის იგივე წესი (ტიპი განსაზღვრებიდან), ოღონდ ფაილის ველზე
+     * `{name, path, mime, size}`: გზა „სრული ექსპორტის" ZIP-ში ფაილს ჩანაწერს
+     * უკავშირებს (`files/<გზა>`), ამ სერვერის `url` კი გარეთ არაფერს ნიშნავს.
+     *
+     * @param  list<int>  $recordIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function exportValues(User $user, string $module, array $recordIds): array
+    {
+        $table = CustomFields::table($module);
+        if (! $table || $recordIds === []) {
+            return [];
+        }
+
+        $types = array_column($this->definitions($user, $module), 'type', 'key');
+        if ($types === []) {
+            return [];
+        }
+
+        $rows = CustomFields::scope(DB::table($table), $module)
+            ->where('user_id', $user->getKey())
+            ->whereIn('record_id', $recordIds)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $type = $types[$row->field_key] ?? null;
+            if ($type === null) {
+                continue;
+            }
+
+            if ($type === 'file') {
+                if ($row->value_path) {
+                    $out[(int) $row->record_id][$row->field_key][] = [
+                        'name' => $row->value_name,
+                        'path' => $row->value_path,
+                        'mime' => $row->value_mime,
+                        'size' => (int) $row->value_size,
+                    ];
+                }
+
+                continue;
+            }
+
+            $out[(int) $row->record_id][$row->field_key] = $this->read($type, $row);
+        }
+
+        return $out;
+    }
+
+    /**
+     * **Tasks §59.6 — იმპორტირებული განსაზღვრებების შერწყმა.**
+     *
+     * ⚠️ **ემატება და არ ანაცვლებს**: ჩემი არსებული ველი (იგივე `key`)
+     * ხელუხლებელი რჩება, ფაილიდან მოსული კი თავისი `key`-ით ემატება — სწორედ
+     * ამ `key`-ით მოდის ჩანაწერის მნიშვნელობებიც. `saveDefinitions()` აქ არ
+     * გამოდგება: ის უცნობ `key`-ს ახალ ველად თვლის და სახელიდან ახალ `key`-ს
+     * აგებს, ე.ი. მნიშვნელობები ვეღარ მიაგნებდნენ თავის ველს.
+     *
+     * @param  list<array<string, mixed>>  $incoming
+     */
+    public function mergeDefinitions(User $user, string $module, array $incoming): void
+    {
+        if (! CustomFields::supports($module) || $incoming === []) {
+            return;
+        }
+
+        $current = $this->definitions($user, $module);
+        $taken = array_column($current, 'key');
+        $added = false;
+
+        foreach ($incoming as $item) {
+            if (count($current) >= self::MAX_FIELDS) {
+                break;
+            }
+
+            $field = $this->normalize((array) $item, $taken);
+            if (! $field) {
+                continue;
+            }
+
+            $taken[] = $field['key'];
+            $current[] = $field;
+            $added = true;
+        }
+
+        if ($added) {
+            $settings = $this->settings($user, $module);
+            $settings['custom_fields'] = $current;
+            $this->write($user, $module, $settings);
+        }
+    }
+
+    /**
+     * **Tasks §59.6 — უკვე შენახული ფაილის მიბმა `file` ველზე** (იმპორტი).
+     *
+     * `storeFile()`-ის იგივე რიგი, ოღონდ ფაილი უკვე `StorageMeter`-ით არის
+     * ჩაწერილი (კვოტაც დაკავებულია) — ZIP-იდან `UploadedFile` არ მოდის.
+     */
+    public function attachStoredFile(User $user, string $module, int $recordId, string $key, string $path, string $name, ?string $mime, int $size): void
+    {
+        $table = CustomFields::table($module);
+
+        $next = (int) (CustomFields::scope(DB::table($table), $module)
+            ->where('record_id', $recordId)
+            ->where('field_key', $key)
+            ->max('sort_order') ?? -1) + 1;
+
+        DB::table($table)->insert([
+            'user_id' => $user->getKey(),
+            ...CustomFields::rowAttributes($module),
+            'record_id' => $recordId,
+            'field_key' => $key,
+            'value_text' => null,
+            'value_number' => null,
+            'value_date' => null,
+            'value_bool' => null,
+            'value_path' => $path,
+            'value_name' => mb_substr($name, 0, 255),
+            'value_mime' => $mime,
+            'value_size' => $size,
+            'sort_order' => $next,
+            'updated_at' => now(),
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
      * მნიშვნელობების ჩაწერა.
      *
      * ⚠️ **ცარიელი მნიშვნელობა რიგს შლის** და არა ცარიელს წერს: „არ შევსებული"

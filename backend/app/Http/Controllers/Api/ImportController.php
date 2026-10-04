@@ -5,159 +5,124 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Services\Audit\AuditLogger;
+use App\Services\Import\ImportException;
 use App\Services\Import\ImportPlanner;
-use App\Services\Import\RowImporter;
+use App\Services\Import\MediaryImporter;
+use App\Services\Import\MediaryPackage;
 use App\Support\ImportSource;
 use App\Support\UploadLimits;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * **FEAT-07 — გარე სერვისის CSV → ბიბლიოთეკა.**
+ * **Tasks §59.6 — იმპორტი მხოლოდ შენი მონაცემის ფაილებიდან.**
  *
- * ორი ბიჯი, ზუსტად `/purge`-ისა და `/sync`-ის ფორმით: **გეგმა** (რამდენი
- * ახალი / უკვე მაქვს / ვერ წაიკითხა) და **ერთეული** (თითო რიგი — თითო
- * მოკლე რექვესთი, რიგში).
+ * Mediary-ის საკუთარი ექსპორტი — მოდულის JSON/CSV ან „ჩემი სრული ექსპორტის"
+ * ZIP — **დამატების** რეჟიმით: ახალი ემატება, არსებული გამოტოვდება.
+ * Letterboxd/IMDb/Goodreads/Steam-ის იმპორტი (FEAT-07) წაშლილია — ის
+ * TMDB-ზე, Open Library-სა და RAWG-ზე ეძებდა (Q16: „სხვა საიტებიდან არ მინდა").
  *
- * ⚠️ **ფაილი მხოლოდ გეგმის დროს იტვირთება და არსად არ ინახება.** გეგმა
- * სრულ, უკვე ნორმალიზებულ სიას აბრუნებს, ე.ი. ერთეულის ბიჯს ფაილი აღარ
- * სჭირდება: არც დროებითი საქაღალდე, არც კვოტა, არც გასუფთავების ვადა.
- * რუკის შეცვლა ფაილის თავიდან გაგზავნაა — ის ბრაუზერში ისედაც ხელთაა.
+ * სამი ბიჯი, `/purge`-ისა და `/sync`-ის ფორმით: **გეგმა** (ფაილი → დროებითი
+ * ასლი + „დაემატება N, გამოტოვდება M"), **ერთეული** (თითო ჩანაწერი — თითო
+ * მოკლე მოთხოვნა, რიგში) და **გაუქმება** (დროებითი ასლის წაშლა).
  *
- * ⚠️ **უფლება ცხადად მოწმდება და არა middleware-ით.** მოდული **ფაილის
- * შიგთავსიდან** ირკვევა და არა მისამართიდან, ე.ი. `permission:@type`-ს
- * წასაკითხი არაფერი აქვს. ამიტომ `plan` თვითონ ითხოვს `view`-ს
- * („რა მოხდებოდა" კითხვაა) და `item` — `create`-ს.
+ * ⚠️ **ჩანაცვლება აქ არ არის** — მხოლოდ სუპერადმინს, ცხრილზე ან ბაზაზე,
+ * უსაფრთხოების ასლით (`DatabaseImportController`, Q16).
+ *
+ * ⚠️ **სერვისები მეთოდით და არა კონსტრუქტორით** — კონტროლერი მარშრუტზე
+ * ინახება, `MediaryFiles` კი ჩანაწერის მდგომარეობას ატარებს.
  */
 class ImportController extends Controller
 {
-    public function __construct(
-        private readonly ImportPlanner $planner,
-        private readonly RowImporter $importer,
-        private readonly AuditLogger $audit,
-    ) {}
+    public function __construct(private readonly AuditLogger $audit) {}
 
-    /** რა წყაროებს ვცნობთ — ფორმას სიის დახატვა სჭირდება */
-    public function sources()
+    /** რა ფაილს ვიღებთ — ფორმას ზღვრებისა და ფორმატების დახატვა სჭირდება */
+    public function sources(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         return response()->json([
             'data' => array_map(fn (string $key) => [
                 'key' => $key,
                 'label' => ImportSource::SOURCES[$key]['label'],
-                'module' => ImportSource::SOURCES[$key]['module'],
-                'columns' => array_keys(ImportSource::columns($key)),
+                'formats' => ImportSource::SOURCES[$key]['formats'],
             ], ImportSource::keys()),
             'max_rows' => ImportSource::MAX_ROWS,
+            // ზღვარი KB-ში — PHP-ის ჭერით (`effectiveKb()`)
+            'limits' => [
+                'file' => UploadLimits::effectiveKb('import', $user),
+                'archive' => UploadLimits::effectiveKb('import_archive', $user),
+            ],
         ]);
     }
 
     /**
-     * ფაილი → გეგმა.
+     * ფაილი → დროებითი ასლი + გეგმა.
      *
-     * ⚠️ **`mimes:csv,txt` და არა `text/csv`-ის ნდობა.** Laravel ტიპს
-     * **შიგთავსიდან** კითხულობს (`finfo`), კლიენტის განაცხადს კი არა —
-     * ზუსტად ის წესი, რომლითაც SEC-05-ის შემდეგ `svg` აიკრძალა. CSV
-     * თვითონ ინერტულია, მაგრამ ფაილს მაინც არავინ ასრულებს: ის
-     * იკითხება და გვერდით აღარ ინახება.
+     * ⚠️ **ფორმატი შიგთავსიდან მოწმდება** (`UploadLimits::rule()` — `mimes:`),
+     * ZIP-ს კი თავისი, დიდი ზღვარი აქვს (`import_archive`).
      */
-    public function plan(Request $request)
+    public function plan(Request $request, MediaryPackage $package, ImportPlanner $planner): JsonResponse
     {
+        $file = $request->file('file');
+        $kind = $file && strtolower($file->getClientOriginalExtension()) === 'zip' ? 'import_archive' : 'import';
+
         $data = $request->validate([
-            // Tasks §34.3 — ზომა `UploadLimits`-ის `import` სახეობიდან (ფორმატი ფიქსირებულია: csv, txt)
-            'file' => ['required', ...UploadLimits::rule('import', $request->user())],
-            'source' => ['nullable', ImportSource::rule()],
-            'mapping' => ['nullable', 'array'],
-            'mapping.*' => ['nullable', 'string', 'max:200'],
+            'file' => ['required', ...UploadLimits::rule($kind, $request->user())],
+            // CSV-ის ორაზროვნებაზე (სერიალი · ანიმე) — „წაიკითხე როგორც …"
+            'module' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $plan = $this->planner->plan(
-            $request->user(),
-            $data['file'],
-            $data['source'] ?? null,
-            $data['mapping'] ?? null,
-        );
-
-        if ($plan['source'] === null) {
-            /* ⚠️ „ფორმატი ვერ ვიცანი" **422-ია და არა ცარიელი გეგმა**:
-               ცარიელი სია ეკრანზე „ფაილი ცარიელია"-დ იკითხება და
-               მომხმარებელი სხვა ფაილს ეძებს იმის ნაცვლად, რომ წყარო
-               ხელით აირჩიოს. სათაურები პასუხშია, რომ არჩევა შეძლოს. */
-            return response()->json([
-                'message' => 'import_source_unknown',
-                'headers' => $plan['headers'],
-                'sources' => ImportSource::keys(),
-            ], 422);
+        try {
+            $meta = $package->stage($request->user(), $data['file'], $data['module'] ?? null);
+        } catch (ImportException $e) {
+            return response()->json(['message' => $e->getMessage(), ...$e->context], $e->status);
         }
 
-        $this->guard($request, $plan['module'], 'view');
-
-        return response()->json($plan);
+        return response()->json($planner->plan($request->user(), $meta));
     }
 
     /**
-     * ერთი რიგის იმპორტი.
+     * ერთი ჩანაწერი.
      *
-     * ⚠️ **პასუხი არასდროს 5xx-ია.** ერთი ვერნაპოვნი ფილმი რიგს არ უნდა
-     * აჩერებდეს — `ok: false` + მიზეზი ზუსტად ის ფორმაა, რომლითაც
-     * `/sync` და `/purge`-ის ერთეულები პასუხობენ, და რომელსაც რიგი
-     * „ჩავარდნილად" ხატავს გაჩერების გარეშე.
+     * ⚠️ **წვდომა და უფლება იმპორტერში მოწმდება** (`MediaryTargets`) — მოდული
+     * ფაილის შიგთავსიდან ირკვევა და არა მისამართიდან.
      */
-    public function item(Request $request)
+    public function item(Request $request, MediaryImporter $importer): JsonResponse
     {
         $data = $request->validate([
-            'source' => ['required', ImportSource::rule()],
-            'row' => ['required', 'array'],
-            'row.title' => ['nullable', 'string', 'max:500'],
-            'row.year' => ['nullable', 'integer'],
-            'row.imdb_id' => ['nullable', 'string', 'max:20'],
-            'row.isbn' => ['nullable', 'string', 'max:20'],
-            'row.author' => ['nullable', 'string', 'max:300'],
-            'row.external_id' => ['nullable', 'string', 'max:50'],
-            'row.rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
-            'row.status' => ['nullable', 'string', 'max:30'],
-            'row.done_at' => ['nullable', 'string', 'max:40'],
+            'token' => ['required', 'string', 'regex:/^[A-Za-z0-9]{40}$/'],
+            'module' => ['required', 'string', 'max:40'],
+            'index' => ['required', 'integer', 'min:0', 'max:'.ImportSource::MAX_ROWS],
         ]);
 
-        $module = ImportSource::module($data['source']);
-        $this->guard($request, $module, 'create');
-
-        $row = $data['row'] + [
-            'title' => '', 'year' => null, 'imdb_id' => null, 'isbn' => null,
-            'author' => null, 'external_id' => null, 'rating' => null,
-            'status' => null, 'done_at' => null,
-        ];
-
-        $result = $this->importer->import($request->user(), $data['source'], $row);
+        try {
+            $result = $importer->import($request->user(), $data['token'], $data['module'], (int) $data['index']);
+        } catch (ImportException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
 
         if ($result['ok'] && ! $result['skipped']) {
-            /* ⚠️ ცალკე `ACTION_*` არ იბადება: ჩანაწერის შექმნას
-               `AuditObserver` ისედაც წერს. აქ მხოლოდ **წყარო** ემატება —
-               „ეს ფილმი Letterboxd-იდან შემოვიდა" ის ფაქტია, რომელსაც
-               მოდელის ივენთი ვერ იცის. */
+            /* ⚠️ ჩანაწერის შექმნას `AuditObserver` ისედაც წერს — აქ მხოლოდ **წყარო**
+               ემატება: „ეს ფილმი ფაილიდან შემოვიდა" ის ფაქტია, რომელიც მოდელის
+               ივენთმა არ იცის. */
             $this->audit->log(AuditLog::ACTION_IMPORT, [
-                'module' => $module,
-                'subject_type' => $module,
+                'module' => $result['module'],
+                'subject_type' => $result['module'],
                 'subject_id' => $result['id'],
                 'subject_label' => $result['title'],
-                'new_values' => ['source' => $data['source']],
+                'new_values' => ['source' => 'mediary'],
             ]);
         }
 
         return response()->json($result);
     }
 
-    /**
-     * მოდულზე წვდომა + უფლება.
-     *
-     * ⚠️ **`module:`/`permission:` middleware აქ ვერ დაეწერებოდა** —
-     * მოდული **ფაილის შიგთავსიდან** ირკვევა (ან სხეულის `source`-იდან) და
-     * არა მისამართიდან, ე.ი. `@type`-ს წასაკითხი არაფერი აქვს.
-     * `VisibilityController::guard()`-ის იგივე ცხადი ორი შემოწმება.
-     */
-    private function guard(Request $request, string $module, string $action): void
+    /** დროებითი ასლის წაშლა — გაუქმება ან დასრულება */
+    public function discard(Request $request, MediaryPackage $package, string $token): JsonResponse
     {
-        $user = $request->user();
+        $package->discard($request->user(), $token);
 
-        abort_unless($user->hasModule($module), 403, 'module_disabled');
-        abort_unless($user->hasPermission($module, $action), 403, 'forbidden');
+        return response()->json(null, 204);
     }
 }

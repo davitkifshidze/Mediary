@@ -2,7 +2,9 @@
 
 namespace App\Services\Export;
 
+use App\Models\Status;
 use App\Models\User;
+use App\Services\Modules\CustomFieldService;
 use App\Support\AppTime;
 use App\Support\CustomModules;
 use App\Support\ExportDomain;
@@ -29,13 +31,13 @@ use Illuminate\Database\Eloquent\Model;
  * ტექსტია** (`RichText::plain()`), JSON-ში კი Markdown რჩება — ცხრილში `**` და
  * `[..](..)` ხმაურია, JSON-ის ფაილი კი მონაცემია და ფორმატს არ კარგავს.
  *
- * ⚠️ **პასუხი იდინება (`Generator` + `lazyById`) და არ გროვდება.** 353
+ * ⚠️ **პასუხი იდინება (`Generator` + id-ით პორციები) და არ გროვდება.** 353
  * ფილმის ბიბლიოთეკა პატარაა, 5000 სიმღერისა — აღარ; ხოლო `artisan serve`
  * ერთნაკადიანია, ე.ი. მეხსიერებაში აწყობილი მასივი მთელ აპლიკაციას
  * აჩერებს. იგივე მიზეზი, რის გამოც `StorageMeter::storeLocalFile()`
  * ნაკადით წერს და `SafeHttp` ნაწილ-ნაწილ კითხულობს.
  *
- * ⚠️ **`lazyById` და არა `chunk`** — `chunk()` ოფსეტს იყენებს, ე.ი. თუ
+ * ⚠️ **id-ით პორციები და არა `chunk`** — `chunk()` ოფსეტს იყენებს, ე.ი. თუ
  * ექსპორტის მიმდინარეობისას ჩანაწერი წაიშალა, ყოველი შემდეგი პორცია
  * ერთ რიგს **ჩუმად გამოტოვებს** (ზუსტად ის ხაფანგი, რაც BUG-23-ის
  * მიგრაციას ეწერა).
@@ -50,13 +52,18 @@ class RecordExporter
      * კი ჩვეულებრივი enum-სვეტი. სიაში ჩაწერის გარეშე პირველ ჯგუფზე
      * ფაილში ობიექტი ჩაიწერებოდა და CSV-ში `Illuminate\...\Status`.
      */
-    public const VIRTUAL = ['genres', 'genre', 'category', 'type', 'status', 'status_name'];
+    public const VIRTUAL = ['genres', 'genre', 'category', 'type', 'status', 'status_name', ...ExportDomain::EXTRAS];
 
     /** მასივის ელემენტების გამყოფი CSV-ის უჯრაში (ტეგი/ჟანრი) */
     private const LIST_GLUE = ' | ';
 
     /** რამდენ ჩანაწერს კითხულობს ერთი პორცია */
     private const CHUNK = 500;
+
+    public function __construct(
+        private readonly RecordExtras $extras,
+        private readonly CustomFieldService $fields,
+    ) {}
 
     /**
      * ამ ანგარიშის ჩანაწერები ამ მოდულში.
@@ -78,8 +85,34 @@ class RecordExporter
             ->when(CustomModules::isKey($module), fn (Builder $q) => $q->where('module', $module))
             // Tasks §35.4 (Q9) — ექსპორტი ჩაკეტილს არ შეიცავს, სესიაში გახსნილსაც
             ->when(RecordLocks::hides($model), fn (Builder $q) => $q->withoutLocked())
-            ->with(ExportDomain::with($module))
+            ->with($this->relations($module))
             ->orderBy('id');
+    }
+
+    /**
+     * წინასწარ ჩასატვირთი რელაციები.
+     *
+     * ⚠️ Tasks §59.5 — **ჩაკეტილი მსახიობი ფილმის მსახიობებშიც არ გადის**
+     * (`withoutLocked()`, Tasks §35.4): `record_lock` scope მხოლოდ *დამალულს*
+     * ჭრის, ექსპორტის წესი კი „ყველა ჩაკეტილი გარეთ"-ია.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function relations(string $module): array
+    {
+        $out = [];
+
+        foreach (ExportDomain::with($module) as $relation) {
+            if ($relation === 'castLinks') {
+                $out['castLinks'] = fn ($q) => $q->withoutLocked();
+
+                continue;
+            }
+
+            $out[] = $relation;
+        }
+
+        return $out;
     }
 
     public function count(User $user, string $module): int
@@ -95,45 +128,117 @@ class RecordExporter
     public function rows(User $user, string $module): Generator
     {
         $fields = ExportDomain::fields($module);
+        $query = $this->query($user, $module);
+        $key = $query->getModel()->getQualifiedKeyName();
+        $last = 0;
 
-        foreach ($this->query($user, $module)->lazyById(self::CHUNK) as $record) {
-            $row = [];
+        /* ⚠️ Tasks §59.5 — **პორციები ხელით და არა `lazyById()`-ით**: დამატებითი
+           ველები და ეპიზოდები რელაცია არ არის და პორციაზე ერთი query-ით
+           იკითხება (`RecordExtras::preload()`); `lazyById` პორციის საზღვარს არ
+           აჩენს. წესი იგივეა — id-ით წინ და არა ოფსეტით (წაშლა ვერ გამოტოვებს). */
+        do {
+            $chunk = (clone $query)->where($key, '>', $last)->limit(self::CHUNK)->get();
 
-            foreach ($fields as $field) {
-                $row[$field] = $this->value($record, $module, $field);
+            if ($chunk->isEmpty()) {
+                break;
             }
 
-            yield $row;
-        }
+            $this->extras->preload($user, $module, $chunk);
+
+            foreach ($chunk as $record) {
+                $row = [];
+
+                foreach ($fields as $field) {
+                    $row[$field] = $this->value($record, $module, $field);
+                }
+
+                yield $row;
+            }
+
+            $last = $chunk->last()->getKey();
+        } while ($chunk->count() === self::CHUNK);
     }
 
     /**
-     * JSON — ნაკადად, კონვერტთან ერთად.
+     * ფაილის კონვერტი — ველები და ის, რაც იმპორტს ჩანაწერის გარეთ სჭირდება.
      *
      * ⚠️ **კონვერტი (`module`/`exported_at`/`timezone`/`fields`) სავალდებულოა.**
      * ველების სია თვითონ ფაილშია, რომ წაკითხვა იმ კოდზე არ იყოს
      * დამოკიდებული, რომელმაც ის დაწერა; `timezone` კი იმიტომ, რომ
      * თარიღები კედლის საათითაა (იხ. `date()`) და ოფსეტის გარეშე
      * ერთი და იგივე სტრიქონი ორ სხვადასხვა მომენტს ნიშნავდა.
+     *
+     * ⚠️ Tasks §59.5 — `custom_field_definitions` და `statuses`: ჩანაწერში
+     * მხოლოდ ველის `key` და სტატუსის გასაღებია; სხვა ანგარიშზე (ან სხვა
+     * სერვერზე) იმპორტს ველის ტიპი და სტატუსის როლი სჭირდება, რომ ისინი
+     * თავიდან შექმნას (`MediaryImporter`).
+     *
+     * @return array<string, mixed>
      */
-    public function json(User $user, string $module): Generator
+    public function envelope(User $user, string $module): array
     {
         $meta = [
+            'app' => 'mediary',
             'module' => $module,
             'exported_at' => AppTime::now()->format('Y-m-d H:i:s'),
             'timezone' => AppTime::zone(),
             'fields' => ExportDomain::fields($module),
         ];
 
-        $head = rtrim(json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), "\n}");
+        if (in_array('custom_fields', ExportDomain::extras($module), true)) {
+            $meta['custom_field_definitions'] = array_map(
+                fn (array $field) => array_intersect_key($field, array_flip(['key', 'type', 'label_ka', 'label_en', 'placeholder_ka', 'placeholder_en', 'enabled', 'required', 'sort_order'])),
+                $this->fields->definitions($user, $module),
+            );
+        }
+
+        if (StatusDomain::usesDictionary($module)) {
+            $meta['statuses'] = Status::withoutGlobalScopes()
+                ->where('user_id', $user->getKey())
+                ->where('module', $module)
+                ->whereNull('trashed_at')
+                ->ordered()
+                ->get(['key', 'name_ka', 'name_en', 'role', 'icon', 'color', 'is_default'])
+                ->map(fn (Status $status) => [
+                    'key' => $status->key,
+                    'name_ka' => $status->name_ka,
+                    'name_en' => $status->name_en,
+                    'role' => $status->role,
+                    'icon' => $status->icon,
+                    'color' => $status->color,
+                    'is_default' => (bool) $status->is_default,
+                ])
+                ->all();
+        }
+
+        return $meta;
+    }
+
+    /**
+     * JSON — ნაკადად, კონვერტთან ერთად (`envelope()`).
+     *
+     * `$tap` — Tasks §59.5: „სრული ექსპორტი" ყოველ რიგს ხედავს, რომ მისი
+     * ფაილები ZIP-ში ჩადოს (`ExportDomain::paths()`), რიგების მეორედ აგების გარეშე.
+     *
+     * @param  (callable(array<string, mixed>): void)|null  $tap
+     */
+    public function json(User $user, string $module, ?callable $tap = null): Generator
+    {
+        $json = (string) json_encode($this->envelope($user, $module), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        // ⚠️ მხოლოდ ბოლო `}` იჭრება — `rtrim(…, "\n}")` ბოლო ობიექტის ფრჩხილებსაც შეჭამდა
+        $head = rtrim(substr($json, 0, (int) strrpos($json, '}')));
 
         yield $head.",\n  \"records\": [";
 
         $first = true;
 
         foreach ($this->rows($user, $module) as $row) {
+            if ($tap) {
+                $tap($row);
+            }
+
             yield ($first ? "\n    " : ",\n    ")
-                .json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                .json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
             $first = false;
         }
 
@@ -182,6 +287,11 @@ class RecordExporter
     {
         if (! in_array($field, self::VIRTUAL, true)) {
             return $this->normalize($record->{$field});
+        }
+
+        // Tasks §59.5 — ჩანაწერის „დამატებები" (დამატებითი ველები, ფაილები, გალერეა…)
+        if (in_array($field, ExportDomain::EXTRAS, true)) {
+            return $this->extras->value($record, $field);
         }
 
         return match ($field) {
@@ -243,7 +353,9 @@ class RecordExporter
                `strval()` მასივზე „Array to string conversion"-ით ვარდებოდა, ხოლო
                ბრტყელი წებო ლეიბლს, ბმულსა და ფასს ერთმანეთში აურევდა. `[`-ით
                დაწყებული უჯრა ფორმულად არ იკითხება, ე.ი. `deFormula()` არ სჭირდება. */
-            if (array_filter($value, 'is_array') !== []) {
+            /* Tasks §59.5 — **ასოციაციური მასივიც** (დამატებითი ველები `key → მნიშვნელობა`):
+               ბრტყელი წებო გასაღებებს დაკარგავდა და უკან ვეღარ წაიკითხებოდა. */
+            if (! array_is_list($value) || array_filter($value, 'is_array') !== []) {
                 return (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
 

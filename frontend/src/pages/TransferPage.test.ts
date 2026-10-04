@@ -14,18 +14,20 @@ import i18n from '@/i18n'
    · ჩანართი URL-იდან იკითხება და უცნობი მნიშვნელობა ექსპორტზე ბრუნდება;
    · ფორმატი ბარათზეა — ღილაკი **ამ** მოდულს და **ამ** ფორმატს აგზავნის,
      ცარიელ მოდულზე კი გამორთულია;
-   · ZIP ბარათი ატვირთვების ბიბლიოთეკას `all`-ით ითხოვს;
-   · **წყაროს ბარათი მიმართულებაა და არა ბრძანება**: არჩეული ბარათი
-     გეგმას ძალით არ ეგზავნება (Letterboxd-ის ფაილი IMDb-ის რუკით
-     წაიკითხებოდა და ყველა რიგი „გაუმართავი" გამოვიდოდა), ამოცნობის შემდეგ
-     ბარათი ამოცნობილზე გადადის და სხვაობა ხმამაღლა ითქმება;
+   · ZIP ბარათი ატვირთვების ბიბლიოთეკას `all`-ით ითხოვს; „ჩემი სრული ექსპორტი"
+     (§59.5) ფაილებით ან მათ გარეშე;
+   · §59.6 — იმპორტი მხოლოდ Mediary-ის ფაილიდან: გეგმა თითო მოდულზე ამბობს
+     „დაემატება · გამოტოვდება · ვერ ჩაიწერება", შეუძლებელი მოდული მიზეზით ჩანს
+     და რიგში არ მიდის; CSV-ის ორაზროვნებაზე „წაიკითხე, როგორც …";
    · ჩანართის გადართვა არჩეულ ფაილს არ კარგავს.
    ============================================================ */
 
 const api = vi.hoisted(() => ({
   downloadExport: vi.fn(async () => {}),
+  downloadArchive: vi.fn(async () => {}),
   downloadStorageFiles: vi.fn(async () => {}),
   planImport: vi.fn(),
+  enqueueImport: vi.fn(),
 }))
 
 vi.mock('@/api/export', async (original) => ({
@@ -39,6 +41,7 @@ vi.mock('@/api/export', async (original) => ({
     formats: ['json', 'csv'],
   })),
   downloadExport: api.downloadExport,
+  downloadArchive: api.downloadArchive,
 }))
 
 vi.mock('@/api/account', async (original) => ({
@@ -50,15 +53,19 @@ vi.mock('@/api/account', async (original) => ({
 vi.mock('@/api/import', async (original) => ({
   ...(await original<typeof import('@/api/import')>()),
   fetchImportSources: vi.fn(async () => ({
-    data: [
-      { key: 'letterboxd', label: 'Letterboxd', module: 'movie', columns: ['title'] },
-      { key: 'imdb', label: 'IMDb', module: 'movie', columns: ['imdb_id'] },
-      { key: 'goodreads', label: 'Goodreads', module: 'book', columns: ['isbn'] },
-      { key: 'steam', label: 'Steam', module: 'game', columns: ['external_id'] },
-    ],
-    max_rows: 5000,
+    data: [{ key: 'mediary', label: 'Mediary', formats: ['json', 'csv', 'zip'] }],
+    max_rows: 20000,
+    limits: { file: 25600, archive: 1048576 },
   })),
   planImport: api.planImport,
+  discardImport: vi.fn(async () => {}),
+}))
+
+/* რიგი — ერთი და იგივე ობიექტი ყოველ გამოძახებაზე (CLAUDE.md-ის წესი) */
+const queue = vi.hoisted(() => ({ value: { enqueueImport: (() => {}) as unknown, isBusy: false } }))
+vi.mock('@/components/ui/queue', async (original) => ({
+  ...(await original<typeof import('@/components/ui/queue')>()),
+  useQueue: () => queue.value,
 }))
 
 /* ⚠️ ერთი და იგივე ობიექტი ყოველ გამოძახებაზე (CLAUDE.md-ის წესი):
@@ -67,10 +74,10 @@ const modules = vi.hoisted(() => {
   const all = [
     { key: 'movie', name_ka: 'ფილმები', name_en: 'Movies' },
     { key: 'book', name_ka: 'წიგნები', name_en: 'Books' },
-    { key: 'game', name_ka: 'თამაშები', name_en: 'Games' },
+    { key: 'series', name_ka: 'სერიალები', name_en: 'Series' },
+    { key: 'anime', name_ka: 'ანიმე', name_en: 'Anime' },
   ]
-  // თამაშები გამორთულია — Steam-ის ბარათი უნდა ამბობდეს
-  return { all, enabled: all.slice(0, 2), has: (key: string) => key === 'movie' || key === 'book' }
+  return { all, enabled: all, has: () => true }
 })
 vi.mock('@/lib/modules', async (original) => ({
   ...(await original<typeof import('@/lib/modules')>()),
@@ -105,8 +112,11 @@ let container: HTMLDivElement | null = null
 beforeEach(() => {
   auth.value = { isAdmin: false, user: { id: 1 } }
   api.downloadExport.mockClear()
+  api.downloadArchive.mockClear()
   api.downloadStorageFiles.mockClear()
   api.planImport.mockReset()
+  api.enqueueImport.mockClear()
+  queue.value = { enqueueImport: api.enqueueImport, isBusy: false }
 })
 
 afterEach(() => {
@@ -180,20 +190,40 @@ async function chooseFile(file: File) {
   await flush()
 }
 
-const plan = (source: string): ImportPlan => ({
-  source,
-  module: 'movie',
-  headers: ['Name', 'Year'],
-  mapping: { title: 'Name', year: 'Year' },
-  items: [
+/** სრული ექსპორტის გეგმა: ფილმები (2 ახალი, 1 უკვე მაქვს) და გამორთული წიგნები */
+const plan = (): ImportPlan => ({
+  token: 'a'.repeat(40),
+  kind: 'zip',
+  name: 'mediary-all.zip',
+  files: 3,
+  truncated: false,
+  max_rows: 20000,
+  modules: [
     {
-      line: 2, title: 'Alien', year: 1979, imdb_id: null, isbn: null, author: null,
-      external_id: null, rating: null, status: 'done', done_at: null, state: 'new',
+      source: 'movie',
+      module: 'movie',
+      reason: null,
+      name_ka: null,
+      name_en: null,
+      total: 3,
+      counts: { new: 2, duplicate: 1, invalid: 0 },
+      items: [
+        { index: 0, title: 'Alien', year: 1979, state: 'new', reason: null },
+        { index: 1, title: 'Heat', year: 1995, state: 'duplicate', reason: 'exists' },
+        { index: 2, title: 'Ran', year: 1985, state: 'new', reason: null },
+      ],
+    },
+    {
+      source: 'book',
+      module: 'book',
+      reason: 'module_disabled',
+      name_ka: null,
+      name_en: null,
+      total: 1,
+      counts: { new: 0, duplicate: 0, invalid: 0 },
+      items: [],
     },
   ],
-  counts: { new: 1, duplicate: 0, invalid: 0 },
-  total: 1,
-  truncated: false,
 })
 
 describe('TransferPage', () => {
@@ -252,56 +282,64 @@ describe('TransferPage', () => {
     expect(api.downloadStorageFiles).toHaveBeenCalledWith({ all: true })
   })
 
-  it('treats the chosen source as guidance, not as a forced format', async () => {
-    api.planImport.mockResolvedValue(plan('letterboxd'))
+  /* Tasks §59.5 — ყველა მოდული ერთ ZIP-ში; ფაილები — შენი არჩევანით */
+  it('downloads my full export with or without its files', async () => {
+    await mount()
+
+    const archive = document.querySelector<HTMLElement>('[data-testid="export-archive"]')!
+    expect(archive.textContent).toContain(i18n.t('transfer.archive.count', { records: 3, modules: 2 }))
+    await click(button('ZIP', archive))
+    expect(api.downloadArchive).toHaveBeenLastCalledWith(true)
+
+    await click(archive.querySelector<HTMLButtonElement>('button[role="checkbox"]')!)
+    await click(button('ZIP', archive))
+    expect(api.downloadArchive).toHaveBeenLastCalledWith(false)
+  })
+
+  /* Tasks §59.6 — გეგმა თითო მოდულზე; შეუძლებელი მოდული მიზეზით და რიგის გარეშე */
+  it('plans a Mediary file per module and queues only what is new', async () => {
+    api.planImport.mockResolvedValue(plan())
     await mount('/transfer?tab=import')
 
-    await click(card('IMDb'))
-    expect(document.body.textContent).toContain(i18n.t('transfer.howTitle', { source: 'IMDb' }))
-
-    const file = new File(['Name,Year\nAlien,1979'], 'watched.csv', { type: 'text/csv' })
+    const file = new File(['PK'], 'mediary-all.zip', { type: 'application/zip' })
     await chooseFile(file)
     await click(button(i18n.t('import.read')))
 
-    // ⚠️ ბარათი ძალით არ მიდის — სერვერი ფაილს სვეტებით ცნობს
     expect(api.planImport).toHaveBeenCalledWith(file, undefined)
-    expect(document.body.textContent).toContain(
-      i18n.t('transfer.detectedOther', { detected: 'Letterboxd', chosen: 'IMDb' }),
-    )
-    // ამოცნობილი ბარათი მოინიშნა, თქმული კი — აღარ
-    expect(card('Letterboxd')?.getAttribute('aria-pressed')).toBe('true')
-    expect(card('IMDb')?.getAttribute('aria-pressed')).toBe('false')
+    expect(document.body.textContent).toContain(i18n.t('import.summary', { new: 2, duplicate: 1, invalid: 0 }))
+    expect(document.body.textContent).toContain(i18n.t('import.archiveFiles', { count: 3 }))
+
+    const book = document.querySelector<HTMLElement>('li[data-module="book"]')!
+    expect(book.textContent).toContain(i18n.t('import.reason.module_disabled', { name: 'წიგნები' }))
+    expect(book.querySelector<HTMLButtonElement>('button[role="checkbox"]')!.disabled).toBe(true)
+
+    // ფილმის რიგები ჩანს — მიზეზით
+    expect(document.querySelector('[data-testid="import-rows"]')?.textContent).toContain('Heat')
+
+    await click(button(i18n.t('import.run', { count: 2 })))
+    expect(api.enqueueImport).toHaveBeenCalledTimes(1)
+    const [token, source, module, items] = api.enqueueImport.mock.calls[0] as [string, string, string, { index: number }[]]
+    expect([token, source, module]).toEqual(['a'.repeat(40), 'movie', 'movie'])
+    expect(items.map((i) => i.index)).toEqual([0, 2])
   })
 
-  it('forces the source only when the format was not recognised and you pick it', async () => {
-    const unknown = Object.assign(new Error('422'), {
+  it('asks which module when a CSV fits more than one', async () => {
+    const ambiguous = Object.assign(new Error('422'), {
       isAxiosError: true,
-      response: { status: 422, data: { message: 'import_source_unknown', headers: ['Foo', 'Bar'] } },
+      response: { status: 422, data: { message: 'import_module_ambiguous', modules: ['series', 'anime'] } },
     })
-    api.planImport.mockRejectedValueOnce(unknown).mockResolvedValueOnce(plan('imdb'))
+    api.planImport.mockRejectedValueOnce(ambiguous).mockResolvedValueOnce(plan())
     await mount('/transfer?tab=import')
 
-    const file = new File(['Foo,Bar'], 'mystery.csv', { type: 'text/csv' })
+    const file = new File(['id,title_ka'], 'shows.csv', { type: 'text/csv' })
     await chooseFile(file)
     await click(button(i18n.t('import.read')))
 
-    expect(document.body.textContent).toContain('Foo · Bar')
-    await click(button(i18n.t('transfer.readAs', { source: 'IMDb' })))
+    expect(document.querySelector('[data-testid="import-ambiguous"]')).not.toBeNull()
+    await click(button(i18n.t('import.readAs', { module: 'ანიმე' })))
 
-    expect(api.planImport).toHaveBeenLastCalledWith(file, 'imdb')
-    // ⚠️ ცხადად არჩეულზე „სხვა აღმოჩნდა" არ ითქმება — შენ თვითონ თქვი
-    expect(document.body.textContent).not.toContain(
-      i18n.t('transfer.detectedOther', { detected: 'IMDb', chosen: 'IMDb' }),
-    )
-    expect(card('IMDb')?.getAttribute('aria-pressed')).toBe('true')
-  })
-
-  it('says why a source is unavailable when its module is off', async () => {
-    await mount('/transfer?tab=import')
-
-    const steam = card('Steam')!
-    expect(steam.disabled).toBe(true)
-    expect(steam.textContent).toContain(i18n.t('transfer.moduleOff', { module: 'თამაშები' }))
+    expect(api.planImport).toHaveBeenLastCalledWith(file, 'anime')
+    expect(document.querySelector('[data-testid="import-ambiguous"]')).toBeNull()
   })
 
   it('keeps the chosen file when switching tabs', async () => {
