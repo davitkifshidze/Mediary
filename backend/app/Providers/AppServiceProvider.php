@@ -12,6 +12,7 @@ use App\Models\CustomRecord;
 use App\Models\DutyShift;
 use App\Models\DutyShiftType;
 use App\Models\DutyWorkplace;
+use App\Models\GalleryAlbum;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -88,6 +89,9 @@ class AppServiceProvider extends ServiceProvider
             'duty' => DutyShift::class,
             'duty_workplace' => DutyWorkplace::class,
             'duty_type' => DutyShiftType::class,
+            /* Tasks §35.4 — გალერეის ალბომის პაროლი `record_locks`-შია (`lockable_type`);
+               ⚠️ აუდიტი მას ისედაც `gallery_album`-ად წერდა — ალიასი იგივე სიტყვაა. */
+            'gallery_album' => GalleryAlbum::class,
             /* Tasks §6.1 — ⚠️ **კურსი აქამდე აკლდა** და ატვირთული ესკიზის
                შეცვლა/წაშლა `ColumnTrash::capture()`-ში `getMorphClass()`-ზე
                `ClassMorphViolationException`-ით ვარდებოდა. ახლა

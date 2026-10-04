@@ -106,7 +106,27 @@ final class RecordLocks
 
     public static function lockOf(Model $record): ?RecordLock
     {
-        return self::locksFor($record->getMorphClass(), (int) $record->getAttribute('user_id'))[(int) $record->getKey()] ?? null;
+        $owner = self::ownerOf($record);
+
+        return $owner ? (self::locksFor($record->getMorphClass(), $owner)[(int) $record->getKey()] ?? null) : null;
+    }
+
+    /**
+     * **ვისია ლოკი ამ ჩანაწერზე (Tasks §35.4).**
+     *
+     * ჩემი ჩანაწერი (ფილმი, ალბომი, ადამიანი) — მისი მფლობელის (`user_id`): საჯარო
+     * პროფილზე უცხოც მფლობელის პაროლს კითხულობს. ⚠️ **გლობალური ჩანაწერი**
+     * (მსახიობი — `cast_members`, `user_id`-ის გარეშე) კი **მნახველისაა**: ჩემი
+     * პაროლი ჩემზე მოქმედებს, სხვას მასზე თავისი შეიძლება ჰქონდეს
+     * (`record_locks`-ის უნიკალურობაც მფლობელზეა).
+     */
+    public static function ownerOf(Model $record): ?int
+    {
+        if (array_key_exists('user_id', $record->getAttributes())) {
+            return $record->getAttribute('user_id') !== null ? (int) $record->getAttribute('user_id') : null;
+        }
+
+        return Auth::id() ? (int) Auth::id() : null;
     }
 
     public static function isLocked(Model $record): bool
@@ -244,6 +264,20 @@ final class RecordLocks
     public static function lock(Model $record): void
     {
         self::remember($record, false);
+    }
+
+    /** ამ ტიპის **ყველა** გახსნილი ისევ იკეტება (გალერეის „ყველა ალბომის ჩაკეტვა") */
+    public static function lockAll(string $type): void
+    {
+        $session = self::session();
+
+        if (! $session) {
+            return;
+        }
+
+        $all = (array) $session->get(self::SESSION_KEY, []);
+        unset($all[$type]);
+        $session->put(self::SESSION_KEY, $all);
     }
 
     private static function remember(Model $record, bool $open): void

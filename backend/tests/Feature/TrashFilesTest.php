@@ -24,7 +24,6 @@ use App\Support\TrashDomain;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -290,10 +289,8 @@ class TrashFilesTest extends TestCase
      */
     public function test_a_locked_albums_photo_stays_locked_in_the_trash(): void
     {
-        $album = GalleryAlbum::create([
-            'user_id' => $this->me->id, 'name' => 'პირადი',
-            'password_hash' => Hash::make('secret1'), 'sort_order' => 1,
-        ]);
+        $album = GalleryAlbum::create(['user_id' => $this->me->id, 'name' => 'პირადი', 'sort_order' => 1]);
+        $album->setPassword('secret1');
         AlbumLock::flush();
 
         $photo = $this->photo(['path' => 'gallery/locked/p.jpg', 'album_id' => $album->id]);
@@ -395,10 +392,8 @@ class TrashFilesTest extends TestCase
      */
     public function test_prune_deletes_expired_files_including_a_locked_albums_photo(): void
     {
-        $album = GalleryAlbum::create([
-            'user_id' => $this->me->id, 'name' => 'x',
-            'password_hash' => Hash::make('secret1'), 'sort_order' => 1,
-        ]);
+        $album = GalleryAlbum::create(['user_id' => $this->me->id, 'name' => 'x', 'sort_order' => 1]);
+        $album->setPassword('secret1');
         AlbumLock::flush();
 
         $old = $this->photo(['path' => 'gallery/locked/old.jpg', 'album_id' => $album->id, 'size' => 50]);

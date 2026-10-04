@@ -512,7 +512,7 @@ class PublicProfileController extends Controller
             'password' => ['required', 'string', 'max:100'],
         ]);
 
-        $ok = $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash);
+        $ok = $galleryAlbum->passwordMatches($data['password']);
         $galleryAlbum->registerUnlockAttempt($ok);
 
         abort_unless($ok, 422, 'album_password_wrong');

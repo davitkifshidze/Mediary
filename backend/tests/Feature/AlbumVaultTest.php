@@ -13,7 +13,6 @@ use App\Support\StorageFolder;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Tests\TestCase;
@@ -62,8 +61,12 @@ class AlbumVaultTest extends TestCase
             'user_id' => $this->user->id,
             'name' => 'პირადი',
             'sort_order' => 1,
-            'password_hash' => $password ? Hash::make($password) : null,
         ]);
+
+        // §35.4 — პაროლი `record_locks`-შია
+        if ($password) {
+            $album->setPassword($password);
+        }
 
         // სტატიკური მემო ერთ პროცესში ცოცხლობს — ახალი ლოკი უნდა დაინახოს
         AlbumLock::flush();

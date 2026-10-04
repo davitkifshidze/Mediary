@@ -20,10 +20,10 @@ use App\Models\User;
 use App\Models\Video;
 use App\Services\Notes\ReminderDispatcher;
 use App\Support\AlbumLock;
+use App\Support\RecordLocks;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -250,10 +250,8 @@ class TrashPartsTest extends TestCase
      */
     public function test_a_locked_album_comes_back_with_its_photos_and_its_lock(): void
     {
-        $album = GalleryAlbum::create([
-            'user_id' => $this->me->id, 'name' => 'პირადი',
-            'password_hash' => Hash::make('secret1'), 'sort_order' => 1,
-        ]);
+        $album = GalleryAlbum::create(['user_id' => $this->me->id, 'name' => 'პირადი', 'sort_order' => 1]);
+        $album->setPassword('secret1');
         AlbumLock::flush();
         Storage::disk('private')->put('gallery/locked/s.jpg', 'x');
         $photo = GalleryImage::create([
@@ -263,7 +261,7 @@ class TrashPartsTest extends TestCase
 
         $this->actingAs($this->me)
             ->withHeaders(['Referer' => 'http://localhost:5173'])
-            ->withSession([AlbumLock::SESSION_KEY => [$album->id]])
+            ->withSession([RecordLocks::SESSION_KEY => [AlbumLock::TYPE => [$album->id]]])
             ->deleteJson("/api/gallery/albums/{$album->id}")
             ->assertOk();
 
@@ -273,7 +271,7 @@ class TrashPartsTest extends TestCase
 
         $item = $this->group('gallery_album')['items'][0];
         $this->assertSame(1, $item['count']);
-        $this->assertNotNull(GalleryAlbum::withoutGlobalScopes()->find($album->id)->password_hash, 'პაროლი ურნაში უნდა დარჩეს');
+        $this->assertTrue(GalleryAlbum::withoutGlobalScopes()->find($album->id)->isLocked(), 'პაროლი ურნაში უნდა დარჩეს');
 
         $this->actingAs($this->me)->postJson("/api/trash/gallery_album/{$album->id}/restore")->assertOk();
 

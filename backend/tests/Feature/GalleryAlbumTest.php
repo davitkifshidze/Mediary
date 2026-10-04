@@ -7,9 +7,11 @@ use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
 use App\Models\Module;
 use App\Models\Movie;
+use App\Models\RecordLock;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\AlbumLock;
+use App\Support\RecordLocks;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -421,7 +423,16 @@ class GalleryAlbumTest extends TestCase
     /** ეს ალბომი ამ სესიაში გახსნილია — ე.ი. წაშლის კარი ღიაა */
     private function unlocked(GalleryAlbum $album)
     {
-        return $this->spa()->withSession([AlbumLock::SESSION_KEY => [$album->id]]);
+        return $this->spa()->withSession([RecordLocks::SESSION_KEY => [AlbumLock::TYPE => [$album->id]]]);
+    }
+
+    /** §35.4 — ალბომის პაროლი და მრიცხველი `record_locks`-შია; ბაზიდან, მემოს გვერდის ავლით */
+    private function lockOf(GalleryAlbum $album): RecordLock
+    {
+        return RecordLock::withoutGlobalScopes()
+            ->where('lockable_type', AlbumLock::TYPE)
+            ->where('lockable_id', $album->id)
+            ->firstOrFail();
     }
 
     private function lockedAlbum(string $password = 'secret1'): GalleryAlbum
@@ -429,9 +440,9 @@ class GalleryAlbumTest extends TestCase
         $album = GalleryAlbum::create([
             'user_id' => $this->user->id,
             'name' => 'პირადი',
-            'password_hash' => Hash::make($password),
             'sort_order' => 1,
         ]);
+        $album->setPassword($password);
 
         // სტატიკური მემო ერთ პროცესში ცოცხლობს — ახალი ლოკი უნდა დაინახოს
         AlbumLock::flush();
@@ -627,7 +638,7 @@ class GalleryAlbumTest extends TestCase
 
         $this->actingAs($this->user)
             ->withHeaders(['Referer' => 'http://localhost:5173'])
-            ->withSession([AlbumLock::SESSION_KEY => [$album->id]])
+            ->withSession([RecordLocks::SESSION_KEY => [AlbumLock::TYPE => [$album->id]]])
             ->getJson('/api/gallery/photos?owner=album:'.$album->id)
             ->assertOk()
             ->assertJsonCount(1, 'data')
@@ -812,7 +823,7 @@ class GalleryAlbumTest extends TestCase
             ->assertJsonPath('message', 'album_temporarily_locked');
 
         // ვადის გასვლის შემდეგ სწორი პაროლი ისევ გადის
-        $album->forceFill(['unlock_blocked_until' => now()->subMinute()])->saveQuietly();
+        $this->lockOf($album)->forceFill(['unlock_blocked_until' => now()->subMinute()])->saveQuietly();
 
         $this->spa()->actingAs($this->user)
             ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
@@ -827,7 +838,7 @@ class GalleryAlbumTest extends TestCase
     public function test_a_blocked_album_never_checks_the_password(): void
     {
         $album = $this->lockedAlbum();
-        $album->forceFill(['unlock_blocked_until' => now()->addMinutes(5)])->saveQuietly();
+        $this->lockOf($album)->forceFill(['unlock_blocked_until' => now()->addMinutes(5)])->saveQuietly();
 
         Hash::spy();
 
@@ -850,14 +861,14 @@ class GalleryAlbumTest extends TestCase
             ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'wrong'])
             ->assertStatus(422);
 
-        $this->assertSame(1, $album->refresh()->failed_unlocks);
+        $this->assertSame(1, $this->lockOf($album)->failed_unlocks);
 
         $this->spa()->actingAs($this->user)
             ->postJson("/api/gallery/albums/{$album->id}/unlock", ['password' => 'secret1'])
             ->assertOk();
 
-        $this->assertSame(0, $album->refresh()->failed_unlocks);
-        $this->assertNull($album->unlock_blocked_until);
+        $this->assertSame(0, $this->lockOf($album)->failed_unlocks);
+        $this->assertNull($this->lockOf($album)->unlock_blocked_until);
     }
 
     /**

@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Models\Concerns\HasRecordLock;
 use App\Models\Concerns\HasTrash;
 use App\Services\Gallery\AlbumVault;
+use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * გალერეის ალბომი (Tasks §26) — „ჯგუფი უკატეგორიოში".
@@ -27,7 +30,11 @@ class GalleryAlbum extends Model
      * ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — `destroy()` `moveToTrash()`-ს იძახის;
      * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
      */
-    use BelongsToUser, HasTrash;
+    /**
+     * ⚠️ **პაროლი `record_locks`-შია (Tasks §35.4)** — `HasRecordLock` საბოლოო
+     * წაშლისას ლოკის რიგს შლის; ურნა მას არ ეხება (აღდგენილი ისევ ჩაკეტილია).
+     */
+    use BelongsToUser, HasRecordLock, HasTrash;
 
     protected $guarded = ['id'];
 
@@ -36,17 +43,15 @@ class GalleryAlbum extends Model
      *
      * ⚠️ `throttle:album-unlock` (10/წთ) ამას **ვერ ცვლის**: ის ანონიმზე
      * IP + ალბომზე ითვლის, ე.ი. IP-ის როტაცია მას გვერდს უვლის. ეს
-     * მრიცხველი **ალბომზეა** — საიდანაც არ უნდა მოვიდეს ცდა, ერთსა და
-     * იმავე რიგს ემატება.
+     * მრიცხველი **ლოკის რიგზეა** — საიდანაც არ უნდა მოვიდეს ცდა, ერთსა და
+     * იმავე რიგს ემატება. რიცხვები ზოგადი ლოკისაა (`RecordLock`) — ერთი წესი.
      */
-    public const MAX_UNLOCK_ATTEMPTS = 10;
+    public const MAX_UNLOCK_ATTEMPTS = RecordLock::MAX_UNLOCK_ATTEMPTS;
 
-    public const UNLOCK_BLOCK_MINUTES = 15;
+    public const UNLOCK_BLOCK_MINUTES = RecordLock::UNLOCK_BLOCK_MINUTES;
 
     protected $casts = [
         'sort_order' => 'integer',
-        'failed_unlocks' => 'integer',
-        'unlock_blocked_until' => 'datetime',
         // Tasks §29 — წაშლისას ალბომიდან გამოსული ფოტოები; აღდგენა მათ აბრუნებს
         'trashed_photo_ids' => 'array',
     ];
@@ -92,48 +97,66 @@ class GalleryAlbum extends Model
         $this->saveQuietly();
     }
 
-    /**
-     * ⚠️ hash **არასდროს ტოვებს სერვერს** — `row()` მას ისედაც არ წერს,
-     * მაგრამ `$hidden` იმ დღისთვისაა, როცა ვინმე მოდელს პირდაპირ დააბრუნებს.
-     */
-    protected $hidden = ['password_hash'];
+    /** ლოკის რიგი (`record_locks`) — `null`, თუ პაროლი არ ადევს */
+    public function lockRow(): ?RecordLock
+    {
+        return RecordLocks::lockOf($this);
+    }
 
     /** ჩაკეტილია ზუსტად მაშინ, როცა პაროლი ადევს — ცალკე დროშა არ არსებობს */
     public function isLocked(): bool
     {
-        return $this->password_hash !== null;
+        return $this->lockRow() !== null;
     }
 
     /** ცდა დროებით აკრძალულია? */
     public function unlockBlocked(): bool
     {
-        return $this->unlock_blocked_until !== null && $this->unlock_blocked_until->isFuture();
+        return $this->lockRow()?->unlockBlocked() ?? false;
+    }
+
+    /** პაროლი სწორია? ⚠️ ლოკის გარეშე — ყოველთვის „არა" (პასუხი არაფერს ამხელს) */
+    public function passwordMatches(string $password): bool
+    {
+        $lock = $this->lockRow();
+
+        return $lock !== null && Hash::check($password, $lock->password_hash);
     }
 
     /**
-     * **ერთი ცდის აღრიცხვა — ორივე endpoint-ის ერთადერთი წერტილი.**
-     *
-     * ⚠️ `saveQuietly()`: ეს ტექნიკური მრიცხველია და არა მომხმარებლის
-     * რედაქტირება — `AuditObserver` მას ყოველ არასწორ პაროლზე ლოგში
-     * ჩაწერდა და ჟურნალს დამარხავდა.
-     *
-     * ⚠️ **ბლოკის დადგმისას მრიცხველი ნულდება**: მომდევნო ბლოკს ისევ სრული
-     * `MAX_UNLOCK_ATTEMPTS` ცდა სჭირდება, თორემ ერთხელ დაბლოკილი ალბომი
-     * მე-11 ცდიდან სამუდამოდ დაბლოკილი დარჩებოდა.
+     * **ერთი ცდის აღრიცხვა — ორივე endpoint-ის ერთადერთი წერტილი** (`RecordLock`-ის
+     * მრიცხველი: ბლოკის დადგმისას ნულდება, `saveQuietly()` — აუდიტის ხმაურის გარეშე).
      */
     public function registerUnlockAttempt(bool $ok): void
     {
-        if ($ok) {
-            $this->forceFill(['failed_unlocks' => 0, 'unlock_blocked_until' => null])->saveQuietly();
+        $this->lockRow()?->registerUnlockAttempt($ok);
+    }
+
+    /**
+     * **პაროლის დადება, შეცვლა ან მოხსნა** (`null`). ⚠️ ახალი პაროლი ახალი
+     * დასაწყისია — ძველი ცდები და ბლოკი აღარ მოქმედებს. ფაილების გადატანა
+     * (`AlbumVault::seal()/reveal()`) და სესია გამომძახებლის საქმეა.
+     */
+    public function setPassword(?string $password): void
+    {
+        $lock = $this->lockRow();
+
+        if ($password === null) {
+            $lock?->delete();
 
             return;
         }
 
-        $failed = (int) $this->failed_unlocks + 1;
+        $changes = ['password_hash' => Hash::make($password), 'failed_unlocks' => 0, 'unlock_blocked_until' => null];
 
-        $this->forceFill($failed >= self::MAX_UNLOCK_ATTEMPTS
-            ? ['failed_unlocks' => 0, 'unlock_blocked_until' => now()->addMinutes(self::UNLOCK_BLOCK_MINUTES)]
-            : ['failed_unlocks' => $failed])->saveQuietly();
+        $lock
+            ? $lock->update($changes)
+            : RecordLock::create([
+                ...$changes,
+                'user_id' => $this->user_id,
+                'lockable_type' => $this->getMorphClass(),
+                'lockable_id' => $this->getKey(),
+            ]);
     }
 
     public function images(): HasMany

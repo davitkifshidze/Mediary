@@ -91,8 +91,8 @@ class PublicGalleryTest extends TestCase
             'name' => 'ჩაკეტილი',
             'sort_order' => 1,
             'visibility' => 'public',
-            'password_hash' => Hash::make($password),
         ]);
+        $album->setPassword($password);
 
         // სტატიკური მემო ერთ პროცესში ცოცხლობს — ახალი ლოკი უნდა დაინახოს
         AlbumLock::flush();
@@ -162,8 +162,8 @@ class PublicGalleryTest extends TestCase
             'name' => 'ჩაკეტილი',
             'sort_order' => 1,
             'visibility' => 'public',
-            'password_hash' => Hash::make('secret1'),
         ]);
+        $album->setPassword('secret1');
         AlbumLock::flush();
 
         $this->photo(null, 'gallery/locked/secret.jpg', $album->id);
@@ -340,8 +340,8 @@ class PublicGalleryTest extends TestCase
             'user_id' => $this->alice->id,
             'name' => 'პირადი',
             'sort_order' => 1,
-            'password_hash' => Hash::make('secret1'),
         ]);
+        $album->setPassword('secret1');
         AlbumLock::flush();
 
         $this->postJson("/api/public/profiles/alice/albums/{$album->id}/unlock", ['password' => 'secret1'])

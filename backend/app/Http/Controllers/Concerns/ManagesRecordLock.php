@@ -79,7 +79,8 @@ trait ManagesRecordLock
             ? $lock->update($changes)
             : RecordLock::create([
                 ...$changes,
-                'user_id' => $record->getAttribute('user_id'),
+                // ⚠️ გლობალურ ჩანაწერზე (მსახიობი) ლოკი მნახველისაა — `RecordLocks::ownerOf()`
+                'user_id' => RecordLocks::ownerOf($record),
                 'lockable_type' => $record->getMorphClass(),
                 'lockable_id' => $record->getKey(),
             ]);

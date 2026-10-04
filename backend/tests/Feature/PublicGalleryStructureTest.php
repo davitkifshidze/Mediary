@@ -14,7 +14,6 @@ use App\Support\AlbumLock;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -87,8 +86,10 @@ class PublicGalleryStructureTest extends TestCase
             'name' => $name,
             'sort_order' => 1,
             'visibility' => $visibility,
-            'password_hash' => $password ? Hash::make($password) : null,
         ]);
+        if ($password) {
+            $album->setPassword($password);
+        }
         AlbumLock::flush();
 
         return $album;

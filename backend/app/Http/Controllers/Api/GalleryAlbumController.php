@@ -61,13 +61,13 @@ class GalleryAlbumController extends Controller
 
         $album = GalleryAlbum::create([
             ...$data,
-            'password_hash' => $password ? Hash::make($password) : null,
             // ბოლოში ჩნდება — ახალი ალბომი არსებულ რიგს არ არევს
             'sort_order' => (int) GalleryAlbum::query()->max('sort_order') + 1,
         ]);
 
-        // პაროლით შექმნილი ალბომი მაშინვე ღიაა — შენ ახლა დაადე
+        // პაროლით შექმნილი ალბომი მაშინვე ღიაა — შენ ახლა დაადე (§35.4 — პაროლი `record_locks`-შია)
         if ($password) {
+            $album->setPassword($password);
             AlbumLock::unlock($album);
         }
 
@@ -123,28 +123,26 @@ class GalleryAlbumController extends Controller
 
         $changes = array_intersect_key($data, array_flip(['name', 'description', 'visibility']));
 
-        if ($data['remove_password'] ?? false) {
-            $changes['password_hash'] = null;
-        } elseif (($data['password'] ?? null) !== null) {
-            $changes['password_hash'] = Hash::make($data['password']);
-        }
-
         $wasLocked = $galleryAlbum->isLocked();
         $galleryAlbum->update($changes);
 
         // ახლად დადებული/შეცვლილი პაროლი ამ სესიაში ღიად რჩება, თორემ
         // „შევინახე" მაშინვე საკუთარ ალბომს დამიმალავდა
-        if (array_key_exists('password_hash', $changes)) {
-            $changes['password_hash'] === null
+        if ($wantsLockChange) {
+            $removing = (bool) ($data['remove_password'] ?? false);
+            // §35.4 — პაროლი `record_locks`-შია (`GalleryAlbum::setPassword()`)
+            $galleryAlbum->setPassword($removing ? null : $data['password']);
+
+            $removing
                 ? AlbumLock::lock($galleryAlbum)
                 : AlbumLock::unlock($galleryAlbum);
 
             /* ⚠️ **ფაილები ფიზიკურად გადადის** (§7.9): პასუხიდან ამოღება
                საკმარისი არ არის, სანამ `/storage/gallery/images/…` ბმული
                იხსნება. `AlbumVault` პოსტერსაც წმენდს (§7.14). */
-            if ($changes['password_hash'] === null && $wasLocked) {
+            if ($removing && $wasLocked) {
                 AlbumVault::reveal($galleryAlbum);
-            } elseif ($changes['password_hash'] !== null && ! $wasLocked) {
+            } elseif (! $removing && ! $wasLocked) {
                 AlbumVault::seal($galleryAlbum);
             }
         }
@@ -181,7 +179,7 @@ class GalleryAlbumController extends Controller
             'password' => ['required', 'string', 'max:100'],
         ]);
 
-        $ok = $galleryAlbum->isLocked() && Hash::check($data['password'], $galleryAlbum->password_hash);
+        $ok = $galleryAlbum->passwordMatches($data['password']);
         $galleryAlbum->registerUnlockAttempt($ok);
 
         abort_unless($ok, 422, 'album_password_wrong');
@@ -335,8 +333,8 @@ class GalleryAlbumController extends Controller
             /* FEAT-04 — ⚠️ **ეს ორი ველი მხოლოდ მფლობელის სიაშია.** საჯარო
                პასუხში მათი ჩაწერა თავდამსხმელს ეტყოდა, რამდენი ცდა დარჩა
                და როდის გაიხსნება — ე.ი. თვითონ მცველი გახდებოდა მინიშნება. */
-            'failed_unlocks' => (int) $album->failed_unlocks,
-            'unlock_blocked_until' => $album->unlock_blocked_until?->toIso8601String(),
+            'failed_unlocks' => (int) ($album->lockRow()?->failed_unlocks ?? 0),
+            'unlock_blocked_until' => $album->lockRow()?->unlock_blocked_until?->toIso8601String(),
         ];
     }
 }
