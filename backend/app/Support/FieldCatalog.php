@@ -234,6 +234,10 @@ final class FieldCatalog
             ['key' => 'photo', 'type' => 'file', 'sort_order' => 100],
             ['key' => 'description', 'type' => 'text', 'sort_order' => 110],
             ['key' => 'tags', 'type' => 'list', 'sort_order' => 120],
+            // Tasks §57.1 — წყაროდან (Google Maps); წყაროს რეიტინგი ფორმაში მხოლოდ ჩანს
+            ['key' => 'phone', 'type' => 'text', 'sort_order' => 130],
+            ['key' => 'website', 'type' => 'text', 'sort_order' => 140],
+            ['key' => 'opening_hours', 'type' => 'list', 'sort_order' => 150],
         ],
         /* Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია (ფოტოს ფორმა არ აქვს —
            ფოტო ატვირთვით ჩნდება). ⚠️ სახელის გარეშე ადამიანი არ არსებობს. */

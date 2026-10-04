@@ -475,10 +475,11 @@ export function PlaceRoutes({ place }: { place: Place }) {
                   (candidates.length ? (
                     <ul className="max-h-48 space-y-1 overflow-y-auto" data-testid="route-candidates">
                       {candidates.map((c) => (
-                        <li key={`${c.osm_type}-${c.osm_id}`}>
+                        <li key={`${c.source}-${c.source_id}`}>
                           <button
                             type="button"
-                            onClick={() => run({ at: [c.lat, c.lng], label: c.name, mode: 'address' })}
+                            disabled={c.lat == null || c.lng == null}
+                            onClick={() => run({ at: [Number(c.lat), Number(c.lng)], label: c.name, mode: 'address' })}
                             className="flex w-full cursor-pointer flex-col rounded-md border border-border px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted"
                           >
                             <span className="truncate font-medium">{c.name}</span>

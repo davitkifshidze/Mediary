@@ -38,8 +38,10 @@ export const CODES = [
   // §14 — BoardGameGeek Cloudflare-ის უკან დგას და შეიძლება არ გაიხსნას
   'bgg_unavailable',
   'openlibrary_unavailable',
-  // FEAT-26 — OSM Nominatim არ პასუხობს („ვერაფერი ვიპოვე“ სხვა ფაქტია)
-  'nominatim_unavailable',
+  // FEAT-26 → Tasks §57 — ადგილების წყარო არ პასუხობს (Google · SerpApi · Serper · Nominatim; „ვერაფერი ვიპოვე“ სხვა ფაქტია)
+  'places_unavailable',
+  // Tasks §57.3 — ბმულიდან ადგილი ვერ ამოიკითხა (Google Maps-ის ბმული არ არის ან სახელი/წერტილი არ აქვს)
+  'map_link_unreadable',
   // Tasks §30 — OSRM-ის საჯარო სერვერი არ პასუხობს („მარშრუტი არ არის“ 200-ით, ცარიელი სიით მოდის)
   'routing_unavailable',
   // Tasks §30 — კოორდინატის გარეშე მარშრუტი ვერ ითვლება: ჩანაწერის მდგომარეობაა და არა ჩავარდნა

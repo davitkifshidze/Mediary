@@ -23,6 +23,7 @@ export const CREDENTIAL_PROVIDERS = [
   'serpapi',
   'serper',
   'youtube',
+  'google_maps',
   'telegram',
 ] as const
 
@@ -37,6 +38,7 @@ export const CREDENTIAL_BRAND: Record<CredentialProvider, string> = {
   serpapi: 'SerpApi',
   serper: 'Serper.dev',
   youtube: 'YouTube Data API',
+  google_maps: 'Google Places API',
   telegram: 'Telegram',
 }
 
@@ -52,6 +54,7 @@ const SHORT: Record<CredentialProvider, string> = {
   serpapi: 'SerpApi',
   serper: 'Serper',
   youtube: 'YouTube',
+  google_maps: 'Google Places',
   telegram: 'Telegram',
 }
 
@@ -73,6 +76,8 @@ export const CREDENTIAL_GROUPS = [
   { key: 'media', providers: ['tmdb', 'rawg', 'igdb', 'youtube'] },
   { key: 'translation', providers: ['gemini'] },
   { key: 'web', providers: ['serpapi', 'serper'] },
+  // Tasks §57.2 — ადგილების ძებნა (SerpApi/Serper-იც ადგილებს ეძებს — `web`-ში რჩებიან)
+  { key: 'places', providers: ['google_maps'] },
   { key: 'notify', providers: ['telegram'] },
 ] as const satisfies readonly { key: string; providers: readonly CredentialProvider[] }[]
 

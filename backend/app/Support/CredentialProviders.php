@@ -50,6 +50,9 @@ final class CredentialProviders
 
     public const YOUTUBE = 'youtube';
 
+    /** Tasks §57.2 — Google Places API (New): ადგილის სახელით ძებნა, წერისას შემოთავაზება, დეტალები, ფოტოები */
+    public const GOOGLE_MAPS = 'google_maps';
+
     public const TELEGRAM = 'telegram';
 
     /**
@@ -147,6 +150,20 @@ final class CredentialProviders
             'limits' => [],
             'docs' => 'https://console.cloud.google.com/apis/library/youtube.googleapis.com',
             'modules' => ['video', 'song'],
+        ],
+
+        /* Tasks §57.2 — ადგილების ყველაზე სრული ბაზა (ქართული მცირე ბიზნესიც).
+           ⚠️ Google Cloud-ში ბილინგის ანგარიში (ბარათი) სავალდებულოა — ყოველთვიური
+           უფასო ლიმიტით; გასაღების გარეშე ძებნა SerpApi → Serper → Nominatim-ზე
+           გადადის (`PlaceSearch`). */
+        self::GOOGLE_MAPS => [
+            'required' => ['key'],
+            'fields' => [
+                'key' => ['secret' => true],
+            ],
+            'limits' => [],
+            'docs' => 'https://console.cloud.google.com/apis/library/places.googleapis.com',
+            'modules' => ['place'],
         ],
 
         /*

@@ -916,6 +916,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // ⚠️ `{place}`-ზე ზემოთ, თორემ „countries" id-ად წაიკითხება
         Route::get('/places/countries', [PlaceController::class, 'countries']);
         Route::post('/places/lookup/candidates', [PlaceController::class, 'candidates']);
+        // Tasks §57.3/§57.4 — Google Maps-ის ბმული და უკუ-გეოკოდირება (`candidates`-ის წესი — `create`)
+        Route::post('/places/lookup/link', [PlaceController::class, 'link']);
+        Route::post('/places/lookup/reverse', [PlaceController::class, 'reverse']);
         Route::post('/places/lookup', [PlaceController::class, 'lookup']);
         Route::post('/places', [PlaceController::class, 'store']);
         Route::get('/places/{place}', [PlaceController::class, 'show']);

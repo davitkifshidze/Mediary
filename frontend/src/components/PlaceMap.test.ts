@@ -78,6 +78,11 @@ const place: Place = {
   is_favorite: false,
   visited_at: null,
   photo: null,
+  phone: null,
+  website: null,
+  opening_hours: [],
+  source_rating: null,
+  source_rating_count: null,
   visibility: 'private',
   created_at: null,
 }
@@ -241,7 +246,7 @@ describe('PlaceRoutes — the start, the number of routes and the saved list (§
 
   it('a start from an address: search, pick, route — and the saved route remembers where from', async () => {
     mocks.fetchPlaceCandidates.mockResolvedValue([
-      { osm_id: '1', osm_type: 'way', name: 'ვაჟა-ფშაველას 12', address: 'თბილისი', city: 'თბილისი', country: 'Georgia', lat: 41.72, lng: 44.75, kind: null },
+      { source: 'nominatim', source_id: 'way:1', osm_id: '1', osm_type: 'way', name: 'ვაჟა-ფშაველას 12', address: 'თბილისი', city: 'თბილისი', country: 'Georgia', lat: 41.72, lng: 44.75, kind: null, rating: null, rating_count: null, phone: null, website: null, hours: [], photo: null, photos: [], maps_url: null },
     ])
     mocks.computePlaceRoute.mockResolvedValue(plan)
     mocks.savePlaceRoute.mockResolvedValue({})

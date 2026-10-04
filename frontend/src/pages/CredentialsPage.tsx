@@ -14,6 +14,7 @@ import {
   KeyRound,
   Languages,
   Loader2,
+  MapPinned,
   Plus,
   RotateCw,
   ScanSearch,
@@ -90,6 +91,8 @@ const LOOK: Record<CredentialProvider, { icon: LucideIcon; color: string }> = {
   serpapi: { icon: ScanSearch, color: 'var(--cred-serpapi)' },
   serper: { icon: Images, color: 'var(--cred-serper)' },
   youtube: { icon: SquarePlay, color: 'var(--cred-youtube)' },
+  // Tasks §57.2 — ადგილები
+  google_maps: { icon: MapPinned, color: 'var(--cred-places)' },
   telegram: { icon: Send, color: 'var(--cred-telegram)' },
 }
 
@@ -102,6 +105,7 @@ const GROUP_ICON: Record<GroupKey, LucideIcon> = {
   media: Clapperboard,
   translation: Languages,
   web: Search,
+  places: MapPinned,
   notify: BellRing,
 }
 

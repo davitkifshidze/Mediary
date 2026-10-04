@@ -1125,7 +1125,6 @@
     "module_quota_exceeded": "This module's limit is used up: {{needed}} needed, {{remaining}} left (limit {{quota}}). Adjust the split in settings.",
     "allocation_exceeds_quota": "The allocated limits add up to more than your total quota.",
     "openlibrary_unavailable": "Open Library is not answering — try later or fill the fields by hand.",
-    "nominatim_unavailable": "OpenStreetMap is not answering right now. You can fill the place in by hand.",
     "routing_unavailable": "The routing server (OSRM) is not answering right now — try later or open Google Maps.",
     "place_without_coordinates": "The place has no coordinates — fill them in first.",
     "bgg_unavailable": "BoardGameGeek is unavailable right now — try later or fill the fields by hand.",
@@ -1268,7 +1267,9 @@
     "duty_range_too_long": "The range can’t be longer than 3 years.",
     "nothing_to_change": "Nothing to change — pick a workplace or a type.",
     "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password.",
-    "youtube_unavailable": "YouTube is not answering — try again later."
+    "youtube_unavailable": "YouTube is not answering — try again later.",
+    "places_unavailable": "The place source is not answering right now. You can fill the place in by hand.",
+    "map_link_unreadable": "Could not read a place from the link — paste a Google Maps place link (with a name or a point)."
   },
   "fields": {
     "title": "Fields",
@@ -1415,7 +1416,10 @@
         "visited_at": "Visit date",
         "photo": "Main photo",
         "description": "Description",
-        "tags": "Tags"
+        "tags": "Tags",
+        "phone": "Phone",
+        "website": "Website",
+        "opening_hours": "Opening hours"
       },
       "custom": {
         "title": "Title",
@@ -1508,7 +1512,8 @@
       },
       "place": {
         "coords": "The source search fills these in; you can also type them.",
-        "visited_at": "Setting the status to “visited” writes the date by itself; here you can record an older visit."
+        "visited_at": "Setting the status to “visited” writes the date by itself; here you can record an older visit.",
+        "opening_hours": "One day per line; filled in from Google Maps."
       }
     },
     "edit": "Customise",
@@ -3366,7 +3371,7 @@
     },
     "title": "Credentials",
     "intro": "These are your keys. External sources — TMDB, Gemini, RAWG and the rest — work only with your own key: without one, that source stays off for you. Keys are stored encrypted, and the limit and the spend are yours — nobody else's requests touch them.",
-    "guide": "YouTube Data API v3 — video description, publish date, duration and tags. Free (10,000 units a day); key — Google Cloud\nyt-dlp — the same info without a YouTube key. Needs no key — it is installed on this machine (“Installation settings”)\nTMDB — movies, series, anime: main photo, description, cast. Key — themoviedb.org\nRAWG · IGDB — games. Key — rawg.io and Twitch\nGemini — translation between Georgian and English. Key — Google AI Studio\nSerpApi · Serper — image and video search on the web. Paid by credit: every search spends it\nOpen Library · BGG · OpenStreetMap — books, board games, places. No key needed\nTelegram — reminders. Bot token — @BotFather",
+    "guide": "YouTube Data API v3 — video description, publish date, duration and tags. Free (10,000 units a day); key — Google Cloud\nyt-dlp — the same info without a YouTube key. Needs no key — it is installed on this machine (“Installation settings”)\nTMDB — movies, series, anime: main photo, description, cast. Key — themoviedb.org\nRAWG · IGDB — games. Key — rawg.io and Twitch\nGemini — translation between Georgian and English. Key — Google AI Studio\nGoogle Places API (New) — places: suggestions while typing, phone, opening hours, rating, photos. Key — Google Cloud (with a billing account)\nSerpApi · Serper — image and video search on the web, places from Google Maps. Paid by credit: every search spends it\nOpen Library · BGG · OpenStreetMap · OSRM — books, board games, places, routes. No key needed\nTelegram — reminders. Bot token — @BotFather",
     "guideTitle": "Which source fills what, and where the key comes from",
     "getKey": "Get a key",
     "empty": "not set",
@@ -3406,7 +3411,8 @@
       "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
       "youtube": "Video description, publish date, duration and tags. Without a key yt-dlp brings the same if it is installed on this machine; without either, only the title and main photo arrive.",
-      "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot. The check sends a test message to the chat."
+      "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot. The check sends a test message to the chat.",
+      "google_maps": "Search a place by name while typing, like Google Maps: address, coordinates, phone, website, opening hours, rating and photos. Without a key places are searched through SerpApi → Serper → OpenStreetMap — on Enter, not while typing."
     },
     "error": {
       "chat_rejected": "the token works but the chat id does not — message the bot first and check the number",
@@ -3426,7 +3432,8 @@
       "serpapi": "Register at serpapi.com.\nOpen serpapi.com/manage-api-key.\nCopy “Your Private API Key”.",
       "serper": "Register at serper.dev with a Google account.\nThe key is on the dashboard right away (“API Key”) — copy it.",
       "youtube": "Open console.cloud.google.com and create a project.\nAPIs & Services → Library → find “YouTube Data API v3” and enable it.\nAPIs & Services → Credentials → Create credentials → API key.\nCopy the key.",
-      "telegram": "In Telegram find @BotFather and send /newbot.\nGive the bot a name, then a username — it must end in bot.\nBotFather replies with the token (123456:ABC-DEF…) — copy it and paste it here.\nWrite something to your own bot (even “hi”) — until you do, it cannot message you.\nTo find the chat id open https://api.telegram.org/bot<token>/getUpdates and copy the chat.id number."
+      "telegram": "In Telegram find @BotFather and send /newbot.\nGive the bot a name, then a username — it must end in bot.\nBotFather replies with the token (123456:ABC-DEF…) — copy it and paste it here.\nWrite something to your own bot (even “hi”) — until you do, it cannot message you.\nTo find the chat id open https://api.telegram.org/bot<token>/getUpdates and copy the chat.id number.",
+      "google_maps": "Open console.cloud.google.com — the project that holds your YouTube key works too.\nBilling → link a billing account (a card is required; a monthly free allowance applies).\nAPIs & Services → Library → find “Places API (New)” and enable it.\nAPIs & Services → Credentials → Create credentials → API key — restrict it to “Places API (New)”.\nCopy the key."
     },
     "helpNote": {
       "tmdb": "Free, and it does not ask for a card.",
@@ -3436,7 +3443,8 @@
       "serpapi": "The free plan is 250 searches a month and the budget belongs to the whole account.",
       "serper": "You get 2500 free credits on signup; every requested page costs one credit.",
       "youtube": "Free (10,000 units a day). Without a key yt-dlp brings the full info — it needs no key.",
-      "telegram": "Completely free. The token is full access to the bot — do not share it."
+      "telegram": "Completely free. The token is full access to the bot — do not share it.",
+      "google_maps": "Beyond the allowance it is paid — set a budget alert in Google Cloud. The check is free (an id-only search)."
     },
     "installation": "Installation settings",
     "installationHint": "These are not keys and cannot be split per user — they are settings of this machine and of the whole installation. Change them in backend/.env.",
@@ -3446,7 +3454,8 @@
       "media": "Media sources",
       "translation": "Translation",
       "web": "Web search",
-      "notify": "Notifications"
+      "notify": "Notifications",
+      "places": "Places"
     },
     "state": {
       "mine": "Your key",
@@ -4100,7 +4109,7 @@
     "noFiles": "No files.",
     "photosHint": "Photos you took yourself live here; ones found on the web go to the gallery.",
     "lookupTitle": "Search the source",
-    "lookupHint": "OpenStreetMap is free and needs no key. The search is a button of its own — the source allows one request per second.",
+    "lookupHint": "Paste a Google Maps link or type a name. Source — Google Places (with your key, suggesting while you type), without it Google Maps through SerpApi/Serper, and OpenStreetMap last. Picking one fills the address, city, coordinates, phone, website, hours, rating and photos — filling in by hand always works.",
     "lookupPlaceholder": "e.g. Vardzia",
     "lookupAction": "Search",
     "lookupEmpty": "Nothing found — fill it in by hand.",
@@ -4123,7 +4132,27 @@
     "photoDeleteTitle": "Delete the photo?",
     "map": {
       "wheelHint": "Zoom — Ctrl + scroll"
-    }
+    },
+    "liveOffHint": "Suggestions while typing need a Google key (“Data sources”) — until then search with Enter or the button.",
+    "linkLabel": "Google Maps link",
+    "linkPlaceholder": "Google Maps link — https://maps.app.goo.gl/…",
+    "resultsFrom": "Source: {{source}}",
+    "sources": {
+      "google": "Google Maps",
+      "serpapi": "Google Maps (SerpApi)",
+      "serper": "Google Maps (Serper)",
+      "nominatim": "OpenStreetMap",
+      "link": "Link"
+    },
+    "hoursPlaceholder": "Monday: 11:00–23:00 — one day per line",
+    "sourceRating": "Google ★ {{rating}} ({{count}})",
+    "sourceRatingHint": "The source's average rating (1–5) — not your score; yours is “My rating” above.",
+    "coordsPaste": "Coordinates together",
+    "coordsPastePlaceholder": "Paste from Google: 41.7151, 44.8271",
+    "addressOffer": "At this point: {{address}}",
+    "addressUpdate": "Update the address",
+    "addressKeep": "Keep",
+    "hoursTitle": "Opening hours"
   },
   "personal": {
     "hint": "Photos and videos of your people — persons, albums and uploads from your device. Everything lives on a private disk and only you see it; the public profile shows only an album you open yourself.",

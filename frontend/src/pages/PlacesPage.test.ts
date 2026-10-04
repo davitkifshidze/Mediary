@@ -37,6 +37,11 @@ function place(id: number, over: Partial<Place> = {}): Place {
     is_favorite: false,
     visited_at: null,
     photo: null,
+    phone: null,
+    website: null,
+    opening_hours: [],
+    source_rating: null,
+    source_rating_count: null,
     files_count: 1,
     photos_count: 0,
     visibility: 'private',
@@ -52,6 +57,11 @@ const mocks = vi.hoisted(() => ({
   fetchPlaceCategories: vi.fn(),
   fetchPlaceCountries: vi.fn(),
   setPlaceStatus: vi.fn(),
+  searchPlaces: vi.fn(),
+  lookupPlace: vi.fn(),
+  placeFromLink: vi.fn(),
+  reverseGeocode: vi.fn(),
+  updatePlace: vi.fn(),
 }))
 
 vi.mock('@/api/places', async (original) => ({
@@ -60,6 +70,18 @@ vi.mock('@/api/places', async (original) => ({
   fetchPlaceCategories: mocks.fetchPlaceCategories,
   fetchPlaceCountries: mocks.fetchPlaceCountries,
   setPlaceStatus: mocks.setPlaceStatus,
+  searchPlaces: mocks.searchPlaces,
+  lookupPlace: mocks.lookupPlace,
+  placeFromLink: mocks.placeFromLink,
+  reverseGeocode: mocks.reverseGeocode,
+  updatePlace: mocks.updatePlace,
+}))
+
+vi.mock('@/api/account', async (original) => ({
+  ...(await original<typeof import('@/api/account')>()),
+  fetchModuleFields: async () => [],
+  fetchCustomFields: async () => [],
+  fetchCustomFieldValues: async () => ({}),
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -97,9 +119,9 @@ async function flush() {
   })
 }
 
-async function mount() {
-  mocks.fetchPlaces.mockResolvedValue({ items, total: items.length, lastPage: 1 })
-  mocks.fetchPlaceCategories.mockResolvedValue([])
+async function mount(list: Place[] = items, categories: unknown[] = []) {
+  mocks.fetchPlaces.mockResolvedValue({ items: list, total: list.length, lastPage: 1 })
+  mocks.fetchPlaceCategories.mockResolvedValue(categories)
   mocks.fetchPlaceCountries.mockResolvedValue([])
   mocks.setPlaceStatus.mockResolvedValue({ ...items[0], status: 'visited' })
 
@@ -167,5 +189,143 @@ describe('PlacesPage row (§29.1)', () => {
     await flush()
 
     expect(mocks.setPlaceStatus).toHaveBeenCalledWith(1, 'visited')
+  })
+})
+
+/* ============================================================
+   Tasks §57 — სახელით ძებნა წერისას (Google) და Google Maps-ის ბმული.
+   ============================================================ */
+describe('PlacesPage form — suggestions while typing and a Google Maps link (§57)', () => {
+  const category = { id: 5, key: 'food', name_ka: 'რესტორანი', name_en: 'Restaurant', icon: null, sort_order: 0 }
+
+  const draft = {
+    source: 'google' as const,
+    source_id: 'ChIJpictogram0001',
+    osm_id: null,
+    osm_type: null,
+    name: 'პიქტოგრამა',
+    address: 'კოსტავას ქ. 12, თბილისი',
+    city: 'თბილისი',
+    country: 'საქართველო',
+    lat: 41.7151,
+    lng: 44.8271,
+    kind: 'რესტორანი',
+    rating: 4.6,
+    rating_count: 1234,
+    phone: '032 222 22 22',
+    website: 'https://pictogram.ge',
+    hours: ['ორშაბათი: 11:00–23:00', 'სამშაბათი: 11:00–23:00'],
+    photo: 'https://lh3.googleusercontent.com/p1',
+    photos: ['https://lh3.googleusercontent.com/p1', 'https://lh3.googleusercontent.com/p2'],
+    maps_url: null,
+  }
+
+  async function type(el: HTMLInputElement, value: string) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
+  async function openAdd() {
+    await act(async () => menuItem(i18n.t('places.add'))!.click())
+    await flush()
+  }
+
+  const value = (selector: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)?.value
+
+  it('suggests while typing (Google) and a pick fills everything, the category too', async () => {
+    mocks.searchPlaces.mockResolvedValue({
+      results: [{ ...draft, address: 'კოსტავას ქ., თბილისი', lat: null, lng: null, phone: null, hours: [], photo: null, photos: [] }],
+      source: 'google',
+      live: true,
+    })
+    mocks.lookupPlace.mockResolvedValue(draft)
+    await mount([], [category])
+    await openAdd()
+
+    await type(document.querySelector<HTMLInputElement>('#p-lookup')!, 'პიქტოგრამა')
+    // მცირე პაუზა (450 ms) და მოთხოვნა — Enter-ის გარეშე
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 520))
+    })
+    await flush()
+
+    expect(mocks.searchPlaces).toHaveBeenCalledWith('პიქტოგრამა', { live: true, session: expect.any(String) })
+    const pick = [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('კოსტავას ქ., თბილისი'))!
+    await act(async () => pick.click())
+    await flush()
+
+    expect(mocks.lookupPlace).toHaveBeenCalledWith(expect.objectContaining({ source: 'google' }), 'პიქტოგრამა', expect.any(String))
+    expect(value('#p-name')).toBe('პიქტოგრამა')
+    expect(value('#p-city')).toBe('თბილისი')
+    expect(value('#p-phone')).toBe('032 222 22 22')
+    expect(value('#p-website')).toBe('https://pictogram.ge')
+    expect(value('#p-hours')).toBe('ორშაბათი: 11:00–23:00\nსამშაბათი: 11:00–23:00')
+    expect(value('#p-lat')).toBe('41.7151')
+    expect(document.querySelector('[data-testid="source-rating"]')?.textContent).toContain('4.6')
+    // კატეგორია სახელით — „რესტორანი"
+    expect(document.querySelector('#p-category')?.textContent).toContain('რესტორანი')
+  })
+
+  it('without a Google key it stops suggesting and waits for Enter', async () => {
+    mocks.searchPlaces.mockResolvedValue({ results: [], live: false })
+    await mount([], [category])
+    await openAdd()
+
+    const input = document.querySelector<HTMLInputElement>('#p-lookup')!
+    await type(input, 'პიქტოგრამა')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 520))
+    })
+    await type(input, 'პიქტოგრამა თბილისი')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 520))
+    })
+
+    // ერთი ცდა `live`-ით, მერე — აღარ
+    expect(mocks.searchPlaces).toHaveBeenCalledTimes(1)
+  })
+
+  it('a pasted Google Maps link fills the form, and saving sends the source details and photos', async () => {
+    const existing = place(9, { name: 'ჩემი სახინკლე', category_id: 5, category, status: 'to_visit', lat: null, lng: null })
+    mocks.placeFromLink.mockResolvedValue(draft)
+    mocks.updatePlace.mockResolvedValue(existing)
+    await mount([existing], [category])
+
+    const edit = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="record-actions"] button')].find((b) =>
+      b.textContent?.includes(i18n.t('actions.edit')),
+    )!
+    await act(async () => edit.click())
+    await flush()
+
+    const link = document.querySelector<HTMLInputElement>('#p-maplink')!
+    await type(link, 'https://maps.app.goo.gl/AbCdEf123')
+    await act(async () => {
+      link.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    })
+    await flush()
+
+    expect(mocks.placeFromLink).toHaveBeenCalledWith('https://maps.app.goo.gl/AbCdEf123')
+    // შენი სახელი რჩება, დანარჩენი — ბმულიდან
+    expect(value('#p-name')).toBe('ჩემი სახინკლე')
+    expect(value('#p-address')).toBe('კოსტავას ქ. 12, თბილისი')
+
+    await act(async () => document.querySelector<HTMLFormElement>('form')!.requestSubmit())
+    await flush()
+
+    expect(mocks.updatePlace).toHaveBeenCalledWith(
+      9,
+      expect.objectContaining({
+        name: 'ჩემი სახინკლე',
+        phone: '032 222 22 22',
+        website: 'https://pictogram.ge',
+        opening_hours: ['ორშაბათი: 11:00–23:00', 'სამშაბათი: 11:00–23:00'],
+        source_rating: 4.6,
+        source_rating_count: 1234,
+        gallery_urls: draft.photos,
+        lat: 41.7151,
+      }),
+    )
   })
 })

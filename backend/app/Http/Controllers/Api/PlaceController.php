@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PlaceResource;
+use App\Models\GalleryImage;
 use App\Models\Place;
-use App\Services\Places\NominatimClient;
+use App\Services\Places\PlaceSearch;
+use App\Services\Serp\WebImageImporter;
 use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
+use App\Support\GalleryParent;
 use App\Support\Like;
 use App\Support\Rating;
 use App\Support\RichText;
@@ -29,14 +32,24 @@ use Illuminate\Validation\Rule;
  * განსხვავებით კურსებისგან.
  *
  * ⚠️ **„წყარო არ პასუხობს" ≠ „ვერაფერი ვიპოვე"**: პირველი **503
- * `nominatim_unavailable`**-ია, მეორე — 200 ცარიელი სიით. ცარიელი სია
+ * `places_unavailable`**-ია, მეორე — 200 ცარიელი სიით. ცარიელი სია
  * „ასეთი ადგილი არ არსებობს"-ად იკითხება და ხელით შევსებას აჩერებს.
+ *
+ * ⚠️ **Tasks §57 — წყაროები `PlaceSearch`-შია** (Google Places → SerpApi →
+ * Serper → Nominatim): წერისას შემოთავაზება (`live`, მხოლოდ Google), ცხადი
+ * ძებნა, არჩეულის დეტალები, Google Maps-ის ბმული და უკუ-გეოკოდირება. შენახვისას
+ * ტელეფონი, ვებგვერდი, საათები და წყაროს რეიტინგი ცალკე სვეტებია, წყაროს
+ * ფოტოები კი (`gallery_urls`) ადგილის გალერეაში ჩამოდის — პირველი, თუ ფოტო ჯერ
+ * არ გაქვს, მთავარი ხდება.
  */
 class PlaceController extends Controller
 {
+    /** §57.1 — რამდენი ფოტო ჩამოვა გალერეაში ერთ შენახვაზე */
+    private const GALLERY_URLS_MAX = 10;
+
     public function __construct(
         private StorageMeter $meter,
-        private NominatimClient $nominatim,
+        private PlaceSearch $search,
     ) {}
 
     public function index(Request $request)
@@ -110,37 +123,94 @@ class PlaceController extends Controller
         ]);
     }
 
-    /** Nominatim-ის კანდიდატები (§12-ის ფორმა) — ჩანაწერს არ ქმნის */
+    /**
+     * კანდიდატები — ჩანაწერს არ ქმნის. `live=1` — წერისას (მხოლოდ Google;
+     * გასაღების გარეშე `live: false` და SPA ცხად ძებნაზე გადადის), თორემ —
+     * წყაროების ჯაჭვი (§57.2); `city` — ფორმის ქალაქი, მიკერძოებისთვის.
+     */
     public function candidates(Request $request)
     {
-        $data = $request->validate(['query' => ['required', 'string', 'max:255']]);
+        $data = $request->validate([
+            'query' => ['required', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:190'],
+            'live' => ['nullable', 'boolean'],
+            'session' => ['nullable', 'string', 'max:100'],
+        ]);
 
-        $results = $this->nominatim->search($data['query']);
+        if ($request->boolean('live')) {
+            $results = $this->search->suggest($data['query'], $data['session'] ?? null);
 
-        return $this->blocked() ?? response()->json(['results' => $results]);
+            return $results === null
+                ? response()->json(['results' => [], 'live' => false])
+                : ($this->blocked() ?? response()->json(['results' => $results, 'source' => 'google', 'live' => true]));
+        }
+
+        $found = $this->search->search($data['query'], $data['city'] ?? null);
+
+        return $this->blocked() ?? response()->json([...$found, 'live' => $this->search->live()]);
     }
 
-    /** ერთი კანდიდატი → ფორმის სქემა (ჩანაწერს ისიც არ ქმნის) */
+    /** ერთი კანდიდატი → ფორმის სრული მონახაზი (ჩანაწერს ისიც არ ქმნის) */
     public function lookup(Request $request)
     {
         $data = $request->validate([
-            'osm_id' => ['required', 'string', 'max:60'],
-            'osm_type' => ['required', 'string', 'max:20'],
-            'query' => ['required', 'string', 'max:255'],
+            'source' => ['nullable', Rule::in(PlaceSearch::SOURCES)],
+            'source_id' => ['nullable', 'string', 'max:300'],
+            // ძველი ფორმა (Nominatim) — `osm_type` + `osm_id`
+            'osm_id' => ['nullable', 'string', 'max:60'],
+            'osm_type' => ['nullable', 'string', 'max:20'],
+            'query' => ['nullable', 'string', 'max:255'],
+            'session' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $draft = $this->nominatim->find($data['osm_type'], $data['osm_id'], $data['query']);
+        $source = $data['source'] ?? 'nominatim';
+        $id = $data['source_id'] ?? (isset($data['osm_type'], $data['osm_id']) ? $data['osm_type'].':'.$data['osm_id'] : null);
+
+        if ($id === null) {
+            return response()->json(['message' => 'not_found'], 404);
+        }
+
+        $draft = $this->search->details($source, $id, (string) ($data['query'] ?? ''), $data['session'] ?? null);
 
         return $draft
             ? response()->json(['draft' => $draft])
             : ($this->blocked() ?? response()->json(['message' => 'not_found'], 404));
     }
 
+    /** §57.3 — Google Maps-ის ბმული (მოკლეც) → ფორმის მონახაზი */
+    public function link(Request $request)
+    {
+        $data = $request->validate(['url' => ['required', 'string', 'max:2000', 'url']]);
+
+        $draft = $this->search->fromLink($data['url']);
+
+        return $draft
+            ? response()->json(['draft' => $draft])
+            : ($this->blocked() ?? response()->json(['message' => 'map_link_unreadable'], 422));
+    }
+
+    /** §57.4 — პინის გადათრევა → მისამართი, ქალაქი, ქვეყანა */
+    public function reverse(Request $request)
+    {
+        $data = $request->validate([
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $here = $this->search->reverse((float) $data['lat'], (float) $data['lng']);
+
+        return $here
+            ? response()->json(['address' => $here])
+            : ($this->blocked() ?? response()->json(['message' => 'not_found'], 404));
+    }
+
     public function store(Request $request)
     {
         $place = new Place;
-        $this->apply($place, $request, $this->validated($request));
+        $data = $this->validated($request);
+        $this->apply($place, $request, $data);
         $place->save();
+        $this->importGallery($request, $place, $data['gallery_urls'] ?? []);
 
         return (new PlaceResource($place->refresh()->load('category')->loadCount(['files', 'galleryImages'])))
             ->response()->setStatusCode(201);
@@ -148,8 +218,10 @@ class PlaceController extends Controller
 
     public function update(Request $request, Place $place)
     {
-        $this->apply($place, $request, $this->validated($request, $place));
+        $data = $this->validated($request, $place);
+        $this->apply($place, $request, $data);
         $place->save();
+        $this->importGallery($request, $place, $data['gallery_urls'] ?? []);
 
         return new PlaceResource($place->load('category')->loadCount(['files', 'galleryImages']));
     }
@@ -192,9 +264,50 @@ class PlaceController extends Controller
 
     private function blocked()
     {
-        return $this->nominatim->blocked()
-            ? response()->json(['message' => 'nominatim_unavailable'], 503)
+        return $this->search->blocked()
+            ? response()->json(['message' => 'places_unavailable'], 503)
             : null;
+    }
+
+    /**
+     * **§57.1 — წყაროს ფოტოები ადგილის გალერეაში** (ვებძებნის იმავე იმპორტერით —
+     * კვოტა, დუბლი, `SafeHttp`); ფოტო თუ ჯერ არ გაქვს, პირველი ჩამოსული მთავარი
+     * ხდება (`GalleryController::setPrimary()`-ის წესი — ადგილს წყაროს სვეტი არ აქვს).
+     * ⚠️ ჩავარდნა ადგილის შენახვას არ აჩერებს — ფოტო მეორეხარისხოვანია.
+     *
+     * @param  list<string>  $urls
+     */
+    private function importGallery(Request $request, Place $place, array $urls): void
+    {
+        if ($urls === []) {
+            return;
+        }
+
+        $before = (int) $place->galleryImages()->withoutGlobalScope('owner')->max('id');
+
+        app(WebImageImporter::class)->import(
+            $request->user(),
+            $place,
+            array_map(fn (string $url) => ['original' => $url, 'engine' => 'places'], array_slice($urls, 0, self::GALLERY_URLS_MAX)),
+            GalleryParent::category('place'),
+        );
+
+        if ($place->photo_path) {
+            return;
+        }
+
+        $first = GalleryImage::query()
+            ->withoutGlobalScope('owner')
+            ->where('imageable_type', $place->getMorphClass())
+            ->where('imageable_id', $place->getKey())
+            ->where('id', '>', $before)
+            ->orderBy('id')
+            ->first();
+
+        if ($first) {
+            $place->photo_path = $first->path;
+            $place->save();
+        }
     }
 
     private function validated(Request $request, ?Place $place = null): array
@@ -231,17 +344,28 @@ class PlaceController extends Controller
             'visited_at' => ['nullable', 'date'],
             'photo' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_photo' => ['nullable', 'boolean'],
+            // Tasks §57.1 — წყაროს ინფო (ტელეფონი, ვებგვერდი, საათები, წყაროს რეიტინგი 0–5)
+            'phone' => ['nullable', 'string', 'max:60'],
+            'website' => ['nullable', 'string', 'max:500', 'url'],
+            'opening_hours' => ['nullable', 'array', 'max:14'],
+            // ⚠️ `nullable` — ცარიელი ხაზი (TrimStrings → null) 422 კი არა, უბრალოდ იჭრება
+            'opening_hours.*' => ['nullable', 'string', 'max:160'],
+            'source_rating' => ['nullable', 'numeric', 'between:0,5'],
+            'source_rating_count' => ['nullable', 'integer', 'min:0'],
+            // წყაროს ფოტოები — გალერეაში ჩამოდის (`importGallery()`)
+            'gallery_urls' => ['nullable', 'array', 'max:'.self::GALLERY_URLS_MAX],
+            'gallery_urls.*' => ['string', 'max:2000', 'url'],
         ]);
     }
 
     private function apply(Place $place, Request $request, array $data): void
     {
-        foreach (['name', 'address', 'city', 'country', 'description', 'osm_id', 'osm_type'] as $field) {
+        foreach (['name', 'address', 'city', 'country', 'description', 'osm_id', 'osm_type', 'phone', 'website'] as $field) {
             if (array_key_exists($field, $data)) {
                 $place->{$field} = $data[$field] ?: null;
             }
         }
-        foreach (['lat', 'lng', 'rating'] as $field) {
+        foreach (['lat', 'lng', 'rating', 'source_rating', 'source_rating_count'] as $field) {
             if (array_key_exists($field, $data)) {
                 // ⚠️ `?:` აქ არასწორი იქნებოდა — კოორდინატი 0 ნამდვილია
                 $place->{$field} = ($data[$field] === '' || $data[$field] === null) ? null : $data[$field];
@@ -249,6 +373,10 @@ class PlaceController extends Controller
         }
         if (array_key_exists('category_id', $data)) {
             $place->category_id = $data['category_id'] ?: null;
+        }
+        if (array_key_exists('opening_hours', $data)) {
+            $hours = array_values(array_filter(array_map(fn ($line) => trim((string) $line), $data['opening_hours'] ?? []), fn ($line) => $line !== ''));
+            $place->opening_hours = $hours ?: null;
         }
         if (! empty($data['visibility'])) {
             $place->visibility = $data['visibility'];

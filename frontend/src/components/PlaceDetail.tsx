@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, Image as ImageIcon, Loader2, MapPin, Upload } from 'lucide-react'
+import { Clock, FileText, Globe, Image as ImageIcon, Loader2, MapPin, Phone, Star, Upload } from 'lucide-react'
 import {
   PLACE_FILE_KINDS,
   deletePlaceFile,
@@ -205,6 +205,30 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
               </span>
             )}
             {place.visited_at && <span>{t('places.visitedOn', { date: formatDate(place.visited_at) })}</span>}
+            {/* Tasks §57.1 — წყაროდან: ტელეფონი, ვებგვერდი, წყაროს რეიტინგი (შენი ქულა ზემოთაა) */}
+            {place.phone && (
+              <a href={`tel:${place.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+                <Phone className="size-4 shrink-0" />
+                {place.phone}
+              </a>
+            )}
+            {place.website && (
+              <a
+                href={place.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-w-0 items-center gap-1.5 hover:text-foreground"
+              >
+                <Globe className="size-4 shrink-0" />
+                <span className="truncate">{hostOf(place.website)}</span>
+              </a>
+            )}
+            {place.source_rating != null && (
+              <span className="inline-flex items-center gap-1.5" data-testid="place-source-rating">
+                <Star className="size-4 shrink-0 fill-current text-[var(--gold)]" />
+                {t('places.sourceRating', { rating: place.source_rating, count: place.source_rating_count ?? 0 })}
+              </span>
+            )}
           </DetailFacts>
         </DetailHero>
 
@@ -224,6 +248,17 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
 
         {place.description && (
           <Markdown text={place.description} className="text-sm text-muted-foreground" />
+        )}
+
+        {/* Tasks §57.1 — სამუშაო საათები (წყაროს ენით, თითო ხაზზე) */}
+        {(place.opening_hours ?? []).length > 0 && (
+          <DetailSection title={t('places.hoursTitle')} icon={<Clock className="size-4 text-muted-foreground" />}>
+            <ul className="space-y-0.5 text-sm text-muted-foreground" data-testid="place-hours">
+              {(place.opening_hours ?? []).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </DetailSection>
         )}
 
         {/* Tasks §30 — რუკა მარკერით, მარშრუტი ჩემი მდებარეობიდან, შენახული მარშრუტები;
@@ -257,4 +292,13 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
       )}
     </ModalShell>
   )
+}
+
+/** `https://www.pictogram.ge/menu` → `pictogram.ge` */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
 }

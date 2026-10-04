@@ -27,10 +27,24 @@ use Throwable;
  * Library-ისგან: OSM-ის სახელები ლოკალიზებულია, ე.ი. „თბილისი" ნამდვილ
  * პასუხს აბრუნებს. სწორედ ამიტომ ამ მოდულს „მხოლოდ ხელით" რეჟიმი
  * (§5.7-ის `manual_only`) არ სჭირდება.
+ *
+ * ⚠️ **Tasks §57.2 — საქართველოს მიკერძოება** (`viewbox` + `bounded=0`): ძებნა
+ * საქართველოს უპირატესობას ანიჭებს, მაგრამ საზღვარგარეთსაც პოულობს (`countrycodes`
+ * ძებნას საქართველოთი ჩაკეტავდა). ახლა ეს ბოლო წყაროა (`PlaceSearch`) —
+ * Google/SerpApi/Serper-ის შემდეგ, უფასო და გასაღების გარეშე.
+ * ⚠️ **წერისას შემოთავაზება აქედან არასდროს** — Nominatim-ის პოლიტიკა
+ * autocomplete-ს ცხადად კრძალავს.
+ * ⚠️ **§57.4 — უკუ-გეოკოდირება** (`reverse()`): პინის გადათრევა / ბმულის
+ * კოორდინატი → მისამართი, ქალაქი, ქვეყანა.
  */
 class NominatimClient
 {
     private const URL = 'https://nominatim.openstreetmap.org/search';
+
+    private const REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
+
+    /** §57.2 — საქართველოს ჩარჩო (`lon1,lat1,lon2,lat2`) — მიკერძოება და არა საზღვარი */
+    private const GEORGIA_VIEWBOX = '40.0,43.6,46.75,41.0';
 
     /** ⚠️ სავალდებულო — იხ. ზემოთ */
     private const AGENT = 'Mediary/1.0 (personal media library)';
@@ -79,6 +93,9 @@ class NominatimClient
             'limit' => $limit,
             // ⚠️ ინტერფეისის ენა — ქართული სახელი სწორედ აქედან მოდის
             'accept-language' => 'ka,en',
+            // §57.2 — საქართველო უპირატესია, საზღვარი კი არ არის
+            'viewbox' => self::GEORGIA_VIEWBOX,
+            'bounded' => 0,
         ]);
 
         if ($rows === null) {
@@ -113,6 +130,58 @@ class NominatimClient
         }
 
         return null;
+    }
+
+    /**
+     * **§57.4 — უკუ-გეოკოდირება**: კოორდინატი → მისამართი, ქალაქი, ქვეყანა
+     * (`row()`-ის ფორმით). `null` — წყარო არ პასუხობს ან წერტილზე არაფერია.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function reverse(float $lat, float $lng): ?array
+    {
+        $this->blocked = false;
+        $cacheKey = sprintf('nominatim:reverse:%.5F,%.5F', $lat, $lng);
+
+        if (is_array($cached = Cache::get($cacheKey))) {
+            return $cached;
+        }
+
+        $this->pace();
+
+        try {
+            $res = SourceLog::request(20)
+                ->withHeaders(['User-Agent' => self::AGENT])
+                ->get(self::REVERSE_URL, [
+                    'lat' => $lat,
+                    'lon' => $lng,
+                    'format' => 'jsonv2',
+                    'addressdetails' => 1,
+                    'zoom' => 18,
+                    'accept-language' => 'ka,en',
+                ]);
+        } catch (Throwable $e) {
+            SourceLog::threw('nominatim', $e, ['step' => 'reverse']);
+            $this->blocked = true;
+
+            return null;
+        }
+
+        if (! $res->successful()) {
+            SourceLog::status('nominatim', $res->status(), $res->body(), ['step' => 'reverse']);
+            $this->blocked = true;
+
+            return null;
+        }
+
+        $row = $res->json();
+        $item = is_array($row) && ! isset($row['error']) ? $this->row($row) : null;
+
+        if ($item !== null) {
+            Cache::put($cacheKey, $item, now()->addHours(self::CACHE_HOURS));
+        }
+
+        return $item;
     }
 
     /** @return array<string, mixed>|null */

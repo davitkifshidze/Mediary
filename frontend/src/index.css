@@ -155,6 +155,8 @@
   --cred-serpapi: #2f8a4c;
   --cred-serper: #b8651c;
   --cred-youtube: #b8413b;
+  /* Tasks §57.2 — Google Places (რუკის მწვანე) */
+  --cred-places: #1e8e3e;
   --cred-telegram: #2383c2;
   --cred-browser: #a8741a;
 
@@ -291,6 +293,7 @@
   --cred-serpapi: #69c28a;
   --cred-serper: #eb9656;
   --cred-youtube: #ee7a74;
+  --cred-places: #5bc77a;
   --cred-telegram: #5db4ea;
   --cred-browser: #e3b25a;
 

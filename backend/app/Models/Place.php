@@ -63,6 +63,10 @@ class Place extends Model
         'lng' => 'decimal:7',
         // Tasks §9 — „ჩემი ქულა" 0–10 მეათედებით, ყველა მოდულის ერთი შკალა (`Rating`)
         'rating' => RatingCast::class,
+        // Tasks §57.1 — წყაროს (Google-ის) საშუალო 0–5 და შეფასებების რიცხვი; საათები — სია
+        'source_rating' => 'float',
+        'source_rating_count' => 'integer',
+        'opening_hours' => 'array',
         'is_favorite' => 'boolean',
         'visited_at' => 'date',
         'sort_order' => 'integer',

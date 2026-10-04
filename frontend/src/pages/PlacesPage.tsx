@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, Image as ImageIcon, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
+import { FileText, Image as ImageIcon, Link2, Loader2, Map as MapIcon, MapPin, Plus, Search, Star } from 'lucide-react'
 import {
   PLACE_STATUSES,
   createPlace,
   deletePlace,
-  fetchPlaceCandidates,
   fetchPlaceCategories,
   fetchPlaceCountries,
   fetchPlaces,
+  lookupPlace,
+  placeFromLink,
+  reverseGeocode,
+  searchPlaces,
   setPlaceStatus,
   togglePlaceFavorite,
   updatePlace,
@@ -20,6 +23,7 @@ import {
   type PlaceFileKind,
   type PlaceFilters,
   type PlaceInput,
+  type PlaceSource,
   type PlaceStatus,
   uploadPlaceFiles,
 } from '@/api/places'
@@ -59,6 +63,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
+import { InfoHint } from '@/components/ui/info-hint'
+import { Textarea } from '@/components/ui/textarea'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { ModalShell } from '@/components/ui/modal-shell'
 import {
@@ -530,7 +536,18 @@ function PlaceForm({
     rating: place?.rating ?? null,
     visitedAt: place?.visited_at ?? '',
     tags: place?.tags ?? [],
+    // Tasks §57.1 — წყაროდან; საათები ფორმაში თითო ხაზზე
+    phone: place?.phone ?? '',
+    website: place?.website ?? '',
+    hours: (place?.opening_hours ?? []).join('\n'),
   })
+  /** §57.1 — წყაროს რეიტინგი (Google 0–5) — **შენი ქულა არ არის**, ფორმაში მხოლოდ ჩანს */
+  const [sourceRating, setSourceRating] = useState({
+    rating: place?.source_rating ?? null,
+    count: place?.source_rating_count ?? null,
+  })
+  /** §57.1 — წყაროს ფოტოები: შენახვისას გალერეაში, პირველი — მთავარი (ფოტო თუ არ გაქვს) */
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([])
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(
     place?.photo ? (storageUrl(place.photo) ?? place.photo) : null,
@@ -545,37 +562,152 @@ function PlaceForm({
   const pending = usePendingUploads<PlaceFileKind>()
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-  /* ---- Nominatim ---- */
+  /* ---- Tasks §57 — წყაროები: Google Places → SerpApi → Serper → Nominatim ---- */
   const [lookupQuery, setLookupQuery] = useState(place?.name ?? '')
   const [results, setResults] = useState<PlaceCandidate[] | null>(null)
+  const [resultsFrom, setResultsFrom] = useState<PlaceSource | null>(null)
+  /** წერისას შემოთავაზება — მხოლოდ Google-ის გასაღებით; სერვერი `live: false`-ს თუ იტყვის, Enter-ზე გადავდივართ */
+  const [liveOn, setLiveOn] = useState(true)
+  /** ⚠️ რედაქტირებისას ველში სახელი უკვე წერია — შემოთავაზება მხოლოდ შენი აკრეფიდან იწყება */
+  const [typed, setTyped] = useState(false)
+  // Google-ის ავტოშევსების სესია: შემოთავაზებები და არჩეულის დეტალები ერთ სესიად ითვლება
+  const session = useMemo(() => globalThis.crypto?.randomUUID?.() ?? `s${Date.now()}`, [])
+  const liveSeq = useRef(0)
+  const [mapLink, setMapLink] = useState('')
+  /** §57.4 — პინის გადათრევის შემდეგ ნაპოვნი მისამართი — „განახლება?" */
+  const [addressOffer, setAddressOffer] = useState<{ address: string | null; city: string | null; country: string | null } | null>(null)
+  /** პრევიუ წყაროს ფოტოა (და არა შენი ატვირთული/შენახული) — ახალი არჩევა მას ცვლის */
+  const [sourcePreview, setSourcePreview] = useState(false)
 
-  /**
-   * ⚠️ **ძებნა ცხადი ღილაკია** და არა აკრეფის გვერდითი ეფექტი: Nominatim
-   * წამში ერთ მოთხოვნას უშვებს, ე.ი. ყოველ ასოზე გასვლა IP-ის დაბლოკვის
-   * გზაა (ვებძებნის იგივე წესი).
+  /*
+   * ⚠️ **წერისას — მხოლოდ Google** (`live`): SerpApi/Serper თითო ძებნაზე კრედიტს ხარჯავს,
+   * Nominatim-ის პოლიტიკა autocomplete-ს კრძალავს. მცირე პაუზით; ძველი პასუხი
+   * ახალს არ გადაეწერება (`liveSeq`); შეცდომა ჩუმია — ცხადი ძებნა (Enter) რჩება.
    */
+  useEffect(() => {
+    const q = lookupQuery.trim()
+    if (!typed || !liveOn || q.length < 3) return
+    const timer = window.setTimeout(async () => {
+      const mine = ++liveSeq.current
+      try {
+        const res = await searchPlaces(q, { live: true, session })
+        if (mine !== liveSeq.current) return
+        if (!res.live) {
+          setLiveOn(false)
+
+          return
+        }
+        setResults(res.results)
+        setResultsFrom('google')
+      } catch {
+        // წერისას ტოსტი ხმაური იქნებოდა — Enter-ით ძებნა შეცდომას ცხადად იტყვის
+      }
+    }, 450)
+
+    return () => window.clearTimeout(timer)
+  }, [lookupQuery, typed, liveOn, session])
+
+  /** ცხადი ძებნა (Enter / ღილაკი) — წყაროების ჯაჭვი, ფორმის ქალაქით */
   const lookup = useMutation({
-    mutationFn: () => fetchPlaceCandidates(lookupQuery.trim()),
-    onSuccess: setResults,
+    mutationFn: () => {
+      liveSeq.current++
+
+      return searchPlaces(lookupQuery.trim(), { city: form.city.trim() || null })
+    },
+    onSuccess: (res) => {
+      setResults(res.results)
+      setResultsFrom(res.source ?? null)
+      if (!res.live) setLiveOn(false)
+    },
     // ⚠️ „წყარო არ პასუხობს" ცალკე შეტყობინებაა და არა ცარიელი სია
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  /** კანდიდატის აღება — **მხოლოდ ცარიელი ველები არ გადაეწერება სახელს** */
-  const takeCandidate = (c: PlaceCandidate) => {
+  /** წყაროს კატეგორია („რესტორანი") → შენი კატეგორია სახელით, თუ ასეთი გაქვს */
+  const matchCategory = (kind: string | null): string => {
+    const k = kind?.trim().toLowerCase()
+    if (!k) return ''
+    const hit = categories.find((c) =>
+      [c.name_ka, c.name_en].some((n) => {
+        const name = n?.trim().toLowerCase()
+        return !!name && (name === k || k.includes(name) || name.includes(k))
+      }),
+    )
+
+    return hit ? String(hit.id) : ''
+  }
+
+  /**
+   * მონახაზი → ფორმა. ⚠️ **შენი სახელი არ გადაიწერება**; დანარჩენი წყაროსია
+   * (მისამართი, ქალაქი, კოორდინატები, ტელეფონი, საათები…), კატეგორია — მხოლოდ
+   * ცარიელზე; ფოტო — მხოლოდ თუ შენი არ აირჩიე.
+   */
+  const applyDraft = (d: PlaceCandidate) => {
     setForm((f) => ({
       ...f,
-      name: f.name || c.name,
-      address: c.address ?? f.address,
-      city: c.city ?? f.city,
-      country: c.country ?? f.country,
-      lat: String(c.lat),
-      lng: String(c.lng),
-      osmId: c.osm_id,
-      osmType: c.osm_type,
+      name: f.name || d.name || f.name,
+      address: d.address ?? f.address,
+      city: d.city ?? f.city,
+      country: d.country ?? f.country,
+      lat: d.lat != null ? String(d.lat) : f.lat,
+      lng: d.lng != null ? String(d.lng) : f.lng,
+      // OSM-ის იდენტობა მხოლოდ OSM-იდან მოსულს აქვს — სხვა წყაროზე ძველი იშლება
+      osmId: d.osm_id ?? '',
+      osmType: d.osm_type ?? '',
+      phone: d.phone ?? f.phone,
+      website: d.website ?? f.website,
+      hours: d.hours.length ? d.hours.join('\n') : f.hours,
+      categoryId: f.categoryId || matchCategory(d.kind),
     }))
+    if (d.rating != null) setSourceRating({ rating: d.rating, count: d.rating_count })
+    if (d.photos.length) setGalleryUrls(d.photos)
+    if (d.photo && !photo && (!preview || sourcePreview)) {
+      setPreview(d.photo)
+      setSourcePreview(true)
+      setRemovePhoto(false)
+    }
     setResults(null)
+    setAddressOffer(null)
     toast({ title: t('places.candidateTaken'), variant: 'success' })
+  }
+
+  /** კანდიდატი → დეტალები (Google-ის შემოთავაზებას სახელის გარდა არაფერი აქვს; OSM-ისა უკვე სრულია) */
+  const take = useMutation({
+    mutationFn: (c: PlaceCandidate) =>
+      c.source === 'nominatim' ? Promise.resolve(c) : lookupPlace(c, lookupQuery.trim(), session),
+    onSuccess: applyDraft,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  /** §57.3 — Google Maps-ის ბმული (მოკლეც) → ფორმა */
+  const fromLink = useMutation({
+    mutationFn: (url: string) => placeFromLink(url),
+    onSuccess: applyDraft,
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+  const readLink = (raw: string) => {
+    const url = raw.trim()
+    if (/^https?:\/\//i.test(url) && !fromLink.isPending) fromLink.mutate(url)
+  }
+
+  /** §57.4 — „41.7151, 44.8271" (Google-იდან დაკოპირებული) → ორი ველი */
+  const pasteCoords = (raw: string): boolean => {
+    const m = raw.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/)
+    if (!m || Math.abs(Number(m[1])) > 90 || Math.abs(Number(m[2])) > 180) return false
+    setForm((f) => ({ ...f, lat: m[1], lng: m[2] }))
+
+    return true
+  }
+
+  /** §57.4 — პინი გადაათრიე → მისამართი იმ წერტილზე; ფორმაში მხოლოდ „განახლებით" ჩაიწერება */
+  const movePin = (lat: number, lng: number) => {
+    setForm((f) => ({ ...f, lat: lat.toFixed(6), lng: lng.toFixed(6) }))
+    void reverseGeocode(lat, lng)
+      .then((found) => {
+        const differs = (found.address && found.address !== form.address) || (found.city && found.city !== form.city)
+        setAddressOffer(differs ? found : null)
+      })
+      .catch(() => setAddressOffer(null))
   }
 
   const save = useMutation({
@@ -666,20 +798,60 @@ function PlaceForm({
       tags,
       photo,
       remove_photo: removePhoto,
+      // Tasks §57.1
+      phone: form.phone.trim() || null,
+      website: form.website.trim() || null,
+      opening_hours: form.hours.split('\n').map((line) => line.trim()).filter(Boolean),
+      source_rating: sourceRating.rating,
+      source_rating_count: sourceRating.count,
+      // შენი ატვირთული ფოტო მთავარია; წყაროს ფოტოები მაინც გალერეაში ჩამოდის
+      gallery_urls: galleryUrls,
     })
   }
 
   return (
     <ModalShell title={t(place ? 'places.edit' : 'places.add')} onClose={onClose} wide>
       <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6">
-        {/* §26.2 — წყაროთი მოძებნა, ყველა ფორმის ერთი ბლოკით; ხელით შევსება ყოველთვის ღიაა */}
-        <QuickFill title={t('places.lookupTitle')} hint={t('places.lookupHint')} htmlFor="p-lookup">
+        {/* §26.2 — წყაროთი მოძებნა, ყველა ფორმის ერთი ბლოკით; ხელით შევსება ყოველთვის ღიაა.
+            Tasks §57 — ზემოთ Google Maps-ის ბმული (§41.1-ის წესი: ბმული ფორმის თავში),
+            ქვემოთ სახელით ძებნა — Google-ის გასაღებით წერისას, მის გარეშე Enter-ით */}
+        <QuickFill
+          title={t('places.lookupTitle')}
+          hint={joinHints(t('places.lookupHint'), liveOn ? undefined : t('places.liveOffHint'))}
+          htmlFor="p-lookup"
+        >
+          <div className="relative mb-2">
+            <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="p-maplink"
+              className="pl-9"
+              value={mapLink}
+              placeholder={t('places.linkPlaceholder')}
+              aria-label={t('places.linkLabel')}
+              onChange={(e) => setMapLink(e.target.value)}
+              onPaste={(e) => readLink(e.clipboardData.getData('text'))}
+              onBlur={(e) => readLink(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  readLink(mapLink)
+                }
+              }}
+            />
+            {fromLink.isPending && (
+              <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
           <QuickFillSearch
             id="p-lookup"
             value={lookupQuery}
-            onChange={setLookupQuery}
+            onChange={(v) => {
+              setTyped(true)
+              setLookupQuery(v)
+            }}
             onSearch={() => lookup.mutate()}
-            busy={lookup.isPending}
+            busy={lookup.isPending || take.isPending}
             placeholder={t('places.lookupPlaceholder')}
             buttonLabel={t('places.lookupAction')}
           />
@@ -687,14 +859,22 @@ function PlaceForm({
           {results != null && results.length === 0 && <QuickFillMessage>{t('places.lookupEmpty')}</QuickFillMessage>}
 
           {results != null && results.length > 0 && (
-            <QuickFillResults>
+            <QuickFillResults label={resultsFrom ? t('places.resultsFrom', { source: t(`places.sources.${resultsFrom}`) }) : undefined}>
               {results.map((c) => (
                 <QuickFillCandidate
-                  key={`${c.osm_type}:${c.osm_id}`}
-                  shape="none"
+                  key={`${c.source}:${c.source_id}`}
+                  image={c.photo}
+                  shape={results.some((r) => r.photo) ? 'square' : 'none'}
                   title={c.name}
-                  meta={[c.address, c.kind].filter(Boolean).join(' · ')}
-                  onPick={() => takeCandidate(c)}
+                  meta={[
+                    c.address,
+                    c.kind,
+                    c.rating != null ? `★ ${c.rating}${c.rating_count ? ` (${c.rating_count})` : ''}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  onPick={() => take.mutate(c)}
+                  disabled={take.isPending}
                 />
               ))}
             </QuickFillResults>
@@ -719,12 +899,16 @@ function PlaceForm({
                 onSelect={(file) => {
                   setPhoto(file)
                   setRemovePhoto(false)
+                  setSourcePreview(false)
                   setPreview(URL.createObjectURL(file))
                 }}
                 onClear={() => {
                   setPhoto(null)
                   setRemovePhoto(true)
                   setPreview(null)
+                  // §57.1 — წყაროს ფოტოს მოხსნა მის ჩამოტვირთვასაც აუქმებს
+                  if (sourcePreview) setGalleryUrls([])
+                  setSourcePreview(false)
                 }}
               />
             )
@@ -836,6 +1020,46 @@ function PlaceForm({
             />
           </FormField>
 
+          {/* Tasks §57.1 — წყაროდან ივსება (Google Maps), ხელითაც */}
+          <FormField size="half" {...fields.field('phone')} htmlFor="p-phone" error={errors.phone}>
+            <Input
+              id="p-phone"
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField size="half" {...fields.field('website')} htmlFor="p-website" error={errors.website}>
+            <Input
+              id="p-website"
+              type="url"
+              placeholder="https://"
+              value={form.website}
+              onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField {...fields.field('opening_hours')} htmlFor="p-hours">
+            <Textarea
+              id="p-hours"
+              rows={3}
+              placeholder={t('places.hoursPlaceholder')}
+              value={form.hours}
+              onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))}
+            />
+            {sourceRating.rating != null && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="source-rating">
+                <Star className="size-3.5 fill-current text-[var(--gold)]" />
+                {t('places.sourceRating', {
+                  rating: sourceRating.rating,
+                  count: sourceRating.count ?? 0,
+                })}
+                <InfoHint info={t('places.sourceRatingHint')} />
+              </p>
+            )}
+          </FormField>
+
           {/* ⚠️ კოორდინატი **ერთი ველია** კატალოგში (`coords`): განცალკევებული
               გრძედი უაზროა და მისი დამალვა ნახევრად გატეხილ ფორმას დატოვებდა. */}
           <FormField
@@ -844,6 +1068,16 @@ function PlaceForm({
             htmlFor="p-lat"
             error={[errors.lat, errors.lng].filter(Boolean).join(' ')}
           >
+            {/* §57.4 — Google-იდან დაკოპირებული „41.7151, 44.8271" ერთ ველში; ცალ-ცალკე ველებიც რჩება */}
+            <Input
+              className="mb-2"
+              aria-label={t('places.coordsPaste')}
+              placeholder={t('places.coordsPastePlaceholder')}
+              onPaste={(e) => {
+                if (pasteCoords(e.clipboardData.getData('text'))) e.preventDefault()
+              }}
+              onChange={(e) => pasteCoords(e.target.value)}
+            />
             <div className="grid gap-2 sm:grid-cols-2">
               <Input
                 id="p-lat"
@@ -868,11 +1102,38 @@ function PlaceForm({
               />
             </div>
             {/* Tasks §30.2 — რუკა მარკერით: გადათრევით ან დაწკაპუნებით კოორდინატი ზუსტდება (ლეიზი ჩანკი) */}
-            <FormMapPick
-              lat={form.lat}
-              lng={form.lng}
-              onPick={(lat, lng) => setForm((f) => ({ ...f, lat: lat.toFixed(6), lng: lng.toFixed(6) }))}
-            />
+            <FormMapPick lat={form.lat} lng={form.lng} onPick={movePin} />
+            {/* §57.4 — პინის ახალ წერტილზე სხვა მისამართია — ჩაიწეროს? */}
+            {addressOffer && (
+              <div
+                className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs"
+                data-testid="address-offer"
+              >
+                <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1">
+                  {t('places.addressOffer', { address: addressOffer.address ?? addressOffer.city ?? '' })}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setForm((f) => ({
+                      ...f,
+                      address: addressOffer.address ?? f.address,
+                      city: addressOffer.city ?? f.city,
+                      country: addressOffer.country ?? f.country,
+                    }))
+                    setAddressOffer(null)
+                  }}
+                >
+                  {t('places.addressUpdate')}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setAddressOffer(null)}>
+                  {t('places.addressKeep')}
+                </Button>
+              </div>
+            )}
           </FormField>
         </FormSection>
 

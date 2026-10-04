@@ -323,7 +323,7 @@ class PlaceModuleTest extends TestCase
 
         $this->postJson('/api/places/lookup/candidates', ['query' => 'ვარძია'])
             ->assertStatus(503)
-            ->assertJsonPath('message', 'nominatim_unavailable');
+            ->assertJsonPath('message', 'places_unavailable');
     }
 
     /** ⚠️ ჩავარდნა **არ** ქეშირდება — ერთი აციმციმებული წამი მთელ დღეს არ ღუპავს */

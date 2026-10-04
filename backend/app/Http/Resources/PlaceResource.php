@@ -25,6 +25,12 @@ class PlaceResource extends JsonResource
             'address' => $this->address,
             'city' => $this->city,
             'country' => $this->country,
+            // Tasks §57.1 — წყაროდან (Google Maps): ტელეფონი, ვებგვერდი, საათები, წყაროს რეიტინგი
+            'phone' => $this->phone,
+            'website' => $this->website,
+            'opening_hours' => $this->opening_hours ?? [],
+            'source_rating' => $this->source_rating,
+            'source_rating_count' => $this->source_rating_count,
             /* ⚠️ რიცხვად და არა სტრიქონად: `decimal` cast სტრიქონს აბრუნებს,
                ინტერფეისს კი რიცხვი სჭირდება (რუკის ბმული, ფორმატირება). */
             'lat' => $this->lat !== null ? (float) $this->lat : null,

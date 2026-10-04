@@ -55,6 +55,13 @@ export interface Place {
   is_favorite: boolean
   visited_at: string | null
   photo: string | null
+  /** Tasks §57.1 — წყაროდან (Google Maps): ტელეფონი, ვებგვერდი, სამუშაო საათები */
+  phone: string | null
+  website: string | null
+  opening_hours: string[]
+  /** წყაროს საშუალო 0–5 (Google) — **შენი ქულა არ არის** (`rating`) */
+  source_rating: number | null
+  source_rating_count: number | null
   files_count?: number
   /** გალერეიდან/ვებიდან მოტანილი ფოტოები — ატვირთვებისგან ცალკე ფაქტია */
   photos_count?: number
@@ -73,18 +80,45 @@ export interface PlaceFile {
   created_at: string | null
 }
 
-/** Nominatim-ის კანდიდატი — ჩვენს კატეგორიად **არ** ითარგმნება */
+/** Tasks §57 — ადგილის წყარო: Google Places → SerpApi → Serper → Nominatim (+ ბმული) */
+export type PlaceSource = 'google' | 'serpapi' | 'serper' | 'nominatim' | 'link'
+
+/**
+ * კანდიდატი/მონახაზი ნებისმიერი წყაროდან — ერთი ფორმა (`PlaceSearch`, backend).
+ * ⚠️ წერისას შემოთავაზებას (Google) მხოლოდ სახელი და მისამართი აქვს — დანარჩენი
+ * არჩევისას (`lookupPlace`) მოდის; `kind` ჩვენს კატეგორიად **არ** ითარგმნება.
+ */
 export interface PlaceCandidate {
-  osm_id: string
-  osm_type: string
+  source: PlaceSource
+  source_id: string
+  osm_id: string | null
+  osm_type: string | null
   name: string
   address: string | null
   city: string | null
   country: string | null
-  lat: number
-  lng: number
-  /** OSM-ის საკუთარი კლასიფიკაცია („historic monastery") */
+  lat: number | null
+  lng: number | null
+  /** წყაროს კლასიფიკაცია („რესტორანი", „historic monastery") */
   kind: string | null
+  /** წყაროს საშუალო (Google 0–5) და შეფასებების რიცხვი */
+  rating: number | null
+  rating_count: number | null
+  phone: string | null
+  website: string | null
+  hours: string[]
+  photo: string | null
+  /** ყველა ფოტო — შენახვისას გალერეაში ჩამოდის (`gallery_urls`) */
+  photos: string[]
+  maps_url: string | null
+}
+
+export interface PlaceSearchResult {
+  results: PlaceCandidate[]
+  /** რომელმა წყარომ უპასუხა */
+  source?: PlaceSource
+  /** წერისას შემოთავაზება ამ ანგარიშზე შესაძლებელია? (Google-ის გასაღები) */
+  live: boolean
 }
 
 export interface PlaceFilters extends ListParams {
@@ -119,6 +153,14 @@ export interface PlaceInput {
   /** ატვირთული ფოტო; მითითების შემთხვევაში multipart-ად იგზავნება */
   photo?: File | null
   remove_photo?: boolean
+  /** Tasks §57.1 — წყაროს ინფო */
+  phone?: string | null
+  website?: string | null
+  opening_hours?: string[]
+  source_rating?: number | null
+  source_rating_count?: number | null
+  /** წყაროს ფოტოები → ადგილის გალერეა (პირველი — მთავარი, თუ ფოტო არ გაქვს) */
+  gallery_urls?: string[]
 }
 
 function toFormData(input: PlaceInput): FormData {
@@ -147,6 +189,18 @@ function toFormData(input: PlaceInput): FormData {
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
   if (input.photo) fd.append('photo', input.photo)
   if (input.remove_photo) fd.append('remove_photo', '1')
+  // Tasks §57.1 — `undefined` „არ შეეხო"-ა, `null`/ცარიელი — „გაასუფთავე"
+  if (input.phone !== undefined) fd.append('phone', input.phone ?? '')
+  if (input.website !== undefined) fd.append('website', input.website ?? '')
+  if (input.opening_hours !== undefined) {
+    if (input.opening_hours.length === 0) fd.append('opening_hours', '')
+    input.opening_hours.forEach((line) => fd.append('opening_hours[]', line))
+  }
+  if (input.source_rating !== undefined) fd.append('source_rating', input.source_rating == null ? '' : String(input.source_rating))
+  if (input.source_rating_count !== undefined) {
+    fd.append('source_rating_count', input.source_rating_count == null ? '' : String(input.source_rating_count))
+  }
+  ;(input.gallery_urls ?? []).forEach((url) => fd.append('gallery_urls[]', url))
 
   return fd
 }
@@ -171,10 +225,53 @@ export async function fetchPlaceCountries(): Promise<{ name: string; count: numb
   return data.data
 }
 
-/** Nominatim-ის კანდიდატები — **მხოლოდ ცხადი დაწკაპუნებით** */
+/**
+ * Tasks §57 — ადგილის ძებნა. `live` — წერისას (მხოლოდ Google; გასაღების გარეშე
+ * `live: false` და ძებნა Enter-ით ხდება); `city` — ფორმის ქალაქი (მიკერძოება);
+ * `session` — Google-ის ავტოშევსების სესია (შემოთავაზებები + დეტალები ერთად ითვლება).
+ */
+export async function searchPlaces(
+  query: string,
+  opts: { live?: boolean; city?: string | null; session?: string } = {},
+): Promise<PlaceSearchResult> {
+  const { data } = await api.post('/places/lookup/candidates', {
+    query,
+    ...(opts.live ? { live: 1 } : {}),
+    ...(opts.city ? { city: opts.city } : {}),
+    ...(opts.session ? { session: opts.session } : {}),
+  })
+  return { results: data.results ?? [], source: data.source, live: !!data.live }
+}
+
+/** კანდიდატები სიად — ცხადი ძებნა (მარშრუტის „საიდან", §56) */
 export async function fetchPlaceCandidates(query: string): Promise<PlaceCandidate[]> {
-  const { data } = await api.post('/places/lookup/candidates', { query })
-  return data.results ?? []
+  return (await searchPlaces(query)).results
+}
+
+/** არჩეული კანდიდატი → სრული მონახაზი (ფოტოები, ქალაქი კოორდინატიდან…) */
+export async function lookupPlace(candidate: PlaceCandidate, query: string, session?: string): Promise<PlaceCandidate> {
+  const { data } = await api.post('/places/lookup', {
+    source: candidate.source,
+    source_id: candidate.source_id,
+    query,
+    ...(session ? { session } : {}),
+  })
+  return data.draft
+}
+
+/** §57.3 — Google Maps-ის ბმული (მოკლეც) → მონახაზი */
+export async function placeFromLink(url: string): Promise<PlaceCandidate> {
+  const { data } = await api.post('/places/lookup/link', { url })
+  return data.draft
+}
+
+/** §57.4 — კოორდინატი → მისამართი (პინის გადათრევა) */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<{ address: string | null; city: string | null; country: string | null }> {
+  const { data } = await api.post('/places/lookup/reverse', { lat, lng })
+  return data.address
 }
 
 export async function createPlace(input: PlaceInput): Promise<Place> {

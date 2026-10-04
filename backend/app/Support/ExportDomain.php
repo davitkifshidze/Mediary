@@ -188,6 +188,8 @@ final class ExportDomain
             'fields' => [
                 'id', 'name', 'category', 'status', 'status_name', 'tags',
                 'address', 'city', 'country', 'lat', 'lng', 'osm_id', 'osm_type',
+                // Tasks §57.1
+                'phone', 'website', 'opening_hours', 'source_rating', 'source_rating_count',
                 'rating', 'description', 'is_favorite', 'visited_at',
                 'photo_path', 'visibility', 'created_at',
             ],

@@ -88,6 +88,14 @@ class CredentialTester
                         ->post('https://google.serper.dev/images', ['q' => 'test', 'num' => 1])
                 ),
 
+                /* Tasks §57.2 — Text Search მხოლოდ `places.id`-ით („IDs Only" — უფასო
+                   SKU): გასაღებს, ჩართულ API-სა და ბილინგს ერთად ამოწმებს და არ ხარჯავს */
+                CredentialProviders::GOOGLE_MAPS => $this->check(
+                    SourceLog::request(15)
+                        ->withHeaders(['X-Goog-Api-Key' => $value('key'), 'X-Goog-FieldMask' => 'places.id'])
+                        ->post('https://places.googleapis.com/v1/places:searchText', ['textQuery' => 'Tbilisi', 'maxResultCount' => 1])
+                ),
+
                 CredentialProviders::YOUTUBE => $this->check(
                     SourceLog::request(15)->get('https://www.googleapis.com/youtube/v3/videos', [
                         'part' => 'id',

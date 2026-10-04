@@ -352,6 +352,37 @@ class SerpApiClient
         ];
     }
 
+    /**
+     * **Tasks §57.2 — Google Maps-ის ძებნა** (`engine=google_maps`): ადგილები
+     * Google-ის ბილინგის გარეშე — სახელი, მისამართი, კოორდინატები, ტიპი, რეიტინგი,
+     * ტელეფონი, ვებგვერდი, საათები, ესკიზი.
+     *
+     * ⚠️ **ერთი ძებნა = ერთი კრედიტი** (250-იდან) — ამიტომ მხოლოდ ცხადი ძებნიდან
+     * იძახება და არასდროს წერისას. ქეში და აღრიცხვა — `call()`-ისა (24 სთ).
+     * ⚠️ ზუსტ დამთხვევაზე SerpApi სიის ნაცვლად ერთ `place_results`-ს აბრუნებს.
+     *
+     * @return list<array<string, mixed>>|null `null` — წყარო არ პასუხობს ან გასაღები არ არის
+     */
+    public function maps(string $query): ?array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return [];
+        }
+
+        $result = $this->call('google_maps', ['q' => $query, 'type' => 'search', 'hl' => 'ka', 'gl' => 'ge'], $query);
+        $data = $result['data'];
+
+        if ($data === null) {
+            return null;
+        }
+        if (is_array($data['local_results'] ?? null)) {
+            return array_values(array_filter($data['local_results'], 'is_array'));
+        }
+
+        return is_array($data['place_results'] ?? null) ? [$data['place_results']] : [];
+    }
+
     /* ---------- შიგნეული ---------- */
 
     /**
@@ -700,7 +731,7 @@ class SerpApiClient
     /** რამდენი ერთეული მოიტანა პასუხმა — მხოლოდ აღრიცხვისთვის */
     private function countRows(array $data): int
     {
-        foreach (['images_results', 'image_results', 'video_results', 'videos_results', 'organic_results'] as $key) {
+        foreach (['images_results', 'image_results', 'video_results', 'videos_results', 'organic_results', 'local_results'] as $key) {
             if (is_array($data[$key] ?? null)) {
                 return min(count($data[$key]), 65535);
             }
