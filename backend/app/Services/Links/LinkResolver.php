@@ -24,10 +24,19 @@ use Illuminate\Support\Facades\Cache;
  * ⚠️ **ჩავარდნა ცარიელი 200-ია** — არსებული წესი (`LinkMetadata`): გვერდი
  * შეიძლება დახურული იყოს, ხელით შევსება მაინც რჩება.
  * ⚠️ **HTML არასდროს გამოდის** — მხოლოდ ტექსტური ველები და მისამართები.
+ *
+ * ⚠️ **Tasks §44.1 — ერთადერთი წყარო**: ვიდეოს, სიმღერის, ბუკმარკის, კურსისა და
+ * პირადი მოდულის `/…/metadata`-ც ამას იძახებს (ადრე სამი სხვადასხვა კლასი და
+ * სამი სხვადასხვა პასუხი იყო). ვიდეოზე ტეგები და თარიღიც მოდის (`VideoMetadata`).
+ * ⚠️ **აღწერა 5 000 სიმბოლომდე** (§44.4; ადრე ყოველი სტრიქონი 500-ზე იჭრებოდა) —
+ * ვიდეოს/ბუკმარკის/ადგილის/კურსის შენახვის ზღვარი; სათაური — 500.
  */
 class LinkResolver
 {
     public const CACHE_MINUTES = 24 * 60;
+
+    /** აღწერის ჭერი — ფორმების უმცირესი შენახვის ზღვარი */
+    public const DESCRIPTION_MAX = 5000;
 
     public const VIDEO_PLATFORMS = ['youtube', 'vimeo', 'dailymotion'];
 
@@ -39,13 +48,21 @@ class LinkResolver
     /**
      * @return array{kind: string, url: string, platform: string, external_id: ?string, embed_url: ?string,
      *               title: ?string, description: ?string, image_url: ?string, favicon_url: ?string,
-     *               site_name: ?string, domain: ?string, author: ?string, duration: ?int}
+     *               site_name: ?string, domain: ?string, author: ?string, duration: ?int,
+     *               published_at: ?string, tags: list<string>}
      */
     public function resolve(string $url): array
     {
         $url = trim($url);
 
-        return Cache::remember('link-meta:'.sha1($url), now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
+        // ⚠️ გასაღების ვერსია — §44-მდე ქეშირებულ პასუხს ტეგები და თარიღი აკლდა
+        $meta = Cache::remember('link-meta:v2:'.sha1($url), now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
+
+        if (is_string($meta['description']) && mb_strlen($meta['description']) > self::DESCRIPTION_MAX) {
+            $meta['description'] = mb_substr($meta['description'], 0, self::DESCRIPTION_MAX);
+        }
+
+        return $meta;
     }
 
     private function lookup(string $url): array
@@ -67,6 +84,8 @@ class LinkResolver
             'domain' => $this->domain($url),
             'author' => null,
             'duration' => null,
+            'published_at' => null,
+            'tags' => [],
         ];
 
         if ($isVideo) {
@@ -76,6 +95,8 @@ class LinkResolver
             $out['image_url'] = $meta['thumbnail_url'] ?? $out['image_url'];
             $out['author'] = $meta['author'];
             $out['duration'] = $meta['duration'];
+            $out['published_at'] = $meta['published_at'];
+            $out['tags'] = $meta['tags'];
 
             // oEmbed-მა უპასუხა — გვერდის წაკითხვა აღარ სჭირდება
             if ($out['title'] !== null) {

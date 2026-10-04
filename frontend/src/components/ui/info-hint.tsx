@@ -75,6 +75,7 @@ function Hint({
   label,
   side,
   tone = 'info',
+  wide = false,
   className,
 }: {
   text: ReactNode
@@ -82,6 +83,7 @@ function Hint({
   label: string
   side: Side
   tone?: InfoTone
+  wide?: boolean
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -121,7 +123,8 @@ function Hint({
           onMouseLeave={() => setOpen(false)}
           className={cn(
             LAYER_TOOLTIP,
-            'fb-content max-w-xs rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs leading-relaxed text-popover-foreground shadow-md focus:outline-none',
+            'fb-content rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs leading-relaxed text-popover-foreground shadow-md focus:outline-none',
+            wide ? 'max-w-md' : 'max-w-xs',
           )}
         >
           {text}
@@ -136,10 +139,13 @@ export function InfoHint({
   critical,
   side = 'top',
   tone,
+  wide,
   className,
 }: {
   /** `i`-ის ფერი (ნაგულისხმევად ლურჯი) — მაგ. ტექსტის წყარო (§8.1) */
   tone?: InfoTone
+  /** Tasks §44.6 — ფართო ახსნა (სია, ცხრილი) — `max-w-md` `max-w-xs`-ის ნაცვლად */
+  wide?: boolean
   /** ლურჯი `i` — ახსნა. **უკვე ნათარგმნი ტექსტი**, არასდროს გასაღები. */
   info?: ReactNode
   /** წითელი სამკუთხედი — კრიტიკული. **უკვე ნათარგმნი ტექსტი**. */
@@ -158,7 +164,15 @@ export function InfoHint({
         <Hint text={critical} critical label={t('common.warning')} side={side} className={className} />
       )}
       {info && (
-        <Hint text={info} critical={false} label={t('common.info')} side={side} tone={tone} className={className} />
+        <Hint
+          text={info}
+          critical={false}
+          label={t('common.info')}
+          side={side}
+          tone={tone}
+          wide={wide}
+          className={className}
+        />
       )}
     </span>
   )

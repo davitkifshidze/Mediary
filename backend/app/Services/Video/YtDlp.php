@@ -78,6 +78,56 @@ class YtDlp
     }
 
     /**
+     * **ვიდეოს სრული ინფო გასაღების გარეშე** (Tasks §44.3) — `-J --skip-download`.
+     *
+     * შენი სიტყვები: „მხოლოდ სახელი, არხი და გამოქვეყნება წამოიღო — ფოტო და აღწერა
+     * არა". YouTube-ის oEmbed-ს აღწერა და თარიღი არ აქვს, Data API კი გასაღებს
+     * ითხოვს; `yt-dlp` ორივეს აბრუნებს — სათაური, სრული აღწერა, თარიღი, საუკეთესო
+     * ესკიზი, ხანგრძლივობა, ტეგები, არხი — **გასაღებისა და SerpApi-ის კრედიტის
+     * გარეშე** (~2–4 წმ). ⚠️ ჩავარდნა (ბინარი არაა, ქსელი, ტაიმაუტი) — `null`:
+     * მეტამონაცემი არასავალდებულოა და ფორმა ხელით ივსება.
+     *
+     * @return array{title: ?string, description: ?string, published_at: ?string, thumbnail: ?string,
+     *               duration: ?int, tags: list<string>, channel: ?string}|null
+     */
+    public function info(string $url): ?array
+    {
+        $binary = $this->binary();
+        if (! $binary) {
+            return null;
+        }
+
+        // ⚠️ `--` — ბმული გარედან მოდის და ოფციად ვერასდროს წაიკითხება
+        $process = new Process([$binary, '-J', '--skip-download', '--no-playlist', '--no-warnings', '--', $url], null, ProcessEnv::for());
+        $process->setTimeout((int) config('mediary.ytdlp.info_timeout', 20));
+
+        try {
+            $process->run();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $json = $process->isSuccessful() ? json_decode($process->getOutput(), true) : null;
+        if (! is_array($json)) {
+            return null;
+        }
+
+        $text = fn (mixed $v) => is_string($v) && trim($v) !== '' ? trim($v) : null;
+        $date = $text($json['upload_date'] ?? null);
+
+        return [
+            'title' => $text($json['title'] ?? null),
+            'description' => $text($json['description'] ?? null),
+            // `20231024` → `2023-10-24`
+            'published_at' => $date && preg_match('/^(\d{4})(\d{2})(\d{2})$/', $date, $m) ? "{$m[1]}-{$m[2]}-{$m[3]}" : null,
+            'thumbnail' => $text($json['thumbnail'] ?? null),
+            'duration' => is_numeric($json['duration'] ?? null) ? (int) round((float) $json['duration']) : null,
+            'tags' => array_values(array_slice(array_filter((array) ($json['tags'] ?? []), 'is_string'), 0, 20)),
+            'channel' => $text($json['channel'] ?? null) ?? $text($json['uploader'] ?? null),
+        ];
+    }
+
+    /**
      * ჩამოწერამდე: სათაური და **სავარაუდო ზომა**.
      *
      * ⚠️ ეს არის ერთადერთი გზა, კვოტა ჩამოწერამდე შევამოწმოთ. სავარაუდოა

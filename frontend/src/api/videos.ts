@@ -2,6 +2,7 @@ import { API_URL, api } from '@/lib/api'
 import { pickParams, type PickOptions } from '@/lib/pick'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Status } from '@/api/types'
+import type { LinkPreview } from '@/api/links'
 import { readRemoved, removalBody, type DictionaryRemoval, type DictionaryRemoved } from '@/api/dictionary'
 
 /* ============================================================
@@ -211,6 +212,8 @@ export interface VideoInput {
   /** ატვირთული thumbnail; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
   remove_thumbnail?: boolean
+  /** Tasks §44.2 — ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
+  thumbnail_url?: string | null
 }
 
 function toFormData(input: VideoInput): FormData {
@@ -231,23 +234,21 @@ function toFormData(input: VideoInput): FormData {
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)
   if (input.remove_thumbnail) fd.append('remove_thumbnail', '1')
+  if (input.thumbnail_url) fd.append('thumbnail_url', input.thumbnail_url)
   return fd
 }
 
-export interface VideoMetadata {
+/**
+ * ვიდეოს/სიმღერის probe — Tasks §44.1: **`LinkPreview`-ის ფორმა** (ერთი წყარო,
+ * `LinkResolver`) + ვიდეოს საკუთარი ველები. ⚠️ ესკიზი `image_url`-შია (ადრე
+ * `thumbnail_url`), ფორმა მას მთავარი ფოტოს ჩარჩოში სვამს (§44.2).
+ */
+export interface VideoMetadata extends Omit<LinkPreview, 'platform'> {
   platform: VideoPlatform
-  external_id: string | null
-  embed_url: string | null
-  title: string | null
-  description: string | null
-  duration: number | null
-  tags: string[]
-  thumbnail_url: string | null
-  author: string | null
-  /** საიდან წამოვიდა: oembed | youtube_api | null */
-  source: 'oembed' | 'youtube_api' | 'opengraph' | null
   /** შენი YouTube-ის გასაღები („მონაცემები", Tasks §30) არის თუ არა (ხანგრძლივობა/ტეგებისთვის) */
   youtube_key: boolean
+  /** Tasks §44.3 — `yt-dlp` დაყენებულია: გასაღების გარეშეც სრული ინფო მოდის */
+  ytdlp: boolean
   /**
    * FEAT-17 — ამ ბმულის ჩანაწერი უკვე გაქვს?
    * ⚠️ **გაფრთხილებაა და არა აკრძალვა**: ერთი ბმულის ორჯერ შენახვა

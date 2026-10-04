@@ -103,6 +103,12 @@ function LinkSuggestCard({
         <p className="truncate font-medium" title={preview.title ?? undefined}>
           {preview.title ?? preview.url}
         </p>
+        {/* Tasks §44.2 — აღწერაც ჩანს, ორ ხაზად (სრული ტექსტი „ჩასმით" ველში ჯდება) */}
+        {preview.description && (
+          <p className="line-clamp-2 text-xs text-muted-foreground" data-testid="link-suggest-description">
+            {preview.description}
+          </p>
+        )}
         {meta && <p className="truncate text-xs text-muted-foreground">{meta}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">

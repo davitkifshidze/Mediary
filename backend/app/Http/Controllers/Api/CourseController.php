@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
-use App\Services\Bookmarks\LinkMetadata;
 use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
@@ -240,7 +239,7 @@ class CourseController extends Controller
     /**
      * ცარიელი ველების შევსება გვერდიდან. არასდროს გადააწერს იმას, რაც
      * user-მა შეავსო; ჩავარდნაზე ჩუმად გადის. `autofill=0`-ით გამორთვადია
-     * (ბუკმარკის იგივე ქცევა და იგივე სერვისი).
+     * (ბუკმარკის იგივე ქცევა და იგივე სერვისი — `LinkResolver`, Tasks §44.1).
      */
     private function autofill(Course $course, Request $request): void
     {
@@ -252,7 +251,8 @@ class CourseController extends Controller
             return;
         }
 
-        $meta = app(LinkMetadata::class)->fetch((string) $course->url);
+        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        $meta = app(LinkResolver::class)->resolve((string) $course->url);
 
         if (! $course->title) {
             $course->title = $meta['title'] ?: $course->platform ?: (string) $course->url;

@@ -4,8 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Module;
 use App\Models\User;
+use App\Models\UserCredential;
+use App\Models\Video;
+use App\Services\Credentials\CredentialStore;
 use App\Services\Links\LinkResolver;
 use App\Services\Video\VideoMetadata;
+use App\Services\Video\YtDlp;
+use App\Support\CredentialProviders;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -111,6 +116,135 @@ class LinkResolverTest extends TestCase
             ->assertOk()
             ->assertJsonPath('kind', 'page')
             ->assertJsonPath('title', 'OG Title');
+    }
+
+    /* ================= Tasks §44 — სრული ინფო ბმულიდან ================= */
+
+    private function userWithModules(string $name, array $modules = ['video', 'song', 'bookmark']): User
+    {
+        $this->seed(ModulesSeeder::class);
+        $user = User::create(['name' => $name, 'username' => $name, 'email' => "{$name}@example.com", 'password' => 'password']);
+        $user->modules()->sync(Module::whereIn('key', $modules)->pluck('id')->all());
+
+        return $user->refresh();
+    }
+
+    /** §44.3 — გასაღებით: Data API-ის თარიღი და **საუკეთესო** ესკიზი (`maxres`), ტეგები, სრული აღწერა */
+    public function test_youtube_with_a_key_brings_the_date_and_the_best_thumbnail(): void
+    {
+        Http::fake([
+            'www.youtube.com/oembed*' => Http::response(['title' => 'oEmbed title', 'author_name' => 'Rick Astley', 'thumbnail_url' => 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'], 200),
+            'www.googleapis.com/youtube/v3/videos*' => Http::response(['items' => [[
+                'snippet' => [
+                    'title' => 'Never Gonna Give You Up',
+                    'description' => str_repeat('ა', 1200),
+                    'channelTitle' => 'Rick Astley',
+                    'publishedAt' => '2009-10-25T06:57:33Z',
+                    'tags' => ['rick', 'astley'],
+                    'thumbnails' => [
+                        'high' => ['url' => 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'],
+                        'maxres' => ['url' => 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'],
+                    ],
+                ],
+                'contentDetails' => ['duration' => 'PT3M33S'],
+            ]]], 200),
+        ]);
+
+        $user = $this->userWithModules('nino');
+        UserCredential::create(['user_id' => $user->id, 'provider' => CredentialProviders::YOUTUBE, 'credentials' => ['key' => 'yt-key']]);
+        CredentialStore::forget();
+        $this->actingAs($user);
+
+        $meta = app(LinkResolver::class)->resolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        $this->assertSame('Never Gonna Give You Up', $meta['title']);
+        $this->assertSame('2009-10-25', $meta['published_at']);
+        $this->assertSame('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', $meta['image_url']);
+        $this->assertSame(['rick', 'astley'], $meta['tags']);
+        $this->assertSame(213, $meta['duration']);
+        // §44.4 — აღწერა 500-ზე აღარ იჭრება
+        $this->assertSame(1200, mb_strlen($meta['description']));
+    }
+
+    /** §44.3 — გასაღების გარეშე: `yt-dlp -J` (ყალბი) — აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები */
+    public function test_youtube_without_a_key_reads_yt_dlp(): void
+    {
+        $this->fake();
+        $this->app->instance(YtDlp::class, new class extends YtDlp
+        {
+            public function available(): bool
+            {
+                return true;
+            }
+
+            public function info(string $url): ?array
+            {
+                return [
+                    'title' => 'yt-dlp title',
+                    'description' => 'Full description from yt-dlp',
+                    'published_at' => '2009-10-25',
+                    'thumbnail' => 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.webp',
+                    'duration' => 213,
+                    'tags' => ['rick'],
+                    'channel' => 'Rick Astley',
+                ];
+            }
+        });
+
+        $meta = app(LinkResolver::class)->resolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        // oEmbed-ის სათაური რჩება, დანარჩენი yt-dlp-იდან
+        $this->assertSame('Never Gonna Give You Up', $meta['title']);
+        $this->assertSame('Full description from yt-dlp', $meta['description']);
+        $this->assertSame('2009-10-25', $meta['published_at']);
+        $this->assertSame('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.webp', $meta['image_url']);
+        $this->assertSame(213, $meta['duration']);
+        $this->assertSame(['rick'], $meta['tags']);
+    }
+
+    /** §44.1 — ვიდეოს, სიმღერის და ბუკმარკის probe ერთი წყაროდანაა (`LinkResolver`-ის ველებით) */
+    public function test_the_module_probes_answer_with_the_resolver_fields(): void
+    {
+        $this->fake();
+        $user = $this->userWithModules('gia');
+
+        $video = $this->actingAs($user)->postJson('/api/videos/metadata', ['url' => self::PAGE])->assertOk()->json();
+        $this->assertSame('OG Title', $video['title']);
+        $this->assertSame('http://203.0.113.10/cover.jpg', $video['image_url']);
+        $this->assertArrayHasKey('ytdlp', $video);
+        $this->assertArrayHasKey('existing', $video);
+
+        $this->actingAs($user)->postJson('/api/songs/metadata', ['url' => self::PAGE])
+            ->assertOk()->assertJsonPath('description', 'OG Desc');
+        $this->actingAs($user)->postJson('/api/bookmarks/metadata', ['url' => self::PAGE])
+            ->assertOk()->assertJsonPath('kind', 'page');
+    }
+
+    /** §44.2 — შენახვისას ინახება ის ფოტო, რაც ფორმის ჩარჩომ აჩვენა, და თარიღი ბმულიდან */
+    public function test_saving_a_video_keeps_the_frame_photo_and_the_date(): void
+    {
+        $this->fake();
+        $this->app->instance(YtDlp::class, new class extends YtDlp
+        {
+            public function info(string $url): ?array
+            {
+                return ['title' => null, 'description' => 'd', 'published_at' => '2009-10-25', 'thumbnail' => null, 'duration' => 213, 'tags' => [], 'channel' => null];
+            }
+        });
+        $user = $this->userWithModules('eka');
+        $type = $this->actingAs($user)->getJson('/api/video-types')->json('data.0.id');
+
+        $id = $this->actingAs($user)->postJson('/api/videos', [
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'title' => 'Rick',
+            'type_id' => $type,
+            'status' => 'to_watch',
+            'thumbnail_url' => 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+        ])->assertCreated()->json('data.id');
+
+        $video = Video::withoutGlobalScopes()->findOrFail($id);
+        $this->assertSame('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg', $video->thumbnail_url);
+        $this->assertSame('2009-10-25', $video->published_at?->format('Y-m-d'));
     }
 
     /** ვიდეოს/სიმღერის `other` ბმულზე (არა YouTube/Vimeo/Dailymotion) სათაური და ესკიზი გვერდიდან მოდის */

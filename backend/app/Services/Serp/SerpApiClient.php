@@ -658,7 +658,9 @@ class SerpApiClient
             'views' => is_numeric($row['views'] ?? null) ? (int) $row['views'] : null,
             'published' => $this->publishedDate($row['published_date'] ?? $row['publish_date'] ?? null),
             'thumbnail' => $this->url($row['thumbnail']['static'] ?? $row['thumbnail'] ?? null),
-            'description' => $this->str($row['description'] ?? null),
+            /* ⚠️ Tasks §44.3 — YouTube-ის შედეგში აღწერა **ობიექტია** (`{content, links}`),
+               `str()` კი ობიექტზე `null`-ს აბრუნებდა — „წამოღება ვებიდან" აღწერას კარგავდა */
+            'description' => $this->str($row['description']['content'] ?? $row['description'] ?? null, 5000),
         ];
     }
 
@@ -707,7 +709,7 @@ class SerpApiClient
         return 0;
     }
 
-    private function str(mixed $value): ?string
+    private function str(mixed $value, int $max = 500): ?string
     {
         if (! is_string($value) && ! is_numeric($value)) {
             return null;
@@ -715,7 +717,7 @@ class SerpApiClient
 
         $value = trim((string) $value);
 
-        return $value === '' ? null : mb_substr($value, 0, 500);
+        return $value === '' ? null : mb_substr($value, 0, $max);
     }
 
     /**

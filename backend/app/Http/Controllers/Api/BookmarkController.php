@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookmarkResource;
 use App\Models\Bookmark;
 use App\Models\Status;
-use App\Services\Bookmarks\LinkMetadata;
+use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
@@ -91,11 +91,12 @@ class BookmarkController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით და არა 5xx: გვერდის დახურვა
      * (403/timeout) ჩვეულებრივი ამბავია და ხელით შევსებას არ უნდა უშლიდეს.
      */
-    public function metadata(Request $request, LinkMetadata $meta)
+    /** Tasks §44.1 — ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
+    public function metadata(Request $request, LinkResolver $links)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
 
-        return response()->json($meta->fetch($data['url']));
+        return response()->json($links->resolve($data['url']));
     }
 
     public function store(Request $request)
@@ -278,7 +279,8 @@ class BookmarkController extends Controller
             return;
         }
 
-        $meta = app(LinkMetadata::class)->fetch($bookmark->url);
+        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        $meta = app(LinkResolver::class)->resolve($bookmark->url);
 
         if (! $bookmark->title) {
             $bookmark->title = $meta['title'] ?: $bookmark->domain ?: $bookmark->url;

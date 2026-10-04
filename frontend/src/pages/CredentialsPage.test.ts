@@ -224,6 +224,24 @@ describe('CredentialsPage', () => {
     expect(mocks.test).toHaveBeenCalledWith('serper', true)
   })
 
+  /* Tasks §44.6 — „რა აპები და საიდან გასაღები": ერთი სია გვერდის `i`-ში; yt-dlp-ს გასაღები არ სჭირდება */
+  it('lists which source fills what and where its key comes from in the page info', async () => {
+    await mount()
+    expect(document.querySelector('[data-testid="credentials-guide"]')).toBeNull()
+
+    // გვერდის სათაურის `i` DOM-ში პირველია (ბარათების `i`-ები მის შემდეგ მოდის)
+    const info = document.querySelector<HTMLButtonElement>(`button[aria-label="${i18n.t('common.info')}"]`)!
+    await act(async () => info.click())
+
+    const guide = document.querySelector('[data-testid="credentials-guide"]')!
+    expect(document.body.textContent).toContain(i18n.t('credentials.intro'))
+    const names = [...guide.querySelectorAll('li > span')].map((s) => s.textContent)
+    expect(names).toEqual(expect.arrayContaining(['YouTube Data API v3', 'yt-dlp', 'TMDB']))
+    expect(guide.textContent).toContain('10 000')
+    // ყველა სტრიქონი „სახელი — რას ავსებს"
+    expect(guide.querySelectorAll('li')).toHaveLength(i18n.t('credentials.guide').split('\n').length)
+  })
+
   it('shows the installation block only when the server sends it', async () => {
     await mount()
     expect(document.body.textContent).not.toContain(i18n.t('credentials.installation'))

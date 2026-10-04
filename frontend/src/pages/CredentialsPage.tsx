@@ -148,7 +148,7 @@ export function CredentialsPage() {
       <PageHeader
         tool="credentials"
         title={t('credentials.title')}
-        hint={<InfoHint info={t('credentials.intro')} />}
+        hint={<InfoHint wide info={<SourceGuide />} />}
         subtitle={data ? t('credentials.connected', { count: connected, total: data.data.length }) : undefined}
       />
 
@@ -224,6 +224,38 @@ export function CredentialsPage() {
 
       {openCredential && <ProviderDialog credential={openCredential} onClose={() => setOpen(null)} />}
     </PageContainer>
+  )
+}
+
+/* ---------- Tasks §44.6 — „რა აპები და საიდან გასაღები" ----------
+   ერთი სია გვერდის `i`-ში: რომელი წყარო რას ავსებს და გასაღები საიდან მოდის (ან რომ არ სჭირდება).
+   ⚠️ მხოლოდ **მიერთებული** წყაროები — `CredentialProviders` და გასაღების გარეშე მომუშავენი (yt-dlp,
+   Open Library, BGG, OpenStreetMap); ახალი წყარო სიაში მხოლოდ `CredentialProviders`-ში დამატების შემდეგ
+   ჩნდება (409 `credential_missing`, 503 `*_unavailable`, `SourceLog`). სტრიქონები `\n`-ით იყოფა
+   (`CredentialHelpDialog`-ის წესი — i18n-ში მასივები არ გვაქვს); „ — "-მდე წყაროს სახელია. */
+function SourceGuide() {
+  const { t } = useTranslation()
+  const rows = t('credentials.guide')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  return (
+    <div className="space-y-2">
+      <p>{t('credentials.intro')}</p>
+      <p className="font-medium text-foreground">{t('credentials.guideTitle')}</p>
+      <ul className="space-y-1" data-testid="credentials-guide">
+        {rows.map((row) => {
+          const [name, ...rest] = row.split(' — ')
+          return (
+            <li key={row}>
+              <span className="font-medium text-foreground">{name}</span>
+              {rest.length > 0 && ` — ${rest.join(' — ')}`}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

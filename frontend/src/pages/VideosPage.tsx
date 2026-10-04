@@ -715,6 +715,10 @@ function VideoForm({
   const fields = useModuleFields('video')
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(video?.thumbnail))
+  /* Tasks §44.2 — ბმულიდან მოსული ფოტო **პირდაპირ ჩარჩოშია** (URL-ით); შენახვისას
+     `thumbnail_url`-ად მიდის და სერვერი ზუსტად მას იწერს. ატვირთული და უკვე შენახული
+     ფოტო უპირატესია (`thumbPreview`). */
+  const [linkThumb, setLinkThumb] = useState<string | null>(null)
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<VideoMetadata | null>(null)
@@ -747,10 +751,12 @@ function VideoForm({
         ...f,
         title: f.title || (m.title ?? ''),
         description: f.description || (m.description ?? ''),
-        // Q52 — oEmbed-ის `author_name` არხია; თარიღს oEmbed არ აბრუნებს
+        // Q52 — oEmbed-ის `author_name` არხია; §44.3 — თარიღი Data API-დან ან yt-dlp-დან
         channel: f.channel || (m.author ?? ''),
+        publishedAt: f.publishedAt || (m.published_at ?? ''),
         tags: f.tags.length ? f.tags : m.tags,
       }))
+      setLinkThumb(m.image_url)
     } catch {
       setMeta(null)
     } finally {
@@ -789,6 +795,8 @@ function VideoForm({
         channel: f.channel || (found.channel ?? ''),
         publishedAt: f.publishedAt || (found.published ?? ''),
       }))
+      // Tasks §44.3 — ნაპოვნი ფოტოც ჩარჩოში (ადრე იკარგებოდა); ბმულისა უპირატესია
+      if (found.thumbnail) setLinkThumb((l) => l ?? found.thumbnail)
       toast({ title: t('videos.metaFromWeb'), variant: 'success' })
     } catch (e) {
       toast({ title: errorMessage(e), variant: 'error' })
@@ -869,6 +877,8 @@ function VideoForm({
       tags,
       thumbnail,
       remove_thumbnail: removeThumb,
+      // §44.2 — ჩარჩოში ნაჩვენები ბმულის ფოტო (ატვირთული/შენახული თუ არ არის)
+      thumbnail_url: !thumbnail && !thumbPreview ? linkThumb : null,
     })
   }
 
@@ -920,17 +930,20 @@ function VideoForm({
           )}
           {!metaLoading && meta && (
             <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card p-2">
-              {meta.thumbnail_url && (
-                <img src={meta.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
+              {meta.image_url && (
+                <img src={meta.image_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
               )}
               <div className="min-w-0 text-xs text-muted-foreground">
                 <p className="truncate text-foreground">{meta.title ?? t('videos.metaNoTitle')}</p>
+                {/* Tasks §44.2 — აღწერაც ბარათშია, ორ ხაზად */}
+                {meta.description && <p className="line-clamp-2">{meta.description}</p>}
                 <p className="capitalize">
                   {meta.platform}
                   {meta.author && ` · ${meta.author}`}
                   {duration ? ` · ${formatDuration(duration)}` : ''}
                 </p>
-                {meta.platform === 'youtube' && !meta.youtube_key && (
+                {/* §44.3 — გასაღების გარეშეც სრული ინფო მოდის, თუ yt-dlp დაყენებულია; ვებძებნა მხოლოდ ბოლო საშუალებაა */}
+                {meta.platform === 'youtube' && !meta.youtube_key && !meta.ytdlp && (
                   <div className="mt-0.5 flex flex-wrap items-center gap-2">
                     <span>{t('videos.metaNeedsKey')}</span>
                     {/* §7.6.3 — SerpApi ამას გასაღების გარეშე ავსებს, მაგრამ
@@ -975,7 +988,7 @@ function VideoForm({
                 fill
                 variant="wide"
                 hint={t('videos.thumbnailHint')}
-                preview={thumbPreview}
+                preview={thumbPreview ?? linkThumb}
                 onSelect={(file) => {
                   setThumbnail(file)
                   setRemoveThumb(false)
@@ -984,6 +997,7 @@ function VideoForm({
                 onClear={() => {
                   setThumbnail(null)
                   setThumbPreview(null)
+                  setLinkThumb(null)
                   setRemoveThumb(true)
                 }}
               />

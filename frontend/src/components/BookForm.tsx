@@ -109,6 +109,9 @@ export function BookForm({
   const [coverId, setCoverId] = useState<number | null>(null)
   const [cover, setCover] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(storageUrl(book?.cover))
+  /* Tasks §44.5 — `source_url`-ის ფოტო ყდის **ცარიელ** ჩარჩოში ჯდება (URL-ით) და შენახვისას
+     `cover_url`-ად მიდის. ატვირთული, Open Library-ის და უკვე შენახული ყდა უპირატესია (`coverPreview`). */
+  const [linkCover, setLinkCover] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newGenre, setNewGenre] = useState(false)
@@ -274,6 +277,9 @@ export function BookForm({
       openlibrary_cover_id: coverId,
       cover,
       remove_cover: removeCover,
+      /* §44.5 — ჩარჩოში ნაჩვენები ბმულის ყდა. ⚠️ „წაშლა" `cover_url`-საც ასუფთავებს: რესურსის
+         `cover` = `cover_path ?: cover_url`, ე.ი. მარტო `remove_cover` ბმულის ყდას უკან აბრუნებდა */
+      cover_url: !cover && !coverPreview && linkCover ? linkCover : removeCover ? null : undefined,
     })
   }
 
@@ -331,7 +337,7 @@ export function BookForm({
               <PosterUploader
                 fill
                 hint={t('books.coverHint')}
-                preview={coverPreview}
+                preview={coverPreview ?? linkCover}
                 onSelect={(file) => {
                   setCover(file)
                   setCoverId(null)
@@ -342,6 +348,7 @@ export function BookForm({
                   setCover(null)
                   setCoverId(null)
                   setCoverPreview(null)
+                  setLinkCover(null)
                   setRemoveCover(true)
                 }}
               />
@@ -549,25 +556,28 @@ export function BookForm({
           {/* §5.7 — **ახალი ველი**: წყაროს / წასაკითხი ლინკი. ⚠️ ატვირთულ
               ebook ფაილს არ ცვლის — ეს გარე ბმულია (მაღაზია, ბიბლიოთეკა). */}
           <FormField {...fields.field('source_url')} htmlFor="b-source-url" error={errors.source_url}>
-            {/* Tasks §15.3 — paste/blur-ზე გვერდის მეტა-მონაცემი: ცარიელ სათაურს/აღწერას ავსებს, „ჩასმა" შევსებულსაც */}
+            {/* Tasks §15.3 — paste/blur-ზე გვერდის მეტა-მონაცემი: ცარიელ სათაურს/აღწერას ავსებს, „ჩასმა" შევსებულსაც;
+                §44.5 — ფოტო ყდის ჩარჩოში (თუ ყდა ჯერ არ არის) */}
             <LinkField
               id="b-source-url"
               value={form.source_url}
               onChange={(source_url) => setForm((f) => ({ ...f, source_url }))}
-              onFound={(p) =>
+              onFound={(p) => {
                 setForm((f) => ({
                   ...f,
                   title_en: f.title_en || (p.title ?? ''),
                   description_en: f.description_en || (p.description ?? ''),
                 }))
-              }
-              onApply={(p) =>
+                if (p.image_url) setLinkCover((c) => c ?? p.image_url)
+              }}
+              onApply={(p) => {
                 setForm((f) => ({
                   ...f,
                   title_en: p.title ?? f.title_en,
                   description_en: p.description ?? f.description_en,
                 }))
-              }
+                if (p.image_url) setLinkCover(p.image_url)
+              }}
             />
           </FormField>
         </FormSection>

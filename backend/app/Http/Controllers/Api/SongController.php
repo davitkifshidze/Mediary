@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SongResource;
 use App\Models\Song;
+use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Support\ColumnTrash;
@@ -97,16 +98,19 @@ class SongController extends Controller
      * ⚠️ **`exclude` რედაქტირებისთვისაა**: არსებული ჩანაწერის ფორმა
      * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
      * „ეს უკვე გაქვს".
+     *
+     * Tasks §44.1 — პასუხი `LinkResolver`-ისაა (ვიდეოს `metadata()`-ის იგივე).
      */
-    public function metadata(Request $request, VideoMetadata $meta)
+    public function metadata(Request $request, LinkResolver $links, VideoMetadata $meta)
     {
         $data = $request->validate([
             'url' => ['required', 'string', 'max:1000', 'url'],
             'exclude' => ['nullable', 'integer'],
         ]);
 
-        return response()->json($meta->fetch($data['url']) + [
+        return response()->json($links->resolve($data['url']) + [
             'youtube_key' => $meta->hasYoutubeKey(),
+            'ytdlp' => $meta->hasYtDlp(),
             'existing' => DuplicateLink::find(Song::class, $data['url'], $data['exclude'] ?? null),
         ]);
     }
@@ -194,6 +198,8 @@ class SongController extends Controller
             'visibility' => ['nullable', Rule::in(['private', 'public'])],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
+            // Tasks §44.2 — ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
+            'thumbnail_url' => ['nullable', 'string', 'max:1000', 'url'],
         ]);
     }
 
@@ -229,6 +235,11 @@ class SongController extends Controller
             if ($urlChanged) {
                 $this->autofill($song, $request);
             }
+        }
+
+        // Tasks §44.2 — ჩარჩოში ნაჩვენები ფოტო (ატვირთული უპირატესია)
+        if (! empty($data['thumbnail_url']) && ! $song->thumbnail_path) {
+            $song->thumbnail_url = $data['thumbnail_url'];
         }
 
         if ($request->boolean('remove_thumbnail')) {
@@ -270,12 +281,16 @@ class SongController extends Controller
             return;
         }
 
-        $needs = ! $song->title || ! $song->duration || ! $song->tags || ! $song->thumbnail_url;
+        // Tasks §44.3 — პლატფორმის `hqdefault` ცარიელად ითვლება (საუკეთესო ესკიზი სხვაგანაა)
+        $defaultThumb = ! $song->thumbnail_path
+            && (! $song->thumbnail_url || $song->thumbnail_url === VideoUrl::parse($song->url)['thumbnail_url']);
+        $needs = ! $song->title || ! $song->duration || ! $song->tags || $defaultThumb;
         if (! $needs) {
             return;
         }
 
-        $meta = app(VideoMetadata::class)->fetch($song->url);
+        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        $meta = app(LinkResolver::class)->resolve($song->url);
 
         if (! $song->title) {
             $song->title = $meta['title'] ?: parse_url($song->url, PHP_URL_HOST) ?: $song->url;
@@ -290,8 +305,8 @@ class SongController extends Controller
         if (! $song->tags && $meta['tags']) {
             $song->tags = Song::normalizeTags($meta['tags']);
         }
-        if (! $song->thumbnail_path && ! $song->thumbnail_url && $meta['thumbnail_url']) {
-            $song->thumbnail_url = $meta['thumbnail_url'];
+        if ($defaultThumb && $meta['image_url']) {
+            $song->thumbnail_url = $meta['image_url'];
         }
     }
 }

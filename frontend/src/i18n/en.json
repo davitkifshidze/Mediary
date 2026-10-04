@@ -149,7 +149,7 @@
     "namePlaceholder": "Filled in from the link",
     "metaLoading": "Reading the link…",
     "metaNoTitle": "No title found — write your own",
-    "metaNeedsKey": "Duration and tags for YouTube need a key — add one under “Credentials”.",
+    "metaNeedsKey": "Description, date, duration and tags for YouTube need a key or yt-dlp — add the key under “Credentials”.",
     "tagsPlaceholder": "music, tutorial",
     "saved": "Video saved",
     "source": "Source",
@@ -3344,6 +3344,8 @@
     },
     "title": "Credentials",
     "intro": "These are your keys. External sources — TMDB, Gemini, RAWG and the rest — work only with your own key: without one, that source stays off for you. Keys are stored encrypted, and the limit and the spend are yours — nobody else's requests touch them.",
+    "guide": "YouTube Data API v3 — video description, publish date, duration and tags. Free (10,000 units a day); key — Google Cloud\nyt-dlp — the same info without a YouTube key. Needs no key — it is installed on this machine (“Installation settings”)\nTMDB — movies, series, anime: main photo, description, cast. Key — themoviedb.org\nRAWG · IGDB — games. Key — rawg.io and Twitch\nGemini — translation between Georgian and English. Key — Google AI Studio\nSerpApi · Serper — image and video search on the web. Paid by credit: every search spends it\nOpen Library · BGG · OpenStreetMap — books, board games, places. No key needed\nTelegram — reminders. Bot token — @BotFather",
+    "guideTitle": "Which source fills what, and where the key comes from",
     "getKey": "Get a key",
     "empty": "not set",
     "limitHint": "empty — the default ({{n}}); 0 — no limit is checked",
@@ -3381,7 +3383,7 @@
       "igdb": "Fallback source for games, used when RAWG finds nothing. Both fields are required.",
       "serpapi": "Image and video search on the web. The monthly budget belongs to the account and every search spends it.",
       "serper": "Google Images, cheaply. Every requested page costs one credit.",
-      "youtube": "Video duration and tags. Without a key the title and main photo still arrive.",
+      "youtube": "Video description, publish date, duration and tags. Without a key yt-dlp brings the same if it is installed on this machine; without either, only the title and main photo arrive.",
       "telegram": "Sending reminders to Telegram (the notes module). The bot is yours — the token and the chat id belong to your own bot. The check sends a test message to the chat."
     },
     "error": {
@@ -3411,7 +3413,7 @@
       "igdb": "Free, but both values are required — OAuth does not work with only one.",
       "serpapi": "The free plan is 250 searches a month and the budget belongs to the whole account.",
       "serper": "You get 2500 free credits on signup; every requested page costs one credit.",
-      "youtube": "Free (10,000 units a day). Without it the video title and main photo still arrive.",
+      "youtube": "Free (10,000 units a day). Without a key yt-dlp brings the full info — it needs no key.",
       "telegram": "Completely free. The token is full access to the bot — do not share it."
     },
     "installation": "Installation settings",

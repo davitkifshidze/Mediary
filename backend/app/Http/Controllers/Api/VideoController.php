@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoResource;
 use App\Models\Status;
 use App\Models\Video;
+use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Services\Video\VideoSearch;
@@ -128,16 +129,22 @@ class VideoController extends Controller
      * ⚠️ **`exclude` რედაქტირებისთვისაა**: არსებული ჩანაწერის ფორმა
      * საკუთარ მისამართს ხელახლა ამოწმებს და უამისოდ ყოველთვის იტყოდა
      * „ეს უკვე გაქვს".
+     *
+     * Tasks §44.1 — **ერთი წყარო** (`LinkResolver`, 24-საათიანი ქეშით),
+     * იგივე პასუხი, რაც ყველა ბმულიან ფორმას აქვს (სათაური, აღწერა, ფოტო, ტეგები,
+     * თარიღი, ხანგრძლივობა) + ვიდეოს საკუთარი: გასაღები, `yt-dlp` და ბმულის დუბლი.
      */
-    public function metadata(Request $request, VideoMetadata $meta)
+    public function metadata(Request $request, LinkResolver $links, VideoMetadata $meta)
     {
         $data = $request->validate([
             'url' => ['required', 'string', 'max:1000', 'url'],
             'exclude' => ['nullable', 'integer'],
         ]);
 
-        return response()->json($meta->fetch($data['url']) + [
+        return response()->json($links->resolve($data['url']) + [
             'youtube_key' => $meta->hasYoutubeKey(),
+            // §44.3 — გასაღების გარეშეც სრული ინფო; „წამოღება ვებიდან" მაშინ აღარ სჭირდება
+            'ytdlp' => $meta->hasYtDlp(),
             'existing' => DuplicateLink::find(Video::class, $data['url'], $data['exclude'] ?? null),
         ]);
     }
@@ -228,6 +235,8 @@ class VideoController extends Controller
             'is_favorite' => ['nullable', 'boolean'],
             'thumbnail' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
             'remove_thumbnail' => ['nullable', 'boolean'],
+            // Tasks §44.2 — ფორმის ჩარჩოში ნაჩვენები ფოტო (ბმულიდან; ატვირთულზე იგნორირდება)
+            'thumbnail_url' => ['nullable', 'string', 'max:1000', 'url'],
         ]);
     }
 
@@ -274,6 +283,11 @@ class VideoController extends Controller
             }
         }
 
+        // Tasks §44.2 — ჩარჩოში ნაჩვენები ფოტო: ფორმამ რაც აჩვენა, ის ინახება (ატვირთული უპირატესია)
+        if (! empty($data['thumbnail_url']) && ! $video->thumbnail_path) {
+            $video->thumbnail_url = $data['thumbnail_url'];
+        }
+
         if ($request->boolean('remove_thumbnail')) {
             // ⚠️ ურნა (Tasks §29, ეტაპი 4) — ძველი ატვირთული ფაილი ურნაში; TMDB-ის/გალერეის ფაილს ხელი არ ეხება
             ColumnTrash::capture($video, 'thumbnail_path');
@@ -301,14 +315,19 @@ class VideoController extends Controller
             return;
         }
 
+        /* Tasks §44.3 — პლატფორმის ნაგულისხმევი ესკიზი (`hqdefault`, 480×360) ცარიელად
+           ითვლება: Data API-ს/`yt-dlp`-ს საუკეთესო (`maxres`) აქვს */
+        $defaultThumb = ! $video->thumbnail_path
+            && (! $video->thumbnail_url || $video->thumbnail_url === VideoUrl::parse($video->url)['thumbnail_url']);
         $needsTitle = ! $video->title;
-        $needsRest = ! $video->description || ! $video->duration || ! $video->tags || ! $video->thumbnail_url
-            || ! $video->channel;
+        $needsRest = ! $video->description || ! $video->duration || ! $video->tags || $defaultThumb
+            || ! $video->channel || ! $video->published_at;
         if (! $needsTitle && ! $needsRest) {
             return;
         }
 
-        $meta = app(VideoMetadata::class)->fetch($video->url);
+        // §44.1 — იგივე წყარო და იგივე ქეში, რაც ფორმის probe-ს: შენახვა ბმულს მეორედ არ კითხულობს
+        $meta = app(LinkResolver::class)->resolve($video->url);
 
         if ($needsTitle) {
             $video->title = $meta['title'] ?: parse_url($video->url, PHP_URL_HOST) ?: $video->url;
@@ -323,12 +342,15 @@ class VideoController extends Controller
             $video->tags = $meta['tags'];
         }
         /* Q52 — არხი oEmbed-ის `author_name`-ია (YouTube-ის API-ით `channelTitle`).
-           ⚠️ თარიღს oEmbed არ აბრუნებს, ე.ი. ის მხოლოდ ვებძებნიდან ან ხელით მოდის. */
+           §44.3 — თარიღი Data API-დან ან `yt-dlp`-დან (oEmbed-ს არ აქვს). */
         if (! $video->channel && $meta['author']) {
             $video->channel = mb_substr((string) $meta['author'], 0, 255);
         }
-        if (! $video->thumbnail_path && ! $video->thumbnail_url && $meta['thumbnail_url']) {
-            $video->thumbnail_url = $meta['thumbnail_url'];
+        if (! $video->published_at && $meta['published_at']) {
+            $video->published_at = $meta['published_at'];
+        }
+        if ($defaultThumb && $meta['image_url']) {
+            $video->thumbnail_url = $meta['image_url'];
         }
     }
 }

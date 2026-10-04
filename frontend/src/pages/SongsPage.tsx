@@ -575,6 +575,8 @@ function SongForm({
   const [duration, setDuration] = useState<number | null>(song?.duration ?? null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(song?.thumbnail))
+  // Tasks §44.2 — ბმულის ფოტო პირდაპირ ჩარჩოშია და შენახვისას `thumbnail_url`-ად მიდის (ვიდეოს წესი)
+  const [linkThumb, setLinkThumb] = useState<string | null>(null)
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [meta, setMeta] = useState<VideoMetadata | null>(null)
@@ -613,6 +615,7 @@ function SongForm({
         artist: f.artist || (m.author ?? ''),
         tags: f.tags.length ? f.tags : m.tags,
       }))
+      setLinkThumb(m.image_url)
     } catch {
       setMeta(null)
     } finally {
@@ -710,6 +713,7 @@ function SongForm({
       tags,
       thumbnail,
       remove_thumbnail: removeThumb,
+      thumbnail_url: !thumbnail && !thumbPreview ? linkThumb : null,
     })
   }
 
@@ -754,17 +758,19 @@ function SongForm({
           )}
           {!metaLoading && meta && (
             <div className="mt-2 flex items-start gap-3 rounded-lg border border-border bg-card p-2">
-              {meta.thumbnail_url && (
-                <img src={meta.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
+              {meta.image_url && (
+                <img src={meta.image_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
               )}
               <div className="min-w-0 text-xs text-muted-foreground">
                 <p className="truncate text-foreground">{meta.title ?? t('videos.metaNoTitle')}</p>
+                {/* Tasks §44.2 — აღწერა ბარათში (სიმღერას საკუთარი აღწერის ველი არ აქვს) */}
+                {meta.description && <p className="line-clamp-2">{meta.description}</p>}
                 <p className="capitalize">
                   {meta.platform}
                   {meta.author && ` · ${meta.author}`}
                   {duration ? ` · ${formatDuration(duration)}` : ''}
                 </p>
-                {meta.platform === 'youtube' && !meta.youtube_key && (
+                {meta.platform === 'youtube' && !meta.youtube_key && !meta.ytdlp && (
                   <p className="mt-0.5">{t('videos.metaNeedsKey')}</p>
                 )}
               </div>
@@ -793,7 +799,7 @@ function SongForm({
                 fill
                 variant="wide"
                 hint={t('songs.coverHint')}
-                preview={thumbPreview}
+                preview={thumbPreview ?? linkThumb}
                 onSelect={(file) => {
                   setThumbnail(file)
                   setRemoveThumb(false)
@@ -802,6 +808,7 @@ function SongForm({
                 onClear={() => {
                   setThumbnail(null)
                   setThumbPreview(null)
+                  setLinkThumb(null)
                   setRemoveThumb(true)
                 }}
               />

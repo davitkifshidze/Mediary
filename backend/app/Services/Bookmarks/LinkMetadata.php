@@ -34,6 +34,9 @@ class LinkMetadata
     /** რამდენი ბაიტი წავიკითხოთ — `<head>` ამაზე ბევრად ადრე მთავრდება */
     private const MAX_BYTES = 200_000;
 
+    /** აღწერის ჭერი (Tasks §44.4) — `LinkResolver::DESCRIPTION_MAX`-ის იგივე */
+    private const DESCRIPTION_MAX = 5000;
+
     public function __construct(private readonly SafeHttp $http) {}
 
     /**
@@ -77,10 +80,11 @@ class LinkMetadata
                 fn () => $this->meta($html, 'twitter:title'),
                 fn () => $this->title($html),
             ]),
+            // Tasks §44.4 — აღწერა 5 000-მდე (ადრე ყოველი სტრიქონი 500-ზე იჭრებოდა)
             'description' => $this->firstOf($html, [
-                fn () => $this->meta($html, 'og:description'),
-                fn () => $this->meta($html, 'twitter:description'),
-                fn () => $this->meta($html, 'description'),
+                fn () => $this->meta($html, 'og:description', self::DESCRIPTION_MAX),
+                fn () => $this->meta($html, 'twitter:description', self::DESCRIPTION_MAX),
+                fn () => $this->meta($html, 'description', self::DESCRIPTION_MAX),
             ]),
             'image_url' => $this->absolute($url, $this->firstOf($html, [
                 fn () => $this->meta($html, 'og:image'),
@@ -111,7 +115,7 @@ class LinkMetadata
      * (`property` ჯერ, მერე `content` და პირიქით): მინიფიცირებული გვერდები
      * ხშირად შებრუნებულად წერენ და ერთი regex მათ ვერ დაიჭერდა.
      */
-    private function meta(string $html, string $name): ?string
+    private function meta(string $html, string $name, int $max = 500): ?string
     {
         $escaped = preg_quote($name, '/');
 
@@ -122,7 +126,7 @@ class LinkMetadata
 
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $html, $m)) {
-                return $this->clean($m[1]);
+                return $this->clean($m[1], $max);
             }
         }
 
@@ -253,11 +257,11 @@ class LinkMetadata
     }
 
     /** HTML entity-ები, ზედმეტი სივრცე და ჭერი — ბაზის სვეტებს რომ მოერგოს */
-    private function clean(string $value): ?string
+    private function clean(string $value, int $max = 500): ?string
     {
         $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
 
-        return $value === '' ? null : mb_substr($value, 0, 500);
+        return $value === '' ? null : mb_substr($value, 0, $max);
     }
 }

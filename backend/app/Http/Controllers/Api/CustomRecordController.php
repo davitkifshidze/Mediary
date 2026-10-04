@@ -7,7 +7,7 @@ use App\Http\Resources\CustomRecordResource;
 use App\Models\CustomCategory;
 use App\Models\CustomRecord;
 use App\Models\Status;
-use App\Services\Bookmarks\LinkMetadata;
+use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CustomModules;
@@ -30,7 +30,7 @@ use Illuminate\Validation\Rule;
  * ჩანაწერი მოდულზეც მოწმდება (`record()`), და სია `forModule()`-ით იგება.
  *
  * ⚠️ **გამამდიდრებელი წყარო არ არსებობს** (ბუკმარკის წესი): ერთადერთი
- * დახმარება ბმულის გვერდის `<head>`-ია (`LinkMetadata`).
+ * დახმარება ბმულის გვერდის `<head>`-ია (`LinkResolver` — §44.1).
  */
 class CustomRecordController extends Controller
 {
@@ -85,11 +85,12 @@ class CustomRecordController extends Controller
      * ⚠️ ჩავარდნა 200-ია ცარიელი ველებით (ბუკმარკის წესი): დახურული
      * გვერდი ჩვეულებრივი ამბავია და ხელით შევსებას არ უნდა უშლიდეს.
      */
-    public function metadata(Request $request, string $type, LinkMetadata $meta)
+    /** Tasks §44.1 — ერთი წყარო (`LinkResolver`): YouTube-ის ბმულზეც სრული ინფო */
+    public function metadata(Request $request, string $type, LinkResolver $links)
     {
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
 
-        return response()->json($meta->fetch($data['url']));
+        return response()->json($links->resolve($data['url']));
     }
 
     public function store(Request $request, string $type)
@@ -314,7 +315,8 @@ class CustomRecordController extends Controller
             return;
         }
 
-        $meta = app(LinkMetadata::class)->fetch((string) $record->url);
+        // §44.1 — ფორმის probe-ის იგივე წყარო და ქეში
+        $meta = app(LinkResolver::class)->resolve((string) $record->url);
 
         if (! $record->title && $meta['title']) {
             $record->title = $meta['title'];

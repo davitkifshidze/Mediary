@@ -74,6 +74,8 @@ export interface SongInput {
   /** ატვირთული ფოტო; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
   remove_thumbnail?: boolean
+  /** Tasks §44.2 — ბმულიდან ჩარჩოში ჩასმული ფოტო (URL); ატვირთულზე სერვერი იგნორირებს */
+  thumbnail_url?: string | null
 }
 
 function toFormData(input: SongInput): FormData {
@@ -102,6 +104,7 @@ function toFormData(input: SongInput): FormData {
   ;(input.tags ?? []).forEach((tag) => fd.append('tags[]', tag))
   if (input.thumbnail) fd.append('thumbnail', input.thumbnail)
   if (input.remove_thumbnail) fd.append('remove_thumbnail', '1')
+  if (input.thumbnail_url) fd.append('thumbnail_url', input.thumbnail_url)
   return fd
 }
 

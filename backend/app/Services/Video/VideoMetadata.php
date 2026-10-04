@@ -22,15 +22,23 @@ use Illuminate\Support\Facades\Log;
  * `.env`-ის `YOUTUBE_API_KEY` აღარ იკითხება), YouTube-ზეც ჩაირთვება ხანგრძლივობა და
  * ტეგები (Data API v3) — კოდის შეცვლა არ სჭირდება.
  *
+ * ⚠️ **Tasks §44.3 — YouTube სრულად.** Data API-დან ახლა თარიღიც მოდის (`publishedAt`)
+ * და **საუკეთესო** ესკიზი (`maxres` → `standard` → `high`; oEmbed-ის `hqdefault`
+ * 480×360-ია); **გასაღების გარეშე** — `yt-dlp -J` (სათაური, სრული აღწერა, თარიღი,
+ * ესკიზი, ხანგრძლივობა, ტეგები, არხი). oEmbed-ს აღწერა და თარიღი არ აქვს, ამიტომ
+ * ადრე გასაღების გარეშე მხოლოდ სათაური და არხი მოდიოდა.
+ *
  * ⚠️ PHP cURL-ს Windows-ზე CA bundle არ აქვს → ყველა გამოძახება `verify`-ით მიდის
  * (იხ. CLAUDE.md gotcha).
  */
 class VideoMetadata
 {
+    public function __construct(private readonly YtDlp $ytdlp) {}
+
     /**
      * @return array{
      *   platform: string, external_id: ?string, embed_url: ?string,
-     *   title: ?string, description: ?string, duration: ?int,
+     *   title: ?string, description: ?string, duration: ?int, published_at: ?string,
      *   tags: array<int, string>, thumbnail_url: ?string, author: ?string, source: ?string
      * }
      */
@@ -45,10 +53,12 @@ class VideoMetadata
             'title' => null,
             'description' => null,
             'duration' => null,
+            // Tasks §44.3 — `Y-m-d` (Data API-ის `publishedAt`, yt-dlp-ის `upload_date`)
+            'published_at' => null,
             'tags' => [],
             'thumbnail_url' => $parsed['thumbnail_url'],
             'author' => null,
-            'source' => null,   // საიდან წამოვიდა: oembed | youtube_api | null
+            'source' => null,   // საიდან წამოვიდა: oembed | youtube_api | ytdlp | opengraph | null
         ];
 
         try {
@@ -73,6 +83,12 @@ class VideoMetadata
     public function hasYoutubeKey(): bool
     {
         return (bool) CredentialStore::value(CredentialProviders::YOUTUBE);
+    }
+
+    /** Tasks §44.3 — გასაღების გარეშეც სრული ინფო მოდის? (`yt-dlp` დაყენებულია) */
+    public function hasYtDlp(): bool
+    {
+        return $this->ytdlp->available();
     }
 
     /* ---------- პლატფორმები ---------- */
@@ -109,10 +125,16 @@ class VideoMetadata
             $meta,
         );
 
-        // 2) Data API v3 — მხოლოდ გასაღებით: ხანგრძლივობა, ტეგები, სრული აღწერა
-        if (! $id || ! $this->hasYoutubeKey()) {
+        if (! $id) {
             return $meta;
         }
+
+        // 2ბ) Tasks §44.3 — გასაღების გარეშე: `yt-dlp -J` (აღწერა, თარიღი, ესკიზი, ხანგრძლივობა, ტეგები)
+        if (! $this->hasYoutubeKey()) {
+            return $this->ytdlp($url, $meta);
+        }
+
+        // 2) Data API v3 — მხოლოდ გასაღებით: ხანგრძლივობა, ტეგები, სრული აღწერა, თარიღი, საუკეთესო ესკიზი
 
         /*
          * ⚠️ **გასაღები ჰედერშია და არა query-ში** (Tasks SEC-14). YouTube Data API
@@ -143,9 +165,49 @@ class VideoMetadata
         $meta['author'] = $item['snippet']['channelTitle'] ?? $meta['author'];
         $meta['tags'] = array_slice($item['snippet']['tags'] ?? [], 0, 20);
         $meta['duration'] = $this->isoToSeconds($item['contentDetails']['duration'] ?? null);
+        // „2009-10-25T06:57:33Z" → „2009-10-25"
+        $published = (string) ($item['snippet']['publishedAt'] ?? '');
+        $meta['published_at'] = preg_match('/^\d{4}-\d{2}-\d{2}/', $published) ? substr($published, 0, 10) : null;
+        $meta['thumbnail_url'] = $this->bestThumbnail($item['snippet']['thumbnails'] ?? []) ?? $meta['thumbnail_url'];
         $meta['source'] = 'youtube_api';
 
         return $meta;
+    }
+
+    /**
+     * Tasks §44.3 — `yt-dlp -J` გასაღების გარეშე; oEmbed-ის სათაური და არხი რჩება,
+     * დანარჩენი ივსება. ⚠️ ჩავარდნა (ბინარი არაა, ქსელი) — oEmbed-ის შედეგი უცვლელად.
+     */
+    private function ytdlp(string $url, array $meta): array
+    {
+        $info = $this->ytdlp->info($url);
+        if ($info === null) {
+            return $meta;
+        }
+
+        $meta['title'] = $meta['title'] ?? $info['title'];
+        $meta['description'] = $info['description'] ?? $meta['description'];
+        $meta['author'] = $meta['author'] ?? $info['channel'];
+        $meta['duration'] = $info['duration'] ?? $meta['duration'];
+        $meta['tags'] = $info['tags'] ?: $meta['tags'];
+        $meta['published_at'] = $info['published_at'];
+        $meta['thumbnail_url'] = $info['thumbnail'] ?? $meta['thumbnail_url'];
+        $meta['source'] = 'ytdlp';
+
+        return $meta;
+    }
+
+    /** საუკეთესო ესკიზი: `maxres` → `standard` → `high` → `medium` → `default` */
+    private function bestThumbnail(array $thumbnails): ?string
+    {
+        foreach (['maxres', 'standard', 'high', 'medium', 'default'] as $size) {
+            $url = $thumbnails[$size]['url'] ?? null;
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
+        }
+
+        return null;
     }
 
     /** სტანდარტული oEmbed პასუხის გადმოტანა */
