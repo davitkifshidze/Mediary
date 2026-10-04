@@ -3132,8 +3132,13 @@
     "toSide": "Open as a side panel",
     "toBar": "Collapse to a bar",
     "playInPlayer": "Play in the player",
-    "playingInPlayer": "Playing in the player now",
-    "resumeInPlayer": "Resume in the player"
+    "popOut": "Pop out",
+    "popIn": "Back to the window",
+    "inFrame": "Playing in the floating frame — bring it back here",
+    "moveFrame": "Move the frame",
+    "resizeFrame": "Resize the frame",
+    "toBubble": "Collapse to a bubble",
+    "fromBubble": "Open the player"
   },
   "statuses": {
     "titleMovie": "Movie statuses",

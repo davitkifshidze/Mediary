@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement as h } from 'react'
+import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Player } from '@/components/Player'
-import { PANEL_WIDTH, PlayerProvider, usePlayer, type PlayerItem } from '@/lib/player'
+import { PANEL_WIDTH, PlayerProvider, usePlayer, usePlayerAnchor, type PlayerItem } from '@/lib/player'
 import i18n from '@/i18n'
 
 /* ============================================================
@@ -431,5 +432,261 @@ describe('Player — სიგანე (Tasks §20)', () => {
     await flush()
     expect(cssVar('--player-w')).toBe(PANEL_WIDTH)
     expect(localStorage.getItem('player.width')).toBeNull()
+  })
+})
+
+/* ============================================================
+   Tasks §48 — ვიდეო ფანჯარაში და მოტივტივე ჩარჩოში; სიმღერის ბუშტი.
+   ⚠️ ყოველ გადასვლაში ფრეიმი **იგივე DOM-კვანძია** — დაკვრა არ წყდება.
+   ============================================================ */
+describe('Player — ფანჯარაში · მოტივტივე · ბუშტი (Tasks §48)', () => {
+  function clip(id: number, key: string, href: string | null = null): PlayerItem {
+    return { ...song(id, key), kind: 'video', subtitle: null, href }
+  }
+  const VIDEOS = [clip(11, 'one'), clip(12, 'two')]
+
+  let setOpen: ((open: boolean) => void) | null = null
+  let location = ''
+
+  /** ფანჯრის ესკიზი — `VideoDetail`-ის `PlayerSpot`-ის ადგილი */
+  function Spot({ id }: { id: number }) {
+    const ref = usePlayerAnchor({ kind: 'video', id })
+    return h('div', { ref, 'data-spot': id })
+  }
+  function Window() {
+    const [open, set] = useState(true)
+    setOpen = set
+    return open ? h(Spot, { id: 11 }) : null
+  }
+  function Where() {
+    const at = useLocation()
+    location = at.pathname + at.search
+    return null
+  }
+
+  async function mountWith(extra: ReturnType<typeof h> | null = null) {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () => {
+      root!.render(
+        h(MemoryRouter, {
+          initialEntries: ['/'],
+          children: h(QueryClientProvider, {
+            client: qc,
+            children: h(TooltipProvider, {
+              children: h(PlayerProvider, {
+                children: [
+                  h(Grab, { key: 'grab' }),
+                  h(Where, { key: 'where' }),
+                  extra && h('div', { key: 'extra' }, extra),
+                  h(Player, { key: 'player' }),
+                ],
+              }),
+            }),
+          }),
+        }),
+      )
+    })
+    await flush()
+  }
+
+  /** ესკიზის ადგილი ეკრანზე (jsdom-ს განლაგება არ აქვს) */
+  function placeSpot(left: number, top: number, width: number, height: number) {
+    const el = document.querySelector<HTMLElement>('[data-spot]')!
+    el.getBoundingClientRect = () =>
+      ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+  }
+
+  /** რამდენიმე კადრი — ესკიზის კოორდინატები `requestAnimationFrame`-ით იწერება */
+  async function frames() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+  }
+
+  const Pointer = (type: string, clientX: number, clientY = 0) =>
+    new MouseEvent(type, { bubbles: true, clientX, clientY, button: 0 }) as unknown as PointerEvent
+
+  async function pointer(target: Element, from: [number, number], to: [number, number]) {
+    await act(async () => {
+      target.dispatchEvent(Pointer('pointerdown', ...from))
+    })
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointermove', ...to))
+    })
+    await act(async () => {
+      window.dispatchEvent(Pointer('pointerup', ...to))
+    })
+    await flush()
+  }
+
+  const prop = (name: string) => aside()?.style.getPropertyValue(name) ?? ''
+
+  beforeEach(() => {
+    mocks.media.wide = true
+    setOpen = null
+    location = ''
+  })
+
+  it('ვიდეო ფანჯრის ესკიზზე ჯდება; „გატანა“ — მოტივტივე ჩარჩო, „დაბრუნება“ — ისევ ესკიზი, ერთი ფრეიმით', async () => {
+    await mountWith(h(Window))
+    placeSpot(100, 50, 640, 360)
+    await play(VIDEOS)
+    await frames()
+
+    expect(aside()?.dataset.layout).toBe('inline')
+    expect([prop('--ix'), prop('--iy'), prop('--iw'), prop('--ih'), prop('--ivis')]).toEqual([
+      '100px',
+      '50px',
+      '640px',
+      '360px',
+      'visible',
+    ])
+    // ვიდეო გვერდს აღარ აწვება — პანელი ვიდეოზე აღარ გამოიყენება (48.3)
+    expect(cssVar('--player-w')).toBe('')
+    const before = frame()
+
+    await click(byLabel('playback.popOut'))
+    expect(aside()?.dataset.layout).toBe('float')
+    expect(frame()).toBe(before)
+    expect(prop('--ix')).toBe('')
+    // ნაგულისხმევი — მარჯვნივ, ვერტიკალურად შუაში (jsdom: 1024 × 768)
+    expect([aside()!.style.left, aside()!.style.top, aside()!.style.width]).toEqual(['640px', '263px', '360px'])
+
+    await click(byLabel('playback.popIn'))
+    expect(aside()?.dataset.layout).toBe('inline')
+    expect(frame()).toBe(before)
+    expect(location).toBe('/')
+  })
+
+  it('ფანჯრის დახურვაზე ვიდეო მოტივტივე ჩარჩოში გადადის და არ ჩერდება', async () => {
+    await mountWith(h(Window))
+    placeSpot(100, 50, 640, 360)
+    await play(VIDEOS)
+    const before = frame()
+    expect(aside()?.dataset.layout).toBe('inline')
+
+    await act(async () => setOpen!(false))
+    await flush()
+    expect(aside()?.dataset.layout).toBe('float')
+    expect(frame()).toBe(before)
+    expect(api!.playing).toBe(true)
+  })
+
+  it('რიგში შემდეგი ვიდეო — ფანჯარა წინას აჩვენებს — მოტივტივე ჩარჩოში უკრავს', async () => {
+    await mountWith(h(Window))
+    await play(VIDEOS)
+    expect(aside()?.dataset.layout).toBe('inline')
+
+    await act(async () => api!.next())
+    await flush()
+    expect(api!.current?.id).toBe(12)
+    expect(aside()?.dataset.layout).toBe('float')
+  })
+
+  it('მოტივტივე ჩარჩო გადაითრევა, ეკრანიდან ვერ გადის და ადგილი ახსოვს', async () => {
+    await mountWith()
+    await play(VIDEOS)
+    expect(aside()?.dataset.layout).toBe('float')
+
+    await pointer(document.querySelector('[data-frame-move]')!, [700, 300], [1500, 2000])
+    // 1024 − 360 − 12 = 652; 768 − (203 + 40) − 12 = 513
+    expect([aside()!.style.left, aside()!.style.top]).toEqual(['652px', '513px'])
+    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 652, y: 513, w: 360 })
+
+    act(() => root?.unmount())
+    await mountWith()
+    await play(VIDEOS)
+    expect([aside()!.style.left, aside()!.style.top]).toEqual(['652px', '513px'])
+  })
+
+  it('ზომა კუთხით იცვლება — მარჯვნივ მდგარს სახელური მარცხნივ აქვს და მარჯვენა კიდე ადგილზე რჩება', async () => {
+    await mountWith()
+    await play(VIDEOS)
+    const grip = document.querySelector('[data-frame-resize]')!
+    // მარცხენა სახელური ზოლში პირველია
+    expect(grip.parentElement?.firstElementChild).toBe(grip)
+
+    await pointer(grip, [640, 500], [540, 500])
+    expect([aside()!.style.left, aside()!.style.width]).toEqual(['540px', '460px'])
+    expect(JSON.parse(localStorage.getItem('player.frame')!)).toEqual({ x: 540, y: 263, w: 460 })
+  })
+
+  it('ვიწრო ეკრანზე ვიდეო მოტივტივე ჩარჩოს ნაცვლად ქვედა ზოლად უკრავს', async () => {
+    mocks.media.wide = false
+    await mountWith()
+    await play(VIDEOS)
+    expect(aside()?.dataset.layout).toBe('bar')
+    expect(cssVar('--player-h')).toBe('5.5rem')
+  })
+
+  it('მოტივტივე ჩარჩო კამათლის კუთხეს თუ ფარავს, კამათელი მის ზემოთ ადის', async () => {
+    await mountWith()
+    await play(VIDEOS)
+    expect(cssVar('--player-lift')).toBe('')
+
+    await pointer(document.querySelector('[data-frame-move]')!, [700, 300], [1500, 2000])
+    // 768 − 513 + 8 − 24
+    expect(cssVar('--player-lift')).toBe('239px')
+
+    await click(byLabel('playback.close'))
+    expect(cssVar('--player-lift')).toBe('')
+  })
+
+  it('დახურული ფანჯრის ვიდეოს „ფანჯარაში დაბრუნება“ ფანჯარას ბმულით ხსნის', async () => {
+    await mountWith()
+    await play([clip(11, 'one', '/videos?open=11')])
+    expect(aside()?.dataset.layout).toBe('float')
+
+    await click(byLabel('playback.popIn'))
+    expect(location).toBe('/videos?open=11')
+    expect(api!.popped).toBe(false)
+  })
+
+  it('სიმღერა ბუშტად იკეცება — იგივე ფრეიმი, გვერდს აღარ აწვება; დაჭერით პანელი ბრუნდება', async () => {
+    await mountWith()
+    await play()
+    expect(aside()?.dataset.layout).toBe('side')
+    const before = frame()
+
+    await click(byLabel('playback.toBubble'))
+    expect(aside()?.dataset.layout).toBe('bubble')
+    expect(frame()).toBe(before)
+    expect(cssVar('--player-w')).toBe('')
+    expect(cssVar('--player-h')).toBe('')
+
+    await click(document.querySelector('[data-bubble]'))
+    expect(aside()?.dataset.layout).toBe('side')
+    expect(frame()).toBe(before)
+  })
+
+  it('ბუშტი გადაითრევა და უახლოეს კიდეს ეკვრის; ადგილი ახსოვს', async () => {
+    await mountWith()
+    await play()
+    await click(byLabel('playback.toBubble'))
+    // ნაგულისხმევი: მარჯვნივ, 768 × 0.55 ≈ 422
+    expect([aside()!.style.right, aside()!.style.top]).toEqual(['12px', '422px'])
+
+    await pointer(document.querySelector('[data-bubble]')!, [990, 450], [100, 350])
+    expect(api!.bubbled).toBe(true)
+    expect([aside()!.style.left, aside()!.style.top]).toEqual(['12px', '322px'])
+    expect(JSON.parse(localStorage.getItem('player.bubble')!)).toEqual({ side: 'left', y: 322 })
+  })
+
+  it('ბუშტის რგოლი დაკვრის ადგილს აჩვენებს (YouTube-ის `currentTime`)', async () => {
+    await mountWith()
+    await play()
+    await click(byLabel('playback.toBubble'))
+    expect(document.querySelector('[data-bubble] [data-progress]')).toBeNull()
+
+    await act(async () => {
+      window.dispatchEvent(
+        new MessageEvent('message', { origin: YT, data: JSON.stringify({ event: 'infoDelivery', info: { currentTime: 50 } }) }),
+      )
+    })
+    // ხანგრძლივობა ბაზიდანაა (200 წმ) — YouTube მას იშვიათად აგზავნის
+    expect(document.querySelector('[data-bubble] [data-progress]')?.getAttribute('data-progress')).toBe('0.250')
   })
 })

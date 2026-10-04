@@ -8,13 +8,14 @@ import { PlayerProvider, usePlayer, videoItem } from '@/lib/player'
 import i18n from '@/i18n'
 
 /* ============================================================
-   ვიდეოს დეტალები — დაკვრა მხოლოდ დამკვრელში (Tasks §35.6).
+   ვიდეოს დეტალები — დაკვრა მხოლოდ აპის დამკვრელში (Tasks §35.6 → §48).
 
    ⚠️ აქ ფანჯარას **საკუთარი ჩაშენება ჰქონდა** (`VideoEmbed`) და გლობალურ
    დამკვრელთან ერთად ორივე ჟღერდა. ტესტი იმას პინავს, რასაც ვერც ტიპი
-   ხედავს და ვერც backend-ი: ფანჯარაში ფრეიმი **საერთოდ არ იხატება**, ხოლო
-   „დაკვრა" ვიდეოს გვერდს გადასცემს და ფანჯარას ხურავს. უკვე დაკრულ ვიდეოს
-   თავიდან არ რთავს.
+   ხედავს და ვერც backend-ი: ფანჯარაში ფრეიმი **საერთოდ არ იხატება**.
+   §48 — „დაკვრა" ვიდეოს გვერდს გადასცემს და ფანჯარა **ღია რჩება**: ესკიზი
+   დამკვრელის ადგილია (`inline`); „გატანა" მას მოტივტივე ჩარჩოში (ვიწროზე —
+   ზოლში) გადაიტანს, ესკიზი კი „აქ დაბრუნებას" გვთავაზობს.
    ============================================================ */
 
 const mocks = vi.hoisted(() => ({
@@ -144,9 +145,10 @@ async function mount(subject: Video, props: { onPlay: () => void; onClose: () =>
 
 const buttonWith = (key: string) =>
   [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t(key)))
+const spotButton = () => document.querySelector<HTMLButtonElement>('[data-player-spot] button')
 
 describe('VideoDetail — დაკვრა დამკვრელშია', () => {
-  it('ფანჯარა საკუთარ ფრეიმს არ ხატავს; „დაკვრა" ვიდეოს გადასცემს და იხურება', async () => {
+  it('ფანჯარა საკუთარ ფრეიმს არ ხატავს; „დაკვრა" ვიდეოს გადასცემს და ფანჯარა ღია რჩება', async () => {
     const onPlay = vi.fn()
     const onClose = vi.fn()
     const subject = video()
@@ -155,36 +157,33 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     // ⚠️ ორი ხმა ერთდროულად სწორედ აქედან იყო — ფრეიმი ფანჯარაში აღარ არის
     expect(document.querySelector('iframe')).toBeNull()
 
-    await act(async () => buttonWith('playback.playInPlayer')!.click())
+    await act(async () => spotButton()!.click())
 
     expect(onPlay).toHaveBeenCalledWith(subject)
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('უკვე დაკრულ ვიდეოს თავიდან არ რთავს — ამბობს, რომ უკრავს, და ფანჯარას ხურავს', async () => {
-    const onPlay = vi.fn()
-    const onClose = vi.fn()
-    await mount(video(), { onPlay, onClose }, true)
-
-    const button = buttonWith('playback.playingInPlayer')
-    expect(button).toBeTruthy()
-    await act(async () => button!.click())
-
-    expect(onPlay).not.toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('პაუზაზე მყოფს აგრძელებს', async () => {
+  it('ამ ფანჯარაში მყოფი ვიდეო ესკიზზე ჯდება; „გატანა" და „აქ დაბრუნება" (§48)', async () => {
     const onClose = vi.fn()
     await mount(video(), { onPlay: vi.fn(), onClose }, true)
-    await act(async () => api!.toggle())
+
+    // ესკიზი დამკვრელის ადგილია — მასზე ღილაკი აღარ არის
+    expect(api!.layout).toBe('inline')
+    expect(spotButton()).toBeNull()
+
+    await act(async () => buttonWith('playback.popOut')!.click())
     await flush()
-    expect(api!.playing).toBe(false)
+    // jsdom-ს `matchMedia` არ აქვს → ვიწრო ეკრანი → მოტივტივე ჩარჩოს ნაცვლად ზოლი
+    expect(api!.popped).toBe(true)
+    expect(api!.layout).toBe('bar')
+    expect(spotButton()?.textContent).toContain(i18n.t('playback.inFrame'))
+    expect(buttonWith('playback.popOut')).toBeUndefined()
 
-    await act(async () => buttonWith('playback.resumeInPlayer')!.click())
-
+    await act(async () => spotButton()!.click())
+    await flush()
+    expect(api!.layout).toBe('inline')
     expect(api!.playing).toBe(true)
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('სათაურის ქვეშ სამი ბეჯია და „რედაქტირება" გვერდს გადასცემს (Tasks §19.6)', async () => {
@@ -259,7 +258,7 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
       onClose: vi.fn(),
     })
 
-    expect(buttonWith('playback.playInPlayer')).toBeUndefined()
+    expect(document.querySelector('[data-player-spot]')).toBeNull()
     const link = [...document.querySelectorAll('a')].find((a) => a.textContent?.includes(i18n.t('videos.openExternal')))
     expect(link?.getAttribute('href')).toBe('https://example.com/v')
     expect(document.querySelector('iframe')).toBeNull()

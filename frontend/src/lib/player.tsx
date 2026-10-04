@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { CustomRecord } from '@/api/customRecords'
@@ -35,6 +36,14 @@ import { safeGet, safeRemove, safeSet } from '@/lib/storage'
    გვერდს **აწვება** (`--player-w`); ვიწრო ეკრანზე და ჩაკეცილზე — ქვედა ზოლი
    (`--player-h`). განლაგებას აქ ვითვლით და მხოლოდ CSS იცვლება — იხ.
    `components/Player.tsx`.
+
+   Tasks §48 — **ვიდეო და სიმღერა სხვადასხვაგვარად დგას:**
+   - **ვიდეო** (`video`/`link`) მარჯვენა პანელს აღარ იყენებს: ფანჯარაში
+     (`inline`) უკრავს — დამკვრელი ფანჯრის ესკიზზე ჯდება (`usePlayerAnchor`);
+     „გატანა" (ან ფანჯრის დახურვა/ჩანართის შეცვლა) — **მოტივტივე ჩარჩო**
+     (`float`); ვიწრო ეკრანზე მოტივტივე ჩარჩოს ნაცვლად ქვედა ზოლი.
+   - **სიმღერა** — პანელი/ზოლი, როგორც აქამდე, + „ჩაკეცვა" ბუშტად (`bubble`).
+   ⚠️ ყველა გადასვლაში ფრეიმი იგივე DOM-კვანძია — დაკვრა არ წყდება.
    ============================================================ */
 
 export interface PlayerItem {
@@ -56,6 +65,11 @@ export interface PlayerItem {
   platform: VideoPlatform
   thumbnail: string | null
   duration: number | null
+  /**
+   * Tasks §48.2 — ჩანაწერის ფანჯარა (`/videos?open=12`): მოტივტივე ჩარჩოს
+   * „ფანჯარაში დაბრუნება" აქ მიდის; `null` — ფანჯარა არ აქვს (გალერეის ვიდეო).
+   */
+  href?: string | null
 }
 
 /**
@@ -67,8 +81,51 @@ export interface QueueEntry extends PlayerItem {
   uid: number
 }
 
-/** სად დგას დამკვრელი: მარჯვენა პანელად თუ ქვედა ზოლად */
-export type PlayerLayout = 'side' | 'bar'
+/**
+ * სად დგას დამკვრელი: მარჯვენა პანელი · ქვედა ზოლი · ფანჯრის ესკიზზე (§48.1) ·
+ * მოტივტივე ჩარჩო (§48.2) · სიმღერის ბუშტი (§48.4)
+ */
+export type PlayerLayout = 'side' | 'bar' | 'inline' | 'float' | 'bubble'
+
+/** რიგის ერთეულის გასაღები — ფანჯრის ადგილი მას ეკუთვნის */
+export function itemKey(item: Pick<PlayerItem, 'kind' | 'id'>): string {
+  return `${item.kind}-${item.id}`
+}
+
+/** Tasks §48.1 — ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება */
+interface PlayerAnchor {
+  key: string
+  el: HTMLElement
+}
+
+/** ვიწრო (მობილური) ეკრანი — მოტივტივე ჩარჩო იქ ქვედა ზოლია (48.5) */
+const NARROW_QUERY = '(min-width: 640px)'
+
+/* ---------- Tasks §48.4 — დაკვრის პროგრესი (ბუშტის რგოლი) ----------
+   ⚠️ **კონტექსტის გარეთაა**: YouTube წამში რამდენჯერმე გზავნის `currentTime`-ს,
+   კონტექსტში ჩაწერა კი მთელ აპს ყოველ ჯერზე თავიდან დახატავდა. ერთი ნაკადი,
+   ერთი მომხმარებელი (ბუშტი) — `useSyncExternalStore`. */
+let progressValue: number | null = null
+const progressListeners = new Set<() => void>()
+
+/** 0…1, ან `null` — უცნობია (ტრეკის შეცვლაზე და წყაროს უხმობაზე) */
+export function reportProgress(value: number | null): void {
+  const next = value === null ? null : Math.min(Math.max(value, 0), 1)
+  if (next === progressValue) return
+  progressValue = next
+  progressListeners.forEach((fn) => fn())
+}
+
+export function usePlaybackProgress(): number | null {
+  return useSyncExternalStore(
+    (fn) => {
+      progressListeners.add(fn)
+      return () => progressListeners.delete(fn)
+    },
+    () => progressValue,
+    () => null,
+  )
+}
 
 /**
  * საიდან ჩნდება გვერდითა პანელი (px).
@@ -161,6 +218,18 @@ interface PlayerApi {
   source: string | null
   /** სად დგას ახლა (`null` — არაფერი უკრავს) */
   layout: PlayerLayout | null
+  /** Tasks §48.1 — მიმდინარე ვიდეოს ფანჯრის ესკიზი (`inline`-ის ადგილი) */
+  anchor: HTMLElement | null
+  /** ფანჯრის ესკიზის რეგისტრაცია (`usePlayerAnchor`) */
+  registerAnchor: (key: string, el: HTMLElement | null) => void
+  /** Tasks §48.2 — „გატანა": ვიდეო ფანჯრიდან მოტივტივე ჩარჩოში */
+  popped: boolean
+  popOut: () => void
+  /** ფანჯარაში დაბრუნება (ფანჯარა ღია თუ არაა, `Player` მას `href`-ით ხსნის) */
+  popIn: () => void
+  /** Tasks §48.4 — სიმღერის პანელი ბუშტად ჩაკეცილია */
+  bubbled: boolean
+  setBubbled: (value: boolean) => void
   /** ეკრანი საკმარისად ფართოა პანელისთვის */
   wide: boolean
   /** ფართო ეკრანზე არჩეული განლაგება */
@@ -227,6 +296,7 @@ export function videoItem(video: Video, subtitle: string | null = null): PlayerI
     platform: video.platform,
     thumbnail: video.thumbnail,
     duration: video.duration,
+    href: `/videos?open=${video.id}`,
   }
 }
 
@@ -249,6 +319,7 @@ export function customRecordItem(record: CustomRecord): PlayerItem {
     platform: (record.platform ?? 'other') as VideoPlatform,
     thumbnail: record.image,
     duration: null,
+    href: `/c/${record.module}?open=${record.id}`,
   }
 }
 
@@ -269,6 +340,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* Tasks §20 — სიგანე მოწყობილობისაა, ჭერი — ანგარიშისა (იხ. ზემოთ) */
   const [width, setWidthState] = useState<number | null>(readSavedWidth)
   const [resizing, setResizing] = useState(false)
+  /* Tasks §48 — ფანჯრის ესკიზი, „გატანა" და ბუშტი */
+  const [anchor, setAnchor] = useState<PlayerAnchor | null>(null)
+  const [popped, setPopped] = useState(false)
+  const [bubbled, setBubbled] = useState(false)
+  const narrow = !useMediaQuery(NARROW_QUERY)
   const maxWidth = panelCeiling(useSettings().settings.playerMaxWidth)
   const panelWidth = panelWidthValue(width, maxWidth)
   const effectiveWidth = width === null ? PANEL_MIN_WIDTH : clampPanelWidth(width, maxWidth)
@@ -304,24 +380,53 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const index = useMemo(() => queue.findIndex((entry) => entry.uid === currentUid), [queue, currentUid])
   const current = index >= 0 ? queue[index] : null
-  const layout: PlayerLayout | null = current ? (wide && dock === 'side' ? 'side' : 'bar') : null
+  /* Tasks §48 — ვიდეო: ფანჯრის ესკიზი თუ მისია და „გატანილი" არაა — ფანჯარაში,
+     სხვაგან — მოტივტივე ჩარჩო (ვიწროზე — ზოლი); სიმღერა: ბუშტი · პანელი · ზოლი. */
+  const here = !!current && !!anchor && anchor.key === itemKey(current)
+  const layout: PlayerLayout | null = !current
+    ? null
+    : current.kind !== 'song'
+      ? here && !popped
+        ? 'inline'
+        : narrow
+          ? 'bar'
+          : 'float'
+      : bubbled
+        ? 'bubble'
+        : wide && dock === 'side'
+          ? 'side'
+          : 'bar'
 
   const start = useCallback((uid: number) => {
     setCurrentUid(uid)
     setPlaying(true)
     setSeq((n) => n + 1)
+    reportProgress(null)
   }, [])
 
+  /* ⚠️ ახალი რიგი „გატანას" აუქმებს: ბარათის „დაკვრა" ფანჯარას ხსნის და ვიდეო
+     იქ უნდა ჩაჯდეს (Q14) — წინა ვიდეოს „გატანა" ახალზე არ ვრცელდება. */
   const play = useCallback(
     (items: PlayerItem[], startAt = 0, label: string | null = null) => {
       if (!items.length) return
       const entries = items.map((item) => ({ ...item, uid: nextUid++ }))
       setQueue(entries)
       setSource(label)
+      setPopped(false)
       start(entries[Math.min(Math.max(startAt, 0), entries.length - 1)].uid)
     },
     [start],
   )
+
+  /* ⚠️ ref-callback-იდან მოდის: ესკიზი მონტაჟზე ირეგისტრირებს, დემონტაჟზე —
+     მხოლოდ **საკუთარ** რეგისტრაციას შლის (ახალი ფანჯარა ძველზე ადრე შეიძლება
+     დამონტაჟდეს, და მაშინ ძველის `null` ახალს წაშლიდა). */
+  const registerAnchor = useCallback((key: string, el: HTMLElement | null) => {
+    setAnchor((prev) => (el ? (prev?.el === el && prev.key === key ? prev : { key, el }) : prev?.key === key ? null : prev))
+  }, [])
+
+  const popOut = useCallback(() => setPopped(true), [])
+  const popIn = useCallback(() => setPopped(false), [])
 
   const jumpTo = useCallback(
     (to: number) => {
@@ -357,6 +462,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setPlaying(false)
     setExpanded(false)
     setSource(null)
+    setPopped(false)
+    setBubbled(false)
+    reportProgress(null)
   }, [])
 
   const remove = useCallback(
@@ -455,6 +563,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       expanded,
       source,
       layout,
+      anchor: here ? (anchor?.el ?? null) : null,
+      registerAnchor,
+      popped,
+      popOut,
+      popIn,
+      bubbled,
+      setBubbled,
       wide,
       dock,
       width,
@@ -484,6 +599,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       expanded,
       source,
       layout,
+      here,
+      anchor,
+      registerAnchor,
+      popped,
+      popOut,
+      popIn,
+      bubbled,
       wide,
       dock,
       width,
@@ -512,4 +634,17 @@ export function usePlayer(): PlayerApi {
   const ctx = useContext(PlayerContext)
   if (!ctx) throw new Error('usePlayer must be used inside <PlayerProvider>')
   return ctx
+}
+
+/**
+ * Tasks §48.1 — **ფანჯრის ესკიზი, რომელზეც ვიდეო ჯდება** (ref-callback).
+ *
+ * ესკიზი ყოველთვის ირეგისტრირებს — „დაკვრაზე" ვიდეო მაშინვე იქ ჯდება;
+ * ფანჯრის დახურვაზე ან ჩანართის შეცვლაზე რეგისტრაცია ქრება და ვიდეო
+ * მოტივტივე ჩარჩოში გადადის (YouTube-ის მინი-დამკვრელის წესი) — არ ჩერდება.
+ */
+export function usePlayerAnchor(item: Pick<PlayerItem, 'kind' | 'id'>) {
+  const { registerAnchor } = usePlayer()
+  const key = itemKey(item)
+  return useCallback((el: HTMLElement | null) => registerAnchor(key, el), [registerAnchor, key])
 }

@@ -133,6 +133,34 @@ export function embedEventFrom(data: unknown): EmbedEvent | null {
 }
 
 /**
+ * Tasks §48.4 — **სად არის დაკვრა** (სიმღერის ბუშტის რგოლი), წამებში.
+ *
+ * ⚠️ ნაწილობრივი პასუხია: YouTube ხანგრძლივობას (`duration`) იშვიათად
+ * აგზავნის, მიმდინარე წამს (`currentTime`) კი — ხშირად; გამომძახებელი ბოლო
+ * ცნობილ ხანგრძლივობას თვითონ ინახავს. Vimeo ორივეს ერთად გზავნის
+ * (`timeupdate`, ხელის ჩამორთმევაში მოსმენილი).
+ */
+export function embedProgressFrom(data: unknown): { current?: number; duration?: number } | null {
+  const msg = decode(data)
+  if (!msg) return null
+
+  const pick = (source: Record<string, unknown>, current: string, duration: string) => {
+    const out: { current?: number; duration?: number } = {}
+    if (typeof source[current] === 'number' && Number.isFinite(source[current])) out.current = source[current] as number
+    if (typeof source[duration] === 'number' && (source[duration] as number) > 0) out.duration = source[duration] as number
+    return out.current === undefined && out.duration === undefined ? null : out
+  }
+
+  if (msg.event === 'infoDelivery' && msg.info && typeof msg.info === 'object') {
+    return pick(msg.info as Record<string, unknown>, 'currentTime', 'duration')
+  }
+  if (msg.event === 'timeupdate' && msg.data && typeof msg.data === 'object') {
+    return pick(msg.data as Record<string, unknown>, 'seconds', 'duration')
+  }
+  return null
+}
+
+/**
  * ხელის ჩამორთმევა — ამის გარეშე ფრეიმი მოვლენებს არ გვიგზავნის.
  * ⚠️ პასუხისმგებლობა გამგზავნზეა: ფრეიმი მზად რომ არ იყოს, შეტყობინება
  * უბრალოდ იკარგება — ამიტომ გამომძახებელი რამდენჯერმე იმეორებს.
@@ -145,7 +173,8 @@ export function embedHandshake(platform: VideoPlatform): string[] {
     ]
   }
   if (platform === 'vimeo') {
-    return ['ended', 'play', 'pause'].map((value) =>
+    // §48.4 — `timeupdate` ბუშტის პროგრესის რგოლისთვისაა
+    return ['ended', 'play', 'pause', 'timeupdate'].map((value) =>
       JSON.stringify({ method: 'addEventListener', value }),
     )
   }

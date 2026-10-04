@@ -73,7 +73,8 @@ export function FloatingPick({ module, onOpen }: { module: string; onOpen: () =>
   return (
     <div
       className={cn(
-        'fixed bottom-[calc(1.5rem+var(--player-h,0px))] right-[calc(1.5rem+var(--player-w,0px))] flex items-center gap-3',
+        // Tasks §48.5 — `--player-lift`: მოტივტივე ვიდეო ამ კუთხეს თუ ფარავს, კამათელი მის ზემოთ ადის
+        'fixed bottom-[calc(1.5rem+var(--player-h,0px)+var(--player-lift,0px))] right-[calc(1.5rem+var(--player-w,0px))] flex items-center gap-3',
         LAYER_FLOAT,
       )}
       style={modAccent(color) ?? MODULE_ACCENT_FALLBACK}

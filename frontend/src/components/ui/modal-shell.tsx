@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ArrowLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isPlayerTarget } from '@/lib/playerFrame'
 import { AutoHeight } from '@/components/ui/auto-height'
 import { InfoHint } from '@/components/ui/info-hint'
 
@@ -235,6 +236,11 @@ export function ModalShell({
         {/* §37.4 — `top`-ს ref-ი წერს (`useAnchoredTop`); `top-[5vh]` მხოლოდ სათადარიგოა */}
         <DialogPrimitive.Content
           ref={anchor}
+          /* Tasks §48 — ვიდეო ფანჯრის თავზე დგას (ფანჯარაში ან მოტივტივე ჩარჩოში): მასზე
+             დაჭერა და ფოკუსი Radix-ისთვის „გარეთაა", ე.ი. ფანჯარა დაიხურებოდა */
+          onInteractOutside={(e) => {
+            if (isPlayerTarget(e.target)) e.preventDefault()
+          }}
           className={cn(
             'fb-content fixed left-1/2 top-[5vh] z-[61] flex max-h-[90vh] w-[92vw] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl focus:outline-none',
             fill && 'h-[90vh]',

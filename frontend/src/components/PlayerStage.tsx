@@ -5,6 +5,7 @@ import {
   embedCommand,
   embedEventFrom,
   embedHandshake,
+  embedProgressFrom,
   isAllowedEmbed,
   playableEmbedSrc,
   type EmbedEvent,
@@ -39,11 +40,14 @@ export function PlayerStage({
   item,
   playing,
   onEvent,
+  onProgress,
   className,
 }: {
   item: PlayerItem
   playing: boolean
   onEvent: (event: EmbedEvent) => void
+  /** Tasks §48.4 — 0…1 (სიმღერის ბუშტის რგოლი); წყარო თუ არ ამბობს — არ იძახება */
+  onProgress?: (value: number) => void
   className?: string
 }) {
   const { t } = useTranslation()
@@ -56,6 +60,7 @@ export function PlayerStage({
         item={item}
         playing={playing}
         onEvent={onEvent}
+        onProgress={onProgress}
         className={className}
       />
     )
@@ -68,6 +73,7 @@ export function PlayerStage({
         item={item}
         playing={playing}
         onEvent={onEvent}
+        onProgress={onProgress}
         className={className}
       />
     )
@@ -113,11 +119,13 @@ function FileStage({
   item,
   playing,
   onEvent,
+  onProgress,
   className,
 }: {
   item: PlayerItem
   playing: boolean
   onEvent: (event: EmbedEvent) => void
+  onProgress?: (value: number) => void
   className?: string
 }) {
   const ref = useRef<HTMLVideoElement>(null)
@@ -145,6 +153,10 @@ function FileStage({
       onPlay={() => onEvent('playing')}
       onPause={() => onEvent('paused')}
       onEnded={() => onEvent('ended')}
+      onTimeUpdate={(e) => {
+        const el = e.currentTarget
+        if (el.duration > 0) onProgress?.(el.currentTime / el.duration)
+      }}
     />
   )
 }
@@ -161,15 +173,21 @@ function FrameStage({
   item,
   playing,
   onEvent,
+  onProgress,
   className,
 }: {
   item: PlayerItem
   playing: boolean
   onEvent: (event: EmbedEvent) => void
+  onProgress?: (value: number) => void
   className?: string
 }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const report = useLatest(onEvent)
+  const progress = useLatest(onProgress)
+  /* §48.4 — YouTube ხანგრძლივობას იშვიათად აგზავნის: ბოლო ცნობილი (ან ჩვენი
+     ბაზის) რიცხვი ინახება და მიმდინარე წამი მასზე იყოფა */
+  const duration = useRef(item.duration ?? 0)
   /* ⚠️ `src` **ერთხელ** ითვლება — ფრეიმის დაბადებისას. `playing`-ის
      შემდგომ ცვლილებას ბრძანება ატარებს (ქვემოთ); `src`-ის შეცვლა ფრეიმს
      თავიდან ჩატვირთავდა და დაკვრა თავიდან დაიწყებოდა. PlayerStage ჰოსტს
@@ -185,10 +203,14 @@ function FrameStage({
       if (e.origin !== origin) return
       const event = embedEventFrom(e.data)
       if (event) report.current(event)
+
+      const time = embedProgressFrom(e.data)
+      if (time?.duration) duration.current = time.duration
+      if (time?.current !== undefined && duration.current > 0) progress.current?.(time.current / duration.current)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [origin, report])
+  }, [origin, report, progress])
 
   /* ---------- ხელის ჩამორთმევა ----------
      ⚠️ ერთი გაგზავნა არ კმარა: ფრეიმის `load`-მდე შეტყობინება უბრალოდ

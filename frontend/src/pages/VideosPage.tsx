@@ -194,22 +194,52 @@ export function VideosPage() {
 
   /* ⚠️ დაკვრაზე **მთელი** გაფილტრული სია ჩამოდის და არა ჩატვირთული გვერდი —
      წესი გვერდებად დაყოფამდე ასეთი იყო და უცვლელი რჩება. მოთხოვნა მხოლოდ
-     ცხად დაჭერაზე ხდება (და ქეშდება); წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ. */
-  const playFrom = async (index: number) => {
+     ცხად დაჭერაზე ხდება (და ქეშდება); წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ.
+     ⚠️ საწყისი **id-ით** იძებნება და არა გვერდის ინდექსით: §46-ის შემდეგ მეორე
+     გვერდის პირველი ვიდეო ინდექსით 0 იყო — სრულ სიაში კი ეს პირველი გვერდის
+     პირველია. სიის გარეთა ვიდეო (`?open=`, „მსგავსი") მარტო უკრავს. */
+  const playFrom = async (video: Video) => {
+    const item = (v: Video) => videoItem(v, v.type ? videoTypeName(v.type, lang) : null)
+    let list = queueItems
     try {
       const full = await qc.fetchQuery({
         queryKey: ['videos', filters, 'queue'],
         queryFn: () => fetchVideos({ ...filters, all: true }),
       })
-      player.play(
-        full.items.map((v) => videoItem(v, v.type ? videoTypeName(v.type, lang) : null)),
-        index,
-        t('videos.title'),
-      )
+      list = full.items.map(item)
     } catch {
-      player.play(queueItems, index, t('videos.title'))
+      // ჩატვირთული გვერდი რჩება
     }
+    const at = list.findIndex((entry) => entry.id === video.id)
+    if (at >= 0) player.play(list, at, t('videos.title'))
+    else player.play([item(video)], 0, t('videos.title'))
   }
+
+  /* Tasks §48.3 (Q14) — „დაკვრა" ფანჯარას ხსნის და ვიდეო **იქვე** უკრავს
+     (ფანჯრის ესკიზზე); „გატანის" შემდეგ — მოტივტივე ჩარჩოში, რიგით. */
+  const playHere = (video: Video) => {
+    setDetail(video)
+    void playFrom(video)
+  }
+
+  /* Tasks §48 — რიგი წინ წავიდა, ფანჯარა კი წინა (ნაკრავ) ვიდეოს აჩვენებს →
+     ფანჯარაც მიჰყვება და ვიდეო ფანჯარაში რჩება. ⚠️ მხოლოდ მაშინ, როცა ფანჯარა
+     **ნაკრავ** ვიდეოს აჩვენებდა — სხვა ვიდეოს ფანჯარა არ იცვლება; „გატანილზე"
+     ვიდეო ისედაც მოტივტივე ჩარჩოშია. */
+  const shown = useRef<number | null>(null)
+  const playingVideo = player.current?.kind === 'video' ? player.current.id : null
+  useEffect(() => {
+    if (!detail || playingVideo === null) return
+    if (playingVideo === detail.id) {
+      shown.current = playingVideo
+      return
+    }
+    if (shown.current !== detail.id || player.popped) return
+    shown.current = playingVideo
+    const next = videos.find((v) => v.id === playingVideo)
+    if (next) setDetail(next)
+    else fetchVideo(playingVideo).then(setDetail).catch(() => {})
+  }, [playingVideo, detail, player.popped, videos])
 
   // საიდბარის „დამატება" → `?new=1`
   useEffect(() => {
@@ -381,9 +411,9 @@ export function VideosPage() {
 
   /* Tasks §7 → §45 — ერთი მენიუ სამივე განლაგებაზე: გახსნა · დაკვრა · წყარო · სტატუსი ▸ · რჩეული ·
      (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
-  const videoActions = (v: Video, i: number): MenuAction[] => [
+  const videoActions = (v: Video): MenuAction[] => [
     { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
-    { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
+    { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => playHere(v) },
     {
       key: 'source',
       label: t('videos.source'),
@@ -455,7 +485,7 @@ export function VideosPage() {
             {videos.length > 0 && (
               <Button
                 variant="outline"
-                onClick={() => playFrom(0)}
+                onClick={() => playHere(videos[0])}
               >
                 <ListVideo className="size-4" />
                 {t('playback.playAll')}
@@ -505,14 +535,14 @@ export function VideosPage() {
               მენიუ ერთია (`videoActions`). §20.4 — სვეტები `main`-ის სიგანეზე (`@container`) */}
           {layout === 'cards' ? (
             <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @7xl:grid-cols-3">
-              {videos.map((v, i) => (
+              {videos.map((v) => (
                 <VideoCard
                   key={v.id}
                   video={v}
-                  actions={videoActions(v, i)}
+                  actions={videoActions(v)}
                   lang={lang}
                   onOpen={() => setDetail(v)}
-                  onPlay={() => void playFrom(i)}
+                  onPlay={() => playHere(v)}
                   onEdit={() => setEditing(v)}
                   onDelete={() => void askDelete(v)}
                   onToggleFavorite={() => favorite.mutate(v.id)}
@@ -535,7 +565,7 @@ export function VideosPage() {
             </div>
           ) : (
             <RecordList layout={layout}>
-              {videos.map((v, i) => (
+              {videos.map((v) => (
                 <RecordView
                   key={v.id}
                   title={v.title}
@@ -560,14 +590,14 @@ export function VideosPage() {
                     </>
                   }
                   tags={v.tags}
-                  actions={videoActions(v, i)}
+                  actions={videoActions(v)}
                   onEdit={() => setEditing(v)}
                   bar={
                     <RecordActionBar
                       link={{ href: v.url, label: t('videos.source'), icon: ExternalLink, title: v.url }}
                       before={
                         /* §7.2 — რიგში ჩართვა: აქედან გაფილტრული სია უკრავს რიგრიგობით */
-                        <Button variant="outline" size="sm" className="text-muted-foreground" onClick={() => void playFrom(i)}>
+                        <Button variant="outline" size="sm" className="text-muted-foreground" onClick={() => playHere(v)}>
                           <ListVideo className="size-3.5" />
                           {t('playback.play')}
                         </Button>
@@ -708,11 +738,7 @@ export function VideosPage() {
           /* §35.6 — სიაში მყოფი ვიდეო **გაფილტრულ სიას** აქედან უშვებს (ისევე,
              როგორც ბარათის „აქედან დაკვრა"); სიის გარეთა — `?open=`, დუბლის
              „გახსნა", „მსგავსი" — მარტო საკუთარ თავს, რიგის ჩანაცვლებით. */
-          onPlay={(v) => {
-            const at = videos.findIndex((x) => x.id === v.id)
-            if (at >= 0) void playFrom(at)
-            else player.play([videoItem(v, v.type ? videoTypeName(v.type, lang) : null)], 0, t('videos.title'))
-          }}
+          onPlay={(v) => void playFrom(v)}
         />
       )}
 

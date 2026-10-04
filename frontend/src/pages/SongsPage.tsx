@@ -122,17 +122,22 @@ export function SongsPage() {
      500 სიმღერიან ფილტრზე „დაკვრა" 60-ზე არ უნდა გაჩერდეს. დამატებითი
      მოთხოვნა მხოლოდ **ცხად დაჭერაზე** ხდება (და ქეშდება), და არა სექციის
      გახსნაზე — სწორედ ის იყო ძვირი. წყარო თუ არ მოვიდა, ჩატვირთულს ვუკრავთ:
-     დუმილი უარესი პასუხია. */
-  const playFrom = async (index: number) => {
+     დუმილი უარესი პასუხია.
+     ⚠️ საწყისი **id-ით** იძებნება (Tasks §48): §46-ის შემდეგ მეორე გვერდის
+     პირველი სიმღერა ინდექსით 0 იყო — სრულ სიაში ეს პირველი გვერდის პირველია. */
+  const playFrom = async (song?: Song) => {
+    let list = songs
     try {
       const full = await qc.fetchQuery({
         queryKey: ['songs', filters, 'queue'],
         queryFn: () => fetchSongs({ ...filters, all: true }),
       })
-      player.play(full.items.map(songItem), index, t('songs.title'))
+      list = full.items
     } catch {
-      player.play(songs.map(songItem), index, t('songs.title'))
+      // ჩატვირთული გვერდი რჩება
     }
+    const at = song ? list.findIndex((entry) => entry.id === song.id) : 0
+    player.play(list.map(songItem), Math.max(at, 0), t('songs.title'))
   }
   // §7.4 — მიმაგრებული ფაილები/ჩანიშვნები. ⚠️ დაკვრისგან **ცალკეა**:
   // სიმღერაზე დაჭერა ისევ უკრავს, სამაგრები ცალკე ღილაკზეა.
@@ -273,7 +278,7 @@ export function SongsPage() {
             {/* Tasks §35.5 — მთელი (გაფილტრული) სია რიგში. აქამდე მხოლოდ მთავარ
                 ფოტოზე დაჭერა უკრავდა — ვიდეოების გვერდს ეს ღილაკი ჰქონდა, აქ კი არა. */}
             {songs.length > 0 && (
-              <Button variant="outline" onClick={() => playFrom(0)}>
+              <Button variant="outline" onClick={() => playFrom()}>
                 <Play className="size-4" />
                 {t('playback.playAll')}
               </Button>
@@ -326,11 +331,11 @@ export function SongsPage() {
           )}
 
           <RecordList layout={layout}>
-            {songs.map((song, i) => {
+            {songs.map((song) => {
               const cover = storageUrl(song.thumbnail)
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
               const actions: MenuAction[] = [
-                { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
+                { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(song) },
                 {
                   key: 'source',
                   label: t('playback.openSource'),
@@ -360,7 +365,7 @@ export function SongsPage() {
                   key={song.id}
                   title={song.title}
                   staticTitle
-                  onOpen={() => void playFrom(i)}
+                  onOpen={() => void playFrom(song)}
                   openLabel={t('songs.play')}
                   photo={cover}
                   placeholder={<Music className="size-5" />}

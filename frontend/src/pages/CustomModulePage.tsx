@@ -606,15 +606,9 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
           module={module}
           record={viewing}
           onClose={() => setViewing(null)}
-          // §37.5 — ფანჯარა იკეტება: მოდალის ქვეშ ჩართული ვიდეო არ ჩანდა (VideoDetail-ის წესი, §35.6)
-          onPlay={
-            isPlayableRecord(viewing)
-              ? () => {
-                  playFrom(viewing.id)
-                  setViewing(null)
-                }
-              : undefined
-          }
+          /* §37.5 → §48 — ფანჯარა ღია რჩება: ვიდეო მოტივტივე ჩარჩოშია, რომელიც
+             ფანჯრის თავზე ჩანს (ადრე მოდალის ქვეშ დარჩებოდა და ფანჯარა იკეტებოდა) */
+          onPlay={isPlayableRecord(viewing) ? () => void playFrom(viewing.id) : undefined}
           onEdit={() => {
             setEditing(viewing)
             setViewing(null)

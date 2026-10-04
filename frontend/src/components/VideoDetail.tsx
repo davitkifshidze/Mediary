@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AudioLines, CalendarDays, Download, FileText, FileX, MonitorPlay, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
+import { CalendarDays, Download, FileText, FileX, MonitorPlay, PictureInPicture2, Play, Plus, SquarePen, Trash2, Tv, Upload } from 'lucide-react'
 import {
   createVideoNote,
   deleteVideoDownload,
@@ -24,7 +24,7 @@ import { isAllowedEmbed } from '@/lib/embed'
 import { errorMessage, translateCode } from '@/lib/errors'
 import { cn, formatBytes } from '@/lib/utils'
 import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
-import { usePlayer } from '@/lib/player'
+import { usePlayer, usePlayerAnchor } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -47,11 +47,14 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
    ეს შენი გადაწყვეტილებაა (ბარათები შიგთავსს ეკრანის ქვემოთ ჩაწევდა).
 
    ⚠️ **Tasks §35.6 — საკუთარი ჩაშენება აღარ აქვს.** აქ `VideoEmbed` იდგა და
-   გლობალურ დამკვრელთან ერთად **ორივე ჟღერდა**. ახლა ვიდეოს ჩანართში ესკიზია
-   და „დამკვრელში დაკვრა": ვიდეო რიგს გადაეცემა (გვერდი წყვეტს, რომელ
-   რიგს — `onPlay`) და ფანჯარა **იხურება**, რადგან მოდალი დამკვრელს ფარავს
-   (`lib/layers.ts`) — ღია ფანჯრის ქვეშ ვიდეო არ ჩანდა. „ნანახად" ჩათვლა
-   ახლა დამკვრელშია (ჩართვაზე) და არა ფანჯრის გახსნაზე: გახსნა ყურება არაა.
+   გლობალურ დამკვრელთან ერთად **ორივე ჟღერდა**. „ნანახად" ჩათვლა დამკვრელშია
+   (ჩართვაზე) და არა ფანჯრის გახსნაზე: გახსნა ყურება არაა.
+
+   ⚠️ **Tasks §48.1 — ვიდეო ფანჯარაშივე უკრავს**: ვიდეოს ჩანართის ესკიზი
+   აპის დამკვრელის ადგილია (`PlayerSpot`) — „დაკვრაზე" დამკვრელი მასზე
+   ჯდება და ფანჯარა **აღარ იხურება** (ერთი ფრეიმი, თავიდან ჩატვირთვის
+   გარეშე). „გატანა" (ესკიზის კუთხეში და აქ, მოქმედებების რიგში) ვიდეოს
+   მოტივტივე ჩარჩოში გადაიტანს; ფანჯრის დახურვაზეც იქ გადადის და არ ჩერდება.
    ============================================================ */
 
 type Tab = 'video' | 'images' | 'notes' | 'docs' | 'local'
@@ -94,6 +97,9 @@ export function VideoDetail({
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['videos'] }),
   })
   const { toast } = useToast()
+  const player = usePlayer()
+  /** §48.2 — ეს ვიდეო ახლა ამ ფანჯარაში უკრავს — „გატანა" მოქმედებების რიგშიც ჩანს */
+  const inline = player.layout === 'inline' && player.current?.kind === 'video' && player.current.id === video.id
   const [tab, setTab] = useState<Tab>('video')
   /** Tasks §21.2 — ლოკალური ფლეერი ფანჯრის თავზე (მოდალები ერთმანეთზე დგება) */
   const [localOpen, setLocalOpen] = useState(false)
@@ -166,6 +172,12 @@ export function VideoDetail({
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={video.visibility} />
           <FavoriteButton active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+          {inline && (
+            <Button variant="outline" size="sm" onClick={player.popOut}>
+              <PictureInPicture2 className="size-3.5" />
+              {t('playback.popOut')}
+            </Button>
+          )}
           {onEdit && (
             <Button variant="edit" size="sm" onClick={() => onEdit(video)}>
               <SquarePen className="size-3.5" />
@@ -184,14 +196,7 @@ export function VideoDetail({
 
         {tab === 'video' && (
           <>
-            <PlayInPlayer
-              video={video}
-              onPlay={() => {
-                onPlay(video)
-                onClose()
-              }}
-              onShow={onClose}
-            />
+            <PlayerSpot video={video} onPlay={() => onPlay(video)} />
             {/* Q52 — ვინ ატვირთა და როდის (ვებძებნიდან ან ბმულის ჩასმისას) */}
             {(video.channel || video.published_at) && (
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -330,56 +335,55 @@ export function VideoDetail({
   )
 }
 
-/* ---------- დამკვრელში დაკვრა (§35.6) ---------- */
+/* ---------- Tasks §48.1 — ვიდეო ფანჯარაშივე ---------- */
 
 /**
- * ესკიზი დიდი „დაკვრით" — ვიდეო გლობალურ დამკვრელს გადაეცემა.
+ * ვიდეოს ადგილი ფანჯარაში — **ესკიზი, რომელზეც აპის დამკვრელი ჯდება**.
  *
- * ⚠️ **ეს ვიდეო თუ უკვე დამკვრელშია**, თავიდან არ ირთვება (რიგიც არ
- * იცვლება): ღილაკი ამბობს „ახლა დამკვრელში უკრავს" და დაჭერაზე ფანჯარას
- * ხურავს — პაუზაზე თუ იყო, აგრძელებს.
+ * ⚠️ ესკიზი ყოველთვის ირეგისტრირებს (`usePlayerAnchor`): როცა ეს ვიდეო
+ * უკრავს და „გატანილი" არაა, დამკვრელი მის კოორდინატებზე იხატება
+ * (`Player` → `inline`), აქ კი მხოლოდ შავი ადგილი რჩება.
+ * - არ უკრავს → ესკიზი და „დაკვრა" (რიგს გვერდი წყვეტს — `onPlay`);
+ * - „გატანილია" (მოტივტივე ჩარჩო, ვიწროზე ზოლი) → ესკიზი და „აქ დაბრუნება".
  *
  * ⚠️ ჩაუშენებელი წყარო (`platform = other`) ძველებურად ბმულია —
  * `VideoEmbed`-ის მესამე შტო ფრეიმს არ ხატავს, ე.ი. მეორე ხმა არ ჩნდება.
  */
-function PlayInPlayer({ video, onPlay, onShow }: { video: Video; onPlay: () => void; onShow: () => void }) {
+function PlayerSpot({ video, onPlay }: { video: Video; onPlay: () => void }) {
   const { t } = useTranslation()
   const player = usePlayer()
+  const anchor = usePlayerAnchor({ kind: 'video', id: video.id })
 
   if (video.platform !== 'file' && !isAllowedEmbed(video.embed_url)) return <VideoEmbed video={video} />
 
   const thumb = storageUrl(video.thumbnail)
   const here = player.current?.kind === 'video' && player.current.id === video.id
-  const label = here
-    ? t(player.playing ? 'playback.playingInPlayer' : 'playback.resumeInPlayer')
-    : t('playback.playInPlayer')
+  const inline = here && player.layout === 'inline'
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!here) return onPlay()
-        if (!player.playing) player.toggle()
-        onShow()
-      }}
-      className="group relative block aspect-video w-full cursor-pointer overflow-hidden rounded-lg bg-black"
-    >
-      {thumb && (
-        <img
-          src={thumb}
-          alt=""
-          className="size-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
-        />
+    <div ref={anchor} data-player-spot className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+      {!inline && (
+        <button
+          type="button"
+          onClick={here ? player.popIn : onPlay}
+          className="group absolute inset-0 block cursor-pointer"
+        >
+          {thumb && (
+            <img src={thumb} alt="" className="size-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
+          )}
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 text-white">
+            {here ? (
+              <PictureInPicture2 className="size-12 drop-shadow" />
+            ) : (
+              <Play className="size-12 fill-current drop-shadow" />
+            )}
+            <span className="rounded-md bg-black/60 px-3 py-1.5 text-sm font-medium">
+              {here ? t('playback.inFrame') : t('playback.play')}
+            </span>
+          </span>
+        </button>
       )}
-      <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 text-white">
-        {here && player.playing ? (
-          <AudioLines className="size-12 drop-shadow" />
-        ) : (
-          <Play className="size-12 fill-current drop-shadow" />
-        )}
-        <span className="rounded-md bg-black/60 px-3 py-1.5 text-sm font-medium">{label}</span>
-      </span>
-    </button>
+    </div>
   )
 }
 
