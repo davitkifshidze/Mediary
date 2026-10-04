@@ -52,6 +52,8 @@ import {
   reorderCustomCategories,
 } from '@/api/customRecords'
 import { CustomCategoryDialog } from '@/components/CustomCategoryDialog'
+import { deleteDutyType, fetchDutyTypes, reorderDutyTypes } from '@/api/duty'
+import { DutyTypeDialog } from '@/components/duty/DutyTypeDialog'
 import { classifierKey, isCustomModule } from '@/lib/customModules'
 import { statusesQueryKey } from '@/lib/statuses'
 import { MEDIA } from '@/lib/media'
@@ -302,6 +304,23 @@ export const DICTIONARIES: DictionaryDef[] = [
     remove: deletePlaceCategory,
     count: (item) => num(item.places_count),
     dialog: (item, onClose) => <PlaceCategoryDialog category={item as never} onClose={onClose} />,
+  },
+  {
+    /* Tasks §34 — მორიგეობის ტიპები (8/12/24 სთ და შენი). ⚠️ ქეში მოდულის ფესვშია
+       (`['duty', 'types']`) — ტიპის ცვლილება კალენდარსაც და ჯამებსაც ცვლის. */
+    key: 'duty-types',
+    fieldKey: 'type',
+    module: 'duty',
+    titleKey: 'duty.types.title',
+    recordsRoute: '/duty',
+    queryKey: ['duty', 'types'],
+    recordsQueryKey: 'duty',
+    countKey: 'duty.count',
+    list: fetchDutyTypes as never,
+    reorder: reorderDutyTypes as never,
+    remove: deleteDutyType,
+    count: (item) => num(item.shifts_count),
+    dialog: (item, onClose) => <DutyTypeDialog type={item as never} onClose={onClose} />,
   },
 ]
 

@@ -4508,5 +4508,107 @@
       "trash": "In your trash: {{count}}",
       "failed": "Failed: {{count}}"
     }
+  },
+  "duty": {
+    "title": "Duty shifts",
+    "hint": "Shifts by workplace: tap a day in the calendar to add or edit, “Select” adds many days at once. Pay fills in from the workplace rates, totals follow your own period (“Settings”).",
+    "count": "{{count}} shifts",
+    "hoursValue": "{{hours}} h",
+    "noWorkplace": "No workplace",
+    "allWorkplaces": "All workplaces",
+    "empty": "No shifts in this period.",
+    "emptyHint": "Add one with the button or by tapping a day in the calendar.",
+    "view": {
+      "calendar": "Calendar",
+      "list": "List"
+    },
+    "period": {
+      "previous": "Previous",
+      "next": "Next",
+      "today": "Current period",
+      "totals": "{{count}} shifts · {{hours}} h · {{pay}}"
+    },
+    "select": {
+      "start": "Select",
+      "stop": "Done selecting",
+      "hint": "Select days — tap, drag, or Shift for a range.",
+      "count": "{{days}} days selected · {{shifts}} shifts",
+      "add": "Add",
+      "change": "Change",
+      "clear": "Clear"
+    },
+    "shift": {
+      "add": "Add shift",
+      "edit": "Edit shift",
+      "created": "Shift added",
+      "saved": "Shift saved",
+      "trashed": "Shift moved to the trash",
+      "custom": "Other",
+      "payHint": "Filled in from the workplace rate ({{hours}} h) — you can change it.",
+      "noRate": "This workplace has no rate for this type — enter the pay by hand or add a rate in “Settings”."
+    },
+    "batch": {
+      "title": "Shifts on the selected days ({{count}})",
+      "hint": "The workplace and type above apply to every day; below, change a single day’s type, hours or pay. Everything is saved together.",
+      "defaultType": "Default type",
+      "inherit": "Default",
+      "total": "Total: {{count}} shifts · {{hours}} h · {{pay}}",
+      "save": "Save ({{count}})",
+      "done": "Added {{count}} shifts"
+    },
+    "bulk": {
+      "title": "Selected shifts ({{count}})",
+      "hint": "Changing the workplace or type recalculates the pay with the new rate; the type sets the hours too. Deleting moves them to the trash.",
+      "keep": "Keep",
+      "apply": "Change",
+      "delete": "Delete ({{count}})",
+      "changed": "Changed {{count}} shifts",
+      "trashed": "Moved {{count}} shifts to the trash"
+    },
+    "workplace": {
+      "title": "Workplaces",
+      "listHint": "Drag to reorder — the same order shows in the calendar filter and the add form.",
+      "add": "Add workplace",
+      "edit": "Edit workplace",
+      "created": "Workplace added",
+      "saved": "Workplace saved",
+      "hint": "A rate belongs to a type (e.g. 24 h = 220); the hourly rate prices a shift that has no type or no rate. Changes apply to new shifts only.",
+      "name": "Name",
+      "short": "Letter",
+      "shortHint": "On the calendar chip — “A · 24”",
+      "color": "Colour",
+      "rates": "Rates by type ({{currency}})",
+      "ratesHint": "Empty — no rate for this type.",
+      "hourly": "Hourly rate ({{currency}})",
+      "hourlyHint": "For other hours — hours × rate.",
+      "active": "Active — shown in the add form",
+      "inactive": "Inactive",
+      "perHour": "{{pay}} / h",
+      "shifts": "{{count}} shifts",
+      "deleteTitle": "Delete workplace",
+      "inUse": "“{{name}}” has {{count}} shifts. What should happen to them?",
+      "leaveEmpty": "Keep them without a workplace"
+    },
+    "settings": {
+      "open": "Settings",
+      "title": "Duty settings",
+      "periodDay": "First day of the period",
+      "periodDayHint": "Totals and the calendar run from this day to the day before it next month (15 → Sep 15 – Oct 14). At most 28.",
+      "pending": "Scheduled: from day {{day}}, starting {{date}} — the current period keeps its bounds.",
+      "scheduled": "The new period (from day {{day}}) starts on {{date}} — past periods stay as they were.",
+      "saved": "Settings saved",
+      "currency": "Currency",
+      "defaultWorkplace": "Default workplace",
+      "defaultType": "Default type",
+      "firstInList": "First in the list",
+      "types": "Manage types"
+    },
+    "types": {
+      "title": "Duty shift types",
+      "add": "Add type",
+      "edit": "Edit type",
+      "saved": "Type saved",
+      "hint": "The hours go onto new shifts; existing shifts keep their own hours."
+    }
   }
 }

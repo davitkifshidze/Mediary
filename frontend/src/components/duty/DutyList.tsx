@@ -1,0 +1,84 @@
+import { useTranslation } from 'react-i18next'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CalendarClock, SquarePen } from 'lucide-react'
+import { toggleDutyFavorite, type DutySettingsData, type DutyShift } from '@/api/duty'
+import { useDateFormat } from '@/lib/dates'
+import { errorMessage } from '@/lib/errors'
+import { formatHours, formatMoney, invalidateDuty, parseDay, typeName, workplaceColor } from '@/lib/duty'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { FavoriteButton } from '@/components/ui/favorite-button'
+import { useToast } from '@/components/ui/feedback'
+
+/* ============================================================
+   **სია — პერიოდის მორიგეობები სტრიქონებად (Tasks §34.4).**
+
+   თარიღი (კვირის დღით) · სამსახური · ტიპი · დრო · საათები · თანხა · შენიშვნა,
+   ბოლოში რჩეული და „რედაქტირება“ (§29-ის ზოლის ღილაკები). ⚠️ რიგი სერვერისაა —
+   თარიღი, მერე დაწყების დრო.
+   ============================================================ */
+
+export function DutyList({
+  shifts,
+  settings,
+  onEdit,
+}: {
+  shifts: DutyShift[]
+  settings: DutySettingsData | undefined
+  onEdit: (shift: DutyShift) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const qc = useQueryClient()
+  const { toast } = useToast()
+  const { date } = useDateFormat()
+  const lang = i18n.language
+  const currency = settings?.currency ?? '₾'
+  const weekday = new Intl.DateTimeFormat(lang, { weekday: 'short' })
+
+  const favorite = useMutation({
+    mutationFn: toggleDutyFavorite,
+    onSuccess: () => invalidateDuty(qc),
+    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
+  })
+
+  if (!shifts.length) {
+    return <EmptyState icon={<CalendarClock className="size-6" />} title={t('duty.empty')} hint={t('duty.emptyHint')} />
+  }
+
+  return (
+    <ul className="divide-y divide-border rounded-xl border border-border bg-card" data-testid="duty-list">
+      {shifts.map((shift) => (
+        <li key={shift.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+          <span className="w-32 shrink-0 text-sm">
+            <span className="text-muted-foreground">{weekday.format(parseDay(shift.date))} · </span>
+            <span className="font-medium">{date(shift.date)}</span>
+          </span>
+
+          <span className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: workplaceColor(shift.workplace) }} />
+            <span className="truncate font-medium">{shift.workplace?.name ?? t('duty.noWorkplace')}</span>
+            <span className="truncate text-muted-foreground">
+              · {shift.type ? typeName(shift.type, lang) : t('duty.shift.custom')}
+              {shift.start_time && ` · ${shift.start_time}`}
+            </span>
+          </span>
+
+          <span className="w-16 text-right text-sm tabular-nums">{t('duty.hoursValue', { hours: formatHours(shift.hours) })}</span>
+          <span className="w-24 text-right text-sm font-medium tabular-nums">
+            {shift.pay != null ? formatMoney(shift.pay, currency, lang) : '—'}
+          </span>
+
+          <span className="flex items-center gap-1">
+            <FavoriteButton active={shift.is_favorite} onToggle={() => favorite.mutate(shift.id)} pending={favorite.isPending} />
+            <Button variant="edit" size="sm" className="h-8 px-2.5 text-xs" onClick={() => onEdit(shift)}>
+              <SquarePen className="size-3.5" />
+              {t('actions.edit')}
+            </Button>
+          </span>
+
+          {shift.note && <p className="w-full truncate pl-36 text-xs text-muted-foreground">{shift.note}</p>}
+        </li>
+      ))}
+    </ul>
+  )
+}

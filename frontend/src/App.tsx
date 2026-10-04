@@ -73,6 +73,7 @@ const CoursesPage = lazy(() => import('@/pages/CoursesPage').then((m) => ({ defa
 const PlacesPage = lazy(() => import('@/pages/PlacesPage').then((m) => ({ default: m.PlacesPage })))
 // Tasks §33 — პირადი გალერეა: ჭრილები, ადამიანის და ალბომის გვერდი
 const PersonalPage = lazy(() => import('@/pages/PersonalPage').then((m) => ({ default: m.PersonalPage })))
+const DutyPage = lazy(() => import('@/pages/DutyPage').then((m) => ({ default: m.DutyPage })))
 const PersonalPersonPage = lazy(() =>
   import('@/pages/PersonalPersonPage').then((m) => ({ default: m.PersonalPersonPage })),
 )
@@ -164,6 +165,8 @@ const MODULE_PAGES: Record<string, React.ReactNode> = {
   place: <PlacesPage />,
   // Tasks §33 — პირადი გალერეა; ფესვი „ადამიანებია", დანარჩენი ჭრილები ქვემოთ
   personal: <PersonalPage cut="people" />,
+  // Tasks §34 — მორიგეობა (კალენდარი · სია · ჯამები · კალკულატორი — `?view=`)
+  duty: <DutyPage />,
   // Tasks 10 — გალერეა ცალკე მოდულია, ფოტოები კი ფილმებსა/სერიალებს ჰკიდია
   gallery: <GalleryPage />,
 }
