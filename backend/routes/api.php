@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActorController;
 use App\Http\Controllers\Api\Admin\AdminAuditController;
 use App\Http\Controllers\Api\Admin\AdminInstallationController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
@@ -1366,6 +1367,11 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **აუცილებლივ `/cast/{castMember}`-ზე ზემოთ**, თორემ „search"
        იდენტიფიკატორად წაიკითხება (იგივე წესი, რაც `/gallery/{type}/{id}`-ს აცვავს). */
     Route::get('/cast/search', [RecordCastController::class, 'search']);
+    /* Tasks §35.2 — მსახიობების გვერდი: ყველა ჩემი მსახიობი (ჩანაწერებიდან და
+       ფოტოებიდან) და „წაშლა ჩემი ჩანაწერებიდან". ⚠️ `module:`/`permission:` აქაც
+       არ დგას (მსახიობს მოდული არ აქვს) — დომენებს და უფლებას კონტროლერი ირჩევს. */
+    Route::get('/actors', [ActorController::class, 'index']);
+    Route::delete('/actors/{castMember}/records', [ActorController::class, 'detachEverywhere'])->whereNumber('castMember');
     /* Tasks §39 — მსახიობების მასობრივი სინქრონიზაცია: გეგმა + თითო მსახიობი.
        ⚠️ **`module:`/`permission:` middleware განზრახ არ დგას** — მსახიობს
        მოდული არ აქვს; ჩართულ მედია-მოდულს კონტროლერი თვითონ ამოწმებს

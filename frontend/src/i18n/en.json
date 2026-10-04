@@ -4645,5 +4645,66 @@
     "reminder": {
       "title": "You have a shift tomorrow"
     }
+  },
+  "actors": {
+    "title": "Actors",
+    "count": "{{count}} actors",
+    "searchPlaceholder": "Search actors…",
+    "sort": {
+      "name": "By name",
+      "records": "By number of records",
+      "popularity": "By popularity",
+      "recent": "Recently added"
+    },
+    "gender": {
+      "all": "All",
+      "female": "Women",
+      "male": "Men"
+    },
+    "countMovies": "{{count}} movie(s)",
+    "countSeries": "{{count}} series",
+    "countAnime": "{{count}} anime",
+    "onlyPhotos": "Photos only",
+    "empty": "No actors yet",
+    "emptyHint": "An actor appears here once they are on your movie, series or anime, or once you have their photo in the gallery.",
+    "emptyFiltered": "No actors match this filter",
+    "filter": {
+      "knownFor": "Known for",
+      "tag": "Tag",
+      "records": "Records",
+      "recordsMin": "On {{count}}+ records",
+      "photos": "My photos",
+      "photos_with": "With photos",
+      "photos_without": "Without photos",
+      "synced": "TMDB details",
+      "synced_yes": "Fetched",
+      "synced_no": "Not yet"
+    },
+    "dept": {
+      "acting": "Acting",
+      "directing": "Directing",
+      "writing": "Writing",
+      "production": "Production",
+      "crew": "Crew",
+      "art": "Art",
+      "camera": "Camera",
+      "sound": "Sound",
+      "editing": "Editing",
+      "visual_effects": "Visual effects",
+      "lighting": "Lighting",
+      "costume_make_up": "Costume & make-up",
+      "creator": "Creator"
+    },
+    "menuTags": "Tags",
+    "menuWebPhotos": "Photos from the web",
+    "menuSync": "Update from TMDB",
+    "menuRemove": "Remove from my records",
+    "removeTitle": "Remove the actor from your records",
+    "removeDesc": "“{{name}}” will be removed from {{count}} of your records — the links move to the trash; the actor and the photos stay.",
+    "removed": "Removed from {{count}} record(s)",
+    "removedSkipped": "You cannot edit {{count}} record(s) — the actor stayed there.",
+    "synced": "The details were updated",
+    "syncUnchanged": "Nothing new on TMDB",
+    "tagsTitle": "Tags — {{name}}"
   }
 }

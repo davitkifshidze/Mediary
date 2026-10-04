@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CastResource;
 use App\Models\AuditLog;
 use App\Models\CastMember;
-use App\Models\TrashEntry;
-use App\Services\Audit\AuditLogger;
+use App\Services\Cast\CastDetacher;
 use App\Services\Media\MediaDownloader;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
@@ -57,7 +56,7 @@ class RecordCastController extends Controller
     /** ერთ ჩანაწერზე დაშვებული მსახიობების ჭერი — TMDB 12-ს წერს, ხელით მეტიც შეიძლება */
     private const MAX_PER_RECORD = 60;
 
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(private readonly CastDetacher $detacher) {}
 
     /**
      * `GET /api/cast/search?q=&type=&id=` — ორი წყარო ერთ პასუხში.
@@ -385,63 +384,18 @@ class RecordCastController extends Controller
     {
         $record = $this->record($type, $id);
 
-        $link = $record->cast()->whereKey($castMember->id)->first();
-        abort_unless($link !== null, 404);
-
-        $tombstone = (bool) $castMember->tmdb_person_id;
-
-        /* ⚠️ **ურნა (Tasks §29, ეტაპი 2)** — მოხსნა ურნაში ჩაიწერება
-           (`trash_entries`): `castables`-ს `id` არ აქვს, ე.ი. რიგი ურნაში
-           საკუთარი `trashed_at`-ით ვერ გადავა. აღდგენა TMDB-ის მსახიობზე
-           საფლავის ქვას ხსნის, დანარჩენზე ბმულს ამავე როლით თავიდან სვამს.
-           ⚠️ საფლავის ქვა ურნის საბოლოო წაშლის შემდეგაც რჩება — სწორედ ის
-           უშლის TMDB-ს მის დაბრუნებას. */
-        DB::transaction(function () use ($record, $castMember, $link, $tombstone) {
-            if ($tombstone) {
-                $record->castLinks()->updateExistingPivot($castMember->id, ['is_removed' => true]);
-            } else {
-                $record->castLinks()->detach($castMember->id);
-            }
-
-            self::forgetTrashed($record, $castMember->id);
-
-            TrashEntry::withoutGlobalScope('owner')->create([
-                'user_id' => $record->user_id,
-                'kind' => 'cast_link',
-                'record_type' => $record->getMorphClass(),
-                'record_id' => $record->getKey(),
-                'slot' => (string) $castMember->id,
-                'label' => $castMember->name,
-                'payload' => [
-                    'cast_member_id' => (int) $castMember->id,
-                    'character' => $link->pivot->character,
-                    'billing_order' => (int) $link->pivot->billing_order,
-                    'is_manual' => (bool) $link->pivot->is_manual,
-                    'is_hidden' => (bool) $link->pivot->is_hidden,
-                    'is_edited' => (bool) $link->pivot->is_edited,
-                    'tombstone' => $tombstone,
-                    'photo_path' => $castMember->photo_path,
-                ],
-                'trashed_at' => now(),
-            ]);
-        });
-
-        $this->logCast($record, $castMember, AuditLog::ACTION_CAST_DETACH, ['sync_blocked' => $tombstone]);
+        // ⚠️ ურნა, საფლავის ქვა და აუდიტი — ერთი გზა (`CastDetacher`; `/actors`-ის მენიუც მასზეა)
+        abort_unless($this->detacher->detach($record, $castMember), 404);
 
         return response()->json(['ok' => true]);
     }
 
     /* ---------------------------------------------------------------- */
 
-    /** ამ ჩანაწერზე ამ მსახიობის ძველი ურნის ჩანაწერი — ერთ ბმულზე ურნაში ერთი ელემენტია */
+    /** ამ ჩანაწერზე ამ მსახიობის ძველი ურნის ჩანაწერი — `CastDetacher`-ის ერთი ასლი (ურნის აღდგენაც მას იძახებს) */
     public static function forgetTrashed(Model $record, int $castMemberId): void
     {
-        TrashEntry::withoutGlobalScope('owner')
-            ->where('kind', 'cast_link')
-            ->where('record_type', $record->getMorphClass())
-            ->where('record_id', $record->getKey())
-            ->where('slot', (string) $castMemberId)
-            ->delete();
+        CastDetacher::forgetTrashed($record, $castMemberId);
     }
 
     private function record(string $type, int $id): Model
@@ -556,35 +510,9 @@ class RecordCastController extends Controller
         return $member;
     }
 
-    /**
-     * მიბმა/მოხსნა აუდიტში.
-     *
-     * ⚠️ **`castables` მოდელი არაა**, ე.ი. `AuditObserver` მას ვერ ხედავს —
-     * ერთადერთი გზა ცხადი ჩაწერაა. ⚠️ სუბიექტი **ჩანაწერია და არა
-     * მსახიობი**: „ვინ დაამატა ეს მსახიობი ამ ფილმს" ფილმის ისტორიის
-     * ნაწილია, ლექსიკონი კი გლობალურია და მასზე „ვისი" კითხვა არ დგას.
-     *
-     * ⚠️ **`cast_update`-ს ძველი და ახალი მნიშვნელობები ახლავს** (Tasks §16) —
-     * ზუსტად ის, რასაც ლოგის diff-ის ფანჯარა კითხულობს. `$member` ცარიელია
-     * მთელი სიის გადალაგებაზე: იქ ერთი ადამიანი კი არა, რიგი შეიცვალა.
-     *
-     * @param  array<string, mixed>  $context
-     * @param  array<string, mixed>|null  $old
-     * @param  array<string, mixed>|null  $new
-     */
+    /** აუდიტი — `CastDetacher::log()` (⚠️ ერთი ფორმა მიბმისთვისაც და მოხსნისთვისაც) */
     private function logCast(Model $record, ?CastMember $member, string $action, array $context = [], ?array $old = null, ?array $new = null): void
     {
-        $this->audit->log($action, [
-            'module' => MediaDomain::typeOf($record),
-            'subject_type' => $record->getMorphClass(),
-            'subject_id' => $record->getKey(),
-            'subject_label' => $record->title_en ?: $record->title_ka,
-            'old_values' => $old,
-            'new_values' => $new,
-            'context' => [
-                ...($member ? ['cast_member_id' => $member->id, 'cast_member' => $member->name] : []),
-                ...$context,
-            ],
-        ]);
+        $this->detacher->log($record, $member, $action, $context, $old, $new);
     }
 }

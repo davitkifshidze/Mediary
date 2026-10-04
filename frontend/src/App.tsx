@@ -33,6 +33,7 @@ const LibraryPage = lazy(() => import('@/pages/LibraryPage').then((m) => ({ defa
 const MoviePage = lazy(() => import('@/pages/MoviePage').then((m) => ({ default: m.MoviePage })))
 const MovieFormPage = lazy(() => import('@/pages/MovieFormPage').then((m) => ({ default: m.MovieFormPage })))
 const ActorPage = lazy(() => import('@/pages/ActorPage').then((m) => ({ default: m.ActorPage })))
+const ActorsPage = lazy(() => import('@/pages/ActorsPage').then((m) => ({ default: m.ActorsPage })))
 const GenresPage = lazy(() => import('@/pages/GenresPage').then((m) => ({ default: m.GenresPage })))
 const StatusBulkPage = lazy(() => import('@/pages/StatusBulkPage').then((m) => ({ default: m.StatusBulkPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
@@ -309,6 +310,8 @@ function AppShell() {
           )}
 
           {/* გაზიარებული */}
+          {/* Tasks §35.2 — ყველა ჩემი მსახიობი; `/gallery/actors` გალერეის ჭრილად რჩება */}
+          {mediaModules.length > 0 && <Route path="actors" element={<ActorsPage />} />}
           {mediaModules.length > 0 && <Route path="actors/:id" element={<ActorPage />} />}
           {mediaModules.length > 0 && <Route path="genres" element={<GenresPage />} />}
           {/* Tasks 4 — მასობრივი ოპერაციები ვიდეოებსაც ეხება, ე.ი. მედია-მოდულის გარეშეც ჩანს */}

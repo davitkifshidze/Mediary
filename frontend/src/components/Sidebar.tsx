@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
@@ -39,7 +39,7 @@ import {
   moduleName,
   useModules,
 } from '@/lib/modules'
-import { toolAccent } from '@/lib/toolSections'
+import { TOOL_SECTIONS, toolAccent } from '@/lib/toolSections'
 import { fetchChatUnread } from '@/api/chat'
 import { useAuth } from '@/lib/auth'
 import { useSettings } from '@/lib/settings'
@@ -671,6 +671,22 @@ export function Sidebar({
     )
   }
 
+  /* Tasks §35.2 — მსახიობების გვერდი; მსახიობის შიდა გვერდზეც (`/actors/:id`) აქტიურია */
+  const lastMediaKey = [...enabled].reverse().find((m) => isMediaKey(m.key))?.key
+  const ActorsIcon = TOOL_SECTIONS.actors.icon
+  const onActors = location.pathname === '/actors' || location.pathname.startsWith('/actors/')
+  const actorsRow = (
+    <Link
+      to="/actors"
+      onClick={() => setDrawerOpen(false)}
+      style={toolAccent('actors')}
+      className={cn(MODULE_ROW, onActors ? MODULE_ROW_ACTIVE : MODULE_ROW_IDLE)}
+    >
+      <ActorsIcon className="size-4 shrink-0 text-[var(--mod)]" />
+      {t('actors.title')}
+    </Link>
+  )
+
   const nav = (
     <>
       <nav className="flex-1 space-y-1 overflow-y-auto" style={NAV_DEFAULT_ACCENT}>
@@ -698,15 +714,26 @@ export function Sidebar({
             არ იხატება — მისი მარშრუტი `App.tsx`-ში არ არსებობს. */}
         {/* ⚠️ §37 — პირადი მოდული „ყველა · სტატუსები · რჩეული · დამატება"-ს იღებს
             (ჩანაწერისა და ბუკმარკის წესი), სექციები — მისივე ლექსიკონიდან. */}
-        {enabled.map((m) =>
-          isMediaKey(m.key)
+        {enabled.map((m) => {
+          const row = isMediaKey(m.key)
             ? mediaSection(m, m.key)
             : PAGE_KEYS.has(m.key)
               ? pageSection(m)
               : isCustomModule(m)
                 ? moduleSection(m, sectionsFor(m.key as StatusDomainKey))
-                : null,
-        )}
+                : null
+
+          /* Tasks §35.2 — „მსახიობები" მედიის ქვეშაა: **ბოლო მედია-მოდულის შემდეგ**
+             (რიგი პირადია, §36.2 — მედია შეიძლება სხვებში იყოს გაბნეული). */
+          return m.key === lastMediaKey ? (
+            <Fragment key={m.key}>
+              {row}
+              {actorsRow}
+            </Fragment>
+          ) : (
+            row
+          )
+        })}
 
         <div className="my-2 border-t border-border" />
 

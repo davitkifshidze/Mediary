@@ -4,6 +4,7 @@ import {
   ChartColumn,
   ContactRound,
   DatabaseBackup,
+  Drama,
   DownloadCloud,
   Inbox,
   KeyRound,
@@ -46,6 +47,7 @@ import { modAccent } from '@/lib/modules'
    ============================================================ */
 
 export type ToolSectionKey =
+  | 'actors'
   | 'dictionaries'
   | 'genres'
   | 'bulk'
@@ -69,6 +71,8 @@ export type ToolSectionKey =
 type ToolSection = { color: string; icon: LucideIcon }
 
 export const TOOL_SECTIONS: Record<ToolSectionKey, ToolSection> = {
+  /* Tasks §35.2 — „მსახიობები": მედიის საერთო გვერდი (მოდული არ აქვს — `cast_members` გლობალურია) */
+  actors: { color: 'var(--tool-actors)', icon: Drama },
   dictionaries: { color: 'var(--tool-dictionaries)', icon: Library },
   genres: { color: 'var(--tool-genres)', icon: Tags },
   bulk: { color: 'var(--tool-bulk)', icon: ListChecks },
