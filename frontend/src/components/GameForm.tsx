@@ -429,31 +429,32 @@ export function GameForm({
         {/* ---------- §26 — ყდა ზემოთაა, სათაურთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
+              {fields.label('cover')}
+            </FieldLabel>
+          }
           media={
             fields.shows('cover') && (
-              <>
-                <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
-                  {fields.label('cover')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  variant="wide"
-                  hint={t('games.coverHint')}
-                  preview={coverPreview}
-                  onSelect={(file) => {
-                    setCover(file)
-                    setRawgCoverUrl(null)
-                    setRemoveCover(false)
-                    setCoverPreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setCover(null)
-                    setRawgCoverUrl(null)
-                    setCoverPreview(null)
-                    setRemoveCover(true)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                variant="wide"
+                hint={t('games.coverHint')}
+                preview={coverPreview}
+                onSelect={(file) => {
+                  setCover(file)
+                  setRawgCoverUrl(null)
+                  setRemoveCover(false)
+                  setCoverPreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setCover(null)
+                  setRawgCoverUrl(null)
+                  setCoverPreview(null)
+                  setRemoveCover(true)
+                }}
+              />
             )
           }
         >

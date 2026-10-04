@@ -320,30 +320,31 @@ export function BookForm({
         {/* ---------- §26 — ყდა ზემოთაა, სახელთან, ავტორთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="poster"
+          mediaLabel={
+            <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
+              {fields.label('cover')}
+            </FieldLabel>
+          }
           media={
             fields.shows('cover') && (
-              <>
-                <FieldLabel required={fields.required('cover')} hint={fields.hint('cover')}>
-                  {fields.label('cover')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  hint={t('books.coverHint')}
-                  preview={coverPreview}
-                  onSelect={(file) => {
-                    setCover(file)
-                    setCoverId(null)
-                    setRemoveCover(false)
-                    setCoverPreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setCover(null)
-                    setCoverId(null)
-                    setCoverPreview(null)
-                    setRemoveCover(true)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                hint={t('books.coverHint')}
+                preview={coverPreview}
+                onSelect={(file) => {
+                  setCover(file)
+                  setCoverId(null)
+                  setRemoveCover(false)
+                  setCoverPreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setCover(null)
+                  setCoverId(null)
+                  setCoverPreview(null)
+                  setRemoveCover(true)
+                }}
+              />
             )
           }
         >

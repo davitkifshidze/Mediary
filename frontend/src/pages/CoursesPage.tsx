@@ -656,28 +656,29 @@ function CourseForm({
         {/* §26 — მთავარი ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+              {fields.label('thumbnail')}
+            </FieldLabel>
+          }
           media={
             fields.shows('thumbnail') && (
-              <>
-                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-                  {fields.label('thumbnail')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  preview={preview}
-                  variant="wide"
-                  onSelect={(file) => {
-                    setThumbnail(file)
-                    setRemoveThumb(false)
-                    setPreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setThumbnail(null)
-                    setRemoveThumb(true)
-                    setPreview(null)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                preview={preview}
+                variant="wide"
+                onSelect={(file) => {
+                  setThumbnail(file)
+                  setRemoveThumb(false)
+                  setPreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setThumbnail(null)
+                  setRemoveThumb(true)
+                  setPreview(null)
+                }}
+              />
             )
           }
         >

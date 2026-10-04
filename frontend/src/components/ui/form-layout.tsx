@@ -51,6 +51,54 @@ export function FormGrid({ children, className }: { children: ReactNode; classNa
   return <div className={cn('grid grid-cols-12 gap-4', className)}>{children}</div>
 }
 
+export type MediaVariant = 'poster' | 'wide'
+
+/** §38.1 — მედია-სვეტის **ფიქსირებული** სიგანე (`poster` 160 → 176, `wide` 256 → 288 ფართო ეკრანზე) */
+const MEDIA_COLUMN: Record<MediaVariant, string> = {
+  poster: 'sm:w-40 xl:w-44',
+  wide: 'sm:w-64 xl:w-72',
+}
+
+/**
+ * **მთავარი ფოტოს რიგი** (Tasks §38) — მარცხნივ ლეიბლი და ჩარჩო, მარჯვნივ ველები.
+ *
+ * ⚠️ **სვეტის სიგანე ფიქსირებულია, სიმაღლეს კი ველები წყვეტენ.** ჩარჩო
+ * (`PosterUploader fill`) `sm`-დან `absolute inset-0`-ია ლეიბლის ქვემოთ
+ * მდგარ `flex-1` ყუთში — ე.ი. ფოტო რიგს ვეღარ ზრდის, ჩარჩოს ქვედა კიდე ზუსტად
+ * ბოლო ველის ქვედა კიდეზეა და ლეიბლი მის სიმაღლეს აკლდება (ადრე ჩარჩო
+ * ლეიბლის ქვემოთ მთელი სვეტის სიმაღლეს იღებდა და ~26 px-ით სცდებოდა —
+ * შემდეგი სექციის სათაურს ან „ტეგების" ლეიბლს ფარავდა).
+ * ⚠️ `sm:min-h-40` — ორველიანი ფორმა ჩარჩოს ბეჭდის ზომამდე არ დაპატარავებს.
+ * ⚠️ დაშორება ველებამდე **`gap-6`** — ყველა ფორმაში ერთი (§38.3).
+ */
+export function MediaRow({
+  label,
+  media,
+  variant = 'poster',
+  children,
+}: {
+  /** ჩარჩოს ლეიბლი (`FieldLabel`) — მისი სიმაღლე ჩარჩოს აკლდება */
+  label?: ReactNode
+  /** ჩარჩო; ცარიელზე რიგი არ იხატება და რჩება მხოლოდ ველები */
+  media?: ReactNode
+  variant?: MediaVariant
+  children: ReactNode
+}) {
+  if (!media) return <>{children}</>
+
+  return (
+    <div className="flex flex-col gap-6 sm:flex-row sm:items-stretch" data-testid="form-media-row">
+      <div className={cn('flex shrink-0 flex-col', MEDIA_COLUMN[variant])} data-testid="form-media">
+        {label}
+        <div className="relative sm:min-h-40 sm:flex-1" data-testid="form-media-frame">
+          {media}
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
 /**
  * **ფორმის სექცია** — სათაური + ბადე.
  *
@@ -58,16 +106,17 @@ export function FormGrid({ children, className }: { children: ReactNode; classNa
  * **ფოტო ზემოთაა**, ძირითად ველებთან ერთად, და არა ფორმის ბოლოში.
  * ვიწრო ეკრანზე ის ველებს ზემოდან ადგება.
  *
- * ⚠️ Tasks §14.1 — სვეტი **`sm:items-stretch`**-ია: `PosterUploader fill`
- * ყუთი `sm:h-full`-ით ზუსტად ველების სიმაღლეს იღებს (სიმღერაზე — სამი
- * სტრიქონი, თამაშზე — ოთხი), ე.ი. ფორმიდან ფორმაში სხვადასხვა სიმაღლის
- * ყუთი აღარ ჩანს.
+ * ⚠️ Tasks §14.1 → §38 — სვეტი ველების სიმაღლეს იღებს (`MediaRow`): ჩარჩო
+ * ზუსტად ველების სიმაღლისაა ლეიბლის გამოკლებით (სიმღერაზე — სამი სტრიქონი,
+ * თამაშზე — ოთხი), სიგანე კი `mediaVariant`-ით ფიქსირებულია.
  */
 export function FormSection({
   title,
   hint,
   aside,
   media,
+  mediaLabel,
+  mediaVariant,
   plain,
   children,
   className,
@@ -76,7 +125,12 @@ export function FormSection({
   hint?: string
   /** სათაურის რიგის მარჯვენა მხარე (მაგ. დამატებითი ველების „შენახვა") */
   aside?: ReactNode
+  /** მთავარი ფოტოს ჩარჩო (`PosterUploader fill`) */
   media?: ReactNode
+  /** §38.2 — ჩარჩოს ლეიბლი: მისი სიმაღლე ჩარჩოს აკლდება */
+  mediaLabel?: ReactNode
+  /** §38.1 — სვეტის სიგანე: `poster` (2:3) ან `wide` (16:9) */
+  mediaVariant?: MediaVariant
   /** შიგთავსი თავისი განლაგებით (ატვირთვების ბლოკი) — ბადის გარეშე */
   plain?: boolean
   children: ReactNode
@@ -96,13 +150,10 @@ export function FormSection({
 
       {plain ? (
         children
-      ) : media ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch" data-testid="form-media-row">
-          <div className="shrink-0">{media}</div>
-          <FormGrid className="min-w-0 flex-1">{children}</FormGrid>
-        </div>
       ) : (
-        <FormGrid>{children}</FormGrid>
+        <MediaRow label={mediaLabel} media={media} variant={mediaVariant}>
+          <FormGrid>{children}</FormGrid>
+        </MediaRow>
       )}
     </section>
   )

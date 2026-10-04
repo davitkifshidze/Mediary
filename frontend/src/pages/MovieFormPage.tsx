@@ -22,7 +22,7 @@ import { DurationInput } from '@/components/ui/duration-input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField } from '@/components/ui/form-layout'
+import { FORM_TEXT_ROWS, FormField, MediaRow } from '@/components/ui/form-layout'
 import {
   QuickFill,
   QuickFillCandidate,
@@ -453,78 +453,86 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
         <section className={cn(FORM_CARD, 'space-y-4')}>
           <div className={CARD_TITLE}>{t('form.details')}</div>
 
-          {/* Tasks §14.1 — სვეტი იჭიმება: ლეიბლი ზემოთ, ყუთი დარჩენილ სიმაღლეს ავსებს (`FormSection media`-ს იგივე წესი) */}
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch">
-            <div className={fields.shows('poster') ? 'flex shrink-0 flex-col' : 'hidden'}>
+          {/* Tasks §38 — საერთო `MediaRow` (ფორმების იგივე წესი): 160 px-იანი სვეტი, ჩარჩო
+              ველების სიმაღლისაა ლეიბლის გამოკლებით; გვერდით — წელი, შეფასება, ხანგრძლივობა
+              (ორ ველზე ჩარჩო კვადრატი გამოდიოდა და პოსტერს ჭრიდა) */}
+          <MediaRow
+            variant="poster"
+            label={
               <FieldLabel required={fields.required('poster')} hint={fields.hint('poster')}>
                 {fields.label('poster')}
               </FieldLabel>
-              <div className="sm:min-h-0 sm:flex-1">
-              <PosterUploader
-                fill
-                preview={preview}
-                onSelect={(f) => {
-                  setPoster(f)
-                  setPreview(URL.createObjectURL(f))
-                  setRemovePoster(false)
-                }}
-                onClear={() => {
-                  setPoster(null)
-                  setPreview(null)
-                  setRemovePoster(true)
-                }}
-              />
+            }
+            media={
+              fields.shows('poster') && (
+                <PosterUploader
+                  fill
+                  preview={preview}
+                  onSelect={(f) => {
+                    setPoster(f)
+                    setPreview(URL.createObjectURL(f))
+                    setRemovePoster(false)
+                  }}
+                  onClear={() => {
+                    setPoster(null)
+                    setPreview(null)
+                    setRemovePoster(true)
+                  }}
+                />
+              )
+            }
+          >
+            <div className="space-y-4">
+              {/* §38.4 — `min-w-0`: დიდი პოსტერი მეზობელ ბადეს აღარ ჭყლეტს */}
+              <div className="grid min-w-0 grid-cols-2 gap-4">
+                {fields.shows('year') && (
+                  <div>
+                    <FieldLabel htmlFor="m-year" required={fields.required('year')} hint={fields.hint('year')}>
+                      {fields.label('year')}
+                    </FieldLabel>
+                    <Input
+                      id="m-year"
+                      type="number"
+                      value={form.year}
+                      placeholder={fields.placeholder('year')}
+                      onChange={(e) => set('year', e.target.value)}
+                    />
+                    {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year[0]}</p>}
+                  </div>
+                )}
+                {fields.shows('rating') && (
+                  <div>
+                    <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
+                      {fields.label('rating')}
+                    </FieldLabel>
+                    {/* Tasks §9 (Q1) — ვარსკვლავები `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
+                    <StarRating
+                      id="m-rating"
+                      value={form.my_rating}
+                      invalid={!!errors.my_rating}
+                      onChange={(my_rating) => setForm((f) => ({ ...f, my_rating }))}
+                    />
+                    {movieQ.data?.rating && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t('rating.tmdbAverage')}: {movieQ.data.rating}
+                      </p>
+                    )}
+                    {errors.my_rating && <p className="mt-1 text-xs text-destructive">{errors.my_rating[0]}</p>}
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="grid flex-1 grid-cols-2 gap-4">
-              {fields.shows('year') && (
-                <div>
-                  <FieldLabel htmlFor="m-year" required={fields.required('year')} hint={fields.hint('year')}>
-                    {fields.label('year')}
-                  </FieldLabel>
-                  <Input
-                    id="m-year"
-                    type="number"
-                    value={form.year}
-                    placeholder={fields.placeholder('year')}
-                    onChange={(e) => set('year', e.target.value)}
-                  />
-                  {errors.year && <p className="mt-1 text-xs text-destructive">{errors.year[0]}</p>}
-                </div>
-              )}
-              {fields.shows('rating') && (
-                <div>
-                  <FieldLabel htmlFor="m-rating" required={fields.required('rating')} hint={fields.hint('rating')}>
-                    {fields.label('rating')}
-                  </FieldLabel>
-                  {/* Tasks §9 (Q1) — ვარსკვლავები `my_rating`-ზე; TMDB-ის საშუალო ქვემოთ მხოლოდ საკითხავად */}
-                  <StarRating
-                    id="m-rating"
-                    value={form.my_rating}
-                    invalid={!!errors.my_rating}
-                    onChange={(my_rating) => setForm((f) => ({ ...f, my_rating }))}
-                  />
-                  {movieQ.data?.rating && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('rating.tmdbAverage')}: {movieQ.data.rating}
-                    </p>
-                  )}
-                  {errors.my_rating && <p className="mt-1 text-xs text-destructive">{errors.my_rating[0]}</p>}
-                </div>
-              )}
+              {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
+              <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
+                <DurationInput
+                  id="m-runtime"
+                  unit="minutes"
+                  value={form.runtime ? Number(form.runtime) : null}
+                  onChange={(v) => set('runtime', v == null ? '' : String(v))}
+                />
+              </FormField>
             </div>
-          </div>
-
-          {/* §2.5 — ხანგრძლივობა ხელით; ჩვეულებრივ TMDB-იდან მოდის */}
-          <FormField {...fields.field('runtime')} htmlFor="m-runtime" error={errors.runtime?.[0]}>
-            <DurationInput
-              id="m-runtime"
-              unit="minutes"
-              value={form.runtime ? Number(form.runtime) : null}
-              onChange={(v) => set('runtime', v == null ? '' : String(v))}
-            />
-          </FormField>
+          </MediaRow>
 
           {/* ⚠️ §8 — ველის ინსტრუქცია `i`-ია და არა ქვეწარწერა */}
           <FormField

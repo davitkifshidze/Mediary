@@ -164,54 +164,59 @@ export function ActorFormDialog({
         </QuickFill>
       )}
 
-      <FormSection title={editing ? undefined : t('actors.form.manualTitle')} hint={editing ? undefined : t('actors.form.manualHint')} media={
-        <PosterUploader
-          preview={preview}
-          onSelect={(file) => {
-            setPhoto(file)
-            setRemovePhoto(false)
-          }}
-          onClear={() => {
-            setPhoto(null)
-            setPreview(null)
-            setRemovePhoto(true)
-          }}
-          hint={t('actors.form.photoHint')}
-          fill
-        />
-      }>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label={t('cast.nameEn')} htmlFor="actor-name" error={errors.name} required>
-            <Input id="actor-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('cast.namePlaceholderEn')} />
-          </FormField>
-          <FormField label={t('cast.nameKa')} htmlFor="actor-name-ka" error={errors.name_ka}>
-            <Input id="actor-name-ka" value={nameKa} onChange={(e) => setNameKa(e.target.value)} placeholder={t('cast.namePlaceholderKa')} />
-          </FormField>
+      {/* Tasks §38 — ფოტოს ჩარჩო `MediaRow`-ზე (სვეტი 160 px, სიმაღლე — ველებისა); ველები
+          ფორმის 12-სვეტიან ბადეზე ზომებით (ადრე ბადეში ჩადგმული მეორე ბადე ერთ სვეტში იკუმშებოდა) */}
+      <FormSection
+        title={editing ? undefined : t('actors.form.manualTitle')}
+        hint={editing ? undefined : t('actors.form.manualHint')}
+        mediaVariant="poster"
+        media={
+          <PosterUploader
+            preview={preview}
+            onSelect={(file) => {
+              setPhoto(file)
+              setRemovePhoto(false)
+            }}
+            onClear={() => {
+              setPhoto(null)
+              setPreview(null)
+              setRemovePhoto(true)
+            }}
+            hint={t('actors.form.photoHint')}
+            fill
+          />
+        }
+      >
+        <FormField size="half" label={t('cast.nameEn')} htmlFor="actor-name" error={errors.name} required>
+          <Input id="actor-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('cast.namePlaceholderEn')} />
+        </FormField>
+        <FormField size="half" label={t('cast.nameKa')} htmlFor="actor-name-ka" error={errors.name_ka}>
+          <Input id="actor-name-ka" value={nameKa} onChange={(e) => setNameKa(e.target.value)} placeholder={t('cast.namePlaceholderKa')} />
+        </FormField>
 
-          <FormField label={t('cast.gender')} className="sm:col-span-2">
-            <ChipRow>
-              {([0, 1, 2] as const).map((value) => (
-                <Chip key={value} active={gender === value} onClick={() => setGender(value)}>
-                  {value === 0 ? t('cast.genderUnknown') : t(value === 1 ? 'gallery.cast.female' : 'gallery.cast.male')}
-                </Chip>
-              ))}
-            </ChipRow>
-          </FormField>
+        <FormField label={t('cast.gender')}>
+          <ChipRow>
+            {([0, 1, 2] as const).map((value) => (
+              <Chip key={value} active={gender === value} onClick={() => setGender(value)}>
+                {value === 0 ? t('cast.genderUnknown') : t(value === 1 ? 'gallery.cast.female' : 'gallery.cast.male')}
+              </Chip>
+            ))}
+          </ChipRow>
+        </FormField>
 
-          <FormField label={t('actors.form.birthday')} htmlFor="actor-birthday" error={errors.birthday}>
-            <DatePicker id="actor-birthday" value={birthday} onChange={setBirthday} />
-          </FormField>
-          <FormField label={t('actors.form.deathday')} htmlFor="actor-deathday" error={errors.deathday}>
-            <DatePicker id="actor-deathday" value={deathday} onChange={setDeathday} />
-          </FormField>
+        <FormField size="half" label={t('actors.form.birthday')} htmlFor="actor-birthday" error={errors.birthday}>
+          <DatePicker id="actor-birthday" value={birthday} onChange={setBirthday} />
+        </FormField>
+        <FormField size="half" label={t('actors.form.deathday')} htmlFor="actor-deathday" error={errors.deathday}>
+          <DatePicker id="actor-deathday" value={deathday} onChange={setDeathday} />
+        </FormField>
 
-          <FormField label={t('actors.form.placeOfBirth')} htmlFor="actor-place" className="sm:col-span-2">
-            <Input id="actor-place" value={place} onChange={(e) => setPlace(e.target.value)} />
-          </FormField>
-          <FormField label={t('actors.form.biography')} htmlFor="actor-bio" className="sm:col-span-2" error={errors.biography}>
-            <Textarea id="actor-bio" rows={FORM_TEXT_ROWS} value={biography} onChange={(e) => setBiography(e.target.value)} />
-          </FormField>
-        </div>
+        <FormField label={t('actors.form.placeOfBirth')} htmlFor="actor-place">
+          <Input id="actor-place" value={place} onChange={(e) => setPlace(e.target.value)} />
+        </FormField>
+        <FormField label={t('actors.form.biography')} htmlFor="actor-bio" error={errors.biography}>
+          <Textarea id="actor-bio" rows={FORM_TEXT_ROWS} value={biography} onChange={(e) => setBiography(e.target.value)} />
+        </FormField>
       </FormSection>
 
       <ModalFooter>

@@ -843,29 +843,30 @@ function CustomRecordForm({
 
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
+              {fields.label('photo')}
+            </FieldLabel>
+          }
           media={
             fields.shows('photo') && (
-              <>
-                <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
-                  {fields.label('photo')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  variant="wide"
-                  preview={photoPreview ?? imageUrl}
-                  onSelect={(file) => {
-                    setPhoto(file)
-                    setPhotoPreview(URL.createObjectURL(file))
-                    setRemovePhoto(false)
-                  }}
-                  onClear={() => {
-                    setPhoto(null)
-                    setPhotoPreview(null)
-                    setImageUrl(null)
-                    setRemovePhoto(true)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                variant="wide"
+                preview={photoPreview ?? imageUrl}
+                onSelect={(file) => {
+                  setPhoto(file)
+                  setPhotoPreview(URL.createObjectURL(file))
+                  setRemovePhoto(false)
+                }}
+                onClear={() => {
+                  setPhoto(null)
+                  setPhotoPreview(null)
+                  setImageUrl(null)
+                  setRemovePhoto(true)
+                }}
+              />
             )
           }
         >

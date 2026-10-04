@@ -873,34 +873,35 @@ function BookmarkForm({
           </FormSection>
         </div>
 
-        <div className="space-y-4 lg:col-span-7" data-testid="bookmark-form-right">
+        <div className="space-y-6 lg:col-span-7" data-testid="bookmark-form-right">
           {/* §26 → §28.1 — მთავარი ფოტო კლასიფიკაციის გვერდითაა: `fill` ყუთს კატეგორიისა და
               სტატუსის სიმაღლეს აძლევს (§14.1), ტეგები კი ქვემოთ, სრული სიგანით */}
           <FormSection
             title={t('form.sections.classification')}
+            mediaVariant="wide"
+            mediaLabel={
+              <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+                {fields.label('thumbnail')}
+              </FieldLabel>
+            }
             media={
               fields.shows('thumbnail') && (
-                <>
-                  <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-                    {fields.label('thumbnail')}
-                  </FieldLabel>
-                  <PosterUploader
-                    fill
-                    variant="wide"
-                    preview={thumbPreview ?? imageUrl}
-                    hint={t('bookmarks.thumbnailHint')}
-                    onSelect={(file) => {
-                      setThumbnail(file)
-                      setThumbPreview(URL.createObjectURL(file))
-                      setRemoveThumb(false)
-                    }}
-                    onClear={() => {
-                      setThumbnail(null)
-                      setThumbPreview(null)
-                      setRemoveThumb(true)
-                    }}
-                  />
-                </>
+                <PosterUploader
+                  fill
+                  variant="wide"
+                  preview={thumbPreview ?? imageUrl}
+                  hint={t('bookmarks.thumbnailHint')}
+                  onSelect={(file) => {
+                    setThumbnail(file)
+                    setThumbPreview(URL.createObjectURL(file))
+                    setRemoveThumb(false)
+                  }}
+                  onClear={() => {
+                    setThumbnail(null)
+                    setThumbPreview(null)
+                    setRemoveThumb(true)
+                  }}
+                />
               )
             }
           >

@@ -783,29 +783,30 @@ function SongForm({
         {/* §26 — ყდა ზემოთაა, ძირითად ველებთან ერთად; ექვსი ველი სამ ტოლ რიგად */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+              {fields.label('thumbnail')}
+            </FieldLabel>
+          }
           media={
             fields.shows('thumbnail') && (
-              <>
-                <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-                  {fields.label('thumbnail')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  variant="wide"
-                  hint={t('songs.coverHint')}
-                  preview={thumbPreview}
-                  onSelect={(file) => {
-                    setThumbnail(file)
-                    setRemoveThumb(false)
-                    setThumbPreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setThumbnail(null)
-                    setThumbPreview(null)
-                    setRemoveThumb(true)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                variant="wide"
+                hint={t('songs.coverHint')}
+                preview={thumbPreview}
+                onSelect={(file) => {
+                  setThumbnail(file)
+                  setRemoveThumb(false)
+                  setThumbPreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setThumbnail(null)
+                  setThumbPreview(null)
+                  setRemoveThumb(true)
+                }}
+              />
             )
           }
         >

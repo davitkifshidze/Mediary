@@ -437,31 +437,32 @@ export function BoardGameForm({
         {/* ---------- §26 — ფოტო ზემოთაა, სახელთან, ავტორებთან და აღწერასთან ერთად ---------- */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('image')} hint={fields.hint('image')}>
+              {fields.label('image')}
+            </FieldLabel>
+          }
           media={
             fields.shows('image') && (
-              <>
-                <FieldLabel required={fields.required('image')} hint={fields.hint('image')}>
-                  {fields.label('image')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  variant="wide"
-                  hint={t('boardGames.imageHint')}
-                  preview={imagePreview}
-                  onSelect={(file) => {
-                    setImage(file)
-                    setBggImageUrl(null)
-                    setRemoveImage(false)
-                    setImagePreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setImage(null)
-                    setBggImageUrl(null)
-                    setImagePreview(null)
-                    setRemoveImage(true)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                variant="wide"
+                hint={t('boardGames.imageHint')}
+                preview={imagePreview}
+                onSelect={(file) => {
+                  setImage(file)
+                  setBggImageUrl(null)
+                  setRemoveImage(false)
+                  setImagePreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setImage(null)
+                  setBggImageUrl(null)
+                  setImagePreview(null)
+                  setRemoveImage(true)
+                }}
+              />
             )
           }
         >

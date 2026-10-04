@@ -733,28 +733,29 @@ function PlaceForm({
         {/* §26 — ფოტო ზემოთაა, სახელსა და აღწერასთან ერთად */}
         <FormSection
           title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
+              {fields.label('photo')}
+            </FieldLabel>
+          }
           media={
             fields.shows('photo') && (
-              <>
-                <FieldLabel required={fields.required('photo')} hint={fields.hint('photo')}>
-                  {fields.label('photo')}
-                </FieldLabel>
-                <PosterUploader
-                  fill
-                  preview={preview}
-                  variant="wide"
-                  onSelect={(file) => {
-                    setPhoto(file)
-                    setRemovePhoto(false)
-                    setPreview(URL.createObjectURL(file))
-                  }}
-                  onClear={() => {
-                    setPhoto(null)
-                    setRemovePhoto(true)
-                    setPreview(null)
-                  }}
-                />
-              </>
+              <PosterUploader
+                fill
+                preview={preview}
+                variant="wide"
+                onSelect={(file) => {
+                  setPhoto(file)
+                  setRemovePhoto(false)
+                  setPreview(URL.createObjectURL(file))
+                }}
+                onClear={() => {
+                  setPhoto(null)
+                  setRemovePhoto(true)
+                  setPreview(null)
+                }}
+              />
             )
           }
         >
@@ -782,8 +783,10 @@ function PlaceForm({
 
         {/* ⚠️ §26 — `required` აღარ წერია ხელით: ნიშანი ველების კონსტრუქტორიდან
             მოდის (სავალდებულობას `pickErrors` ამოწმებს, როგორც ყველა ფორმაში) */}
+        {/* Tasks §38.6 — სტატუსი · კლასიფიკატორი · ვიზიტი სამად, შეფასება · ტეგები ორად: შეფასება
+            (ვარსკვლავები + ველი + ქულა) მეოთხედში იკეცებოდა. ჩამოსაშლელზე §42-ით გადავა. */}
         <FormSection title={t('form.sections.classification')}>
-          <FormField size="quarter" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
+          <FormField size="third" {...fields.field('status')} htmlFor="p-status" error={errors.status}>
             <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as PlaceStatus }))}>
               <SelectTrigger id="p-status" className={errors.status ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
@@ -798,7 +801,7 @@ function PlaceForm({
             </Select>
           </FormField>
 
-          <FormField size="quarter" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
+          <FormField size="third" {...fields.field('category')} htmlFor="p-category" error={errors.category_id}>
             <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
               <SelectTrigger id="p-category" className={errors.category_id ? 'border-destructive' : undefined}>
                 <SelectValue placeholder={t('validation.choose')} />
@@ -813,8 +816,16 @@ function PlaceForm({
             </Select>
           </FormField>
 
+          <FormField size="third" {...fields.field('visited_at')} htmlFor="p-visited">
+            <DatePicker
+              id="p-visited"
+              value={form.visitedAt}
+              onChange={(v) => setForm((f) => ({ ...f, visitedAt: v ?? '' }))}
+            />
+          </FormField>
+
           {/* Tasks §25.2 — რიცხვითი ველი (0–10, ათწილადით) ამრჩევად იქცა */}
-          <FormField size="quarter" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
+          <FormField size="half" {...fields.field('rating')} htmlFor="p-rating" error={errors.rating}>
             <StarRating
               id="p-rating"
               value={form.rating}
@@ -823,15 +834,7 @@ function PlaceForm({
             />
           </FormField>
 
-          <FormField size="quarter" {...fields.field('visited_at')} htmlFor="p-visited">
-            <DatePicker
-              id="p-visited"
-              value={form.visitedAt}
-              onChange={(v) => setForm((f) => ({ ...f, visitedAt: v ?? '' }))}
-            />
-          </FormField>
-
-          <FormField {...fields.field('tags')} htmlFor="p-tags">
+          <FormField size="half" {...fields.field('tags')} htmlFor="p-tags">
             <TagSelect
               inputId="p-tags"
               value={form.tags}
