@@ -141,6 +141,8 @@ const CUT_STYLE: Record<string, CutStyle> = {
      ნახევარი იყო. */
   export: { icon: Download, color: 'var(--tool-backups)' },
   import: { icon: Upload, color: 'var(--tool-transfer)' },
+  // Tasks §59.2 — „ბაზა": მთლიანი ბაზა, ცხრილები, ასლები (სუპერადმინი)
+  database: { icon: DatabaseBackup, color: 'var(--destructive)' },
 
   /* ---- სტატისტიკის ჩანართები (Tasks §27.4 → §28.1) ---- */
   calendar: { icon: CalendarClock, color: 'var(--tool-sync)' },

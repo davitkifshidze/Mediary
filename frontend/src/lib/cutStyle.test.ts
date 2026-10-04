@@ -42,6 +42,8 @@ describe('cutStyle', () => {
       'names', 'add',
       // Tasks §56.1 — მარშრუტის საწყისი
       'here', 'home', 'address', 'myplace', 'pin',
+      // Tasks §59.2 — „ექსპორტ & იმპორტის" ჩანართები
+      'export', 'import', 'database',
     ]
 
     expect(used.filter((key) => !hasCutStyle(key))).toEqual([])

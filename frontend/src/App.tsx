@@ -92,7 +92,6 @@ const GalleryPage = lazy(() => import('@/pages/GalleryPage').then((m) => ({ defa
 const GalleryRecordPage = lazy(() => import('@/pages/GalleryRecordPage').then((m) => ({ default: m.GalleryRecordPage })))
 const PurgePage = lazy(() => import('@/pages/PurgePage').then((m) => ({ default: m.PurgePage })))
 const CredentialsPage = lazy(() => import('@/pages/CredentialsPage').then((m) => ({ default: m.CredentialsPage })))
-const BackupsPage = lazy(() => import('@/pages/BackupsPage').then((m) => ({ default: m.BackupsPage })))
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
 
 
@@ -360,7 +359,8 @@ function AppShell() {
           {/* Tasks §40.14 — გაზიარების ბმულები: თავისი განყოფილება „მონაცემების" ქვემოთ */}
           <Route path="share-links" element={<ShareLinksPage />} />
           {/* Tasks §22 — ბაზის დამპი (გვერდი თვითონ ამოწმებს super_admin-ს) */}
-          <Route path="backups" element={<BackupsPage />} />
+          {/* Tasks §59.2 — ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია */}
+          <Route path="backups" element={<Navigate to="/transfer?tab=database" replace />} />
           {/* Tasks 1.5 — მოთხოვნები ცალკე სექციაა (ჩემიც და ადმინის ხედიც) */}
           <Route path="requests" element={<RequestsPage />} />
 

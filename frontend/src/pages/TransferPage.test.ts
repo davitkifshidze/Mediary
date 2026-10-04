@@ -77,12 +77,28 @@ vi.mock('@/lib/modules', async (original) => ({
   useModules: () => modules,
 }))
 
+/* Tasks §59.2 — „ბაზის" ჩანართი მხოლოდ სუპერადმინს; ერთი და იგივე ობიექტი ყოველ გამოძახებაზე */
+const auth = vi.hoisted(() => ({ value: { isAdmin: false, user: { id: 1 } } as Record<string, unknown> }))
+vi.mock('@/lib/auth', async (original) => ({
+  ...(await original<typeof import('@/lib/auth')>()),
+  useAuth: () => auth.value,
+}))
+
+vi.mock('@/api/backups', async (original) => ({
+  ...(await original<typeof import('@/api/backups')>()),
+  fetchBackups: vi.fn(async () => ({
+    data: [],
+    meta: { database: 'mediary', available: true, driver: 'mysql', auto: { enabled: true, at: '03:00', keep: 7, last_at: null } },
+  })),
+}))
+
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
 beforeEach(() => {
+  auth.value = { isAdmin: false, user: { id: 1 } }
   api.downloadExport.mockClear()
   api.downloadStorageFiles.mockClear()
   api.planImport.mockReset()
@@ -295,5 +311,25 @@ describe('TransferPage', () => {
     await click(card(i18n.t('transfer.tabImport')))
     expect(input().closest('[hidden]')).toBeNull()
     expect(document.body.textContent).toContain('ratings.csv')
+  })
+})
+
+describe('TransferPage — the database tab (§59.2)', () => {
+  it('shows the database tab, with the backups, only to the super admin', async () => {
+    await mount('/transfer?tab=database')
+    // ჩვეულებრივ ანგარიშზე ჩანართი არ არის და მისამართი ექსპორტზე ბრუნდება
+    expect(card(i18n.t('transfer.tabDatabase'))).toBeUndefined()
+    expect(card(i18n.t('transfer.tabExport'))?.getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('[data-testid="backups-panel"]')).toBeNull()
+    act(() => root?.unmount())
+    container?.remove()
+
+    auth.value = { isAdmin: true, user: { id: 1, is_super_admin: true } }
+    await mount('/transfer?tab=database')
+    await flush()
+    expect(card(i18n.t('transfer.tabDatabase'))?.getAttribute('aria-pressed')).toBe('true')
+    const panel = document.querySelector<HTMLElement>('[data-testid="backups-panel"]')!
+    expect(panel.closest('[hidden]')).toBeNull()
+    expect(panel.textContent).toContain(i18n.t('backups.create'))
   })
 })

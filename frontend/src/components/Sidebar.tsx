@@ -10,7 +10,6 @@ import {
   ChartColumn,
   ChevronDown,
   Clapperboard,
-  DatabaseBackup,
   DownloadCloud,
   Inbox,
   KeyRound,
@@ -890,15 +889,8 @@ export function Sidebar({
             {t('audit.title')}
           </Link>
         )}
-        {/* Tasks §22 — ბაზის დამპი. ⚠️ **მხოლოდ super_admin**: დამპი მთელი
-            ბაზაა (ყველა ანგარიში, ჰეშირებული პაროლები, პირადი ჩატები), ე.ი.
-            სექციის უფლებით არ იხსნება — `admin/purge`-ის იგივე მსჯელობა. */}
-        {isAdmin && (
-          <Link to="/backups" onClick={() => setDrawerOpen(false)} style={toolAccent('backups')} className={toolLink('/backups')}>
-            <DatabaseBackup className="size-4 shrink-0" />
-            {t('backups.title')}
-          </Link>
-        )}
+        {/* Tasks §22 → §59.2 — ბაზის ასლები „ექსპორტ & იმპორტის" „ბაზის" ჩანართშია
+            (მხოლოდ super_admin-ს უჩანს); ცალკე რიგი აღარ არის. */}
         {/* ⚠️ მასობრივი წაშლა **მხოლოდ** super_admin-ისაა (სხვისი ბიბლიოთეკის
             წაშლაა) — ის სექციის უფლებით არ იხსნება. დესტრუქციულია, ბოლოშია. */}
         {isAdmin && (

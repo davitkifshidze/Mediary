@@ -3638,7 +3638,9 @@
       "steam": "Steam has no CSV export of its own — you need a file with `appid` and `name` columns (from a library export tool, for example). Each game is found by name and added as to play."
     },
     "readAs": "Read it as {{source}}",
-    "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way."
+    "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way.",
+    "tabDatabase": "Database",
+    "tabDatabaseHint": "Whole database, tables, backups"
   },
   "exportData": {
     "hint": "Each module's records in one file: title, status, genre, tags and links. CSV opens in Excel with Georgian intact; JSON is for other programs. Uploaded files are not packed here — download them separately below, as a ZIP.",

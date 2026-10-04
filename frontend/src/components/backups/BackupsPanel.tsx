@@ -24,8 +24,6 @@ import {
 } from '@/api/backups'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PageContainer } from '@/components/ui/page'
-import { PageHeader } from '@/components/ui/page-header'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BackupViewer } from '@/components/backups/BackupViewer'
@@ -48,11 +46,16 @@ import { isApiCode } from '@/lib/errors'
 
    ⚠️ **აღდგენა აკრეფილ სიტყვას ითხოვს** (`/purge`-ის წესი): ის მიმდინარე
    ბაზას **ცვლის** და ერთი შეცდომით დაჭერილი ღილაკი ბიბლიოთეკას შლის.
+
+   ⚠️ **Tasks §59.2 — ცალკე გვერდი აღარ არის**: ეს „ექსპორტ & იმპორტის"
+   „ბაზის" ჩანართია (`/transfer?tab=database`; `/backups` იქ გადამისამართდება),
+   შენი სიტყვებით — „ბაზის ასლი და რამეც ცალკე რომ მაქვს — აქ შემოიტანე".
+   ღილაკები („ატვირთვა", „ასლის შექმნა") სათაურის ზოლიდან პანელის თავში გადმოვიდა.
    ============================================================ */
 
 const POLL_MS = 4000
 
-export function BackupsPage() {
+export function BackupsPanel() {
   const { t } = useTranslation()
   const { isAdmin } = useAuth()
   const qc = useQueryClient()
@@ -122,40 +125,33 @@ export function BackupsPage() {
   })
 
   if (!isAdmin) {
-    return (
-      <PageContainer>
-        <PageHeader tool="backups" title={t('backups.title')} />
-        <EmptyState title={t('roles.noAccess')} />
-      </PageContainer>
-    )
+    return <EmptyState title={t('roles.noAccess')} />
   }
 
   const meta = list.data?.meta
   const rows = list.data?.data ?? []
 
   return (
-    <PageContainer>
-      <PageHeader
-        tool="backups"
-        title={t('backups.title')}
-        subtitle={meta ? t('backups.subtitle', { database: meta.database }) : undefined}
-        actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => fileRef.current?.click()}
-              disabled={upload.isPending}
-            >
-              {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-              {t('backups.import')}
-            </Button>
-            <Button onClick={() => start.mutate()} disabled={start.isPending || meta?.available === false}>
-              {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-              {t('backups.create')}
-            </Button>
-          </>
-        }
-      />
+    <section data-testid="backups-panel">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+            <Database className="size-5 text-muted-foreground" />
+            {t('backups.title')}
+          </h2>
+          {meta && <p className="text-sm text-muted-foreground">{t('backups.subtitle', { database: meta.database })}</p>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+            {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {t('backups.import')}
+          </Button>
+          <Button onClick={() => start.mutate()} disabled={start.isPending || meta?.available === false}>
+            {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+            {t('backups.create')}
+          </Button>
+        </div>
+      </div>
 
       <input
         ref={fileRef}
@@ -364,7 +360,7 @@ export function BackupsPage() {
           </div>
         </ModalShell>
       )}
-    </PageContainer>
+    </section>
   )
 }
 

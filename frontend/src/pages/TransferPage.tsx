@@ -6,6 +6,8 @@ import { CutTabs, type CutOption } from '@/components/ui/cut-tabs'
 import { InfoHint } from '@/components/ui/info-hint'
 import { ExportPanel } from '@/components/transfer/ExportPanel'
 import { ImportPanel } from '@/components/transfer/ImportPanel'
+import { BackupsPanel } from '@/components/backups/BackupsPanel'
+import { useAuth } from '@/lib/auth'
 
 /* ============================================================
    **„ექსპორტ & იმპორტი" — ერთი სექცია, ორი ჩანართი** (Tasks §31).
@@ -30,20 +32,29 @@ import { ImportPanel } from '@/components/transfer/ImportPanel'
    ⚠️ **ყველა ჩანართი დამონტაჟებული რჩება** (`hidden`) — არჩეული ფაილი და
    მზა გეგმა ჩანართის გადართვაზე არ უნდა დაიკარგოს (§39-ის წესი). ორი
    მოკლე რექვესთის ფასი ამას ღირს.
+
+   ⚠️ **Tasks §59.2 — ერთი ცენტრი: ექსპორტი · იმპორტი · ბაზა.** შენი სიტყვები:
+   „ეს ექსპორტ-იმპორტი იყოს მთავარი, და ბაზის ასლი და რამეც ცალკე რომ მაქვს —
+   აქ შემოიტანე". „ბაზა" (მთლიანი ბაზა, ცხრილები, ასლები) **მხოლოდ
+   სუპერადმინს** უჩანს (Q16) — სხვისთვის `?tab=database` ექსპორტზე ბრუნდება;
+   `/backups` აქ გადამისამართდება, გვერდითა მენიუდან „ასლები" წავიდა. სხვა
+   არაფერი ერთიანდება — ურნა, მონაცემები, გასუფთავება და გაზიარება ცალკეა.
    ============================================================ */
 
-type TransferTab = 'export' | 'import'
+type TransferTab = 'export' | 'import' | 'database'
 
 export function TransferPage() {
   const { t } = useTranslation()
+  const { isAdmin } = useAuth()
   const [params, setParams] = useSearchParams()
 
   const raw = params.get('tab')
-  const tab: TransferTab = raw === 'import' ? raw : 'export'
+  const tab: TransferTab = raw === 'import' || (raw === 'database' && isAdmin) ? raw : 'export'
 
   const tabs: CutOption[] = [
     { key: 'export', label: t('transfer.tabExport'), hint: t('transfer.tabExportHint') },
     { key: 'import', label: t('transfer.tabImport'), hint: t('transfer.tabImportHint') },
+    ...(isAdmin ? [{ key: 'database', label: t('transfer.tabDatabase'), hint: t('transfer.tabDatabaseHint') }] : []),
   ]
 
   // ⚠️ დანარჩენი პარამეტრები რჩება — მხოლოდ ჩანართი იცვლება
@@ -71,6 +82,12 @@ export function TransferPage() {
       <div hidden={tab !== 'import'}>
         <ImportPanel />
       </div>
+      {/* §59.2 — ბაზა: მხოლოდ სუპერადმინს (ასლების ჩამოთვლაც მისი უფლებაა) */}
+      {isAdmin && (
+        <div hidden={tab !== 'database'}>
+          <BackupsPanel />
+        </div>
+      )}
     </PageContainer>
   )
 }
