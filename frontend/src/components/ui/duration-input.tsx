@@ -1,22 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
+import { formatDuration } from '@/lib/videoDuration'
 
 /* ============================================================
-   ხანგრძლივობის შეყვანა (Tasks §2.5) — ერთი კომპონენტი ყველგან.
+   ხანგრძლივობის შეყვანა (Tasks §2.5 → Tasks §39) — ერთი კომპონენტი ყველგან.
 
    ⚠️ **„წამების ერთი ველი" აღარ არსებობს.** ადრე ვიდეოსა და სიმღერას
    `type="number"` ეწერა წამებში (3735 = ?), ე.ი. მომხმარებელს თვითონ უნდა
-   გადაეყვანა. ახლა **წუთი + წამი** შედის, ხოლო საათი — გადამრთველით.
+   გადაეყვანა. ახლა **საათი + წუთი + წამი** შედის.
 
    ⚠️ **ბაზაში ისევ წამები ინახება.** კომპონენტი მხოლოდ შეყვანის ფორმაა:
    `value`/`onChange` წამებია, ე.ი. არც API, არც სქემა არ იცვლება.
 
-   ⚠️ **საათის სეგმენტი თვითონ ჩნდება, თუ მნიშვნელობა ≥ 1 სთ** — ფილმის
-   115 წუთს ხელით გადამრთველის ძებნა არ უნდა სჭირდებოდეს; გადამრთველი
-   მაშინაა საჭირო, როცა **ცარიელიდან** გრძელ ჩანაწერს შეიყვან.
+   ## Tasks §39 — „საათებს რომ ვაწვები, ქვევით ხტება"
+   ⚠️ **ერთი ჩარჩო, ერთი ხაზი** (`h-10`, როგორც მეზობელი ველები): სეგმენტები
+   ჩარჩოს შიგნით უჩარჩოო ველებია, ერთეულები პატარად მათ გვერდით. ადრე სამი
+   ცალკე `Input` + „საათებით" ღილაკი `flex-wrap`-ში იდგა — ~314 px-იან
+   ველში ღილაკი ქვედა ხაზზე ჩადიოდა, ჯამი კი (ფორმის ცალკე `<span>`) —
+   კიდევ უფრო ქვემოთ.
+   ⚠️ **საათის სეგმენტი ყოველთვის ჩანს** (ცარიელი = 0) — გადამრთველი აღარ
+   არის, ე.ი. ჩართვაზე არაფერი ემატება და არაფერი ხტება.
+   ⚠️ **ჯამი კომპონენტის ნაწილია** — ჩარჩოს მარჯვენა ბოლოს, ჩამქრალად
+   (`1:05:30`; წუთების რეჟიმში — „2 სთ 15 წთ"). ვიწრო ველში ის თვითონ
+   იმალება (container query) — ხაზზე გადასვლის ნაცვლად.
 
    ⚠️ სეგმენტები **ლოკალურ სტრიქონულ state-შია** და არა წამებიდან
    გამოთვლილი: `mm` ველში „0"-ის აკრეფა წამებს ნულავს და გამოთვლილი
@@ -39,8 +46,10 @@ interface Parts {
 
 function toParts(seconds: number | null): Parts {
   if (!seconds || seconds < 0) return { h: '', m: '', s: '' }
+  const h = Math.floor(seconds / 3600)
   return {
-    h: String(Math.floor(seconds / 3600)),
+    // ⚠️ საათი ცარიელია, როცა 0-ია — „0 სთ 5 წთ" ზედმეტი ნულია
+    h: h ? String(h) : '',
     m: String(Math.floor((seconds % 3600) / 60)),
     s: String(Math.floor(seconds % 60)),
   }
@@ -61,6 +70,8 @@ export function DurationInput({
   value,
   onChange,
   unit = 'seconds',
+  total = true,
+  prefix,
   className,
 }: {
   id?: string
@@ -69,21 +80,24 @@ export function DurationInput({
   onChange: (value: number | null) => void
   /** სვეტის ერთეული — რაც `value`/`onChange`-ში დადის */
   unit?: Unit
+  /** ჯამი ჩარჩოს მარჯვენა ბოლოს (ნაგულისხმევად — კი) */
+  total?: boolean
+  /** პატარა წარწერა ჩარჩოს დასაწყისში (მაგ. „მინ." / „მაქს." ერთ ხაზზე მდგარ წყვილში) */
+  prefix?: string
   className?: string
 }) {
   const { t } = useTranslation()
   const factor = unit === 'minutes' ? 60 : 1
   const seconds = value == null ? null : value * factor
   const out = (next: number | null) => onChange(next == null ? null : Math.round(next / factor))
+  const minutes = useRef<HTMLInputElement>(null)
 
   const [parts, setParts] = useState<Parts>(() => toParts(seconds))
-  const [hours, setHours] = useState(() => (seconds ?? 0) >= 3600)
 
   // გარედან შემოსული მნიშვნელობა (probe, „სწრაფი შევსება", რედაქტირება)
   useEffect(() => {
     const next = toParts(seconds)
     setParts((prev) => (toSeconds(prev) === seconds ? prev : next))
-    if ((seconds ?? 0) >= 3600) setHours(true)
   }, [seconds])
 
   const set = (key: keyof Parts, raw: string) => {
@@ -93,48 +107,70 @@ export function DurationInput({
     out(toSeconds(next))
   }
 
-  const segment = (key: keyof Parts, label: string, max: number, first = false) => (
-    <span className="flex items-center gap-1">
-      <Input
-        id={first ? id : undefined}
-        className="w-16 text-center tabular-nums"
+  const current = toSeconds(parts)
+  const sum =
+    current == null
+      ? null
+      : unit === 'seconds'
+        ? formatDuration(current)
+        : [
+            current >= 3600 ? `${Math.floor(current / 3600)} ${t('duration.hours')}` : null,
+            `${Math.floor((current % 3600) / 60)} ${t('duration.minutes')}`,
+          ]
+            .filter(Boolean)
+            .join(' ')
+
+  const segment = (key: keyof Parts, label: string, ref?: typeof minutes) => (
+    // ⚠️ `<label>` — ერთეულზე დაჭერაც თავის სეგმენტს ააქტიურებს
+    <label className="flex shrink-0 cursor-text items-baseline gap-0.5">
+      <input
+        ref={ref}
+        id={key === 'h' ? id : undefined}
+        className={cn('bg-transparent text-center text-sm tabular-nums outline-none placeholder:text-muted-foreground/60', key === 'h' ? 'w-8' : 'w-6')}
         inputMode="numeric"
         maxLength={key === 'h' ? 3 : 2}
         placeholder="0"
-        aria-label={label}
+        aria-label={prefix ? `${prefix} — ${label}` : label}
         value={parts[key]}
         onChange={(e) => set(key, e.target.value)}
         onBlur={() => {
           // 90 წამი → 1 წთ 30 წმ (გადავარდნის ნორმალიზება)
-          if (key !== 'h' && Number(parts[key]) > max) out(toSeconds(parts))
-          setParts(toParts(toSeconds(parts)))
+          const next = toParts(toSeconds(parts))
+          if (next.h !== parts.h || next.m !== parts.m || next.s !== parts.s) setParts(next)
         }}
       />
       <span className="text-xs text-muted-foreground">{label}</span>
-    </span>
+    </label>
   )
 
-  return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      {hours && segment('h', t('duration.hours'), 99, true)}
-      {segment('m', t('duration.minutes'), 59, !hours)}
-      {unit === 'seconds' && segment('s', t('duration.seconds'), 59)}
+  /* ჩარჩოს ცარიელ ადგილზე (ჯამზე, სეგმენტებს შორის) დაჭერა წუთებს ააქტიურებს —
+     ის ველი, რომელიც ყველაზე ხშირად იწერება */
+  const focusMinutes = (e: MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('label')) return
+    e.preventDefault()
+    minutes.current?.focus()
+  }
 
-      {/* გადამრთველი — „2 სთ 20 წთ 10 წმ"-ის შესაყვანად (§2.5) */}
-      <button
-        type="button"
-        onClick={() => setHours((on) => !on)}
-        className={cn(
-          'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors',
-          hours ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted',
-        )}
-        // ⚠️ საათი მნიშვნელობით არ იშლება: ჩამალვა საათებს დაკარგავდა
-        disabled={hours && (seconds ?? 0) >= 3600}
-        title={t(hours ? 'duration.hideHours' : 'duration.showHours')}
-      >
-        <Clock className="size-3.5" />
-        {t(hours ? 'duration.hideHours' : 'duration.showHours')}
-      </button>
+  return (
+    <div
+      className={cn(
+        '@container flex h-10 w-full min-w-0 cursor-text flex-nowrap items-center gap-1.5 overflow-hidden rounded-md border border-border bg-card px-3 shadow-sm',
+        className,
+      )}
+      onMouseDown={focusMinutes}
+      data-testid="duration-input"
+    >
+      {prefix && <span className="shrink-0 text-xs text-muted-foreground">{prefix}</span>}
+      {segment('h', t('duration.hours'))}
+      {segment('m', t('duration.minutes'), minutes)}
+      {unit === 'seconds' && segment('s', t('duration.seconds'))}
+
+      {total && sum && (
+        // ⚠️ ვიწრო ველში ჯამი იმალება და არა ქვედა ხაზზე გადადის
+        <span className="ml-auto shrink-0 truncate pl-1 text-xs tabular-nums text-muted-foreground @max-[14rem]:hidden" data-testid="duration-total">
+          {sum}
+        </span>
+      )}
     </div>
   )
 }

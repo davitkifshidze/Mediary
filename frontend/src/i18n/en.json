@@ -2750,9 +2750,7 @@
   "duration": {
     "hours": "h",
     "minutes": "min",
-    "seconds": "sec",
-    "showHours": "With hours",
-    "hideHours": "Without hours"
+    "seconds": "sec"
   },
   "dates": {
     "pick": "Pick a date",

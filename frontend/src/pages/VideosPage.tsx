@@ -1096,13 +1096,9 @@ function VideoForm({
               გამორთულია და ირთვება `/modules/video`-ზე. საჭიროა მაშინ, როცა
               ავტომატიკა ვერ მუშაობს (მაგ. YouTube-ის კლავიშის გარეშე).
               §2.5 — წუთი + წამი (საათი გადამრთველით); ბაზაში ისევ წამები */}
+          {/* §39 — ერთი ჩარჩო ერთ ხაზზე, ჯამი შიგნით (ვიწრო ველში თვითონ იმალება) */}
           <FormField size={detailSize} {...fields.field('duration')} htmlFor="v-duration">
-            <div className="flex flex-wrap items-center gap-2">
-              <DurationInput id="v-duration" value={duration} onChange={setDuration} />
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {duration ? formatDuration(duration) : '—'}
-              </span>
-            </div>
+            <DurationInput id="v-duration" value={duration} onChange={setDuration} />
           </FormField>
         </FormSection>
       </form>

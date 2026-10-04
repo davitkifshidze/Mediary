@@ -619,25 +619,24 @@ export function BoardGameForm({
             </div>
           </FormField>
 
-          {/* §2.5 — საათი+წუთი ერთი კომპონენტით; სვეტი ისევ **წუთებია** */}
-          <FormField size="half" {...fields.field('playtime')} error={errors.playtime_max}>
-            <div className="space-y-1.5">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="w-8 shrink-0 text-xs text-muted-foreground">{t('boardGames.min')}</span>
-                <DurationInput
-                  unit="minutes"
-                  value={form.playtime_min ? Number(form.playtime_min) : null}
-                  onChange={(v) => setForm((f) => ({ ...f, playtime_min: v == null ? '' : String(v) }))}
-                />
-              </span>
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="w-8 shrink-0 text-xs text-muted-foreground">{t('boardGames.max')}</span>
-                <DurationInput
-                  unit="minutes"
-                  value={form.playtime_max ? Number(form.playtime_max) : null}
-                  onChange={(v) => setForm((f) => ({ ...f, playtime_max: v == null ? '' : String(v) }))}
-                />
-              </span>
+          {/* §2.5 → §39 — მინ. – მაქს. ერთ ხაზზე (როგორც მოთამაშეები), ორივე ერთი კომპონენტით;
+              სვეტი ისევ **წუთებია** */}
+          <FormField size="half" {...fields.field('playtime')} htmlFor="bg-playtime" error={errors.playtime_max}>
+            <div className="flex items-center gap-1.5">
+              <DurationInput
+                id="bg-playtime"
+                unit="minutes"
+                prefix={t('boardGames.min')}
+                value={form.playtime_min ? Number(form.playtime_min) : null}
+                onChange={(v) => setForm((f) => ({ ...f, playtime_min: v == null ? '' : String(v) }))}
+              />
+              <span className="text-muted-foreground">–</span>
+              <DurationInput
+                unit="minutes"
+                prefix={t('boardGames.max')}
+                value={form.playtime_max ? Number(form.playtime_max) : null}
+                onChange={(v) => setForm((f) => ({ ...f, playtime_max: v == null ? '' : String(v) }))}
+              />
             </div>
           </FormField>
 

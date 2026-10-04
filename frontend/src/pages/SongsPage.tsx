@@ -860,12 +860,8 @@ function SongForm({
 
           {/* §2.5 — ხანგრძლივობა ხელით (ბმულიდან probe მაინც მუშაობს); ბაზაში წამები */}
           <FormField size="half" {...fields.field('duration')} htmlFor="s-duration">
-            <div className="flex flex-wrap items-center gap-2">
-              <DurationInput id="s-duration" value={duration} onChange={setDuration} />
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {duration ? formatDuration(duration) : '—'}
-              </span>
-            </div>
+            {/* §39 — ჯამი კომპონენტის ნაწილია */}
+            <DurationInput id="s-duration" value={duration} onChange={setDuration} />
           </FormField>
         </FormSection>
 

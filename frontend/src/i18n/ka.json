@@ -2750,9 +2750,7 @@
   "duration": {
     "hours": "სთ",
     "minutes": "წთ",
-    "seconds": "წმ",
-    "showHours": "საათებით",
-    "hideHours": "საათების გარეშე"
+    "seconds": "წმ"
   },
   "dates": {
     "pick": "აირჩიე თარიღი",
