@@ -7,7 +7,8 @@ import { createGenre, deleteGenre, fetchGenres, updateGenre, updateGenreItems } 
 import type { Genre } from '@/api/types'
 import { emptyMediaIds, type MediaType } from '@/lib/media'
 import { GenreItemsManager, GenreItemsPicker, type GenreSection } from '@/components/GenreItemsManager'
-import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
+import { TabInfo } from '@/components/ui/tabs'
+import { CutTabs } from '@/components/ui/cut-tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -145,9 +146,9 @@ function GenreFormDialog({
       const payload = { name_ka: nameKa.trim(), name_en: nameEn.trim() }
       if (genre) return updateGenre(genre.id, payload)
 
-      // შექმნა → მონიშნული ჩანაწერების მიბმა (ორივე დომენი, თუ არჩეულია)
+      // შექმნა → მონიშნული ჩანაწერების მიბმა (ყველა დომენი, სადაც რამე არჩეულია — §54-დან ანიმეც)
       const created = await createGenre(payload)
-      for (const type of ['movie', 'series'] as MediaType[]) {
+      for (const type of Object.keys(attach) as MediaType[]) {
         if (attach[type].length) {
           await updateGenreItems(created.id, { type, action: 'attach', ids: attach[type] })
         }
@@ -155,7 +156,7 @@ function GenreFormDialog({
       return created
     },
     onSuccess: () => {
-      ;['genres', 'genre-items', 'genre-attach-pool', 'movie', 'series'].forEach((k) =>
+      ;['genres', 'genre-items', 'genre-attach-pool', 'movie', 'series', 'anime'].forEach((k) =>
         qc.invalidateQueries({ queryKey: [k] }),
       )
       toast({ title: t('genres.saved'), variant: 'success' })
@@ -167,18 +168,23 @@ function GenreFormDialog({
     },
   })
 
-  // K1 — რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ტაბებად დაიყო.
-  // L5 — „ჩანაწერები" და „ქმედებები" ერთ ტაბადაა: მონიშვნა და ქმედება ერთ ეკრანზე.
-  // ახალი ჟანრი მარტივია (სახელი + წინასწარი მონიშვნა), იქ ტაბები არ გვჭირდება.
-  const TABS: TabItem<GenreSection>[] = [
-    { value: 'names', label: t('genres.tabNames') },
-    { value: 'items', label: t('genres.tabItems') },
-    { value: 'add', label: t('genres.tabAdd') },
+  // K1 — რედაქტირებაში ბევრი ფუნქციონალია, ამიტომ ჩანართებად დაიყო.
+  // L5 — „ჩანაწერები" და „ქმედებები" ერთ ჩანართადაა: მონიშვნა და ქმედება ერთ ეკრანზე.
+  // ახალი ჟანრი მარტივია (სახელი + წინასწარი მონიშვნა), იქ ჩანართები არ გვჭირდება.
+  // Tasks §54.1 — შენი ბარათ-ჩანართები (`CutTabs`, ხატულა და ფერი `lib/cutStyle.ts`-იდან)
+  const TABS: { key: GenreSection; label: string }[] = [
+    { key: 'names', label: t('genres.tabNames') },
+    { key: 'records', label: t('genres.tabItems') },
+    { key: 'add', label: t('genres.tabAdd') },
   ]
 
   return (
     <ModalShell title={genre ? t('genres.edit') : t('genres.add')} onClose={onClose} wide>
-      {genre && <Tabs items={TABS} value={tab} onChange={setTab} className="mt-4" />}
+      {genre && (
+        <div className="mt-4">
+          <CutTabs layout="inline" options={TABS} value={tab} onChange={(key) => setTab(key as GenreSection)} />
+        </div>
+      )}
 
       <div className="mt-4">
         {tab === 'names' && (
@@ -214,32 +220,35 @@ function GenreFormDialog({
           </>
         )}
 
-        {tab === 'items' && <TabInfo>{t('genres.infoItems')}</TabInfo>}
+        {tab === 'records' && <TabInfo>{t('genres.infoItems')}</TabInfo>}
         {tab === 'add' && <TabInfo>{t('genres.infoAdd')}</TabInfo>}
-
-        {/* C1 — ყოველთვის დამონტაჟებული, რომ მონიშვნა ტაბებს შორის არ დაიკარგოს */}
-        {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
       </div>
 
-      <ModalFooter>
-        <Button variant="outline" onClick={onClose}>
-          {t('confirm.cancel')}
-        </Button>
-        {/* Tasks 4 — განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={() => mut.mutate()}
-              disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
-            >
-              {t('genres.save')}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-sm">
-            {t('genres.saveNamesHint')}
-          </TooltipContent>
-        </Tooltip>
-      </ModalFooter>
+      {/* C1 — ყოველთვის დამონტაჟებული, რომ მონიშვნა ჩანართებს შორის არ დაიკარგოს;
+          §54.2 — „ჩანაწერებისა" და „დამატების" ქვედა ზოლს თვითონ ხატავს */}
+      {genre && <GenreItemsManager genre={genre} allGenres={allGenres} section={tab} />}
+
+      {tab === 'names' && (
+        <ModalFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t('confirm.cancel')}
+          </Button>
+          {/* Tasks 4 — განმარტება tooltip-ია და არა `title`: hover-ზე მაშინვე ჩანს */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => mut.mutate()}
+                disabled={mut.isPending || (!nameKa.trim() && !nameEn.trim())}
+              >
+                {t('genres.save')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-sm">
+              {t('genres.saveNamesHint')}
+            </TooltipContent>
+          </Tooltip>
+        </ModalFooter>
+      )}
     </ModalShell>
   )
 }

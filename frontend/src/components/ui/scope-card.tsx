@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { MODULE_ACCENT_FALLBACK, modAccent } from '@/lib/modules'
 import { cn } from '@/lib/utils'
+import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
    **ჭრილის ბარათი — ერთი ვიზუალი ოთხივე სექციისთვის** (2026-09-15).
@@ -32,6 +33,12 @@ import { cn } from '@/lib/utils'
    ⚠️ **ანიმაცია აქ არ იწერება**: ბარათი `<button>`-ია, ე.ი. ხატულებს
    `index.css`-ის გლობალური წესი ისედაც ამოძრავებს (ურნა ირხევა, კალამი
    წერს). აქ დამატებული `hover:scale` მას გადაახურებდა.
+
+   ⚠️ **Tasks §54.2 — `info`: ახსნა `i`-ში და არა პროზად** (მაგ. ჟანრის
+   მოქმედებები — „ეს ჟანრი მოეხსნება და სამიზნე დაემატება"). `i` თვითონ
+   ღილაკია, ბარათი — ღილაკი, ღილაკში ღილაკი კი არ ჯდება: ამიტომ `i` ბარათის
+   **ზემოთ** დგას (აბსოლუტურად, მარჯვენა კიდეზე) და ბარათი მისთვის ადგილს
+   ტოვებს (`pr-9`); `i`-ზე დაჭერა ბარათს არ ირჩევს.
    ============================================================ */
 
 /**
@@ -53,6 +60,7 @@ export function ScopeCard({
   hint,
   size = 'md',
   disabled,
+  info,
   onClick,
 }: {
   active: boolean
@@ -66,11 +74,13 @@ export function ScopeCard({
   hint?: string
   size?: ScopeCardSize
   disabled?: boolean
+  /** §54.2 — ახსნა `i`-ში, ბარათის მარჯვენა კიდეზე (უკვე ნათარგმნი ტექსტი) */
+  info?: string
   onClick: () => void
 }) {
   const sm = size === 'sm'
 
-  return (
+  const card = (
     <button
       type="button"
       aria-pressed={active}
@@ -80,6 +90,7 @@ export function ScopeCard({
       className={cn(
         'flex cursor-pointer items-center rounded-md border text-left transition-colors',
         sm ? 'gap-2 p-2' : 'gap-2.5 p-2.5',
+        info && 'w-full pr-9',
         active
           ? 'border-[var(--mod)] bg-[var(--mod-soft)] text-foreground'
           : 'border-border hover:border-[var(--mod)]',
@@ -113,6 +124,14 @@ export function ScopeCard({
         )}
       </span>
     </button>
+  )
+
+  if (!info) return card
+  return (
+    <div className="relative">
+      {card}
+      <InfoHint info={info} className="absolute right-3 top-1/2 -translate-y-1/2" />
+    </div>
   )
 }
 

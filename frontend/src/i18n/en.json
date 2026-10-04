@@ -861,7 +861,7 @@
     "infoNames": "The genre name in Georgian and English. The slug never changes, so TMDB sync keeps matching this genre.",
     "infoItems": "Everything currently linked to this genre. Tick the records you want to act on — the selection is kept when you switch tabs.",
     "infoAdd": "Link records that do not have this genre yet. Their other genres stay untouched.",
-    "actNeedSelection": "tick records in the “Records” tab first",
+    "actNeedSelection": "tick some records first",
     "saveNamesHint": "Saves the names. Record changes are applied immediately in their own tabs.",
     "deleteRequested": "Sent to the admin",
     "deleteRequestedHint": "Genres are global, so deletion needs admin approval.",
@@ -877,7 +877,6 @@
     "selectAll": "Select all",
     "selectedCount": "{{count}} selected",
     "addItems": "Add records to this genre",
-    "addItemsBtn": "Add",
     "pickAll": "All",
     "pickPlaceholder": "Pick records…",
     "actDetach": "Remove genre",
@@ -891,7 +890,13 @@
     "detachConfirm": "Remove this genre?",
     "detachConfirmDesc": "The genre will be removed from {{count}} record(s).",
     "itemsDone": "{{count}} record(s) updated",
-    "newItemsHint": "Optionally mark records into the new genre right away."
+    "newItemsHint": "Optionally mark records into the new genre right away.",
+    "actApply": "Apply ({{count}})",
+    "actHintDetach": "The selected records lose this genre — their other genres stay.",
+    "actPick": "What to do with the selection",
+    "actNeedAction": "pick an action",
+    "actNeedTarget": "pick the target genre",
+    "addItemsN": "Add ({{count}})"
   },
   "bulkStatus": {
     "manage": "Change status",

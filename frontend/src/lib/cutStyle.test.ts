@@ -38,6 +38,8 @@ describe('cutStyle', () => {
       'cast', 'playlist', 'gallery', 'account', 'chat', 'backup',
       'image', 'video', 'doc', 'book',
       'record', 'records', 'actors',
+      // Tasks §54.1 — ჟანრის ფანჯრის ჩანართები
+      'names', 'add',
     ]
 
     expect(used.filter((key) => !hasCutStyle(key))).toEqual([])

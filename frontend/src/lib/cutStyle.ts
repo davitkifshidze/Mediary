@@ -20,8 +20,10 @@ import {
   Globe,
   Image,
   Images,
+  Languages,
   LayoutGrid,
   ListMusic,
+  ListPlus,
   Lock,
   MessageSquare,
   Radio,
@@ -145,6 +147,11 @@ const CUT_STYLE: Record<string, CutStyle> = {
   video: { icon: Video, color: 'var(--tool-translations)' },
   doc: { icon: FileText, color: 'var(--muted-foreground)' },
   book: { icon: BookOpen, color: 'var(--tool-dictionaries)' },
+
+  /* ---- ჟანრის ფანჯრის ჩანართები (Tasks §54.1) ----
+     „ჩანაწერები" `records`-ია (ზემოთ) — იგივე ცნება, იგივე სახე. */
+  names: { icon: Languages, color: 'var(--tool-translations)' },
+  add: { icon: ListPlus, color: 'var(--icon-ok)' },
 }
 
 /**
