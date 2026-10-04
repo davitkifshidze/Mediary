@@ -92,14 +92,14 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
           fallback={<Gamepad2 className="size-8 text-muted-foreground" />}
           badges={
             <>
-              <EnumStatusBadge domain="game" status={game.status} />
+              <EnumStatusBadge domain="game" status={game.status} size="row" />
               {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="game" id={game.id} />
-              <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+              <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

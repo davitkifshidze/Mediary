@@ -177,12 +177,12 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           fallback={<GraduationCap className="size-8 text-muted-foreground" />}
           badges={
             <>
-              <EnumStatusBadge domain="course" status={course.status} />
+              <EnumStatusBadge domain="course" status={course.status} size="row" />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={course.visibility} />
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="course" id={course.id} />
-              <FavoriteButton size="xs" active={course.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+              <FavoriteButton active={course.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

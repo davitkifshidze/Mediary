@@ -118,14 +118,14 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
           fallback={<BookOpen className="size-8 text-muted-foreground" />}
           badges={
             <>
-              <EnumStatusBadge domain="book" status={book.status} />
+              <EnumStatusBadge domain="book" status={book.status} size="row" />
               {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={book.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="book" id={book.id} />
-              <FavoriteButton size="xs" active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+              <FavoriteButton active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Minus, Plus } from 'lucide-react'
 import { setBookProgress, type Book } from '@/api/books'
 import { errorMessage } from '@/lib/errors'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
@@ -26,6 +25,12 @@ import { useToast } from '@/components/ui/feedback'
 
    ⚠️ ერთი და იგივე ზოლი ორგან: დეტალის ბარათი (`ProgressCard`) და კონტექსტური
    მენიუს „გვერდის განახლება" (`ProgressDialog`, §23.4).
+
+   ⚠️ **Tasks §40.6 — ორ რიგად.** საფეხურები, ველი, სლაიდერი, „შენახვა" და
+   „დავასრულე" ერთ `flex-wrap` რიგში იდგა — ფანჯარაში (`max-w-xl`) რიგი არ
+   ეტეოდა და „დავასრულე" მარტო ჩამოდიოდა ქვედა ხაზზე. ახლა ზემოთ მხოლოდ
+   საფეხურები და სლაიდერია, ღილაკები კი ქვემოთ, ერთად: ფანჯარაში —
+   `ModalFooter`-ში, ბარათში — მარჯვნივ მიმაგრებულ ზოლში; ერთი სიმაღლე.
    ============================================================ */
 
 /** −/+ და ხელით ჩაწერა ერთ კონტროლში — `NumberPick` მზა სიებისთვისაა, გვერდი კი თავისუფალი რიცხვია */
@@ -107,19 +112,10 @@ function useProgressSave(book: Book, onSaved?: (saved: Book) => void) {
   })
 }
 
-/** ზოლი + სლაიდერი + −/+ — საერთო სხეული ბარათისა და დიალოგისთვის */
-function ProgressControls({
-  book,
-  onSave,
-  busy,
-  compact,
-}: {
-  book: Book
-  onSave: (input: { page?: number | null; percent?: number | null }) => void
-  busy: boolean
-  compact?: boolean
-}) {
-  const { t } = useTranslation()
+type ProgressInput = { page?: number | null; percent?: number | null }
+
+/** მონახაზი — გვერდი/პროცენტი, სანამ შეინახება; ზოლიც და ღილაკებიც მას კითხულობს */
+function useProgressDraft(book: Book) {
   const total = book.pages ?? 0
   const [page, setPage] = useState(book.progress_page ?? 0)
   const [percent, setPercent] = useState(book.progress_percent ?? 0)
@@ -130,9 +126,26 @@ function ProgressControls({
     setPercent(book.progress_percent ?? 0)
   }, [book.progress_page, book.progress_percent])
 
-  const live = total ? Math.min(100, Math.round((page / total) * 100)) : percent
-  const dirty = total ? page !== (book.progress_page ?? 0) : percent !== (book.progress_percent ?? 0)
-  const finished = (book.progress_percent ?? 0) >= 100
+  return {
+    total,
+    page,
+    setPage,
+    percent,
+    setPercent,
+    live: total ? Math.min(100, Math.round((page / total) * 100)) : percent,
+    dirty: total ? page !== (book.progress_page ?? 0) : percent !== (book.progress_percent ?? 0),
+    finished: (book.progress_percent ?? 0) >= 100,
+    /** რა გაიგზავნება „შენახვაზე" */
+    input: (total ? { page } : { percent }) as ProgressInput,
+  }
+}
+
+type ProgressDraft = ReturnType<typeof useProgressDraft>
+
+/** ზოლი + სლაიდერი + −/+ — საერთო სხეული ბარათისა და დიალოგისთვის (ღილაკების გარეშე) */
+function ProgressControls({ draft, busy }: { draft: ProgressDraft; busy: boolean }) {
+  const { t } = useTranslation()
+  const { total, page, setPage, percent, setPercent, live } = draft
 
   return (
     <div className="space-y-3">
@@ -149,7 +162,7 @@ function ProgressControls({
         <div className="h-full rounded-md bg-primary transition-[width]" style={{ width: `${live}%` }} />
       </div>
 
-      <div className={cn('flex flex-wrap items-center gap-3', compact && 'gap-2')}>
+      <div className="flex items-center gap-3">
         {total > 0 && <PageStepper value={page} max={total} onChange={setPage} disabled={busy} />}
         <input
           type="range"
@@ -160,25 +173,40 @@ function ProgressControls({
           onChange={(e) => (total ? setPage(Number(e.target.value)) : setPercent(Number(e.target.value)))}
           disabled={busy}
           aria-label={total ? t('books.progressPage', { total }) : t('books.progressPercent')}
-          className="h-2 min-w-40 flex-1 cursor-pointer accent-[var(--primary)]"
+          className="h-2 min-w-24 flex-1 cursor-pointer accent-[var(--primary)]"
           data-testid="progress-slider"
         />
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy || !dirty}
-          onClick={() => onSave(total ? { page } : { percent })}
-        >
-          {t('actions.save')}
-        </Button>
-        {!finished && (
-          <Button size="sm" disabled={busy} onClick={() => onSave({ percent: 100 })}>
-            <CheckCircle2 className="size-4" />
-            {t('books.markFinished')}
-          </Button>
-        )}
       </div>
     </div>
+  )
+}
+
+/** „შენახვა" · „დავასრულე" — ერთი ზომით (`sm` ბარათში, ნაგულისხმევი `ModalFooter`-ში) */
+function ProgressActions({
+  draft,
+  busy,
+  onSave,
+  size,
+}: {
+  draft: ProgressDraft
+  busy: boolean
+  onSave: (input: ProgressInput) => void
+  size?: 'sm'
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      <Button variant="outline" size={size} disabled={busy || !draft.dirty} onClick={() => onSave(draft.input)}>
+        {t('actions.save')}
+      </Button>
+      {!draft.finished && (
+        <Button size={size} disabled={busy} onClick={() => onSave({ percent: 100 })}>
+          <CheckCircle2 className={size === 'sm' ? 'size-3.5' : 'size-4'} />
+          {t('books.markFinished')}
+        </Button>
+      )}
+    </>
   )
 }
 
@@ -186,11 +214,15 @@ function ProgressControls({
 export function ProgressCard({ book }: { book: Book }) {
   const { t } = useTranslation()
   const save = useProgressSave(book)
+  const draft = useProgressDraft(book)
 
   return (
     <section className="rounded-lg border border-border p-3" data-testid="progress-card">
       <h3 className="mb-3 text-sm font-semibold">{t('books.progressTitle')}</h3>
-      <ProgressControls book={book} onSave={(input) => save.mutate(input)} busy={save.isPending} />
+      <ProgressControls draft={draft} busy={save.isPending} />
+      <div className="mt-3 flex flex-wrap justify-end gap-2" data-testid="progress-actions">
+        <ProgressActions draft={draft} busy={save.isPending} onSave={(input) => save.mutate(input)} size="sm" />
+      </div>
     </section>
   )
 }
@@ -199,16 +231,19 @@ export function ProgressCard({ book }: { book: Book }) {
 export function ProgressDialog({ book, onClose }: { book: Book; onClose: () => void }) {
   const { t } = useTranslation()
   const save = useProgressSave(book, () => onClose())
+  const draft = useProgressDraft(book)
 
   return (
     <ModalShell title={t('books.progressDialogTitle', { title: book.title_ka || book.title_en || '' })} onClose={onClose} hint={t('books.progressHint')}>
       <div className="mt-4">
-        <ProgressControls book={book} onSave={(input) => save.mutate(input)} busy={save.isPending} compact />
+        <ProgressControls draft={draft} busy={save.isPending} />
       </div>
+      {/* §40.6 — ღილაკები ქვედა ზოლში, ერთად */}
       <ModalFooter>
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           {t('actions.close')}
         </Button>
+        <ProgressActions draft={draft} busy={save.isPending} onSave={(input) => save.mutate(input)} />
       </ModalFooter>
     </ModalShell>
   )

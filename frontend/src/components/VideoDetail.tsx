@@ -164,7 +164,7 @@ export function VideoDetail({
           <VisibilityBadge value={video.visibility} />
           {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
           <VisitBadge type="video" id={video.id} />
-          <FavoriteButton size="xs" active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+          <FavoriteButton active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
           {onEdit && (
             <Button variant="edit" size="sm" onClick={() => onEdit(video)}>
               <SquarePen className="size-3.5" />

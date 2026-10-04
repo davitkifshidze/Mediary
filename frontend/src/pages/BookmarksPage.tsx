@@ -485,7 +485,7 @@ export function BookmarksPage() {
                     before={
                       <>
                         {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
-                        <VisibilityBadge value={bookmark.visibility} size="row" />
+                        <VisibilityBadge value={bookmark.visibility} />
                         <VisitCount value={bookmark.visits_count} />
                       </>
                     }

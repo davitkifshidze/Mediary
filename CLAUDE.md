@@ -48,7 +48,7 @@ Backend (`backend/`):
 
 Frontend (`frontend/`):
 - `npm run dev` · `npm run build` (`tsc -b` + Vite) · `npm test` (Vitest + jsdom)
-- `npm run lint` — oxlint plus `scripts/unused-exports.mjs`, `error-codes.mjs`, `no-focus-ring.mjs`, `select-fit.mjs`
+- `npm run lint` — oxlint plus `scripts/unused-exports.mjs`, `error-codes.mjs`, `no-focus-ring.mjs`, `select-fit.mjs`, `action-rows.mjs`
 - `python src/i18n/audit.py` — after any UI string change; it must print `OK`
 
 Knowledge graph: `python -m graphify query "<question>"` before broad searches, `python -m graphify update .` after code changes. Never call bare `graphify`/`graphify.exe` — it is blocked on this machine.
@@ -79,7 +79,7 @@ Knowledge graph: `python -m graphify query "<question>"` before broad searches, 
 - Navigation and routes come from `GET /api/modules` (`lib/modules.tsx`); media domains from `lib/media.ts`.
 - Reuse the shared pieces instead of re-rolling them: `PageHeader`, `EmptyState`, `ModalShell` (+ `ModalFooter`; modals stack), `FormSection`/`FormField`/`MediaRow` (main photo beside the fields)/`QuickFill`, `FilterPanel` + `useFilterDraft`, `PhotoGrid`/`PhotoStack`, `CutTabs`/`ScopeCard`, `InfoHint`, `Badge`, `DataTable`, `ActionMenu`, `DatePicker`/`TimePicker`, `NumberPick`, `SecretInput`, `FileViewer`.
 - Modals are all `ModalShell` (Tasks §37): height follows the content (`AutoHeight` measures layout height, never `getBoundingClientRect`), width follows the screen, the top edge stays put after opening. The body keeps a stable scrollbar gutter whose width is taken off its right padding — a full-bleed row uses `.fb-modal-bleed` (as `ModalFooter` does), never `-mx-6`, which would spill into the gutter.
-- Look and feel: z-index only from `lib/layers.ts`; colours as CSS variables in both themes (`modules.color` → inline `--mod`, tool sections in `lib/toolSections.ts`); radius ≤ 5px through `@theme` (`rounded-full` only for avatars, switches and radios); no underlines; no focus rings; icon hover motion and colour live in `index.css`; edit buttons are `Button variant="edit"`, delete is red; explanations go into an `i` (`InfoHint`), not paragraphs.
+- Look and feel: z-index only from `lib/layers.ts`; colours as CSS variables in both themes (`modules.color` → inline `--mod`, tool sections in `lib/toolSections.ts`); radius ≤ 5px through `@theme` (`rounded-full` only for avatars, switches and radios); no underlines; no focus rings; icon hover motion and colour live in `index.css`; edit buttons are `Button variant="edit"`, delete is red; every control in an action row is `h-9` (`Button size="sm"`, `FavoriteButton`, `Badge size="row"`) and an empty link slot sits at the start of the row (Tasks §40); explanations go into an `i` (`InfoHint`), not paragraphs.
 - Settings: `users.settings` through `SettingsProvider` with an explicit save; per-module settings in `module_user.settings`.
 - Dates through `lib/dates.ts`, browser storage through `lib/storage.ts`, the clipboard through `lib/clipboard.ts`.
 - i18n: every key in both `ka.json` and `en.json` (2-space JSON, CRLF); `GLOSSARY.md` fixes the Georgian vocabulary and the audit bans retired words.

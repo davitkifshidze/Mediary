@@ -223,6 +223,36 @@ describe('VideoDetail — დაკვრა დამკვრელშია',
     expect(onEdit).toHaveBeenCalledWith(subject)
   })
 
+  it('რჩეული · „საჯარო" · რედაქტირება — ერთი სიმაღლე, h-9 (Tasks §40.2)', async () => {
+    const { VideoDetail } = await import('@/components/VideoDetail')
+
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () => {
+      root!.render(
+        h(QueryClientProvider, {
+          client: qc,
+          children: h(TooltipProvider, {
+            children: h(PlayerProvider, {
+              children: h(VideoDetail, { video: video({ visibility: 'public' }), onClose: vi.fn(), onPlay: vi.fn(), onEdit: vi.fn() }),
+            }),
+          }),
+        }),
+      )
+    })
+    await flush()
+
+    const favorite = document.querySelector<HTMLElement>(`button[aria-label="${i18n.t('actions.favorite')}"]`)!
+    const visibility = [...document.querySelectorAll<HTMLElement>('span')].find((s) => s.textContent === i18n.t('visibility.public'))!
+    const edit = buttonWith('actions.edit')!
+
+    // ადრე: რჩეული `xs` (28 px), „საჯარო" ~20 px, რედაქტირება `sm` (36 px)
+    for (const el of [favorite, visibility, edit]) expect(el.className).toContain('h-9')
+    expect(favorite.className).not.toContain('h-7')
+  })
+
   it('ჩაუშენებელი წყარო ბმულად რჩება და დაკვრას არ გვთავაზობს', async () => {
     await mount(video({ platform: 'other', embed_url: null, url: 'https://example.com/v' }), {
       onPlay: vi.fn(),

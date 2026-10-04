@@ -294,15 +294,16 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 </div>
               )}
 
-              {/* status + favorite */}
-              <div className="mt-5 flex flex-wrap items-center gap-2">
+              {/* status + favorite — Tasks §40.3: სტატუსები, რჩეული და „საჯარო" ერთი სიმაღლისაა (`h-9`,
+                  ღილაკის `sm`); ადრე სტატუსი ~34 px იყო, „საჯარო" ~20 px, რჩეული 36 px */}
+              <div className="mt-5 flex flex-wrap items-center gap-2" data-testid="movie-status-row">
                 {/* §6.4 — სტატუსები per-user ლექსიკონიდან და არა კოდიდან */}
                 {statuses.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => statusMut.mutate(s.key)}
                     className={cn(
-                      'inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      'inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors',
                       m.status?.id === s.id ? STATUS_ACTIVE[statusTone(s)] : STATUS_INACTIVE[statusTone(s)],
                     )}
                     // Tasks §16.3 — საკუთარი ფერი კლასებს ზემოდან ადგება; აიქონი წინ
@@ -326,43 +327,43 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                 <VisibilityBadge value={m.visibility} />
               </div>
 
-              {/* actions */}
-              <div className="mt-4 flex flex-wrap gap-2">
+              {/* actions — §40.3: მეორე რიგიც იმავე `h-9`-ზეა, აიქონები `size-3.5` */}
+              <div className="mt-4 flex flex-wrap items-center gap-2" data-testid="movie-actions">
                 {m.ge_url && (
-                  <a href={m.ge_url} target="_blank" rel="noreferrer" className={buttonVariants()}>
-                    <Play className="size-4" />
+                  <a href={m.ge_url} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm' })}>
+                    <Play className="size-3.5" />
                     {t('detail.watch')}
                   </a>
                 )}
-                <Button variant="outline" onClick={() => resyncMut.mutate()} disabled={resyncMut.isPending}>
-                  {resyncMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                <Button variant="outline" size="sm" onClick={() => resyncMut.mutate()} disabled={resyncMut.isPending}>
+                  {resyncMut.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
                   {resyncMut.isPending ? t('detail.syncing') : t('detail.sync')}
                 </Button>
                 {/* Tasks §31.3 — გადამრთველი „სინქრონიზაცია შეჩერებულია" */}
                 <label
-                  className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
+                  className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
                   data-testid="sync-paused"
                 >
                   <Switch checked={m.sync_paused} disabled={pauseMut.isPending} onCheckedChange={(v) => pauseMut.mutate(v)} />
                   {t('detail.syncPaused')}
                   <InfoHint info={t('detail.syncPausedHint')} />
                 </label>
-                <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'edit' })}>
-                  <SquarePen className="size-4" />
+                <Link to={`${detailBase}/${m.id}/edit`} className={buttonVariants({ variant: 'edit', size: 'sm' })}>
+                  <SquarePen className="size-3.5" />
                   {t('actions.edit')}
                 </Link>
                 {/* FEAT-13 — გაზიარება ჩატში ბარათად.
                     ⚠️ **გაზიარება ხილვადობას არ ცვლის**: პირადი ჩანაწერიდან
                     თანამოსაუბრემდე მხოლოდ სათაური და გლობალური იდენტობა
                     მიდის — სწორედ იმდენი, რამდენიც რეკომენდაციას სჭირდება. */}
-                <Button variant="outline" onClick={() => setSharing(true)}>
-                  <Share2 className="size-4" />
+                <Button variant="outline" size="sm" onClick={() => setSharing(true)}>
+                  <Share2 className="size-3.5" />
                   {t('chat.share')}
                 </Button>
                 {/* Tasks §35.5 — ჩაკეტვა / ისევ ჩაკეტვა / პაროლი */}
-                <RecordLockActions base={mediaLockBase(type, m.id)} record={lockRecord} onChanged={lockOnChanged} hint={t('lock.hintMedia')} />
-                <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
-                  <Trash2 className="size-4" />
+                <RecordLockActions base={mediaLockBase(type, m.id)} record={lockRecord} onChanged={lockOnChanged} hint={t('lock.hintMedia')} size="sm" />
+                <Button variant="destructiveOutline" size="sm" onClick={askDelete} disabled={delMut.isPending}>
+                  <Trash2 className="size-3.5" />
                   {t('actions.delete')}
                 </Button>
               </div>

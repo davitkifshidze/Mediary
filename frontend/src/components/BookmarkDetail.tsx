@@ -133,12 +133,12 @@ export function BookmarkDetail({
             }
             badges={
               <>
-                <StatusBadge status={bookmark.status} />
+                <StatusBadge status={bookmark.status} size="row" />
                 {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
                 <VisibilityBadge value={bookmark.visibility} />
                 {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
                 <VisitBadge type="bookmark" id={bookmark.id} />
-                <FavoriteButton size="xs" active={bookmark.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+                <FavoriteButton active={bookmark.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
               </>
             }
           >

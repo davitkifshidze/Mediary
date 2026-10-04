@@ -73,7 +73,7 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
               <VisibilityBadge value={game.visibility} />
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="board_game" id={game.id} />
-              <FavoriteButton size="xs" active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+              <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

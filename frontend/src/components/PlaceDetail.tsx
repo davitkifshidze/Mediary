@@ -177,14 +177,14 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
           fallback={<MapPin className="size-8 text-muted-foreground" />}
           badges={
             <>
-              <EnumStatusBadge domain="place" status={place.status} />
+              <EnumStatusBadge domain="place" status={place.status} size="row" />
               {/* Tasks §9 — ვარსკვლავები და „4.6 / 10" დეტალის თავში */}
               <RatingStars value={place.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
               {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
               <VisitBadge type="place" id={place.id} />
-              <FavoriteButton size="xs" active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
+              <FavoriteButton active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }
         >

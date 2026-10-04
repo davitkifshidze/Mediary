@@ -217,6 +217,16 @@ describe('BookDetail — ფაილები, ციტატები, პრ
     expect(document.querySelector('[data-testid="page-stepper"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="progress-slider"]')?.getAttribute('max')).toBe('412')
 
+    /* Tasks §40.6 — „შენახვა" და „დავასრულე" ცალკე, ქვედა ზოლში და ერთად: სლაიდერის
+       რიგში აღარ არიან (იქ „დავასრულე" მარტო ჩამოდიოდა ქვედა ხაზზე) */
+    const actions = document.querySelector('[data-testid="progress-actions"]')!
+    expect([...actions.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual([
+      i18n.t('actions.save'),
+      i18n.t('books.markFinished'),
+    ])
+    expect(actions.contains(document.querySelector('[data-testid="progress-slider"]'))).toBe(false)
+    for (const b of actions.querySelectorAll('button')) expect(b.className).toContain('h-9')
+
     await act(async () => button(i18n.t('books.markFinished'))!.click())
     await flush()
 

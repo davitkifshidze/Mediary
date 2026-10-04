@@ -360,7 +360,7 @@ export function PlacesPage() {
                           {place.name}
                         </button>
                         {/* §29.1 — სტატუსი და ქულა ზოლშია (აქამდე სტატუსი ორჯერ იყო: ბეჯი აქ და სელექთი ზოლში) */}
-                        <VisibilityBadge value={place.visibility} size="row" />
+                        <VisibilityBadge value={place.visibility} />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">

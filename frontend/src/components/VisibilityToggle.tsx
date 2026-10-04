@@ -21,31 +21,23 @@ import type { Visibility } from '@/api/publicProfile'
 /**
  * მხოლოდ ბეჯი — საჯარო ჩანაწერზე; პირადზე არაფერი იხატება.
  *
- * ⚠️ `size="row"` — სიის რიგის ღილაკების გვერდით (Tasks §24.2 — შენი სიტყვები:
- * „„საჯარო“ და სხვა ინფო, რომელსაც ღილაკის ვიზუალი აქვს, ზომით ანალოგიური
- * იყოს"). სიმაღლე `Badge size="row"`-ისაა (ღილაკის `sm`); სხვაგან — პატარა.
+ * ⚠️ **ყოველთვის `h-9`** (Tasks §24.2 → §40.1): ბეჯი მხოლოდ მოქმედებების რიგში
+ * დგას — სიის რიგში, დეტალის თავში, ფილმის გვერდზე — და იქ ყველაფერი ღილაკის
+ * `sm` სიმაღლისაა („„საჯარო“ და სხვა ინფო, რომელსაც ღილაკის ვიზუალი აქვს, ზომით
+ * ანალოგიური იყოს"). პატარა ვარიანტი (~20 px) რჩეულის და რედაქტირების გვერდით
+ * „პატარა და სხვა სიმაღლის" იყო — ის წაიშალა.
  */
-export function VisibilityBadge({
-  value,
-  size = 'default',
-}: {
-  value: Visibility | null | undefined
-  size?: 'default' | 'row'
-}) {
+export function VisibilityBadge({ value }: { value: Visibility | null | undefined }) {
   const { t } = useTranslation()
 
   if (value !== 'public') return null
 
   return (
     <span
-      className={
-        size === 'row'
-          ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-primary/10 px-3.5 text-sm font-medium text-primary'
-          : 'inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary'
-      }
+      className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary/10 px-3.5 text-sm font-medium text-primary"
       title={t('visibility.publicHint')}
     >
-      <Globe className={size === 'row' ? 'size-3.5' : 'size-3'} />
+      <Globe className="size-3.5" />
       {t('visibility.public')}
     </span>
   )

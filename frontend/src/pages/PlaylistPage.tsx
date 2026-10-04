@@ -156,14 +156,16 @@ export function PlaylistPage() {
           {songs.length > 0 && (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => player.play(songs.map(songItem), 0, playlist.name)}
             >
-              <Play className="size-4" />
+              <Play className="size-3.5" />
               {t('playback.playAll')}
             </Button>
           )}
-          <Button onClick={() => setAdding((v) => !v)}>
-            <Plus className="size-4" />
+          {/* §40.1 — „საჯარო“ ბეჯის გვერდით ღილაკებიც `h-9`-ზეა */}
+          <Button size="sm" onClick={() => setAdding((v) => !v)}>
+            <Plus className="size-3.5" />
             {t('playlists.addSongs')}
           </Button>
         </div>

@@ -410,19 +410,11 @@ export function NotesPage() {
                   )}
                 </div>
 
-                {/* Tasks §26.1 — კლასტერი: სტატუსი → **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) →
-                    **რჩეული** (წითელ-ვარდისფერი, §8) → ბმული ტექსტით → რედაქტირება → წაშლა; ყველა h-9.
-                    ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), რომ რედაქტირება არ გადაინაცვლოს. */}
+                {/* Tasks §26.1 → §40.5 — კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
+                    **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** (§8) → რედაქტირება →
+                    წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), მაგრამ
+                    **თავშია** (`RecordActionBar`-ის წესი): შუაში ის რედაქტირებას დანარჩენებს აშორებდა. */}
                 <span className="flex shrink-0 items-center gap-1" data-testid="note-cluster">
-                  <VisitCount value={note.visits_count} />
-                  {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
-                  <StatusBadge status={note.status} size="row" className="mr-1" />
-                  <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
-                  <FavoriteButton
-                    active={note.is_favorite}
-                    pending={favorite.isPending && favorite.variables === note.id}
-                    onToggle={() => favorite.mutate(note.id)}
-                  />
                   <a
                     href={note.links[0]?.url ?? '#'}
                     target="_blank"
@@ -431,10 +423,20 @@ export function NotesPage() {
                     tabIndex={note.links[0]?.url ? undefined : -1}
                     title={note.links[0]?.label || note.links[0]?.url}
                     className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-muted-foreground', !note.links[0]?.url && 'invisible')}
+                    data-testid="link-slot"
                   >
                     <ExternalLink className="size-3.5" />
                     {t('notes.linkButton')}
                   </a>
+                  <VisitCount value={note.visits_count} />
+                  {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+                  <StatusBadge status={note.status} size="row" />
+                  <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
+                  <FavoriteButton
+                    active={note.is_favorite}
+                    pending={favorite.isPending && favorite.variables === note.id}
+                    onToggle={() => favorite.mutate(note.id)}
+                  />
                   <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
                     <SquarePen className="size-3.5" />
                     {t('actions.edit')}

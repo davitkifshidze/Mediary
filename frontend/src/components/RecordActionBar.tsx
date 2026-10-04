@@ -12,15 +12,20 @@ import { cn } from '@/lib/utils'
    სტილში მინდა, შესაბამისი სახელებით, აიქონებით და ფერებით" · „ერთი სტილის
    და ერთი ფერის სიმეტრიული ღილაკები".
 
-   რიგი და ზომა **ფიქსირებულია**: [ბეჯები] · სტატუსი (§16.4 ჩამოსაშლელი,
-   `min-w-36`) · რჩეული (§8) · ფაილები (`Paperclip` + „ფაილები" + რიცხვი) ·
-   ბმული/რუკა (აიქონი + ტექსტი) · რედაქტირება (`variant="edit"`) · წაშლა
-   (წითელი). ყველა `h-9`, `items-center`.
+   რიგი და ზომა **ფიქსირებულია**: ბმული/რუკა (აიქონი + ტექსტი) · [ბეჯები] ·
+   სტატუსი (§16.4 ჩამოსაშლელი, `min-w-36`) · რჩეული (§8) · ფაილები (`Paperclip`
+   + „ფაილები" + რიცხვი) · რედაქტირება (`variant="edit"`) · წაშლა (წითელი).
+   ყველა `h-9`, `items-center`.
 
    ⚠️ **ბმულის სლოტი ყოველთვის ადგილზეა** (§14.2): უბმულო ჩანაწერზე იგივე
    ზომის უხილავი ელემენტია, რომ რედაქტირება და წაშლა რიგიდან რიგში არ
    ინაცვლებდეს. აქამდე ზოგ სიაში (თამაში, სამაგიდო) ის პირობითად ჩნდებოდა
    და ღილაკები „ხტებოდა".
+   ⚠️ **Tasks §40.4 — სლოტი რიგის თავშია.** ფაილებსა და რედაქტირებას შორის
+   მდგარი უხილავი ღილაკი უბმულო ჩანაწერზე ცარიელ ხვრელად ჩანდა („ფაილებსა და
+   რედაქტირებას შორის დაშორება"); თავში ის სათაურის მხარეს უხილავად რჩება,
+   მარჯვნივ მიმაგრებული „სტატუსი · რჩეული · ფაილები · რედაქტირება · წაშლა"
+   კი ერთმანეთის გვერდით და რიგიდან რიგში ერთ ადგილზე დგას.
 
    ⚠️ **აიქონ-ბმული `size-9` აღარ არსებობს** — „ბმული"/„რუკა" ტექსტითაა,
    `outline sm` ღილაკის ფორმით (icon-only row actions დახურული გადაწყვეტილებაა).
@@ -67,6 +72,26 @@ export function RecordActionBar({
 
   return (
     <div className={cn('flex shrink-0 items-center gap-1', className)} data-testid="record-actions">
+      {link && LinkIcon && (
+        <a
+          href={link.href || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={link.title}
+          aria-hidden={link.href ? undefined : true}
+          tabIndex={link.href ? undefined : -1}
+          onClick={link.href ? link.onOpen : undefined}
+          data-testid="link-slot"
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'sm' }),
+            'text-muted-foreground',
+            !link.href && 'invisible pointer-events-none',
+          )}
+        >
+          <LinkIcon className="size-3.5" />
+          {link.label}
+        </a>
+      )}
       {before}
       {status}
       {favorite && <FavoriteButton active={favorite.active} pending={favorite.pending} onToggle={favorite.onToggle} />}
@@ -87,26 +112,6 @@ export function RecordActionBar({
             </span>
           )}
         </Button>
-      )}
-      {link && LinkIcon && (
-        <a
-          href={link.href || undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={link.title}
-          aria-hidden={link.href ? undefined : true}
-          tabIndex={link.href ? undefined : -1}
-          onClick={link.href ? link.onOpen : undefined}
-          data-testid="link-slot"
-          className={cn(
-            buttonVariants({ variant: 'outline', size: 'sm' }),
-            'text-muted-foreground',
-            !link.href && 'invisible pointer-events-none',
-          )}
-        >
-          <LinkIcon className="size-3.5" />
-          {link.label}
-        </a>
       )}
       <Button type="button" variant="edit" size="sm" onClick={onEdit}>
         <SquarePen className="size-3.5" />

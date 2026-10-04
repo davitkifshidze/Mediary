@@ -275,22 +275,25 @@ export function RecordLockActions({ base, record, onChanged, hint, size }: LockT
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  // §40.1 — `sm` ღილაკს აიქონი `size-3.5` აქვს, როგორც მოქმედებების ყველა რიგში
+  const icon = size === 'sm' ? 'size-3.5' : 'size-4'
+
   return (
     <>
       {record.locked ? (
         <>
           <Button variant="outline" size={size} onClick={() => relock.mutate()} disabled={relock.isPending}>
-            <Lock className="size-4" />
+            <Lock className={icon} />
             {t('lock.relock')}
           </Button>
           <Button variant="outline" size={size} onClick={() => setManaging(true)}>
-            <KeyRound className="size-4" />
+            <KeyRound className={icon} />
             {t('lock.password')}
           </Button>
         </>
       ) : (
         <Button variant="outline" size={size} onClick={() => setManaging(true)}>
-          <Lock className="size-4" />
+          <Lock className={icon} />
           {t('lock.lock')}
         </Button>
       )}

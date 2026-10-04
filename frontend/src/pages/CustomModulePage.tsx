@@ -530,7 +530,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                           </ActionMenu>
                         )}
 
-                        <VisibilityBadge value={record.visibility} size="row" />
+                        <VisibilityBadge value={record.visibility} />
 
                         {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
                         <VisitCount value={record.visits_count} />

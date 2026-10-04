@@ -334,7 +334,7 @@ export function CoursesPage() {
                           {course.title}
                         </button>
                         {/* §29.1 — სტატუსი მხოლოდ ზოლშია (აქამდე აქაც ბეჯი იყო და იქაც სელექთი) */}
-                        <VisibilityBadge value={course.visibility} size="row" />
+                        <VisibilityBadge value={course.visibility} />
                       </div>
 
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">

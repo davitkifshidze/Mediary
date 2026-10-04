@@ -106,7 +106,7 @@ export function CustomRecordDetail({
                   {t('filter.favorite')}
                 </Badge>
               )}
-              <VisibilityBadge value={record.visibility} size="row" />
+              <VisibilityBadge value={record.visibility} />
             </>
           }
         >
