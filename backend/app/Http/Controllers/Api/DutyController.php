@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DutyShiftResource;
 use App\Models\DutyShift;
+use App\Services\Duty\DutyReminder;
 use App\Support\AppTime;
 use App\Support\DutyPeriod;
 use App\Support\DutySettings;
@@ -60,6 +62,9 @@ class DutyController extends Controller
                 'sometimes', 'nullable', 'integer',
                 Rule::exists('duty_shift_types', 'id')->whereNull('trashed_at')->where('user_id', $userId),
             ],
+            // §34.7 — შეხსენება წინა დღეს; `null` — გამორთულია
+            'remind_at' => ['sometimes', 'nullable', 'date_format:H:i'],
+            'remind_telegram' => ['sometimes', 'boolean'],
         ]);
 
         DutySettings::write($request->user(), $data);
@@ -160,6 +165,30 @@ class DutyController extends Controller
         }
 
         return response()->json(['data' => $out]);
+    }
+
+    /**
+     * **ხვალინდელი მორიგეობების შეხსენება ღია აპისთვის (§34.7)** — `GET /duty/reminders/due`.
+     *
+     * ⚠️ ჯერ თვითონ ასრულებს შეხსენებას ამ ანგარიშზე (`DutyReminder::run()` —
+     * cron-ის გარეშეც, ტელეგრამიც), მერე აბრუნებს **ყველა** უკვე შეხსენებულ ხვალინდელს —
+     * ბრაუზერი ჩვენებას თვითონ იმახსოვრებს (ერთი და იგივე ორჯერ არ ჩნდება).
+     */
+    public function due(Request $request, DutyReminder $reminder)
+    {
+        $reminder->run($request->user());
+
+        $tomorrow = AppTime::now()->addDay()->toDateString();
+
+        return DutyShiftResource::collection(
+            DutyShift::query()
+                ->with(['workplace', 'type'])
+                ->where('date', $tomorrow)
+                ->whereNotNull('reminded_at')
+                ->orderBy('start_time')
+                ->orderBy('id')
+                ->get(),
+        );
     }
 
     /* ---------- დამხმარეები ---------- */

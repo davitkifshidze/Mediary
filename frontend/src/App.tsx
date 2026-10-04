@@ -13,6 +13,7 @@ import { useVisitTracker } from '@/lib/audit'
 import { PlayerProvider } from '@/lib/player'
 import { ModulesProvider, useModules } from '@/lib/modules'
 import { useNoteReminderWatcher } from '@/lib/noteReminders'
+import { useDutyReminderWatcher } from '@/lib/dutyReminders'
 import { MEDIA, type MediaType } from '@/lib/media'
 
 /* ============================================================
@@ -202,6 +203,8 @@ function AppShell() {
   // §13.3 — შეხსენებების მოსმენა აპლიკაციის დონეზეა, რომ ნებისმიერ გვერდზე
   // მუშაობდეს და არა მხოლოდ `/notes`-ზე. მოდულის გარეშე polling არ ირთვება.
   useNoteReminderWatcher(has('note'))
+  // Tasks §34.7 — მორიგეობის შეხსენება წინა დღეს (იგივე ბრაუზერის არხი)
+  useDutyReminderWatcher(has('duty'))
 
   // Tasks §4.1 — „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
   // მარშრუტი დაიფაროს და არა მხოლოდ ის, ვინც გამოძახებას დაიმახსოვრებს.

@@ -1,21 +1,21 @@
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, SquarePen } from 'lucide-react'
-import { toggleDutyFavorite, type DutySettingsData, type DutyShift } from '@/api/duty'
+import type { DutySettingsData, DutyShift } from '@/api/duty'
 import { useDateFormat } from '@/lib/dates'
-import { errorMessage } from '@/lib/errors'
-import { formatHours, formatMoney, invalidateDuty, parseDay, typeName, workplaceColor } from '@/lib/duty'
+import { formatHours, formatMoney, parseDay, typeName, workplaceColor } from '@/lib/duty'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { useToast } from '@/components/ui/feedback'
+import { RecordContextMenu } from '@/components/ui/record-menu'
+import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
 
 /* ============================================================
    **სია — პერიოდის მორიგეობები სტრიქონებად (Tasks §34.4).**
 
    თარიღი (კვირის დღით) · სამსახური · ტიპი · დრო · საათები · თანხა · შენიშვნა,
-   ბოლოში რჩეული და „რედაქტირება“ (§29-ის ზოლის ღილაკები). ⚠️ რიგი სერვერისაა —
-   თარიღი, მერე დაწყების დრო.
+   ბოლოში რჩეული და „რედაქტირება“ (§29-ის ზოლის ღილაკები); იგივე და „წაშლა“
+   მარჯვენა ღილაკზეც (§7, `useDutyShiftActions` — კალენდრის ჩიპის იგივე მენიუ).
+   ⚠️ რიგი სერვერისაა — თარიღი, მერე დაწყების დრო.
    ============================================================ */
 
 export function DutyList({
@@ -28,18 +28,11 @@ export function DutyList({
   onEdit: (shift: DutyShift) => void
 }) {
   const { t, i18n } = useTranslation()
-  const qc = useQueryClient()
-  const { toast } = useToast()
   const { date } = useDateFormat()
+  const { actionsFor, favorite } = useDutyShiftActions(onEdit)
   const lang = i18n.language
   const currency = settings?.currency ?? '₾'
   const weekday = new Intl.DateTimeFormat(lang, { weekday: 'short' })
-
-  const favorite = useMutation({
-    mutationFn: toggleDutyFavorite,
-    onSuccess: () => invalidateDuty(qc),
-    onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
-  })
 
   if (!shifts.length) {
     return <EmptyState icon={<CalendarClock className="size-6" />} title={t('duty.empty')} hint={t('duty.emptyHint')} />
@@ -48,7 +41,8 @@ export function DutyList({
   return (
     <ul className="divide-y divide-border rounded-xl border border-border bg-card" data-testid="duty-list">
       {shifts.map((shift) => (
-        <li key={shift.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+        <RecordContextMenu key={shift.id} actions={actionsFor(shift)}>
+        <li className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
           <span className="w-32 shrink-0 text-sm">
             <span className="text-muted-foreground">{weekday.format(parseDay(shift.date))} · </span>
             <span className="font-medium">{date(shift.date)}</span>
@@ -78,6 +72,7 @@ export function DutyList({
 
           {shift.note && <p className="w-full truncate pl-36 text-xs text-muted-foreground">{shift.note}</p>}
         </li>
+        </RecordContextMenu>
       ))}
     </ul>
   )

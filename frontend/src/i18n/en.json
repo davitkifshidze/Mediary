@@ -4547,7 +4547,8 @@
       "trashed": "Shift moved to the trash",
       "custom": "Other",
       "payHint": "Filled in from the workplace rate ({{hours}} h) — you can change it.",
-      "noRate": "This workplace has no rate for this type — enter the pay by hand or add a rate in “Settings”."
+      "noRate": "This workplace has no rate for this type — enter the pay by hand or add a rate in “Settings”.",
+      "deleteTitle": "Delete shift"
     },
     "batch": {
       "title": "Shifts on the selected days ({{count}})",
@@ -4603,7 +4604,11 @@
       "defaultWorkplace": "Default workplace",
       "defaultType": "Default type",
       "firstInList": "First in the list",
-      "types": "Manage types"
+      "types": "Manage types",
+      "remind": "Reminder the day before",
+      "remindHint": "At this time a browser notification reminds you of tomorrow’s shifts (permission — in “Credentials”). Empty — off.",
+      "remindTelegram": "Also via Telegram",
+      "remindTelegramHint": "The bot and chat live in “Credentials” — the same as note reminders. The browser works while the app is open, Telegram — even when it is closed."
     },
     "types": {
       "title": "Duty shift types",
@@ -4636,6 +4641,9 @@
       "noRate": "This workplace has no rate for this type — add one in “Settings”.",
       "whatIfResult": "+{{hours}} h and +{{add}} — the range total becomes {{total}}.",
       "export": "Download CSV (all shifts)"
+    },
+    "reminder": {
+      "title": "You have a shift tomorrow"
     }
   }
 }

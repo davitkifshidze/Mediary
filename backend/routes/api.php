@@ -1001,6 +1001,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/duty/settings', [DutyController::class, 'updateSettings']);
         Route::get('/duty/summary', [DutyController::class, 'summary']);
         Route::get('/duty/summary/periods', [DutyController::class, 'periods']);
+        // §34.7 — ღია აპის polling: შეხსენების გაშვება + ხვალინდელები (cron-ის გარეშეც)
+        Route::get('/duty/reminders/due', [DutyController::class, 'due']);
 
         Route::get('/duty/workplaces', [DutyWorkplaceController::class, 'index']);
         Route::post('/duty/workplaces', [DutyWorkplaceController::class, 'store']);

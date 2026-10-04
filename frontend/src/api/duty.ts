@@ -81,6 +81,10 @@ export interface DutySettingsData {
   /** მომავალი ცვლილება — „15-დან, 1 ნოემბრიდან“ */
   pending: { since: string; day: number } | null
   current: DutyPeriodInfo
+  /** §34.7 — შეხსენება წინა დღეს („20:00“); `null` — გამორთულია */
+  remind_at: string | null
+  /** შეხსენება ტელეგრამითაც (ბოტი `/credentials`-შია) */
+  remind_telegram: boolean
 }
 
 export interface DutyTotals {
@@ -122,6 +126,18 @@ export interface DutySettingsInput {
   currency?: string
   default_workplace_id?: number | null
   default_type_id?: number | null
+  remind_at?: string | null
+  remind_telegram?: boolean
+}
+
+/**
+ * **ხვალინდელი შეხსენებული მორიგეობები (§34.7)** — ღია აპის polling. სერვერი ჯერ
+ * თვითონ ასრულებს შეხსენებას (cron-ის გარეშეც), მერე აბრუნებს ხვალინდელებს;
+ * ჩვენებას ბრაუზერი იმახსოვრებს (`lib/dutyReminders.ts`).
+ */
+export async function fetchDueDutyReminders(): Promise<DutyShift[]> {
+  const { data } = await api.get('/duty/reminders/due')
+  return data.data
 }
 
 export async function updateDutySettings(input: DutySettingsInput): Promise<DutySettingsData> {

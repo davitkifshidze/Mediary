@@ -87,7 +87,7 @@ Knowledge graph: `python -m graphify query "<question>"` before broad searches, 
 ## Gotchas
 
 - Laravel caches the controller on the route, so instance state survives into the next request in tests (and under Octane): key per-request memos on the `Request`, and resolve services per measurement in perf tests.
-- sqlite (tests) vs MySQL: guard MySQL-only DDL; sqlite reads an unknown double-quoted identifier as a string literal, so a mistyped column silently matches nothing; compare Georgian text in PHP, not SQL.
+- sqlite (tests) vs MySQL: guard MySQL-only DDL; sqlite reads an unknown double-quoted identifier as a string literal, so a mistyped column silently matches nothing; a `date` cast is written as `Y-m-d H:i:s`, so `between` drops the last day — store `Y-m-d` (`DutyShift::setDateAttribute`); compare Georgian text in PHP, not SQL.
 - `Http::fake()` appends stubs — a second call changes nothing; keep one stub and vary its data.
 - A Georgian value in a JSON column is stored escaped (`\u10d8…`), so a `LIKE` on it needs the escaped form or a PHP comparison.
 - On the model use `isSuperAdmin()`; `is_super_admin` exists only on `UserResource`.

@@ -23,6 +23,8 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { NumberPick } from '@/components/ui/number-pick'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sortable, SortableItem } from '@/components/ui/sortable'
+import { Switch } from '@/components/ui/switch'
+import { TimePicker } from '@/components/ui/time-picker'
 import { DutyWorkplaceDeleteDialog } from '@/components/duty/DutyWorkplaceDeleteDialog'
 import { DutyWorkplaceDialog } from '@/components/duty/DutyWorkplaceDialog'
 
@@ -64,6 +66,8 @@ export function DutySettingsDialog({
   const [currency, setCurrency] = useState(settings.currency)
   const [defaultWorkplace, setDefaultWorkplace] = useState(String(settings.default_workplace_id ?? NONE))
   const [defaultType, setDefaultType] = useState(String(settings.default_type_id ?? NONE))
+  const [remindAt, setRemindAt] = useState<string | null>(settings.remind_at)
+  const [remindTelegram, setRemindTelegram] = useState(settings.remind_telegram)
   const [editing, setEditing] = useState<{ workplace: DutyWorkplace | null } | null>(null)
   const [deleting, setDeleting] = useState<DutyWorkplace | null>(null)
 
@@ -74,6 +78,8 @@ export function DutySettingsDialog({
         currency: currency.trim() || '₾',
         default_workplace_id: defaultWorkplace === NONE ? null : Number(defaultWorkplace),
         default_type_id: defaultType === NONE ? null : Number(defaultType),
+        remind_at: remindAt,
+        remind_telegram: remindTelegram,
       }),
     onSuccess: (saved) => {
       invalidateDuty(qc)
@@ -134,6 +140,23 @@ export function DutySettingsDialog({
                 ))}
               </SelectContent>
             </Select>
+          </FormField>
+
+          {/* §34.7 — შეხსენება წინა დღეს (ბრაუზერი; ტელეგრამი — არჩევით) */}
+          <FormField label={t('duty.settings.remind')} htmlFor="duty-remind-at" hint={t('duty.settings.remindHint')}>
+            <div className="flex flex-wrap items-center gap-3">
+              <TimePicker id="duty-remind-at" value={remindAt} onChange={setRemindAt} clearable />
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={remindTelegram}
+                  onCheckedChange={setRemindTelegram}
+                  disabled={!remindAt}
+                  aria-label={t('duty.settings.remindTelegram')}
+                />
+                {t('duty.settings.remindTelegram')}
+                <InfoHint info={t('duty.settings.remindTelegramHint')} />
+              </label>
+            </div>
           </FormField>
 
           <FormField label={t('duty.settings.defaultType')}>

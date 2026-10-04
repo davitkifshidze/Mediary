@@ -50,8 +50,11 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
-/** service worker-ით, თუ არის; თორემ პირდაპირ გვერდიდან (desktop-ზე ისიც მუშაობს) */
-async function display(title: string, options: NotificationOptions) {
+/**
+ * service worker-ით, თუ არის; თორემ პირდაპირ გვერდიდან (desktop-ზე ისიც მუშაობს).
+ * ⚠️ Tasks §34.7 — მორიგეობის შეხსენებაც ამ გზით მიდის (`lib/dutyReminders.ts`).
+ */
+export async function showBrowserNotification(title: string, options: NotificationOptions) {
   const reg = await registration()
 
   if (reg?.showNotification) {
@@ -63,7 +66,7 @@ async function display(title: string, options: NotificationOptions) {
 }
 
 async function show(item: NoteNotification) {
-  await display(item.title, {
+  await showBrowserNotification(item.title, {
     body: item.body ?? undefined,
     // ერთი და იმავე შეხსენების გამეორება ერთმანეთს ჩაანაცვლებს და არ დააგროვებს
     tag: `note-${item.note_entry_id}-${item.id}`,
@@ -78,7 +81,7 @@ async function show(item: NoteNotification) {
  * სხვა გზით გაგზავნილი ტესტი იმას ამოწმებდა, რაც არ გამოიყენება.
  */
 export async function showTestNotification(title: string, body: string) {
-  await display(title, { body, tag: 'mediary-test', icon: '/favicon.svg', data: { url: '/credentials' } })
+  await showBrowserNotification(title, { body, tag: 'mediary-test', icon: '/favicon.svg', data: { url: '/credentials' } })
 }
 
 /**

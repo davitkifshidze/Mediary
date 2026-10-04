@@ -24,6 +24,7 @@ import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
 import { DutyList } from '@/components/duty/DutyList'
+import { useDutyShiftActions } from '@/components/duty/useDutyShiftActions'
 import { DutySettingsDialog } from '@/components/duty/DutySettingsDialog'
 import { DutyShiftDialog } from '@/components/duty/DutyShiftDialog'
 import { DutyTotals } from '@/components/duty/DutyTotals'
@@ -94,6 +95,8 @@ export function DutyPage() {
   const [batching, setBatching] = useState(false)
   const [bulking, setBulking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // §7 — კალენდრის ჩიპის მენიუ (სიის სტრიქონი თავის თავს თვითონ აწყობს)
+  const { actionsFor } = useDutyShiftActions((shift) => setEditing({ shift }))
 
   // ძებნის შედეგიდან — `?shift=12`: მისი პერიოდი და რედაქტირება
   const linkedQ = useQuery({
@@ -263,6 +266,7 @@ export function DutyPage() {
           selected={selected}
           onSelectionChange={setSelected}
           onOpenDay={openDay}
+          shiftActions={actionsFor}
         />
       ) : view === 'list' ? (
         <DutyList shifts={shifts} settings={settings} onEdit={(shift) => setEditing({ shift })} />

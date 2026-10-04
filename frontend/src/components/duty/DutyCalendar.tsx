@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { DutyShift } from '@/api/duty'
 import { chipLabel, eachDay, formatHours, parseDay, todayIso, weekdayIndex, workplaceColor } from '@/lib/duty'
 import { cn } from '@/lib/utils'
+import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    **მორიგეობის კალენდარი — პერიოდის ბადე (Tasks §34.4–34.5).**
@@ -21,6 +22,9 @@ import { cn } from '@/lib/utils'
    ⚠️ ჩიპის ფერი სამსახურისაა (ზოლი და ღია ფონი), **ტექსტი კი ტექსტის ფერით**
    („A · 24“) — ყვითელ ან ვარდისფერ ფონზე თეთრი ასო არ იკითხებოდა; ერთ დღეს
    რამდენიმე ჩიპი ეტევა (ორი სამსახური ან ორი მორიგეობა).
+
+   §7 — ჩიპზე მარჯვენა ღილაკი სიის იგივე მენიუა (`shiftActions`); მონიშვნის
+   რეჟიმში გამორთულია — იქ უჯრა მონიშვნისთვისაა.
    ============================================================ */
 
 /** კვირის დღეების სახელები ორშაბათიდან — 2024-01-01 ორშაბათია */
@@ -37,6 +41,7 @@ export function DutyCalendar({
   selected,
   onSelectionChange,
   onOpenDay,
+  shiftActions,
 }: {
   from: string
   to: string
@@ -45,6 +50,8 @@ export function DutyCalendar({
   selected: ReadonlySet<string>
   onSelectionChange: (next: Set<string>) => void
   onOpenDay: (day: string) => void
+  /** ჩიპის მარჯვენა ღილაკის მენიუ (`useDutyShiftActions`) */
+  shiftActions?: (shift: DutyShift) => MenuAction[]
 }) {
   const { i18n } = useTranslation()
   const locale = i18n.language
@@ -163,8 +170,8 @@ export function DutyCalendar({
               </span>
 
               {items.map((shift) => (
+                <RecordContextMenu key={shift.id} actions={shiftActions?.(shift) ?? []} disabled={selecting}>
                 <span
-                  key={shift.id}
                   className="truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground"
                   style={{
                     borderLeftColor: workplaceColor(shift.workplace),
@@ -175,6 +182,7 @@ export function DutyCalendar({
                 >
                   {chipLabel(shift)}
                 </span>
+                </RecordContextMenu>
               ))}
             </button>
           )

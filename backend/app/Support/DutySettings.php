@@ -12,7 +12,8 @@ use Carbon\CarbonImmutable;
  *
  *  · `period` — პერიოდის წესების ისტორია (`DutyPeriod`, `[{since, day}]`);
  *  · `currency` — ვალუტის ნიშანი („₾“);
- *  · `default_workplace_id` / `default_type_id` — სწრაფი დამატების საწყისი არჩევანი.
+ *  · `default_workplace_id` / `default_type_id` — სწრაფი დამატების საწყისი არჩევანი;
+ *  · `remind_at` / `remind_telegram` — შეხსენება წინა დღეს (§34.7, `DutyReminder`).
  *
  * ⚠️ **პერიოდის დღის შეცვლა მომავალზე მოქმედებს** (Q8, `setPeriodDay()`): ახალი წესი
  * მომდევნო პერიოდის დასაწყისიდან იწყება, მიმდინარე და ძველი თავის საზღვრებს
@@ -27,13 +28,29 @@ final class DutySettings
     public const DEFAULT_CURRENCY = '₾';
 
     /**
-     * @return array{period: list<array{since: ?string, day: int}>, currency: string, default_workplace_id: ?int, default_type_id: ?int}
+     * @return array{period: list<array{since: ?string, day: int}>, currency: string, default_workplace_id: ?int, default_type_id: ?int, remind_at: ?string, remind_telegram: bool}
      */
     public static function read(User $user): array
     {
         $module = self::module();
         $stored = $module ? (ModuleSettings::read($user, $module)[self::KEY] ?? []) : [];
-        $stored = is_array($stored) ? $stored : [];
+
+        return self::parse(is_array($stored) ? $stored : []);
+    }
+
+    /**
+     * **ნედლი ბლობის გაწმენდა** — ერთი წესი სამ მკითხველზე: `read()`, დეშბორდი
+     * (pivot უკვე ჩატვირთულია) და შეხსენება (cron — `Auth`-ის გარეშე).
+     *
+     * ⚠️ ბლობს საერთო `PUT /modules/{key}/settings`-იც ეხება, ე.ი. აქ არაფერი
+     * ითვლება სანდოდ: არასწორი მნიშვნელობა ნაგულისხმევზე ბრუნდება.
+     *
+     * @param  array<string, mixed>  $stored
+     * @return array{period: list<array{since: ?string, day: int}>, currency: string, default_workplace_id: ?int, default_type_id: ?int, remind_at: ?string, remind_telegram: bool}
+     */
+    public static function parse(array $stored): array
+    {
+        $remind = $stored['remind_at'] ?? null;
 
         return [
             'period' => self::serialize(DutyPeriod::normalize(is_array($stored['period'] ?? null) ? $stored['period'] : [])),
@@ -42,6 +59,9 @@ final class DutySettings
                 : self::DEFAULT_CURRENCY,
             'default_workplace_id' => is_numeric($stored['default_workplace_id'] ?? null) ? (int) $stored['default_workplace_id'] : null,
             'default_type_id' => is_numeric($stored['default_type_id'] ?? null) ? (int) $stored['default_type_id'] : null,
+            // §34.7 — „20:00“; `null` — შეხსენება გამორთულია
+            'remind_at' => is_string($remind) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $remind) ? $remind : null,
+            'remind_telegram' => (bool) ($stored['remind_telegram'] ?? false),
         ];
     }
 
@@ -65,7 +85,7 @@ final class DutySettings
             $current['period'] = self::setPeriodDay($user, $current['period'], (int) $values['period_start_day']);
         }
 
-        foreach (['currency', 'default_workplace_id', 'default_type_id'] as $key) {
+        foreach (['currency', 'default_workplace_id', 'default_type_id', 'remind_at', 'remind_telegram'] as $key) {
             if (array_key_exists($key, $values)) {
                 $current[$key] = $values[$key];
             }

@@ -10,7 +10,8 @@ import i18n from '@/i18n'
 
 /* ============================================================
    **მორიგეობის გვერდი (Tasks §34.9)** — პერიოდის სათაური და ჯამი, მონიშვნა →
-   „დამატება“ თითო დღეზე ტარიფით და ჯამით, ჯამების ხედი.
+   „დამატება“ თითო დღეზე ტარიფით და ჯამით, ჯამების ხედი, სიის მარჯვენა ღილაკის
+   მენიუ (§7).
    ============================================================ */
 
 const workplaces: DutyWorkplace[] = [
@@ -31,6 +32,8 @@ const settings: DutySettingsData = {
   period_start_day: 1,
   pending: null,
   current: { from: '2026-10-01', to: '2026-10-31', previous: { from: '2026-09-01', to: '2026-09-30' }, next: { from: '2026-11-01', to: '2026-11-30' } },
+  remind_at: null,
+  remind_telegram: false,
 }
 
 const shift: DutyShift = {
@@ -67,6 +70,7 @@ const mocks = vi.hoisted(() => ({
   fetchDutySummary: vi.fn(),
   fetchDutyPeriods: vi.fn(),
   batchDutyShifts: vi.fn(),
+  deleteDutyShift: vi.fn(),
 }))
 
 vi.mock('@/api/duty', async (original) => ({
@@ -117,6 +121,7 @@ function defaults() {
   mocks.fetchDutySummary.mockResolvedValue(summary)
   mocks.fetchDutyPeriods.mockResolvedValue([])
   mocks.batchDutyShifts.mockResolvedValue([])
+  mocks.deleteDutyShift.mockResolvedValue(undefined)
 }
 
 async function render(path = '/duty') {
@@ -194,5 +199,55 @@ describe('DutyPage', () => {
     const totals = container!.querySelector('[data-testid="duty-totals"]')!
     expect(totals.textContent).toContain(i18n.t('duty.totals.more', { value: '1' }))
     expect(container!.querySelector('[data-testid="duty-totals-workplaces"]')!.textContent).toContain('კლინიკა')
+  })
+
+  /* Tasks §7 — სიის სტრიქონზე მარჯვენა ღილაკი: რჩეული · რედაქტირება · წაშლა (დადასტურებით, ურნაში) */
+  it('opens the row context menu in the list view and moves the shift to the trash after confirming', async () => {
+    defaults()
+    await render('/duty?view=list')
+
+    const row = container!.querySelector('[data-testid="duty-list"] li')!
+    await act(async () => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+    })
+    await flush()
+
+    const item = (label: string) =>
+      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((m) => m.textContent?.trim() === label)
+
+    for (const label of [i18n.t('actions.favorite'), i18n.t('actions.edit'), i18n.t('actions.delete')]) {
+      expect(item(label), label).toBeTruthy()
+    }
+
+    await act(async () => item(i18n.t('actions.delete'))!.click())
+    await flush()
+    expect(mocks.deleteDutyShift).not.toHaveBeenCalled()
+
+    await act(async () => button(i18n.t('confirm.confirm')).click())
+    await flush()
+
+    expect(mocks.deleteDutyShift).toHaveBeenCalledWith(7, expect.anything())
+  })
+
+  /* იგივე მენიუ კალენდრის ჩიპზე — „რედაქტირება“ მორიგეობის ფანჯარას ხსნის, დღისას კი არა */
+  it('opens the same menu on a calendar chip and edits the shift from it', async () => {
+    defaults()
+    await render()
+
+    const chip = container!.querySelector('[data-day="2026-10-02"] [data-testid="duty-chip"]')!
+    await act(async () => {
+      chip.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
+    })
+    await flush()
+
+    const edit = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (m) => m.textContent?.trim() === i18n.t('actions.edit'),
+    )
+    expect(edit).toBeTruthy()
+
+    await act(async () => edit!.click())
+    await flush()
+
+    expect(document.body.textContent).toContain(i18n.t('duty.shift.edit'))
   })
 })

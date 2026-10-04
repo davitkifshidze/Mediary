@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasTrash;
+use App\Support\AppTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -40,7 +42,31 @@ class DutyShift extends Model
         'hours' => 'decimal:1',
         'pay' => 'decimal:2',
         'is_favorite' => 'boolean',
+        'reminded_at' => 'datetime',
     ];
+
+    /* §34.7 — ახალ დღეზე გადატანილს ახალი შეხსენება ეკუთვნის */
+    protected static function booted(): void
+    {
+        static::saving(function (DutyShift $shift) {
+            if ($shift->exists && $shift->isDirty('date') && ! $shift->isDirty('reminded_at')) {
+                $shift->reminded_at = null;
+            }
+        });
+    }
+
+    /**
+     * ⚠️ **თარიღი `Y-m-d`-ით ინახება** და არა Laravel-ის `Y-m-d H:i:s`-ით: sqlite-ზე
+     * (ტესტები) `between`/`=` სტრიქონებს ადარებს, და „…-31 00:00:00“ > „…-31“ —
+     * პერიოდის ბოლო დღე ამოვარდებოდა, ხოლო შეხსენების `date = ხვალ` არაფერს
+     * იპოვიდა. MySQL-ის `DATE` სვეტი ისედაც ასეა.
+     */
+    public function setDateAttribute(mixed $value): void
+    {
+        $this->attributes['date'] = $value === null || $value === ''
+            ? null
+            : CarbonImmutable::parse($value, AppTime::zone())->toDateString();
+    }
 
     public function workplace(): BelongsTo
     {

@@ -35,6 +35,13 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('notes:remind')->everyMinute()->withoutOverlapping(5);
 
 /*
+| Tasks §34.7 — მორიგეობის შეხსენება წინა დღეს (ტელეგრამი). ⚠️ ჩანაწერების
+| შეხსენების იგივე წესი: ღია აპში იმავე სერვისს polling-ი იძახებს
+| (`GET /api/duty/reminders/due`), ე.ი. cron-ის გარეშეც მუშაობს.
+*/
+Schedule::command('duty:remind')->everyMinute()->withoutOverlapping(5);
+
+/*
 | Tasks GAP-16 — ასლის ვიუერის მიტოვებული დროებითი ბაზები.
 |
 | ⚠️ **ეს მეორე კარიბჭეა**: იმავე გასუფთავებას `BackupInspector::open()`
