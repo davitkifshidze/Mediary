@@ -27,6 +27,8 @@ import {
 import { genreName } from '@/lib/display'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { MovieGrid } from '@/components/MovieGrid'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { DiscoverModal } from '@/components/DiscoverModal'
 import {
   FilterGroup,
@@ -84,6 +86,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   // §6.4 — სექციის სახელისთვის
   const { data: statuses = [] } = useStatuses(type)
   const { settings } = useSettings()
+  // Tasks §45 — ხედი თითო დომენზე (ფილმი/სერიალი/ანიმე); ნაგულისხმევი — ახლანდელი ბარათები
+  const [layout, setLayout] = useRecordLayout(type, 'cards')
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const api = mediaApi(type)
@@ -254,6 +258,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
         subtitle={countLabel}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -368,7 +374,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
             <div className="text-muted-foreground">{t('api.loading')}</div>
           ) : movies.length ? (
             <>
-              <MovieGrid movies={visible} type={type} groupBy={groupBy} />
+              <MovieGrid movies={visible} type={type} groupBy={groupBy} layout={layout} />
               {/* ერთი გრძელი სიის რეჟიმი (`libraryPageSize = 0`) — დანომრილი
                   გვერდები არაა, ამიტომ სია „მეტის ჩვენებით" იზრდება */}
               {pageSize === 0 && (

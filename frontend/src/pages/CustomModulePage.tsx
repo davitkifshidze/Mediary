@@ -65,8 +65,7 @@ import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
-import { contextMenuItems, favoriteAction, MENU_ICONS, statusActions } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
@@ -74,6 +73,9 @@ import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
@@ -157,6 +159,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout(module.key, 'rows')
 
   const search = params.toString()
   const view = params.get('view') ?? 'all'
@@ -341,6 +345,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
         subtitle={t('customModules.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -414,168 +420,143 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {records.map((record) => {
               const image = storageUrl(record.image)
 
-              return (
-                <ContextMenu key={record.id}>
-                  <ContextMenuTrigger asChild>
-                    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => setViewing(record)}
-                        aria-label={t('customModules.open')}
-                        className="grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
-                      >
-                        {image ? (
-                          <img src={image} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <ModuleIcon name={module.icon} className="size-5 text-muted-foreground" />
-                        )}
-                      </button>
+              /* Tasks §7 — ერთი სია (`record-menu`): გახსნა · დაკვრა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
+              const actions: MenuAction[] = [
+                { key: 'open', label: t('customModules.open'), icon: MENU_ICONS.open, run: () => setViewing(record) },
+                ...(isPlayableRecord(record)
+                  ? [{ key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: () => playFrom(record.id) }]
+                  : []),
+                ...(record.url
+                  ? [{ key: 'link', label: t('customModules.openLink'), icon: MENU_ICONS.link, run: () => window.open(record.url ?? '', '_blank', 'noopener,noreferrer') }]
+                  : []),
+                ...(statuses.length > 0
+                  ? [statusActions(t('customModules.status'), statuses, record.status, lang, (key) => status.mutate({ id: record.id, next: key }))]
+                  : []),
+                favoriteAction(record.is_favorite, () => favorite.mutate(record.id), t),
+                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(record) },
+                { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => askDelete(record) },
+              ]
 
-                      <div className="min-w-0 flex-1">
+              return (
+                /* §45 — ერთი აღწერა სამ განლაგებაში */
+                <RecordView
+                  key={record.id}
+                  title={record.title}
+                  onOpen={() => setViewing(record)}
+                  openLabel={t('customModules.open')}
+                  photo={image}
+                  placeholder={<ModuleIcon name={module.icon} className="size-5" />}
+                  meta={
+                    <>
+                      {record.category && (
+                        <span className="inline-flex items-center gap-1">
+                          <ModuleIcon name={record.category.icon} className="size-3" />
+                          {dictionaryName(record.category, lang)}
+                        </span>
+                      )}
+                      {record.domain && <span className="truncate">{record.domain}</span>}
+                    </>
+                  }
+                  extra={
+                    record.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{record.description}</p>
+                  }
+                  tags={record.tags}
+                  actions={actions}
+                  onEdit={() => setEditing(record)}
+                  bar={
+                    <div className="flex shrink-0 items-center gap-1">
+                      {isPlayableRecord(record) && (
                         <button
                           type="button"
-                          onClick={() => setViewing(record)}
-                          className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
-                          title={record.title}
+                          onClick={() => playFrom(record.id)}
+                          aria-label={t('playback.play')}
+                          title={t('playback.play')}
+                          className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-primary"
                         >
-                          {record.title}
+                          <Play className="size-4" />
                         </button>
-                        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
-                          {record.category && (
-                            <span className="inline-flex items-center gap-1">
-                              <ModuleIcon name={record.category.icon} className="size-3" />
-                              {dictionaryName(record.category, lang)}
-                            </span>
-                          )}
-                          {record.domain && <span className="truncate">{record.domain}</span>}
-                        </p>
-                        {record.description && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{record.description}</p>
-                        )}
-                        {record.tags.length > 0 && (
-                          <p className="mt-1 flex flex-wrap gap-1">
-                            {record.tags.map((tag) => (
-                              <span key={tag} className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px]">
-                                #{tag}
-                              </span>
-                            ))}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        {isPlayableRecord(record) && (
-                          <button
-                            type="button"
-                            onClick={() => playFrom(record.id)}
-                            aria-label={t('playback.play')}
-                            title={t('playback.play')}
-                            className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground hover:text-primary"
-                          >
-                            <Play className="size-4" />
-                          </button>
-                        )}
-                        {record.url && (
-                          <a
-                            href={record.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t('customModules.openLink')}
-                            title={t('customModules.openLink')}
-                            className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-primary"
-                          >
-                            <ExternalLink className="size-4" />
-                          </a>
-                        )}
-
-                        {statuses.length > 0 && (
-                          <ActionMenu
-                            label={t('customModules.statusChange')}
-                            trigger={
-                              <button type="button" className="cursor-pointer rounded-md">
-                                {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
-                                {record.status ? (
-                                  <StatusBadge
-                                    status={record.status}
-                                    size="row"
-                                    className="min-w-36 justify-between"
-                                    trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
-                                  />
-                                ) : (
-                                  <Badge size="row" className="min-w-36 justify-between bg-secondary">
-                                    {t('customModules.noStatus')}
-                                    <ChevronDown className="size-3.5 shrink-0 opacity-70" />
-                                  </Badge>
-                                )}
-                              </button>
-                            }
-                          >
-                            {statuses.map((s) => (
-                              <ActionMenuClose key={s.id} asChild>
-                                <button
-                                  type="button"
-                                  className={actionItemClass()}
-                                  onClick={() => status.mutate({ id: record.id, next: s.key })}
-                                >
-                                  <Check className={cn('size-3.5', record.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
-                                  <StatusLabel status={s} />
-                                </button>
-                              </ActionMenuClose>
-                            ))}
-                          </ActionMenu>
-                        )}
-
-                        <VisibilityBadge value={record.visibility} />
-
-                        {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
-                        <FavoriteButton
-                          active={record.is_favorite}
-                          pending={favorite.isPending && favorite.variables === record.id}
-                          onToggle={() => favorite.mutate(record.id)}
-                        />
-                        <Button variant="edit" size="sm" onClick={() => setEditing(record)}>
-                          <SquarePen className="size-3.5" />
-                          {t('actions.edit')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          aria-label={t('actions.delete')}
-                          onClick={() => askDelete(record)}
+                      )}
+                      {record.url && (
+                        <a
+                          href={record.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={t('customModules.openLink')}
+                          title={t('customModules.openLink')}
+                          className="grid size-9 place-items-center rounded-md text-muted-foreground hover:text-primary"
                         >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </li>
-                  </ContextMenuTrigger>
+                          <ExternalLink className="size-4" />
+                        </a>
+                      )}
 
-                  {/* Tasks §7 — ერთი სია (`record-menu`): გახსნა · დაკვრა · ბმული · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */}
-                  <ContextMenuContent>
-                    {contextMenuItems([
-                      { key: 'open', label: t('customModules.open'), icon: MENU_ICONS.open, run: () => setViewing(record) },
-                      ...(isPlayableRecord(record)
-                        ? [{ key: 'play', label: t('playback.play'), icon: MENU_ICONS.play, run: () => playFrom(record.id) }]
-                        : []),
-                      ...(record.url
-                        ? [{ key: 'link', label: t('customModules.openLink'), icon: MENU_ICONS.link, run: () => window.open(record.url ?? '', '_blank', 'noopener,noreferrer') }]
-                        : []),
-                      ...(statuses.length > 0
-                        ? [statusActions(t('customModules.status'), statuses, record.status, lang, (key) => status.mutate({ id: record.id, next: key }))]
-                        : []),
-                      favoriteAction(record.is_favorite, () => favorite.mutate(record.id), t),
-                      { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(record) },
-                      { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => askDelete(record) },
-                    ])}
-                  </ContextMenuContent>
-                </ContextMenu>
+                      {statuses.length > 0 && (
+                        <ActionMenu
+                          label={t('customModules.statusChange')}
+                          trigger={
+                            <button type="button" className="cursor-pointer rounded-md">
+                              {/* Tasks §16.4 — ერთი სიგანის ჩამოსაშლელი: `StatusBadge` აიქონითა და ფერით */}
+                              {record.status ? (
+                                <StatusBadge
+                                  status={record.status}
+                                  size="row"
+                                  className="min-w-36 justify-between"
+                                  trailing={<ChevronDown className="size-3.5 shrink-0 opacity-70" />}
+                                />
+                              ) : (
+                                <Badge size="row" className="min-w-36 justify-between bg-secondary">
+                                  {t('customModules.noStatus')}
+                                  <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+                                </Badge>
+                              )}
+                            </button>
+                          }
+                        >
+                          {statuses.map((s) => (
+                            <ActionMenuClose key={s.id} asChild>
+                              <button
+                                type="button"
+                                className={actionItemClass()}
+                                onClick={() => status.mutate({ id: record.id, next: s.key })}
+                              >
+                                <Check className={cn('size-3.5', record.status?.id === s.id ? 'opacity-100' : 'opacity-0')} />
+                                <StatusLabel status={s} />
+                              </button>
+                            </ActionMenuClose>
+                          ))}
+                        </ActionMenu>
+                      )}
+
+                      <VisibilityBadge value={record.visibility} />
+
+                      {/* Tasks §8 — რჩეული ტექსტით და ფერით, ერთი ზომით */}
+                      <FavoriteButton
+                        active={record.is_favorite}
+                        pending={favorite.isPending && favorite.variables === record.id}
+                        onToggle={() => favorite.mutate(record.id)}
+                      />
+                      <Button variant="edit" size="sm" onClick={() => setEditing(record)}>
+                        <SquarePen className="size-3.5" />
+                        {t('actions.edit')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        aria-label={t('actions.delete')}
+                        onClick={() => askDelete(record)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={records.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

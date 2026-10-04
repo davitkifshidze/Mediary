@@ -7,7 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { FeedbackProvider } from '@/components/ui/feedback'
 import { PlayerProvider } from '@/lib/player'
 import type { Status } from '@/api/types'
-import type { VideoMetadata } from '@/api/videos'
+import type { Video, VideoMetadata } from '@/api/videos'
 import i18n from '@/i18n'
 
 /* ============================================================
@@ -51,6 +51,9 @@ const mocks = vi.hoisted(() => ({
   fetchVideoMetadata: vi.fn(),
   createVideo: vi.fn(),
   statuses: { data: [] as unknown[] },
+  // §45 — მოდულის შენახული ხედი და მისი ჩუმი შენახვა
+  modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
+  updateModuleSettings: vi.fn(),
 }))
 
 vi.mock('@/api/videos', async (original) => ({
@@ -67,6 +70,7 @@ vi.mock('@/api/account', async (original) => ({
   fetchModuleFields: vi.fn().mockResolvedValue([]),
   fetchCustomFields: vi.fn().mockResolvedValue([]),
   fetchCustomFieldValues: vi.fn().mockResolvedValue({}),
+  updateModuleSettings: mocks.updateModuleSettings,
 }))
 
 vi.mock('@/lib/statuses', async (original) => ({
@@ -77,7 +81,7 @@ vi.mock('@/lib/statuses', async (original) => ({
 vi.mock('@/lib/modules', async (original) => ({
   ...(await original<typeof import('@/lib/modules')>()),
   useModules: () => ({
-    all: [],
+    all: mocks.modules,
     enabled: [],
     mediaModules: [],
     pageModules: [],
@@ -114,6 +118,7 @@ afterEach(() => {
   container?.remove()
   root = null
   container = null
+  mocks.modules = []
   vi.clearAllMocks()
 })
 
@@ -122,6 +127,39 @@ async function flush() {
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 }
+
+/** სია ერთი ვიდეოთი (`entry` — `?new=1` ფორმას ხსნის) */
+async function mountList(entry = '/videos') {
+  mocks.statuses.data = statuses
+  mocks.fetchVideos.mockResolvedValue({ items: [VIDEO], total: 1, lastPage: 1 })
+  mocks.fetchVideoTypes.mockResolvedValue([])
+
+  const { VideosPage } = await import('@/pages/VideosPage')
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  await act(async () =>
+    root!.render(
+      h(
+        MemoryRouter,
+        { initialEntries: [entry] },
+        h(QueryClientProvider, { client: qc }, h(TooltipProvider, null, h(FeedbackProvider, null, h(PlayerProvider, null, h(VideosPage))))),
+      ),
+    ),
+  )
+  await flush()
+  await flush()
+  return container
+}
+
+const VIDEO = {
+  id: 9, title: 'Rick Astley — Never Gonna Give You Up', description: null, channel: 'Rick Astley', published_at: '2009-10-25',
+  type_id: null, type: null, status: null, visibility: 'private', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  platform: 'youtube', external_id: 'dQw4w9WgXcQ', embed_url: null, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+  duration: 213, tags: ['80s'], is_favorite: false, watch_count: 0, watched_at: null, created_at: null,
+  download_status: null, download_size: 0, download_format: null, download_name: null, download_error: null, downloaded_at: null,
+} as unknown as Video
 
 /** `?new=1` — საიდბარის „დამატება": ფორმა პირდაპირ იხსნება */
 async function openAdd() {
@@ -233,5 +271,38 @@ describe('VideoForm link info (Tasks §44)', () => {
     })
 
     expect(sent).toEqual(expect.objectContaining({ thumbnail_url: null, remove_thumbnail: true }))
+  })
+})
+
+/* Tasks §45 — ვიდეოს ნაგულისხმევი ხედი ახლანდელი ბარათებია (`VideoCard`); შენახული ხედი აღდგება,
+   გადართვა მოდულზე ინახება */
+describe('VideosPage view toggle (§45)', () => {
+  const layoutOf = (el: HTMLElement) => el.querySelector('[data-testid="record-list"]')?.getAttribute('data-layout')
+
+  it('keeps the current cards by default', async () => {
+    const el = await mountList()
+
+    expect(el.querySelector('[data-testid="video-card"]')).not.toBeNull()
+    expect(el.querySelector('[data-testid="record-list"]')).toBeNull()
+  })
+
+  it('opens in the saved rows with the shared action bar, and saves the switch to the grid', async () => {
+    mocks.modules = [{ key: 'video', user_settings: { view: 'rows' } }]
+    mocks.updateModuleSettings.mockResolvedValue(undefined)
+    const el = await mountList()
+
+    expect(layoutOf(el)).toBe('rows')
+    const row = el.querySelector('[data-record-layout="rows"]')!
+    expect(row.textContent).toContain('Rick Astley')
+    expect(row.querySelector('[data-testid="record-actions"]')?.textContent).toContain(i18n.t('videos.noStatus'))
+    expect(el.querySelector('[data-testid="video-card"]')).toBeNull()
+
+    const grid = [...el.querySelectorAll<HTMLButtonElement>('[data-testid="view-toggle"] button')].find(
+      (b) => b.textContent === i18n.t('view.grid'),
+    )!
+    await act(async () => grid.click())
+
+    expect(layoutOf(el)).toBe('grid')
+    expect(mocks.updateModuleSettings).toHaveBeenCalledWith('video', { view: 'grid' })
   })
 })

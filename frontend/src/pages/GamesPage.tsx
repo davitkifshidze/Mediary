@@ -46,10 +46,13 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
@@ -77,6 +80,8 @@ export function GamesPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('game', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
@@ -210,6 +215,8 @@ export function GamesPage() {
         subtitle={t('games.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -282,7 +289,7 @@ export function GamesPage() {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {games.map((game) => {
               const cover = storageUrl(game.cover)
               // §22.3 — რიგის ბმული: ჯერ მაღაზია, მერე სხვა ბმული, ბოლოს ოფიციალური საიტი
@@ -324,31 +331,16 @@ export function GamesPage() {
                 },
               ]
               return (
-                <RecordContextMenu key={game.id} actions={actions}>
-                <li
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
-                >
-                  <button
-                    onClick={() => setOpened(game)}
-                    aria-label={t('games.open')}
-                    className="grid h-14 w-24 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
-                  >
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="size-full object-cover" />
-                    ) : (
-                      <Gamepad2 className="size-5 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    <button
-                      onClick={() => setOpened(game)}
-                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
-                      title={title(game)}
-                    >
-                      {title(game)}
-                    </button>
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
+                <RecordView
+                  key={game.id}
+                  title={title(game)}
+                  onOpen={() => setOpened(game)}
+                  openLabel={t('games.open')}
+                  photo={cover}
+                  shape="wide"
+                  placeholder={<Gamepad2 className="size-5" />}
+                  meta={
+                    <>
                       {game.developer && <span className="truncate">{game.developer}</span>}
                       {game.year ? <span>{game.year}</span> : null}
                       {(game.videos_count ?? 0) > 0 && (
@@ -363,67 +355,72 @@ export function GamesPage() {
                           {(game.images_count ?? 0) + (game.gallery_count ?? 0)}
                         </span>
                       )}
-                    </p>
-
-                    {/* Tasks §24.2 — ჟანრები, პლატფორმები („ჩემი" სავსე) და რეჟიმები ერთი ფერებით, რაც დეტალის ბარათებს */}
-                    <p className="mt-1 flex flex-wrap gap-1">
-                      {(game.genres ?? []).slice(0, 4).map((genre) => (
-                        <GenreChip key={genre.id} genre={genre} />
-                      ))}
-                      {game.platforms.map((p) => (
-                        <PlatformChip key={p} platform={p} mine={p === game.my_platform} />
-                      ))}
-                      {game.modes.map((m) => (
-                        <ModeChip key={m} mode={m} />
-                      ))}
-                    </p>
-                  </div>
-
-                  {/* Tasks §22.1 — ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
-                      შენი სიტყვები: „რამდენიმეს MC და რიცხვი აქვს და მერე „გადაუწყვეტელი“ —
-                      სიმეტრია დაირღვა; რჩეულის გვერდით ჯერ საერთო ზომის სტატუსის ნიშანი
-                      იყოს". ბმული და ქულა ზოგს აქვს, ზოგს არა — მათ მარჯვნივ დგომისას
-                      სტატუსი და ღილაკები რიგიდან რიგში ინაცვლებდა. სტატუსს ერთი მინიმალური
-                      სიგანეც აქვს, რომ რჩეული ყველა რიგში ერთ სვეტში იდგეს. */}
-                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
-                      მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — §22.1-ის „ხტომა" საბოლოოდ ქრება) · რედაქტირება · წაშლა */}
-                  <RecordActionBar
-                    before={
-                      <>
-                        <RatingBadge value={game.rating} size="row" className="mr-1" />
-                      </>
-                    }
-                    status={
-                      <EnumStatusMenu
-                        domain="game"
-                        value={game.status}
-                        options={GAME_STATUSES}
-                        label={t('form.status')}
-                        onChange={(next) => status.mutate({ id: game.id, next })}
-                      />
-                    }
-                    favorite={{
-                      active: game.is_favorite,
-                      pending: favorite.isPending && favorite.variables === game.id,
-                      onToggle: () => favorite.mutate(game.id),
-                    }}
-                    files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
-                    link={{ href: store?.url, label: t('actions.link'), icon: ExternalLink, title: store?.label || store?.url }}
-                    onEdit={() => setEditing(game)}
-                    onDelete={async () => {
-                      const ok = await confirm({
-                        title: t('games.deleteTitle'),
-                        description: t('games.deleteHint', { name: title(game) }),
-                        variant: 'destructive',
-                      })
-                      if (ok) remove.mutate(game.id)
-                    }}
-                  />
-                </li>
-                </RecordContextMenu>
+                    </>
+                  }
+                  extra={
+                    <>
+                      {/* Tasks §24.2 — ჟანრები, პლატფორმები („ჩემი" სავსე) და რეჟიმები ერთი ფერებით, რაც დეტალის ბარათებს */}
+                      <p className="mt-1 flex flex-wrap gap-1">
+                        {(game.genres ?? []).slice(0, 4).map((genre) => (
+                          <GenreChip key={genre.id} genre={genre} />
+                        ))}
+                        {game.platforms.map((p) => (
+                          <PlatformChip key={p} platform={p} mine={p === game.my_platform} />
+                        ))}
+                        {game.modes.map((m) => (
+                          <ModeChip key={m} mode={m} />
+                        ))}
+                      </p>
+                    </>
+                  }
+                  actions={actions}
+                  onEdit={() => setEditing(game)}
+                  /* Tasks §22.1 — ⚠️ **არჩევითი მარცხნივ, ყოველთვის არსებული მარჯვნივ.**
+                     შენი სიტყვები: „რამდენიმეს MC და რიცხვი აქვს და მერე „გადაუწყვეტელი“ —
+                     სიმეტრია დაირღვა; რჩეულის გვერდით ჯერ საერთო ზომის სტატუსის ნიშანი
+                     იყოს". ბმული და ქულა ზოგს აქვს, ზოგს არა — მათ მარჯვნივ დგომისას
+                     სტატუსი და ღილაკები რიგიდან რიგში ინაცვლებდა. სტატუსს ერთი მინიმალური
+                     სიგანეც აქვს, რომ რჩეული ყველა რიგში ერთ სვეტში იდგეს. */
+                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
+                     მაღაზიის ბმული (უბმულოზე უხილავი სლოტი — §22.1-ის „ხტომა" საბოლოოდ ქრება) · რედაქტირება · წაშლა */
+                  bar={
+                    <RecordActionBar
+                      before={
+                        <>
+                          <RatingBadge value={game.rating} size="row" className="mr-1" />
+                        </>
+                      }
+                      status={
+                        <EnumStatusMenu
+                          domain="game"
+                          value={game.status}
+                          options={GAME_STATUSES}
+                          label={t('form.status')}
+                          onChange={(next) => status.mutate({ id: game.id, next })}
+                        />
+                      }
+                      favorite={{
+                        active: game.is_favorite,
+                        pending: favorite.isPending && favorite.variables === game.id,
+                        onToggle: () => favorite.mutate(game.id),
+                      }}
+                      files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
+                      link={{ href: store?.url, label: t('actions.link'), icon: ExternalLink, title: store?.label || store?.url }}
+                      onEdit={() => setEditing(game)}
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t('games.deleteTitle'),
+                          description: t('games.deleteHint', { name: title(game) }),
+                          variant: 'destructive',
+                        })
+                        if (ok) remove.mutate(game.id)
+                      }}
+                    />
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={games.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

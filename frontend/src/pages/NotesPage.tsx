@@ -48,11 +48,14 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
 
@@ -82,6 +85,8 @@ export function NotesPage() {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const fmt = useDateFormat()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('note', 'rows')
 
   const [params, setParams] = useSearchParams()
   const search = params.toString()
@@ -236,6 +241,8 @@ export function NotesPage() {
         subtitle={t('notes.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -314,7 +321,7 @@ export function NotesPage() {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {notes.map((note) => {
               /* Tasks §7/§26.4 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · შეხსენებები ·
                  (ბმული) · — · რედაქტირება · წაშლა */
@@ -343,123 +350,102 @@ export function NotesPage() {
                 },
               ]
               return (
-              <RecordContextMenu key={note.id} actions={actions}>
-              <li
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
-              >
-                <button
-                  onClick={() => setOpened(note)}
-                  aria-label={t('notes.open')}
-                  className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-md bg-muted"
-                >
-                  <ModuleIcon
-                    name={note.category?.icon ?? 'NotebookPen'}
-                    className="size-5 text-muted-foreground"
-                  />
-                </button>
-
-                <div className="min-w-0 flex-1">
-                  <button
-                    onClick={() => setOpened(note)}
-                    className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
-                    title={note.title}
-                  >
-                    {note.title}
-                  </button>
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
-                    {note.category && (
-                      <span className="inline-flex items-center gap-1">
-                        <ModuleIcon name={note.category.icon} className="size-3" />
-                        {dictionaryName(note.category, lang)}
-                      </span>
-                    )}
-                    {note.due_at && (
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1',
-                          isOverdue(note) && 'font-medium text-destructive',
-                        )}
-                      >
-                        <CalendarClock className="size-3" />
-                        {fmt.date(note.due_at)}
-                      </span>
-                    )}
-                    {(note.files_count ?? 0) > 0 && (
-                      <span className="inline-flex items-center gap-1">
-                        <FileText className="size-3" />
-                        {note.files_count}
-                      </span>
-                    )}
-                    {note.links.length > 0 && (
-                      <span className="inline-flex items-center gap-1">
-                        <ExternalLink className="size-3" />
-                        {note.links.length}
-                      </span>
-                    )}
-                  </p>
-
-                  {note.tags.length > 0 && (
-                    <p className="mt-1 flex flex-wrap gap-1">
-                      {note.tags.slice(0, 6).map((tag) => (
-                        <span key={tag} className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
-                          {tag}
+                <RecordView
+                  key={note.id}
+                  title={note.title}
+                  onOpen={() => setOpened(note)}
+                  openLabel={t('notes.open')}
+                  rowPhotoClassName="size-11"
+                  placeholder={<ModuleIcon name={note.category?.icon ?? 'NotebookPen'} className="size-5" />}
+                  meta={
+                    <>
+                      {note.category && (
+                        <span className="inline-flex items-center gap-1">
+                          <ModuleIcon name={note.category.icon} className="size-3" />
+                          {dictionaryName(note.category, lang)}
                         </span>
-                      ))}
-                    </p>
-                  )}
-                </div>
-
-                {/* Tasks §26.1 → §40.5 — კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
-                    **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** (§8) → რედაქტირება →
-                    წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), მაგრამ
-                    **თავშია** (`RecordActionBar`-ის წესი): შუაში ის რედაქტირებას დანარჩენებს აშორებდა. */}
-                <span className="flex shrink-0 items-center gap-1" data-testid="note-cluster">
-                  <a
-                    href={note.links[0]?.url ?? '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-hidden={note.links[0]?.url ? undefined : true}
-                    tabIndex={note.links[0]?.url ? undefined : -1}
-                    title={note.links[0]?.label || note.links[0]?.url}
-                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-muted-foreground', !note.links[0]?.url && 'invisible')}
-                    data-testid="link-slot"
-                  >
-                    <ExternalLink className="size-3.5" />
-                    {t('notes.linkButton')}
-                  </a>
-                  {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
-                  <StatusBadge status={note.status} size="row" />
-                  <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
-                  <FavoriteButton
-                    active={note.is_favorite}
-                    pending={favorite.isPending && favorite.variables === note.id}
-                    onToggle={() => favorite.mutate(note.id)}
-                  />
-                  <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
-                    <SquarePen className="size-3.5" />
-                    {t('actions.edit')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: t('notes.deleteTitle'),
-                        description: t('notes.deleteHint', { name: note.title }),
-                        variant: 'destructive',
-                      })
-                      if (ok) remove.mutate(note.id)
-                    }}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </span>
-              </li>
-              </RecordContextMenu>
+                      )}
+                      {note.due_at && (
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1',
+                            isOverdue(note) && 'font-medium text-destructive',
+                          )}
+                        >
+                          <CalendarClock className="size-3" />
+                          {fmt.date(note.due_at)}
+                        </span>
+                      )}
+                      {(note.files_count ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <FileText className="size-3" />
+                          {note.files_count}
+                        </span>
+                      )}
+                      {note.links.length > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <ExternalLink className="size-3" />
+                          {note.links.length}
+                        </span>
+                      )}
+                    </>
+                  }
+                  tags={note.tags.slice(0, 6)}
+                  hashTags={false}
+                  actions={actions}
+                  onEdit={() => setEditing(note)}
+                  /* Tasks §26.1 → §40.5 — კლასტერი: ბმული ტექსტით → სტატუსი („დაარქივებული") →
+                     **შემხსენებელი** (ქარვისფერი, ტექსტით და რიცხვით) → **რჩეული** (§8) → რედაქტირება →
+                     წაშლა; ყველა h-9. ⚠️ ბმულის სლოტი უბმულოზეც ადგილზეა (`invisible`, §14.2), მაგრამ
+                     **თავშია** (`RecordActionBar`-ის წესი): შუაში ის რედაქტირებას დანარჩენებს აშორებდა. */
+                  bar={
+                    <span className="flex shrink-0 items-center gap-1" data-testid="note-cluster">
+                      <a
+                        href={note.links[0]?.url ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-hidden={note.links[0]?.url ? undefined : true}
+                        tabIndex={note.links[0]?.url ? undefined : -1}
+                        title={note.links[0]?.label || note.links[0]?.url}
+                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-muted-foreground', !note.links[0]?.url && 'invisible')}
+                        data-testid="link-slot"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        {t('notes.linkButton')}
+                      </a>
+                      {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
+                      <StatusBadge status={note.status} size="row" />
+                      <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />
+                      <FavoriteButton
+                        active={note.is_favorite}
+                        pending={favorite.isPending && favorite.variables === note.id}
+                        onToggle={() => favorite.mutate(note.id)}
+                      />
+                      <Button variant="edit" size="sm" onClick={() => setEditing(note)}>
+                        <SquarePen className="size-3.5" />
+                        {t('actions.edit')}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: t('notes.deleteTitle'),
+                            description: t('notes.deleteHint', { name: note.title }),
+                            variant: 'destructive',
+                          })
+                          if (ok) remove.mutate(note.id)
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </span>
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={notes.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

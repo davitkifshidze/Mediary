@@ -24,15 +24,17 @@ import { errorMessage } from '@/lib/errors'
 import { sortByIds } from '@/lib/reorder'
 import { songItem, usePlayer } from '@/lib/player'
 import { Button } from '@/components/ui/button'
-import { Sortable, SortableHandle, SortableItem } from '@/components/ui/sortable'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { useToast } from '@/components/ui/feedback'
-import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -49,6 +51,8 @@ export function PlaylistsPage() {
 
   const [editing, setEditing] = useState<Playlist | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Playlist | null>(null)
+  // Tasks §45 — ფლეილისტების ხედი სიმღერის მოდულზე, თავისი გასაღებით (სიმღერების ხედს არ ეხება)
+  const [layout, setLayout] = useRecordLayout('song', 'rows', 'playlist_view')
 
   const { data: playlists = [], isLoading } = useQuery({
     queryKey: ['playlists'],
@@ -85,6 +89,8 @@ export function PlaylistsPage() {
         hint={<InfoHint info={t('playlists.subtitle')} />}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (სიმღერის მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Button onClick={() => setEditing('new')}>
               <Plus className="size-4" />
               {t('playlists.add')}
@@ -100,8 +106,8 @@ export function PlaylistsPage() {
         </p>
       )}
 
-      <ul className="space-y-2">
-        <Sortable ids={playlistIds} onReorder={(ids) => reorder.mutate(ids)}>
+      {/* Tasks §45 — სამი განლაგება, გადათრევა (§11) სამივეში */}
+      <RecordList layout={layout} sortable={{ ids: playlistIds, onReorder: (ids) => reorder.mutate(ids) }}>
         {playlists.map((playlist) => {
           /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · — · რედაქტირება · წაშლა */
           const actions: MenuAction[] = [
@@ -110,44 +116,46 @@ export function PlaylistsPage() {
             { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => setDeleting(playlist) },
           ]
           return (
-          <RecordContextMenu key={playlist.id} actions={actions}>
-          <SortableItem id={playlist.id} handle className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-            <SortableHandle />
-            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted">
-              <ListMusic className="size-4" />
-            </span>
-
-            <Link to={`/playlists/${playlist.id}`} className="min-w-0 flex-1">
-              <span className="block truncate font-medium hover:text-primary">{playlist.name}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {t('playlists.songCount', { count: playlist.songs_count ?? 0 })}
-                {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
-              </span>
-            </Link>
-
-            <span className="flex shrink-0 items-center gap-1">
-              {/* §7.2 — სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
-                  ღილაკი ჯერ პლეილისტს ჩამოტვირთავს და მერე უშვებს */}
-              <PlayPlaylistButton playlist={playlist} />
-              <Button variant="edit" size="sm" onClick={() => setEditing(playlist)}>
-                <SquarePen className="size-3.5" />
-                {t('actions.edit')}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={() => setDeleting(playlist)}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </span>
-          </SortableItem>
-          </RecordContextMenu>
+            <RecordView
+              key={playlist.id}
+              sortId={playlist.id}
+              title={playlist.name}
+              onOpen={() => navigate(`/playlists/${playlist.id}`)}
+              openLabel={t('actions.open')}
+              rowPhotoClassName="size-9"
+              placeholder={<ListMusic className="size-4" />}
+              meta={
+                <span className="truncate">
+                  {t('playlists.songCount', { count: playlist.songs_count ?? 0 })}
+                  {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
+                </span>
+              }
+              actions={actions}
+              onEdit={() => setEditing(playlist)}
+              bar={
+                <span className="flex shrink-0 items-center gap-1">
+                  {/* §7.2 — სიმღერები სიაში არ მოდის (`songs_count`-ია), ამიტომ
+                      ღილაკი ჯერ პლეილისტს ჩამოტვირთავს და მერე უშვებს */}
+                  <PlayPlaylistButton playlist={playlist} />
+                  <Button variant="edit" size="sm" onClick={() => setEditing(playlist)}>
+                    <SquarePen className="size-3.5" />
+                    {t('actions.edit')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    aria-label={t('actions.delete')}
+                    onClick={() => setDeleting(playlist)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </span>
+              }
+            />
           )
         })}
-        </Sortable>
-      </ul>
+      </RecordList>
 
       {editing && (
         <PlaylistDialog

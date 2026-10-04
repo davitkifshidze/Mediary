@@ -408,7 +408,8 @@
     "countSeries": "{{count}} series",
     "titleAnime": "Anime",
     "countAnime": "{{count}} anime",
-    "emptyAnime": "No anime yet"
+    "emptyAnime": "No anime yet",
+    "noStatus": "No status"
   },
   "search": {
     "placeholder": "Search every module…",
@@ -4783,5 +4784,11 @@
     "photosDone": "Locked: {{count}} — the photo is in the “Locked photos” album",
     "photosAlbumTitle": "Locked photos album",
     "photosAlbumHint": "A locked photo moves into a separate album — “Locked photos” — and follows its password. The album is being created now; the password stays the same for the next photos."
+  },
+  "view": {
+    "label": "View",
+    "cards": "Cards",
+    "grid": "Grid",
+    "rows": "Rows"
   }
 }

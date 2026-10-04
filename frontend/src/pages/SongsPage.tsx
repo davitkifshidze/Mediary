@@ -58,11 +58,14 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
@@ -90,6 +93,8 @@ export function SongsPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('song', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
@@ -233,6 +238,8 @@ export function SongsPage() {
         subtitle={t('songs.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -320,7 +327,7 @@ export function SongsPage() {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {songs.map((song, i) => {
               const cover = storageUrl(song.thumbnail)
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ: დაკვრა · წყარო · რჩეული · — · რედაქტირება · წაშლა */
@@ -350,30 +357,18 @@ export function SongsPage() {
                 },
               ]
               return (
-                <RecordContextMenu key={song.id} actions={actions}>
-                <li
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
-                >
-                  <button
-                    onClick={() => playFrom(i)}
-                    aria-label={t('songs.play')}
-                    className="group relative grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
-                  >
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="size-full object-cover" />
-                    ) : (
-                      <Music className="size-5 text-muted-foreground" />
-                    )}
-                    <span className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Play className="size-5 text-white" />
-                    </span>
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium" title={song.title}>
-                      {song.title}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
+                /* §45 — სიმღერას ფანჯარა არ აქვს: ფოტო უკრავს, სათაური ტექსტია */
+                <RecordView
+                  key={song.id}
+                  title={song.title}
+                  staticTitle
+                  onOpen={() => void playFrom(i)}
+                  openLabel={t('songs.play')}
+                  photo={cover}
+                  placeholder={<Music className="size-5" />}
+                  photoHover={<Play className="size-5 text-white" />}
+                  meta={
+                    <>
                       {song.artist && <span className="truncate">{song.artist}</span>}
                       {song.album && (
                         <span className="inline-flex items-center gap-1 truncate">
@@ -397,10 +392,12 @@ export function SongsPage() {
                           {song.play_count}
                         </span>
                       )}
-                    </p>
-                    {/* §5.3 — რომელ პლეილისტშია. ⚠️ „არცერთში" **ცხადად** ეწერება:
-                        ცარიელი ადგილი „არ ვიცი"-საც ნიშნავდა და „არცერთსაც". */}
-                    {song.playlists && (
+                    </>
+                  }
+                  extra={
+                    /* §5.3 — რომელ პლეილისტშია. ⚠️ „არცერთში" **ცხადად** ეწერება:
+                       ცარიელი ადგილი „არ ვიცი"-საც ნიშნავდა და „არცერთსაც". */
+                    song.playlists && (
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                         <ListMusic className="size-3 shrink-0" />
                         {song.playlists.length === 0 ? (
@@ -418,47 +415,41 @@ export function SongsPage() {
                           ))
                         )}
                       </p>
-                    )}
-                    {song.tags.length > 0 && (
-                      <p className="mt-1 flex flex-wrap gap-1">
-                        {song.tags.map((tag) => (
-                          <span key={tag} className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
-                            #{tag}
-                          </span>
-                        ))}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
-                      სიმღერას სტატუსი და ფაილები არ აქვს (დახურული გადაწყვეტილებები) */}
-                  <RecordActionBar
-                    before={
-                      <>
-                        <RatingBadge value={song.rating} size="row" className="mr-1" />
-                      </>
-                    }
-                    favorite={{
-                      active: song.is_favorite,
-                      pending: favorite.isPending && favorite.variables === song.id,
-                      onToggle: () => favorite.mutate(song.id),
-                    }}
-                    link={{ href: song.url, label: t('actions.link'), icon: ExternalLink, title: t('songs.source') }}
-                    onEdit={() => setEditing(song)}
-                    onDelete={async () => {
-                      const ok = await confirm({
-                        title: t('songs.deleteTitle'),
-                        description: t('songs.deleteHint', { name: song.title }),
-                        variant: 'destructive',
-                      })
-                      if (ok) remove.mutate(song.id)
-                    }}
-                  />
-                </li>
-                </RecordContextMenu>
+                    )
+                  }
+                  tags={song.tags}
+                  actions={actions}
+                  onEdit={() => setEditing(song)}
+                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · რჩეული · ბმული · რედაქტირება · წაშლა;
+                     სიმღერას სტატუსი და ფაილები არ აქვს (დახურული გადაწყვეტილებები) */
+                  bar={
+                    <RecordActionBar
+                      before={
+                        <>
+                          <RatingBadge value={song.rating} size="row" className="mr-1" />
+                        </>
+                      }
+                      favorite={{
+                        active: song.is_favorite,
+                        pending: favorite.isPending && favorite.variables === song.id,
+                        onToggle: () => favorite.mutate(song.id),
+                      }}
+                      link={{ href: song.url, label: t('actions.link'), icon: ExternalLink, title: t('songs.source') }}
+                      onEdit={() => setEditing(song)}
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t('songs.deleteTitle'),
+                          description: t('songs.deleteHint', { name: song.title }),
+                          variant: 'destructive',
+                        })
+                        if (ok) remove.mutate(song.id)
+                      }}
+                    />
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={songs.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

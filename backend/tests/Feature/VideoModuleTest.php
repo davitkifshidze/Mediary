@@ -555,6 +555,30 @@ class VideoModuleTest extends TestCase
             ->assertJsonFragment(['last_view' => 'media']);
     }
 
+    /**
+     * Tasks §45.2 — სიის ხედი (ბარათები · ბადე · სტრიქონები) მოდულზე ინახება:
+     * იმავე ბლობის სხვა ფენას (`pick`, §17) არ შლის და სხვა ადამიანს არ ეხება.
+     */
+    public function test_the_list_view_is_kept_per_module_next_to_other_settings(): void
+    {
+        $this->actingAs($this->user)
+            ->putJson('/api/modules/video/settings', ['settings' => ['pick' => ['count' => 3, 'statuses' => null]]])
+            ->assertOk();
+
+        $this->actingAs($this->user)
+            ->putJson('/api/modules/video/settings', ['settings' => ['view' => 'rows']])
+            ->assertOk()
+            ->assertJsonPath('settings.view', 'rows')
+            ->assertJsonPath('settings.pick.count', 3);
+
+        $video = collect($this->actingAs($this->user)->getJson('/api/modules')->assertOk()->json('data'))->firstWhere('key', 'video');
+        $this->assertSame('rows', $video['user_settings']['view']);
+
+        $other = $this->makeUser('nika', ['video']);
+        $theirs = collect($this->actingAs($other)->getJson('/api/modules')->assertOk()->json('data'))->firstWhere('key', 'video');
+        $this->assertArrayNotHasKey('view', $theirs['user_settings'] ?? []);
+    }
+
     /* ---------- §6 (ფაზა 1) — ველების კონსტრუქტორი ---------- */
 
     /** ხანგრძლივობის ხელით ველი **გამორთულია** default-ად (§5) */

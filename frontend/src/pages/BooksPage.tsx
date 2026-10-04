@@ -48,10 +48,13 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { EnumStatusMenu } from '@/components/StatusMenu'
@@ -80,6 +83,8 @@ export function BooksPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('book', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
@@ -225,6 +230,8 @@ export function BooksPage() {
         subtitle={t('books.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -297,7 +304,7 @@ export function BooksPage() {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {books.map((book) => {
               const cover = storageUrl(book.cover)
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · სტატუსი ▸ · რჩეული · — · რედაქტირება · წაშლა */
@@ -335,31 +342,16 @@ export function BooksPage() {
                 },
               ]
               return (
-                <RecordContextMenu key={book.id} actions={actions}>
-                <li
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
-                >
-                  <button
-                    onClick={() => setOpened(book)}
-                    aria-label={t('books.open')}
-                    className="grid h-16 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
-                  >
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="size-full object-cover" />
-                    ) : (
-                      <BookOpen className="size-5 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    <button
-                      onClick={() => setOpened(book)}
-                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
-                      title={title(book)}
-                    >
-                      {title(book)}
-                    </button>
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
+                <RecordView
+                  key={book.id}
+                  title={title(book)}
+                  onOpen={() => setOpened(book)}
+                  openLabel={t('books.open')}
+                  photo={cover}
+                  shape="poster"
+                  placeholder={<BookOpen className="size-5" />}
+                  meta={
+                    <>
                       {book.author && <span className="truncate">{book.author}</span>}
                       {book.series_name && (
                         <span className="truncate">
@@ -389,78 +381,74 @@ export function BooksPage() {
                           {book.quotes_count}
                         </span>
                       )}
-                    </p>
-
-                    {/* პროგრესი მხოლოდ მაშინ, როცა კითხვა დაწყებულია */}
-                    {(book.progress_percent ?? 0) > 0 && (
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <div className="h-1 w-32 overflow-hidden rounded-md bg-muted">
-                          <div
-                            className="h-full rounded-md bg-primary"
-                            style={{ width: `${book.progress_percent}%` }}
-                          />
-                        </div>
-                        <span className="text-[11px] tabular-nums text-muted-foreground">
-                          {book.progress_percent}%
-                        </span>
-                      </div>
-                    )}
-
-                    {book.tags.length > 0 && (
-                      <p className="mt-1 flex flex-wrap gap-1">
-                        {book.tags.map((tag) => (
-                          <span key={tag} className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[11px]">
-                            #{tag}
+                    </>
+                  }
+                  extra={
+                    <>
+                      {/* პროგრესი მხოლოდ მაშინ, როცა კითხვა დაწყებულია */}
+                      {(book.progress_percent ?? 0) > 0 && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1 w-32 overflow-hidden rounded-md bg-muted">
+                            <div
+                              className="h-full rounded-md bg-primary"
+                              style={{ width: `${book.progress_percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] tabular-nums text-muted-foreground">
+                            {book.progress_percent}%
                           </span>
-                        ))}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */}
-                  <RecordActionBar
-                    before={
-                      <>
-                        <RatingBadge value={book.rating} size="row" className="mr-1" />
-                      </>
-                    }
-                    status={
-                      <EnumStatusMenu
-                        domain="book"
-                        value={book.status}
-                        options={BOOK_STATUSES}
-                        label={t('form.status')}
-                        onChange={(next) => status.mutate({ id: book.id, next })}
-                      />
-                    }
-                    favorite={{
-                      active: book.is_favorite,
-                      pending: favorite.isPending && favorite.variables === book.id,
-                      onToggle: () => favorite.mutate(book.id),
-                    }}
-                    files={{ count: book.files_count ?? 0, onOpen: () => setOpened(book) }}
-                    /* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
-                    link={{
-                      href: book.source_url || book.links[0]?.url,
-                      label: t('actions.link'),
-                      icon: ExternalLink,
-                      title: book.source_url || book.links[0]?.label || book.links[0]?.url,
-                    }}
-                    onEdit={() => setEditing(book)}
-                    onDelete={async () => {
-                      const ok = await confirm({
-                        title: t('books.deleteTitle'),
-                        description: t('books.deleteHint', { name: title(book) }),
-                        variant: 'destructive',
-                      })
-                      if (ok) remove.mutate(book.id)
-                    }}
-                  />
-                </li>
-                </RecordContextMenu>
+                        </div>
+                      )}
+                    </>
+                  }
+                  tags={book.tags}
+                  actions={actions}
+                  onEdit={() => setEditing(book)}
+                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: ქულა · სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · ბმული · რედაქტირება · წაშლა */
+                  bar={
+                    <RecordActionBar
+                      before={
+                        <>
+                          <RatingBadge value={book.rating} size="row" className="mr-1" />
+                        </>
+                      }
+                      status={
+                        <EnumStatusMenu
+                          domain="book"
+                          value={book.status}
+                          options={BOOK_STATUSES}
+                          label={t('form.status')}
+                          onChange={(next) => status.mutate({ id: book.id, next })}
+                        />
+                      }
+                      favorite={{
+                        active: book.is_favorite,
+                        pending: favorite.isPending && favorite.variables === book.id,
+                        onToggle: () => favorite.mutate(book.id),
+                      }}
+                      files={{ count: book.files_count ?? 0, onOpen: () => setOpened(book) }}
+                      /* §5.7 — ახალი `source_url` უპირატესია; `links[0]` ძველი ჩანაწერებისთვის რჩება */
+                      link={{
+                        href: book.source_url || book.links[0]?.url,
+                        label: t('actions.link'),
+                        icon: ExternalLink,
+                        title: book.source_url || book.links[0]?.label || book.links[0]?.url,
+                      }}
+                      onEdit={() => setEditing(book)}
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t('books.deleteTitle'),
+                          description: t('books.deleteHint', { name: title(book) }),
+                          variant: 'destructive',
+                        })
+                        if (ok) remove.mutate(book.id)
+                      }}
+                    />
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={books.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

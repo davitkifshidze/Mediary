@@ -44,10 +44,13 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Badge } from '@/components/ui/badge'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
@@ -78,6 +81,8 @@ export function BoardGamesPage() {
   const navigate = useNavigate()
 
   const [params, setParams] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('board_game', 'rows')
   const search = params.toString()
   const view = params.get('view') ?? 'all'
 
@@ -201,6 +206,8 @@ export function BoardGamesPage() {
         subtitle={t('boardGames.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
@@ -273,7 +280,7 @@ export function BoardGamesPage() {
             />
           )}
 
-          <ul className="space-y-2">
+          <RecordList layout={layout}>
             {games.map((game) => {
               const image = storageUrl(game.image)
               /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · რჩეული · — · რედაქტირება · წაშლა (სტატუსი სამაგიდოს არ აქვს) */
@@ -297,31 +304,16 @@ export function BoardGamesPage() {
                 },
               ]
               return (
-                <RecordContextMenu key={game.id} actions={actions}>
-                <li
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-3 py-2"
-                >
-                  <button
-                    onClick={() => setOpened(game)}
-                    aria-label={t('boardGames.open')}
-                    className="grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md bg-muted"
-                  >
-                    {image ? (
-                      <img src={image} alt="" loading="lazy" className="size-full object-cover" />
-                    ) : (
-                      <Dices className="size-5 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  <div className="min-w-0 flex-1">
-                    <button
-                      onClick={() => setOpened(game)}
-                      className="block max-w-full cursor-pointer truncate text-left text-sm font-medium hover:text-primary"
-                      title={game.title}
-                    >
-                      {game.title}
-                    </button>
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
+                <RecordView
+                  key={game.id}
+                  title={game.title}
+                  onOpen={() => setOpened(game)}
+                  openLabel={t('boardGames.open')}
+                  photo={image}
+                  rowPhotoClassName="size-14"
+                  placeholder={<Dices className="size-5" />}
+                  meta={
+                    <>
                       {game.designer && <span className="truncate">{game.designer}</span>}
                       {game.year ? <span>{game.year}</span> : null}
                       {game.genre && (
@@ -354,50 +346,52 @@ export function BoardGamesPage() {
                           {(game.files_count ?? 0) - (game.images_count ?? 0)}
                         </span>
                       )}
-                    </p>
-                  </div>
-
-                  {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
-                      რედაქტირება · წაშლა; სამაგიდოს სტატუსი არ აქვს (დახურული გადაწყვეტილება) */}
-                  <RecordActionBar
-                    before={
-                      <>
-                        {game.bgg_rating != null && (
-                          <Badge size="row" className="mr-1 bg-secondary tabular-nums">
-                            BGG {game.bgg_rating}
-                          </Badge>
-                        )}
-                        {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
-                        <RatingBadge value={game.rating} size="row" className="mr-1" />
-                      </>
-                    }
-                    favorite={{
-                      active: game.is_favorite,
-                      pending: favorite.isPending && favorite.variables === game.id,
-                      onToggle: () => favorite.mutate(game.id),
-                    }}
-                    files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
-                    link={{
-                      href: game.links[0]?.url || game.bgg_url,
-                      label: t('actions.link'),
-                      icon: ExternalLink,
-                      title: game.links[0]?.label || game.bgg_url || undefined,
-                    }}
-                    onEdit={() => setEditing(game)}
-                    onDelete={async () => {
-                      const ok = await confirm({
-                        title: t('boardGames.deleteTitle'),
-                        description: t('boardGames.deleteHint', { name: game.title }),
-                        variant: 'destructive',
-                      })
-                      if (ok) remove.mutate(game.id)
-                    }}
-                  />
-                </li>
-                </RecordContextMenu>
+                    </>
+                  }
+                  actions={actions}
+                  onEdit={() => setEditing(game)}
+                  /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: BGG · ქულა · რჩეული · ფაილები · ბმული (უბმულოზე უხილავი სლოტი) ·
+                     რედაქტირება · წაშლა; სამაგიდოს სტატუსი არ აქვს (დახურული გადაწყვეტილება) */
+                  bar={
+                    <RecordActionBar
+                      before={
+                        <>
+                          {game.bgg_rating != null && (
+                            <Badge size="row" className="mr-1 bg-secondary tabular-nums">
+                              BGG {game.bgg_rating}
+                            </Badge>
+                          )}
+                          {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
+                          <RatingBadge value={game.rating} size="row" className="mr-1" />
+                        </>
+                      }
+                      favorite={{
+                        active: game.is_favorite,
+                        pending: favorite.isPending && favorite.variables === game.id,
+                        onToggle: () => favorite.mutate(game.id),
+                      }}
+                      files={{ count: game.files_count ?? 0, onOpen: () => setOpened(game) }}
+                      link={{
+                        href: game.links[0]?.url || game.bgg_url,
+                        label: t('actions.link'),
+                        icon: ExternalLink,
+                        title: game.links[0]?.label || game.bgg_url || undefined,
+                      }}
+                      onEdit={() => setEditing(game)}
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t('boardGames.deleteTitle'),
+                          description: t('boardGames.deleteHint', { name: game.title }),
+                          variant: 'destructive',
+                        })
+                        if (ok) remove.mutate(game.id)
+                      }}
+                    />
+                  }
+                />
               )
             })}
-          </ul>
+          </RecordList>
 
           <ShowMore shown={games.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

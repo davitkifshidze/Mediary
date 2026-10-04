@@ -2,8 +2,13 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, LockOpen, PlayCircle, Star } from 'lucide-react'
+import { AlertTriangle, Film, LockOpen, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { RecordView } from '@/components/RecordView'
+import { DictionaryStatusMenu } from '@/components/StatusMenu'
+import { InfoHint } from '@/components/ui/info-hint'
+import { RatingBadge } from '@/components/ui/star-rating'
 import { FranchiseFavoriteDialog } from '@/components/FranchiseFavoriteDialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -26,7 +31,16 @@ import type { MovieListItem } from '@/api/types'
 import { useContentLang } from '@/lib/settings'
 import { useStatuses } from '@/lib/statuses'
 
-export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
+/* ============================================================
+   **ფილმის/სერიალის/ანიმეს ჩანაწერი სიაში** — ბარათი (`MovieCard`, ბადეც მისივე
+   კომპაქტური ზომაა) და სტრიქონი (`MovieRow`, Tasks §45).
+
+   ⚠️ **ლოგიკა ერთია** (`useMovieRecord`): სტატუსი, რჩეული (ფრანჩაიზის პოპაპით,
+   §18), ჩაკეტვა (§35.5), წაშლა და მარჯვენა ღილაკის მენიუ (§7) — ორივე ხედს
+   ერთნაირად აქვს, თორემ სტრიქონი ბარათს ერთ კვირაში დაშორდებოდა.
+   ============================================================ */
+
+function useMovieRecord(movie: MovieListItem, type: MediaType) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
@@ -98,6 +112,40 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${movie.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]
+
+  const open = () => nav(`${detailBase}/${movie.id}`, { state: { from: loc.pathname + loc.search } })
+  const edit = () => nav(`${detailBase}/${movie.id}/edit`)
+
+  const dialogs = (
+    <>
+      {franchiseOpen && (
+        <FranchiseFavoriteDialog movie={movie} onClose={() => setFranchiseOpen(false)} onDone={inval} />
+      )}
+      {locking && (
+        <RecordLockDialog
+          base={mediaLockBase(type, movie.id)}
+          record={{
+            id: movie.id,
+            name: movieTitle(movie, lang),
+            locked: !!movie.locked,
+            unlocked: movie.unlocked ?? true,
+            lock_hint: movie.lock_hint ?? null,
+            unlock_blocked_until: movie.unlock_blocked_until ?? null,
+          }}
+          onChanged={inval}
+          hint={t('lock.hintMedia')}
+          onClose={() => setLocking(false)}
+        />
+      )}
+    </>
+  )
+
+  return { lang, statuses, actions, missing, desc, detailBase, loc, open, edit, statusMut, favMut, toggleFavorite, askDelete, dialogs }
+}
+
+export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
+  const { t } = useTranslation()
+  const { lang, actions, missing, desc, detailBase, loc, dialogs } = useMovieRecord(movie, type)
 
   return (
     <ContextMenu>
@@ -205,25 +253,73 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
       </div>
 
       <ContextMenuContent>{contextMenuItems(actions)}</ContextMenuContent>
-      {franchiseOpen && (
-        <FranchiseFavoriteDialog movie={movie} onClose={() => setFranchiseOpen(false)} onDone={inval} />
-      )}
-      {locking && (
-        <RecordLockDialog
-          base={mediaLockBase(type, movie.id)}
-          record={{
-            id: movie.id,
-            name: movieTitle(movie, lang),
-            locked: !!movie.locked,
-            unlocked: movie.unlocked ?? true,
-            lock_hint: movie.lock_hint ?? null,
-            unlock_blocked_until: movie.unlock_blocked_until ?? null,
-          }}
-          onChanged={inval}
-          hint={t('lock.hintMedia')}
-          onClose={() => setLocking(false)}
-        />
-      )}
+      {dialogs}
     </ContextMenu>
+  )
+}
+
+/**
+ * Tasks §45 — **სტრიქონი**: პოსტერი, სათაური, წელი · ჟანრები · TMDB, და §29.1-ის ზოლი —
+ * ჩემი ქულა · სტატუსი · რჩეული · რედაქტირება · წაშლა. მენიუ და დიალოგები ბარათისაა.
+ */
+export function MovieRow({ movie, type = 'movie' }: { movie: MovieListItem; type?: MediaType }) {
+  const { t } = useTranslation()
+  const { lang, statuses, actions, missing, open, edit, statusMut, favMut, toggleFavorite, askDelete, dialogs } =
+    useMovieRecord(movie, type)
+
+  return (
+    <>
+      <RecordView
+        title={movieTitle(movie, lang)}
+        onOpen={open}
+        openLabel={t('actions.open')}
+        photo={movie.poster}
+        shape="poster"
+        placeholder={<Film className="size-5" />}
+        titleAside={
+          /* ❗ ბარათის წითელი სამკუთხედის იგივე ინფო */
+          missing.length > 0 ? (
+            <InfoHint critical={`${t('missing.label')} ${missing.map((f) => t(`missing.${f}`)).join(', ')}`} />
+          ) : undefined
+        }
+        meta={
+          <>
+            {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+            {movie.locked && <LockOpen className="size-3" aria-label={t('lock.badgeOpen')} />}
+            {movie.year ? <span>{movie.year}</span> : null}
+            {movie.genres.slice(0, 3).map((g) => (
+              <span key={g.id}>{genreName(g, lang)}</span>
+            ))}
+            {movie.rating && <span title={t('rating.tmdbAverage')}>TMDB {movie.rating}</span>}
+            {movie.franchise_next && (
+              <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                <PlayCircle className="size-3" />
+                {t('franchise.continue')}
+              </span>
+            )}
+          </>
+        }
+        actions={actions}
+        onEdit={edit}
+        bar={
+          <RecordActionBar
+            before={<RatingBadge value={movie.my_rating} size="row" className="mr-1" />}
+            status={
+              <DictionaryStatusMenu
+                status={movie.status}
+                statuses={statuses}
+                label={t('form.status')}
+                emptyLabel={t('library.noStatus')}
+                onChange={(key) => statusMut.mutate(key)}
+              />
+            }
+            favorite={{ active: movie.is_favorite, pending: favMut.isPending, onToggle: toggleFavorite }}
+            onEdit={edit}
+            onDelete={() => void askDelete()}
+          />
+        }
+      />
+      {dialogs}
+    </>
   )
 }

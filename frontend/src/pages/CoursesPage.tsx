@@ -57,11 +57,14 @@ import { usePendingUploads } from '@/lib/pendingUploads'
 import { hostLabel } from '@/lib/platforms'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    კურსების მოდული (`course`, FEAT-25).
@@ -92,6 +95,8 @@ export function CoursesPage() {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('course', 'rows')
 
   const view = params.get('view') ?? 'all'
   const search = params.toString()
@@ -212,6 +217,8 @@ export function CoursesPage() {
         subtitle={t('courses.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -266,7 +273,7 @@ export function CoursesPage() {
             />
           ) : (
             <>
-              <ul className="space-y-3">
+              <RecordList layout={layout}>
                 {courses.map((course) => {
                   const askDelete = async () => {
                     if (
@@ -300,86 +307,54 @@ export function CoursesPage() {
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
-                  <RecordContextMenu key={course.id} actions={actions}>
-                  <li
-                    className="flex gap-4 rounded-xl border border-border bg-card p-4"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setDetail(course)}
-                      className="size-16 shrink-0 overflow-hidden rounded-md bg-muted"
-                      aria-label={course.title}
-                    >
-                      {course.image ? (
-                        <img
-                          src={storageUrl(course.image) ?? course.image}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <span className="grid size-full place-items-center">
-                          <GraduationCap className="size-6 text-muted-foreground" />
-                        </span>
-                      )}
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setDetail(course)}
-                          className="min-w-0 truncate text-left font-medium hover:text-primary"
-                        >
-                          {course.title}
-                        </button>
-                        {/* §29.1 — სტატუსი მხოლოდ ზოლშია (აქამდე აქაც ბეჯი იყო და იქაც სელექთი) */}
-                        <VisibilityBadge value={course.visibility} />
-                      </div>
-
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {[
-                          // §29.3 — ჰოსტის ნაცვლად პლატფორმის სახელი („YouTube“), უცნობზე ჰოსტივე
-                          hostLabel(course.platform, t),
-                          course.category ? dictionaryName(course.category, lang) : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
-
-                      {course.tags.length > 0 && (
-                        <p className="mt-1.5 truncate text-xs text-muted-foreground">
-                          {course.tags.map((tag) => `#${tag}`).join(' ')}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
-                        ბმული (უბმულოზე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */}
-                    <RecordActionBar
-                      status={
-                        <EnumStatusMenu
-                          domain="course"
-                          value={course.status}
-                          options={COURSE_STATUSES}
-                          label={t('courses.status')}
-                          onChange={(next) => status.mutate({ id: course.id, next })}
+                    /* §45 — ერთი აღწერა სამ განლაგებაში; სტატუსი მხოლოდ ზოლშია (§29.1) */
+                    <RecordView
+                      key={course.id}
+                      title={course.title}
+                      onOpen={() => setDetail(course)}
+                      openLabel={course.title}
+                      photo={course.image ? (storageUrl(course.image) ?? course.image) : null}
+                      rowPhotoClassName="size-16"
+                      placeholder={<GraduationCap className="size-6" />}
+                      titleAside={<VisibilityBadge value={course.visibility} />}
+                      meta={[
+                        // §29.3 — ჰოსტის ნაცვლად პლატფორმის სახელი („YouTube“), უცნობზე ჰოსტივე
+                        hostLabel(course.platform, t),
+                        course.category ? dictionaryName(course.category, lang) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      tags={course.tags}
+                      actions={actions}
+                      onEdit={() => setEditing(course)}
+                      /* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
+                         ბმული (უბმულოზე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */
+                      bar={
+                        <RecordActionBar
+                          status={
+                            <EnumStatusMenu
+                              domain="course"
+                              value={course.status}
+                              options={COURSE_STATUSES}
+                              label={t('courses.status')}
+                              onChange={(next) => status.mutate({ id: course.id, next })}
+                            />
+                          }
+                          favorite={{
+                            active: course.is_favorite,
+                            pending: favorite.isPending && favorite.variables === course.id,
+                            onToggle: () => favorite.mutate(course.id),
+                          }}
+                          files={{ count: course.files_count ?? 0, onOpen: () => setDetail(course) }}
+                          link={{ href: course.url, label: t('actions.link'), icon: ExternalLink, title: course.url ?? undefined }}
+                          onEdit={() => setEditing(course)}
+                          onDelete={() => void askDelete()}
                         />
                       }
-                      favorite={{
-                        active: course.is_favorite,
-                        pending: favorite.isPending && favorite.variables === course.id,
-                        onToggle: () => favorite.mutate(course.id),
-                      }}
-                      files={{ count: course.files_count ?? 0, onOpen: () => setDetail(course) }}
-                      link={{ href: course.url, label: t('actions.link'), icon: ExternalLink, title: course.url ?? undefined }}
-                      onEdit={() => setEditing(course)}
-                      onDelete={() => void askDelete()}
                     />
-                  </li>
-                  </RecordContextMenu>
                   )
                 })}
-              </ul>
+              </RecordList>
 
               <ShowMore
                 shown={courses.length}

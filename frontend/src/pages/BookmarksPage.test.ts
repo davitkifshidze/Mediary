@@ -70,6 +70,9 @@ const mocks = vi.hoisted(() => ({
   statuses: { data: [] as unknown[] },
   categories: [] as unknown[],
   gallery: false,
+  // §45 — მოდულის შენახული ხედი (`module_user.settings.view`) და მისი ჩუმი შენახვა
+  modules: [] as { key: string; user_settings?: Record<string, unknown> }[],
+  updateModuleSettings: vi.fn(),
   // §41.3 — ძებნის ფანჯრების სტაბი ამ ორს „არჩევს"
   webImage: { engine: 'serper', source: 'serper', title: 'Docs logo', original: 'https://img.test/logo.png', thumbnail: 'https://img.test/logo-s.png', link: 'https://laravel.com', domain: 'laravel.com', width: 400, height: 300, engines: ['serper'] },
   webVideo: { engine: 'youtube', source: 'serpapi', title: 'Laravel in 100 seconds', link: 'https://youtu.be/l100', channel: 'Fireship', duration: 100, views: null, published: null, thumbnail: null, description: null, engines: ['youtube'] },
@@ -121,6 +124,7 @@ vi.mock('@/api/account', async (original) => ({
   fetchModuleFields: vi.fn().mockResolvedValue([]),
   fetchCustomFields: vi.fn().mockResolvedValue([]),
   fetchCustomFieldValues: vi.fn().mockResolvedValue({}),
+  updateModuleSettings: mocks.updateModuleSettings,
 }))
 
 vi.mock('@/lib/statuses', async (original) => ({
@@ -132,7 +136,7 @@ vi.mock('@/lib/statuses', async (original) => ({
 vi.mock('@/lib/modules', async (original) => ({
   ...(await original<typeof import('@/lib/modules')>()),
   useModules: () => ({
-    all: [],
+    all: mocks.modules,
     enabled: [],
     mediaModules: [],
     pageModules: [],
@@ -173,6 +177,7 @@ afterEach(() => {
   container = null
   mocks.gallery = false
   mocks.categories = []
+  mocks.modules = []
   vi.clearAllMocks()
 })
 
@@ -484,5 +489,35 @@ describe('BookmarksPage form (§41)', () => {
     expect(row.querySelector(`input[aria-label="${i18n.t('bookmarks.linkLabel')}"]`)).not.toBeNull()
     // „სხვა" ტიპზე ფასი არ იწერება
     expect(row.querySelector(`input[aria-label="${i18n.t('bookmarks.linkPrice')}"]`)).toBeNull()
+  })
+})
+
+/* Tasks §45 — ხედის გადამრთველი: ნაგულისხმევად ახლანდელი სტრიქონები; გადართვა მოდულზე ინახება,
+   შენახული ხედი კი გვერდის გახსნისას აღდგება */
+describe('BookmarksPage view toggle (§45)', () => {
+  const layoutOf = (el: HTMLElement) => el.querySelector('[data-testid="record-list"]')?.getAttribute('data-layout')
+  const toggle = (label: string) =>
+    [...document.querySelectorAll<HTMLButtonElement>('[data-testid="view-toggle"] button')].find((b) => b.textContent === label)!
+
+  it('starts with the current rows and saves the switch to the grid on the module', async () => {
+    mocks.updateModuleSettings.mockResolvedValue(undefined)
+    const el = await mount()
+    expect(layoutOf(el)).toBe('rows')
+
+    await act(async () => toggle(i18n.t('view.grid')).click())
+
+    expect(layoutOf(el)).toBe('grid')
+    expect(mocks.updateModuleSettings).toHaveBeenCalledWith('bookmark', { view: 'grid' })
+    // ბადეში — ფოტო და სათაური, ზოლი ჰოვერის მენიუშია
+    expect(el.querySelector('[data-testid="bookmark-thumb"]')).not.toBeNull()
+    expect(el.querySelector('[data-testid="record-actions"]')).toBeNull()
+  })
+
+  it('opens in the saved view', async () => {
+    mocks.modules = [{ key: 'bookmark', user_settings: { view: 'cards' } }]
+    const el = await mount()
+
+    expect(layoutOf(el)).toBe('cards')
+    expect(el.querySelector('[data-testid="record-card-bar"] [data-testid="record-actions"]')).not.toBeNull()
   })
 })

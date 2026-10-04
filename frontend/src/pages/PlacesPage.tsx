@@ -69,11 +69,14 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { usePendingUploads } from '@/lib/pendingUploads'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
+import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
    ადგილების მოდული (`place`, FEAT-26).
@@ -107,6 +110,8 @@ export function PlacesPage() {
   const confirm = useConfirm()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ხედი
+  const [layout, setLayout] = useRecordLayout('place', 'rows')
 
   const view = params.get('view') ?? 'all'
   const search = params.toString()
@@ -238,6 +243,8 @@ export function PlacesPage() {
         subtitle={t('places.count', { count: total })}
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             <div className="relative min-w-0 flex-1 sm:flex-none">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -292,7 +299,7 @@ export function PlacesPage() {
             />
           ) : (
             <>
-              <ul className="space-y-3">
+              <RecordList layout={layout}>
                 {places.map((place) => {
                   const askDelete = async () => {
                     if (
@@ -326,96 +333,63 @@ export function PlacesPage() {
                     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: askDelete },
                   ]
                   return (
-                  <RecordContextMenu key={place.id} actions={actions}>
-                  <li
-                    className="flex gap-4 rounded-xl border border-border bg-card p-4"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setDetail(place)}
-                      className="size-16 shrink-0 overflow-hidden rounded-md bg-muted"
-                      aria-label={place.name}
-                    >
-                      {place.photo ? (
-                        <img
-                          src={storageUrl(place.photo) ?? place.photo}
-                          alt=""
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <span className="grid size-full place-items-center">
-                          <MapPin className="size-6 text-muted-foreground" />
-                        </span>
-                      )}
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setDetail(place)}
-                          className="min-w-0 truncate text-left font-medium hover:text-primary"
-                        >
-                          {place.name}
-                        </button>
-                        {/* §29.1 — სტატუსი და ქულა ზოლშია (აქამდე სტატუსი ორჯერ იყო: ბეჯი აქ და სელექთი ზოლში) */}
-                        <VisibilityBadge value={place.visibility} />
-                      </div>
-
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {[
-                          place.city,
-                          place.country,
-                          place.category ? dictionaryName(place.category, lang) : null,
-                          place.visited_at ? formatDate(place.visited_at) : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
-
-                      {place.address && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{place.address}</p>
-                      )}
-
-                      {place.tags.length > 0 && (
-                        <p className="mt-1.5 truncate text-xs text-muted-foreground">
-                          {place.tags.map((tag) => `#${tag}`).join(' ')}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Tasks §29.1 — ერთი ზოლი: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · რუკა (კოორდინატის
-                        გარეშე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */}
-                    <RecordActionBar
-                      before={
-                        <>
-                          <RatingBadge value={place.rating} size="row" className="mr-1" />
-                        </>
+                    /* §45 — ერთი აღწერა სამ განლაგებაში; სტატუსი და ქულა ზოლშია (§29.1) */
+                    <RecordView
+                      key={place.id}
+                      title={place.name}
+                      onOpen={() => setDetail(place)}
+                      openLabel={place.name}
+                      photo={place.photo ? (storageUrl(place.photo) ?? place.photo) : null}
+                      rowPhotoClassName="size-16"
+                      placeholder={<MapPin className="size-6" />}
+                      titleAside={<VisibilityBadge value={place.visibility} />}
+                      meta={[
+                        place.city,
+                        place.country,
+                        place.category ? dictionaryName(place.category, lang) : null,
+                        place.visited_at ? formatDate(place.visited_at) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      extra={
+                        place.address && <p className="mt-0.5 truncate text-xs text-muted-foreground">{place.address}</p>
                       }
-                      status={
-                        <EnumStatusMenu
-                          domain="place"
-                          value={place.status}
-                          options={PLACE_STATUSES}
-                          label={t('places.status')}
-                          onChange={(next) => status.mutate({ id: place.id, next })}
-                        />
-                      }
-                      favorite={{
-                        active: place.is_favorite,
-                        pending: favorite.isPending && favorite.variables === place.id,
-                        onToggle: () => favorite.mutate(place.id),
-                      }}
-                      files={{ count: place.files_count ?? 0, onOpen: () => setDetail(place) }}
-                      link={{ href: place.map_url, label: t('actions.map'), icon: MapIcon, title: t('places.openMap') }}
+                      tags={place.tags}
+                      actions={actions}
                       onEdit={() => setEditing(place)}
-                      onDelete={() => void askDelete()}
+                      /* Tasks §29.1 — ერთი ზოლი: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები · რუკა (კოორდინატის
+                         გარეშე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */
+                      bar={
+                        <RecordActionBar
+                          before={
+                            <>
+                              <RatingBadge value={place.rating} size="row" className="mr-1" />
+                            </>
+                          }
+                          status={
+                            <EnumStatusMenu
+                              domain="place"
+                              value={place.status}
+                              options={PLACE_STATUSES}
+                              label={t('places.status')}
+                              onChange={(next) => status.mutate({ id: place.id, next })}
+                            />
+                          }
+                          favorite={{
+                            active: place.is_favorite,
+                            pending: favorite.isPending && favorite.variables === place.id,
+                            onToggle: () => favorite.mutate(place.id),
+                          }}
+                          files={{ count: place.files_count ?? 0, onOpen: () => setDetail(place) }}
+                          link={{ href: place.map_url, label: t('actions.map'), icon: MapIcon, title: t('places.openMap') }}
+                          onEdit={() => setEditing(place)}
+                          onDelete={() => void askDelete()}
+                        />
+                      }
                     />
-                  </li>
-                  </RecordContextMenu>
                   )
                 })}
-              </ul>
+              </RecordList>
 
               <ShowMore
                 shown={places.length}

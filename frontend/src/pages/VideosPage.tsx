@@ -8,11 +8,14 @@ import { useListLimit } from '@/lib/paged'
 import { ShowMore } from '@/components/ui/show-more'
 import {
   Download,
+  ExternalLink,
   FileX,
   Globe,
+  HardDriveDownload,
   Link2,
   ListVideo,
   Loader2,
+  Play,
   Plus,
   Search,
   Tags,
@@ -55,6 +58,9 @@ import { FloatingPick } from '@/components/FloatingPick'
 import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { LocalVideoPlayer } from '@/components/LocalVideoPlayer'
 import { VideoCard } from '@/components/VideoCard'
+import { RecordActionBar } from '@/components/RecordActionBar'
+import { DictionaryStatusMenu } from '@/components/StatusMenu'
+import { useDateFormat } from '@/lib/dates'
 import { VideoDetail } from '@/components/VideoDetail'
 import { VideoTypeDialog } from '@/components/VideoTypeDialog'
 import {
@@ -77,6 +83,9 @@ import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { RecordList, RecordView } from '@/components/RecordView'
+import { ViewToggle } from '@/components/ui/view-toggle'
+import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -130,6 +139,9 @@ export function VideosPage() {
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<(typeof SORTS)[number]>('newest')
   const [editing, setEditing] = useState<Video | 'new' | null>(null)
+  // Tasks §45 — ხედი მოდულზე ინახება; ნაგულისხმევი — ახლანდელი ბარათები
+  const [layout, setLayout] = useRecordLayout('video', 'cards')
+  const fmt = useDateFormat()
   // ⚠️ სახელი „detail"-ია და არა „playing": §7.2-ის შემდეგ **დაკვრა
   // დამკვრელშია** (§35: გვერდითა პანელი ან ქვედა ზოლი), მოდალი კი
   // აღწერა/ფაილები/ჩანიშვნები/მსგავსებია და ვიდეოს დამკვრელს გადასცემს.
@@ -369,6 +381,30 @@ export function VideosPage() {
             ? videoTypeName(onlyType, lang)
             : t('videos.title')
 
+  /* Tasks §7 → §45 — ერთი მენიუ სამივე განლაგებაზე: გახსნა · დაკვრა · წყარო · სტატუსი ▸ · რჩეული ·
+     (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
+  const videoActions = (v: Video, i: number): MenuAction[] => [
+    { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
+    { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
+    {
+      key: 'source',
+      label: t('videos.source'),
+      icon: MENU_ICONS.link,
+      run: () => window.open(v.url, '_blank', 'noopener,noreferrer'),
+    },
+    statusActions(t('form.status'), statuses, v.status, lang, (key) => status.mutate({ id: v.id, next: key })),
+    favoriteAction(v.is_favorite, () => favorite.mutate(v.id), t),
+    ...(!v.download_status || v.download_status === 'failed'
+      ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
+      : []),
+    /* §19.4 — ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
+    ...(v.download_status === 'ready'
+      ? [{ key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) }]
+      : []),
+    { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
+    { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(v) },
+  ]
+
   return (
     <PageContainer>
       <PageHeader
@@ -382,6 +418,8 @@ export function VideosPage() {
         }
         actions={
           <>
+            {/* Tasks §45 — ბარათები · ბადე · სტრიქონები (მოდულზე ინახება) */}
+            <ViewToggle value={layout} onChange={setLayout} />
             {/* ძებნა — Tasks 4: განმარტება tooltip-ია და არა `title` */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -465,37 +503,15 @@ export function VideosPage() {
             />
           )}
 
-          {/* §20.4 — სვეტები `main`-ის სიგანეზე (`@container`), არა ეკრანისაზე */}
-          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @7xl:grid-cols-3">
-            {videos.map((v, i) => {
-              /* Tasks §7 — მარჯვენა ღილაკის მენიუ ბარათზე: გახსნა · დაკვრა · წყარო ·
-                 სტატუსი ▸ · რჩეული · (ჩამოტვირთვა) · — · რედაქტირება · წაშლა */
-              const actions: MenuAction[] = [
-                { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => setDetail(v) },
-                { key: 'play', label: t('playback.playFromHere'), icon: MENU_ICONS.play, run: () => void playFrom(i) },
-                {
-                  key: 'source',
-                  label: t('videos.source'),
-                  icon: MENU_ICONS.link,
-                  run: () => window.open(v.url, '_blank', 'noopener,noreferrer'),
-                },
-                statusActions(t('form.status'), statuses, v.status, lang, (key) => status.mutate({ id: v.id, next: key })),
-                favoriteAction(v.is_favorite, () => favorite.mutate(v.id), t),
-                ...(!v.download_status || v.download_status === 'failed'
-                  ? [{ key: 'download', label: t('videos.local.start'), icon: Download, run: () => download.mutate(v.id) }]
-                  : []),
-                /* §19.4 — ლოკალური ასლის წაშლა ბარათის ზოლიდან აქ გადმოვიდა: ზოლში ერთი ღილაკი დარჩა */
-                ...(v.download_status === 'ready'
-                  ? [{ key: 'drop', label: t('videos.local.remove'), icon: FileX, run: () => void askDropDownload(v) }]
-                  : []),
-                { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(v) },
-                { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete(v) },
-              ]
-              return (
+          {/* Tasks §45 — ბარათები `VideoCard`-ითაა (ახლანდელი, §19), ბადე და სტრიქონები — `RecordView`-ით;
+              მენიუ ერთია (`videoActions`). §20.4 — სვეტები `main`-ის სიგანეზე (`@container`) */}
+          {layout === 'cards' ? (
+            <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @7xl:grid-cols-3">
+              {videos.map((v, i) => (
                 <VideoCard
                   key={v.id}
                   video={v}
-                  actions={actions}
+                  actions={videoActions(v, i)}
                   lang={lang}
                   onOpen={() => setDetail(v)}
                   onPlay={() => void playFrom(i)}
@@ -517,9 +533,69 @@ export function VideosPage() {
                     },
                   }}
                 />
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <RecordList layout={layout}>
+              {videos.map((v, i) => (
+                <RecordView
+                  key={v.id}
+                  title={v.title}
+                  onOpen={() => setDetail(v)}
+                  openLabel={t('actions.open')}
+                  photo={storageUrl(v.thumbnail)}
+                  shape="wide"
+                  placeholder={<Play className="size-5" />}
+                  meta={
+                    <>
+                      {v.type && <span>{videoTypeName(v.type, lang)}</span>}
+                      {v.channel && <span className="truncate">{v.channel}</span>}
+                      {v.published_at && <span>{fmt.date(v.published_at)}</span>}
+                      {v.duration ? <span>{formatDuration(v.duration)}</span> : null}
+                      {/* §7.1 — „ეს ლოკალურად მაქვს" სტრიქონშიც ჩანს */}
+                      {v.download_status === 'ready' && (
+                        <span className="inline-flex items-center gap-1 text-[var(--status-watched)]">
+                          <HardDriveDownload className="size-3" />
+                          {t('videos.local.ready')}
+                        </span>
+                      )}
+                    </>
+                  }
+                  tags={v.tags}
+                  actions={videoActions(v, i)}
+                  onEdit={() => setEditing(v)}
+                  bar={
+                    <RecordActionBar
+                      link={{ href: v.url, label: t('videos.source'), icon: ExternalLink, title: v.url }}
+                      before={
+                        /* §7.2 — რიგში ჩართვა: აქედან გაფილტრული სია უკრავს რიგრიგობით */
+                        <Button variant="outline" size="sm" className="text-muted-foreground" onClick={() => void playFrom(i)}>
+                          <ListVideo className="size-3.5" />
+                          {t('playback.play')}
+                        </Button>
+                      }
+                      status={
+                        <DictionaryStatusMenu
+                          status={v.status}
+                          statuses={statuses}
+                          label={t('form.status')}
+                          emptyLabel={t('videos.noStatus')}
+                          onChange={(key) => status.mutate({ id: v.id, next: key })}
+                        />
+                      }
+                      favorite={{
+                        active: v.is_favorite,
+                        pending: favorite.isPending && favorite.variables === v.id,
+                        onToggle: () => favorite.mutate(v.id),
+                      }}
+                      onEdit={() => setEditing(v)}
+                      onDelete={() => void askDelete(v)}
+                    />
+                  }
+                />
+              ))}
+            </RecordList>
+          )}
 
           <ShowMore shown={videos.length} total={total} onMore={showMore} loading={query.isFetching} />
         </div>

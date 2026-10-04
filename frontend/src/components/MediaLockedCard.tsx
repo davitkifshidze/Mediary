@@ -8,6 +8,7 @@ import { mediaLockBase } from '@/lib/locks'
 import type { MediaType } from '@/lib/media'
 import { useContentLang } from '@/lib/settings'
 import { RecordUnlockDialog } from '@/components/locks/RecordLock'
+import { RecordView } from '@/components/RecordView'
 
 /* ============================================================
    **დამალული ფილმის/სერიალის/ანიმეს ბარათი (Tasks §35.5, Q9).**
@@ -20,7 +21,6 @@ import { RecordUnlockDialog } from '@/components/locks/RecordLock'
 export function MediaLockedCard({ movie, type }: { movie: MovieListItem; type: MediaType }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  const qc = useQueryClient()
   const [unlocking, setUnlocking] = useState(false)
   const title = movieTitle(movie, lang)
 
@@ -35,22 +35,52 @@ export function MediaLockedCard({ movie, type }: { movie: MovieListItem; type: M
         </div>
         <h3 className="mt-2.5 font-display text-[15px] font-medium leading-snug">{title}</h3>
       </button>
-
-      {unlocking && (
-        <RecordUnlockDialog
-          base={mediaLockBase(type, movie.id)}
-          record={{
-            id: movie.id,
-            name: title,
-            locked: true,
-            unlocked: false,
-            lock_hint: movie.lock_hint ?? null,
-            unlock_blocked_until: movie.unlock_blocked_until ?? null,
-          }}
-          onChanged={() => qc.invalidateQueries({ queryKey: [type] })}
-          onClose={() => setUnlocking(false)}
-        />
-      )}
+      {unlocking && <UnlockDialog movie={movie} type={type} title={title} onClose={() => setUnlocking(false)} />}
     </>
+  )
+}
+
+/** Tasks §45 — იგივე სტრიქონების ხედში: ბოქლომი ფოტოს ადგილას, სათაური, „ჩაკეტილი"; ზოლი და მენიუ არ აქვს */
+export function MediaLockedRow({ movie, type }: { movie: MovieListItem; type: MediaType }) {
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+  const [unlocking, setUnlocking] = useState(false)
+  const title = movieTitle(movie, lang)
+
+  return (
+    <>
+      <RecordView
+        title={title}
+        onOpen={() => setUnlocking(true)}
+        openLabel={t('lock.badgeLocked')}
+        shape="poster"
+        placeholder={<Lock className="size-5" />}
+        meta={<span>{t('lock.badgeLocked')}</span>}
+        actions={[]}
+        bar={null}
+        testId="media-locked-row"
+      />
+      {unlocking && <UnlockDialog movie={movie} type={type} title={title} onClose={() => setUnlocking(false)} />}
+    </>
+  )
+}
+
+function UnlockDialog({ movie, type, title, onClose }: { movie: MovieListItem; type: MediaType; title: string; onClose: () => void }) {
+  const qc = useQueryClient()
+
+  return (
+    <RecordUnlockDialog
+      base={mediaLockBase(type, movie.id)}
+      record={{
+        id: movie.id,
+        name: title,
+        locked: true,
+        unlocked: false,
+        lock_hint: movie.lock_hint ?? null,
+        unlock_blocked_until: movie.unlock_blocked_until ?? null,
+      }}
+      onChanged={() => qc.invalidateQueries({ queryKey: [type] })}
+      onClose={onClose}
+    />
   )
 }

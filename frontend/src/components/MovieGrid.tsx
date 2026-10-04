@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MovieCard } from './MovieCard'
-import { MediaLockedCard } from './MediaLockedCard'
+import { MovieCard, MovieRow } from './MovieCard'
+import { MediaLockedCard, MediaLockedRow } from './MediaLockedCard'
+import { RecordList } from './RecordView'
 import { statusName } from '@/lib/statuses'
 import { genreName } from '@/lib/display'
 import type { MediaType } from '@/lib/media'
 import { useContentLang, useSettings, type CardSize, type GroupBy } from '@/lib/settings'
 import type { MovieListItem } from '@/api/types'
+import type { RecordLayout } from '@/lib/recordLayout'
 
 /* ============================================================
    ბადე — ბარათის ზომითა და სექციებად დაჯგუფებით (Tasks 18).
@@ -38,15 +40,34 @@ export function MovieGrid({
   movies,
   type = 'movie',
   groupBy = 'off',
+  layout = 'cards',
 }: {
   movies: MovieListItem[]
   type?: MediaType
   groupBy?: GroupBy
+  /** Tasks §45 — ბარათები (პარამეტრების ზომით) · ბადე (კომპაქტური) · სტრიქონები */
+  layout?: RecordLayout
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { settings } = useSettings()
-  const columns = COLUMNS[settings.cardSize] ?? COLUMNS.medium
+  const columns = layout === 'grid' ? COLUMNS.compact : (COLUMNS[settings.cardSize] ?? COLUMNS.medium)
+
+  /* ⚠️ დაჯგუფება სამივე ხედში მუშაობს — სექცია თავის სიას ხატავს */
+  const items = (list: MovieListItem[]) =>
+    layout === 'rows' ? (
+      <RecordList layout="rows">
+        {list.map((m) =>
+          m.hidden ? <MediaLockedRow key={m.id} movie={m} type={type} /> : <MovieRow key={m.id} movie={m} type={type} />,
+        )}
+      </RecordList>
+    ) : (
+      <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
+        {list.map((m) =>
+          m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />,
+        )}
+      </div>
+    )
 
   const sections = useMemo<Section[] | null>(() => {
     if (groupBy === 'off') return null
@@ -88,15 +109,7 @@ export function MovieGrid({
     })
   }, [movies, groupBy, lang, t])
 
-  if (!sections) {
-    return (
-      <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
-        {movies.map((m) => (
-          m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />
-        ))}
-      </div>
-    )
-  }
+  if (!sections) return items(movies)
 
   return (
     <div className="space-y-8">
@@ -106,11 +119,7 @@ export function MovieGrid({
             <span className="font-display text-lg font-semibold tracking-tight">{section.title}</span>
             <span className="text-sm text-muted-foreground">{section.movies.length}</span>
           </h2>
-          <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
-            {section.movies.map((m) => (
-              m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />
-            ))}
-          </div>
+          {items(section.movies)}
         </section>
       ))}
     </div>
