@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Settings, X } from 'lucide-react'
+import { BarChart3, Calculator, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, List, Loader2, Pencil, Plus, Settings, X } from 'lucide-react'
 import {
   DUTY_KEY,
   fetchDutyPeriod,
@@ -20,17 +20,19 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { DutyBatchDialog } from '@/components/duty/DutyBatchDialog'
 import { DutyBulkDialog } from '@/components/duty/DutyBulkDialog'
+import { DutyCalculator } from '@/components/duty/DutyCalculator'
 import { DutyCalendar } from '@/components/duty/DutyCalendar'
 import { DutyDayDialog } from '@/components/duty/DutyDayDialog'
 import { DutyList } from '@/components/duty/DutyList'
 import { DutySettingsDialog } from '@/components/duty/DutySettingsDialog'
 import { DutyShiftDialog } from '@/components/duty/DutyShiftDialog'
+import { DutyTotals } from '@/components/duty/DutyTotals'
 
 /* ============================================================
    **მორიგეობა — `/duty` (Tasks §34.4–34.5).**
 
    ზემოთ პერიოდის ნავიგაცია (← პერიოდი →, „დღეს“) და სამსახურის ფილტრი
-   (ფერებით), ქვემოთ ხედები: **კალენდარი · სია**.
+   (ფერებით), ქვემოთ ხედები: **კალენდარი · სია · ჯამები · კალკულატორი**.
 
    ⚠️ **მდგომარეობა მისამართშია** (`?date=` — ნებისმიერი დღე პერიოდში, `?view=`,
    `?w=` — სამსახური): „უკან“ და ბმული იმავე პერიოდს და ხედს აბრუნებს.
@@ -40,7 +42,7 @@ import { DutyShiftDialog } from '@/components/duty/DutyShiftDialog'
    „დამატება“ (ბევრი დღე ერთ მოთხოვნაში) ან მათი მორიგეობების შეცვლა/წაშლა.
    ============================================================ */
 
-const VIEWS = ['calendar', 'list'] as const
+const VIEWS = ['calendar', 'list', 'totals', 'calculator'] as const
 type View = (typeof VIEWS)[number]
 
 const ALL = 'all'
@@ -212,6 +214,8 @@ export function DutyPage() {
           options={[
             { key: 'calendar', label: t('duty.view.calendar'), icon: CalendarDays },
             { key: 'list', label: t('duty.view.list'), icon: List },
+            { key: 'totals', label: t('duty.view.totals'), icon: BarChart3 },
+            { key: 'calculator', label: t('duty.view.calculator'), icon: Calculator },
           ]}
           value={view}
           onChange={(key) => {
@@ -260,8 +264,12 @@ export function DutyPage() {
           onSelectionChange={setSelected}
           onOpenDay={openDay}
         />
-      ) : (
+      ) : view === 'list' ? (
         <DutyList shifts={shifts} settings={settings} onEdit={(shift) => setEditing({ shift })} />
+      ) : view === 'totals' ? (
+        <DutyTotals period={period} workplaceFilter={workplaceFilter} workplaces={workplaces} types={types} settings={settings} />
+      ) : (
+        <DutyCalculator key={period.from} period={period} workplaces={workplaces} types={types} settings={settings} />
       )}
 
       {/* ---------- ფანჯრები ---------- */}

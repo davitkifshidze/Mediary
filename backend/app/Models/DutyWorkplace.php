@@ -61,7 +61,8 @@ class DutyWorkplace extends Model
             'user_id' => $userId,
             'name' => $locale === 'en' ? 'Work' : 'სამსახური',
             'short' => $locale === 'en' ? 'W' : 'ს',
-            'color' => '#2563eb',
+            // პალიტრის პირველი ფერი (`DUTY_COLORS`, SPA) — თემის ცვლადად იხატება
+            'color' => '#2a78d6',
             'sort_order' => 1,
         ]);
     }

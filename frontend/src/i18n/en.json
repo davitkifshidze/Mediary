@@ -4520,7 +4520,9 @@
     "emptyHint": "Add one with the button or by tapping a day in the calendar.",
     "view": {
       "calendar": "Calendar",
-      "list": "List"
+      "list": "List",
+      "totals": "Totals",
+      "calculator": "Calculator"
     },
     "period": {
       "previous": "Previous",
@@ -4609,6 +4611,31 @@
       "edit": "Edit type",
       "saved": "Type saved",
       "hint": "The hours go onto new shifts; existing shifts keep their own hours."
+    },
+    "totals": {
+      "shifts": "Shifts",
+      "hours": "Hours",
+      "pay": "Pay",
+      "same": "Same as the previous period",
+      "more": "{{value}} more than the previous period",
+      "less": "{{value}} less than the previous period",
+      "unpaid": "{{count}} shifts have no pay",
+      "unpaidHint": "They had no rate — they are left out of the total. Enter the pay on the shift or add a rate to the workplace.",
+      "byWorkplace": "By workplace",
+      "byType": "By type",
+      "byPeriod": "{{metric}} by period"
+    },
+    "calc": {
+      "range": "Range",
+      "workplaces": "Workplaces",
+      "workplacesHint": "None selected — all.",
+      "pickRange": "Pick a range.",
+      "result": "{{count}} shifts · {{hours}} h · {{pay}}",
+      "whatIf": "If I take on more…",
+      "more": "How many",
+      "noRate": "This workplace has no rate for this type — add one in “Settings”.",
+      "whatIfResult": "+{{hours}} h and +{{add}} — the range total becomes {{total}}.",
+      "export": "Download CSV (all shifts)"
     }
   }
 }

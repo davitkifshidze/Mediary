@@ -18,8 +18,9 @@ import { cn } from '@/lib/utils'
    კვირა მოინიშნოს). ⚠️ გადათრევის რეჟიმი პირველი დღიდან წყდება: მონიშნულზე
    დაწყებული გადათრევა **ხსნის**, მოუნიშნავზე — **ნიშნავს**.
 
-   ⚠️ ჩიპის ფერი სამსახურისაა (მომხმარებლის მონაცემი — inline სტილი), ტექსტი —
-   „A · 24“; ერთ დღეს რამდენიმე ჩიპი ეტევა (ორი სამსახური ან ორი მორიგეობა).
+   ⚠️ ჩიპის ფერი სამსახურისაა (ზოლი და ღია ფონი), **ტექსტი კი ტექსტის ფერით**
+   („A · 24“) — ყვითელ ან ვარდისფერ ფონზე თეთრი ასო არ იკითხებოდა; ერთ დღეს
+   რამდენიმე ჩიპი ეტევა (ორი სამსახური ან ორი მორიგეობა).
    ============================================================ */
 
 /** კვირის დღეების სახელები ორშაბათიდან — 2024-01-01 ორშაბათია */
@@ -164,8 +165,11 @@ export function DutyCalendar({
               {items.map((shift) => (
                 <span
                   key={shift.id}
-                  className="truncate rounded-sm px-1.5 py-0.5 text-[11px] font-medium leading-tight text-white"
-                  style={{ background: workplaceColor(shift.workplace) }}
+                  className="truncate rounded-sm border-l-[3px] px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground"
+                  style={{
+                    borderLeftColor: workplaceColor(shift.workplace),
+                    background: `color-mix(in oklab, ${workplaceColor(shift.workplace)} 22%, transparent)`,
+                  }}
                   title={[shift.workplace?.name, `${formatHours(shift.hours)}`, shift.note].filter(Boolean).join(' · ')}
                   data-testid="duty-chip"
                 >

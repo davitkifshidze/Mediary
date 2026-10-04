@@ -100,7 +100,7 @@ export function DutyWorkplaceDialog({
 
           <FormField label={t('duty.workplace.color')}>
             <div className="flex flex-wrap gap-2">
-              {DUTY_COLORS.map((c) => (
+              {DUTY_COLORS.map((c, i) => (
                 <button
                   key={c}
                   type="button"
@@ -108,7 +108,8 @@ export function DutyWorkplaceDialog({
                   aria-pressed={color === c}
                   onClick={() => setColor(c)}
                   className={cn('size-8 rounded-md border-2', color === c ? 'border-foreground' : 'border-transparent')}
-                  style={{ background: c }}
+                  // ⚠️ თემის ცვლადი — მუქ თემაზე იგივე სამსახური თავის საფეხურს იღებს
+                  style={{ background: `var(--duty-${i + 1})` }}
                 />
               ))}
             </div>

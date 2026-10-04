@@ -107,14 +107,24 @@ export function typeName(type: Pick<DutyShiftType, 'name_ka' | 'name_en'> | null
   return (lang === 'ka' ? type.name_ka : type.name_en) || type.name_ka || type.name_en
 }
 
-/** ნაგულისხმევი ფერი, თუ სამსახურს არ აქვს (მოდულის ლურჯი) */
-const DUTY_FALLBACK_COLOR = '#2563eb'
+/**
+ * **სამსახურების ფერები** — ვალიდირებული კატეგორიული პალიტრა, ფიქსირებული რიგით
+ * (`index.css`, `--duty-1…8`). ⚠️ ბაზაში ღია თემის hex ინახება, ხატვისას კი
+ * ცვლადი (`workplaceColor()`), რომ მუქ თემას თავისი საფეხური ჰქონდეს. ახალი
+ * სამსახური რიგით შემდეგს იღებს.
+ */
+export const DUTY_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'] as const
 
-/** სამსახურების ფერების პალიტრა — ახალი სამსახური რიგით იღებს */
-export const DUTY_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'] as const
-
+/**
+ * ფერი ხატვისთვის — პალიტრის ფერზე თემის ცვლადი, სხვაზე თავად hex (ძველი ან
+ * ხელით ჩაწერილი), ფერის გარეშე — პირველი.
+ */
 export function workplaceColor(workplace: { color: string | null } | null | undefined): string {
-  return workplace?.color || DUTY_FALLBACK_COLOR
+  const color = workplace?.color?.toLowerCase()
+  if (!color) return 'var(--duty-1)'
+
+  const index = (DUTY_COLORS as readonly string[]).indexOf(color)
+  return index >= 0 ? `var(--duty-${index + 1})` : color
 }
 
 /** კალენდრის ჩიპი — „A · 24“ (სამსახურის გარეშე — მხოლოდ საათები) */
