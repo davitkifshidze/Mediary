@@ -5,10 +5,15 @@ namespace App\Services\Audit;
 use App\Models\AuditLog;
 use App\Models\Module;
 use App\Models\Status;
+use App\Models\User;
 use App\Support\AuditRegistry;
+use App\Support\AuditSettings;
 use App\Support\CustomModules;
+use App\Support\Openable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -33,9 +38,24 @@ use Throwable;
  * სამუშაოსთვის. ჩვეულებრივი წაშლა (`purge`-იც) **იწერება**: §4.1 სრულ
  * ლოგირებას ითხოვს და სწორედ მასობრივი წაშლაა ის, რაზეც კითხვა მოგვიანებით
  * ისმება.
+ *
+ * ⚠️ **Tasks §43.5 — ყოველი ჩაწერის წინ მოწმდება, ჩართულია თუ არა ტიპი**
+ * (`AuditSettings`, სუპერადმინის გადამრთველები). კარიბჭე აქაა და არა
+ * გამომძახებლებში — ერთადერთი მწერალი ერთადერთი ადგილია, სადაც გამორთვა
+ * ყველგან ერთნაირად მოქმედებს.
  */
 class AuditLogger
 {
+    /** გახსნის წყარო (§43.3) — ბიბლიოთეკა · საჯარო პროფილი · გაზიარების ბმული */
+    public const OPEN_LIBRARY = 'library';
+
+    public const OPEN_PUBLIC = 'public';
+
+    public const OPEN_SHARE = 'share';
+
+    /** იგივე ჩანაწერი იმავე ადამიანისგან — წუთში ერთხელ (Q10) */
+    private const OPEN_WINDOW_SECONDS = 60;
+
     private bool $enabled = true;
 
     /** ცხრილის არსებობა ერთხელ მოწმდება (მიგრაციისას ის ჯერ არ არის) */
@@ -54,7 +74,7 @@ class AuditLogger
      */
     public function log(string $action, array $attributes = []): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists()) {
+        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled($action)) {
             return null;
         }
 
@@ -111,11 +131,11 @@ class AuditLogger
      */
     public function visit(string $path, ?string $module = null): ?AuditLog
     {
-        if (! $this->enabled || ! $this->tableExists()) {
+        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_VISIT)) {
             return null;
         }
 
-        $path = mb_substr(ltrim($path, '/'), 0, 400);
+        $path = self::maskPath($path);
 
         $recent = AuditLog::where('user_id', Auth::id())
             ->where('action', AuditLog::ACTION_VISIT)
@@ -138,6 +158,129 @@ class AuditLogger
             'module' => $module ?? $this->moduleForPath($path),
             'route' => $path,
         ]);
+    }
+
+    /**
+     * **ჩანაწერის გახსნა** (Tasks §43.3, Q10) — ხილული „შევედი N-ჯერ"-ის (§10) ადგილი.
+     *
+     * ⚠️ **იგივე ჩანაწერი იმავე ადამიანისგან წუთში ერთხელ**: ფანჯრის ხელახალი
+     * რენდერი, ჩანართზე დაბრუნება ან ორი სწრაფი დაჭერა ერთ ფაქტად იწერება.
+     * ავტორიზებულზე — ბაზით, ანონიმზე (საჯარო პროფილი, გაზიარება) — `Cache::add`-ით
+     * IP-ის ჰეშზე: ანონიმის ვინაობა ბაზაში არ ინახება.
+     *
+     * ⚠️ ორენოვან ჩანაწერს (ფილმი) სათაური თარგმანებშია — `labelFor()` მხოლოდ
+     * ჩატვირთულს კითხულობს, ამიტომ აქ იტვირთება.
+     */
+    public function open(Model $record, string $source = self::OPEN_LIBRARY, ?string $anonKey = null): ?AuditLog
+    {
+        if (! $this->enabled || ! $this->tableExists() || ! AuditSettings::enabled(AuditLog::ACTION_OPEN)) {
+            return null;
+        }
+
+        $type = AuditRegistry::typeFor($record);
+        $viewer = Auth::user();
+
+        if ($viewer) {
+            $recent = AuditLog::query()
+                ->where('user_id', $viewer->getAuthIdentifier())
+                ->where('action', AuditLog::ACTION_OPEN)
+                ->where('subject_type', $type)
+                ->where('subject_id', $record->getKey())
+                ->where('created_at', '>=', now()->subSeconds(self::OPEN_WINDOW_SECONDS))
+                ->exists();
+
+            if ($recent) {
+                return null;
+            }
+        } elseif (! Cache::add('audit-open:'.$type.':'.$record->getKey().':'.sha1((string) $anonKey), 1, self::OPEN_WINDOW_SECONDS)) {
+            return null;
+        }
+
+        if (method_exists($record, 'translations')) {
+            $record->loadMissing('translations');
+        }
+
+        return $this->log(AuditLog::ACTION_OPEN, [
+            'module' => Openable::has($type) ? Openable::module($type, $record) : AuditRegistry::moduleFor($record),
+            'subject_type' => $type,
+            'subject_id' => $record->getKey(),
+            'subject_label' => AuditRegistry::labelFor($record),
+            'context' => ['source' => $source],
+        ]);
+    }
+
+    /** სხვისი გახსნა საჯარო პროფილიდან ან გაზიარების ბმულიდან — მფლობელი თავის თავს არ ითვლის */
+    public function openFromPublic(Model $record, Request $request, User $owner, string $source): ?AuditLog
+    {
+        $viewer = $request->user();
+
+        if ($viewer && (int) $viewer->getKey() === (int) $owner->getKey()) {
+            return null;
+        }
+
+        return $this->open($record, $source, $request->ip());
+    }
+
+    /**
+     * **SPA-ს პაკეტი** (Tasks §43.4) — დაჭერები და განახლება.
+     *
+     * ⚠️ მხოლოდ ოთხი ველი იკითხება (`action`, `path`, `label`, `role`) —
+     * კონტროლერის ვალიდაცია დანარჩენს უკვე აგდებს, ე.ი. ველის მნიშვნელობა
+     * (პაროლი, გასაღები) აქამდე ვერ აღწევს; წარწერა 120 სიმბოლოზე იჭრება.
+     * ⚠️ გამორთული ტიპი `log()`-შივე იგდება — SPA ისედაც არ აგზავნის, ეს მეორე კარიბჭეა.
+     *
+     * @param  list<array{action: string, path: string, label?: ?string, role?: ?string}>  $events
+     */
+    public function events(array $events): int
+    {
+        $written = 0;
+
+        foreach ($events as $event) {
+            $path = self::maskPath((string) $event['path']);
+            $label = self::maskSecrets(trim((string) ($event['label'] ?? '')));
+
+            $row = $this->log($event['action'], [
+                'module' => $this->moduleForPath($path),
+                'route' => $path,
+                // კლიენტის მოვლენაა — HTTP მეთოდი (`POST /audit/events`) აქ არაფერს ამბობს
+                'method' => null,
+                'context' => array_filter([
+                    'label' => $label === '' ? null : mb_substr($label, 0, 120),
+                    'role' => $event['role'] ?? null,
+                ]) ?: null,
+            ]);
+
+            if ($row) {
+                $written++;
+            }
+        }
+
+        return $written;
+    }
+
+    /**
+     * SPA-ს მისამართი ლოგისთვის — **გაზიარების ტოკენის გარეშე**.
+     *
+     * ⚠️ `/share/{token}` გზაში ტოკენი ღიად დგას, ბაზაში კი ის მხოლოდ ჰეშად
+     * ინახება (§40.2): ლოგში ჩაწერილი გზა მას ადმინს ღიად გადასცემდა.
+     */
+    public static function maskPath(string $path): string
+    {
+        $path = mb_substr(ltrim($path, '/'), 0, 400);
+
+        return (string) preg_replace('#^share/[^/]+#', 'share/•••', $path);
+    }
+
+    /**
+     * დაჭერის წარწერა — **ტოკენის მსგავსი სტრიქონის გარეშე**: გაზიარების ბმული
+     * (`…/share/{token}`) ან გრძელი გასაღები ბმულის/ღილაკის ტექსტად შეიძლება
+     * ეწეროს; 24+ ლათინური სიმბოლოს უწყვეტი რიგი ჩვეულებრივ წარწერაში არ გვხვდება.
+     */
+    public static function maskSecrets(string $text): string
+    {
+        $text = (string) preg_replace('#share/[A-Za-z0-9_\-]+#', 'share/•••', $text);
+
+        return (string) preg_replace('#[A-Za-z0-9_\-]{24,}#', '•••', $text);
     }
 
     /** დროებით გამორთვა (მიგრაციული/ერთჯერადი სამუშაოსთვის — იხ. კლასის შენიშვნა) */

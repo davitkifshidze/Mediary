@@ -47,7 +47,7 @@ class AnimeController extends Controller
             return AnimeListResource::collection($this->paginated($request, Anime::query()->onlyLocked()->with('genres')->orderByDesc('id')));
         }
 
-        $query = Anime::query()->with('genres')->withCount('visits');
+        $query = Anime::query()->with('genres');
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

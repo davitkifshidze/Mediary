@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
 
 /* ============================================================
    აუდიტ-ლოგი (Tasks §4).
@@ -13,16 +13,32 @@ import { api } from '@/lib/api'
    მონიშვნა ყოველთვის გაფილტრულის შიგნითაა.
    ============================================================ */
 
-/** მოქმედების ტიპები — backend-ის `AuditLog::ACTIONS`-ის ანარეკლი */
+/**
+ * მოქმედების ტიპები — backend-ის `AuditLog::ACTIONS`-ის სარკე, რიგის ჩათვლით
+ * (`RegistryConsistencyTest`). ⚠️ Tasks §43.3 — **ყველა** ტიპი: ადრე რვა იყო
+ * თექვსმეტიდან, ე.ი. ფერი და ფილტრი ნახევარს არ ჰქონდა.
+ */
 export const AUDIT_ACTIONS = [
   'login',
+  'login_failed',
   'logout',
   'register',
   'visit',
+  'refresh',
+  'open',
+  'click',
   'create',
   'update',
   'delete',
   'chat_delete',
+  'cast_attach',
+  'cast_detach',
+  'cast_update',
+  'translate',
+  'export',
+  'import',
+  'restore',
+  'cast_sync',
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
@@ -72,6 +88,9 @@ export interface AuditFilters {
   from?: string | null
   to?: string | null
   q?: string
+  /** §43.6 — „გახსნების" ჩაღრმავება: ერთი ჩანაწერის რიგები */
+  subject_type?: string | null
+  subject_id?: number | null
 }
 
 function params(filters: AuditFilters): Record<string, string | number> {
@@ -83,6 +102,8 @@ function params(filters: AuditFilters): Record<string, string | number> {
   if (filters.from) out.from = filters.from
   if (filters.to) out.to = filters.to
   if (filters.q?.trim()) out.q = filters.q.trim()
+  if (filters.subject_type) out.subject_type = filters.subject_type
+  if (filters.subject_id) out.subject_id = filters.subject_id
 
   return out
 }
@@ -154,6 +175,131 @@ export async function purgeAuditLogs(
     data: { confirm: 'DELETE', ...(ids?.length ? { ids } : {}) },
   })
   return data.deleted as number
+}
+
+/* ============================================================
+   **Tasks §43 — გახსნა, დაჭერები, პარამეტრები.**
+
+   §10-ის ხილული „შევედი N-ჯერ" წაიშალა (`api/visits.ts`): ჩანაწერის გახსნა
+   ახლა მხოლოდ ჟურნალშია (`open`), „ვინ რა გახსნა და რამდენჯერ" კი ჟურნალის
+   „გახსნების" ხედია. ⚠️ SPA მხოლოდ **ჩართულ** ტიპებს აგზავნის
+   (`user.audit_kinds`); სერვერი გამორთულს მაინც აგდებს — ეს მეორე კარიბჭეა.
+   ============================================================ */
+
+/**
+ * ⚠️ `Openable::TYPES`-ის სარკე — URL-ის სეგმენტი და morph-ალიასი ერთი
+ * სიტყვაა; `RegistryConsistencyTest` რიგის ჩათვლით ადარებს.
+ */
+export const OPEN_TYPES = [
+  'movie',
+  'series',
+  'anime',
+  'video',
+  'song',
+  'book',
+  'board_game',
+  'game',
+  'note',
+  'bookmark',
+  'course',
+  'place',
+  'playlist',
+  'custom_record',
+] as const
+
+export type OpenType = (typeof OPEN_TYPES)[number]
+
+/** ჩანაწერის გახსნა — იგივე ჩანაწერი წუთში ერთხელ (სერვერი); ჩავარდნა ჩუმია */
+export async function recordOpen(type: OpenType, id: number): Promise<void> {
+  try {
+    await api.post(`/audit/open/${type}/${id}`)
+  } catch {
+    /* ჟურნალის ვერ-ჩაწერამ ფანჯარა არ უნდა გატეხოს */
+  }
+}
+
+/** SPA-ს მოვლენა პაკეტში (§43.4) — ⚠️ ველის მნიშვნელობა აქ არასოდეს მოდის */
+export interface AuditEvent {
+  action: 'click' | 'refresh'
+  path: string
+  label?: string | null
+  role?: 'button' | 'link' | 'menuitem' | 'tab' | 'option' | 'switch'
+}
+
+/** backend-ის `max:50` */
+export const AUDIT_EVENT_BATCH = 50
+
+/**
+ * პაკეტის გაგზავნა. `keepalive` — გვერდის დატოვებისას (`pagehide`): `fetch`-ი
+ * და არა `sendBeacon`, რადგან Sanctum-ის POST-ს `X-XSRF-TOKEN` სჭირდება, ბიკონი კი
+ * ჰედერს ვერ აგზავნის (419 იქნებოდა). ⚠️ ჩავარდნა ჩუმია.
+ */
+export async function sendAuditEvents(events: AuditEvent[], keepalive = false): Promise<void> {
+  if (events.length === 0) return
+
+  try {
+    if (!keepalive) {
+      await api.post('/audit/events', { events })
+      return
+    }
+
+    const token = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1]
+    await fetch(`${API_URL}/api/audit/events`, {
+      method: 'POST',
+      keepalive: true,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(token ? { 'X-XSRF-TOKEN': decodeURIComponent(token) } : {}),
+      },
+      body: JSON.stringify({ events }),
+    })
+  } catch {
+    /* ignore */
+  }
+}
+
+/** „ვინ რა გახსნა და რამდენჯერ" (§43.6) — მომხმარებელი × ჩანაწერი */
+export interface AuditOpenRow {
+  user: { id: number; name: string; username: string } | null
+  /** ანონიმზე (საჯარო პროფილი, გაზიარება) `null` */
+  user_id: number | null
+  user_label: string | null
+  module: string | null
+  subject: { type: string; id: number | null; label: string | null }
+  opens: number
+  last_at: string | null
+}
+
+export async function fetchAuditOpens(
+  filters: AuditFilters,
+  page = 1,
+  perPage = 25,
+): Promise<{ data: AuditOpenRow[]; meta: AuditPage['meta'] }> {
+  const { data } = await api.get('/admin/audit/opens', {
+    params: { ...params(filters), page, per_page: perPage },
+  })
+  return data
+}
+
+/** „ჟურნალის პარამეტრები" (§43.5, სუპერადმინი) — თითო გადამრთველი */
+export interface AuditKindSetting {
+  key: string
+  enabled: boolean
+  /** ჩატის წაშლა — ვერ გამოირთვება (§4.6) */
+  protected: boolean
+}
+
+export async function fetchAuditSettings(): Promise<AuditKindSetting[]> {
+  const { data } = await api.get('/admin/audit/settings')
+  return data.data
+}
+
+/** მხოლოდ გამორთულები იგზავნება — ნაგულისხმევად ყველაფერი ჩართულია */
+export async function saveAuditSettings(off: string[]): Promise<AuditKindSetting[]> {
+  const { data } = await api.put('/admin/audit/settings', { off })
+  return data.data
 }
 
 /**

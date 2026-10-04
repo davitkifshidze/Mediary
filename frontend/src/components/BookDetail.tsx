@@ -17,6 +17,7 @@ import {
   type Book,
   toggleBookFavorite,
 } from '@/api/books'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { errorMessage } from '@/lib/errors'
@@ -32,7 +33,6 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -67,6 +67,8 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['books'] }),
   })
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('book', book.id)
   const lang = useContentLang(i18n.language)
   // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
   const fixedT = i18n.getFixedT(lang)
@@ -123,8 +125,6 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
               <RatingStars value={book.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={book.visibility} />
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="book" id={book.id} />
               <FavoriteButton active={book.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

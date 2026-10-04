@@ -7,19 +7,22 @@ use App\Models\Playlist;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * **რომელ ჩანაწერს აქვს შესვლების ჟურნალი** (Tasks §10.3).
+ * **რომელი ჩანაწერის გახსნა იწერება ჟურნალში** (Tasks §10.3 → §43).
  *
- * ტიპი URL-ის სეგმენტია (`/visits/{type}/{id}`) და იგივე morph-ალიასი, რაც
- * `Relation::enforceMorphMap()`-შია — ე.ი. `visitable_type` სვეტში ზუსტად ის
- * სიტყვა წერია, რასაც SPA აგზავნის. სია `TrashDomain::MODELS`-ის თორმეტი
- * ჩანაწერიანი მოდულია + ფლეილისტი + პირადი მოდულის ჩანაწერი (ერთი ალიასი
+ * ტიპი URL-ის სეგმენტია (`/audit/open/{type}/{id}`) და იგივე morph-ალიასი,
+ * რაც `Relation::enforceMorphMap()`-შია — ე.ი. `audit_logs.subject_type`-ში
+ * ზუსტად ის სიტყვა წერია, რასაც SPA აგზავნის. სია `TrashDomain::MODELS`-ის
+ * ჩანაწერიანი მოდულებია + ფლეილისტი + პირადი მოდულის ჩანაწერი (ერთი ალიასი
  * ყველა პირად მოდულზე — `module` სვეტი ამბობს, რომელია).
+ *
+ * ⚠️ §43 — ადრე `Visitable` (ხილული „შევედი N-ჯერ", `record_visits`); მთვლელი
+ * წაიშალა და გახსნა ახლა მხოლოდ ჟურნალშია (`AuditLog::ACTION_OPEN`).
  *
  * ⚠️ **მოდულის შემოწმება აქედან იკითხება და არა `module:@type`-ით**: ტიპი
  * მოდულის გასაღები ყოველთვის არაა (`playlist` → `song`, `custom_record` →
  * ჩანაწერის `module`).
  */
-final class Visitable
+final class Openable
 {
     /** @var array<string, class-string<Model>> */
     public const TYPES = [
@@ -29,18 +32,18 @@ final class Visitable
     ];
 
     /**
-     * **ჩანაწერიანი მოდული მთვლელის გარეშე** (Tasks §33 ← §43).
+     * **ჩანაწერიანი მოდული გახსნის ჩაწერის გარეშე** (Tasks §33/§34).
      *
-     * ⚠️ §43 ხილულ მთვლელს ყველგან აუქმებს (ჟურნალი სუპერადმინს რჩება), ე.ი.
-     * ახალ მოდულს ის აღარ უკეთდება — `TYPES` კი `TrashDomain::MODELS`-ს
-     * იმეორებს და ახალ ჩანაწერს თავისით შემოიყვანდა.
+     * ⚠️ პირადი გალერეა და მორიგეობა ფანჯრის „გახსნას" არ იცნობს (ფოტო/დღე
+     * ბადეში იხსნება) — `TYPES` კი `TrashDomain::MODELS`-ს იმეორებს და მათ
+     * თავისით შემოიყვანდა.
      */
-    public const NOT_VISITED = ['personal', 'duty'];
+    public const NOT_OPENED = ['personal', 'duty'];
 
     /** @return array<string, class-string<Model>> */
     public static function types(): array
     {
-        return array_diff_key(self::TYPES, array_flip(self::NOT_VISITED));
+        return array_diff_key(self::TYPES, array_flip(self::NOT_OPENED));
     }
 
     public static function has(string $type): bool

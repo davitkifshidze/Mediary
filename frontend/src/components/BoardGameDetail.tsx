@@ -14,6 +14,7 @@ import {
   type BoardGameFile,
   toggleBoardGameFavorite,
 } from '@/api/boardGames'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
@@ -22,7 +23,6 @@ import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/componen
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -51,6 +51,8 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['board-games'] }),
   })
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('board_game', game.id)
   const lang = useContentLang(i18n.language)
 
   const players = [game.players_min, game.players_max].filter(Boolean)
@@ -71,8 +73,6 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
               <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="board_game" id={game.id} />
               <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use App\Models\Concerns\HasTrash;
-use App\Models\Concerns\HasVisits;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -28,9 +27,6 @@ class Playlist extends Model
      * რიგი ადგილზე რჩება და ურნიდან ბრუნდება.
      */
     use BelongsToUser, HasTrash;
-
-    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
-    use HasVisits;
 
     protected $guarded = ['id'];
 

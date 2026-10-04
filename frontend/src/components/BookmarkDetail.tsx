@@ -11,6 +11,7 @@ import {
   uploadBookmarkFiles,
   type Bookmark,
 } from '@/api/bookmarks'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { BOOKMARK_WEB_TERMS, useBookmarkRefresh } from '@/lib/bookmarks'
 import { copyText } from '@/lib/clipboard'
@@ -24,7 +25,6 @@ import { BookmarkLinkCards, BookmarkLinkDialog } from '@/components/BookmarkLink
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { RecordGallery } from '@/components/RecordGallery'
-import { VisitBadge } from '@/components/RecordVisits'
 import { StatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
@@ -65,6 +65,8 @@ export function BookmarkDetail({
   onDelete: () => void
 }) {
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('bookmark', bookmark.id)
   const lang = useContentLang(i18n.language)
   // §22.2 — ვებძებნის ჩიპები შინაარსის ენაზე და არა ინტერფეისისაზე
   const fixedT = i18n.getFixedT(lang)
@@ -133,8 +135,6 @@ export function BookmarkDetail({
                 <StatusBadge status={bookmark.status} size="row" />
                 {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
                 <VisibilityBadge value={bookmark.visibility} />
-                {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-                <VisitBadge type="bookmark" id={bookmark.id} />
                 <FavoriteButton active={bookmark.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
               </>
             }

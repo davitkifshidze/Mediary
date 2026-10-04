@@ -33,7 +33,6 @@ import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { VisitCount } from '@/components/RecordVisits'
 
 /* ============================================================
    პლეილისტები — სიმღერების მოდულის ქვე-გვერდი (2026-09-03).
@@ -123,7 +122,6 @@ export function PlaylistsPage() {
               <span className="block truncate text-xs text-muted-foreground">
                 {t('playlists.songCount', { count: playlist.songs_count ?? 0 })}
                 {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
-                <VisitCount value={playlist.visits_count} className="ml-2" />
               </span>
             </Link>
 

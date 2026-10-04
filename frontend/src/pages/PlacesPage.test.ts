@@ -35,7 +35,6 @@ function place(id: number, over: Partial<Place> = {}): Place {
     status: 'to_visit',
     rating: null,
     is_favorite: false,
-    visits_count: 0,
     visited_at: null,
     photo: null,
     files_count: 1,

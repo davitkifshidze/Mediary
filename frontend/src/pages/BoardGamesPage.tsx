@@ -47,7 +47,6 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Badge } from '@/components/ui/badge'
 import { RatingBadge } from '@/components/ui/star-rating'
@@ -370,7 +369,6 @@ export function BoardGamesPage() {
                         )}
                         {/* Tasks §9 — „★ 4.6" ერთი ბეჯით ყველგან; BGG-ის ქულა ცალკე რჩება */}
                         <RatingBadge value={game.rating} size="row" className="mr-1" />
-                        <VisitCount value={game.visits_count} />
                       </>
                     }
                     favorite={{

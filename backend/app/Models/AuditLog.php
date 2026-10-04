@@ -125,12 +125,40 @@ class AuditLog extends Model
      */
     public const ACTION_CAST_SYNC = 'cast_sync';
 
+    /**
+     * **ჩანაწერის/ფანჯრის გახსნა (Tasks §43.3, Q10)** — ხილული „შევედი N-ჯერ"
+     * (§10, `record_visits`) აქ გადმოვიდა: „ვინ რა გახსნა და რამდენჯერ" მხოლოდ
+     * ჟურნალშია. `subject_*` — ჩანაწერი, `context.source` — `library` · `public` · `share`.
+     * ⚠️ იგივე ჩანაწერი იმავე ადამიანისგან **წუთში ერთხელ** (`AuditLogger::open()`).
+     */
+    public const ACTION_OPEN = 'open';
+
+    /** გვერდის განახლება (F5) — SPA ჩატვირთვისას ამოიცნობს (`performance` navigation `reload`) */
+    public const ACTION_REFRESH = 'refresh';
+
+    /**
+     * დაჭერა ინტერაქტიულ ელემენტზე — ღილაკი, ბმული, მენიუს პუნქტი, ჩანართი,
+     * გადამრთველი (Q10). `context` — წარწერა და როლი; **ველის მნიშვნელობა
+     * არასოდეს** (SPA მას არ აგზავნის, სერვერი წარწერას ჭრის).
+     */
+    public const ACTION_CLICK = 'click';
+
+    /**
+     * წარუმატებელი შესვლა — არასწორი პაროლი, გამორთული ანგარიში, მცდარი 2FA
+     * კოდი. `user_label` — ცდილი სახელი, `context.reason` — მიზეზი; პაროლი არა.
+     */
+    public const ACTION_LOGIN_FAILED = 'login_failed';
+
     /** სრული ნაკრები — ფილტრისთვისაც და ვალიდაციისთვისაც */
     public const ACTIONS = [
         self::ACTION_LOGIN,
+        self::ACTION_LOGIN_FAILED,
         self::ACTION_LOGOUT,
         self::ACTION_REGISTER,
         self::ACTION_VISIT,
+        self::ACTION_REFRESH,
+        self::ACTION_OPEN,
+        self::ACTION_CLICK,
         self::ACTION_CREATE,
         self::ACTION_UPDATE,
         self::ACTION_DELETE,
@@ -144,6 +172,13 @@ class AuditLog extends Model
         self::ACTION_RESTORE,
         self::ACTION_CAST_SYNC,
     ];
+
+    /**
+     * SPA-დან პაკეტად მოსული ტიპები (`POST /audit/events`) — დანარჩენს სერვერი
+     * თვითონ წერს. ⚠️ `open` აქ არ არის: მას ჩანაწერის შემოწმება სჭირდება და
+     * საკუთარი კარი აქვს (`POST /audit/open/{type}/{id}`).
+     */
+    public const EVENT_ACTIONS = [self::ACTION_CLICK, self::ACTION_REFRESH];
 
     /**
      * ⚠️ **გასუფთავებას (§4.7) არ ექვემდებარება.** წაშლილი წერილის აღდგენა

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Api\DashboardController;
+use App\Models\AuditLog;
 use App\Models\Bookmark;
 use App\Models\BookmarkCategory;
 use App\Models\Concerns\HasGallery;
@@ -27,13 +28,13 @@ use App\Support\FieldCatalog;
 use App\Support\GalleryParent;
 use App\Support\ImportSource;
 use App\Support\MediaDomain;
+use App\Support\Openable;
 use App\Support\PublicDomain;
 use App\Support\ShareDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
 use App\Support\TrashDomain;
 use App\Support\UploadLimits;
-use App\Support\Visitable;
 use Database\Seeders\ModulesSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -264,10 +265,16 @@ class RegistryConsistencyTest extends TestCase
         }
     }
 
-    /** Tasks §10 — SPA-ს `VISIT_TYPES` `Visitable::TYPES`-ის სარკეა (URL-ის სეგმენტი და morph-ალიასი ერთი სიტყვაა) */
-    public function test_the_spa_visit_types_mirror_the_backend(): void
+    /** Tasks §10 → §43 — SPA-ს `OPEN_TYPES` `Openable::TYPES`-ის სარკეა (URL-ის სეგმენტი და morph-ალიასი ერთი სიტყვაა) */
+    public function test_the_spa_open_types_mirror_the_backend(): void
     {
-        $this->assertSame(Visitable::keys(), $this->tsConstList('api/visits.ts', 'VISIT_TYPES'));
+        $this->assertSame(Openable::keys(), $this->tsConstList('api/audit.ts', 'OPEN_TYPES'));
+    }
+
+    /** Tasks §43.3 — SPA-ს `AUDIT_ACTIONS` `AuditLog::ACTIONS`-ის სარკეა (სახელი და ფერი ყველა ტიპს აქვს) */
+    public function test_the_spa_audit_actions_mirror_the_backend(): void
+    {
+        $this->assertSame(AuditLog::ACTIONS, $this->tsConstList('api/audit.ts', 'AUDIT_ACTIONS'));
     }
 
     /** SPA-ს `SHARE_DOMAINS` — `ShareDomain::DOMAINS`-ის სარკე, რიგის ჩათვლით */
@@ -750,8 +757,6 @@ class RegistryConsistencyTest extends TestCase
         'cast_member_sync_prefs' => 'გადამრთველია და არა შიგთავსი — მოხსნა თვითონ შექცევადი ნაბიჯია',
         // Tasks §33.7 — ლოკის მოხსნა ანგარიშის პაროლით ხდება; ურნიდან აღდგენა მას უკითხავად დააბრუნებდა
         'record_locks' => 'პაროლი გასაღებია და არა შიგთავსი — მოხსნა განზრახი ნაბიჯია, ჩანაწერის საბოლოო წაშლა კი რიგს თვითონ შლის (`HasRecordLock`)',
-        // Tasks §10 — ჟურნალი ჩანაწერს ეკუთვნის და მასთან ერთად ქრება (`HasVisits::deleting`); `user_id` აქ მნახველია და არა მფლობელი
-        'record_visits' => 'შესვლების ჟურნალი — ჩანაწერთან ერთად ქრება (`HasVisits`), ცალკე წასაშლელი არაფერია',
         // Tasks §40.8 — „ვინ დაიმატა ბმულიდან“ (ბმულის სტატისტიკა); ბმულთან ერთად იშლება
         'share_link_imports' => 'ბმულის სტატისტიკა (ვინ, რამდენი, როდის) — შიგთავსი არაა და ბმულთან ერთად ქრება',
         'approval_requests' => 'გაუქმებული მოთხოვნა ტექნიკური ოპერაციაა',

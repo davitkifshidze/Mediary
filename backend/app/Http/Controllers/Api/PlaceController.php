@@ -39,7 +39,7 @@ class PlaceController extends Controller
 
     public function index(Request $request)
     {
-        $query = Place::query()->with('category')->withCount(['files', 'galleryImages', 'visits']);
+        $query = Place::query()->with('category')->withCount(['files', 'galleryImages']);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->where('status', $key);

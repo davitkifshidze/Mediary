@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Role;
 use App\Services\Storage\StorageMeter;
+use App\Support\AuditSettings;
 use App\Support\CustomModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -67,6 +68,13 @@ class UserResource extends JsonResource
                შუალედურ მდგომარეობაში (QR ნაჩვენებია, კოდი ჯერ არ დადასტურდა)
                მეორე ფაქტორი ჯერ არ მოქმედებს — და გვერდი სწორედ ამას ხატავს. */
             'two_factor_enabled' => $this->hasTwoFactor(),
+            /* Tasks §43.4 — რომელ ჟურნალის ტიპს აგზავნის SPA (გვერდი · განახლება · გახსნა ·
+               დაჭერა); გამორთულზე ქსელში არაფერი მიდის. ⚠️ მხოლოდ საკუთარ თავზე —
+               ადმინის მომხმარებლების სიაში ეს ველი არაფერს ნიშნავს. */
+            'audit_kinds' => $this->when(
+                (int) $request->user()?->getAuthIdentifier() === (int) $this->id,
+                fn () => AuditSettings::clientKinds(),
+            ),
             'two_factor_pending' => ! $this->hasTwoFactor() && (bool) $this->two_factor_secret,
             'settings' => $this->settings,
             'created_at' => $this->created_at?->toIso8601String(),

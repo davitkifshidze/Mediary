@@ -8,11 +8,14 @@ import {
   fetchAuditPlan,
   fetchAuditSummary,
   purgeAuditLogs,
+  type AuditAction,
   type AuditEntry,
   type AuditFilters,
 } from '@/api/audit'
 import { useAuth } from '@/lib/auth'
+import { AuditOpens } from '@/components/audit/AuditOpens'
 import { AuditScope } from '@/components/audit/AuditScope'
+import { AuditSettingsPanel } from '@/components/audit/AuditSettingsPanel'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
@@ -26,6 +29,7 @@ import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/feedback'
 
 /* ============================================================
@@ -46,23 +50,44 @@ import { useToast } from '@/components/ui/feedback'
    (ეტაპი 10) — ტაბები და ფერადი ბარათები, თითოეული თავისი რიცხვით და
    ცალკე „ყველათი". აქ დარჩა ის სამი, რაც ჭრილი არ არის და ჭრილის
    **შიგნით** მუშაობს: ვისი · რა პერიოდის · ტექსტური ძებნა.
+
+   ⚠️ **Tasks §43 — სამი ხედი**: „ჟურნალი" (ეს სია), „გახსნები" (ვინ რა გახსნა და
+   რამდენჯერ — `AuditOpens`, იმავე ფილტრით) და „პარამეტრები" (რა იწერება —
+   `AuditSettingsPanel`, **მხოლოდ სუპერადმინს**: გადამრთველი ყველა ანგარიშს ეხება).
    ============================================================ */
 
 const CONFIRM_WORD = 'DELETE'
 
 const PER_PAGE = 25
 
-/** მოქმედების ფერი — ლოგი სწრაფად უნდა იკითხებოდეს, არა აიწერებოდეს */
-const ACTION_TONE: Record<string, string> = {
+/**
+ * მოქმედების ფერი — ლოგი სწრაფად უნდა იკითხებოდეს, არა აიწერებოდეს.
+ * ⚠️ Tasks §43.3 — **ყველა** ტიპი (`AUDIT_ACTIONS`): ადრე ნახევარი ნაცრისფრად რჩებოდა.
+ */
+const ACTION_TONE: Record<AuditAction, string> = {
+  login: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
+  login_failed: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+  logout: 'bg-muted text-muted-foreground',
+  register: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
+  visit: 'bg-muted text-muted-foreground',
+  refresh: 'bg-slate-500/15 text-slate-600 dark:text-slate-300',
+  open: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
+  click: 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-300',
   create: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
   update: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   delete: 'bg-destructive/15 text-destructive',
   chat_delete: 'bg-destructive/15 text-destructive',
-  login: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
-  logout: 'bg-muted text-muted-foreground',
-  register: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
-  visit: 'bg-muted text-muted-foreground',
+  cast_attach: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
+  cast_detach: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
+  cast_update: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
+  cast_sync: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
+  translate: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
+  export: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
+  import: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
+  restore: 'bg-lime-500/15 text-lime-700 dark:text-lime-400',
 }
+
+type AuditView = 'log' | 'opens' | 'settings'
 
 export function AuditPage() {
   const { t, i18n } = useTranslation()
@@ -71,6 +96,8 @@ export function AuditPage() {
   const qc = useQueryClient()
   const fmt = useDateFormat()
 
+  /** §43 — ჟურნალი · გახსნები · პარამეტრები (ბოლო — მხოლოდ სუპერადმინს) */
+  const [view, setView] = useState<AuditView>('log')
   /** გამოყენებული ფილტრი — სია, გეგმა და წაშლა სამივე მასზე დგას */
   const [filters, setFilters] = useState<AuditFilters>({})
   const [search, setSearch] = useState('')
@@ -93,14 +120,14 @@ export function AuditPage() {
   const { data: summary } = useQuery({
     queryKey: ['audit-summary', filters],
     queryFn: () => fetchAuditSummary(filters),
-    enabled: allowed,
+    enabled: allowed && view === 'log',
     placeholderData: keepPreviousData,
   })
 
   const { data: pageData, isLoading } = useQuery({
     queryKey: ['audit', filters, page],
     queryFn: () => fetchAuditLogs(filters, page, PER_PAGE),
-    enabled: allowed,
+    enabled: allowed && view === 'log',
     placeholderData: keepPreviousData,
   })
 
@@ -150,6 +177,12 @@ export function AuditPage() {
 
   if (!allowed) return null
 
+  const views: TabItem<AuditView>[] = [
+    { value: 'log', label: t('audit.views.log') },
+    { value: 'opens', label: t('audit.views.opens') },
+    ...(me?.is_super_admin ? [{ value: 'settings' as AuditView, label: t('audit.views.settings') }] : []),
+  ]
+
   return (
     <PageContainer>
       <PageHeader
@@ -158,196 +191,212 @@ export function AuditPage() {
         hint={<InfoHint info={t('audit.subtitle')} critical={t('audit.subtitleWarn')} />}
       />
 
-      {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
-      <AuditScope
-        meta={meta}
-        summary={summary}
-        filters={filters}
-        onChange={(next) => apply(next)}
-      />
+      <Tabs items={views} value={view} onChange={setView} className="mb-5" />
 
-      {/* ---------- ჭრილის შიგნით: ვისი · როდის · ძებნა ---------- */}
-      <section className="mb-6 rounded-xl border border-border bg-card/40 p-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="audit-user">{t('audit.filters.user')}</Label>
-            <Select
-              value={filters.user_id ? String(filters.user_id) : 'all'}
-              onValueChange={(v) => apply({ user_id: v === 'all' ? null : Number(v) })}
-            >
-              <SelectTrigger id="audit-user">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('audit.filters.allUsers')}</SelectItem>
-                {meta?.users.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)}>
-                    {u.name} · {u.username}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="audit-range">{t('audit.filters.period')}</Label>
-            <DateRangePicker
-              id="audit-range"
-              value={{ from: filters.from ?? null, to: filters.to ?? null }}
-              onChange={(range) => apply({ from: range.from, to: range.to })}
+      {view === 'settings' ? (
+        <AuditSettingsPanel />
+      ) : (
+        <>
+          {/* ---------- ჭრილები: მოქმედების ტაბები + მოდულის ბარათები (ეტაპი 10) ---------- */}
+          {view === 'log' && (
+            <AuditScope
+              meta={meta}
+              summary={summary}
+              filters={filters}
+              onChange={(next) => apply(next)}
             />
-          </div>
+          )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="audit-q">{t('audit.filters.search')}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="audit-q"
-                value={search}
-                placeholder={t('audit.filters.searchHint')}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && apply({ q: search })}
-              />
-              <Button variant="secondary" onClick={() => apply({ q: search })}>
-                <Search className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- მოქმედებები მონიშნულებზე (§4.7) ---------- */}
-      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-        <span className="text-muted-foreground">{t('audit.total', { count: total })}</span>
-        {canDelete && (
-          <>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={selected.length === 0}
-              onClick={() => setConfirming('selected')}
-            >
-              <Trash2 className="size-4" />
-              {t('audit.deleteSelected', { count: selected.length })}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirming('filter')}>
-              {t('audit.deleteFiltered')}
-            </Button>
-          </>
-        )}
-      </div>
-
-      {/* ---------- სია ---------- */}
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="w-10 p-2">
-                {canDelete && (
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(v) =>
-                      setSelected(v ? selectableIds : [])
-                    }
-                    aria-label={t('audit.selectAll')}
-                  />
-                )}
-              </th>
-              <th className="p-2">{t('audit.columns.when')}</th>
-              <th className="p-2">{t('audit.columns.who')}</th>
-              <th className="p-2">{t('audit.columns.action')}</th>
-              <th className="p-2">{t('audit.columns.module')}</th>
-              <th className="p-2">{t('audit.columns.subject')}</th>
-              <th className="p-2">{t('audit.columns.how')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                  {t('common.loading')}
-                </td>
-              </tr>
-            )}
-            {!isLoading && rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                  {t('audit.empty')}
-                </td>
-              </tr>
-            )}
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                onClick={() => setDiff(row)}
-                className="cursor-pointer border-t border-border transition-colors hover:bg-muted/40"
-              >
-                <td className="p-2" onClick={(e) => e.stopPropagation()}>
-                  {canDelete &&
-                    (row.is_protected ? (
-                      // §4.6 — ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
-                      <Lock className="size-4 text-muted-foreground" aria-label={t('audit.protected')} />
-                    ) : (
-                      <Checkbox
-                        checked={selected.includes(row.id)}
-                        onCheckedChange={(v) =>
-                          setSelected((s) => (v ? [...s, row.id] : s.filter((id) => id !== row.id)))
-                        }
-                      />
+          {/* ---------- ჭრილის შიგნით: ვისი · როდის · ძებნა ---------- */}
+          <section className="mb-6 rounded-xl border border-border bg-card/40 p-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="audit-user">{t('audit.filters.user')}</Label>
+                <Select
+                  value={filters.user_id ? String(filters.user_id) : 'all'}
+                  onValueChange={(v) => apply({ user_id: v === 'all' ? null : Number(v) })}
+                >
+                  <SelectTrigger id="audit-user">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('audit.filters.allUsers')}</SelectItem>
+                    {meta?.users.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.name} · {u.username}
+                      </SelectItem>
                     ))}
-                </td>
-                <td className="whitespace-nowrap p-2 text-muted-foreground">
-                  {fmt.dateTime(row.created_at)}
-                </td>
-                <td className="p-2">{row.user?.username ?? row.user_label ?? '—'}</td>
-                <td className="p-2">
-                  <span
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-xs',
-                      ACTION_TONE[row.action] ?? 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {t(`audit.actions.${row.action}`, row.action)}
-                  </span>
-                </td>
-                <td className="p-2 text-muted-foreground">
-                  {row.module ? moduleName(row.module) : '—'}
-                </td>
-                <td className="max-w-[22rem] truncate p-2">
-                  {row.subject?.label ?? (row.subject ? `#${row.subject.id}` : '—')}
-                  {row.subject && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      {t(`audit.subjects.${row.subject.type}`, row.subject.type)}
-                    </span>
-                  )}
-                </td>
-                <td className="max-w-[16rem] truncate p-2 text-xs text-muted-foreground">
-                  {row.method} /{row.route}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* ---------- გვერდები ---------- */}
-      {lastPage > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-muted-foreground">
-            {t('audit.pageOf', { page, last: lastPage })}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="audit-range">{t('audit.filters.period')}</Label>
+                <DateRangePicker
+                  id="audit-range"
+                  value={{ from: filters.from ?? null, to: filters.to ?? null }}
+                  onChange={(range) => apply({ from: range.from, to: range.to })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="audit-q">{t('audit.filters.search')}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="audit-q"
+                    value={search}
+                    placeholder={t('audit.filters.searchHint')}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && apply({ q: search })}
+                  />
+                  <Button variant="secondary" onClick={() => apply({ q: search })}>
+                    <Search className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {view === 'opens' ? (
+            <AuditOpens filters={filters} moduleName={moduleName} />
+          ) : (
+            <>
+              {/* ---------- მოქმედებები მონიშნულებზე (§4.7) ---------- */}
+              <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-muted-foreground">{t('audit.total', { count: total })}</span>
+                {canDelete && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={selected.length === 0}
+                      onClick={() => setConfirming('selected')}
+                    >
+                      <Trash2 className="size-4" />
+                      {t('audit.deleteSelected', { count: selected.length })}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setConfirming('filter')}>
+                      {t('audit.deleteFiltered')}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* ---------- სია ---------- */}
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="w-10 p-2">
+                        {canDelete && (
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={(v) =>
+                              setSelected(v ? selectableIds : [])
+                            }
+                            aria-label={t('audit.selectAll')}
+                          />
+                        )}
+                      </th>
+                      <th className="p-2">{t('audit.columns.when')}</th>
+                      <th className="p-2">{t('audit.columns.who')}</th>
+                      <th className="p-2">{t('audit.columns.action')}</th>
+                      <th className="p-2">{t('audit.columns.module')}</th>
+                      <th className="p-2">{t('audit.columns.subject')}</th>
+                      <th className="p-2">{t('audit.columns.how')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                          {t('common.loading')}
+                        </td>
+                      </tr>
+                    )}
+                    {!isLoading && rows.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                          {t('audit.empty')}
+                        </td>
+                      </tr>
+                    )}
+                    {rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        onClick={() => setDiff(row)}
+                        className="cursor-pointer border-t border-border transition-colors hover:bg-muted/40"
+                      >
+                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                          {canDelete &&
+                            (row.is_protected ? (
+                              // §4.6 — ეს რიგი აღდგენის აღრიცხვაა და არ იშლება
+                              <Lock className="size-4 text-muted-foreground" aria-label={t('audit.protected')} />
+                            ) : (
+                              <Checkbox
+                                checked={selected.includes(row.id)}
+                                onCheckedChange={(v) =>
+                                  setSelected((s) => (v ? [...s, row.id] : s.filter((id) => id !== row.id)))
+                                }
+                              />
+                            ))}
+                        </td>
+                        <td className="whitespace-nowrap p-2 text-muted-foreground">
+                          {fmt.dateTime(row.created_at)}
+                        </td>
+                        <td className="p-2">{row.user?.username ?? row.user_label ?? '—'}</td>
+                        <td className="p-2">
+                          <span
+                            className={cn(
+                              'rounded-md px-2 py-0.5 text-xs',
+                              ACTION_TONE[row.action as AuditAction] ?? 'bg-muted text-muted-foreground',
+                            )}
+                          >
+                            {t(`audit.actions.${row.action}`, row.action)}
+                          </span>
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {row.module ? moduleName(row.module) : '—'}
+                        </td>
+                        <td className="max-w-[22rem] truncate p-2">
+                          {row.subject?.label ?? (row.subject ? `#${row.subject.id}` : '—')}
+                          {row.subject && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              {t(`audit.subjects.${row.subject.type}`, row.subject.type)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="max-w-[16rem] truncate p-2 text-xs text-muted-foreground">
+                          {row.method} /{row.route}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ---------- გვერდები ---------- */}
+              {lastPage > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <span className="text-muted-foreground">
+                    {t('audit.pageOf', { page, last: lastPage })}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= lastPage}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
 
       {diff && <DiffModal entry={diff} onClose={() => setDiff(null)} />}

@@ -49,7 +49,6 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { RecordActionBar } from '@/components/RecordActionBar'
@@ -392,7 +391,6 @@ export function GamesPage() {
                     before={
                       <>
                         <RatingBadge value={game.rating} size="row" className="mr-1" />
-                        <VisitCount value={game.visits_count} />
                       </>
                     }
                     status={

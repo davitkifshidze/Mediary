@@ -19,8 +19,6 @@ class CustomRecordResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
-            'visits_count' => $this->whenCounted('visits'),
             'module' => $this->module,
             'title' => $this->title,
             'description' => $this->description,

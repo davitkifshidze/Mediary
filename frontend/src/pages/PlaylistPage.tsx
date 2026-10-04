@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { fetchPlaylist, setPlaylistSongs, type Playlist } from '@/api/playlists'
 import { fetchSongs } from '@/api/songs'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { sortByIds } from '@/lib/reorder'
@@ -25,7 +26,6 @@ import { PageContainer } from '@/components/ui/page'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { useToast } from '@/components/ui/feedback'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
-import { VisitBadge } from '@/components/RecordVisits'
 import { InfoHint } from '@/components/ui/info-hint'
 
 /* ============================================================
@@ -59,6 +59,8 @@ export function PlaylistPage() {
 
   // დამატების აუზი — ჩემი სიმღერები; მოთხოვნა მხოლოდ პანელის გახსნაზე
   // ⚠️ `all` — პლეილისტში დასამატებელი ავზი მთელი ბიბლიოთეკაა
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('playlist', playlist?.id)
   const poolQ = useQuery({
     queryKey: ['songs', 'playlist-pool'],
     queryFn: () => fetchSongs({ all: true }).then((p) => p.items),
@@ -142,8 +144,6 @@ export function PlaylistPage() {
               {t('playlists.songCount', { count: songs.length })}
               {playlist.visibility === 'public' && ` · ${t('playlists.public')}`}
             </span>
-            {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი (გვერდის მაუნთზე ითვლება) */}
-            <VisitBadge type="playlist" id={playlist.id} />
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

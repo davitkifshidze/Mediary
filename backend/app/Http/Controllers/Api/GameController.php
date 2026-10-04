@@ -46,7 +46,7 @@ class GameController extends Controller
     {
         $query = Game::query()
             ->with('genres')
-            ->withCount(['videos', 'files', 'images', 'notes', 'galleryImages', 'visits']);
+            ->withCount(['videos', 'files', 'images', 'notes', 'galleryImages']);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

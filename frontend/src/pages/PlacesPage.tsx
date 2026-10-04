@@ -73,7 +73,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
@@ -391,7 +390,6 @@ export function PlacesPage() {
                       before={
                         <>
                           <RatingBadge value={place.rating} size="row" className="mr-1" />
-                          <VisitCount value={place.visits_count} />
                         </>
                       }
                       status={

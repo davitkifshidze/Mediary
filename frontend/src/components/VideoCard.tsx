@@ -24,7 +24,6 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { VisitCount } from '@/components/RecordVisits'
 import { VideoBadges } from '@/components/VideoBadges'
 
 /* ============================================================
@@ -145,7 +144,6 @@ export function VideoCard({
             <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={v.title}>
               {v.title}
             </h3>
-            <VisitCount value={v.visits_count} />
             {/* Tasks §8 — რჩეული ტექსტით და ფერით; ბარათის სათაურის ზოლში დაბალი ზომა */}
             <FavoriteButton size="xs" active={v.is_favorite} pending={favoritePending} onToggle={onToggleFavorite} />
           </div>

@@ -8,7 +8,6 @@ use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
-use App\Models\Concerns\HasVisits;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
@@ -57,9 +56,6 @@ class Bookmark extends Model
      * `delete()`-ს; `trash` scope წაშლილს ყველა ჩვეულებრივ query-ს მალავს.
      */
     use HasTrash;
-
-    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
-    use HasVisits;
 
     /**
      * **დამატებითი ბმულის „რა არის"** (Tasks §36.3) — `links[].kind`.

@@ -22,6 +22,7 @@ import {
   type CustomRecord,
   type CustomRecordFile,
 } from '@/api/customRecords'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { useDateFormat } from '@/lib/dates'
 import { videoTypeName as dictionaryName } from '@/lib/display'
@@ -36,7 +37,6 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PrivateFileLink } from '@/components/PrivateFile'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
-import { VisitBadge } from '@/components/RecordVisits'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
@@ -68,6 +68,8 @@ export function CustomRecordDetail({
   onPlay?: () => void
 }) {
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('custom_record', record.id)
   const lang = useContentLang(i18n.language)
   const fields = useModuleFields(module.key)
   const fmt = useDateFormat()
@@ -96,8 +98,6 @@ export function CustomRecordDetail({
           fallback={<ModuleIcon name={module.icon} className="size-8 text-muted-foreground" />}
           badges={
             <>
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="custom_record" id={record.id} />
               {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
               <StatusBadge status={record.status} size="row" />
               {record.is_favorite && (

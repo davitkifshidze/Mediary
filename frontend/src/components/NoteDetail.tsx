@@ -4,10 +4,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, ExternalLink } from 'lucide-react'
 import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { NoteUploads } from '@/components/NoteUploads'
 import { NoteRemindersButton, NoteRemindersChip, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { useRecordOpen } from '@/lib/audit'
 import { useDateFormat } from '@/lib/dates'
 
 /* ============================================================
@@ -27,6 +27,8 @@ import { useDateFormat } from '@/lib/dates'
    ფანჯარას ხსნის, ე.ი. გადასახვევი აღარაფერია. */
 export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => void }) {
   const { t } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('note', note.id)
   // ⚠️ თარიღი `lib/dates.ts`-ზე გადის და არა `toLocaleString()`-ზე (Tasks 18):
   // პირდაპირი ძახილი ბრაუზერის ლოკალს მიჰყვებოდა და პარამეტრს არ ემორჩილებოდა
   const { dateTime } = useDateFormat()
@@ -61,8 +63,6 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
       <div className="mt-4 space-y-6">
         {/* Tasks §8/§26.2 — ჰეროში ორივე ღილაკი: შემხსენებელი (ქარვისფერი) და რჩეული, ერთი სიმაღლის */}
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-          <VisitBadge type="note" id={note.id} />
           <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(true)} />
           <FavoriteButton active={note.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
         </div>

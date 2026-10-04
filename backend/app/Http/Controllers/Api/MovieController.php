@@ -40,7 +40,7 @@ class MovieController extends Controller
             return MovieListResource::collection($this->paginated($request, Movie::query()->onlyLocked()->with('genres')->orderByDesc('id')));
         }
 
-        $query = Movie::query()->with('genres')->withCount('visits');
+        $query = Movie::query()->with('genres');
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

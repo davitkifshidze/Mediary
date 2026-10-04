@@ -60,8 +60,6 @@ export interface Bookmark {
   photos_count?: number
   status: Status | null
   is_favorite: boolean
-  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
-  visits_count?: number
   visit_count: number
   visited_at: string | null
   /** 16.5 — საჯარო პროფილის წინაპირობა */

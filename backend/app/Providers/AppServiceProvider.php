@@ -102,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
                რიგი (`module`) ამბობს და არა ალიასი: ალიასი კოდის რეესტრია,
                პირადი მოდული კი ბაზაში იბადება. */
             'custom_record' => CustomRecord::class,
-            // Tasks §10 — ფლეილისტს შესვლების ჟურნალი აქვს (`record_visits.visitable_type`)
+            // Tasks §10 → §43 — ფლეილისტის გახსნა ჟურნალში იწერება (`audit_logs.subject_type`)
             'playlist' => Playlist::class,
             // Tasks 10 — გალერეის ფოტოები მსახიობზეც ეკიდება
             'cast_member' => CastMember::class,

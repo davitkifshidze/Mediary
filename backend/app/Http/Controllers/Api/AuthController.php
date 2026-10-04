@@ -136,6 +136,9 @@ class AuthController extends Controller
         $guard = Auth::guard('web');
 
         if (! $guard->validate([$field => $data['login'], 'password' => $data['password']])) {
+            // Tasks §43.3 — არსებული სახელი მცდარი პაროლით: ანგარიში `subject`-ად ჩანს
+            $this->failedLogin($data['login'], 'credentials', $guard->getLastAttempted());
+
             throw ValidationException::withMessages(['login' => __('auth.failed')]);
         }
 
@@ -143,6 +146,8 @@ class AuthController extends Controller
         $user = $guard->getLastAttempted();
 
         if (! $user->is_active) {
+            $this->failedLogin($data['login'], 'disabled', $user);
+
             throw ValidationException::withMessages(['login' => 'account_disabled']);
         }
 
@@ -158,6 +163,8 @@ class AuthController extends Controller
             }
 
             if (! $user->verifySecondFactor($code)) {
+                $this->failedLogin($data['login'], 'two_factor', $user);
+
                 return response()->json(['message' => 'two_factor_code_invalid'], 422);
             }
         }
@@ -174,6 +181,24 @@ class AuthController extends Controller
         ]);
 
         return new UserResource($user->load('modules', 'role'));
+    }
+
+    /**
+     * **წარუმატებელი შესვლა** (Tasks §43.3) — ცდილი სახელი, მიზეზი, IP (`AuditLogger`
+     * თვითონ წერს). ⚠️ პაროლი არასოდეს; „კოდი მჭირდება" (409) ჩავარდნა არაა — ნაბიჯია.
+     */
+    private function failedLogin(string $login, string $reason, mixed $user): void
+    {
+        $user = $user instanceof User ? $user : null;
+
+        $this->audit->log(AuditLog::ACTION_LOGIN_FAILED, [
+            'module' => 'account',
+            'user_label' => mb_substr(trim($login), 0, 120),
+            'subject_type' => $user ? 'user' : null,
+            'subject_id' => $user?->id,
+            'subject_label' => $user?->username,
+            'context' => ['reason' => $reason],
+        ]);
     }
 
     public function logout(Request $request)

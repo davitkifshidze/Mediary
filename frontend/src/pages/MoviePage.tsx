@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { fetchMovieCollection, mediaApi, setSyncPaused } from '@/api/media'
+import { useRecordOpen } from '@/lib/audit'
 import { isDetailPath, mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { NotFound } from '@/pages/NotFoundPage'
 import { PosterImage } from '@/components/PosterImage'
@@ -31,7 +32,6 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { RatingStars } from '@/components/ui/star-rating'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { useQueue } from '@/components/ui/queue'
@@ -76,6 +76,8 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
   const backTo = from && !isDetailPath(from) ? from : libraryPath
 
   const { data: m, isLoading } = useQuery({ queryKey: [type, 'detail', id], queryFn: () => api.get(id!) })
+  // Tasks §43 — გახსნა ჟურნალში (გვერდის მაუნთზე; ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen(type, m?.id)
   const collectionQ = useQuery({
     queryKey: ['collection', id],
     queryFn: () => fetchMovieCollection(id!),
@@ -250,8 +252,6 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                 {m.year && <span className="font-medium">{m.year}</span>}
-                {/* Tasks §10 — „შევედი N-ჯერ" (გვერდის მაუნთზე ითვლება, არა `show()`-ზე) */}
-                <VisitBadge type={type} id={m.id} />
                 {type === 'series' && m.seasons ? (
                   <span className="text-muted-foreground">
                     {t('detail.seasons', { count: m.seasons })}

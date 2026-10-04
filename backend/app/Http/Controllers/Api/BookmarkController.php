@@ -33,7 +33,7 @@ class BookmarkController extends Controller
     public function index(Request $request)
     {
         // Tasks §36 — ფაილებისა და გალერეის ფოტოების რიცხვი რიგის „ფაილები"-სთვის
-        $query = Bookmark::query()->with('category')->withCount(['visits', 'files', 'galleryImages']);
+        $query = Bookmark::query()->with('category')->withCount(['files', 'galleryImages']);
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
@@ -82,7 +82,7 @@ class BookmarkController extends Controller
     public function show(Bookmark $bookmark)
     {
         return new BookmarkResource(
-            $bookmark->load('category')->loadCount(['visits', 'files', 'galleryImages']),
+            $bookmark->load('category')->loadCount(['files', 'galleryImages']),
         );
     }
 

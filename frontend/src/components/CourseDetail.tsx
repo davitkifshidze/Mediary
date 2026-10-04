@@ -12,6 +12,7 @@ import {
   type CourseFileKind,
   toggleCourseFavorite,
 } from '@/api/courses'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { formatBytes } from '@/lib/utils'
@@ -19,7 +20,6 @@ import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -51,6 +51,8 @@ const KIND_ICON: Record<CourseFileKind, typeof Award> = {
 
 export function CourseDetail({ course, onClose }: { course: Course; onClose: () => void }) {
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('course', course.id)
   const lang = useContentLang(i18n.language)
   const qc = useQueryClient()
   // Tasks §8 — რჩეული დეტალის ფანჯარაშიც (აქამდე მხოლოდ სიის სტრიქონზე იყო)
@@ -180,8 +182,6 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
               <EnumStatusBadge domain="course" status={course.status} size="row" />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={course.visibility} />
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="course" id={course.id} />
               <FavoriteButton active={course.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

@@ -19,6 +19,7 @@ import {
   type GameVideoKind,
   toggleGameFavorite,
 } from '@/api/games'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
@@ -27,7 +28,6 @@ import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RatingStars } from '@/components/ui/star-rating'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
@@ -73,6 +73,8 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
     onSuccess: () => void favoriteQc.invalidateQueries({ queryKey: ['games'] }),
   })
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('game', game.id)
   const lang = useContentLang(i18n.language)
 
   const title = (lang === 'ka' ? game.title_ka || game.title_en : game.title_en || game.title_ka) ?? ''
@@ -97,8 +99,6 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
               <RatingStars value={game.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={game.visibility} />
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="game" id={game.id} />
               <FavoriteButton active={game.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

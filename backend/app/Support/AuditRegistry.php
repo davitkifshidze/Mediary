@@ -69,7 +69,6 @@ use App\Models\PlaceFile;
 use App\Models\PlaceRoute;
 use App\Models\Playlist;
 use App\Models\RecordLock;
-use App\Models\RecordVisit;
 use App\Models\Role;
 use App\Models\Series;
 use App\Models\SeriesTranslation;
@@ -296,8 +295,6 @@ class AuditRegistry
         TrashedMessage::class => 'ურნის ტექნიკური რიგი (Tasks §29, ეტაპი 5); წაშლა `chat_delete`-ად, აღდგენა `TrashBin`-ში ცხადად იწერება',
         // Tasks §33.7 — ⚠️ ავტომატური `new_values` პაროლის hash-ს ლოგში ჩაწერდა; ცდების მრიცხველი კი ყოველ არასწორ ცდაზე იცვლება
         RecordLock::class => 'ჩანაწერის პაროლი — hash ლოგში არ უნდა მოხვდეს, ცდების მრიცხველი კი ტექნიკურია',
-        // Tasks §10 — დეტალის ყოველი გახსნა ლოგში „შეიქმნა"-დ ჩაიწერებოდა და §4-ის გვერდს დამარხავდა
-        RecordVisit::class => 'შესვლების ჟურნალი — ყოველი გახსნა ლოგს დამარხავდა; საკუთარი GET აქვს',
     ];
 
     /** მოდულის რიგის გარეშე არსებული ჭრილები — ფილტრში მოდულების გვერდით ჩანს */

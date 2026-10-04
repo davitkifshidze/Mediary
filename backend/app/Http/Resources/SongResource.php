@@ -16,8 +16,6 @@ class SongResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            // Tasks §10 — სიაში პატარა მრიცხველი; მხოლოდ `withCount('visits')`-იან კითხვაზე
-            'visits_count' => $this->whenCounted('visits'),
             'title' => $this->title,
             'artist' => $this->artist,
             'album' => $this->album,

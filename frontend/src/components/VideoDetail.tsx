@@ -15,6 +15,7 @@ import {
   type Video,
   toggleVideoFavorite,
 } from '@/api/videos'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
@@ -31,7 +32,6 @@ import { Button } from '@/components/ui/button'
 import { VideoBadges } from '@/components/VideoBadges'
 import { useContentLang } from '@/lib/settings'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { PhotoGrid } from '@/components/ui/photo-grid'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Tabs, TabInfo, type TabItem } from '@/components/ui/tabs'
@@ -82,6 +82,8 @@ export function VideoDetail({
   onEdit?: (video: Video) => void
 }) {
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('video', video.id)
   const lang = useContentLang(i18n.language)
   const { date } = useDateFormat()
   const qc = useQueryClient()
@@ -162,8 +164,6 @@ export function VideoDetail({
         <div className="flex flex-wrap items-center gap-2">
           {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
           <VisibilityBadge value={video.visibility} />
-          {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-          <VisitBadge type="video" id={video.id} />
           <FavoriteButton active={video.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
           {onEdit && (
             <Button variant="edit" size="sm" onClick={() => onEdit(video)}>

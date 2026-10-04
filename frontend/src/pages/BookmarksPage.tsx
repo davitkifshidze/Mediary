@@ -86,7 +86,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { cn } from '@/lib/utils'
 import { StatusBadge, StatusLabel } from '@/components/StatusBadge'
 
@@ -489,7 +488,6 @@ export function BookmarksPage() {
                       <>
                         {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი (§24.2 — რიგის ზომით) */}
                         <VisibilityBadge value={bookmark.visibility} />
-                        <VisitCount value={bookmark.visits_count} />
                       </>
                     }
                     status={

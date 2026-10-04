@@ -8,7 +8,6 @@ use App\Models\Concerns\HasCustomFields;
 use App\Models\Concerns\HasGallery;
 use App\Models\Concerns\HasTags;
 use App\Models\Concerns\HasTrash;
-use App\Models\Concerns\HasVisits;
 use App\Services\Storage\StorageMeter;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
@@ -47,9 +46,6 @@ class Place extends Model
 
     /** FEAT-11 — კალათა: `destroy()` `moveToTrash()`-ს იძახის */
     use HasTrash;
-
-    // Tasks §10 — შესვლების ჟურნალი (`record_visits`); ჩანაწერთან ერთად ქრება
-    use HasVisits;
 
     /** ⚠️ ორი და არა სამი — ადგილს „მიმდინარე" მდგომარეობა არ აქვს */
     public const STATUSES = ['to_visit', 'visited'];

@@ -133,6 +133,67 @@ class AdminAuditController extends Controller
     }
 
     /**
+     * **„ვინ რა გახსნა და რამდენჯერ"** (Tasks §43.6) — მომხმარებელი × ჩანაწერი →
+     * გახსნების რიცხვი და ბოლო გახსნა. ჩაღრმავება (ვინ · როდის · საიდან)
+     * ჩვეულებრივი სიაა `action=open&subject_type=…&subject_id=…&user_id=…`-ით.
+     *
+     * ⚠️ **იგივე `filtered()`** (მოდული, მომხმარებელი, პერიოდი, ძებნა) — მოქმედების
+     * ჭრილის გარეშე, რადგან აქ ის ფიქსირებულად `open`-ია.
+     * ⚠️ ანონიმი (საჯარო პროფილი, გაზიარება) ერთ რიგად ჯგუფდება თითო ჩანაწერზე.
+     * ⚠️ სათაური, მოდული და მომხმარებლის ასლი **ბოლო** რიგიდან იკითხება — ჩანაწერი
+     * შეიძლება გადაერქვა ან წაიშალა, ლოგში კი ბოლოს ნანახი სახელი წერია.
+     */
+    public function opens(Request $request)
+    {
+        $page = $this->filtered($request, ['action'])
+            ->where('action', AuditLog::ACTION_OPEN)
+            ->whereNotNull('subject_type')
+            ->toBase()
+            ->selectRaw('user_id, subject_type, subject_id, count(*) as opens, max(created_at) as last_at, max(id) as last_id')
+            ->groupBy('user_id', 'subject_type', 'subject_id')
+            ->orderByDesc('last_at')
+            ->orderByDesc('last_id')
+            ->paginate(min(max((int) $request->integer('per_page', 25), 1), 100));
+
+        $last = AuditLog::query()
+            ->with('user:id,name,username')
+            ->whereIn('id', collect($page->items())->pluck('last_id'))
+            ->get()
+            ->keyBy('id');
+
+        return response()->json([
+            'data' => collect($page->items())->map(function ($row) use ($last) {
+                /** @var ?AuditLog $log */
+                $log = $last->get($row->last_id);
+
+                return [
+                    'user' => $log?->user ? [
+                        'id' => $log->user->id,
+                        'name' => $log->user->name,
+                        'username' => $log->user->username,
+                    ] : null,
+                    'user_id' => $row->user_id === null ? null : (int) $row->user_id,
+                    'user_label' => $log?->user_label,
+                    'module' => $log?->module,
+                    'subject' => [
+                        'type' => $row->subject_type,
+                        'id' => $row->subject_id === null ? null : (int) $row->subject_id,
+                        'label' => $log?->subject_label,
+                    ],
+                    'opens' => (int) $row->opens,
+                    'last_at' => $log?->created_at?->toIso8601String(),
+                ];
+            })->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
      * ერთი სვეტის დაჯგუფება — `[{key, total}]`.
      *
      * ⚠️ ცარიელი `module` (შესვლა, გასვლა, რეგისტრაცია) **ცალკე ჭრილია და

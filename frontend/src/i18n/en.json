@@ -525,22 +525,6 @@
     "manual": "Type a score — e.g. 7.5",
     "manualApply": "Apply"
   },
-  "visits": {
-    "count": "Opened {{count}} times",
-    "last": "Last — {{when}}",
-    "open": "Visit log",
-    "title": "Visit log",
-    "hint": "Who opened this record, when and from where. A visit counts once an hour per person; visits from your public profile and share links are listed too.",
-    "empty": "Nobody has opened it yet",
-    "me": "Me",
-    "anonymous": "Anonymous",
-    "showingLast": "Showing the last {{count}} of {{total}}",
-    "source": {
-      "library": "Library",
-      "public": "Public profile",
-      "share": "Share link"
-    }
-  },
   "sortable": {
     "instructions": "Press Space or Enter to pick up, the arrow keys to move, Space again to drop; Escape cancels.",
     "pickedUp": "Picked up — position {{from}} of {{total}}",
@@ -2861,7 +2845,11 @@
       "import": "Import",
       "cast_update": "Cast member edited",
       "restore": "Restored from trash",
-      "cast_sync": "Actor sync"
+      "cast_sync": "Actor sync",
+      "login_failed": "Failed sign-in",
+      "refresh": "Refresh",
+      "open": "Open",
+      "click": "Click"
     },
     "modules": {
       "account": "Account",
@@ -2942,7 +2930,50 @@
       "duty_type": "Duty shift type",
       "duty_rate": "Duty rate"
     },
-    "subtitleWarn": "The log is kept forever — cleanup is manual only."
+    "subtitleWarn": "The log is kept forever — cleanup is manual only.",
+    "views": {
+      "log": "Log",
+      "opens": "Opens",
+      "settings": "Settings"
+    },
+    "opens": {
+      "total": "{{count}} rows — person × record",
+      "count": "Opens",
+      "last": "Last",
+      "empty": "Nothing has been opened yet.",
+      "anonymous": "Anonymous",
+      "detailTitle": "{{name}} · {{record}}",
+      "source": {
+        "library": "Library",
+        "public": "Public profile",
+        "share": "Share link"
+      }
+    },
+    "settings": {
+      "title": "What the log records",
+      "hint": "A switch changes recording for every account. A disabled kind is no longer written (what is already logged stays), and clicks, opens, refreshes and page visits are no longer even sent by the browser. Chat deletion is protected — it is always recorded.",
+      "saved": "Log settings saved",
+      "protected": "Protected — always recorded",
+      "kinds": {
+        "login": "Sign-in",
+        "login_failed": "Failed sign-in",
+        "logout": "Sign-out",
+        "register": "Registration",
+        "visit": "Page visit",
+        "refresh": "Refresh",
+        "open": "Record opened",
+        "click": "Click",
+        "create": "Create",
+        "update": "Edit",
+        "delete": "Delete",
+        "restore": "Restore from trash",
+        "export": "Export",
+        "import": "Import",
+        "translate": "Translation",
+        "cast": "Cast",
+        "chat_delete": "Chat deletion"
+      }
+    }
   },
   "table": {
     "search": "Search…",

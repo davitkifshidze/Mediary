@@ -61,7 +61,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ShowMore } from '@/components/ui/show-more'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
@@ -357,7 +356,6 @@ export function CoursesPage() {
                     {/* Tasks §29.1 — ერთი ზოლი ყველა სიაზე: სტატუსი (§16.4 ჩამოსაშლელი) · რჩეული · ფაილები ·
                         ბმული (უბმულოზე უხილავი სლოტი, §14.2) · რედაქტირება · წაშლა — ყველა h-9 */}
                     <RecordActionBar
-                      before={<VisitCount value={course.visits_count} />}
                       status={
                         <EnumStatusMenu
                           domain="course"

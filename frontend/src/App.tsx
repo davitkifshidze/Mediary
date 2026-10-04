@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { Player } from '@/components/Player'
 import { DICTIONARIES } from '@/lib/dictionaries'
 import { useAuth } from '@/lib/auth'
-import { useVisitTracker } from '@/lib/audit'
+import { useAuditEvents, useVisitTracker } from '@/lib/audit'
 import { PlayerProvider } from '@/lib/player'
 import { ModulesProvider, useModules } from '@/lib/modules'
 import { useNoteReminderWatcher } from '@/lib/noteReminders'
@@ -210,6 +210,8 @@ function AppShell() {
   // Tasks §4.1 — „რომელ სექციაში შევიდა". აპლიკაციის დონეზეა, რომ ყველა
   // მარშრუტი დაიფაროს და არა მხოლოდ ის, ვინც გამოძახებას დაიმახსოვრებს.
   useVisitTracker()
+  // Tasks §43.4 — დაჭერები და განახლება (ერთი `capture` მსმენელი, პაკეტებად; მხოლოდ ჩართული ტიპები)
+  useAuditEvents()
 
   if (loading) return <Splash />
 

@@ -45,8 +45,6 @@ export interface Course {
   tags: string[]
   status: CourseStatus
   is_favorite: boolean
-  /** Tasks §10 — შესვლების რიცხვი სიაში (`withCount('visits')`) */
-  visits_count?: number
   /** ატვირთული ესკიზი ან გვერდის og:image */
   image: string | null
   started_at: string | null

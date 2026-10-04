@@ -42,6 +42,11 @@ export interface User {
   two_factor_enabled?: boolean
   /** საიდუმლო შექმნილია, კოდი ჯერ არ დადასტურებულა — შესვლა ჯერ არ იცვლება */
   two_factor_pending?: boolean
+  /**
+   * Tasks §43.4 — ჟურნალის რომელ ტიპს აგზავნის SPA (`visit` · `refresh` · `open` ·
+   * `click`); მხოლოდ საკუთარ თავზე მოდის. გამორთულზე ქსელში არაფერი მიდის.
+   */
+  audit_kinds?: string[]
   created_at: string | null
   /** ადმინის მიერ მინიჭებული მოდულები */
   modules?: string[]

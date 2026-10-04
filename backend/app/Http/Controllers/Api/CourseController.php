@@ -34,7 +34,7 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Course::query()->with('category')->withCount(['files', 'visits']);
+        $query = Course::query()->with('category')->withCount('files');
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->where('status', $key);

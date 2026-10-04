@@ -52,7 +52,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -428,7 +427,6 @@ export function NotesPage() {
                     <ExternalLink className="size-3.5" />
                     {t('notes.linkButton')}
                   </a>
-                  <VisitCount value={note.visits_count} />
                   {/* Tasks §16.3 — აიქონი და საკუთარი ფერი ერთი კომპონენტიდან */}
                   <StatusBadge status={note.status} size="row" />
                   <NoteRemindersChip count={note.reminders_count ?? 0} onOpen={() => setReminders(note)} />

@@ -39,7 +39,7 @@ class SeriesController extends Controller
             return SeriesListResource::collection($this->paginated($request, Series::query()->onlyLocked()->with('genres')->orderByDesc('id')));
         }
 
-        $query = Series::query()->with('genres')->withCount('visits');
+        $query = Series::query()->with('genres');
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

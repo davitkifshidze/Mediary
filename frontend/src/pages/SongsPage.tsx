@@ -62,7 +62,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
-import { VisitCount } from '@/components/RecordVisits'
 import { favoriteAction, MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { RatingBadge } from '@/components/ui/star-rating'
@@ -437,7 +436,6 @@ export function SongsPage() {
                     before={
                       <>
                         <RatingBadge value={song.rating} size="row" className="mr-1" />
-                        <VisitCount value={song.visits_count} />
                       </>
                     }
                     favorite={{

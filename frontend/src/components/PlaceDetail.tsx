@@ -12,6 +12,7 @@ import {
   type PlaceFileKind,
   togglePlaceFavorite,
 } from '@/api/places'
+import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
@@ -20,7 +21,6 @@ import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { RatingStars } from '@/components/ui/star-rating'
 import { FavoriteButton } from '@/components/ui/favorite-button'
-import { VisitBadge } from '@/components/RecordVisits'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -51,6 +51,8 @@ const KIND_ICON: Record<PlaceFileKind, typeof MapPin> = {
 
 export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => void }) {
   const { t, i18n } = useTranslation()
+  // Tasks §43 — გახსნა ჟურნალში (ადრე „შევედი N-ჯერ" ბეჯი, §10)
+  useRecordOpen('place', place.id)
   const lang = useContentLang(i18n.language)
   const { date: formatDate } = useDateFormat()
   const qc = useQueryClient()
@@ -182,8 +184,6 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
               <RatingStars value={place.rating} />
               {/* §6.1 — ხილვადობა პროფილზე იმართება; აქ მხოლოდ ბეჯი ჩანს */}
               <VisibilityBadge value={place.visibility} />
-              {/* Tasks §10 — „შევედი N-ჯერ" და ჟურნალი */}
-              <VisitBadge type="place" id={place.id} />
               <FavoriteButton active={place.is_favorite} pending={favorite.isPending} onToggle={() => favorite.mutate()} />
             </>
           }

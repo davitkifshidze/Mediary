@@ -39,7 +39,7 @@ class BoardGameController extends Controller
 
     public function index(Request $request)
     {
-        $query = BoardGame::query()->with('genre')->withCount(['files', 'images', 'notes', 'visits']);
+        $query = BoardGame::query()->with('genre')->withCount(['files', 'images', 'notes']);
 
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);

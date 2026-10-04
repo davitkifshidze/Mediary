@@ -29,7 +29,6 @@ function course(id: number, over: Partial<Course> = {}): Course {
     tags: [],
     status: 'to_take',
     is_favorite: false,
-    visits_count: 0,
     image: null,
     started_at: null,
     finished_at: null,

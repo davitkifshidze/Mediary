@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ActorController;
 use App\Http\Controllers\Api\ActorLockController;
 use App\Http\Controllers\Api\Admin\AdminAuditController;
+use App\Http\Controllers\Api\Admin\AdminAuditSettingsController;
 use App\Http\Controllers\Api\Admin\AdminInstallationController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
 use App\Http\Controllers\Api\Admin\AdminPurgeController;
@@ -91,7 +92,6 @@ use App\Http\Controllers\Api\PlaylistController;
 use App\Http\Controllers\Api\PublicProfileController;
 use App\Http\Controllers\Api\PublicShareController;
 use App\Http\Controllers\Api\RecordCastController;
-use App\Http\Controllers\Api\RecordVisitController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SeriesFavoriteController;
@@ -121,9 +121,9 @@ use App\Http\Controllers\Api\WebSearchController;
 use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\MediaDomain;
+use App\Support\Openable;
 use App\Support\PublicDomain;
 use App\Support\StatusDomain;
-use App\Support\Visitable;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -349,14 +349,15 @@ Route::middleware('auth:sanctum')->group(function () {
        მოდის. მოდულის middleware-ის გარეთ — იხ. `AuditController`. */
     Route::post('/audit/visit', [AuditController::class, 'visit']);
 
-    /* ---------- შესვლების მთვლელი და ჟურნალი (Tasks §10) ----------
-       ⚠️ მოდულის middleware-ის გარეთ: `{type}` მოდულის გასაღები ყოველთვის არაა
-       (`playlist` → `song`, `custom_record` → ჩანაწერის `module`) და POST
-       „შექმნად" წაიკითხებოდა — მოდულს `RecordVisitController` თვითონ ამოწმებს. */
-    Route::get('/visits/{type}/{id}', [RecordVisitController::class, 'index'])
-        ->whereIn('type', Visitable::keys())->whereNumber('id');
-    Route::post('/visits/{type}/{id}', [RecordVisitController::class, 'store'])
-        ->whereIn('type', Visitable::keys())->whereNumber('id');
+    /* ---------- ჟურნალი: ჩანაწერის გახსნა და SPA-ს მოვლენები (Tasks §43) ----------
+       §10-ის ხილული მთვლელი (`/visits/{type}/{id}`) წაიშალა — გახსნა მხოლოდ
+       ჟურნალში იწერება. ⚠️ მოდულის middleware-ის გარეთ: `{type}` მოდულის გასაღები
+       ყოველთვის არაა (`playlist` → `song`, `custom_record` → ჩანაწერის `module`)
+       და POST „შექმნად" წაიკითხებოდა — მოდულს `AuditController` თვითონ ამოწმებს.
+       დაჭერები/განახლება პაკეტადაა (~5 წამში ერთხელ) — throttle მას თავისუფლად ატარებს. */
+    Route::post('/audit/open/{type}/{id}', [AuditController::class, 'open'])
+        ->whereIn('type', Openable::keys())->whereNumber('id');
+    Route::post('/audit/events', [AuditController::class, 'events'])->middleware('throttle:120,1');
 
     /* ---------- დეშბორდი (Tasks 2) — მთავარი გვერდის ქარდები ----------
        მოდულის middleware-ის გარეშე: თვითონ წყვეტს, რომელი მოდული ჩანს. */
@@ -1482,6 +1483,8 @@ Route::middleware('auth:sanctum')->group(function () {
             // `EnsureAdminAccess` `create`-ად წაიკითხავდა და მხოლოდ-ნახვის
             // როლი ცრუ 403-ს მიიღებდა (იგივე ხაფანგი, რაც `permission:`-ს აქვს)
             Route::get('/audit/plan', [AdminAuditController::class, 'plan']);
+            // Tasks §43.6 — „ვინ რა გახსნა და რამდენჯერ"
+            Route::get('/audit/opens', [AdminAuditController::class, 'opens']);
             Route::delete('/audit', [AdminAuditController::class, 'destroy']);
         });
 
@@ -1511,6 +1514,9 @@ Route::middleware('auth:sanctum')->group(function () {
            (§34.2) და ურნის ზედა ზღვარი (§29.6). */
         Route::put('/uploads/limits', [AdminInstallationController::class, 'updateUploads']);
         Route::put('/settings/trash', [AdminInstallationController::class, 'updateTrash']);
+        /* Tasks §43.5 — „ჟურნალის პარამეტრები": რომელი ტიპი იწერება (ყველა ანგარიშზე) */
+        Route::get('/audit/settings', [AdminAuditSettingsController::class, 'show']);
+        Route::put('/audit/settings', [AdminAuditSettingsController::class, 'update']);
 
         /* მასობრივი წაშლა (Tasks 20) — ორნაბიჯიანი: გეგმა, მერე `confirm=DELETE` */
         Route::post('/purge/plan', [AdminPurgeController::class, 'plan']);
