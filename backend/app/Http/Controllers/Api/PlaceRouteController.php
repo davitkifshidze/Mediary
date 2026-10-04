@@ -19,6 +19,11 @@ use Illuminate\Validation\Rule;
  *
  * ⚠️ საწყისი წერტილი მოთხოვნაშია და არა ბაზაში: მომხმარებლის მდებარეობა
  * სერვერზე მხოლოდ შენახულ მარშრუტში რჩება და მხოლოდ მისი ნებით.
+ *
+ * ⚠️ **Tasks §56** — საწყისი აღარ არის მხოლოდ გეოლოკაცია (სახლი, მისამართი, ჩემი
+ * ადგილი, რუკაზე დაჭერა — ყველა კლიენტში წყდება, აქ ისევ რიცხვებად მოდის);
+ * `count` — რამდენი გზა (1–`RouteClient::MAX_ROUTES`); შენახულს `from_label`-იც
+ * აქვს („სახლი", მისამართი…), რომ სიაში „საიდან" ეწეროს და არა კოორდინატები.
  * ⚠️ სხვისი ადგილი/მარშრუტი `owner` scope-ით 404-ია (`EnsureRecordOwnership`).
  */
 class PlaceRouteController extends Controller
@@ -31,6 +36,7 @@ class PlaceRouteController extends Controller
             'from_lat' => ['required', 'numeric', 'between:-90,90'],
             'from_lng' => ['required', 'numeric', 'between:-180,180'],
             'profile' => ['nullable', Rule::in(RouteClient::PROFILES)],
+            'count' => ['nullable', 'integer', 'between:1,'.RouteClient::MAX_ROUTES],
         ]);
 
         // ⚠️ კოორდინატის გარეშე რუკაც არ არის — ეს ჩანაწერის მდგომარეობაა და არა სერვერის ჩავარდნა
@@ -45,6 +51,7 @@ class PlaceRouteController extends Controller
             (float) $place->lat,
             (float) $place->lng,
             $profile,
+            (int) ($data['count'] ?? 3),
         );
 
         if ($routes === null) {
@@ -53,6 +60,8 @@ class PlaceRouteController extends Controller
 
         return response()->json(['data' => [
             'profile' => $profile,
+            // §56.3 — რამდენი ითხოვე; `routes` შეიძლება ნაკლები იყოს (OSRM მეტი ვერ იპოვა)
+            'requested' => (int) ($data['count'] ?? 3),
             'from' => ['lat' => (float) $data['from_lat'], 'lng' => (float) $data['from_lng']],
             'to' => ['lat' => (float) $place->lat, 'lng' => (float) $place->lng],
             'routes' => $routes,
@@ -75,6 +84,8 @@ class PlaceRouteController extends Controller
             'from_lng' => ['required', 'numeric', 'between:-180,180'],
             // polyline5 — 100 000 სიმბოლო ≈ 20 000 წერტილი; მეტი რუკისთვის უაზროა
             'geometry' => ['required', 'string', 'max:100000'],
+            // §56.4 — „საიდან": სახლი, მისამართი, ადგილის სახელი (უსახელო — კოორდინატები)
+            'from_label' => ['nullable', 'string', 'max:160'],
         ]);
 
         $route = $place->routes()->create([

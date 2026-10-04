@@ -50,8 +50,30 @@ class RouteClientTest extends TestCase
 
         // ⚠️ OSRM-ს `lng,lat` რიგით უნდა; ალტერნატივები და polyline ცხადადაა მოთხოვნილი
         Http::assertSent(fn ($r) => str_contains($r->url(), '/route/v1/driving/44.800000,41.700000;44.790000,41.710000')
-            && str_contains($r->url(), 'alternatives=true')
+            // §56.3 — ნაგულისხმევი 3 გზა = მთავარი + 2 ალტერნატივა
+            && str_contains($r->url(), 'alternatives=2')
             && str_contains($r->url(), 'geometries=polyline'));
+    }
+
+    /** Tasks §56.3 — **N გზა**: `alternatives=N-1`, პასუხი N-ზე იჭრება, N ქეშის გასაღებშია, ჭერი 5 */
+    public function test_the_number_of_routes_is_asked_for_cut_and_cached_apart(): void
+    {
+        $this->answer = ['code' => 'Ok', 'routes' => [$this->route(100, 60), $this->route(110, 70, 'b'), $this->route(120, 80, 'c')]];
+        $client = app(RouteClient::class);
+
+        $this->assertCount(1, $client->routes(41.7, 44.8, 41.71, 44.79, 'driving', 1));
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'alternatives=false'));
+
+        // OSRM-მა მხოლოდ სამი იპოვა — ხუთის ნაცვლად სამი
+        $this->assertCount(3, $client->routes(41.7, 44.8, 41.71, 44.79, 'driving', 5));
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'alternatives=4'));
+        // სხვა N — ცალკე ქეში, ე.ი. ცალკე მოთხოვნა
+        Http::assertSentCount(2);
+
+        // იგივე N — ქეშიდან; 99 ჭერზე იჭრება და ხუთის ქეშს ხვდება
+        $this->assertCount(1, $client->routes(41.7, 44.8, 41.71, 44.79, 'driving', 1));
+        $this->assertCount(3, $client->routes(41.7, 44.8, 41.71, 44.79, 'driving', 99));
+        Http::assertSentCount(2);
     }
 
     public function test_a_successful_answer_is_cached_and_a_profile_change_is_not(): void

@@ -81,3 +81,10 @@ export const LAYER_TOOLTIP = 'z-[110]'
 
 /** react-select-ის portal-ისთვის (inline style, არა კლასი) */
 export const LAYER_POPUP_Z = 100
+
+/**
+ * Tasks §56.2 — რუკის მინიშნება „ზუმი — Ctrl + ბორბალი". ⚠️ **`MapFrame`-ის
+ * `isolate`-ის შიგნითაა** (საკუთარი ფენათა კონტექსტი), ე.ი. ეს რიცხვი მხოლოდ
+ * Leaflet-ის ფენებს ედრება (ფილები 200 … კონტროლები 1000) და მოდალს არ ეხება.
+ */
+export const LAYER_MAP_HINT = 'z-[1001]'

@@ -17,8 +17,11 @@ use Throwable;
  * კლიენტი მას ბრაუზერის გეოლოკაციიდან იღებს და აქ მხოლოდ რიცხვებად მოდის;
  * სერვერი მას არსად ინახავს (ქეშის გასაღებიც მომრგვალებულია).
  *
- * ⚠️ **`alternatives=true`** — სერვერი 1–3 ვარიანტს აბრუნებს (პირველი
- * უმოკლესია), კლიენტი ყველას ხატავს და არჩევანს მომხმარებელს უტოვებს.
+ * ⚠️ **Tasks §56.3 — გზების რაოდენობა შენი არჩევანია** (`$count`, 1–`MAX_ROUTES`):
+ * OSRM-ს `alternatives=N-1` ეგზავნება (მთავარი + N-1 ალტერნატივა; ადრე ხისტად
+ * `true`), პასუხი N-ზე იჭრება; OSRM იმდენს აბრუნებს, რამდენსაც პოულობს —
+ * ნაკლები ნორმალურია (კლიენტი „ნაპოვნია 2 გზა"-ს ამბობს). პირველი უმოკლესია,
+ * კლიენტი ყველას ხატავს და არჩევანს მომხმარებელს უტოვებს.
  * **გეომეტრია polyline-ად** (precision 5): კომპაქტურია და იმავე ფორმით
  * ინახება `place_routes.geometry`-ში.
  *
@@ -47,6 +50,9 @@ class RouteClient
 
     private const TIMEOUT = 20;
 
+    /** §56.3 — მეტი გზა საჯარო სერვერზე იშვიათად მოიძებნება და რუკას აჭრელებს */
+    public const MAX_ROUTES = 5;
+
     /** ბოლო გამოძახება ჩავარდა? — „სერვერი არ პასუხობს" ≠ „მარშრუტი არ არის" */
     private bool $blocked = false;
 
@@ -60,12 +66,14 @@ class RouteClient
      *
      * @return list<array{index: int, distance_m: int, duration_s: int, geometry: string, summary: ?string}>|null
      */
-    public function routes(float $fromLat, float $fromLng, float $toLat, float $toLng, string $profile = 'driving'): ?array
+    public function routes(float $fromLat, float $fromLng, float $toLat, float $toLng, string $profile = 'driving', int $count = 3): ?array
     {
         $this->blocked = false;
         $profile = in_array($profile, self::PROFILES, true) ? $profile : 'driving';
+        $count = max(1, min(self::MAX_ROUTES, $count));
 
-        $cacheKey = sprintf('osrm:%s:%.4F,%.4F;%.4F,%.4F', $profile, $fromLat, $fromLng, $toLat, $toLng);
+        // ⚠️ §56.3 — N გასაღებშია: „1 გზა"-ს ქეში „3 გზის" კითხვას არ უნდა უპასუხოს
+        $cacheKey = sprintf('osrm:%s:%d:%.4F,%.4F;%.4F,%.4F', $profile, $count, $fromLat, $fromLng, $toLat, $toLng);
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
@@ -78,7 +86,7 @@ class RouteClient
             $res = SourceLog::request(self::TIMEOUT)
                 ->withHeaders(['User-Agent' => self::AGENT])
                 ->get($url, [
-                    'alternatives' => 'true',
+                    'alternatives' => $count > 1 ? (string) ($count - 1) : 'false',
                     'overview' => 'full',
                     'geometries' => 'polyline',
                     'steps' => 'false',
@@ -123,6 +131,8 @@ class RouteClient
                 'summary' => is_string($summary) && $summary !== '' ? $summary : null,
             ];
         }
+
+        $routes = array_slice($routes, 0, $count);
 
         // ⚠️ მხოლოდ წარმატება იქეშება
         Cache::put($cacheKey, $routes, now()->addMinutes(self::CACHE_MINUTES));

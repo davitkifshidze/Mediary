@@ -234,10 +234,11 @@ export async function deletePlaceFile(id: number): Promise<void> {
   await api.delete(`/place-files/${id}`)
 }
 
-/* ---------- რუკა და მარშრუტები (Tasks §30) ----------
-   ⚠️ გამოთვლა (`computePlaceRoute`) ჩანაწერს არ ქმნის — საწყისი წერტილი ყოველთვის
-   ჩემი მიმდინარე მდებარეობაა (ბრაუზერის გეოლოკაცია); შენახვა არჩეულის ასლია,
-   გეომეტრია polyline-ად (`lib/polyline.ts`). */
+/* ---------- რუკა და მარშრუტები (Tasks §30 → §56) ----------
+   ⚠️ გამოთვლა (`computePlaceRoute`) ჩანაწერს არ ქმნის. საწყისი — ჩემი მდებარეობა,
+   სახლი, მისამართი, ჩემი სხვა ადგილი ან რუკაზე მონიშნული წერტილი (§56.1; სერვერთან
+   ყველა რიცხვებად მიდის); შენახვა არჩეულის ასლია, გეომეტრია polyline-ად
+   (`lib/polyline.ts`), „საიდან" — `from_label`-ით. */
 export const ROUTE_PROFILES = ['driving', 'foot', 'bike'] as const
 export type RouteProfile = (typeof ROUTE_PROFILES)[number]
 
@@ -252,6 +253,8 @@ export interface RouteOption {
 
 export interface RoutePlan {
   profile: RouteProfile
+  /** §56.3 — რამდენი გზა ითხოვე; `routes` შეიძლება ნაკლები იყოს */
+  requested: number
   from: { lat: number; lng: number }
   to: { lat: number; lng: number }
   /** პირველი უმოკლესია; ცარიელი = მარშრუტი არ არსებობს (სერვერი კი მუშაობს) */
@@ -267,6 +270,8 @@ export interface PlaceRoute {
   duration_s: number
   from_lat: number
   from_lng: number
+  /** §56.4 — „საიდან" (სახლი, მისამართი…); ძველ მარშრუტს არ აქვს */
+  from_label: string | null
   geometry: string
   chosen_at: string | null
   created_at: string | null
@@ -279,12 +284,13 @@ export interface PlaceRouteInput {
   duration_s: number
   from_lat: number
   from_lng: number
+  from_label?: string | null
   geometry: string
 }
 
 export async function computePlaceRoute(
   placeId: number,
-  input: { from_lat: number; from_lng: number; profile: RouteProfile },
+  input: { from_lat: number; from_lng: number; profile: RouteProfile; count?: number },
 ): Promise<RoutePlan> {
   const { data } = await api.post(`/places/${placeId}/route`, input)
   return data.data

@@ -40,6 +40,8 @@ describe('cutStyle', () => {
       'record', 'records', 'actors',
       // Tasks §54.1 — ჟანრის ფანჯრის ჩანართები
       'names', 'add',
+      // Tasks §56.1 — მარშრუტის საწყისი
+      'here', 'home', 'address', 'myplace', 'pin',
     ]
 
     expect(used.filter((key) => !hasCutStyle(key))).toEqual([])

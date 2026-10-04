@@ -1,7 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { LAYER_MAP_HINT } from '@/lib/layers'
+import { createWheelZoom } from '@/lib/mapWheel'
 import type { LatLng } from '@/lib/polyline'
+import { cn } from '@/lib/utils'
 
 /* ============================================================
    **ადგილის რუკა — Leaflet, OSM-ის ფილები** (Tasks §30.2).
@@ -19,7 +23,13 @@ import type { LatLng } from '@/lib/polyline'
    `stroke:` კი ატრიბუტს ფარავს — თემის ფერი ასე ხვდება რუკაზე.
 
    ⚠️ `scrollWheelZoom: false` — რუკა მოდალშია და გვერდის სქროლი არ უნდა
-   „დაიჭიროს"; მასშტაბი ღილაკებით ან ორმაგი დაწკაპუნებით.
+   „დაიჭიროს"; მასშტაბი ღილაკებით, ორმაგი დაწკაპუნებით ან **Ctrl + ბორბლით**
+   (Tasks §56.2, `lib/mapWheel.ts` — ადრე Ctrl + ბორბალი მთელ გვერდს ადიდებდა);
+   უბრალო ბორბალზე — მინიშნება „ზუმი — Ctrl + ბორბალი".
+
+   ⚠️ **Tasks §56.1 — საწყისის არჩევა რუკაზე** (`onPickFrom`): ამ რეჟიმში
+   დაჭერა საწყისს სვამს (და არა ადგილის მარკერს), საწყისის პინი კი
+   გადაითრევა.
    ============================================================ */
 
 export interface MapRoute {
@@ -36,6 +46,8 @@ export interface PlaceMapProps {
   /** ფორმაში — მარკერის გადათრევა და დაწკაპუნებით გადატანა */
   draggable?: boolean
   onMove?: (lat: number, lng: number) => void
+  /** §56.1 — საწყისი რუკიდან: დაჭერა და საწყისის პინის გადათრევა */
+  onPickFrom?: (lat: number, lng: number) => void
   zoom?: number
   className?: string
 }
@@ -59,9 +71,11 @@ export default function PlaceMap({
   routes = NO_ROUTES,
   draggable = false,
   onMove,
+  onPickFrom,
   zoom = 15,
   className,
 }: PlaceMapProps) {
+  const { t } = useTranslation()
   const host = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const marker = useRef<L.Marker | null>(null)
@@ -72,6 +86,11 @@ export default function PlaceMap({
   move.current = onMove
   const drag = useRef(draggable)
   drag.current = draggable
+  const pick = useRef(onPickFrom)
+  pick.current = onPickFrom
+  const picking = !!onPickFrom
+  // §56.2 — „ზუმი — Ctrl + ბორბალი" (უბრალო ბორბალზე, ცოტა ხნით)
+  const [wheelHint, setWheelHint] = useState(false)
 
   const [lat, lng] = center
   const fromLat = from?.[0] ?? null
@@ -93,15 +112,32 @@ export default function PlaceMap({
       if (p) move.current?.(p.lat, p.lng)
     })
     m.on('click', (e: L.LeafletMouseEvent) => {
-      if (drag.current) move.current?.(e.latlng.lat, e.latlng.lng)
+      // §56.1 — საწყისის არჩევისას დაჭერა საწყისს სვამს, ადგილს არ ეხება
+      if (pick.current) pick.current(e.latlng.lat, e.latlng.lng)
+      else if (drag.current) move.current?.(e.latlng.lat, e.latlng.lng)
     })
     map.current = m
 
     // ⚠️ მოდალის ზომა ანიმაციის შემდეგ დგება — ერთი დაგვიანებული გადათვლა, თორემ ფილები ნახევრად იხატება
     const timer = window.setTimeout(() => m.invalidateSize(), 150)
 
+    /* §56.2 — Ctrl + ბორბალი: რუკის ზუმი კურსორის წერტილზე. ⚠️ `passive: false` —
+       თორემ `preventDefault` არ მუშაობს და ბრაუზერი გვერდსაც ადიდებს */
+    let hintTimer = 0
+    const onWheel = createWheelZoom(
+      (step, e) => m.setZoomAround(m.mouseEventToContainerPoint(e), m.getZoom() + step),
+      () => {
+        setWheelHint(true)
+        window.clearTimeout(hintTimer)
+        hintTimer = window.setTimeout(() => setWheelHint(false), 1200)
+      },
+    )
+    el.addEventListener('wheel', onWheel, { passive: false })
+
     return () => {
       window.clearTimeout(timer)
+      window.clearTimeout(hintTimer)
+      el.removeEventListener('wheel', onWheel)
       m.remove()
       map.current = null
       marker.current = null
@@ -134,11 +170,28 @@ export default function PlaceMap({
     }
 
     if (!me.current) {
-      me.current = L.marker([fromLat, fromLng], { icon: pin('me'), keyboard: false, interactive: false }).addTo(m)
+      me.current = L.marker([fromLat, fromLng], { icon: pin('me'), keyboard: false, draggable: true }).addTo(m)
+      // §56.1 — გადათრეული საწყისი; გადათრევა მხოლოდ არჩევის რეჟიმშია ჩართული (ქვემოთ)
+      me.current.on('dragend', () => {
+        const p = me.current?.getLatLng()
+        if (p) pick.current?.(p.lat, p.lng)
+      })
+      if (!pick.current) me.current.dragging?.disable()
     } else {
       me.current.setLatLng([fromLat, fromLng])
     }
   }, [fromLat, fromLng])
+
+  /* ---- §56.1 — საწყისის პინი გადაითრევა მხოლოდ არჩევის რეჟიმში; კურსორი — ჯვარი ---- */
+  useEffect(() => {
+    const dragging = me.current?.dragging
+    if (dragging) {
+      if (picking) dragging.enable()
+      else dragging.disable()
+    }
+    // `index.css` — `.mediary-picking.leaflet-container` (ჯვარი Leaflet-ის „ხელის" ნაცვლად)
+    host.current?.classList.toggle('mediary-picking', picking)
+  }, [picking, fromLat, fromLng])
 
   /* ---- მარშრუტები — აქტიური სქელი და მკვეთრი, დანარჩენი ჩამქრალი; ჩარჩო აქტიურზე ---- */
   useEffect(() => {
@@ -167,5 +220,18 @@ export default function PlaceMap({
     }
   }, [routes, lat, lng, fromLat, fromLng])
 
-  return <div ref={host} className={className} data-testid="leaflet-map" />
+  return (
+    <div className={cn('relative', className)}>
+      <div ref={host} className="size-full" data-testid="leaflet-map" />
+      {/* §56.2 — მინიშნება უბრალო ბორბალზე; რუკის ზემოთ, მაგრამ მაუსს არ იჭერს */}
+      {wheelHint && (
+        <div
+          className={cn('pointer-events-none absolute inset-0 grid place-items-center bg-black/35 text-sm font-medium text-white', LAYER_MAP_HINT)}
+          data-testid="map-wheel-hint"
+        >
+          {t('places.map.wheelHint')}
+        </div>
+      )}
+    </div>
+  )
 }

@@ -85,6 +85,27 @@ class PlaceRouteTest extends TestCase
         Http::assertSent(fn ($r) => str_contains($r->url(), '/route/v1/foot/44.800000,41.700000;43.280000,41.380000'));
     }
 
+    /** Tasks §56.3 — გზების რაოდენობა მოთხოვნაშია და პასუხი ამბობს, რამდენი ითხოვე */
+    public function test_the_number_of_routes_is_requested_and_validated(): void
+    {
+        $place = $this->place($this->user);
+
+        $this->postJson("/api/places/{$place->id}/route", ['from_lat' => 41.7, 'from_lng' => 44.8, 'count' => 1])
+            ->assertOk()
+            ->assertJsonPath('data.requested', 1)
+            ->assertJsonCount(1, 'data.routes');
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'alternatives=false'));
+
+        $this->postJson("/api/places/{$place->id}/route", ['from_lat' => 41.7, 'from_lng' => 44.8, 'count' => 4])
+            ->assertOk()
+            ->assertJsonPath('data.requested', 4)
+            // OSRM-მა ორი იპოვა — ნაკლები ნორმალურია
+            ->assertJsonCount(2, 'data.routes');
+
+        $this->postJson("/api/places/{$place->id}/route", ['from_lat' => 41.7, 'from_lng' => 44.8, 'count' => 0])->assertStatus(422);
+        $this->postJson("/api/places/{$place->id}/route", ['from_lat' => 41.7, 'from_lng' => 44.8, 'count' => 6])->assertStatus(422);
+    }
+
     public function test_a_dead_router_is_503_and_not_an_empty_list(): void
     {
         $this->status = 500;
@@ -126,6 +147,15 @@ class PlaceRouteTest extends TestCase
 
         $this->assertNotNull(PlaceRoute::find($id)->chosen_at);
 
+        // §56.4 — „საიდან" ინახება; ძველს (უსახელოს) — `null`
+        $labelled = $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['from_label' => 'სახლი']))
+            ->assertStatus(201)
+            ->assertJsonPath('data.from_label', 'სახლი')
+            ->json('data.id');
+        $this->getJson("/api/places/{$place->id}/routes")->assertOk()->assertJsonFragment(['from_label' => 'სახლი']);
+        $this->assertNull(PlaceRoute::find($id)->from_label);
+        PlaceRoute::findOrFail($labelled)->delete();
+
         $this->getJson("/api/places/{$place->id}/routes")->assertOk()->assertJsonCount(1, 'data');
 
         $this->patchJson("/api/place-routes/{$id}", ['name' => 'სამსახურიდან'])
@@ -147,6 +177,7 @@ class PlaceRouteTest extends TestCase
         $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['profile' => 'rocket']))->assertStatus(422);
         $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['geometry' => '']))->assertStatus(422);
         $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['name' => str_repeat('ა', 121)]))->assertStatus(422);
+        $this->postJson("/api/places/{$place->id}/routes", $this->routePayload(['from_label' => str_repeat('ა', 161)]))->assertStatus(422);
     }
 
     /** ⚠️ სხვისი ადგილი და მარშრუტი **404-ია და არა 403** — `owner` scope */

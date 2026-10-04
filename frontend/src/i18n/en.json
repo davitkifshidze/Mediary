@@ -4035,7 +4035,7 @@
     "openMap": "Open on the map",
     "route": {
       "mapTitle": "Map and route",
-      "hint": "The route is computed by the public OSRM server — free and without a key. The starting point is always your current position (with the browser's permission) and it is stored nowhere until you save a route. The foot and bicycle profiles on the public server are approximate.",
+      "hint": "The route is computed by the public OSRM server — free and without a key. The start can be your position (with the browser's permission), home, an address, another of your places or a point on the map; it is stored nowhere until you save a route. A computer has no GPS — the browser guesses the position from the IP address and can be tens of kilometres off. The foot and bicycle profiles on the public server are approximate.",
       "profile": "Profile",
       "profiles": {
         "driving": "By car",
@@ -4068,7 +4068,32 @@
       "duration": "{{h}} h {{m}} min",
       "durationShort": "{{m}} min",
       "mapNeedsCoords": "The map appears once both coordinates are filled in — or search the source.",
-      "dragHint": "Drag the marker or click the map — the coordinates follow."
+      "dragHint": "Drag the marker or click the map — the coordinates follow.",
+      "from": {
+        "title": "From",
+        "here": "My location",
+        "home": "Home",
+        "address": "Address",
+        "myplace": "My place",
+        "pin": "On the map",
+        "pinned": "Picked on the map",
+        "short": "From: {{label}}"
+      },
+      "fromHome": "Route from home",
+      "noHome": "No home yet — pick a start and press “Save as home”.",
+      "saveHome": "Save as home",
+      "homeSaved": "Home saved",
+      "accuracy": "Accuracy ±{{value}}",
+      "inaccurate": "Your location is not precise — pick a start: home, an address or the map.",
+      "usedHome": "Your location is imprecise (±{{accuracy}}) — started from home instead.",
+      "addressPlaceholder": "Street, city or place name",
+      "search": "Search",
+      "noCandidates": "Nothing found",
+      "myplacePlaceholder": "Pick a place",
+      "noOtherPlaces": "You have no other place with coordinates yet.",
+      "pinHint": "Click the map or drag the start pin.",
+      "count": "Routes",
+      "found": "{{count}} routes found"
     },
     "visitedOn": "Visited {{date}}",
     "files": "Files",
@@ -4095,7 +4120,10 @@
     "sort_visited": "By visit date",
     "addPhotos": "Upload photos",
     "photosEmpty": "No photos yet.",
-    "photoDeleteTitle": "Delete the photo?"
+    "photoDeleteTitle": "Delete the photo?",
+    "map": {
+      "wheelHint": "Zoom — Ctrl + scroll"
+    }
   },
   "personal": {
     "hint": "Photos and videos of your people — persons, albums and uploads from your device. Everything lives on a private disk and only you see it; the public profile shows only an album you open yourself.",

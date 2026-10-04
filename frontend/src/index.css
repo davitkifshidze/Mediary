@@ -1102,6 +1102,14 @@
   stroke: var(--primary);
   stroke-opacity: 0.9;
 }
+/* Tasks §56.1 — საწყისის არჩევა რუკაზე: ჯვარი Leaflet-ის „ხელის" ნაცვლად
+   (ორი კლასი — `.leaflet-grab`-ზე ძლიერი); გადასათრევი საწყისის პინი — „ხელი" */
+.mediary-picking.leaflet-container {
+  cursor: crosshair;
+}
+.mediary-picking .mediary-pin--me {
+  cursor: grab;
+}
 
 /* ============================================================
    Tasks §47 — **ფორმატიანი ტექსტი** (Markdown): ჩვენება (`ui/markdown.tsx`)

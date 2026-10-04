@@ -20,6 +20,8 @@ class PlaceRouteResource extends JsonResource
             // ⚠️ `decimal` cast სტრიქონს აბრუნებს — Leaflet-ს რიცხვი უნდა
             'from_lat' => (float) $this->from_lat,
             'from_lng' => (float) $this->from_lng,
+            // Tasks §56.4 — „საიდან" (ძველ მარშრუტს არ აქვს — კლიენტი კოორდინატებს წერს)
+            'from_label' => $this->from_label,
             'geometry' => $this->geometry,
             'chosen_at' => $this->chosen_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

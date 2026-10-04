@@ -18,6 +18,7 @@ import {
   Folders,
   Frame,
   Globe,
+  Home,
   Image,
   Images,
   Languages,
@@ -25,8 +26,12 @@ import {
   ListMusic,
   ListPlus,
   Lock,
+  MapPin,
   MessageSquare,
+  MousePointerClick,
+  Navigation,
   Radio,
+  Search,
   Sparkles,
   Upload,
   User,
@@ -152,6 +157,13 @@ const CUT_STYLE: Record<string, CutStyle> = {
      „ჩანაწერები" `records`-ია (ზემოთ) — იგივე ცნება, იგივე სახე. */
   names: { icon: Languages, color: 'var(--tool-translations)' },
   add: { icon: ListPlus, color: 'var(--icon-ok)' },
+
+  /* ---- მარშრუტის საწყისი (Tasks §56.1) ---- */
+  here: { icon: Navigation, color: 'var(--icon-info)' },
+  home: { icon: Home, color: 'var(--gold)' },
+  address: { icon: Search, color: 'var(--tool-sync)' },
+  myplace: { icon: MapPin, color: 'var(--icon-ok)' },
+  pin: { icon: MousePointerClick, color: 'var(--tool-translations)' },
 }
 
 /**
