@@ -105,9 +105,14 @@ class DatabaseDumper
      * აპი დამპის დროს მუშაობს. `--lock-tables` აქ სწორედ იმას გააკეთებდა,
      * რასაც ვერიდებით.
      *
+     * ⚠️ **Tasks §59.4 — `$tables`**: ცარიელი — მთელი ბაზა (ასლი); სია — მხოლოდ ეს
+     * ცხრილები (ბაზის ექსპორტი). სახელები გამომძახებელმა სქემით უკვე შეამოწმა
+     * (`DatabaseExporter::assertKnown()`); ⚠️ `--` ოფციებს ცხრილებისგან ჰყოფს.
+     *
+     * @param  list<string>  $tables
      * @return array{tables: int}
      */
-    public function dump(string $absolutePath, bool $compress = false): array
+    public function dump(string $absolutePath, bool $compress = false, array $tables = []): array
     {
         $binary = $this->dumpBinary();
 
@@ -131,6 +136,7 @@ class DatabaseDumper
             // მის გარეშე იმპორტი არსებულ ცხრილზე „already exists"-ით დაეცემოდა
             '--add-drop-table',
             $config['database'],
+            ...$tables,
         ];
 
         $process = new Process($args, null, $this->env($config), null, $this->timeout());

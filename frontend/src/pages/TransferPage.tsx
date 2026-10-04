@@ -7,6 +7,7 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { ExportPanel } from '@/components/transfer/ExportPanel'
 import { ImportPanel } from '@/components/transfer/ImportPanel'
 import { BackupsPanel } from '@/components/backups/BackupsPanel'
+import { DatabaseExportCard } from '@/components/backups/DatabaseExportCard'
 import { useAuth } from '@/lib/auth'
 
 /* ============================================================
@@ -85,6 +86,8 @@ export function TransferPage() {
       {/* §59.2 — ბაზა: მხოლოდ სუპერადმინს (ასლების ჩამოთვლაც მისი უფლებაა) */}
       {isAdmin && (
         <div hidden={tab !== 'database'}>
+          {/* §59.4 — მთლიანი ბაზა / ცხრილები (საჭიროებებით); ქვემოთ — ასლები */}
+          <DatabaseExportCard />
           <BackupsPanel />
         </div>
       )}

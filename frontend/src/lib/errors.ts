@@ -129,6 +129,9 @@ export const CODES = [
      ატვირთული ფაილი `.sql` არაა (422). სამივეზე „ვერ შესრულდა" იმ
      კითხვას ტოვებდა პასუხგაუცემელი, რომელიც მომხმარებელს აქვს. */
   'mysqldump_unavailable',
+  // Tasks §59.4 — ბაზის ექსპორტი: უცნობი ცხრილი (422) · ZIP/ფაილი ვერ შეიქმნა (500)
+  'unknown_table',
+  'export_failed',
   'background_unavailable',
   'invalid_backup_file',
   /* SEC-02/SEC-03 — ადმინ-ზონის ესკალაცია. ⚠️ **სამი სხვადასხვა ფაქტია**:

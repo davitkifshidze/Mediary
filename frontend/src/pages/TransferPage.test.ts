@@ -84,6 +84,11 @@ vi.mock('@/lib/auth', async (original) => ({
   useAuth: () => auth.value,
 }))
 
+vi.mock('@/api/database', async (original) => ({
+  ...(await original<typeof import('@/api/database')>()),
+  fetchDatabaseTables: vi.fn(async () => ({ data: [], modules: [], sql_available: true })),
+}))
+
 vi.mock('@/api/backups', async (original) => ({
   ...(await original<typeof import('@/api/backups')>()),
   fetchBackups: vi.fn(async () => ({

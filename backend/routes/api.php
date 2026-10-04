@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\CustomRecordFileController;
 use App\Http\Controllers\Api\CustomRecordNoteController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
+use App\Http\Controllers\Api\DatabaseExportController;
 use App\Http\Controllers\Api\DiscoverController;
 use App\Http\Controllers\Api\DutyController;
 use App\Http\Controllers\Api\DutyShiftController;
@@ -1542,6 +1543,11 @@ Route::middleware('auth:sanctum')->group(function () {
            ⚠️ `download`/`restore` **`{backup}`-ის ქვემოთაა** — რიგს მნიშვნელობა
            აქვს მხოლოდ იმიტომ, რომ `import` ციფრი არაა და `{backup}`-ად
            წაიკითხებოდა; ამიტომ ის სიაშივე, პარამეტრიან მისამართებამდე დგას. */
+        /* Tasks §59.4 — „ბაზა": ცხრილების რუკა (`ModuleTables`) და მთლიანი ბაზის ან
+           არჩეული ცხრილების ექსპორტი (JSON-ის ZIP · SQL) — იგივე `super_admin` */
+        Route::get('/database/tables', [DatabaseExportController::class, 'tables']);
+        Route::post('/database/export', [DatabaseExportController::class, 'export']);
+
         Route::get('/backups', [DatabaseBackupController::class, 'index']);
         Route::post('/backups', [DatabaseBackupController::class, 'store']);
         Route::post('/backups/import', [DatabaseBackupController::class, 'import']);

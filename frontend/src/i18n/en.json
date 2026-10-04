@@ -1269,7 +1269,9 @@
     "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password.",
     "youtube_unavailable": "YouTube is not answering — try again later.",
     "places_unavailable": "The place source is not answering right now. You can fill the place in by hand.",
-    "map_link_unreadable": "Could not read a place from the link — paste a Google Maps place link (with a name or a point)."
+    "map_link_unreadable": "Could not read a place from the link — paste a Google Maps place link (with a name or a point).",
+    "unknown_table": "No such table in the database.",
+    "export_failed": "The export file could not be created."
   },
   "fields": {
     "title": "Fields",
@@ -3640,7 +3642,37 @@
     "readAs": "Read it as {{source}}",
     "detectedOther": "The file is from {{detected}}, not {{chosen}} — it was read that way.",
     "tabDatabase": "Database",
-    "tabDatabaseHint": "Whole database, tables, backups"
+    "tabDatabaseHint": "Whole database, tables, backups",
+    "db": {
+      "title": "Export the whole database",
+      "hint": "Pick tables — a module table brings the tables it needs along (translations, genres, cast, gallery, statuses). In the JSON ZIP every table is its own file and reads on any database; SQL is mysqldump, for restoring.",
+      "all": "Everything",
+      "none": "Clear",
+      "formatJson": "JSON (ZIP)",
+      "formatJsonHint": "one file per table",
+      "formatSql": "SQL",
+      "formatSqlHint": "mysqldump, gzip",
+      "sqlUnavailable": "no mysqldump",
+      "download": "Download ({{count}} tables)",
+      "rows": "{{count}} rows",
+      "sensitive": "Secret",
+      "sensitiveHint": "Password hashes, encrypted keys or sessions — keep the file safe.",
+      "autoAdded": "Also ticked: {{tables}}",
+      "neededBy": "“{{table}}” is needed by: {{tables}} — the export will be incomplete without it.",
+      "system": "System",
+      "owner": {
+        "custom": "Personal modules"
+      },
+      "shared": {
+        "genres": "Genres (shared)",
+        "cast": "Cast (shared)",
+        "episodes": "Episodes",
+        "watches": "Watches",
+        "gallery_images": "Gallery photos (shared)",
+        "statuses": "Statuses (shared)",
+        "locks": "Locks"
+      }
+    }
   },
   "exportData": {
     "hint": "Each module's records in one file: title, status, genre, tags and links. CSV opens in Excel with Georgian intact; JSON is for other programs. Uploaded files are not packed here — download them separately below, as a ZIP.",
