@@ -111,6 +111,8 @@ export const CODES = [
   'cast_member_not_found',
   // Tasks §35.3 — TMDB-ის (ან სხვისი) მსახიობს ხელით ვერ შეცვლი — მხოლოდ შენ მიერ შექმნილ კერძოს
   'cast_member_readonly',
+  // Tasks §35.5 — ფოტოს პირველი ჩაკეტვა: სისტემური ალბომი ჯერ არ არსებობს, პაროლი საჭიროა
+  'locked_album_password_required',
   // Tasks §16 — გადალაგებული სია ჩანაწერის მსახიობებს არ ემთხვევა (სხვა ტაბმა შეცვალა)
   'cast_order_mismatch',
   'not_youtube',

@@ -51,6 +51,22 @@ trait HidesLockedRecords
         );
     }
 
+    /**
+     * **ამ ადამიანის ყველა ჩაკეტილის გარეშე** — გლობალურ ჩანაწერზე (მსახიობი):
+     * ჩემი სტატისტიკა და ჩემი საჯარო გალერეა ჩემს ლოკებს ითვალისწინებს, სხვისას — არა.
+     */
+    public function scopeWithoutLockedBy(Builder $query, int $userId): Builder
+    {
+        $model = $query->getModel();
+
+        return RecordLocks::exclude(
+            $query->withoutGlobalScope('record_lock'),
+            $model->getMorphClass(),
+            $model->qualifyColumn($model->getKeyName()),
+            owner: $userId,
+        );
+    }
+
     /** ფილტრი „ჩაკეტილები" — ჩემი ჩაკეტილები, დამალულიც და გახსნილიც */
     public function scopeOnlyLocked(Builder $query): Builder
     {

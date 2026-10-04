@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Like;
 use App\Support\MediaDomain;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * **„ჩემი ჩანაწერების მსახიობები" — ერთი წყარო** (Tasks §39).
@@ -60,6 +61,12 @@ final class CastPool
             // ⚠️ არცერთი დომენი/ჩანაწერი — ავზი **ცარიელია** და არა „ყველა"
             $w->orWhereRaw('1 = 0');
         });
+
+        /* Tasks §35.5 (Q9) — მასობრივი სინქრონი და გალერეის ჩამოტვირთვა ჩემ მიერ
+           ჩაკეტილ მსახიობს არ ეხება, სესიაში გახსნილსაც (რიგი ფონზე მიდის). */
+        if ($userId = Auth::id()) {
+            $pool->withoutLockedBy((int) $userId);
+        }
 
         if ($q !== null && $q !== '') {
             // ⚠️ `name_ka` სვეტი არ არის (accessor-ია) — ქართული სახელი

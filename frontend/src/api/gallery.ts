@@ -930,3 +930,13 @@ export async function saveGalleryVideo(
 export async function deleteGalleryVideo(id: number): Promise<void> {
   await api.delete(`/gallery/videos/${id}`)
 }
+
+/**
+ * **Tasks §35.5 — ფოტოს ჩაკეტვა**: სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები")
+ * გადატანა. ⚠️ პირველად ალბომი არ არსებობს — 409 `locked_album_password_required`,
+ * მაშინ იგივე იგზავნება `password`-ით.
+ */
+export async function lockGalleryPhotos(ids: number[], password?: string): Promise<{ album_id: number; created: boolean; locked: number }> {
+  const { data } = await api.post('/gallery/images/lock', { ids, ...(password ? { password } : {}) })
+  return data
+}

@@ -226,6 +226,12 @@ final class ActorIndex
             'no' => $query->whereNull('cast_members.details_synced_at'),
             default => null,
         };
+
+        /* Tasks §35.5 — „ჩაკეტილები": ჩემი ჩაკეტილი მსახიობები, დამალულიც (ბოქლომიანი
+           ბარათით). ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
+        if (! empty($filters['locked'])) {
+            $query->onlyLocked();
+        }
     }
 
     /**

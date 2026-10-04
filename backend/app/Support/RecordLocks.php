@@ -285,20 +285,25 @@ final class RecordLocks
      * @param  T  $query
      * @return T
      */
-    public static function exclude(Builder|QueryBuilder $query, string $type, string $column, bool $session = true): Builder|QueryBuilder
+    public static function exclude(Builder|QueryBuilder $query, string $type, string $column, bool $session = true, ?int $owner = null): Builder|QueryBuilder
     {
-        if ($session && ! Auth::id()) {
+        /* ⚠️ Tasks §35.5 — `$owner`: **ამ ადამიანის ყველა** ლოკი, სესიის მიუხედავად.
+           გლობალურ ჩანაწერზე (მსახიობი) ლოკი მნახველისაა, ე.ი. `session: false`-ის
+           „ყველას" აქ ჯერ „ვისი"-ს პასუხი სჭირდება — სხვისი ლოკი ჩემს სტატისტიკას
+           ან ჩემს საჯარო გალერეას არ ეხება. */
+        if ($owner === null && $session && ! Auth::id()) {
             return $query;
         }
 
-        $open = $session ? self::unlockedIds($type) : [];
+        $open = $session && $owner === null ? self::unlockedIds($type) : [];
 
         return $query->whereNotExists(fn (QueryBuilder $sub) => $sub
             ->selectRaw('1')
             ->from('record_locks')
             ->where('record_locks.lockable_type', $type)
             ->whereColumn('record_locks.lockable_id', $column)
-            ->when($session, fn (QueryBuilder $s) => $s->where('record_locks.user_id', Auth::id()))
+            ->when($owner !== null, fn (QueryBuilder $s) => $s->where('record_locks.user_id', $owner))
+            ->when($owner === null && $session, fn (QueryBuilder $s) => $s->where('record_locks.user_id', Auth::id()))
             ->when($open !== [], fn (QueryBuilder $s) => $s->whereNotIn('record_locks.lockable_id', $open)));
     }
 

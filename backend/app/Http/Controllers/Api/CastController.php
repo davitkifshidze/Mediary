@@ -18,6 +18,7 @@ use App\Support\CastSync;
 use App\Support\CredentialProviders;
 use App\Support\Lang;
 use App\Support\MissingCredential;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,19 @@ class CastController extends Controller
     /** მსახიობის გვერდი: ფილმები + სერიალები + ანიმეები (ჩემი კოლექცია + TMDB შემოთავაზება) */
     public function show(CastMember $castMember, TmdbClient $tmdb)
     {
+        /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი.
+           ⚠️ ფილმოგრაფია, ბიოგრაფია და TMDB-ის შემოთავაზებები საერთოდ არ გამოდის. */
+        if (RecordLocks::hiddenRecord($castMember)) {
+            return response()->json([
+                'actor' => $castMember->lockedCard(),
+                'movies' => [],
+                'series' => [],
+                'animes' => [],
+                'suggestions' => [],
+                'series_suggestions' => [],
+            ]);
+        }
+
         $movies = $castMember->movies()->with('genres')->orderByDesc('year')->get();
         $series = $castMember->series()->with('genres')->orderByDesc('year')->get();
         // §7.1 — მესამე მედია-დომენი; მსახიობი ერთია და სამივეს უკავშირდება

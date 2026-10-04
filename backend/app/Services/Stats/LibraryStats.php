@@ -260,7 +260,8 @@ class LibraryStats
                 $genres[(int) $gid][$domain] = (int) $count;
             }
 
-            $rows = DB::table('castables')
+            // §35.5 — ჩემ მიერ ჩაკეტილი მსახიობი ტოპში არ ხვდება (სესიის მიუხედავად)
+            $rows = RecordLocks::exclude(DB::table('castables'), 'cast_member', 'castables.cast_member_id', owner: (int) $user->getKey())
                 ->where('castable_type', $domain)
                 ->where('is_removed', false)
                 ->whereIn('castable_id', $ids($domain))

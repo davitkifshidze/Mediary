@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { FeedbackProvider } from '@/components/ui/feedback'
-import type { ActorCard, ActorList } from '@/api/actors'
+import type { ActorCard, ActorList, HiddenActorCard } from '@/api/actors'
 import i18n from '@/i18n'
 
 /* ============================================================
@@ -30,7 +30,7 @@ const liam: ActorCard = {
   tags: ['portrait'],
 }
 
-const list = (items: ActorCard[]): ActorList => ({
+const list = (items: (ActorCard | HiddenActorCard)[]): ActorList => ({
   items,
   total: items.length,
   page: 1,
@@ -154,5 +154,36 @@ describe('ActorsPage', () => {
     await flush()
 
     expect(mocks.detachActorEverywhere).toHaveBeenCalledWith(7)
+  })
+
+  /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი: მხოლოდ სახელი და ბოქლომი, მენიუს გარეშე; ფილტრი სერვერამდე მიდის */
+  it('draws a hidden actor as a padlock tile and sends the locked-only filter', async () => {
+    await render()
+    const hidden: HiddenActorCard = {
+      id: 9,
+      name: 'Secret Actor',
+      name_ka: null,
+      hidden: true,
+      locked: true,
+      unlocked: false,
+      lock_hint: null,
+      unlock_blocked_until: null,
+    }
+    mocks.fetchActors.mockResolvedValue(list([hidden]))
+
+    const option = [...document.querySelectorAll('label')].find((l) => l.textContent?.includes(i18n.t('actors.filter.lockedOnly')))!
+    await act(async () => option.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click())
+    await act(async () => button(i18n.t('filter.apply')).click())
+    await flush()
+
+    expect(lastFilters()).toMatchObject({ locked: true })
+
+    const tile = container!.querySelector('[data-testid="actor-locked-tile"]') as HTMLButtonElement
+    expect(tile.textContent).toContain('Secret Actor')
+    expect(container!.querySelector('[data-testid="actor-tile"]')).toBeNull()
+
+    await act(async () => tile.click())
+    await flush()
+    expect(document.getElementById('record-unlock')).toBeTruthy()
   })
 })

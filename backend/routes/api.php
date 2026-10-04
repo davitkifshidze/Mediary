@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ActorController;
+use App\Http\Controllers\Api\ActorLockController;
 use App\Http\Controllers\Api\Admin\AdminAuditController;
 use App\Http\Controllers\Api\Admin\AdminInstallationController;
 use App\Http\Controllers\Api\Admin\AdminModuleController;
@@ -1130,6 +1131,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // `images/...` `{type}/{id}`-ზე ზემოთ უნდა იყოს, თორემ „images" ტიპად წაიკითხება
         Route::post('/gallery/images/move', [GalleryController::class, 'moveImages']);
+        /* Tasks §35.4–35.5 — ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა (პირველად —
+           პაროლით). ⚠️ ბოლო სეგმენტი `lock` `UPDATE_ENDPOINTS`-შია — POST `create` არ არის. */
+        Route::post('/gallery/images/lock', [GalleryController::class, 'lockImages']);
         /* §7.9 — ჩაკეტილი ალბომის ფოტო **პირად დისკზეა**, ე.ი. `/storage/*`
            მას ვერ კითხულობს; ერთადერთი კარი ეს მარშრუტია და ის ლოკსაც
            ამოწმებს (404, არასდროს 403). */
@@ -1411,6 +1415,14 @@ Route::middleware('auth:sanctum')->group(function () {
        ⚠️ **`resync` და არა `sync`**: `EnsureModulePermission::UPDATE_ENDPOINTS`
        სწორედ ამ სიტყვას იცნობს, ე.ი. მარშრუტის მოდულის ჯგუფში გადატანა
        მომავალში update-ის უფლებით მოსულს 403-ს არ დაუბრუნებს. */
+    /* Tasks §35.4–35.5 — მსახიობის ჩაკეტვა (ლოკი მნახველისაა). ⚠️ `{id}` და არა
+       `{castMember}`: მიბმული დამალული `EnsureRecordOwnership`-ში 423 იქნებოდა,
+       გახსნა კი სწორედ დამალულზე ხდება. `module:` აქაც არ დგას (მსახიობს მოდული არ აქვს). */
+    Route::put('/cast/{id}/lock', [ActorLockController::class, 'setLock'])->whereNumber('id');
+    Route::post('/cast/{id}/unlock', [ActorLockController::class, 'unlock'])
+        ->whereNumber('id')
+        ->middleware('throttle:record-unlock');
+    Route::post('/cast/{id}/lock', [ActorLockController::class, 'relock'])->whereNumber('id');
     Route::post('/cast/{castMember}/resync', [CastController::class, 'resync'])
         ->whereNumber('castMember')
         // §39.5 (ყოფილი 20.4) — ერთი მსახიობი ორ TMDB-მოთხოვნამდე ხარჯავს

@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
 import { ActorAttachDialog } from '@/components/actors/ActorAttachDialog'
 import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
+import { RecordLockActions } from '@/components/locks/RecordLock'
+import { actorLockBase } from '@/lib/locks'
 
 /* ============================================================
    მსახიობის **hero** — შიდა გვერდის თავი (Tasks §8.1/§8.5).
@@ -194,6 +196,24 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
             <Link2 className="size-4" />
             {t('actors.attach.open')}
           </Button>
+          {/* §35.5 — ჩაკეტვა / ისევ ჩაკეტვა / პაროლი (ლოკი მხოლოდ შენთვისაა) */}
+          <RecordLockActions
+            base={actorLockBase(actor.id)}
+            record={{
+              id: actor.id,
+              name,
+              locked: !!actor.locked,
+              unlocked: actor.unlocked ?? true,
+              lock_hint: actor.lock_hint ?? null,
+              unlock_blocked_until: actor.unlock_blocked_until ?? null,
+            }}
+            onChanged={() => {
+              qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+              qc.invalidateQueries({ queryKey: ['actors'] })
+            }}
+            hint={t('lock.hintActor')}
+            size="sm"
+          />
           {/* ⚠️ ხელით შექმნილს TMDB-ის id არ აქვს — განახლების ღილაკი მას არაფერს მისცემდა */}
           {!editable && (
             <Button

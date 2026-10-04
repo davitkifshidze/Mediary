@@ -497,6 +497,12 @@ export interface Actor {
   created_by_me?: boolean
   /** ხელით შექმნილი და TMDB-ს დაუკავშირებელი — მხოლოდ შემქმნელს უჩანს (Q9) */
   is_private?: boolean
+  /* §35.5 — ჩემი ლოკი; `hidden` — სერვერმა მხოლოდ სახელი და ბოქლომი გამოგზავნა */
+  hidden?: boolean
+  locked?: boolean
+  unlocked?: boolean
+  lock_hint?: string | null
+  unlock_blocked_until?: string | null
   homepage?: string | null
   /** instagram_id · twitter_id · facebook_id · tiktok_id · youtube_id · wikidata_id */
   profile_links?: Record<string, string> | null

@@ -97,7 +97,10 @@ class EnsureRecordOwnership
 
         $segments = explode('/', (string) $request->route()?->uri());
 
-        return str_starts_with((string) end($segments), '{');
+        /* ⚠️ მეთოდიც `show` უნდა იყოს — `GET /gallery/cast/{castMember}` (გალერეა) ბოლო
+           სეგმენტით გვერდს ჰგავს, ოღონდ მსახიობის ფოტოებს აჩვენებს (§35.5). */
+        return str_starts_with((string) end($segments), '{')
+            && $request->route()?->getActionMethod() === 'show';
     }
 
     private function allowed(Model $model, Request $request): bool

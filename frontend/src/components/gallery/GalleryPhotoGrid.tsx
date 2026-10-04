@@ -1,18 +1,21 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deleteGalleryImage,
+  lockGalleryPhotos,
   type GalleryLockedImage,
   type GalleryOwnedImage,
 } from '@/api/gallery'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, isApiCode } from '@/lib/errors'
 import { galleryPhotoInfo, isPortraitCategory } from '@/lib/galleryPhoto'
 import { PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { AlbumUnlockById } from '@/components/gallery/AlbumUnlockById'
 import { GalleryMoveDialog } from '@/components/gallery/GalleryMoveDialog'
+import { LockedPhotosAlbumDialog } from '@/components/gallery/LockedPhotosAlbumDialog'
 
 /* ============================================================
    გალერეის ბადე — **ერთი ფენა ყველა ჭრილისთვის** (§8.5).
@@ -67,6 +70,27 @@ export function GalleryPhotoGrid({
   const [moving, setMoving] = useState<number[] | null>(null)
   /** რომელი ალბომის პაროლს ვკითხულობთ (ჩაკეტილ ფილაზე დაჭერა, 2026-09-20) */
   const [unlocking, setUnlocking] = useState<number | null>(null)
+
+  /* Tasks §35.5 — ფოტოს ჩაკეტვა: სისტემურ ჩაკეტილ ალბომში გადატანა. ⚠️ პირველად ალბომი
+     არ არსებობს — სერვერი 409-ით ითხოვს პაროლს და ფანჯარა იმავე ფოტოებს ხელახლა აგზავნის. */
+  const [lockingIds, setLockingIds] = useState<number[] | null>(null)
+  const lockPhotos = useMutation({
+    mutationFn: ({ ids, password }: { ids: number[]; password?: string }) => lockGalleryPhotos(ids, password),
+    onSuccess: (result) => {
+      ;['gallery', 'gallery-photos', 'gallery-groups', 'gallery-summary', 'gallery-albums'].forEach((key) =>
+        qc.invalidateQueries({ queryKey: [key] }),
+      )
+      setLockingIds(null)
+      toast({ title: t('lock.photosDone', { count: result.locked }), variant: 'success' })
+    },
+    onError: (e, vars) => {
+      if (isApiCode(e, 'locked_album_password_required')) {
+        setLockingIds(vars.ids)
+        return
+      }
+      toast({ title: errorMessage(e), variant: 'error' })
+    },
+  })
 
   const remove = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map((id) => deleteGalleryImage(id))),
@@ -135,6 +159,18 @@ export function GalleryPhotoGrid({
       extraTools={extraTools}
       onLocked={(item) => item.albumId != null && setUnlocking(item.albumId)}
       onMove={(ids) => setMoving(ids)}
+      extraActions={(item, targets) =>
+        item.locked
+          ? []
+          : [
+              {
+                key: 'lock',
+                label: targets.length > 1 ? t('lock.photos', { count: targets.length }) : t('lock.photo'),
+                icon: Lock,
+                run: () => lockPhotos.mutate({ ids: targets }),
+              },
+            ]
+      }
       onDelete={async (ids) => {
         const ok = await confirm({
           title: t('gallery.deleteTitle'),
@@ -147,6 +183,15 @@ export function GalleryPhotoGrid({
     />
 
     {moving && <GalleryMoveDialog ids={moving} onClose={() => setMoving(null)} />}
+
+    {lockingIds && (
+      <LockedPhotosAlbumDialog
+        count={lockingIds.length}
+        busy={lockPhotos.isPending}
+        onSubmit={(password) => lockPhotos.mutate({ ids: lockingIds, password })}
+        onClose={() => setLockingIds(null)}
+      />
+    )}
 
     {/* ⚠️ მდგომარეობაც და პორტალის JSX-იც ერთ კომპონენტშია — `GroupsCut`-ის
         ცოცხალი ხარვეზის წესი. */}

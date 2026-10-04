@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Camera } from 'lucide-react'
-import type { ActorCard } from '@/api/actors'
+import { useQueryClient } from '@tanstack/react-query'
+import { Camera, Lock, LockOpen } from 'lucide-react'
+import { ACTORS_KEY, type ActorCard, type ActorListItem, type HiddenActorCard } from '@/api/actors'
 import { actorName } from '@/lib/actors'
+import { actorLockBase } from '@/lib/locks'
 import { useContentLang } from '@/lib/settings'
 import { PosterImage } from '@/components/PosterImage'
+import { RecordUnlockDialog } from '@/components/locks/RecordLock'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
 /* ============================================================
@@ -12,9 +16,16 @@ import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 
    ფოტო, სახელი კონტენტის ენაზე (მეორე ენა ქვემოთ), „N ფილმი · M სერიალი"
    **ჩემს ბიბლიოთეკაში** და ჩემი ტეგები. მარჯვენა ღილაკი — გვერდის მენიუ (§7).
+
+   ⚠️ §35.5 — **დამალული** (ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი) მხოლოდ
+   ფილტრში „მხოლოდ ჩაკეტილები" ჩანს: სახელი და ბოქლომი, დაჭერა — გახსნა.
    ============================================================ */
 
-export function ActorTile({ actor, actions }: { actor: ActorCard; actions: MenuAction[] }) {
+export function ActorTile({ actor, actions }: { actor: ActorListItem; actions: MenuAction[] }) {
+  return actor.hidden ? <HiddenActorTile actor={actor} /> : <OpenActorTile actor={actor} actions={actions} />
+}
+
+function OpenActorTile({ actor, actions }: { actor: ActorCard; actions: MenuAction[] }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { title, alt } = actorName(actor, lang)
@@ -39,7 +50,11 @@ export function ActorTile({ actor, actions }: { actor: ActorCard; actions: MenuA
         </div>
 
         <div className="mt-2 space-y-0.5">
-          <p className="line-clamp-1 text-sm font-semibold">{title}</p>
+          <p className="flex items-center gap-1 text-sm font-semibold">
+            {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+            {actor.locked && <LockOpen className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('lock.badgeOpen')} />}
+            <span className="line-clamp-1">{title}</span>
+          </p>
           {alt && <p className="line-clamp-1 text-xs text-muted-foreground">{alt}</p>}
           <p className="line-clamp-1 text-xs text-muted-foreground">
             {counts.length ? counts.join(' · ') : t('actors.onlyPhotos')}
@@ -50,5 +65,39 @@ export function ActorTile({ actor, actions }: { actor: ActorCard; actions: MenuA
         </div>
       </Link>
     </RecordContextMenu>
+  )
+}
+
+function HiddenActorTile({ actor }: { actor: HiddenActorCard }) {
+  const { t, i18n } = useTranslation()
+  const lang = useContentLang(i18n.language)
+  const qc = useQueryClient()
+  const [unlocking, setUnlocking] = useState(false)
+  const { title } = actorName(actor, lang)
+
+  return (
+    <>
+      <button type="button" onClick={() => setUnlocking(true)} className="group block w-full cursor-pointer text-left" data-testid="actor-locked-tile">
+        <div className="grid aspect-[2/3] place-items-center rounded-xl border border-border bg-muted text-muted-foreground transition group-hover:border-foreground/30">
+          <span className="flex flex-col items-center gap-2 text-xs">
+            <Lock className="size-8" />
+            {t('lock.badgeLocked')}
+          </span>
+        </div>
+        <p className="mt-2 line-clamp-1 text-sm font-semibold">{title}</p>
+      </button>
+
+      {unlocking && (
+        <RecordUnlockDialog
+          base={actorLockBase(actor.id)}
+          record={{ ...actor, name: title }}
+          onChanged={() => {
+            qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+            qc.invalidateQueries({ queryKey: ['actor', String(actor.id)] })
+          }}
+          onClose={() => setUnlocking(false)}
+        />
+      )}
+    </>
   )
 }

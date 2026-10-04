@@ -1261,7 +1261,8 @@
     "share_status_hidden": "This link doesn’t share statuses — add the record with your default status",
     "duty_hours_required": "Enter the hours — a shift without a type needs them.",
     "duty_range_too_long": "The range can’t be longer than 3 years.",
-    "nothing_to_change": "Nothing to change — pick a workplace or a type."
+    "nothing_to_change": "Nothing to change — pick a workplace or a type.",
+    "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password."
   },
   "fields": {
     "title": "Fields",
@@ -4658,7 +4659,9 @@
       "photos_without": "Without photos",
       "synced": "TMDB details",
       "synced_yes": "Fetched",
-      "synced_no": "Not yet"
+      "synced_no": "Not yet",
+      "lock": "Lock",
+      "lockedOnly": "Locked only"
     },
     "dept": {
       "acting": "Acting",
@@ -4739,6 +4742,12 @@
     "unlockHint": "Enter the password — unlocking lasts only for this session and signing out locks it again.",
     "blockedUntil": "Too many wrong attempts — unlocking is blocked until {{time}}.",
     "section": "Locked",
-    "hintMedia": "A locked record leaves lists, search, the gallery, totals, the public profile and export — it shows only under “Locked”, with a padlock. Unlocking lasts for this session — signing out locks it again."
+    "hintMedia": "A locked record leaves lists, search, the gallery, totals, the public profile and export — it shows only under “Locked”, with a padlock. Unlocking lasts for this session — signing out locks it again.",
+    "hintActor": "A locked actor is hidden from you — the actors list, record casts, search, the gallery and your public gallery; it shows only under the “Locked only” filter. Other accounts see it as usual. Unlocking lasts for this session.",
+    "photo": "Lock",
+    "photos": "Lock ({{count}})",
+    "photosDone": "Locked: {{count}} — the photo is in the “Locked photos” album",
+    "photosAlbumTitle": "Locked photos album",
+    "photosAlbumHint": "A locked photo moves into a separate album — “Locked photos” — and follows its password. The album is being created now; the password stays the same for the next photos."
   }
 }

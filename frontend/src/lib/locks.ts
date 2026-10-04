@@ -7,6 +7,11 @@ import type { MediaType } from '@/lib/media'
    **ლოკის პატარა საერთო ნაწილები (Tasks §35.5).**
    ============================================================ */
 
+/** მსახიობის ლოკის მისამართი — `/cast/{id}` (ლოკი მნახველისაა, §35.5) */
+export function actorLockBase(id: number): string {
+  return `/cast/${id}`
+}
+
 /** ფილმის/სერიალის/ანიმეს ლოკის მისამართი — `/media/{type}/{id}` (+ `/lock`, `/unlock`) */
 export function mediaLockBase(type: MediaType, id: number): string {
   return `/media/${type}/${id}`

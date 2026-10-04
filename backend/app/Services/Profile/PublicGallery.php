@@ -13,6 +13,7 @@ use App\Support\GalleryParent;
 use App\Support\GallerySort;
 use App\Support\MediaDomain;
 use App\Support\PublicDomain;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -499,7 +500,11 @@ class PublicGallery
                     continue;
                 }
 
-                foreach (DB::table('castables')
+                /* Tasks §35.5 — მფლობელის ჩაკეტილი მსახიობი საჯარო გალერეაში არ არის:
+                   აქედან იკრიბება ყველა საჯარო მსახიობი (ჯგუფები, ფოტოები, ვიდეოები). */
+                $castables = RecordLocks::exclude(DB::table('castables'), 'cast_member', 'castables.cast_member_id', owner: (int) $user->id);
+
+                foreach ($castables
                     ->where('castable_type', $domain)
                     ->whereIn('castable_id', $recordIds)
                     /* ⚠️ Tasks §16 — წაშლილი ბმული „საფლავის ქვაა" და არა მონაწილეობა:

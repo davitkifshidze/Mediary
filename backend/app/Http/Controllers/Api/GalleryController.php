@@ -22,6 +22,7 @@ use App\Support\CredentialProviders;
 use App\Support\GalleryParent;
 use App\Support\GallerySort;
 use App\Support\Like;
+use App\Support\LockedPhotos;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
 use App\Support\RecordLocks;
@@ -859,6 +860,44 @@ class GalleryController extends Controller
         }
 
         return response()->json(['moved' => $moved]);
+    }
+
+    /**
+     * **ფოტოს ჩაკეტვა (Tasks §35.4–35.5)** — `POST /gallery/images/lock`.
+     *
+     * ფოტოს თავისი ლოკი არ აქვს: ის სისტემურ ჩაკეტილ ალბომში („ჩაკეტილი ფოტოები",
+     * `LockedPhotos`) გადადის — იმავე გზით, რითაც ხელით გადატანა (`moveImages()`):
+     * `album_id` და ფაილი `gallery/locked`-ში (`AlbumVault`). ⚠️ ალბომი პირველად
+     * აქ იქმნება და პაროლს ითხოვს — მის გარეშე 409 `locked_album_password_required`
+     * (SPA ფანჯარას აჩვენებს და იმავეს გაიმეორებს). ⚠️ ახალი ალბომი ამ სესიაში
+     * **არ** იხსნება — „ჩაკეტე" ფოტოს მაშინვე მალავს.
+     */
+    public function lockImages(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:500'],
+            'ids.*' => ['integer'],
+            'password' => ['nullable', 'string', 'min:4', 'max:100'],
+        ]);
+
+        // ⚠️ `owner` + `album_lock` + `trash` — მხოლოდ ჩემი, ხილული ფოტოები (სხვისი უბრალოდ ვერ მოიძებნება)
+        $ids = GalleryImage::whereIn('id', array_map('intval', $data['ids']))->pluck('id')->map(fn ($id) => (int) $id)->all();
+        abort_if($ids === [], 404, 'not_found');
+
+        $user = $request->user();
+        $album = LockedPhotos::album($user);
+        $created = false;
+
+        if ($album === null) {
+            abort_if(($data['password'] ?? null) === null, 409, 'locked_album_password_required');
+            $album = LockedPhotos::create($user, $data['password']);
+            $created = true;
+        }
+
+        GalleryImage::whereIn('id', $ids)->update(['album_id' => $album->id]);
+        AlbumVault::placeMany(GalleryImage::withoutGlobalScope('album_lock')->whereIn('id', $ids)->get(), $album);
+
+        return response()->json(['album_id' => $album->id, 'created' => $created, 'locked' => count($ids)]);
     }
 
     /**

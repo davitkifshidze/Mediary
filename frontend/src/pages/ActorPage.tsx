@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { fetchActor, type Suggestion } from '@/api/media'
+import { ACTORS_KEY } from '@/api/actors'
+import { actorLockBase } from '@/lib/locks'
+import { RecordLockedScreen } from '@/components/locks/RecordLock'
 import { mediaOf, type MediaType } from '@/lib/media'
 import { tmdbSubtitle, tmdbTitle } from '@/lib/display'
 import { useContentLang, useSettings } from '@/lib/settings'
@@ -180,6 +183,7 @@ export function ActorPage() {
   const lang = useContentLang(i18n.language)
   const { settings } = useSettings()
   const { data, isLoading } = useQuery({ queryKey: ['actor', id], queryFn: () => fetchActor(id!) })
+  const qc = useQueryClient()
 
   const alreadyOwned = useAlreadyOwned(id, data)
   const movieSuggestions = useMemo(
@@ -197,6 +201,32 @@ export function ActorPage() {
 
   const a = data.actor
   const name = lang === 'ka' ? a.name_ka || a.name : a.name
+
+  /* Tasks §35.5 — ჩემ მიერ ჩაკეტილი, ამ სესიაში დაუხსნელი: მხოლოდ სახელი და ბოქლომი */
+  if (a.hidden) {
+    return (
+      <PageContainer>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="mb-5 inline-flex cursor-pointer items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          {t('actions.back')}
+        </button>
+        <h1 className="mb-4 text-2xl font-semibold tracking-tight">{name}</h1>
+        <RecordLockedScreen
+          base={actorLockBase(a.id)}
+          record={{ id: a.id, name, locked: true, unlocked: false, lock_hint: a.lock_hint ?? null, unlock_blocked_until: a.unlock_blocked_until ?? null }}
+          onChanged={() => {
+            qc.invalidateQueries({ queryKey: ['actor', id] })
+            qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+          }}
+          hint={t('lock.hintActor')}
+        />
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer>

@@ -8,6 +8,7 @@ use App\Services\Cast\ActorIndex;
 use App\Services\Cast\CastDetacher;
 use App\Services\Cast\CastPool;
 use App\Support\MediaDomain;
+use App\Support\RecordLocks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -37,6 +38,7 @@ class ActorController extends Controller
             'photos' => ['nullable', 'in:with,without'],
             'records_min' => ['nullable', 'integer', Rule::in(ActorIndex::RECORD_STEPS)],
             'synced' => ['nullable', 'in:yes,no'],
+            'locked' => ['nullable', 'boolean'],
             'sort' => ['nullable', Rule::in(ActorIndex::SORTS)],
             'locale' => ['nullable', 'in:ka,en'],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -107,6 +109,11 @@ class ActorController extends Controller
      */
     private function card(CastMember $member, ActorIndex $index): array
     {
+        // §35.5 — დამალული: მხოლოდ სახელი და ბოქლომი (ფოტო, რიცხვები, ტეგები — არა)
+        if (RecordLocks::hiddenRecord($member)) {
+            return $member->lockedCard();
+        }
+
         return [
             'id' => $member->id,
             'name' => $member->name,
@@ -125,6 +132,7 @@ class ActorController extends Controller
             'records' => (int) $member->getAttribute('records_count'),
             'photos' => (int) $member->getAttribute('photos_count'),
             'tags' => $index->tagsOf((int) $member->id),
+            ...RecordLocks::state($member),
         ];
     }
 }

@@ -36,7 +36,27 @@ export interface ActorCard {
   photos: number
   /** ჩემი საძიებო ტეგები (§7.5) */
   tags: string[]
+  /* §35.5 — ჩემი ლოკი (მნახველისაა: სხვას მსახიობი ჩვეულებრივ უჩანს) */
+  hidden?: false
+  locked?: boolean
+  unlocked?: boolean
+  lock_hint?: string | null
+  unlock_blocked_until?: string | null
 }
+
+/** §35.5 — დამალული (ჩაკეტილი, ამ სესიაში დაუხსნელი): მხოლოდ სახელი და ბოქლომი */
+export interface HiddenActorCard {
+  id: number
+  name: string
+  name_ka: string | null
+  hidden: true
+  locked: true
+  unlocked: false
+  lock_hint: string | null
+  unlock_blocked_until: string | null
+}
+
+export type ActorListItem = ActorCard | HiddenActorCard
 
 export interface ActorFilters {
   q?: string
@@ -46,6 +66,8 @@ export interface ActorFilters {
   photos?: 'with' | 'without'
   records_min?: number
   synced?: 'yes' | 'no'
+  /** §35.5 — მხოლოდ ჩემ მიერ ჩაკეტილები */
+  locked?: boolean
   sort?: ActorSort
   locale?: 'ka' | 'en'
   page?: number
@@ -53,7 +75,7 @@ export interface ActorFilters {
 }
 
 export interface ActorList {
-  items: ActorCard[]
+  items: ActorListItem[]
   total: number
   page: number
   last_page: number

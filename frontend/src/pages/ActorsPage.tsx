@@ -10,10 +10,14 @@ import {
   detachActorEverywhere,
   fetchActors,
   type ActorCard,
+  type ActorListItem,
   type ActorFilters,
   type ActorSort,
 } from '@/api/actors'
 import { resyncActor } from '@/api/media'
+import { relockRecord } from '@/api/locks'
+import { actorLockBase, lockMenuActions } from '@/lib/locks'
+import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { actorName, deptKey } from '@/lib/actors'
 import { errorMessage } from '@/lib/errors'
 import { useFilterDraft } from '@/lib/filters'
@@ -54,9 +58,11 @@ interface PanelFilters {
   photos: string
   records: string
   synced: string
+  /** §35.5 — `1` = მხოლოდ ჩემ მიერ ჩაკეტილები (დამალული — ბოქლომიანი ბარათით) */
+  locked: string
 }
 
-const EMPTY_FILTERS: PanelFilters = { known_for: '', tag: '', photos: '', records: '', synced: '' }
+const EMPTY_FILTERS: PanelFilters = { known_for: '', tag: '', photos: '', records: '', synced: '', locked: '' }
 const PANEL_KEYS = Object.keys(EMPTY_FILTERS) as (keyof PanelFilters)[]
 
 export function ActorsPage() {
@@ -83,6 +89,8 @@ export function ActorsPage() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [tagging, setTagging] = useState<ActorCard | null>(null)
   const [webFor, setWebFor] = useState<ActorCard | null>(null)
+  // §35.5 — ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
+  const [locking, setLocking] = useState<ActorCard | null>(null)
   // §35.3 — ახალი მსახიობი (TMDB-დან ან ხელით)
   const [creating, setCreating] = useState(false)
 
@@ -101,6 +109,7 @@ export function ActorsPage() {
     photos: applied.photos === 'with' || applied.photos === 'without' ? applied.photos : undefined,
     records_min: applied.records ? Number(applied.records) : undefined,
     synced: applied.synced === 'yes' || applied.synced === 'no' ? applied.synced : undefined,
+    locked: applied.locked === '1' ? true : undefined,
     sort,
     locale: lang === 'ka' ? 'ka' : 'en',
   }
@@ -157,8 +166,20 @@ export function ActorsPage() {
     onError: fail,
   })
 
-  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ტეგები · ფოტოები ვებიდან · სინქრონი · — · წაშლა ჩემი ჩანაწერებიდან */
-  const actionsFor = (actor: ActorCard): MenuAction[] => {
+  const relock = useMutation({
+    mutationFn: (actor: ActorCard) => relockRecord(actorLockBase(actor.id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+      toast({ title: t('lock.relocked'), variant: 'success' })
+    },
+    onError: fail,
+  })
+
+  /* Tasks §7 — მარჯვენა ღილაკის მენიუ: გახსნა · ტეგები · ფოტოები ვებიდან · სინქრონი · ჩაკეტვა · — · წაშლა ჩემი ჩანაწერებიდან.
+     ⚠️ დამალულს მენიუ არ აქვს — მისი ბარათი თვითონ გახსნის ფანჯარაა (§35.5). */
+  const actionsFor = (item: ActorListItem): MenuAction[] => {
+    if (item.hidden) return []
+    const actor = item
     const name = actorName(actor, lang).title
 
     return [
@@ -168,6 +189,7 @@ export function ActorsPage() {
       ...(actor.has_tmdb
         ? [{ key: 'sync', label: t('actors.menuSync'), icon: RefreshCw, disabled: resync.isPending, run: () => resync.mutate(actor) }]
         : []),
+      ...lockMenuActions(!!actor.locked, { relock: () => relock.mutate(actor), manage: () => setLocking(actor) }, t),
       ...(actor.records > 0
         ? [
             {
@@ -345,8 +367,33 @@ export function ActorsPage() {
               />
             ))}
           </FilterGroup>
+
+          {/* §35.5 — ჩაკეტილი მსახიობი მხოლოდ აქ ჩანს (Q9) */}
+          <FilterGroup title={t('actors.filter.lock')} count={draft.locked ? 1 : 0}>
+            <FilterOption label={t('actors.filter.lockedOnly')} checked={draft.locked === '1'} onChange={(on) => pick('locked', '1', on)} />
+          </FilterGroup>
         </FilterPanel>
       </div>
+
+      {locking && (
+        <RecordLockDialog
+          base={actorLockBase(locking.id)}
+          record={{
+            id: locking.id,
+            name: actorName(locking, lang).title,
+            locked: !!locking.locked,
+            unlocked: locking.unlocked ?? true,
+            lock_hint: locking.lock_hint ?? null,
+            unlock_blocked_until: locking.unlock_blocked_until ?? null,
+          }}
+          onChanged={() => {
+            qc.invalidateQueries({ queryKey: [ACTORS_KEY] })
+            qc.invalidateQueries({ queryKey: ['actor', String(locking.id)] })
+          }}
+          hint={t('lock.hintActor')}
+          onClose={() => setLocking(null)}
+        />
+      )}
 
       {tagging && (
         <ActorTagsDialog

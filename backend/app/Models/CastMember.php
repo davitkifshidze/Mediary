@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasGallery;
+use App\Models\Concerns\HidesLockedRecords;
 use App\Services\Storage\StorageMeter;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +21,13 @@ class CastMember extends Model
      * `user_id`-თი, ე.ი. გალერეა მაინც per-user რჩება (`owner` global scope).
      */
     use HasGallery;
+
+    /**
+     * Tasks §35.5 — მსახიობის ჩაკეტვა. ⚠️ ლოკი **მნახველისაა** (`RecordLocks::ownerOf()` —
+     * `user_id` აქ არ არის): ჩემი პაროლი მას მხოლოდ ჩემგან მალავს — ჩემს სიაში,
+     * ძებნაში, ჩანაწერის მსახიობებში და გალერეაში; სხვა ანგარიშს ის ჩვეულებრივ უჩანს.
+     */
+    use HidesLockedRecords;
 
     /** TMDB-ის კოდირება (იხ. მიგრაცია): 1 = ქალი, 2 = კაცი */
     public const GENDER_FEMALE = 1;
@@ -93,6 +102,23 @@ class CastMember extends Model
             ->whereNull("{$table}.created_by")
             ->orWhereNotNull("{$table}.tmdb_person_id")
             ->orWhere("{$table}.created_by", $userId));
+    }
+
+    /**
+     * ბოქლომიანი ბარათი — სახელი და ლოკის ფაქტები (`HidesLockedRecords`-ის
+     * `title_*`-ის ნაცვლად). ⚠️ ლოკი მნახველისაა, ე.ი. ფაქტები `state()`-ია.
+     *
+     * @return array<string, mixed>
+     */
+    public function lockedCard(): array
+    {
+        return [
+            'id' => $this->getKey(),
+            'name' => $this->name,
+            'name_ka' => $this->name_ka,
+            'hidden' => true,
+            ...RecordLocks::state($this),
+        ];
     }
 
     /** ხელით შექმნილი და ჯერ TMDB-ს არ დაკავშირებია — მხოლოდ შემქმნელისაა */
@@ -184,6 +210,8 @@ class CastMember extends Model
             // §35.3 — „ჩემი ხელით შექმნილი" (რედაქტირდება) და „მხოლოდ მე ვხედავ"
             'created_by_me' => $this->created_by !== null && $this->created_by === Auth::id(),
             'is_private' => $this->isPrivate(),
+            // §35.5 — ჩემი ლოკი ამ მსახიობზე (ფაქტები, hash არასდროს)
+            ...RecordLocks::state($this),
             'gender' => $this->gender,
             'photo_path' => $this->photo_path,
             'has_tmdb' => (bool) $this->tmdb_person_id,
