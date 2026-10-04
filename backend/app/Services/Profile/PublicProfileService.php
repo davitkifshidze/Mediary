@@ -231,6 +231,13 @@ class PublicProfileService
         // §37.4 — `PublicDomain::query()`: პირადი მოდულის ჩანაწერი მოდულითაც იჭრება
         $q = PublicDomain::query($domain)->withoutGlobalScope('owner');
 
+        /* Tasks §35.4 (Q9) — **ჩაკეტილი საჯარო არასდროსაა**, მფლობელის სესიაშიც.
+           ⚠️ `record_lock` scope მნახველის ლოკებს კითხულობს — უცხოს მფლობელის ლოკი
+           არ ექნება; ამიტომ ის იხსნება და ყველა ჩაკეტილი ცხადად იჭრება. */
+        if (RecordLocks::hides($q->getModel())) {
+            $q->withoutLocked();
+        }
+
         // ცხრილის პრეფიქსი განზრახ: `series`-ს სხვა ცხრილი აქვს, ვიდრე კლასის სახელი,
         // და join-ის დამატება მოგვიანებით ორაზროვან `user_id`-ს გააჩენდა
         $q->where($q->getModel()->getTable().'.user_id', $user->id)

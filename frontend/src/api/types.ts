@@ -88,6 +88,14 @@ export interface MovieListItem {
   episodes?: number | null
   genres: Genre[]
   missing?: string[]
+  /* Tasks §35.5 — ლოკი (მხოლოდ მფლობელს). `hidden` — ბოქლომიანი ბარათი: სერვერმა
+     მხოლოდ სათაური და ლოკის ფაქტები გამოგზავნა (პოსტერი, ჟანრები, სტატუსი — არა). */
+  hidden?: boolean
+  locked?: boolean
+  unlocked?: boolean
+  lock_hint?: string | null
+  failed_unlocks?: number
+  unlock_blocked_until?: string | null
 }
 
 export interface Movie extends MovieListItem {

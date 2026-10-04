@@ -21,6 +21,8 @@ export interface MediaFilters extends ListParams {
   year_max?: number
   rating_min?: number
   rating_max?: number
+  /** Tasks §35.5 — ფილტრი „ჩაკეტილები" (დამალული — ბოქლომიანი ბარათით) */
+  locked?: boolean
   /**
    * ფრანჩაიზის დაჯგუფება (მხოლოდ ფილმებს ეხება, Tasks D1).
    * `false` → სუფთა დალაგება, ჯგუფი დაიშლება. undefined → backend-ის default (ჩართული).

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -35,6 +36,11 @@ trait PicksRandomRecords
 
     protected function randomRecords(Request $request, Builder $query, string $idColumn): Collection
     {
+        // Tasks §35.4 (Q9) — „რა ვნახო დღეს" ჩაკეტილს არ სთავაზობს, სესიაში გახსნილსაც
+        if (RecordLocks::hides($query->getModel())) {
+            $query->withoutLocked();
+        }
+
         if (! $request->filled('status') && ! $request->boolean('favorite')) {
             $query->statusRole('todo');
         }

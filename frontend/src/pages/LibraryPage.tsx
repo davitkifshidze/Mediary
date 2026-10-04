@@ -186,8 +186,10 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს (2.2)
     genre: genres.length ? genres.join(',') : undefined,
     sort: sortValue === 'added' ? undefined : sortValue,
-    status: view !== 'all' && view !== 'favorite' ? view : undefined,
+    status: view !== 'all' && view !== 'favorite' && view !== 'locked' ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
+    // Tasks §35.5 — „ჩაკეტილები": დამალული ბოქლომიანი ბარათით, გახსნილი — ჩვეულებრივად
+    locked: view === 'locked' ? true : undefined,
     year_min: num(ranges.yearMin),
     year_max: num(ranges.yearMax),
     rating_min: num(ranges.ratingMin),
@@ -239,7 +241,9 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
       ? allTitle
       : view === 'favorite'
         ? t('filter.favorite')
-        : statusName(statusByKey(statuses, view), lang) || view
+        : view === 'locked'
+          ? t('lock.section')
+          : statusName(statusByKey(statuses, view), lang) || view
   const countLabel = t(mediaKey('library.count', type), { count: total })
 
   return (

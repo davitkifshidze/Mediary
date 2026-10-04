@@ -262,7 +262,8 @@ final class TrashBin
             $row instanceof GalleryImage => $row->album_id && isset($locked[(int) $row->album_id]),
             // §33.7 — ჩაკეტილი ადამიანის/ალბომის ფოტო ურნაშიც ბოქლომიანია (ესკიზის გარეშე)
             $row instanceof PersonalMedia => self::personalHidden($row),
-            default => false,
+            // §35.5 — დამალული ფილმი/სერიალი/ანიმე ურნაშიც ბოქლომიანია
+            default => RecordLocks::hiddenRecord($row),
         };
         $blocked = $this->blocked($user, $kind, $row, $parent, strict: false);
         $byParent = in_array($kind, self::TITLED_BY_PARENT, true) && $parent;
@@ -545,6 +546,11 @@ final class TrashBin
     {
         $row = $this->find($user, $kind, $id);
 
+        /* Tasks §35.6 — დამალული ჩანაწერი სამუდამოდ არ იშლება (ალბომის წესი): ბრაუზერთან
+           მისული პაროლის გარეშე ჩაკეტილს ვერ მოსპობს. აღდგენა კი ნებადართულია —
+           ის ბიბლიოთეკაში ისევ ჩაკეტილი ბრუნდება. */
+        abort_if(RecordLocks::hiddenRecord($row), 423, 'record_locked');
+
         if ($row instanceof TrashedFile) {
             $this->audit->log(AuditLog::ACTION_DELETE, [
                 'module' => $row->kind === 'chat_file' ? 'chat' : $row->record_type,
@@ -576,6 +582,11 @@ final class TrashBin
             }
 
             foreach ($this->query($user, $kind)->lazyById() as $row) {
+                // §35.6 — დამალული ურნაში რჩება (`destroy()`-ის წესი); ვადის ბოლოს prune მას მაინც შლის
+                if (RecordLocks::hiddenRecord($row)) {
+                    continue;
+                }
+
                 $row->delete();
                 $deleted++;
             }

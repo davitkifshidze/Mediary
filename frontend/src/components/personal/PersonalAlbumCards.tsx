@@ -13,7 +13,8 @@ import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { PersonalAlbumDialog } from '@/components/personal/PersonalAlbumDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
-import { LockBadge, PersonalUnlockDialog } from '@/components/personal/PersonalLock'
+import { LockBadge } from '@/components/locks/RecordLock'
+import { PersonalUnlockDialog } from '@/components/personal/PersonalLock'
 
 /* ============================================================
    **ალბომების ბარათები (Tasks §33.5)** — „ალბომები" ჭრილი და ადამიანის
@@ -81,7 +82,7 @@ export function PersonalAlbumCards({
                   onClick={() => (hidden ? setUnlocking(album) : open(album))}
                   menu={contextMenuItems(
                     hidden
-                      ? [{ key: 'unlock', label: t('personal.lock.unlock'), icon: LockOpen, run: () => setUnlocking(album) }]
+                      ? [{ key: 'unlock', label: t('lock.unlock'), icon: LockOpen, run: () => setUnlocking(album) }]
                       : [
                           { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(album) },
                           { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing(album) },
@@ -92,7 +93,7 @@ export function PersonalAlbumCards({
                     hidden ? (
                       <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setUnlocking(album)}>
                         <Lock className="size-3.5" />
-                        {t('personal.lock.unlock')}
+                        {t('lock.unlock')}
                       </Button>
                     ) : (
                       <>

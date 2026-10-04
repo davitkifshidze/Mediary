@@ -27,6 +27,7 @@ use App\Support\CustomModules;
 use App\Support\DutyPeriod;
 use App\Support\DutySettings;
 use App\Support\ModuleOrder;
+use App\Support\RecordLocks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -180,6 +181,12 @@ class DashboardController extends Controller
      */
     private function counterScope(string $key, Builder $query, User $user): Builder
     {
+        /* Tasks §35.4 (Q9) — **ჯამი ჩაკეტილის გარეშე**, სესიის მიუხედავად: მთვლელი
+           გახსნილობაზე არ უნდა „ხტებოდეს". ⚠️ `not exists` — ახალი query არ ემატება. */
+        if (RecordLocks::hides($query->getModel())) {
+            return $query->withoutLocked();
+        }
+
         if ($key !== 'duty') {
             return $query;
         }

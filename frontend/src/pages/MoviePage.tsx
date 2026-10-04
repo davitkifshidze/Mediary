@@ -43,6 +43,8 @@ import { statusName, statusTone, useStatuses } from '@/lib/statuses'
 import { errorMessage } from '@/lib/errors'
 import { statusStyle } from '@/lib/statusColor'
 import { ModuleIcon } from '@/components/ModuleIcon'
+import { RecordLockActions, RecordLockedScreen } from '@/components/locks/RecordLock'
+import { mediaLockBase } from '@/lib/locks'
 
 
 /** Tasks §8.1 — ტექსტის წყაროს ფერი; უცნობი (და ძველი ge.movie) — ნაცრისფერი */
@@ -158,6 +160,33 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
             </Link>
           }
         />
+      </div>
+    )
+  }
+
+  /* Tasks §35.5 — დამალული ჩანაწერი: მხოლოდ სათაური და ბოქლომი (სერვერი სხვას არ აგზავნის) */
+  const lockOnChanged = () => {
+    qc.invalidateQueries({ queryKey: [type] })
+    qc.invalidateQueries({ queryKey: [type, 'detail', id] })
+  }
+  const lockRecord = {
+    id: m.id,
+    name: movieTitle(m, lang),
+    locked: !!m.locked,
+    unlocked: m.unlocked ?? true,
+    lock_hint: m.lock_hint ?? null,
+    unlock_blocked_until: m.unlock_blocked_until ?? null,
+  }
+
+  if (m.hidden) {
+    return (
+      <div className={pageContainer('wide', 'py-6')}>
+        <Link to={backTo} className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          {t('actions.back')}
+        </Link>
+        <h1 className="mb-4 text-2xl font-semibold tracking-tight">{movieTitle(m, lang)}</h1>
+        <RecordLockedScreen base={mediaLockBase(type, m.id)} record={lockRecord} onChanged={lockOnChanged} hint={t('lock.hintMedia')} />
       </div>
     )
   }
@@ -330,6 +359,8 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
                   <Share2 className="size-4" />
                   {t('chat.share')}
                 </Button>
+                {/* Tasks §35.5 — ჩაკეტვა / ისევ ჩაკეტვა / პაროლი */}
+                <RecordLockActions base={mediaLockBase(type, m.id)} record={lockRecord} onChanged={lockOnChanged} hint={t('lock.hintMedia')} />
                 <Button variant="destructiveOutline" onClick={askDelete} disabled={delMut.isPending}>
                   <Trash2 className="size-4" />
                   {t('actions.delete')}

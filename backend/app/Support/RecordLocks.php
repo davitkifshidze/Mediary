@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Concerns\HidesLockedRecords;
 use App\Models\RecordLock;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Database\Eloquent\Builder;
@@ -167,6 +168,77 @@ final class RecordLocks
             'failed_unlocks' => (int) ($lock?->failed_unlocks ?? 0),
             'unlock_blocked_until' => $lock?->unlockBlocked() ? $lock->unlock_blocked_until?->toIso8601String() : null,
         ];
+    }
+
+    /**
+     * ჩანაწერი „ყველგან იმალება" (`HidesLockedRecords` — ფილმი, სერიალი, ანიმე)?
+     *
+     * @param  Model|class-string<Model>  $record
+     */
+    public static function hides(Model|string $record): bool
+    {
+        return in_array(HidesLockedRecords::class, class_uses_recursive($record), true);
+    }
+
+    /** `hides()` და ამ სესიაში დამალული — ბოქლომიანი ბარათი, ცვლილება 423 */
+    public static function hiddenRecord(Model $record): bool
+    {
+        return self::hides($record) && self::isHidden($record);
+    }
+
+    /**
+     * **ლოკის ველები მხოლოდ მფლობელს** (Tasks §35.5): იგივე რესურსი საჯარო
+     * პროფილზეც და გაზიარების ბმულზეც ხატავს ჩანაწერს — იქ „ჩაკეტილია/არა"
+     * თვითონ იქნებოდა გაჟონვა (საჯარო ისედაც ჩაკეტილს არ აჩვენებს).
+     *
+     * @return array<string, mixed>
+     */
+    public static function ownerState(Model $record): array
+    {
+        $owner = $record->getAttribute('user_id');
+
+        return $owner !== null && (int) $owner === (int) Auth::id() ? self::state($record) : [];
+    }
+
+    /**
+     * **polymorphic წყვილი ჩაკეტილ ჩანაწერზე არ უნდა მიუთითებდეს** — გალერეის
+     * ფოტო (`imageable_*`), ნახვების ჟურნალი (`watchable_*`).
+     *
+     * ⚠️ ტიპი სვეტიდან მოდის და არა ფიქსირებულია (ერთ ცხრილში ფილმიც, მსახიობიც),
+     * ამიტომ სესიის გახსნილები თითო ტიპზე ცალკე „ან"-ით იჭრება.
+     * `$session = false` — **ყველა** ჩაკეტილი (სტატისტიკა, საჯარო).
+     *
+     * @template T of Builder|QueryBuilder
+     *
+     * @param  T  $query
+     * @return T
+     */
+    public static function excludeMorph(Builder|QueryBuilder $query, string $typeColumn, string $idColumn, bool $session = true): Builder|QueryBuilder
+    {
+        if ($session && ! Auth::id()) {
+            return $query;
+        }
+
+        $open = [];
+        if ($session) {
+            foreach ((array) (self::session()?->get(self::SESSION_KEY, []) ?? []) as $type => $ids) {
+                $open[(string) $type] = array_values(array_map('intval', (array) $ids));
+            }
+        }
+
+        return $query->whereNotExists(fn (QueryBuilder $sub) => $sub
+            ->selectRaw('1')
+            ->from('record_locks')
+            ->whereColumn('record_locks.lockable_type', $typeColumn)
+            ->whereColumn('record_locks.lockable_id', $idColumn)
+            ->when($session, fn (QueryBuilder $s) => $s->where('record_locks.user_id', Auth::id()))
+            ->when($open !== [], fn (QueryBuilder $s) => $s->where(function (QueryBuilder $w) use ($open) {
+                foreach ($open as $type => $ids) {
+                    $w->where(fn (QueryBuilder $one) => $one
+                        ->where('record_locks.lockable_type', '!=', $type)
+                        ->orWhereNotIn('record_locks.lockable_id', $ids ?: [0]));
+                }
+            })));
     }
 
     /**

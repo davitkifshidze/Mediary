@@ -875,7 +875,12 @@ class PurgeService
 
         return $model::withoutGlobalScopes(['owner', 'trash'])
             ->where("{$table}.user_id", $user->getKey())
-            ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull("{$table}.trashed_at"));
+            ->when($how === self::TO_TRASH, fn (Builder $q) => $q->whereNull("{$table}.trashed_at"))
+            /* Tasks §35.6 — ⚠️ **სამუდამო წაშლა (ანგარიშის წაშლა) ჩაკეტილსაც შლის.**
+               `record_lock` scope რომ დარჩენილიყო, საკუთარი ანგარიშის წაშლისას დამალული
+               ჩანაწერი აქ არ მოხვდებოდა და SQL-კასკადით — მოვლენების გარეშე — წავიდოდა:
+               ფაილები დისკზე ობლად. ურნაში გადატანა კი დამალულს არ ეხება (ალბომის წესი). */
+            ->when($how === self::FOR_GOOD, fn (Builder $q) => $q->withoutGlobalScope('record_lock'));
     }
 
     /**

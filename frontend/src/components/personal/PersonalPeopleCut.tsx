@@ -17,7 +17,8 @@ import { Sortable, SortableItem } from '@/components/ui/sortable'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonDialog } from '@/components/personal/PersonDialog'
 import { PersonalDeleteDialog } from '@/components/personal/PersonalDeleteDialog'
-import { LockBadge, PersonalUnlockDialog } from '@/components/personal/PersonalLock'
+import { LockBadge } from '@/components/locks/RecordLock'
+import { PersonalUnlockDialog } from '@/components/personal/PersonalLock'
 
 /* ============================================================
    **„ადამიანები" (Tasks §33.5)** — ბარათები: მთავარი ფოტო, სახელი,
@@ -117,7 +118,7 @@ export function PersonalPeopleCut() {
                   onClick={() => (hidden ? setUnlocking(person) : open(person))}
                   menu={contextMenuItems(
                     hidden
-                      ? [{ key: 'unlock', label: t('personal.lock.unlock'), icon: LockOpen, run: () => setUnlocking(person) }]
+                      ? [{ key: 'unlock', label: t('lock.unlock'), icon: LockOpen, run: () => setUnlocking(person) }]
                       : [
                           { key: 'open', label: t('actions.open'), icon: MENU_ICONS.open, run: () => open(person) },
                           { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => setEditing({ person }) },
@@ -128,7 +129,7 @@ export function PersonalPeopleCut() {
                     hidden ? (
                       <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setUnlocking(person)}>
                         <Lock className="size-3.5" />
-                        {t('personal.lock.unlock')}
+                        {t('lock.unlock')}
                       </Button>
                     ) : (
                       <>

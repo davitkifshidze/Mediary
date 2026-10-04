@@ -1,4 +1,5 @@
 import { api, API_URL } from '@/lib/api'
+import type { RecordLockState } from '@/api/locks'
 import { readPage, type ListParams, type Page } from '@/lib/paged'
 import type { Visibility } from '@/api/publicProfile'
 
@@ -30,26 +31,10 @@ const PERSONAL_GROUPINGS = ['person', 'album', 'month'] as const
 export type PersonalGrouping = (typeof PERSONAL_GROUPINGS)[number]
 
 /**
- * **ლოკი (Tasks §33.7)** — მხოლოდ ორი ფაქტი და მინიშნება; hash არასდროს.
- *
- * ⚠️ `locked && !unlocked` — **ბოქლომიანი ბარათი**: სერვერი ყდას, ჩანიშვნას,
- * აღწერას და შიგთავსს საერთოდ არ აგზავნის (ბუნდოვანება ნამდვილია და არა
- * ფარდა). გახსნა სესიაშია — გასვლისას ისევ იკეტება.
+ * **ლოკი (Tasks §33.7 → §35.4)** — ზოგადია (`api/locks.ts`): მხოლოდ ორი ფაქტი და
+ * მინიშნება; hash არასდროს. `locked && !unlocked` — **ბოქლომიანი ბარათი**.
  */
-export interface RecordLockState {
-  locked: boolean
-  /** ჩაკეტილი არაა, ან ამ სესიაში გაიხსნა */
-  unlocked: boolean
-  lock_hint: string | null
-  failed_unlocks: number
-  /** 10 არასწორი ცდის შემდეგ — როდემდეა გახსნა დაბლოკილი */
-  unlock_blocked_until: string | null
-}
-
-/** ჩაკეტილია და ამ სესიაში არ გახსნილა */
-export function isHidden(record: Pick<RecordLockState, 'locked' | 'unlocked'>): boolean {
-  return record.locked && !record.unlocked
-}
+export { isHidden } from '@/api/locks'
 
 export interface Person extends RecordLockState {
   id: number
@@ -243,37 +228,6 @@ export async function reorderPersonalAlbums(ids: number[]): Promise<PersonalAlbu
 
 /** ლოკის მარშრუტის სეგმენტი — `/personal/people/{id}/lock` · `/personal/albums/{id}/lock` */
 export type PersonalLockKind = 'people' | 'albums'
-
-export interface PersonalLockInput {
-  password?: string
-  hint?: string | null
-  /** ლოკის მოხსნა */
-  remove?: boolean
-  /** არსებული ლოკის შეცვლა/მოხსნა, როცა ჩანაწერი ამ სესიაში არ გახსნილა */
-  account_password?: string
-}
-
-/** დადება · შეცვლა · მოხსნა — ერთი კარი (`PUT …/lock`) */
-export async function setPersonalLock<T extends Person | PersonalAlbum>(
-  kind: PersonalLockKind,
-  id: number,
-  input: PersonalLockInput,
-): Promise<T> {
-  const { data } = await api.put(`/personal/${kind}/${id}/lock`, input)
-  return data.data
-}
-
-/** გახსნა ამ სესიაში — 422 `record_password_wrong`, 423 `record_temporarily_locked` */
-export async function unlockPersonal<T extends Person | PersonalAlbum>(kind: PersonalLockKind, id: number, password: string): Promise<T> {
-  const { data } = await api.post(`/personal/${kind}/${id}/unlock`, { password })
-  return data.data
-}
-
-/** „ისევ ჩაკეტე" — სესიიდან ამოვარდნა, პაროლი რჩება */
-export async function relockPersonal<T extends Person | PersonalAlbum>(kind: PersonalLockKind, id: number): Promise<T> {
-  const { data } = await api.post(`/personal/${kind}/${id}/lock`)
-  return data.data
-}
 
 /* ---------- ფოტო და ვიდეო ---------- */
 

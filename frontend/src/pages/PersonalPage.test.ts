@@ -94,7 +94,7 @@ const mocks = vi.hoisted(() => ({
   fetchPersonalGroups: vi.fn(),
   fetchPersonalAlbums: vi.fn(),
   fetchPerson: vi.fn(),
-  unlockPersonal: vi.fn(),
+  unlockRecord: vi.fn(),
   uploadPersonalMedia: vi.fn(),
   fetchUploadLimits: vi.fn(),
 }))
@@ -107,8 +107,12 @@ vi.mock('@/api/personal', async (original) => ({
   fetchPersonalGroups: mocks.fetchPersonalGroups,
   fetchPersonalAlbums: mocks.fetchPersonalAlbums,
   fetchPerson: mocks.fetchPerson,
-  unlockPersonal: mocks.unlockPersonal,
   uploadPersonalMedia: mocks.uploadPersonalMedia,
+}))
+
+vi.mock('@/api/locks', async (original) => ({
+  ...(await original<typeof import('@/api/locks')>()),
+  unlockRecord: mocks.unlockRecord,
 }))
 
 vi.mock('@/api/account', async (original) => ({
@@ -330,25 +334,26 @@ describe('locks (§33.7)', () => {
   it('draws a hidden person as a padlock card and asks for the password instead of opening it', async () => {
     defaults()
     mocks.fetchPeople.mockResolvedValue([person(1), hidden])
-    mocks.unlockPersonal.mockResolvedValue({ ...hidden, unlocked: true })
+    mocks.unlockRecord.mockResolvedValue({ ...hidden, unlocked: true })
     const { PersonalPage } = await import('@/pages/PersonalPage')
     await render(h(PersonalPage, { cut: 'people' }))
 
     const card = [...container!.querySelectorAll('li')].find((li) => li.textContent?.includes('ანა'))!
-    expect(card.textContent).toContain(i18n.t('personal.lock.badgeLocked'))
+    expect(card.textContent).toContain(i18n.t('lock.badgeLocked'))
     // რედაქტირება/წაშლა გახსნამდე არ ჩანს — სერვერი მათ 423-ით უარყოფს
     expect(card.textContent).not.toContain(i18n.t('actions.edit'))
 
     await act(async () => (card.querySelector('button') as HTMLButtonElement).click())
     await flush()
 
-    expect(document.body.textContent).toContain(i18n.t('personal.lock.hintShown', { hint: 'ზღვა' }))
+    expect(document.body.textContent).toContain(i18n.t('lock.hintShown', { hint: 'ზღვა' }))
 
-    await act(async () => typeInto(document.getElementById('personal-unlock') as HTMLInputElement, 'secret1'))
-    await act(async () => (document.getElementById('personal-unlock-form') as HTMLFormElement).requestSubmit())
+    await act(async () => typeInto(document.getElementById('record-unlock') as HTMLInputElement, 'secret1'))
+    await act(async () => (document.getElementById('record-unlock-form') as HTMLFormElement).requestSubmit())
     await flush()
 
-    expect(mocks.unlockPersonal).toHaveBeenCalledWith('people', 3, 'secret1')
+    // §35.5 — ზოგადი ლოკი: ჩანაწერის მისამართი + პაროლი
+    expect(mocks.unlockRecord).toHaveBeenCalledWith('/personal/people/3', 'secret1')
   })
 
   it('shows only the padlock on a hidden person page and never asks for the grid', async () => {
@@ -360,7 +365,7 @@ describe('locks (§33.7)', () => {
       '/personal/people/3',
     )
 
-    expect(container!.querySelector('[data-testid="personal-locked"]')).toBeTruthy()
+    expect(container!.querySelector('[data-testid="record-locked"]')).toBeTruthy()
     expect(container!.textContent).toContain(i18n.t('personal.photos', { count: 5 }))
     expect(mocks.fetchPersonalMedia).not.toHaveBeenCalled()
     expect(container!.textContent).not.toContain(i18n.t('actions.upload'))

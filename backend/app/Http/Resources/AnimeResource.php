@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\RecordLocks;
 use App\Support\VideoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,6 +16,11 @@ class AnimeResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Tasks §35.5 — დამალული ჩანაწერი ბოქლომიანი ბარათია: სათაური და ლოკი, შიგთავსი არა
+        if (RecordLocks::hiddenRecord($this->resource)) {
+            return $this->resource->lockedCard();
+        }
+
         return [
             'id' => $this->id,
             'title_ka' => $this->title_ka,
@@ -61,6 +67,8 @@ class AnimeResource extends JsonResource
             'cast' => CastResource::collection($this->whenLoaded('cast')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            // ლოკის ფაქტები — მხოლოდ მფლობელს (`RecordLocks::ownerState()`)
+            ...RecordLocks::ownerState($this->resource),
         ];
     }
 }

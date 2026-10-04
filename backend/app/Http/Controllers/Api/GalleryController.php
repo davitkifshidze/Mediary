@@ -24,6 +24,7 @@ use App\Support\GallerySort;
 use App\Support\Like;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -1000,6 +1001,9 @@ class GalleryController extends Controller
         $query = ($from = $data['from'] ?? null)
             ? $this->sourceQuery($from)
             : GalleryImage::query();
+
+        // Tasks §35.4 (Q9) — დამალული ჩანაწერის (და §35.5-დან მსახიობის) ფოტოები სიაში არ არის
+        RecordLocks::excludeMorph($query, 'gallery_images.imageable_type', 'gallery_images.imageable_id');
 
         /* ⚠️ **ჩაკეტილი ფოტო ბრტყელ სიაში ჩანს — დაბლარულად (2026-09-20).**
 

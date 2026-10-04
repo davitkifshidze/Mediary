@@ -111,7 +111,7 @@ export function PersonalAlbumDialog({
                 <SelectItem value={NO_PERSON}>{t('personal.album.outside')}</SelectItem>
                 {(peopleQ.data ?? []).map((person) => (
                   <SelectItem key={person.id} value={String(person.id)} disabled={isHidden(person)}>
-                    {isHidden(person) ? `${person.name} · ${t('personal.lock.badgeLocked')}` : person.name}
+                    {isHidden(person) ? `${person.name} · ${t('lock.badgeLocked')}` : person.name}
                   </SelectItem>
                 ))}
               </SelectContent>

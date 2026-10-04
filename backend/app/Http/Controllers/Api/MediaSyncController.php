@@ -55,7 +55,8 @@ class MediaSyncController extends Controller
         $paused = 0;
         $processed = 0;
         foreach ($types as $type) {
-            $query = MediaDomain::query($type);
+            // Tasks §35.4 (Q9) — სინქრონიზაციის გეგმა ჩაკეტილს არ ეხება (რიგი ფონზე მიდის)
+            $query = MediaDomain::query($type)->withoutLocked();
 
             if (! empty($data['status'])) {
                 $query->statusKey($data['status']);

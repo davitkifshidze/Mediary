@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\AppTime;
 use App\Support\CustomModules;
 use App\Support\ExportDomain;
+use App\Support\RecordLocks;
 use App\Support\StatusDomain;
 use DateTimeInterface;
 use Generator;
@@ -72,6 +73,8 @@ class RecordExporter
             ->where('user_id', $user->getKey())
             // ⚠️ §37 — პირადი მოდულის ჩანაწერები ერთ ცხრილშია: მოდულით ჭრა სავალდებულოა
             ->when(CustomModules::isKey($module), fn (Builder $q) => $q->where('module', $module))
+            // Tasks §35.4 (Q9) — ექსპორტი ჩაკეტილს არ შეიცავს, სესიაში გახსნილსაც
+            ->when(RecordLocks::hides($model), fn (Builder $q) => $q->withoutLocked())
             ->with(ExportDomain::with($module))
             ->orderBy('id');
     }

@@ -53,6 +53,7 @@ import {
   Leaf,
   Library,
   Lightbulb,
+  Lock,
   Link as LinkIcon,
   List,
   ListChecks,
@@ -159,7 +160,8 @@ const GROUPS = [
   },
   {
     key: 'state',
-    icons: { HelpCircle, Circle, CircleDot, Eye, EyeOff, Clock, Hourglass, Play, Pause, CheckCircle2, CheckCheck, Check, Archive, Inbox },
+    // Tasks §35.5 — `Lock`: მედიის ფსევდო-განყოფილება „ჩაკეტილები"
+    icons: { HelpCircle, Circle, CircleDot, Eye, EyeOff, Lock, Clock, Hourglass, Play, Pause, CheckCircle2, CheckCheck, Check, Archive, Inbox },
   },
   {
     key: 'marks',

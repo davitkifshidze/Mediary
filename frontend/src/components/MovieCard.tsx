@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, PlayCircle, Star } from 'lucide-react'
+import { AlertTriangle, LockOpen, PlayCircle, Star } from 'lucide-react'
 import { PosterImage } from './PosterImage'
 import { FranchiseFavoriteDialog } from '@/components/FranchiseFavoriteDialog'
 import { VisitCount } from '@/components/RecordVisits'
@@ -17,6 +17,9 @@ import {
   type MenuAction,
 } from '@/components/ui/record-menu'
 import { mediaApi } from '@/api/media'
+import { relockRecord } from '@/api/locks'
+import { lockMenuActions, mediaLockBase } from '@/lib/locks'
+import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
 import { formatRating } from '@/lib/rating'
@@ -48,6 +51,15 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
   /* Tasks §18 — ფილმზე, რომელსაც ფრანჩაიზი აქვს, რჩეულში **დამატება** პოპაპს ხსნის
      („მხოლოდ ეს ფილმი" / „მთელი ფრანჩაიზი"); მოხსნა და უფრანჩაიზო ფილმი — პირდაპირ. */
   const [franchiseOpen, setFranchiseOpen] = useState(false)
+  // Tasks §35.5 — ჩაკეტვა / პაროლი მარჯვენა ღილაკიდან
+  const [locking, setLocking] = useState(false)
+  const relockMut = useMutation({
+    mutationFn: () => relockRecord(mediaLockBase(type, movie.id)),
+    onSuccess: () => {
+      inval()
+      toast({ title: t('lock.relocked'), variant: 'success' })
+    },
+  })
   const toggleFavorite = () => {
     if (type === 'movie' && !movie.is_favorite && movie.collection_id) setFranchiseOpen(true)
     else favMut.mutate()
@@ -83,6 +95,7 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
     },
     statusActions(t('form.status'), statuses, movie.status, lang, (key) => statusMut.mutate(key)),
     favoriteAction(movie.is_favorite, toggleFavorite, t),
+    ...lockMenuActions(!!movie.locked, { relock: () => relockMut.mutate(), manage: () => setLocking(true) }, t),
     { key: 'edit', label: t('actions.edit'), icon: MENU_ICONS.edit, separator: true, run: () => nav(`${detailBase}/${movie.id}/edit`) },
     { key: 'delete', label: t('actions.delete'), icon: MENU_ICONS.delete, danger: true, run: () => void askDelete() },
   ]
@@ -149,6 +162,8 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
                     {movieTitle(movie, lang)}
                   </h3>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {/* §35.5 — ჩაკეტილი, ამ სესიაში გახსნილი */}
+                    {movie.locked && <LockOpen className="size-3" aria-label={t('lock.badgeOpen')} />}
                     <span>{movie.year ?? '—'}</span>
                     {/* Tasks §9 (Q1) — ჩემი ქულა ოქროსფერი ვარსკვლავით; TMDB-ის საშუალო „TMDB"-ით და მინიშნებით */}
                     {movie.my_rating != null && (
@@ -194,6 +209,22 @@ export function MovieCard({ movie, type = 'movie' }: { movie: MovieListItem; typ
       <ContextMenuContent>{contextMenuItems(actions)}</ContextMenuContent>
       {franchiseOpen && (
         <FranchiseFavoriteDialog movie={movie} onClose={() => setFranchiseOpen(false)} onDone={inval} />
+      )}
+      {locking && (
+        <RecordLockDialog
+          base={mediaLockBase(type, movie.id)}
+          record={{
+            id: movie.id,
+            name: movieTitle(movie, lang),
+            locked: !!movie.locked,
+            unlocked: movie.unlocked ?? true,
+            lock_hint: movie.lock_hint ?? null,
+            unlock_blocked_until: movie.unlock_blocked_until ?? null,
+          }}
+          onChanged={inval}
+          hint={t('lock.hintMedia')}
+          onClose={() => setLocking(false)}
+        />
       )}
     </ContextMenu>
   )

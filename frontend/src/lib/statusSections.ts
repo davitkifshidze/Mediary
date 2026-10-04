@@ -28,7 +28,7 @@ import type { Status } from '@/api/types'
    ამიტომ განლაგება `modules.user_settings`-იდან პირდაპირ იკითხება.
    ============================================================ */
 
-export type PseudoSectionId = 'all' | 'favorite' | 'downloaded'
+export type PseudoSectionId = 'all' | 'favorite' | 'downloaded' | 'locked'
 
 export interface PseudoSection {
   id: PseudoSectionId
@@ -49,11 +49,14 @@ const DOWNLOADED: PseudoSection = {
   defaultAt: 'end',
 }
 
+/** Tasks §35.5 — ჩაკეტილი ფილმები/სერიალები/ანიმე (სხვაგან ისინი იმალება, Q9) */
+const LOCKED: PseudoSection = { id: 'locked', labelKey: 'lock.section', icon: 'Lock', defaultAt: 'end' }
+
 /** ⚠️ სარკე: `App\Support\StatusDomain::RESERVED_KEYS` (სტატუსი ამ გასაღებებს არ იღებს) */
 export const PSEUDO_SECTIONS: Record<StatusDomain, PseudoSection[]> = {
-  movie: [ALL, FAVORITE],
-  series: [ALL, FAVORITE],
-  anime: [ALL, FAVORITE],
+  movie: [ALL, FAVORITE, LOCKED],
+  series: [ALL, FAVORITE, LOCKED],
+  anime: [ALL, FAVORITE, LOCKED],
   video: [ALL, DOWNLOADED, FAVORITE],
   note: [ALL, FAVORITE],
   bookmark: [ALL, FAVORITE],

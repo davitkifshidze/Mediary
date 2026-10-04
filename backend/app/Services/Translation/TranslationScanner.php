@@ -245,11 +245,13 @@ class TranslationScanner
 
     private function newQuery(string $type): Builder
     {
-        return match ($type) {
+        /* Tasks §35.4 (Q9) — თარგმნის გეგმა და მრიცხველი ჩაკეტილის გარეშე (რიგია);
+           ერთი ჩანაწერის თარგმნა მისივე გვერდიდან ჩვეულებრივად მუშაობს */
+        return (match ($type) {
             'series' => Series::query(),
             'anime' => Anime::query(),
             default => Movie::query(),
-        };
+        })->withoutLocked();
     }
 
     private function query(string $type): Builder

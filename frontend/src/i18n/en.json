@@ -4161,29 +4161,8 @@
       "hint": "Drag a thumbnail to its new place — the order saves at once and the album follows it."
     },
     "lock": {
-      "lock": "Lock",
-      "relock": "Lock again",
-      "relocked": "Locked again",
-      "unlock": "Unlock",
-      "password": "Password",
-      "title": "Lock with a password",
       "hintPerson": "A locked person's photos, videos, albums, note and extra fields no longer leave the server — the grid shows only the name and count, with a padlock. Search and totals skip them too. Unlocking lasts for this session — signing out locks it again.",
       "hintAlbum": "A locked album's photos and videos no longer leave the server — the grid shows only the name and count, with a padlock. A locked album can't be public. Unlocking lasts for this session — signing out locks it again.",
-      "lockedHint": "Locked. Changing or removing the password asks for your account password — unless you already unlocked it in this session.",
-      "accountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten password is not a dead end.",
-      "hintLabel": "Hint",
-      "hintHelp": "Optional — shown only to you when unlocking.",
-      "hintShown": "Hint: {{hint}}",
-      "remove": "Remove lock",
-      "removeHint": "The password is removed and the content shows everywhere again.",
-      "saved": "Lock saved",
-      "removed": "Lock removed",
-      "badgeLocked": "Locked",
-      "badgeOpen": "Unlocked",
-      "screenTitle": "Locked",
-      "forgot": "Change password",
-      "unlockHint": "Enter the password — unlocking lasts only for this session and signing out locks it again.",
-      "blockedUntil": "Too many wrong attempts — unlocking is blocked until {{time}}.",
       "notPublic": "A locked album can't be public — remove the lock first."
     }
   },
@@ -4736,5 +4715,30 @@
       "done": "Attached to {{count}} record(s)",
       "already": "Already on {{count}} record(s)."
     }
+  },
+  "lock": {
+    "lock": "Lock",
+    "relock": "Lock again",
+    "relocked": "Locked again",
+    "unlock": "Unlock",
+    "password": "Password",
+    "title": "Lock with a password",
+    "lockedHint": "Locked. Changing or removing the password asks for your account password — unless you already unlocked it in this session.",
+    "accountPasswordHint": "Changing or removing the lock asks for your Mediary account password — a forgotten password is not a dead end.",
+    "hintLabel": "Hint",
+    "hintHelp": "Optional — shown only to you when unlocking.",
+    "hintShown": "Hint: {{hint}}",
+    "remove": "Remove lock",
+    "removeHint": "The password is removed and the content shows everywhere again.",
+    "saved": "Lock saved",
+    "removed": "Lock removed",
+    "badgeLocked": "Locked",
+    "badgeOpen": "Unlocked",
+    "screenTitle": "Locked",
+    "forgot": "Change password",
+    "unlockHint": "Enter the password — unlocking lasts only for this session and signing out locks it again.",
+    "blockedUntil": "Too many wrong attempts — unlocking is blocked until {{time}}.",
+    "section": "Locked",
+    "hintMedia": "A locked record leaves lists, search, the gallery, totals, the public profile and export — it shows only under “Locked”, with a padlock. Unlocking lasts for this session — signing out locks it again."
   }
 }

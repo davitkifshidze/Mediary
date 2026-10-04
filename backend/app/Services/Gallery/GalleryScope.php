@@ -95,7 +95,9 @@ final class GalleryScope
      */
     public static function query(string $type, array $data, ?Builder $base = null): Builder
     {
-        $query = $base ?? MediaDomain::query($type);
+        /* Tasks §35.4 (Q9) — მასობრივი გეგმა (ჩამოტვირთვა, გაზიარება) ჩაკეტილს არ ეხება,
+           სესიაში გახსნილსაც: რიგი ფონზე მიდის და ლოკს ვერ „დაინახავს". */
+        $query = ($base ?? MediaDomain::query($type))->withoutLocked();
         $scope = $data['scope'] ?? null;
 
         if ($scope === 'off' || $scope === 'all') {

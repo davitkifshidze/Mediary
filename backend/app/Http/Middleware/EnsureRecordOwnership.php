@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Support\RecordLocks;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -68,9 +69,35 @@ class EnsureRecordOwnership
             if (! $this->allowed($parameter, $request)) {
                 abort(404);
             }
+
+            /* **Tasks §35.4 — დამალული ჩანაწერი (Q9).** მისამართი მას პოულობს
+               (`HidesLockedRecords::resolveRouteBindingQuery()`), რომ გვერდმა
+               ბოქლომი დახატოს; დანარჩენი კარი — რედაქტირება, წაშლა, სტატუსი,
+               გალერეა, კოლექცია — 423-ია, ჯერ გახსნა. ⚠️ ერთ ადგილას და არა თითო
+               კონტროლერში: ახალ endpoint-ზე დავიწყება ხვრელი იქნებოდა. */
+            if (RecordLocks::hiddenRecord($parameter) && ! $this->openWhenHidden($request)) {
+                abort(423, 'record_locked');
+            }
         }
 
         return $next($request);
+    }
+
+    /**
+     * დამალულზე მხოლოდ თვითონ ჩანაწერის გვერდია ღია — `GET …/{record}`, ბოლო
+     * სეგმენტი პარამეტრია (`GET /movies/{movie}/collection` კი აღარ). პასუხი
+     * ბოქლომიანი ბარათია (`lockedCard()`). ლოკის კარები `{type}/{id}`-ზეა და
+     * მიბმას საერთოდ არ იყენებს.
+     */
+    private function openWhenHidden(Request $request): bool
+    {
+        if (! $request->isMethod('GET')) {
+            return false;
+        }
+
+        $segments = explode('/', (string) $request->route()?->uri());
+
+        return str_starts_with((string) end($segments), '{');
     }
 
     private function allowed(Model $model, Request $request): bool

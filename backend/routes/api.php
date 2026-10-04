@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\LinkResolverController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\MatchController;
+use App\Http\Controllers\Api\MediaLockController;
 use App\Http\Controllers\Api\MediaSyncController;
 use App\Http\Controllers\Api\MediaWatchController;
 use App\Http\Controllers\Api\ModuleController;
@@ -1229,6 +1230,18 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')->whereNumber('castMember');
         Route::delete('/media/cast/{type}/{id}/{castMember}', [RecordCastController::class, 'destroy'])
             ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')->whereNumber('castMember');
+
+        /* Tasks §35.4–35.5 — ფილმის/სერიალის/ანიმეს ჩაკეტვა: დადება/შეცვლა/მოხსნა
+           (`PUT …/lock`), გახსნა ამ სესიაში (`POST …/unlock`) და ისევ ჩაკეტვა
+           (`POST …/lock`). სამივე `update`-ია (`unlock`/`lock` `UPDATE_ENDPOINTS`-შია);
+           ⚠️ `throttle:record-unlock` — ოთხნიშნა პაროლს სკრიპტი წუთებში გატეხდა. */
+        Route::put('/media/{type}/{id}/lock', [MediaLockController::class, 'setLock'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
+        Route::post('/media/{type}/{id}/unlock', [MediaLockController::class, 'unlock'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id')
+            ->middleware('throttle:record-unlock');
+        Route::post('/media/{type}/{id}/lock', [MediaLockController::class, 'relock'])
+            ->whereIn('type', MediaDomain::TYPES)->whereNumber('id');
     });
 
     // sync-ის გეგმა ორივე დომენს ერთდროულად ეხება — ფილტრი თავად ითვალისწინებს

@@ -11,6 +11,7 @@ use App\Models\Concerns\HasStatus;
 use App\Models\Concerns\HasTrash;
 use App\Models\Concerns\HasVisits;
 use App\Models\Concerns\HasWatchLog;
+use App\Models\Concerns\HidesLockedRecords;
 use App\Services\Storage\StorageMeter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,6 +62,9 @@ class Anime extends Model
      * და `media_watches`-იდან იწერება; გამეორება აღარ იკარგება.
      */
     use HasWatchLog;
+
+    /** Tasks §35.4 (Q9) — ჩაკეტილი ჩანაწერი იმალება ყველგან, ფილტრის „ჩაკეტილები"-ს გარდა */
+    use HidesLockedRecords;
 
     protected $guarded = ['id'];
 

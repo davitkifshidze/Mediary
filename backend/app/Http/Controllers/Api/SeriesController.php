@@ -17,6 +17,7 @@ use App\Support\CredentialProviders;
 use App\Support\Like;
 use App\Support\MediaDuplicate;
 use App\Support\MissingCredential;
+use App\Support\RecordLocks;
 use App\Support\StorageFolder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -31,6 +32,13 @@ class SeriesController extends Controller
     /** სერიალების სია (ფილტრი: status, genre, favorite, q, sort) */
     public function index(Request $request)
     {
+        /* Tasks §35.5 (Q9) — ფილტრი „ჩაკეტილები": მხოლოდ ჩემი ჩაკეტილები. დამალული
+           ბოქლომიანი ბარათით მოდის (`lockedCard()`), ამ სესიაში გახსნილი — ჩვეულებრივად.
+           ⚠️ დანარჩენ სიაში დამალული საერთოდ არ არის (`record_lock` scope). */
+        if ($request->boolean('locked')) {
+            return SeriesListResource::collection($this->paginated($request, Series::query()->onlyLocked()->with('genres')->orderByDesc('id')));
+        }
+
         $query = Series::query()->with('genres')->withCount('visits');
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
@@ -95,6 +103,11 @@ class SeriesController extends Controller
     /** ერთი სერიალი დეტალურად */
     public function show(Series $series)
     {
+        // §35.5 — დამალული: ბოქლომიანი ბარათი (რესურსი თვითონ ჭრის); რელაციები ზედმეტია
+        if (RecordLocks::hiddenRecord($series)) {
+            return new SeriesResource($series);
+        }
+
         $series->load(['genres', 'cast']);
 
         return new SeriesResource($series);

@@ -78,7 +78,7 @@ export function PersonalMoveDialog({
               <SelectItem value={NONE}>{t('personal.move.noPerson')}</SelectItem>
               {(peopleQ.data ?? []).map((p) => (
                 <SelectItem key={p.id} value={String(p.id)} disabled={isHidden(p)}>
-                  {isHidden(p) ? `${p.name} · ${t('personal.lock.badgeLocked')}` : p.name}
+                  {isHidden(p) ? `${p.name} · ${t('lock.badgeLocked')}` : p.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -95,7 +95,7 @@ export function PersonalMoveDialog({
               <SelectItem value={NONE}>{t('personal.move.noAlbum')}</SelectItem>
               {(albumsQ.data ?? []).map((a) => (
                 <SelectItem key={a.id} value={String(a.id)} disabled={isHidden(a)}>
-                  {[a.name, a.person?.name, isHidden(a) ? t('personal.lock.badgeLocked') : null].filter(Boolean).join(' · ')}
+                  {[a.name, a.person?.name, isHidden(a) ? t('lock.badgeLocked') : null].filter(Boolean).join(' · ')}
                 </SelectItem>
               ))}
             </SelectContent>

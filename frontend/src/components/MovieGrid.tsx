@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MovieCard } from './MovieCard'
+import { MediaLockedCard } from './MediaLockedCard'
 import { statusName } from '@/lib/statuses'
 import { genreName } from '@/lib/display'
 import type { MediaType } from '@/lib/media'
@@ -75,7 +76,8 @@ export function MovieGrid({
       } else {
         // ⚠️ **პირველი ჟანრი და არა ყველა** — თორემ სამჟანრიანი ფილმი
         // ბადეზე სამჯერ გამოჩნდებოდა და მრიცხველიც აღარ დაემთხვეოდა სიის სიგრძეს.
-        const first = movie.genres[0]
+        // §35.5 — ბოქლომიან ბარათს ჟანრი არ მოსდევს
+        const first = movie.genres?.[0]
         push(first ? `g${first.id}` : 'none', first ? genreName(first, lang) : t('sort.groupNone'), first ? genreName(first, lang) : '￿', movie)
       }
     }
@@ -90,7 +92,7 @@ export function MovieGrid({
     return (
       <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
         {movies.map((m) => (
-          <MovieCard key={m.id} movie={m} type={type} />
+          m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />
         ))}
       </div>
     )
@@ -106,7 +108,7 @@ export function MovieGrid({
           </h2>
           <div className={`grid gap-x-4 gap-y-6 ${columns}`}>
             {section.movies.map((m) => (
-              <MovieCard key={m.id} movie={m} type={type} />
+              m.hidden ? <MediaLockedCard key={m.id} movie={m} type={type} /> : <MovieCard key={m.id} movie={m} type={type} />
             ))}
           </div>
         </section>

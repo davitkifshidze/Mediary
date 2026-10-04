@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Support\CustomModules;
 use App\Support\MediaDomain;
+use App\Support\RecordLocks;
 use App\Support\SqlDate;
 use App\Support\StatusDomain;
 use Illuminate\Database\Eloquent\Model;
@@ -165,7 +166,9 @@ class LibraryStats
 
         return fn () => $model::withoutGlobalScope('owner')
             ->where('user_id', $user->getKey())
-            ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module));
+            ->when(! empty($map['custom']), fn ($q) => $q->where('module', $module))
+            // Tasks §35.4 (Q9) — სტატისტიკა ჩაკეტილის გარეშე, სესიის მიუხედავად
+            ->when(RecordLocks::hides($model), fn ($q) => $q->withoutLocked());
     }
 
     /**
@@ -237,6 +240,8 @@ class LibraryStats
 
         $ids = fn (string $domain) => self::MODULES[$domain]['model']::withoutGlobalScope('owner')
             ->where('user_id', $user->getKey())
+            // §35.4 — ჩაკეტილის ჟანრები და მსახიობები ჯამში არ ხვდება
+            ->withoutLocked()
             ->toBase()
             ->select('id');
 
@@ -268,12 +273,17 @@ class LibraryStats
             }
         }
 
-        $watches = fn (int $y) => DB::table('media_watches')
-            ->where('user_id', $user->getKey())
-            ->whereIn('watchable_type', $domains)
-            ->whereNull('trashed_at')
-            ->whereYear('watched_at', $y)
-            ->count();
+        $watches = fn (int $y) => RecordLocks::excludeMorph(
+            DB::table('media_watches')
+                ->where('user_id', $user->getKey())
+                ->whereIn('watchable_type', $domains)
+                ->whereNull('trashed_at')
+                ->whereYear('watched_at', $y),
+            // §35.4 — ჩაკეტილის ნახვაც არ ითვლება
+            'media_watches.watchable_type',
+            'media_watches.watchable_id',
+            session: false,
+        )->count();
 
         return [
             'domains' => $domains,
@@ -833,7 +843,7 @@ class LibraryStats
         $year ??= (int) now()->format('Y');
         $expr = SqlDate::month('watched_at');
 
-        $counts = DB::table('media_watches')
+        $counts = RecordLocks::excludeMorph(DB::table('media_watches'), 'media_watches.watchable_type', 'media_watches.watchable_id', session: false)
             ->where('user_id', $user->getKey())
             ->where('watchable_type', $alias)
             // ⚠️ Tasks §29 — ურნაში მყოფი ნახვა აღარ ითვლება (ნედლ ცხრილს scope არ აქვს)
