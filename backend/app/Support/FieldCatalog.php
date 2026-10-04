@@ -242,6 +242,17 @@ final class FieldCatalog
             ['key' => 'birthday', 'type' => 'date', 'sort_order' => 20],
             ['key' => 'note', 'type' => 'text', 'sort_order' => 30],
         ],
+        /* Tasks §34 — მორიგეობა: თარიღი და საათები ჩანაწერის არსია (`locked`);
+           სამსახური, ტიპი, დრო, თანხა და შენიშვნა მორგებადია. */
+        'duty' => [
+            ['key' => 'date', 'type' => 'date', 'locked' => true, 'sort_order' => 10],
+            ['key' => 'workplace', 'type' => 'select', 'sort_order' => 20],
+            ['key' => 'type', 'type' => 'select', 'sort_order' => 30],
+            ['key' => 'hours', 'type' => 'number', 'locked' => true, 'sort_order' => 40],
+            ['key' => 'start_time', 'type' => 'text', 'sort_order' => 50],
+            ['key' => 'pay', 'type' => 'number', 'sort_order' => 60],
+            ['key' => 'note', 'type' => 'text', 'sort_order' => 70],
+        ],
     ];
 
     /**

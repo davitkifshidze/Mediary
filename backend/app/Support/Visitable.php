@@ -35,7 +35,7 @@ final class Visitable
      * ახალ მოდულს ის აღარ უკეთდება — `TYPES` კი `TrashDomain::MODELS`-ს
      * იმეორებს და ახალ ჩანაწერს თავისით შემოიყვანდა.
      */
-    public const NOT_VISITED = ['personal'];
+    public const NOT_VISITED = ['personal', 'duty'];
 
     /** @return array<string, class-string<Model>> */
     public static function types(): array

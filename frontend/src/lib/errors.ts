@@ -174,6 +174,11 @@ export const CODES = [
   'file_not_found',
   // გალერეა
   'nothing_to_move',
+  /* Tasks §34 — მორიგეობა: ქასთომ (უტიპო) მორიგეობას საათები სჭირდება; შუალედი
+     (კალკულატორი) 3 წელზე გრძელი ვერ იქნება; მასობრივ შეცვლას რაიმე უნდა შეეცვალა. */
+  'duty_hours_required',
+  'duty_range_too_long',
+  'nothing_to_change',
   'cannot_move_into_itself',
   'primary_not_supported_for_cast',
   /* BUG-20 — მშობელს მთავარი სურათის სვეტი საერთოდ არ აქვს. ⚠️ მსახიობის

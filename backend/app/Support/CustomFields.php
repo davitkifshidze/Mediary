@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -89,6 +90,8 @@ final class CustomFields
         'place_field_values' => 'places',
         // Tasks §33 — ადამიანი პირად გალერეაში („ნათესაობა", „ქალაქი"…)
         'personal_field_values' => 'persons',
+        // Tasks §34 — მორიგეობა („შემცვლელი“, „განყოფილება“…)
+        'duty_field_values' => 'duty_shifts',
         /* Tasks §37 — **ერთი ცხრილი ყველა პირად მოდულზე**. ⚠️ ის მოდულის
            გასაღებს ატარებს (`module`), რადგან ველის წაშლა მნიშვნელობებს
            `field_key`-ით შლის — იხ. `scope()`. */
@@ -110,6 +113,7 @@ final class CustomFields
         'course' => 'course_field_values',
         'place' => 'place_field_values',
         'personal' => 'personal_field_values',
+        'duty' => 'duty_field_values',
     ];
 
     /**
@@ -136,6 +140,8 @@ final class CustomFields
             'place' => Place::class,
             // Tasks §33 — პირადი გალერეის ჩანაწერი ადამიანია
             'personal' => Person::class,
+            // Tasks §34 — მორიგეობის ჩანაწერი
+            'duty' => DutyShift::class,
             // §37 — პირადი მოდულის ჩანაწერი; მოდულს `recordQuery()` ჭრის
             default => CustomModules::exists($module) ? CustomRecord::class : null,
         };

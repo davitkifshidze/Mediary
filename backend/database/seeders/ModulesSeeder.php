@@ -37,6 +37,8 @@ class ModulesSeeder extends Seeder
         'place' => '#f97316',
         // Tasks §33 — ლაიმი; მეზობლებს (ადგილის ნარინჯისფერი, გალერეის იისფერი) არ ჰგავს
         'personal' => '#84cc16',
+        // Tasks §34 — სამეფო ლურჯი; ფილმის ინდიგოსა და ბუკმარკის ცისფერს შორის, ორივესგან გასარჩევი
+        'duty' => '#2563eb',
     ];
 
     public function run(): void
@@ -256,6 +258,21 @@ class ModulesSeeder extends Seeder
                 'morph_alias' => 'personal',
                 'enabled_by_default' => false,
                 'sort_order' => 45,
+            ],
+            [
+                /* Tasks §34 (Q8) — მორიგეობა: სამსახურები ტარიფებით, ტიპები (8/12/24 სთ
+                   და შენი), კალენდარი და ჯამები შენი პერიოდით. */
+                'key' => 'duty',
+                'name_ka' => 'მორიგეობა',
+                'name_en' => 'Duty shifts',
+                'description_ka' => 'მორიგეობები სამსახურებით — კალენდარი, საათები, ტარიფები და ჯამები შენი პერიოდით.',
+                'description_en' => 'Duty shifts by workplace — a calendar, hours, rates and totals over your own period.',
+                'icon' => 'CalendarClock',
+                'route_base' => '/duty',
+                'api_base' => '/duty',
+                'morph_alias' => 'duty',
+                'enabled_by_default' => false,
+                'sort_order' => 46,
             ],
         ];
 

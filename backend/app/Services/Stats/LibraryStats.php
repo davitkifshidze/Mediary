@@ -9,6 +9,7 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
 use App\Models\Game;
 use App\Models\Genre;
 use App\Models\Movie;
@@ -96,6 +97,8 @@ class LibraryStats
         /* Tasks §33 — პირადი გალერეა ფოტოებსა და ვიდეოებს ითვლის (და არა ადამიანებს);
            თვეების ჭრილი „როდის გადავიღე"-ა (`taken_at`). */
         'personal' => ['model' => PersonalMedia::class, 'year' => null, 'done_at' => 'taken_at', 'genres' => null, 'rating' => null],
+        // Tasks §34 — მორიგეობის დღე „შესრულების“ თარიღია (თვეების მრუდი)
+        'duty' => ['model' => DutyShift::class, 'year' => null, 'done_at' => 'date', 'genres' => null, 'rating' => null],
     ];
 
     /** რამდენი ჟანრი/კატეგორია ჩანს ჭრილში — დანარჩენი „სხვა"-ში იყრება */

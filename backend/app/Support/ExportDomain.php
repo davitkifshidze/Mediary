@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -189,6 +190,16 @@ final class ExportDomain
                 'address', 'city', 'country', 'lat', 'lng', 'osm_id', 'osm_type',
                 'rating', 'description', 'is_favorite', 'visited_at',
                 'photo_path', 'visibility', 'created_at',
+            ],
+        ],
+        /* Tasks §34.5ა — მორიგეობა CSV-ით (კალკულატორის „ექსპორტი“): სამსახური
+           სახელით (`workplace_name`), ტიპი ლექსიკონის სახელით (`type`). */
+        'duty' => [
+            'model' => DutyShift::class,
+            'with' => ['workplace', 'type'],
+            'fields' => [
+                'id', 'date', 'start_time', 'workplace_name', 'type', 'hours', 'pay',
+                'note', 'is_favorite', 'created_at',
             ],
         ],
     ];

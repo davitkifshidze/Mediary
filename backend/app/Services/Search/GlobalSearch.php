@@ -9,6 +9,7 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
 use App\Models\GalleryVideo;
 use App\Models\Game;
 use App\Models\Movie;
@@ -362,6 +363,15 @@ class GlobalSearch
                 'model' => PersonalMedia::class,
                 'title_rank' => ['columns' => ['caption']],
                 'columns' => ['title' => ['caption'], 'file' => ['original_name']],
+            ],
+
+            /* Tasks §34 — მორიგეობა: შენიშვნა და დამატებითი ველები („შემცვლელი“);
+               სათაური თარიღი · სამსახური · საათებია (`DutyShift::$title`). */
+            'duty' => [
+                'module' => 'duty',
+                'model' => DutyShift::class,
+                'custom' => 'duty',
+                'columns' => ['note' => ['note']],
             ],
 
             'cast' => [
@@ -768,6 +778,8 @@ class GlobalSearch
             'gallery' => $record->channel,
             // §33 — ფოტო/ვიდეოს გადაღების თარიღი
             'personal_media' => $record->taken_at?->toDateString(),
+            // §34 — მორიგეობის სამსახური
+            'duty' => $record->workplace?->name,
             default => null,
         };
 

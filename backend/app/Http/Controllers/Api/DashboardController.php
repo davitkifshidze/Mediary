@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\Bookmark;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
 use App\Models\GalleryImage;
 use App\Models\GalleryVideo;
 use App\Models\Game;
@@ -19,9 +20,14 @@ use App\Models\PersonalMedia;
 use App\Models\Place;
 use App\Models\Series;
 use App\Models\Song;
+use App\Models\User;
 use App\Models\Video;
+use App\Support\AppTime;
 use App\Support\CustomModules;
+use App\Support\DutyPeriod;
+use App\Support\DutySettings;
 use App\Support\ModuleOrder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -62,6 +68,9 @@ class DashboardController extends Controller
            „რა მაქვს გალერეაში" ფაილების რიცხვია. `owner`/`trash`/`personal_parent`
            scope-ები თავისით მოქმედებს (ქვე-query მოდელიდანაა). */
         'personal' => PersonalMedia::class,
+        /* Tasks §34 — **მიმდინარე პერიოდის** მორიგეობები (`counterScope()`): „რამდენი
+           მაქვს ამ თვეში“ — ყველა დროის ჯამი დეშბორდზე არაფერს ამბობს. */
+        'duty' => DutyShift::class,
         /* ⚠️ `gallery` აქ **არ იყო** და ბარათი `—`-ს აჩვენებდა მაშინაც, როცა
            გალერეა ფოტოებით სავსეა (ნანახი 2026-09-14). მიზეზი დაშვება იყო,
            რომ „გალერეას საკუთარი ჩანაწერი არ აქვს" — აქვს: `gallery_images`
@@ -81,7 +90,7 @@ class DashboardController extends Controller
         // ჩაურთველი მოდული ქარდადაც არ ჩანს — ისევე, როგორც მენიუში
         $mine = $modules->filter(fn (Module $module) => $user->hasModule($module->key));
 
-        $counts = $this->countsFor($mine->pluck('key')->all());
+        $counts = $this->countsFor($mine->pluck('key')->all(), $user);
 
         $cards = $mine->map(fn (Module $module) => [
             'key' => $module->key,
@@ -117,7 +126,7 @@ class DashboardController extends Controller
      * @param  list<string>  $keys
      * @return array<string, int>
      */
-    private function countsFor(array $keys): array
+    private function countsFor(array $keys, User $user): array
     {
         /** @var array<string, string> $owner ფსევდონიმი => მოდულის key */
         $owner = [];
@@ -143,7 +152,7 @@ class DashboardController extends Controller
             foreach ((array) $models as $model) {
                 $alias = 'c'.count($owner);
                 $owner[$alias] = $key;
-                $query->selectSub($model::query()->toBase()->selectRaw('count(*)'), $alias);
+                $query->selectSub($this->counterScope($key, $model::query(), $user)->toBase()->selectRaw('count(*)'), $alias);
             }
         }
 
@@ -159,5 +168,27 @@ class DashboardController extends Controller
         }
 
         return $counts;
+    }
+
+    /**
+     * **Tasks §34 — მორიგეობის ბარათი მიმდინარე პერიოდს ითვლის.**
+     *
+     * ⚠️ პერიოდის წესი `module_user.settings`-შია, და ის **უკვე ჩატვირთულია** —
+     * `hasModule()` მოდულებს pivot-ით ერთხელ კითხულობს (PERF-01). ე.ი. აქ ახალი
+     * query არ ჩნდება და PERF-05-ის „≤ 4 query“ ხელუხლებელია; `DutySettings::read()`
+     * (ორი query) აქ სწორედ ამიტომ არ იძახება.
+     */
+    private function counterScope(string $key, Builder $query, User $user): Builder
+    {
+        if ($key !== 'duty') {
+            return $query;
+        }
+
+        $pivot = $user->relationLoaded('modules') ? $user->modules->firstWhere('key', 'duty')?->pivot : null;
+        $stored = json_decode((string) ($pivot?->settings ?? ''), true);
+        $rules = is_array($stored) ? (($stored[DutySettings::KEY] ?? [])['period'] ?? []) : [];
+        $period = DutyPeriod::containing(AppTime::now(), is_array($rules) ? $rules : []);
+
+        return $query->whereBetween('date', [$period['from']->toDateString(), $period['to']->toDateString()]);
     }
 }

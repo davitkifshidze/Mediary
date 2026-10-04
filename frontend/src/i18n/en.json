@@ -1257,7 +1257,10 @@
     "share_links_disabled": "Share links are switched off on this installation",
     "share_own_link": "This is your own link — its records are already in your library",
     "share_record_not_found": "This record is no longer in the link",
-    "share_status_hidden": "This link doesn’t share statuses — add the record with your default status"
+    "share_status_hidden": "This link doesn’t share statuses — add the record with your default status",
+    "duty_hours_required": "Enter the hours — a shift without a type needs them.",
+    "duty_range_too_long": "The range can’t be longer than 3 years.",
+    "nothing_to_change": "Nothing to change — pick a workplace or a type."
   },
   "fields": {
     "title": "Fields",
@@ -1419,6 +1422,15 @@
         "name": "Name",
         "birthday": "Birthday",
         "note": "Note"
+      },
+      "duty": {
+        "date": "Date",
+        "workplace": "Workplace",
+        "type": "Type",
+        "hours": "Hours",
+        "start_time": "Start time",
+        "pay": "Pay",
+        "note": "Note"
       }
     },
     "desc": {
@@ -1569,7 +1581,8 @@
       "anime": "Anime",
       "course": "Courses",
       "place": "Places",
-      "personal": "Personal gallery (people)"
+      "personal": "Personal gallery (people)",
+      "duty": "Duty shifts"
     },
     "targetHint": {
       "movie": "The film along with its genres, cast links and gallery.",
@@ -1586,7 +1599,8 @@
       "course": "The course together with its certificate and attached files.",
       "place": "The place together with its photos and files.",
       "custom": "A personal module of this account — its records, with their files and notes, go to the owner's trash; the statuses and the classifier stay.",
-      "personal": "A person together with their photos, videos and albums; photos without a person and “outside” albums stay."
+      "personal": "A person together with their photos, videos and albums; photos without a person and “outside” albums stay.",
+      "duty": "Duty shifts; workplaces, shift types and rates stay."
     },
     "itemsTitle": "What is in the queue",
     "itemsKept": "{{kept}} of {{total}} kept",
@@ -2920,7 +2934,11 @@
       "custom_category": "Custom module classifier",
       "custom_record_file": "Custom module file",
       "custom_record_note": "Custom module note",
-      "share_link": "Share link"
+      "share_link": "Share link",
+      "duty": "Duty shift",
+      "duty_workplace": "Duty workplace",
+      "duty_type": "Duty shift type",
+      "duty_rate": "Duty rate"
     },
     "subtitleWarn": "The log is kept forever — cleanup is manual only."
   },
@@ -3728,7 +3746,9 @@
       "custom_record_note": "Custom module notes",
       "custom_module": "Modules",
       "personal_media": "Personal gallery photos and videos",
-      "personal_album": "Personal gallery albums"
+      "personal_album": "Personal gallery albums",
+      "duty_workplace": "Duty workplaces",
+      "duty_type": "Duty shift types"
     },
     "when": {
       "media_watch": "Watched: {{date}}",

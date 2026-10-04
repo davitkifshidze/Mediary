@@ -9,6 +9,9 @@ use App\Models\Bookmark;
 use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CustomRecord;
+use App\Models\DutyShift;
+use App\Models\DutyShiftType;
+use App\Models\DutyWorkplace;
 use App\Models\Game;
 use App\Models\Movie;
 use App\Models\NoteEntry;
@@ -81,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
             'personal' => Person::class,
             'personal_album' => PersonalAlbum::class,
             'personal_media' => PersonalMedia::class,
+            // Tasks §34 — მორიგეობა: ჩანაწერი მორიგეობაა, სამსახური და ტიპი — კლასიფიკატორები
+            'duty' => DutyShift::class,
+            'duty_workplace' => DutyWorkplace::class,
+            'duty_type' => DutyShiftType::class,
             /* Tasks §6.1 — ⚠️ **კურსი აქამდე აკლდა** და ატვირთული ესკიზის
                შეცვლა/წაშლა `ColumnTrash::capture()`-ში `getMorphClass()`-ზე
                `ClassMorphViolationException`-ით ვარდებოდა. ახლა

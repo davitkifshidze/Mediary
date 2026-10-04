@@ -42,6 +42,10 @@ use App\Http\Controllers\Api\CustomRecordNoteController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\DiscoverController;
+use App\Http\Controllers\Api\DutyController;
+use App\Http\Controllers\Api\DutyShiftController;
+use App\Http\Controllers\Api\DutyShiftTypeController;
+use App\Http\Controllers\Api\DutyWorkplaceController;
 use App\Http\Controllers\Api\EpisodeController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\GalleryAlbumController;
@@ -980,6 +984,45 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/personal/media/{personalMedia}', [PersonalMediaController::class, 'destroy'])->whereNumber('personalMedia');
         Route::get('/personal/media/{personalMedia}/file', [PersonalMediaController::class, 'file'])->whereNumber('personalMedia');
         Route::get('/personal/media/{personalMedia}/thumb', [PersonalMediaController::class, 'thumb'])->whereNumber('personalMedia');
+    });
+
+    /* ---------- მორიგეობა (module: duty, Tasks §34) ----------
+       სამსახურები (ტარიფებით) · ტიპები (კლასიფიკატორი, `/dictionaries`) ·
+       მორიგეობები · პერიოდი, პარამეტრები და ჯამები.
+
+       ⚠️ სიტყვიერი სეგმენტები (`reorder`, `batch`) `{id}`-ზე **ზემოთაა** და `{…}`
+       `whereNumber`-ითაა. ⚠️ ერთიანი მონიშვნა `POST /duty/shifts/batch`-ია და არა
+       `…/bulk` — `bulk` `UPDATE_ENDPOINTS`-შია და შექმნას `update` უფლებად
+       წაიკითხავდა; მასობრივი შეცვლა `PATCH /duty/shifts`-ია (`update`), წაშლა —
+       `DELETE /duty/shifts` (`delete`). `PUT /duty/settings` — `update`. */
+    Route::middleware(['module:duty', 'permission:duty'])->group(function () {
+        Route::get('/duty/period', [DutyController::class, 'period']);
+        Route::get('/duty/settings', [DutyController::class, 'settings']);
+        Route::put('/duty/settings', [DutyController::class, 'updateSettings']);
+        Route::get('/duty/summary', [DutyController::class, 'summary']);
+        Route::get('/duty/summary/periods', [DutyController::class, 'periods']);
+
+        Route::get('/duty/workplaces', [DutyWorkplaceController::class, 'index']);
+        Route::post('/duty/workplaces', [DutyWorkplaceController::class, 'store']);
+        Route::post('/duty/workplaces/reorder', [DutyWorkplaceController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/duty/workplaces/{dutyWorkplace}', [DutyWorkplaceController::class, 'update'])->whereNumber('dutyWorkplace');
+        Route::delete('/duty/workplaces/{dutyWorkplace}', [DutyWorkplaceController::class, 'destroy'])->whereNumber('dutyWorkplace');
+
+        Route::get('/duty/types', [DutyShiftTypeController::class, 'index']);
+        Route::post('/duty/types', [DutyShiftTypeController::class, 'store']);
+        Route::post('/duty/types/reorder', [DutyShiftTypeController::class, 'reorder']);
+        Route::match(['put', 'patch'], '/duty/types/{dutyShiftType}', [DutyShiftTypeController::class, 'update'])->whereNumber('dutyShiftType');
+        Route::delete('/duty/types/{dutyShiftType}', [DutyShiftTypeController::class, 'destroy'])->whereNumber('dutyShiftType');
+
+        Route::get('/duty/shifts', [DutyShiftController::class, 'index']);
+        Route::post('/duty/shifts', [DutyShiftController::class, 'store']);
+        Route::post('/duty/shifts/batch', [DutyShiftController::class, 'batch']);
+        Route::patch('/duty/shifts', [DutyShiftController::class, 'bulkUpdate']);
+        Route::delete('/duty/shifts', [DutyShiftController::class, 'destroyMany']);
+        Route::get('/duty/shifts/{dutyShift}', [DutyShiftController::class, 'show'])->whereNumber('dutyShift');
+        Route::match(['put', 'patch'], '/duty/shifts/{dutyShift}', [DutyShiftController::class, 'update'])->whereNumber('dutyShift');
+        Route::patch('/duty/shifts/{dutyShift}/favorite', [DutyShiftController::class, 'toggleFavorite'])->whereNumber('dutyShift');
+        Route::delete('/duty/shifts/{dutyShift}', [DutyShiftController::class, 'destroy'])->whereNumber('dutyShift');
     });
 
     /* ---------- ინტერფეისიდან შექმნილი მოდულები (Tasks §37) ----------

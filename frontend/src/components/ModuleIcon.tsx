@@ -12,6 +12,7 @@ import {
   Boxes,
   Briefcase,
   Calendar,
+  CalendarClock,
   Camera,
   Check,
   CheckCheck,
@@ -59,6 +60,7 @@ import {
   MapPin,
   MessageSquare,
   Mic,
+  Moon,
   Music,
   Newspaper,
   NotebookPen,
@@ -77,6 +79,8 @@ import {
   ShoppingCart,
   Sparkles,
   Star,
+  Sun,
+  Sunset,
   Swords,
   Tag,
   Tags,
@@ -171,7 +175,8 @@ const GROUPS = [
   },
   {
     key: 'life',
-    icons: { Utensils, Coffee, ShoppingCart, Briefcase, Dumbbell, Wrench, Lightbulb, Wallet, Calendar, Bell, MessageSquare, Settings, Shield },
+    // Tasks §34 — მორიგეობა: მოდული (`CalendarClock`) და ტიპები (დღე · საღამო · ღამე)
+    icons: { Utensils, Coffee, ShoppingCart, Briefcase, Dumbbell, Wrench, Lightbulb, Wallet, Calendar, CalendarClock, Sun, Sunset, Moon, Bell, MessageSquare, Settings, Shield },
   },
   {
     key: 'other',
