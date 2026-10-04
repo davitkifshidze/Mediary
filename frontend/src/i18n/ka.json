@@ -594,7 +594,10 @@
     "newStatus": "ახლების სტატუსი ({{count}})",
     "addFavorites": "რჩეულში დამატება ({{count}})",
     "added": "რჩეულშია — {{count}} ფილმი",
-    "queued": "{{count}} ნაწილი რიგში ემატება TMDB-დან"
+    "queued": "{{count}} ნაწილი რიგში ემატება TMDB-დან",
+    "alreadyFavorite": "უკვე რჩეულია",
+    "alreadyFavoriteHint": "რჩეულიდან მოხსნა — ფილმის გვერდიდან ან ბარათიდან.",
+    "alreadyCount": "{{count}} ნაწილი უკვე რჩეულია"
   },
   "queue": {
     "adding": "ემატება…",

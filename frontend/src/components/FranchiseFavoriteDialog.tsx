@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/feedback'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { useQueue } from '@/components/ui/queue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { InfoHint } from '@/components/ui/info-hint'
 import { PosterImage } from '@/components/PosterImage'
 import { StatusLabel } from '@/components/StatusBadge'
 
@@ -32,6 +33,12 @@ import { StatusLabel } from '@/components/StatusBadge'
    სტატუსი იქვე ირჩევა (ნაგულისხმევი — მოდულის ნაგულისხმევი, როგორც
    აღმოჩენიდან დამატებისას), თვითონ დამატება კი TMDB-ის არსებული რიგით მიდის
    (`useQueue().enqueue` — `status` და `favorite` ერთეულს მიჰყვება).
+
+   ⚠️ **Tasks §51 — ნაგულისხმევად „მხოლოდ ეს ფილმი"** (შენი სიტყვები: „რჩეულებში
+   დამატებისას თავიდან იდგეს მხოლოდ ამ ფილმზე"); „მთელ ფრანჩაიზზე" ნაწილები
+   ისევ ყველა მონიშნულია. **უკვე რჩეული ნაწილი ჩაკეტილია** — მონიშნული, ბეჯით
+   „უკვე რჩეულია": აქედან რჩეულიდან მოხსნა არ ხდება (სერვერი რჩეულს მხოლოდ
+   ანიჭებს), ე.ი. მისი განიშვნა „მოხსნას" მოგვაჩვენებდა და არაფერს გააკეთებდა.
 
    ⚠️ **ფრანჩაიზი რომ არ აღმოჩნდეს** (TMDB-მ სხვა ნაწილი არ იცის, გასაღები
    არ არის, ქსელი ჩავარდა) — დიალოგი კითხვას არ სვამს: ფილმს უმალ რჩეულად
@@ -66,7 +73,8 @@ export function FranchiseFavoriteDialog({
   const parts = useMemo(() => collectionQ.data?.parts ?? [], [collectionQ.data])
   const others = parts.filter((p) => p.movie_id !== movie.id)
 
-  const [mode, setMode] = useState<Mode>('all')
+  // §51.1 — ნაგულისხმევად მხოლოდ ეს ფილმი
+  const [mode, setMode] = useState<Mode>('only')
   /** მოხსნილი ნაწილები (TMDB id) — ნაგულისხმევად ყველა მონიშნულია */
   const [excluded, setExcluded] = useState<Set<number>>(() => new Set())
   const [status, setStatus] = useState<string | null>(null)
@@ -75,7 +83,9 @@ export function FranchiseFavoriteDialog({
   const defaultStatus = statuses.find((s) => s.is_default) ?? statuses.find((s) => s.role === 'todo') ?? statuses[0]
   const statusKey = status ?? defaultStatus?.key ?? null
 
-  const chosen = mode === 'all' ? others.filter((p) => !excluded.has(p.tmdb_id)) : []
+  /** §51.2 — უკვე რჩეული ნაწილი ისედაც რჩეულია: ჩაკეტილია და ხელახლა აღარ იგზავნება */
+  const favorites = others.filter((p) => p.is_favorite)
+  const chosen = mode === 'all' ? others.filter((p) => !p.is_favorite && !excluded.has(p.tmdb_id)) : []
   const fresh = chosen.filter((p) => !p.owned)
   const count = 1 + chosen.length
 
@@ -149,9 +159,16 @@ export function FranchiseFavoriteDialog({
             <p className="text-sm text-muted-foreground">{t('franchise.onlyThisHint', { title })}</p>
           ) : (
             <ul className="space-y-2">
+              {favorites.length > 0 && (
+                <li className="text-sm text-muted-foreground" data-testid="franchise-favorites">
+                  {t('franchise.alreadyCount', { count: favorites.length })}
+                </li>
+              )}
               {parts.map((p) => {
                 const isThis = p.movie_id === movie.id
-                const on = isThis || !excluded.has(p.tmdb_id)
+                // §51.2 — უკვე რჩეული: მონიშნული და ჩაკეტილი
+                const locked = isThis || p.is_favorite
+                const on = locked || !excluded.has(p.tmdb_id)
                 return (
                   <li
                     key={p.tmdb_id}
@@ -163,7 +180,7 @@ export function FranchiseFavoriteDialog({
                     <Checkbox
                       className="mt-0.5"
                       checked={on}
-                      disabled={isThis || saving}
+                      disabled={locked || saving}
                       onCheckedChange={(v) => toggle(p.tmdb_id, v === true)}
                       aria-label={p.title}
                     />
@@ -177,18 +194,27 @@ export function FranchiseFavoriteDialog({
                       </div>
                       {p.overview && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{p.overview}</p>}
                     </div>
-                    <Badge
-                      className={cn(
-                        'shrink-0',
-                        isThis
-                          ? 'bg-favorite/15 text-favorite'
-                          : p.owned
-                            ? 'bg-secondary text-secondary-foreground'
-                            : 'bg-primary/15 text-foreground',
-                      )}
-                    >
-                      {isThis ? t('franchise.thisOne') : p.owned ? t('franchise.inLibrary') : t('franchise.willAdd')}
-                    </Badge>
+                    <span className="flex shrink-0 items-center gap-1">
+                      <Badge
+                        className={cn(
+                          'shrink-0',
+                          isThis || p.is_favorite
+                            ? 'bg-favorite/15 text-favorite'
+                            : p.owned
+                              ? 'bg-secondary text-secondary-foreground'
+                              : 'bg-primary/15 text-foreground',
+                        )}
+                      >
+                        {isThis
+                          ? t('franchise.thisOne')
+                          : p.is_favorite
+                            ? t('franchise.alreadyFavorite')
+                            : p.owned
+                              ? t('franchise.inLibrary')
+                              : t('franchise.willAdd')}
+                      </Badge>
+                      {!isThis && p.is_favorite && <InfoHint info={t('franchise.alreadyFavoriteHint')} />}
+                    </span>
                   </li>
                 )
               })}

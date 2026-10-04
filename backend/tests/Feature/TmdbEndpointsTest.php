@@ -94,7 +94,8 @@ class TmdbEndpointsTest extends TestCase
     public function test_the_collection_lists_the_parts_and_marks_the_owned_ones(): void
     {
         $movie = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 603]);
-        $owned = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 604]);
+        // Tasks §51.2 — ბიბლიოთეკაში და უკვე რჩეული: ფანჯარაში ჩაკეტილი იქნება
+        $owned = Movie::create(['user_id' => $this->user->id, 'tmdb_id' => 604, 'is_favorite' => true]);
 
         Http::fake([
             'api.themoviedb.org/3/collection/*' => Http::response([
@@ -120,6 +121,8 @@ class TmdbEndpointsTest extends TestCase
         $res->assertJsonCount(2, 'parts');
         $res->assertJsonPath('parts.1.owned', true);
         $res->assertJsonPath('parts.1.movie_id', $owned->id);
+        $res->assertJsonPath('parts.1.is_favorite', true);
+        $res->assertJsonPath('parts.0.is_favorite', false);
     }
 
     /** ⚠️ კოლექციის არქონა **ცარიელი სიაა და არა შეცდომა** */

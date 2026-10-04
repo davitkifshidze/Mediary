@@ -465,6 +465,8 @@ export interface CollectionPart {
   overview: string | null
   owned: boolean
   movie_id: number | null
+  /** Tasks §51.2 — ბიბლიოთეკაშია და უკვე რჩეულია (ფანჯარაში ჩაკეტილი) */
+  is_favorite: boolean
 }
 
 export interface MovieCollection {

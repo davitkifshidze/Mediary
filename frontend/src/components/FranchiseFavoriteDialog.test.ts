@@ -10,7 +10,9 @@ import i18n from '@/i18n'
 /* ============================================================
    **რჩეულში დამატება — ფრანჩაიზი პოპაპით** (Tasks §18.5).
 
-   ⚠️ მოწმდება: ორი ჩანართი; „მთელი ფრანჩაიზი" — ყველა ნაწილი ჩექბოქსით,
+   ⚠️ მოწმდება: ორი ჩანართი, ნაგულისხმევი — „მხოლოდ ეს ფილმი" (Tasks §51.1);
+   უკვე რჩეული ნაწილი მონიშნული და ჩაკეტილია, ხელახლა არ იგზავნება (§51.2);
+   „მთელი ფრანჩაიზი" — ყველა ნაწილი ჩექბოქსით,
    ბეჯები „ეს ფილმი / ბიბლიოთეკაშია / დაემატება", რიცხვი ღილაკზე; მოხსნილი
    ნაწილი არც `parts`-ში მიდის, არც რიგში; არარსებული ნაწილი რიგში
    ნაგულისხმევი სტატუსით და `favorite: true`-თი ემატება (Q5); „მხოლოდ ეს
@@ -23,7 +25,7 @@ const statuses: Status[] = [
   { id: 2, key: 'watching', module: 'movie', name_ka: 'ვუყურებ', name_en: 'Watching', role: 'doing', icon: null, color: null, is_default: false, sort_order: 1 },
 ]
 
-const part = (tmdb: number, title: string, owned: boolean, movieId: number | null): CollectionPart => ({
+const part = (tmdb: number, title: string, owned: boolean, movieId: number | null, favorite = false): CollectionPart => ({
   tmdb_id: tmdb,
   title,
   year: 1999 + tmdb,
@@ -32,6 +34,7 @@ const part = (tmdb: number, title: string, owned: boolean, movieId: number | nul
   overview: `About ${title}`,
   owned,
   movie_id: movieId,
+  is_favorite: favorite,
 })
 
 const mocks = vi.hoisted(() => ({
@@ -120,11 +123,19 @@ const button = (label: string) =>
 
 const checkbox = (label: string) => document.querySelector<HTMLButtonElement>(`button[role="checkbox"][aria-label="${label}"]`)
 
+/** „მთელი ფრანჩაიზის" ჩანართი — წარწერას რიცხვიც ახლავს */
+async function whole() {
+  const tab = [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(i18n.t('franchise.whole')))
+  await act(async () => tab!.click())
+  await flush()
+}
+
 const franchise = [part(10, 'Part 1', true, 1), part(20, 'Part 2', true, 2), part(30, 'Part 3', false, null)]
 
 describe('FranchiseFavoriteDialog', () => {
   it('lists every part with its badge and sends only the ticked owned parts, queueing the missing ones', async () => {
     const { onClose, onDone } = await mount(franchise)
+    await whole()
 
     expect(document.body.textContent).toContain(i18n.t('franchise.favoriteTitle', { name: 'The Matrix Collection' }))
     expect(document.body.textContent).toContain(i18n.t('franchise.thisOne'))
@@ -148,6 +159,7 @@ describe('FranchiseFavoriteDialog', () => {
 
   it('an unticked part is neither favourited nor queued', async () => {
     await mount(franchise)
+    await whole()
 
     await act(async () => checkbox('Part 3')!.click())
     await flush()
@@ -162,18 +174,38 @@ describe('FranchiseFavoriteDialog', () => {
     expect(mocks.enqueue).not.toHaveBeenCalled()
   })
 
-  it('"only this film" favourites just this one', async () => {
+  it('opens on "only this film", which favourites just this one (§51.1)', async () => {
     await mount(franchise)
 
-    await act(async () => button(i18n.t('franchise.onlyThis'))!.click())
-    await flush()
+    // ჩანართზე დაჭერის გარეშე — ნაგულისხმევია
     expect(document.body.textContent).toContain(i18n.t('franchise.onlyThisHint', { title: 'მატრიცა' }))
+    expect(checkbox('Part 1')).toBeNull()
 
     await act(async () => button(i18n.t('franchise.addFavorites', { count: 1 }))!.click())
     await flush()
 
     expect(mocks.setFavorite).toHaveBeenCalledWith(1, true, [])
     expect(mocks.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('an already-favourite part is ticked, locked and not sent again (§51.2)', async () => {
+    await mount([part(10, 'Part 1', true, 1), part(20, 'Part 2', true, 2, true), part(30, 'Part 3', true, 3)])
+    await whole()
+
+    expect(document.querySelector('[data-testid="franchise-favorites"]')?.textContent).toBe(
+      i18n.t('franchise.alreadyCount', { count: 1 }),
+    )
+    const locked = checkbox('Part 2')!
+    expect(locked.disabled).toBe(true)
+    expect(locked.getAttribute('aria-checked')).toBe('true')
+    expect(document.body.textContent).toContain(i18n.t('franchise.alreadyFavorite'))
+    // ბიბლიოთეკაშია, მაგრამ რჩეული არ არის — თავისუფლად ინიშნება (§51.3)
+    expect(checkbox('Part 3')!.disabled).toBe(false)
+
+    // ღილაკი ახალ რჩეულებს ითვლის: ეს ფილმი + Part 3
+    await act(async () => button(i18n.t('franchise.addFavorites', { count: 2 }))!.click())
+    await flush()
+    expect(mocks.setFavorite).toHaveBeenCalledWith(1, true, [3])
   })
 
   it('without other parts it favourites at once and closes without asking', async () => {

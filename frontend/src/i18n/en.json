@@ -594,7 +594,10 @@
     "newStatus": "Status for new ones ({{count}})",
     "addFavorites": "Add to favourites ({{count}})",
     "added": "In favourites — {{count}} films",
-    "queued": "{{count}} parts are being added from TMDB"
+    "queued": "{{count}} parts are being added from TMDB",
+    "alreadyFavorite": "Already a favourite",
+    "alreadyFavoriteHint": "Remove it from favourites on its page or its card.",
+    "alreadyCount": "{{count}} parts are already favourites"
   },
   "queue": {
     "adding": "Adding…",
