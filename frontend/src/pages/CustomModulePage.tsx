@@ -36,6 +36,7 @@ import {
 } from '@/api/customRecords'
 import type { StatusDomainKey } from '@/api/statuses'
 import { storageUrl } from '@/lib/api'
+import { useDrillParams } from '@/lib/statsLinks'
 import { plainText } from '@/lib/richText'
 import { RICH_TEXT_MAX } from '@/lib/richText'
 import { customRecordItem, isPlayableRecord, usePlayer } from '@/lib/player'
@@ -191,6 +192,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
 
   const isStatusView = view !== 'all' && view !== 'favorite'
 
+  const drill = useDrillParams()
   const filters: CustomRecordFilters = {
     q: term || undefined,
     category_id: categories.length ? categories.join(',') : undefined,
@@ -198,6 +200,8 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
     status: isStatusView ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია

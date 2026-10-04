@@ -8,12 +8,15 @@ import type { StatModule, StatsPayload } from '@/api/stats'
 import i18n from '@/i18n'
 
 /* ============================================================
-   **სტატისტიკის გვერდი — ჩანართებად** (Tasks §28.1/§28.2).
+   **სტატისტიკის გვერდი — ჩანართებად** (Tasks §28 → §49).
 
-   ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: კალენდარი პირველი და
-   ნაგულისხმევია (წლის ამრჩევის გარეშე), ფილმი/სერიალი **ერთ** „მედიის"
-   ჩანართშია და არა სამ ცალკე ბლოკში, ცარიელ მოდულს ჩანართი არ აქვს,
-   ხოლო უცნობი `?tab=` კალენდარზე ბრუნდება (და არა ცარიელ გვერდზე).
+   ⚠️ მოწმდება ის, რასაც ტიპი ვერ ხედავს: კალენდარი და საერთო „მედია"
+   აღარ არის (Q13) — ფილმი, სერიალი და ანიმე ცალკე ჩანართებია, პირველი
+   ნაგულისხმევია; მედია-ჩანართი Q20-ის სამ კითხვას ამ რიგით პასუხობს;
+   ცარიელ მოდულს ჩანართი არ აქვს, უცნობი `?tab=` პირველზე ბრუნდება;
+   სტატუსი და მსახიობი ბმულებია (§49.3/§49.5).
+   ⚠️ recharts-ის ზოლები jsdom-ში არ იხატება (ზომა არ აქვს) — მათი ბმულები
+   `lib/statsLinks.test.ts`-შია.
    ============================================================ */
 
 const empty = (key: string, over: Partial<StatModule> = {}): StatModule => ({
@@ -33,23 +36,31 @@ const empty = (key: string, over: Partial<StatModule> = {}): StatModule => ({
   has_months: true,
   this_year: 0,
   last_year: 0,
+  actors: [],
   ...over,
 })
 
 const payload: StatsPayload = {
   year: 2026,
   years: [2026, 2025],
-  media: {
-    domains: ['movie', 'series'],
-    genres: [{ id: 5, name_ka: 'დრამა', name_en: 'Drama', count: 3, by: { movie: 2, series: 1 } }],
-    actors: [{ id: 42, name: 'Nino Kasradze', name_ka: 'ნინო ქასრაძე', photo_path: null, count: 2, by: { movie: 1, series: 1 } }],
-    this_year: 4,
-    last_year: 1,
-  },
   data: [
-    empty('movie', { name_ka: 'ფილმები', total: 3, status: [{ key: 'watched', name_ka: 'ნანახი', name_en: 'Watched', role: 'done', color: null, count: 3 }] }),
+    empty('movie', {
+      name_ka: 'ფილმები',
+      total: 3,
+      this_year: 4,
+      last_year: 1,
+      status: [{ key: 'watched', name_ka: 'ნანახი', name_en: 'Watched', role: 'done', color: null, count: 3 }],
+      genres: [{ id: 5, name_ka: 'დრამა', name_en: 'Drama', slug: 'drama', count: 3 }],
+      actors: [{ id: 42, name: 'Nino Kasradze', name_ka: 'ნინო ქასრაძე', photo_path: null, count: 2 }],
+    }),
     empty('series', { name_ka: 'სერიალები', total: 2 }),
-    empty('book', { name_ka: 'წიგნები', icon: 'BookOpen', color: '#f59e0b', total: 1, has_months: true }),
+    empty('book', {
+      name_ka: 'წიგნები',
+      icon: 'BookOpen',
+      color: '#f59e0b',
+      total: 1,
+      status: [{ key: 'read', name_ka: null, name_en: null, role: null, color: null, count: 1 }],
+    }),
     // ⚠️ ჩართული, მაგრამ ცარიელი — ჩანართი არ ეკუთვნის
     empty('game', { name_ka: 'თამაშები', total: 0 }),
   ],
@@ -60,15 +71,19 @@ vi.mock('@/api/stats', async (original) => ({
   fetchStats: vi.fn(async () => payload),
 }))
 
-// კალენდარს თავისი მოთხოვნები აქვს — აქ მხოლოდ ის მოწმდება, ჩანს თუ არა
-vi.mock('@/components/UpcomingCard', () => ({ UpcomingCard: () => h('div', { 'data-testid': 'upcoming' }) }))
-
 vi.mock('@/lib/settings', async (original) => ({
   ...(await original<typeof import('@/lib/settings')>()),
   useContentLang: () => 'ka',
 }))
 
-const modules = vi.hoisted(() => ({ all: [] as unknown[], enabled: [] as unknown[] }))
+const modules = vi.hoisted(() => ({
+  all: [
+    { key: 'movie', route_base: '/movies' },
+    { key: 'series', route_base: '/series' },
+    { key: 'book', route_base: '/books' },
+  ] as unknown[],
+  enabled: [] as unknown[],
+}))
 vi.mock('@/lib/modules', async (original) => ({
   ...(await original<typeof import('@/lib/modules')>()),
   useModules: () => modules,
@@ -126,30 +141,30 @@ const tabs = () =>
   }))
 
 describe('StatsPage', () => {
-  it('opens on the calendar, without a year picker', async () => {
+  it('opens on the first module, with a year picker — the calendar is gone', async () => {
     await mount()
 
     const list = tabs()
-    expect(list[0].text).toContain(i18n.t('stats.tabs.calendar'))
+    expect(list[0].text).toContain('ფილმები')
     expect(list[0].active).toBe(true)
-    expect(document.querySelector('[data-testid="upcoming"]')).toBeTruthy()
-    // ⚠️ წელი კალენდარზე არაფერს ცვლის
-    expect(document.querySelector('[role="combobox"]')).toBeNull()
+    expect(document.querySelector('[role="combobox"]')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('კალენდარი')
   })
 
-  it('puts movies and series in one media tab and skips an empty module', async () => {
+  it('gives movies and series their own tabs and skips an empty module', async () => {
     await mount()
 
     const labels = tabs().map((t) => t.text)
-    expect(labels.some((l) => l.includes(i18n.t('stats.tabs.media')))).toBe(true)
+    expect(labels.some((l) => l.includes('ფილმები'))).toBe(true)
+    expect(labels.some((l) => l.includes('სერიალები'))).toBe(true)
     expect(labels.some((l) => l.includes('წიგნები'))).toBe(true)
-    // ⚠️ ფილმს და სერიალს ცალკე ჩანართი არ აქვს, ცარიელ თამაშს — საერთოდ
-    expect(labels.some((l) => l.includes('ფილმები') || l.includes('სერიალები'))).toBe(false)
+    // ⚠️ საერთო „მედია" აღარ არის, ცარიელ თამაშს ჩანართი არ აქვს
+    expect(labels.some((l) => l.trim() === 'მედია')).toBe(false)
     expect(labels.some((l) => l.includes('თამაშები'))).toBe(false)
   })
 
-  it('answers the three media questions in order', async () => {
-    await mount('/stats?tab=media')
+  it('answers the three media questions in the movie tab, in order', async () => {
+    await mount('/stats?tab=movie')
 
     const text = document.body.textContent ?? ''
     const genres = text.indexOf(i18n.t('stats.mediaGenres'))
@@ -160,12 +175,24 @@ describe('StatsPage', () => {
     expect(genres).toBeLessThan(actors)
     expect(actors).toBeLessThan(months)
 
-    // მსახიობი — ქართული სახელით და მისი გვერდის ბმულით
+    // §49.5 — მსახიობი ქართული სახელით და მისი გვერდის ბმულით
     const link = document.querySelector<HTMLAnchorElement>('a[href="/actors/42"]')
     expect(link?.textContent).toContain('ნინო ქასრაძე')
+  })
 
-    // წლის ამრჩევი აქ ჩანს
-    expect(document.querySelector('[role="combobox"]')).toBeTruthy()
+  it('a status opens its list with the matching filter (§49.3)', async () => {
+    await mount('/stats?tab=movie')
+    const movies = document.querySelector<HTMLAnchorElement>('ul a[href="/movies?view=watched"]')
+    expect(movies?.textContent).toContain('ნანახი')
+
+    act(() => root?.unmount())
+    container?.remove()
+    root = null
+
+    await mount('/stats?tab=book')
+    expect(document.querySelector('a[href="/books?view=read"]')).toBeTruthy()
+    // წიგნს მსახიობები არ აქვს
+    expect(document.body.textContent).not.toContain(i18n.t('stats.mediaActors'))
   })
 
   /**
@@ -176,7 +203,7 @@ describe('StatsPage', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     try {
       vi.setSystemTime(new Date(2026, 8, 28))
-      await mount('/stats?tab=media')
+      await mount('/stats?tab=movie')
       expect(document.body.textContent).toContain(
         `4 ${i18n.t('stats.thisYearNow')} · ${i18n.t('stats.lastYearNow', { count: 1 })}`,
       )
@@ -185,7 +212,7 @@ describe('StatsPage', () => {
       root = null
 
       vi.setSystemTime(new Date(2027, 1, 1))
-      await mount('/stats?tab=media')
+      await mount('/stats?tab=movie')
       expect(document.body.textContent).toContain(
         `4 ${i18n.t('stats.thisYear', { year: 2026 })} · ${i18n.t('stats.lastYear', { count: 1, year: 2025 })}`,
       )
@@ -194,11 +221,10 @@ describe('StatsPage', () => {
     }
   })
 
-  it('an unknown or empty tab falls back to the calendar', async () => {
-    for (const url of ['/stats?tab=nope', '/stats?tab=game']) {
+  it('an unknown or empty tab falls back to the first module', async () => {
+    for (const url of ['/stats?tab=nope', '/stats?tab=game', '/stats?tab=calendar', '/stats?tab=media']) {
       await mount(url)
       expect(tabs()[0].active, url).toBe(true)
-      expect(document.querySelector('[data-testid="upcoming"]'), url).toBeTruthy()
       act(() => root?.unmount())
       container?.remove()
       root = null

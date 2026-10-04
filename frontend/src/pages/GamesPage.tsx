@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import {
   ExternalLink,
@@ -110,6 +111,7 @@ export function GamesPage() {
     return () => clearTimeout(timer)
   }, [q])
 
+  const drill = useDrillParams()
   const filters: GameFilters = {
     q: term || undefined,
     genre_id: genres.length ? genres.join(',') : undefined,
@@ -119,6 +121,8 @@ export function GamesPage() {
     // „რჩეული" და „ყველა" სტატუსს არ ნიშნავს — დანარჩენი სექცია სტატუსია
     status: (GAME_STATUSES as readonly string[]).includes(view) ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია

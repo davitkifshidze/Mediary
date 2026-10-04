@@ -8,6 +8,7 @@ use App\Http\Resources\VideoResource;
 use App\Models\Status;
 use App\Models\Video;
 use App\Services\Links\LinkResolver;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Services\Video\VideoSearch;
@@ -37,6 +38,8 @@ class VideoController extends Controller
         $query = Video::query()
             ->with('type')
             ->withCount(['images', 'documents', 'notes']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'video', $request);
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);

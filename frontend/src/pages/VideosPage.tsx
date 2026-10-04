@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
+import { useDrillParams } from '@/lib/statsLinks'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -160,6 +161,7 @@ export function VideosPage() {
     return () => clearTimeout(timer)
   }, [q])
 
+  const drill = useDrillParams()
   const filters: VideoFilters = {
     q: term || undefined,
     type_id: types.length ? types.join(',') : undefined,
@@ -172,6 +174,8 @@ export function VideosPage() {
     status:
       view !== 'all' && view !== 'favorite' && view !== 'downloaded' ? view : undefined,
     sort: sort === 'newest' ? undefined : sort,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია

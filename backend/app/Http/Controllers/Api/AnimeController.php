@@ -11,6 +11,7 @@ use App\Http\Resources\AnimeResource;
 use App\Models\Anime;
 use App\Models\Genre;
 use App\Services\Enrichment\AnimeEnricher;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
@@ -48,6 +49,8 @@ class AnimeController extends Controller
         }
 
         $query = Anime::query()->with('genres');
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'anime', $request);
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

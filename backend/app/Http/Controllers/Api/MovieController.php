@@ -11,6 +11,7 @@ use App\Http\Resources\MovieResource;
 use App\Models\Genre;
 use App\Models\Movie;
 use App\Services\Enrichment\MovieEnricher;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
@@ -41,6 +42,8 @@ class MovieController extends Controller
         }
 
         $query = Movie::query()->with('genres');
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'movie', $request);
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

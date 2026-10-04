@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookResource;
 use App\Models\Book;
 use App\Services\Books\OpenLibraryClient;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Lang;
@@ -37,6 +38,8 @@ class BookController extends Controller
     public function index(Request $request)
     {
         $query = Book::query()->with('genre')->withCount(['files', 'notes', 'quotes']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'book', $request);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

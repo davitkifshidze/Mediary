@@ -7,6 +7,7 @@ use App\Http\Resources\BookmarkResource;
 use App\Models\Bookmark;
 use App\Models\Status;
 use App\Services\Links\LinkResolver;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
@@ -35,6 +36,8 @@ class BookmarkController extends Controller
     {
         // Tasks §36 — ფაილებისა და გალერეის ფოტოების რიცხვი რიგის „ფაილები"-სთვის
         $query = Bookmark::query()->with('category')->withCount(['files', 'galleryImages']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'bookmark', $request);
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {

@@ -347,7 +347,7 @@ class StatsTest extends TestCase
         Carbon::setTestNow();
     }
 
-    /* ---------- Tasks §28.5 — მედია ერთად ---------- */
+    /* ---------- Tasks §49 — „მედია" სამ ჩანართად (Q13), ზოლიდან სიაზე ---------- */
 
     private function withSeries(User $user): User
     {
@@ -356,11 +356,29 @@ class StatsTest extends TestCase
         return $user->refresh();
     }
 
+    private function watch(Movie $movie, string $when): void
+    {
+        DB::table('media_watches')->insert([
+            'user_id' => $movie->user_id,
+            'watchable_type' => 'movie',
+            'watchable_id' => $movie->id,
+            'watched_at' => $when.' 12:00:00',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /** @return list<int> */
+    private function ids(string $url): array
+    {
+        return collect($this->actingAs($this->me)->getJson($url)->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+    }
+
     /**
-     * **ჟანრი დომენებად, ერთ რიგში** — ფილმი და სერიალი ერთ ზოლზე, თითო თავისი
-     * რიცხვით. ⚠️ სხვისი ბიბლიოთეკა არ ითვლება.
+     * **ჟანრი თითო მედია-ჩანართში, `slug`-ით** — მედიის სია ჟანრით slug-ით
+     * ფილტრავს, ე.ი. ზოლზე დაჭერას ის სჭირდება. ⚠️ სხვისი ბიბლიოთეკა არ ითვლება.
      */
-    public function test_media_genres_are_split_by_domain_in_one_row(): void
+    public function test_a_media_genre_row_carries_its_slug_in_its_own_tab(): void
     {
         $this->seed(GenresSeeder::class);
         $this->withSeries($this->me);
@@ -371,19 +389,21 @@ class StatsTest extends TestCase
         Series::create(['user_id' => $this->me->id, 'year' => 2003])->genres()->attach($drama->id);
         Movie::create(['user_id' => $this->other->id, 'year' => 2004])->genres()->attach($drama->id);
 
-        $media = $this->stats()['media'];
-        $row = collect($media['genres'])->firstWhere('id', $drama->id);
+        $payload = $this->stats();
+        $movies = collect($this->forModule($payload, 'movie')['genres'])->firstWhere('id', $drama->id);
+        $series = collect($this->forModule($payload, 'series')['genres'])->firstWhere('id', $drama->id);
 
-        $this->assertSame(['movie', 'series'], $media['domains']);
-        $this->assertSame(3, $row['count']);
-        $this->assertSame(['movie' => 2, 'series' => 1], $row['by']);
+        $this->assertSame(['slug' => 'drama', 'count' => 2], ['slug' => $movies['slug'], 'count' => $movies['count']]);
+        $this->assertSame(1, $series['count']);
+        // ლექსიკონის კატეგორიას slug არ აქვს — სია მას id-ით ფილტრავს
+        $this->assertArrayHasKey('slug', $this->forModule($payload, 'movie')['genres'][0]);
     }
 
     /**
-     * **ყველაზე ხშირი მსახიობი** — ფილმებიც და სერიალებიც ითვლება, წაშლილი
-     * ბმული (`is_removed`) და სხვისი ჩანაწერი — არა.
+     * **ყველაზე ხშირი მსახიობი თითო მედია-ჩანართში** — წაშლილი ბმული
+     * (`is_removed`) და სხვისი ჩანაწერი არ ითვლება; დომენები არ იკრიბება.
      */
-    public function test_the_most_frequent_actors_count_across_domains(): void
+    public function test_the_most_frequent_actors_are_counted_per_media_tab(): void
     {
         $this->withSeries($this->me);
         $star = CastMember::create(['name' => 'Star']);
@@ -402,12 +422,14 @@ class StatsTest extends TestCase
         $b->castLinks()->attach($extra->id, ['billing_order' => 1, 'is_removed' => true]);
         $theirs->castLinks()->attach($extra->id, ['billing_order' => 0]);
 
-        $actors = $this->stats()['media']['actors'];
+        $payload = $this->stats();
+        $movies = $this->forModule($payload, 'movie')['actors'];
 
-        $this->assertSame('Star', $actors[0]['name']);
-        $this->assertSame(3, $actors[0]['count']);
-        $this->assertSame(['movie' => 2, 'series' => 1], $actors[0]['by']);
-        $this->assertSame(1, collect($actors)->firstWhere('name', 'Extra')['count']);
+        $this->assertSame(['Star', 2], [$movies[0]['name'], $movies[0]['count']]);
+        $this->assertSame(1, collect($movies)->firstWhere('name', 'Extra')['count']);
+        $this->assertSame(1, $this->forModule($payload, 'series')['actors'][0]['count']);
+        // მსახიობები მხოლოდ მედიას აქვს
+        $this->assertSame([], $this->forModule($payload, 'song')['actors']);
     }
 
     /** Tasks §28.3 — წლის ერთი ხაზი: წელს და შარშან, ნახვების ჟურნალიდან */
@@ -416,28 +438,69 @@ class StatsTest extends TestCase
         $movie = Movie::create(['user_id' => $this->me->id, 'year' => 2001]);
 
         foreach (['2026-02-01', '2026-06-01', '2025-03-01'] as $when) {
-            DB::table('media_watches')->insert([
-                'user_id' => $this->me->id,
-                'watchable_type' => 'movie',
-                'watchable_id' => $movie->id,
-                'watched_at' => $when.' 12:00:00',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $this->watch($movie, $when);
         }
 
-        $payload = $this->stats(2026);
+        $movies = $this->forModule($this->stats(2026), 'movie');
 
-        $this->assertSame(2, $payload['media']['this_year']);
-        $this->assertSame(1, $payload['media']['last_year']);
-        $this->assertSame(2, $this->forModule($payload, 'movie')['this_year']);
+        $this->assertSame(2, $movies['this_year']);
+        $this->assertSame(1, $movies['last_year']);
     }
 
-    /** მედია-მოდულის გარეშე ბლოკი `null`-ია და არა ცარიელი შედარება */
-    public function test_media_is_null_without_a_media_module(): void
+    /** Tasks §49.2 — „მედიის" ბლოკი და კალენდარი აღარ არსებობს */
+    public function test_the_media_block_and_the_calendar_are_gone(): void
     {
-        $this->me->modules()->sync(Module::whereIn('key', ['song', 'book'])->pluck('id')->all());
+        $this->assertArrayNotHasKey('media', $this->stats());
+        $this->actingAs($this->me)->getJson('/api/upcoming')->assertNotFound();
+    }
 
-        $this->assertNull($this->stats()['media']);
+    /**
+     * Tasks §49.3 — **თვის ზოლი → იმ თვის სია**: სხვა მოდულებზე „როდის დავასრულე"
+     * (`done=`), მედიაზე ნახვების ჟურნალი (`watched=`, ხელახლა ნახვაც);
+     * დაზიანებული თვე უგულებელყოფილია.
+     */
+    public function test_a_month_bar_opens_the_list_of_that_month(): void
+    {
+        // ⚠️ `finished_at` სტატუსს მიჰყვება (`TracksCompletion`) — „წაკითხულის" გარეშე იშლება
+        $march = Book::create(['user_id' => $this->me->id, 'title_en' => 'March', 'status' => 'read']);
+        $march->forceFill(['finished_at' => '2026-03-10'])->save();
+        $april = Book::create(['user_id' => $this->me->id, 'title_en' => 'April', 'status' => 'read']);
+        $april->forceFill(['finished_at' => '2026-04-02'])->save();
+
+        $this->assertSame([$march->id], $this->ids('/api/books?done=2026-03'));
+        $this->assertSame([$march->id, $april->id], $this->ids('/api/books?done=2026-13'));
+        $this->assertSame([$march->id, $april->id], $this->ids('/api/books?done=march'));
+
+        $seen = Movie::create(['user_id' => $this->me->id, 'year' => 2001]);
+        $again = Movie::create(['user_id' => $this->me->id, 'year' => 2002]);
+        Movie::create(['user_id' => $this->me->id, 'year' => 2003]);
+        $this->watch($seen, '2026-03-05');
+        $this->watch($again, '2026-01-05');
+        $this->watch($again, '2026-03-20');
+
+        $this->assertSame([$seen->id, $again->id], $this->ids('/api/movies?watched=2026-03'));
+        $this->assertSame([$again->id], $this->ids('/api/movies?watched=2026-01'));
+    }
+
+    /**
+     * Tasks §49.3 — **წლის და ქულის ზოლი** — სიის რიცხვი ზოლს ემთხვევა: ქულის
+     * კალათა `round()`-ია (6.5 → 7), ე.ი. 7-ის ზოლი 6.5…7.4-ია; მედიაზე ეს **შენი**
+     * ქულაა (`my_rating`) და არა TMDB-ის.
+     */
+    public function test_year_and_rating_bars_open_the_matching_list(): void
+    {
+        $old = Song::create(['user_id' => $this->me->id, 'title' => 'Old', 'url' => 'https://youtu.be/old', 'year' => 2011, 'rating' => 7]);
+        Song::create(['user_id' => $this->me->id, 'title' => 'New', 'url' => 'https://youtu.be/new', 'year' => 2012, 'rating' => 9]);
+
+        $this->assertSame([$old->id], $this->ids('/api/songs?year_min=2011&year_max=2011'));
+        $this->assertSame([$old->id], $this->ids('/api/songs?my_rating_min=6.5&my_rating_max=7.4'));
+
+        $edge = $this->movie($this->me, 2001, rating: 6.5);
+        $this->movie($this->me, 2002, rating: 7.5);
+        $this->movie($this->me, 2003);
+
+        $bucket = collect($this->forModule($this->stats(), 'movie')['ratings'])->firstWhere('score', 7);
+        $this->assertSame(1, $bucket['count']);
+        $this->assertSame([$edge->id], $this->ids('/api/movies?my_rating_min=6.5&my_rating_max=7.4'));
     }
 }

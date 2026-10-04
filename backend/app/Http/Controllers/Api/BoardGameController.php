@@ -7,6 +7,7 @@ use App\Http\Resources\BoardGameResource;
 use App\Models\BoardGame;
 use App\Services\BoardGames\BggClient;
 use App\Services\BoardGames\GeorgianShops;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
@@ -41,6 +42,8 @@ class BoardGameController extends Controller
     public function index(Request $request)
     {
         $query = BoardGame::query()->with('genre')->withCount(['files', 'images', 'notes']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'board_game', $request);
 
         if ($request->boolean('favorite')) {
             $query->where('is_favorite', true);

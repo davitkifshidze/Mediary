@@ -11,6 +11,7 @@ use App\Http\Resources\SeriesResource;
 use App\Models\Genre;
 use App\Models\Series;
 use App\Services\Enrichment\SeriesEnricher;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
@@ -40,6 +41,8 @@ class SeriesController extends Controller
         }
 
         $query = Series::query()->with('genres');
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'series', $request);
 
         // §6.4 — სტატუსი ლექსიკონის რიგია; ფილტრი კვლავ **გასაღებით** მოდის
         // (`?view=watched`), ე.ი. ძველი ბმულები და საიდბარი უცვლელი რჩება.

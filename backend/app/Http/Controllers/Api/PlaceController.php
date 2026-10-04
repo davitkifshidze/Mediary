@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PlaceResource;
 use App\Models\Place;
 use App\Services\Places\NominatimClient;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
@@ -41,6 +42,8 @@ class PlaceController extends Controller
     public function index(Request $request)
     {
         $query = Place::query()->with('category')->withCount(['files', 'galleryImages']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'place', $request);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->where('status', $key);

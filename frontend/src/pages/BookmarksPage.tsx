@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { useDrillParams } from '@/lib/statsLinks'
 import { plainText } from '@/lib/richText'
 import { RICH_TEXT_MAX } from '@/lib/richText'
 import { Pagination } from '@/components/ui/pagination'
@@ -156,6 +157,7 @@ export function BookmarksPage() {
   // §6.4 — „ყველა"/„რჩეული" სტატუსები არაა; დანარჩენი ლექსიკონის გასაღებია
   const isStatusView = view !== 'all' && view !== 'favorite'
 
+  const drill = useDrillParams()
   const filters: BookmarkFilters = {
     q: term || undefined,
     category_id: categories.length ? categories.join(',') : undefined,
@@ -163,6 +165,8 @@ export function BookmarksPage() {
     status: isStatusView ? view : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია

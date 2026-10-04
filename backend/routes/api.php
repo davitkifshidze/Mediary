@@ -107,7 +107,6 @@ use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TranslationController;
 use App\Http\Controllers\Api\TrashController;
 use App\Http\Controllers\Api\TwoFactorController;
-use App\Http\Controllers\Api\UpcomingController;
 use App\Http\Controllers\Api\UploadLimitController;
 use App\Http\Controllers\Api\VideoBulkController;
 use App\Http\Controllers\Api\VideoController;
@@ -503,7 +502,6 @@ Route::middleware('auth:sanctum')->group(function () {
        მომდევნო 30 დღის მოვლენები ყველა ჩართულ მოდულზე: შემდეგი ეპიზოდი,
        თამაშის გამოსვლა, ჩანიშვნის ვადა. ⚠️ წიგნსა და ბორდგეიმს მხოლოდ
        `year` აქვთ, ე.ი. კონკრეტულ დღეს ვერ დადგებიან. */
-    Route::get('/upcoming', [UpcomingController::class, 'index']);
 
     /* ---------- ურნა (FEAT-11 → Tasks §29) ----------
        ⚠️ **`module:`/`permission:` middleware განზრახ არ ადევს**: პარამეტრს

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\NoteEntryResource;
 use App\Models\NoteEntry;
 use App\Models\Status;
+use App\Services\Stats\LibraryStats;
 use App\Support\Like;
 use App\Support\RichText;
 use Illuminate\Http\Request;
@@ -23,6 +24,8 @@ class NoteEntryController extends Controller
     public function index(Request $request)
     {
         $query = NoteEntry::query()->with('category')->withCount(['files', 'reminders']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'note', $request);
 
         // §6.4 — სტატუსი per-user ლექსიკონია; ფილტრი გასაღებით რჩება
         foreach ($this->slugList($request->string('status')->toString()) as $key) {

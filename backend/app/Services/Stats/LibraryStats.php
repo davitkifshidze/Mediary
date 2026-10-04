@@ -22,11 +22,12 @@ use App\Models\Status;
 use App\Models\User;
 use App\Models\Video;
 use App\Support\CustomModules;
-use App\Support\MediaDomain;
 use App\Support\RecordLocks;
 use App\Support\SqlDate;
 use App\Support\StatusDomain;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -201,6 +202,9 @@ class LibraryStats
                 ? $this->byWatchLog($user, $map['watch_log'], $year)
                 : ($map['done_at'] ? $this->byMonth($base, $map['done_at'], $year) : []),
             'has_months' => $map['done_at'] !== null,
+            /* Tasks §49 — „ვინ არის ჩემი ყველაზე ხშირი მსახიობი" თითო მედია-ჩანართში
+               (ადრე „მედიის" საერთო ჩანართში იყო, Q13-ით სამ ჩანართად დაიყო). */
+            'actors' => isset($map['watch_log']) ? $this->topActors($user, $map['watch_log'], $base) : [],
             /* Tasks §28.3 — ჩანართის თავის ერთი ხაზი („წელს 42 · შარშან 35").
                ⚠️ `null` = მოდულს „როდის დავასრულე" არ აქვს და ხაზი არ იხატება;
                ნული კი ნამდვილი პასუხია. */
@@ -210,181 +214,43 @@ class LibraryStats
     }
 
     /**
-     * **მედია ერთად — ფილმი, სერიალი და ანიმე ერთ პასუხში** (Tasks §28.5).
+     * **ყველაზე ხშირი მსახიობები ერთ მედია-დომენში** — რამდენ **ჩემს** ჩანაწერში თამაშობს.
      *
-     * შენი სიტყვები: „ფილმებისა და სერიალების გრაფიკები ძალიან არ მომწონს";
-     * Q19–Q20 — სამი ერთნაირი ბლოკის ნაცვლად **ერთი შედარება**: რა ჟანრებს
-     * ვუყურებ (დომენებად დაყოფილი ზოლი), ვინ არის ყველაზე ხშირი მსახიობი და
-     * წლის ერთი ხაზი. თვეები, სტატუსი და ქულები დომენ-დომენ `forModule()`-ში
-     * რჩება — იქ ისინი უკვე სწორად ითვლება, აქ მხოლოდ ის არის, რაც დომენებს
-     * **შორის** იკრიბება.
+     * ⚠️ Tasks §49 (Q13) — „მედიის" ჩანართი სამ ჩანართად დაიყო, ე.ი. ტოპი
+     * დომენ-დომენ ითვლება და აღარ იკრიბება. ⚠️ **`castable_type`-ით გაფილტრული** —
+     * polymorphic ცხრილი სამივე დომენს ერთად ინახავს (`byGenre()`-ის იგივე
+     * ხაფანგი); წაშლილი (`is_removed`) და ჩემ მიერ ჩაკეტილი მსახიობი (§35.5) არ
+     * ითვლება, დამალული კი ითვლება — „ამ ფილმში თამაშობს" ფაქტია.
      *
-     * ⚠️ **ერთი `genreables`/`castables` query დომენზე და არა ჩანაწერზე**
-     * (PERF-02-ის წესი) და **`*_type`-ით გაფილტრული** — polymorphic ცხრილი
-     * სამივე დომენს ერთად ინახავს, ე.ი. ფილტრის გარეშე სერიალის მსახიობი
-     * ფილმის ჭრილში აღმოჩნდებოდა (`byGenre()`-ის იგივე ხაფანგი).
-     *
-     * ⚠️ **წაშლილი მსახიობი არ ითვლება** (`is_removed`), დამალული კი ითვლება —
-     * „ამ ფილმში თამაშობს" ფაქტია და დამალვა მხოლოდ სიიდან მალავს (Tasks §16).
-     *
-     * @param  list<string>  $modules  ჩართული და ნებადართული მოდულები
-     * @return array<string, mixed>|null `null` — მედია-მოდული არ მაქვს
-     */
-    public function media(User $user, array $modules, int $year): ?array
-    {
-        $domains = array_values(array_filter(MediaDomain::TYPES, fn (string $d) => in_array($d, $modules, true)));
-
-        if ($domains === []) {
-            return null;
-        }
-
-        $ids = fn (string $domain) => self::MODULES[$domain]['model']::withoutGlobalScope('owner')
-            ->where('user_id', $user->getKey())
-            // §35.4 — ჩაკეტილის ჟანრები და მსახიობები ჯამში არ ხვდება
-            ->withoutLocked()
-            ->toBase()
-            ->select('id');
-
-        $genres = [];
-        $actors = [];
-
-        foreach ($domains as $domain) {
-            $rows = DB::table('genreables')
-                ->where('genreable_type', $domain)
-                ->whereIn('genreable_id', $ids($domain))
-                ->groupBy('genre_id')
-                ->selectRaw('genre_id as gid, count(*) as total')
-                ->pluck('total', 'gid');
-
-            foreach ($rows as $gid => $count) {
-                $genres[(int) $gid][$domain] = (int) $count;
-            }
-
-            // §35.5 — ჩემ მიერ ჩაკეტილი მსახიობი ტოპში არ ხვდება (სესიის მიუხედავად)
-            $rows = RecordLocks::exclude(DB::table('castables'), 'cast_member', 'castables.cast_member_id', owner: (int) $user->getKey())
-                ->where('castable_type', $domain)
-                ->where('is_removed', false)
-                ->whereIn('castable_id', $ids($domain))
-                ->groupBy('cast_member_id')
-                ->selectRaw('cast_member_id as cid, count(*) as total')
-                ->pluck('total', 'cid');
-
-            foreach ($rows as $cid => $count) {
-                $actors[(int) $cid][$domain] = (int) $count;
-            }
-        }
-
-        $watches = fn (int $y) => RecordLocks::excludeMorph(
-            DB::table('media_watches')
-                ->where('user_id', $user->getKey())
-                ->whereIn('watchable_type', $domains)
-                ->whereNull('trashed_at')
-                ->whereYear('watched_at', $y),
-            // §35.4 — ჩაკეტილის ნახვაც არ ითვლება
-            'media_watches.watchable_type',
-            'media_watches.watchable_id',
-            session: false,
-        )->count();
-
-        return [
-            'domains' => $domains,
-            'genres' => $this->mediaGenres($genres, $domains),
-            'actors' => $this->mediaActors($actors, $domains),
-            // FEAT-14 — ნახვების ჟურნალიდან, ე.ი. ხელახლა ნახვაც ითვლება
-            'this_year' => $watches($year),
-            'last_year' => $watches($year - 1),
-        ];
-    }
-
-    /**
-     * ჟანრები დომენებად — ტოპ `TOP_GENRES` ჯამით, დანარჩენი ერთ „სხვა" რიგში.
-     *
-     * ⚠️ ჭრა **ჯამზე** ხდება და არა დომენ-დომენ: სხვაგვარად ერთ დომენში
-     * „სხვაში" წასული ჟანრი მეორეში ცალკე რიგად დარჩებოდა და ზოლები ერთსა და
-     * იმავე ჟანრზე ორ სხვადასხვა რამეს იტყოდნენ.
-     *
-     * @param  array<int, array<string, int>>  $genres
-     * @param  list<string>  $domains
      * @return list<array<string, mixed>>
      */
-    private function mediaGenres(array $genres, array $domains): array
+    private function topActors(User $user, string $domain, callable $base): array
     {
-        $rows = collect($genres)
-            ->map(fn (array $by, int $id) => ['id' => $id, 'by' => $this->byDomain($by, $domains), 'count' => array_sum($by)])
-            ->sortBy([['count', 'desc'], ['id', 'asc']])
-            ->values();
-
-        $top = $rows->take(self::TOP_GENRES);
-        $names = Genre::whereIn('id', $top->pluck('id')->all())->get()->keyBy('id');
-
-        $result = $top->map(fn (array $row) => [
-            'id' => $row['id'],
-            'name_ka' => $names->get($row['id'])?->name_ka,
-            'name_en' => $names->get($row['id'])?->name_en,
-            'by' => $row['by'],
-            'count' => $row['count'],
-        ])->all();
-
-        $rest = $rows->skip(self::TOP_GENRES);
-
-        if ($rest->isNotEmpty()) {
-            $by = array_fill_keys($domains, 0);
-            foreach ($rest as $row) {
-                foreach ($row['by'] as $domain => $count) {
-                    $by[$domain] += $count;
-                }
-            }
-
-            // ⚠️ „სხვა" ჯამს ინარჩუნებს — `named()`-ის იგივე წესი
-            $result[] = ['id' => 0, 'name_ka' => null, 'name_en' => null, 'by' => $by, 'count' => array_sum($by), 'rest' => $rest->count()];
-        }
-
-        return array_values($result);
-    }
-
-    /**
-     * ყველაზე ხშირი მსახიობები — რამდენ **ჩემს** ჩანაწერში თამაშობს.
-     *
-     * @param  array<int, array<string, int>>  $actors
-     * @param  list<string>  $domains
-     * @return list<array<string, mixed>>
-     */
-    private function mediaActors(array $actors, array $domains): array
-    {
-        $top = collect($actors)
-            ->map(fn (array $by, int $id) => ['id' => $id, 'by' => $this->byDomain($by, $domains), 'count' => array_sum($by)])
-            ->sortBy([['count', 'desc'], ['id', 'asc']])
-            ->take(self::TOP_ACTORS)
-            ->values();
+        $rows = RecordLocks::exclude(DB::table('castables'), 'cast_member', 'castables.cast_member_id', owner: (int) $user->getKey())
+            ->where('castable_type', $domain)
+            ->where('is_removed', false)
+            ->whereIn('castable_id', $base()->toBase()->select('id'))
+            ->groupBy('cast_member_id')
+            ->selectRaw('cast_member_id as cid, count(*) as total')
+            ->orderByDesc('total')
+            ->orderBy('cid')
+            ->limit(self::TOP_ACTORS)
+            ->get();
 
         // ⚠️ ერთი query ათივეზე — სახელი და ფოტო გლობალურ ლექსიკონშია
-        $people = CastMember::whereIn('id', $top->pluck('id')->all())->get()->keyBy('id');
+        $people = CastMember::whereIn('id', $rows->pluck('cid')->all())->get()->keyBy('id');
 
-        return $top
-            ->filter(fn (array $row) => isset($people[$row['id']]))
-            ->map(fn (array $row) => [
-                'id' => $row['id'],
-                'name' => $people[$row['id']]->name,
-                'name_ka' => $people[$row['id']]->name_ka,
-                'photo_path' => $people[$row['id']]->photo_path,
-                'by' => $row['by'],
-                'count' => $row['count'],
+        return $rows
+            ->filter(fn ($row) => isset($people[$row->cid]))
+            ->map(fn ($row) => [
+                'id' => (int) $row->cid,
+                'name' => $people[$row->cid]->name,
+                'name_ka' => $people[$row->cid]->name_ka,
+                'photo_path' => $people[$row->cid]->photo_path,
+                'count' => (int) $row->total,
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * დომენის ნულებით შევსებული რუკა — გრაფიკს ყველა სერია სჭირდება,
-     * თორემ დაწყობილი ზოლი დომენს „არ არსებობს"-ად წაიკითხავდა.
-     *
-     * @param  array<string, int>  $by
-     * @param  list<string>  $domains
-     * @return array<string, int>
-     */
-    private function byDomain(array $by, array $domains): array
-    {
-        return collect($domains)->mapWithKeys(fn (string $d) => [$d => (int) ($by[$d] ?? 0)])->all();
     }
 
     /**
@@ -580,6 +446,69 @@ class LibraryStats
     }
 
     /**
+     * Tasks §49.3 — **სტატისტიკიდან სიაზე**: გრაფიკის ზოლზე დაჭერა სიას იმავე
+     * ჭრილით ფილტრავს.
+     *
+     * ⚠️ სვეტები **იგივე რუკიდანაა** (`MODULES`), რომლითაც ზოლი დაითვალა — ე.ი.
+     * სიის რიცხვი ზოლის რიცხვს ემთხვევა; სხვა სვეტი (მაგ. შექმნის თარიღი) მას
+     * აცდებოდა.
+     *
+     * - `done=YYYY-MM` — „როდის დავასრულე" (`done_at`);
+     * - `watched=YYYY-MM` — მედია: ნახვების ჟურნალი (ხელახლა ნახვაც ითვლება, §FEAT-14);
+     * - `year_min`/`year_max` — გამოშვების წელი (მედიას თავისი, უფრო ძველი ფილტრი აქვს);
+     * - `my_rating_min`/`my_rating_max` — **შენი** ქულა (მედიაზე `my_rating` — `rating_*` იქ TMDB-ისაა).
+     */
+    public static function drill(Builder $query, string $module, Request $request): void
+    {
+        $map = self::map($module);
+
+        if (! $map) {
+            return;
+        }
+
+        $table = $query->getModel()->getTable();
+        $month = function (string $key) use ($request): ?array {
+            if (! preg_match('/^(\d{4})-(\d{2})$/', (string) $request->query($key), $m) || (int) $m[2] < 1 || (int) $m[2] > 12) {
+                return null;
+            }
+
+            return [(int) $m[1], (int) $m[2]];
+        };
+
+        if (isset($map['watch_log'])) {
+            if ($ym = $month('watched')) {
+                $query->whereExists(fn ($w) => $w->from('media_watches')
+                    ->whereColumn('media_watches.watchable_id', $table.'.id')
+                    ->where('media_watches.watchable_type', $map['watch_log'])
+                    ->whereNull('media_watches.trashed_at')
+                    ->whereYear('media_watches.watched_at', $ym[0])
+                    ->whereMonth('media_watches.watched_at', $ym[1]));
+            }
+        } elseif ($map['done_at'] && ($ym = $month('done'))) {
+            $query->whereYear($table.'.'.$map['done_at'], $ym[0])->whereMonth($table.'.'.$map['done_at'], $ym[1]);
+        }
+
+        if ($map['year'] && ! isset($map['watch_log'])) {
+            $column = $table.'.'.$map['year'];
+            $expr = str_contains($map['year'], 'date') ? SqlDate::year($column) : $column;
+
+            foreach (['year_min' => '>=', 'year_max' => '<='] as $key => $op) {
+                if (is_numeric($request->query($key))) {
+                    $query->whereRaw("{$expr} {$op} ?", [(int) $request->query($key)]);
+                }
+            }
+        }
+
+        if ($map['rating']) {
+            foreach (['my_rating_min' => '>=', 'my_rating_max' => '<='] as $key => $op) {
+                if (is_numeric($request->query($key))) {
+                    $query->where($table.'.'.$map['rating'], $op, (float) $request->query($key));
+                }
+            }
+        }
+    }
+
+    /**
      * **რომელ მოდულს შეუძლია წლიური მიზანი (FEAT-21).**
      *
      * ⚠️ მხოლოდ ისინი, ვისაც „როდის დავასრულე" თარიღი აქვს — სხვაგვარად
@@ -729,14 +658,17 @@ class LibraryStats
     {
         $ids = $counts->keys()->filter()->all();
 
+        /* Tasks §49.4 — გლობალურ ჟანრს `slug` ახლავს: მედიის სია ჟანრით **slug-ით**
+           ფილტრავს (`?genre=drama`), ლექსიკონები კი id-ით — ზოლზე დაჭერას ორივე სჭირდება. */
         $names = $dictionary === 'genres'
-            ? Genre::whereIn('id', $ids)->get()->mapWithKeys(fn (Genre $g) => [$g->id => ['ka' => $g->name_ka, 'en' => $g->name_en]])
-            : DB::table($dictionary)->whereIn('id', $ids)->get()->mapWithKeys(fn ($r) => [$r->id => ['ka' => $r->name_ka ?? null, 'en' => $r->name_en ?? null]]);
+            ? Genre::whereIn('id', $ids)->get()->mapWithKeys(fn (Genre $g) => [$g->id => ['ka' => $g->name_ka, 'en' => $g->name_en, 'slug' => $g->slug]])
+            : DB::table($dictionary)->whereIn('id', $ids)->get()->mapWithKeys(fn ($r) => [$r->id => ['ka' => $r->name_ka ?? null, 'en' => $r->name_en ?? null, 'slug' => null]]);
 
         $rows = $counts->map(fn ($count, $id) => [
             'id' => (int) $id,
             'name_ka' => $names[$id]['ka'] ?? null,
             'name_en' => $names[$id]['en'] ?? null,
+            'slug' => $names[$id]['slug'] ?? null,
             'count' => (int) $count,
         ])->values()->sortByDesc('count')->values();
 
@@ -754,6 +686,7 @@ class LibraryStats
             'id' => 0,
             'name_ka' => null,
             'name_en' => null,
+            'slug' => null,
             'count' => (int) $rest->sum('count'),
             'rest' => $rest->count(),
         ]];

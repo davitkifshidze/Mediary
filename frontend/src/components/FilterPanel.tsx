@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { DrillChips } from '@/components/DrillChips'
 import { AutoHeight } from '@/components/ui/auto-height'
 
 /* ============================================================
@@ -358,23 +359,30 @@ export function FilterTrigger({
   activeCount,
   onClick,
   className,
+  drillExcept,
 }: {
   activeCount: number
   onClick: () => void
   className?: string
+  /** Tasks §49.3 — სტატისტიკის ჭრილი, რომელსაც გვერდი თვითონ აჩვენებს (მედიის წელი პანელშია) */
+  drillExcept?: readonly string[]
 }) {
   const { t } = useTranslation()
 
   return (
-    <Button variant="outline" onClick={onClick} className={cn('lg:hidden', className)}>
-      <SlidersHorizontal className="size-4" />
-      {t('filter.more')}
-      {activeCount > 0 && (
-        <span className="rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium leading-none text-primary-foreground">
-          {activeCount}
-        </span>
-      )}
-    </Button>
+    <>
+      <Button variant="outline" onClick={onClick} className={cn('lg:hidden', className)}>
+        <SlidersHorizontal className="size-4" />
+        {t('filter.more')}
+        {activeCount > 0 && (
+          <span className="rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium leading-none text-primary-foreground">
+            {activeCount}
+          </span>
+        )}
+      </Button>
+      {/* ⚠️ ღილაკის გარეთ — ის დესკტოპზე დამალულია, ჩიპი კი ყველგან უნდა ჩანდეს */}
+      <DrillChips except={drillExcept} />
+    </>
   )
 }
 

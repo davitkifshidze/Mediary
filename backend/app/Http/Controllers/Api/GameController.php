@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\GameVideo;
 use App\Services\Games\IgdbClient;
 use App\Services\Games\RawgClient;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CredentialProviders;
@@ -48,6 +49,8 @@ class GameController extends Controller
         $query = Game::query()
             ->with('genres')
             ->withCount(['videos', 'files', 'images', 'notes', 'galleryImages']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'game', $request);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

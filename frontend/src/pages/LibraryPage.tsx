@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { useDrillParams } from '@/lib/statsLinks'
 import { Pagination } from '@/components/ui/pagination'
 import { useTranslation } from 'react-i18next'
 import {
@@ -47,6 +48,9 @@ import { RandomPickDialog } from '@/components/RandomPickDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+
+/** Tasks §49.3 — მედიის წელს გვერდი თავის ფილტრის პანელში კითხულობს (`year_min`/`year_max`) */
+const MEDIA_DRILL_EXCEPT = ['year_min', 'year_max']
 
 /* ============================================================
    ბიბლიოთეკა — ბადე + მარჯვენა ფილტრების პანელი (Tasks 2.1/2.2).
@@ -182,6 +186,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
   // ველი + მიმართულება → backend sort მნიშვნელობა
   const sortValue = sortField === 'added' ? (sortDir === 'desc' ? 'added' : 'added_asc') : `${sortField}_${sortDir}`
 
+  const drill = useDrillParams(MEDIA_DRILL_EXCEPT)
   const filters: MediaFilters = {
     q: q || undefined,
     // მრავალი ჟანრი — backend მძიმით გამოყოფილ სიას იღებს (2.2)
@@ -196,6 +201,8 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
     rating_min: num(ranges.ratingMin),
     rating_max: num(ranges.ratingMax),
     group: type === 'movie' ? grouped : undefined,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   /* Tasks §46 — გვერდზე 10 (ადრე `libraryPageSize`, ახლა ფიქსირებული): ნომრები + „მეტის ჩვენება";
@@ -329,7 +336,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
               </Tooltip>
             )}
             {/* ვიწრო ეკრანზე ფილტრები უჯრაშია — დესკტოპზე პანელი მარჯვნივ დგას */}
-            <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
+            <FilterTrigger drillExcept={MEDIA_DRILL_EXCEPT} activeCount={activeCount} onClick={() => setPanelOpen(true)} />
             <Button variant="outline" onClick={() => setDiscoverOpen(true)}>
               <Sparkles className="size-4" />
               {t('discover.button')}

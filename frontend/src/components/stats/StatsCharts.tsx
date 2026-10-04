@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { User } from 'lucide-react'
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Tooltip,
   XAxis,
   YAxis,
@@ -36,6 +37,11 @@ import {
 
    ⚠️ **სერიის ფერი `var(--series-N)`-ია** — მნიშვნელობა მშობლის
    `.fb-series`-დან მოდის (`seriesVars`), ე.ი. აქ ფერის გამოთვლა არ ხდება.
+
+   ⚠️ Tasks §49.3 — **ყველაფერი დაჭერადია**: რიგს/სეგმენტს `to` თუ აქვს
+   (`lib/statsLinks.ts`), ზოლი შესაბამის სიას ხსნის; კურსორი და ჰოვერზე
+   ჩამუქება (`.fb-bar-link`) ამბობს, რომ დაჭერადია. „სხვა" (რამდენიმე ჟანრი)
+   ბმული არაა — ჩვეულებრივ რჩება.
    ============================================================ */
 
 export interface Series {
@@ -43,8 +49,8 @@ export interface Series {
   label: string
 }
 
-/** ერთი რიგი/სვეტი — `label` + თითო სერიის რიცხვი */
-export type StackRow = { key: string; label: string; full?: string } & Record<string, string | number | undefined>
+/** ერთი რიგი/სვეტი — `label` + თითო სერიის რიცხვი; `to` — დაჭერით გასახსნელი სია (§49.3) */
+export type StackRow = { key: string; label: string; full?: string; to?: string } & Record<string, string | number | undefined>
 
 type Tip = TooltipContentProps<TooltipValueType, number | string>
 
@@ -92,11 +98,26 @@ function stackTip(series: Series, allSeries: Series[]) {
   }
 }
 
+/** §49.3 — ზოლზე დაჭერა რიგის სიას ხსნის (`to`); ბმულის გარეშე რიგი არაფერს აკეთებს */
+function useRowLink() {
+  const navigate = useNavigate()
+  return (entry: { payload?: unknown }) => {
+    const to = (entry.payload as StackRow | undefined)?.to
+    if (to) navigate(to)
+  }
+}
+
+/** ბმულიანი რიგის სვეტი — კურსორი და ჰოვერზე ჩამუქება (`index.css`) */
+function linkCell(row: StackRow) {
+  return row.to ? { cursor: 'pointer', className: 'fb-bar-link' } : {}
+}
+
 /**
  * **ჰორიზონტალური ზოლები, დომენებად დაწყობილი** — ჟანრები (Q20-ის პირველი
  * კითხვა): სამი ერთნაირი ბლოკის ნაცვლად ერთი შედარება.
  */
 export function StackedBars({ rows, series }: { rows: StackRow[]; series: Series[] }) {
+  const open = useRowLink()
   if (!rows.length) return null
 
   const height = Math.max(160, rows.length * 32 + 16)
@@ -126,7 +147,12 @@ export function StackedBars({ rows, series }: { rows: StackRow[]; series: Series
             // ⚠️ მომრგვალება მხოლოდ ბოლო სეგმენტს — შუაში ღრეჭოს დახატავდა
             radius={i === series.length - 1 ? BAR_RADIUS_X : 0}
             isAnimationActive={false}
-          />
+            onClick={open}
+          >
+            {rows.map((row) => (
+              <Cell key={row.key} {...linkCell(row)} />
+            ))}
+          </Bar>
         ))}
       </BarChart>
     </ChartFrame>
@@ -141,6 +167,7 @@ export function StackedBars({ rows, series }: { rows: StackRow[]; series: Series
  * უნდა ჩანდეს და არა გამქრალი თვე.
  */
 export function StackedColumns({ rows, series, height = 240 }: { rows: StackRow[]; series: Series[]; height?: number }) {
+  const open = useRowLink()
   if (!rows.length) return null
 
   return (
@@ -159,7 +186,12 @@ export function StackedColumns({ rows, series, height = 240 }: { rows: StackRow[
             maxBarSize={36}
             radius={i === series.length - 1 ? BAR_RADIUS_Y : 0}
             isAnimationActive={false}
-          />
+            onClick={open}
+          >
+            {rows.map((row) => (
+              <Cell key={row.key} {...linkCell(row)} />
+            ))}
+          </Bar>
         ))}
       </BarChart>
     </ChartFrame>
@@ -172,6 +204,8 @@ export interface ShareSegment {
   value: number
   /** CSS-ის ფერი (სტატუსის ან როლის ტონი) */
   tone: string
+  /** Tasks §49.3 — ამ სტატუსის სია */
+  to?: string | null
 }
 
 /**
@@ -189,24 +223,38 @@ export function StackedShare({ segments, label }: { segments: ShareSegment[]; la
     <div className="space-y-2">
       {label}
       <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-md" role="img" aria-label={shown.map((s) => `${s.label}: ${s.value}`).join(', ')}>
-        {shown.map((s) => (
-          <span
-            key={s.key}
-            className="h-full first:rounded-l-md last:rounded-r-md"
-            style={{ width: `${(s.value / total) * 100}%`, background: s.tone }}
-            title={`${s.label}: ${s.value}`}
-          />
-        ))}
+        {shown.map((s) => {
+          const segment = {
+            className: cn('h-full first:rounded-l-md last:rounded-r-md', s.to && 'fb-bar-link'),
+            style: { width: `${(s.value / total) * 100}%`, background: s.tone },
+            title: `${s.label}: ${s.value}`,
+          }
+          return s.to ? <Link key={s.key} to={s.to} aria-hidden tabIndex={-1} {...segment} /> : <span key={s.key} {...segment} />
+        })}
       </div>
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        {shown.map((s) => (
-          <li key={s.key} className="flex items-center gap-1.5">
-            <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.tone }} aria-hidden />
-            <span className="text-muted-foreground">{s.label}</span>
-            <span className="tabular-nums">{s.value}</span>
-            <span className="tabular-nums text-muted-foreground">{Math.round((s.value / total) * 100)}%</span>
-          </li>
-        ))}
+        {shown.map((s) => {
+          const inner = (
+            <>
+              <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.tone }} aria-hidden />
+              <span className={cn('text-muted-foreground', s.to && 'transition-colors group-hover:text-primary')}>{s.label}</span>
+              <span className="tabular-nums">{s.value}</span>
+              <span className="tabular-nums text-muted-foreground">{Math.round((s.value / total) * 100)}%</span>
+            </>
+          )
+          return (
+            <li key={s.key}>
+              {/* ⚠️ ლეგენდა სეგმენტის კლავიატურით მისაწვდომი ბმულია — ზოლი თვითონ `tabIndex=-1`-ია */}
+              {s.to ? (
+                <Link to={s.to} className="group flex items-center gap-1.5">
+                  {inner}
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1.5">{inner}</span>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -237,12 +285,16 @@ export function ActorGrid({ actors }: { actors: ActorRow[] }) {
 
         return (
           <li key={actor.id}>
+            {/* Tasks §49.5 — ბმული ადრეც იყო, ჰოვერი კი თითქმის არ ჩანდა: ახლა ჩარჩო,
+                ფოტო და სახელი იცვლება — ზოლების მსგავსად ჩანს, რომ დაჭერადია */}
             <Link
               to={`/actors/${actor.id}`}
-              className="group flex h-full flex-col items-center gap-2 rounded-lg border border-border p-3 text-center transition-colors hover:border-primary/50"
+              title={actor.name}
+              data-actor-link
+              className="group flex h-full cursor-pointer flex-col items-center gap-2 rounded-lg border border-border p-3 text-center transition-[border-color,box-shadow] hover:border-primary hover:shadow-sm"
             >
               <span className="relative">
-                <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-muted ring-1 ring-border">
+                <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-muted ring-1 ring-border transition-[filter] group-hover:brightness-90">
                   {src ? (
                     <img src={src} alt="" className="size-full object-cover" />
                   ) : (
@@ -253,7 +305,7 @@ export function ActorGrid({ actors }: { actors: ActorRow[] }) {
                   {i + 1}
                 </span>
               </span>
-              <span className="line-clamp-2 text-sm font-medium group-hover:text-primary">{actor.name}</span>
+              <span className="line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">{actor.name}</span>
               <span className="text-xs tabular-nums text-muted-foreground">{t('stats.actorCount', { count: actor.count })}</span>
               {actor.by.length > 1 && (
                 <span className="flex h-1.5 w-full gap-px overflow-hidden rounded-md" aria-hidden>

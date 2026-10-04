@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SongResource;
 use App\Models\Song;
 use App\Services\Links\LinkResolver;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Services\Video\VideoMetadata;
 use App\Support\ColumnTrash;
@@ -39,6 +40,8 @@ class SongController extends Controller
     {
         $query = Song::query()
             ->with(['genres', 'playlists:id,name']);
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, 'song', $request);
 
         if ($platform = $request->string('platform')->toString()) {
             $query->where('platform', $platform);

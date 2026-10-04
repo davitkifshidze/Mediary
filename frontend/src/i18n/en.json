@@ -3687,10 +3687,6 @@
       "11": "Nov",
       "12": "Dec"
     },
-    "tabs": {
-      "calendar": "Calendar",
-      "media": "Media"
-    },
     "thisYearNow": "this year",
     "lastYearNow": "last year {{count}}",
     "thisYear": "in {{year}}",
@@ -3700,6 +3696,13 @@
     "mediaMonths": "When I watch — {{year}}",
     "actorCount": "Titles: {{count}}",
     "noActors": "No actors yet — a sync brings them from TMDB."
+  },
+  "drill": {
+    "done": "Month: {{month}}",
+    "watched": "Watched: {{month}}",
+    "year": "Release year: {{year}}",
+    "rating": "My rating: {{score}}",
+    "remove": "Remove the filter"
   },
   "episodes": {
     "title": "Seasons and episodes",
@@ -3715,11 +3718,6 @@
     "unmarkSeason": "Clear the season",
     "mark": "Mark as watched",
     "unmark": "Clear the mark"
-  },
-  "upcoming": {
-    "title": "Coming soon",
-    "hint": "The next 30 days: an episode airing, a game release, a note falling due. Books and board games only carry a release year, so they cannot sit on a particular day.",
-    "empty": "Nothing coming up in the next 30 days"
   },
   "trash": {
     "title": "Trash",

@@ -24,6 +24,7 @@ import {
   uploadPlaceFiles,
 } from '@/api/places'
 import { storageUrl } from '@/lib/api'
+import { useDrillParams } from '@/lib/statsLinks'
 import { RICH_TEXT_MAX } from '@/lib/richText'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
@@ -146,6 +147,7 @@ export function PlacesPage() {
     return () => clearTimeout(timer)
   }, [q])
 
+  const drill = useDrillParams()
   const filters: PlaceFilters = {
     q: term || undefined,
     category_id: categories.length ? categories.join(',') : undefined,
@@ -154,6 +156,8 @@ export function PlacesPage() {
     status: statuses.length ? statuses.join(',') : undefined,
     favorite: view === 'favorite' ? true : undefined,
     sort: sort === 'newest' ? undefined : sort,
+    // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+    ...drill,
   }
 
   // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია

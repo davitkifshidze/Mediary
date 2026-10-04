@@ -26,6 +26,8 @@ export interface StatNamed {
   id: number
   name_ka: string | null
   name_en: string | null
+  /** Tasks §49.4 — გლობალური ჟანრის slug (მედიის სია ჟანრით slug-ით ფილტრავს); ლექსიკონზე `null` */
+  slug?: string | null
   count: number
   /** „სხვა" რიგი — რამდენი ჟანრია მასში მოყრილი */
   rest?: number
@@ -53,27 +55,14 @@ export interface StatModule {
    */
   this_year: number | null
   last_year: number | null
-}
-
-/** დომენი → რიცხვი (`movie`/`series`/`anime`), ნულებით შევსებული */
-export type ByDomain = Record<string, number>
-
-/** Tasks §28.5 — ფილმი, სერიალი და ანიმე ერთ შედარებაში */
-export interface StatsMedia {
-  /** რომელი მედია-დომენები მაქვს — სერიების რიგი */
-  domains: string[]
-  genres: (StatNamed & { by: ByDomain })[]
-  actors: { id: number; name: string; name_ka: string | null; photo_path: string | null; by: ByDomain; count: number }[]
-  this_year: number
-  last_year: number
+  /** Tasks §49 — ყველაზე ხშირი მსახიობები (მხოლოდ ფილმს, სერიალსა და ანიმეს; სხვაგან ცარიელი) */
+  actors: { id: number; name: string; name_ka: string | null; photo_path: string | null; count: number }[]
 }
 
 export interface StatsPayload {
   year: number
   /** წლები, რომლებშიც აქტივობა მაქვს — ამომრჩევს სია სჭირდება */
   years: number[]
-  /** `null` — მედია-მოდული არ მაქვს */
-  media: StatsMedia | null
   data: StatModule[]
 }
 

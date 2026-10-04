@@ -8,6 +8,7 @@ use App\Models\CustomCategory;
 use App\Models\CustomRecord;
 use App\Models\Status;
 use App\Services\Links\LinkResolver;
+use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CustomModules;
@@ -40,6 +41,8 @@ class CustomRecordController extends Controller
     public function index(Request $request, string $type)
     {
         $query = CustomRecord::query()->forModule($type)->with('category');
+        // Tasks §49.3 — სტატისტიკის ზოლიდან მოსული ჭრილი (თვე, წელი, შენი ქულა)
+        LibraryStats::drill($query, $type, $request);
 
         foreach ($this->slugList($request->string('status')->toString()) as $key) {
             $query->statusKey($key);
