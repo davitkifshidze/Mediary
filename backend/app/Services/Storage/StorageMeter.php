@@ -5,6 +5,7 @@ namespace App\Services\Storage;
 use App\Models\BoardGameFile;
 use App\Models\BookFile;
 use App\Models\BookmarkFile;
+use App\Models\CastMember;
 use App\Models\Course;
 use App\Models\CourseFile;
 use App\Models\CustomRecord;
@@ -632,6 +633,29 @@ class StorageMeter
                 'trashed' => $g->trashed_at !== null,
                 // ⚠️ მსახიობი (`cast_member`) ან ალბომის ფოტო მშობლად არ ითვლება — ურნაში ისინი ვერ მოხვდებიან
                 'parent' => $g->imageable_type ? [(string) $g->imageable_type, (int) $g->imageable_id] : null,
+            ]);
+        }
+
+        /* Tasks §35.3 — ხელით შექმნილი მსახიობის ატვირთული ფოტო **შემქმნელის** კვოტაშია.
+           ⚠️ `module` `cast`-ია (`StorageFolder::MODULE_BY_ROOT`): მსახიობს მოდული არ აქვს,
+           ე.ი. ცალკე ლიმიტს ვერ იღებს და საერთო აუზში რჩება; TMDB-ის საერთო ფოტო
+           (`cast/photos`) აქ არ ხვდება — `ownsPhotoFile()` მხოლოდ `cast/uploads`-ს ცნობს.
+           ⚠️ `withoutGlobalScopes()` — CLI-ზე (`mediary:storage-recalc`) scope ისედაც
+           გამორთულია, მოთხოვნაში კი სხვის (ადმინის) სახელით გამოძახება კერძოს დამალავდა. */
+        $castPhotos = $skip('cast') ? collect() : CastMember::withoutGlobalScopes()
+            ->where('created_by', $user->id)
+            ->where('photo_path', 'like', StorageFolder::CAST_UPLOADS.'/%')
+            ->get(['id', 'name', 'photo_path', 'created_by', 'created_at']);
+
+        foreach ($castPhotos as $member) {
+            $add([
+                'kind' => 'image',
+                'module' => 'cast',
+                'owner_type' => 'cast_member',
+                'owner_id' => (int) $member->id,
+                'path' => $member->photo_path,
+                'name' => $member->name,
+                'created_at' => $member->created_at,
             ]);
         }
 

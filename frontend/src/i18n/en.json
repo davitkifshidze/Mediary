@@ -1138,6 +1138,7 @@
     "cast_already_attached": "This person is already on this record.",
     "cast_limit_reached": "This record has reached the cast limit.",
     "cast_member_not_found": "The cast member could not be found.",
+    "cast_member_readonly": "You cannot edit this actor — only actors you created by hand are editable; on a TMDB actor your tags and photos are yours.",
     "upload_too_large": "The upload exceeds the server limit — {{file_limit}} per file, {{limit}} per request. See „Upload limits\" in Settings.",
     "mysqldump_unavailable": "mysqldump was not found on this machine",
     "background_unavailable": "the background process could not be started",
@@ -4705,6 +4706,35 @@
     "removedSkipped": "You cannot edit {{count}} record(s) — the actor stayed there.",
     "synced": "The details were updated",
     "syncUnchanged": "Nothing new on TMDB",
-    "tagsTitle": "Tags — {{name}}"
+    "tagsTitle": "Tags — {{name}}",
+    "private": "Only you see this",
+    "noDetailsManual": "No details yet — add a biography and dates under “Edit”.",
+    "form": {
+      "add": "New actor",
+      "title": "New actor",
+      "editTitle": "Edit the actor",
+      "findTitle": "Find",
+      "findHint": "Your library is searched first, then TMDB. A TMDB actor is shared — the photo and biography come from there.",
+      "manualTitle": "Or enter by hand",
+      "manualHint": "Only you see an actor created by hand — other accounts do not. The photo counts against your storage.",
+      "photoHint": "Actor photo",
+      "birthday": "Date of birth",
+      "deathday": "Date of death",
+      "placeOfBirth": "Place of birth",
+      "biography": "Biography",
+      "create": "Create",
+      "created": "The actor has been created",
+      "updated": "The actor has been updated",
+      "existing": "This actor already exists — opened their page"
+    },
+    "attach": {
+      "open": "Attach to records",
+      "title": "{{name}} — attach to records",
+      "records": "Records",
+      "hint": "Pick movies, series or anime — the actor is added at the end of each cast list.",
+      "submit": "Attach ({{count}})",
+      "done": "Attached to {{count}} record(s)",
+      "already": "Already on {{count}} record(s)."
+    }
   }
 }

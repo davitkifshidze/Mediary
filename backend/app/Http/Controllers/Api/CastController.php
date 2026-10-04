@@ -11,12 +11,18 @@ use App\Models\CastMemberTag;
 use App\Models\Genre;
 use App\Models\Video;
 use App\Services\Cast\CastEnricher;
+use App\Services\Cast\CastResolver;
+use App\Services\Storage\StorageMeter;
 use App\Services\Tmdb\TmdbClient;
+use App\Support\CastSync;
 use App\Support\CredentialProviders;
 use App\Support\Lang;
 use App\Support\MissingCredential;
+use App\Support\StorageFolder;
+use App\Support\UploadLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class CastController extends Controller
@@ -120,13 +126,7 @@ class CastController extends Controller
                ბიოგრაფია, დაბადების თარიღი, IMDb-ის id და ოფიციალური ბმულები
                მოსდევს. ფორმა ერთია (`CastMember::toDetailArray()`) — გალერეის
                `castShow()`-იც იმავეს აბრუნებს. */
-            'actor' => [
-                ...$castMember->toDetailArray(),
-                'photo' => $castMember->photo_path ? asset('storage/'.$castMember->photo_path) : null,
-                /* §7.5 — საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
-                   საერთო ლექსიკონია, ტეგები კი `cast_member_tags`-შია, user-ზე. */
-                'tags' => CastMemberTag::forActor((int) auth()->id(), $castMember->id),
-            ],
+            'actor' => $this->actorPayload($castMember),
             'movies' => MovieListResource::collection($movies),
             'series' => SeriesListResource::collection($series),
             'animes' => AnimeListResource::collection($animes),
@@ -137,6 +137,109 @@ class CastController extends Controller
             'suggestions' => $suggestions,
             'series_suggestions' => $seriesSuggestions,
         ]);
+    }
+
+    /**
+     * **ახალი მსახიობი `/actors`-იდან (Tasks §35.3).**
+     *
+     * ორი გზა: TMDB-ის პირი (`tmdb_person_id` — საერთო ლექსიკონი, ფოტო TMDB-დან,
+     * კვოტის გარეშე) ან სრულიად ხელით (სახელი, დეტალები, ატვირთული ფოტო
+     * **შენი კვოტით**, `cast/uploads/{id}`-ში) — ⚠️ ხელით შექმნილი მხოლოდ შენ
+     * გიჩანს (`created_by`, Q9).
+     *
+     * ⚠️ **დუბლი არ იქმნება** (`CastResolver`-ის წესი): იგივე TMDB-ის პირი ან
+     * იგივე სახელი ლექსიკონში უკვე თუ არის, ის ბრუნდება `existing: true`-ით —
+     * გვერდი მასზე გადადის და არა ახალ ასლზე.
+     */
+    public function store(Request $request, CastResolver $resolver, StorageMeter $meter): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'tmdb_person_id' => ['nullable', 'integer', 'min:1'],
+            'name' => ['required_without:tmdb_person_id', 'nullable', 'string', 'max:200'],
+            'name_ka' => ['nullable', 'string', 'max:200'],
+            ...$this->detailRules($request),
+        ]);
+
+        $tmdbId = $data['tmdb_person_id'] ?? null;
+        $names = ['en' => trim((string) ($data['name'] ?? '')) ?: null, 'ka' => trim((string) ($data['name_ka'] ?? '')) ?: null];
+
+        if ($found = CastSync::resolve($tmdbId, $names)) {
+            return response()->json(['actor' => $this->actorPayload($found), 'existing' => true]);
+        }
+
+        if ($tmdbId) {
+            $member = $resolver->resolve(['tmdb_person_id' => $tmdbId, 'name' => $names['en'], 'name_ka' => $names['ka']]);
+            abort_unless($member !== null, 404, 'cast_member_not_found');
+
+            return response()->json(['actor' => $this->actorPayload($member), 'existing' => false], 201);
+        }
+
+        $member = CastMember::create([
+            'name' => $names['en'] ?? $names['ka'],
+            'created_by' => $user->id,
+            ...$this->details($data),
+        ]);
+        $member->setTranslation('ka', $names['ka']);
+
+        if ($file = $request->file('photo')) {
+            $member->update(['photo_path' => $meter->storeUpload($user, $file, StorageFolder::CAST_UPLOADS.'/'.$member->id)]);
+        }
+
+        return response()->json(['actor' => $this->actorPayload($member->refresh()), 'existing' => false], 201);
+    }
+
+    /**
+     * **ხელით შექმნილის რედაქტირება (Tasks §35.3)** — `POST` + `_method=PUT` (ფოტოს გამო multipart).
+     *
+     * ⚠️ **მხოლოდ შემქმნელს და მხოლოდ კერძოზე** (`isEditableBy()`): TMDB-ის
+     * მსახიობი ფაქტია და ყველასია — მისი სახელი ან ბიოგრაფია ერთი ანგარიშის
+     * ხელით არ იცვლება (მასზე ჩემი მხოლოდ ტეგები და ფოტოებია). სხვისი კერძო
+     * `creator` scope-ით ისედაც 404-ია.
+     */
+    public function update(Request $request, CastMember $castMember, StorageMeter $meter): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($castMember->isEditableBy((int) $user->id), 403, 'cast_member_readonly');
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:200'],
+            'name_ka' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'remove_photo' => ['nullable', 'boolean'],
+            ...$this->detailRules($request),
+        ]);
+
+        $changes = $this->details($data);
+        if (array_key_exists('name', $data)) {
+            $changes['name'] = trim($data['name']);
+        }
+
+        $old = $castMember->photo_path;
+        $file = $request->file('photo');
+        $dropOld = $file !== null || $request->boolean('remove_photo');
+
+        if ($file) {
+            $changes['photo_path'] = $meter->storeUpload($user, $file, StorageFolder::CAST_UPLOADS.'/'.$castMember->id);
+        } elseif ($dropOld) {
+            $changes['photo_path'] = null;
+        }
+
+        $castMember->update($changes);
+
+        // ⚠️ ძველი ატვირთვა მხოლოდ შენახვის შემდეგ იშლება და მხოლოდ საკუთარი (კვოტიდანაც)
+        if ($dropOld && $old && str_starts_with($old, StorageFolder::CAST_UPLOADS.'/')) {
+            $meter->deleteUpload($castMember->created_by, $old);
+        }
+
+        if (array_key_exists('name_ka', $data)) {
+            $nameKa = trim((string) $data['name_ka']);
+            $nameKa !== ''
+                ? $castMember->setTranslation('ka', $nameKa)
+                : $castMember->translations()->where('locale', 'ka')->delete();
+        }
+
+        return response()->json(['actor' => $this->actorPayload($castMember->refresh())]);
     }
 
     /**
@@ -212,6 +315,54 @@ class CastController extends Controller
         );
 
         return response()->json(['tags' => $tags]);
+    }
+
+    /**
+     * მსახიობის გვერდის ფორმა — ⚠️ ერთი ადგილი (`show`, `store`, `update`):
+     * ორი ასლი ერთ დღეს სხვადასხვა ველს დაწერდა.
+     *
+     * @return array<string, mixed>
+     */
+    private function actorPayload(CastMember $member): array
+    {
+        return [
+            ...$member->toDetailArray(),
+            'photo' => $member->photo_path ? asset('storage/'.$member->photo_path) : null,
+            /* §7.5 — საძიებო ტეგები **ჩემია და არა გლობალური**: `cast_members`
+               საერთო ლექსიკონია, ტეგები კი `cast_member_tags`-შია, user-ზე. */
+            'tags' => CastMemberTag::forActor((int) auth()->id(), $member->id),
+        ];
+    }
+
+    /** @return array<string, mixed> ხელით შექმნილის დეტალების წესები */
+    private function detailRules(Request $request): array
+    {
+        return [
+            'gender' => ['nullable', Rule::in([CastMember::GENDER_FEMALE, CastMember::GENDER_MALE])],
+            'birthday' => ['nullable', 'date_format:Y-m-d'],
+            'deathday' => ['nullable', 'date_format:Y-m-d'],
+            'place_of_birth' => ['nullable', 'string', 'max:200'],
+            'biography' => ['nullable', 'string', 'max:10000'],
+            'photo' => ['nullable', ...UploadLimits::rule('primary', $request->user())],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function details(array $data): array
+    {
+        $out = [];
+
+        foreach (['gender', 'birthday', 'deathday', 'place_of_birth', 'biography'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $value = is_string($data[$field]) ? trim($data[$field]) : $data[$field];
+                $out[$field] = $value === '' ? null : $value;
+            }
+        }
+
+        return $out;
     }
 
     /**

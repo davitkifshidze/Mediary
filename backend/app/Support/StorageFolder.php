@@ -140,6 +140,15 @@ final class StorageFolder
     public const CAST_PHOTOS = 'cast/photos';
 
     /**
+     * **ხელით შექმნილი მსახიობის ატვირთული ფოტო (Tasks §35.3)** — `cast/uploads/{id}/…`.
+     *
+     * ⚠️ `cast/photos` TMDB-ის საერთო ფაილია და კვოტაში არ ითვლება (19.4/B); ეს კი
+     * შემქმნელის ატვირთვაა და **მის კვოტაშია** (`StorageMeter::files()`). ცალკე
+     * საქაღალდე სწორედ ამ ორის გასარჩევადაა (`CastMember::ownsPhotoFile()`).
+     */
+    public const CAST_UPLOADS = 'cast/uploads';
+
+    /**
      * **პირადი გალერეა (Tasks §33, Q7) — მთელი ფესვი პირად დისკზეა.**
      *
      * ⚠️ ახლობლების ფოტოები და ვიდეოებია — `/storage/*`-ით ღიად დადება მათ

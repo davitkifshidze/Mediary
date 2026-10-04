@@ -2,6 +2,7 @@
 
 namespace App\Services\Users;
 
+use App\Models\CastMember;
 use App\Models\Conversation;
 use App\Models\GalleryAlbum;
 use App\Models\GalleryImage;
@@ -48,6 +49,7 @@ class AccountEraser
         $this->purgeModules($user);
         $this->purgePersonal($user);
         $this->purgeGallery($user);
+        $this->purgePrivateCast($user);
         $this->sweepRemainingFiles($user);
         $this->dropEmptyConversations($user);
 
@@ -138,6 +140,24 @@ class AccountEraser
 
         foreach (GalleryAlbum::withoutGlobalScope('owner')->where('user_id', $user->getKey())->cursor() as $album) {
             $album->delete();
+        }
+    }
+
+    /**
+     * **Tasks §35.3 — ჩემ მიერ ხელით შექმნილი, TMDB-ს დაუკავშირებელი მსახიობები.**
+     *
+     * ⚠️ ისინი მხოლოდ ჩემთვის ჩანდა, ე.ი. ანგარიშთან ერთად ქრება — **მოდელით**:
+     * ატვირთული ფოტო (კვოტა) და ყველა ანგარიშის ფოტოები მასზე (`HasGallery`).
+     * TMDB-ის მსახიობი ფაქტია და რჩება — `created_by` SQL-ით ნულდება.
+     */
+    private function purgePrivateCast(User $user): void
+    {
+        $members = CastMember::withoutGlobalScopes()
+            ->where('created_by', $user->getKey())
+            ->whereNull('tmdb_person_id');
+
+        foreach ($members->cursor() as $member) {
+            $member->delete();
         }
     }
 

@@ -705,7 +705,8 @@ class PublicGallery
         $counts = $this->actorPhotoCounts($user, $this->mediaDomains($user, $filters['from'] ?? null));
 
         $members = $counts
-            ? CastMember::query()->whereIn('id', array_keys($counts))->get()->keyBy('id')
+            // ⚠️ §35.3 — მნახველი სხვაა: მფლობელის ხელით შექმნილი მისი შიგთავსია და ჩანს
+            ? CastMember::query()->visibleToOwner((int) $user->id)->whereIn('id', array_keys($counts))->get()->keyBy('id')
             : collect();
 
         $facets = [
@@ -1008,7 +1009,7 @@ class PublicGallery
         }
 
         if ($actors) {
-            foreach (CastMember::query()->whereIn('id', array_keys($actors))->get() as $member) {
+            foreach (CastMember::query()->visibleToOwner((int) $user->id)->whereIn('id', array_keys($actors))->get() as $member) {
                 $out[GalleryParent::ACTOR.':'.$member->id] = [
                     'kind' => 'actor',
                     'id' => (int) $member->id,

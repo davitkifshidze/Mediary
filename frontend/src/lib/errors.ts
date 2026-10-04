@@ -109,6 +109,8 @@ export const CODES = [
   'cast_already_attached',
   'cast_limit_reached',
   'cast_member_not_found',
+  // Tasks §35.3 — TMDB-ის (ან სხვისი) მსახიობს ხელით ვერ შეცვლი — მხოლოდ შენ მიერ შექმნილ კერძოს
+  'cast_member_readonly',
   // Tasks §16 — გადალაგებული სია ჩანაწერის მსახიობებს არ ემთხვევა (სხვა ტაბმა შეცვალა)
   'cast_order_mismatch',
   'not_youtube',

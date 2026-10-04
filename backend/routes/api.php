@@ -1384,6 +1384,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tasks §31.3 — მსახიობზე „აღარ განაახლო" **ჩემი** პარამეტრია (`cast_member_sync_prefs`)
     Route::patch('/cast/sync/{castMember}/pause', [CastSyncController::class, 'pause'])->whereNumber('castMember');
     Route::get('/cast/{castMember}', [CastController::class, 'show'])->whereNumber('castMember');
+    /* Tasks §35.3 — ახალი მსახიობი (TMDB-დან ან ხელით, ფოტო შენი კვოტით) და
+       ხელით შექმნილის რედაქტირება. ⚠️ ფოტოს გამო multipart-ია: რედაქტირება
+       `POST` + `_method=PUT`. ⚠️ ხელით შექმნილი მხოლოდ შემქმნელს უჩანს
+       (`CastMember`-ის `creator` scope) — სხვისი 404-ია. */
+    Route::post('/cast', [CastController::class, 'store']);
+    Route::match(['put', 'patch'], '/cast/{castMember}', [CastController::class, 'update'])->whereNumber('castMember');
     /* §7.5 — მსახიობის საძიებო ტეგები. ⚠️ `cast_members` გლობალური
        ლექსიკონია, ტეგები კი **ჩემია** (`cast_member_tags`, user-ზე).
        ⚠️ `PUT`-ია: მთელი ნაკრების ჩანაცვლებაა და POST `create`-ად იკითხებოდა. */

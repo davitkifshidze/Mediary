@@ -491,6 +491,10 @@ export interface Actor {
   biography?: string | null
   known_for?: string | null
   popularity?: number | null
+  /** Tasks §35.3 — ჩემ მიერ ხელით შექმნილი (რედაქტირდება) */
+  created_by_me?: boolean
+  /** ხელით შექმნილი და TMDB-ს დაუკავშირებელი — მხოლოდ შემქმნელს უჩანს (Q9) */
+  is_private?: boolean
   homepage?: string | null
   /** instagram_id · twitter_id · facebook_id · tiktok_id · youtube_id · wikidata_id */
   profile_links?: Record<string, string> | null

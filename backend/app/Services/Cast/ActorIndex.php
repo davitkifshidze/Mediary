@@ -78,9 +78,10 @@ final class ActorIndex
             $query->selectRaw('0 as records_count, 0 as movie_count, 0 as series_count, 0 as anime_count');
         }
 
-        // ⚠️ ავზი: ჩემს ჩანაწერზეა ან ჩემი ფოტო აქვს — ორივე `left join`-ია, ე.ი. აქ იჭრება
+        // ⚠️ ავზი: ჩემს ჩანაწერზეა, ჩემი ფოტო აქვს ან მე შევქმენი (§35.3) — `left join`-ები აქ იჭრება
         $query->where(function (Builder $w) use ($records) {
-            $w->whereNotNull('p.cast_member_id');
+            $w->whereNotNull('p.cast_member_id')
+                ->orWhere('cast_members.created_by', $this->userId);
 
             if ($records) {
                 $w->orWhereNotNull('r.cast_member_id');

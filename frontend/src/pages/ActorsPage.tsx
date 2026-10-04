@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Drama, Globe, RefreshCw, Search, Tags, UserMinus } from 'lucide-react'
+import { Drama, Globe, Plus, RefreshCw, Search, Tags, UserMinus } from 'lucide-react'
 import {
   ACTOR_RECORD_STEPS,
   ACTOR_SORTS,
@@ -18,6 +18,7 @@ import { actorName, deptKey } from '@/lib/actors'
 import { errorMessage } from '@/lib/errors'
 import { useFilterDraft } from '@/lib/filters'
 import { useContentLang, useSettings } from '@/lib/settings'
+import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 import { ActorTagsDialog } from '@/components/actors/ActorTagsDialog'
 import { ActorTile } from '@/components/actors/ActorTile'
 import { FilterGroup, FilterOption, FilterOptionList, FilterPanel, FilterTrigger } from '@/components/FilterPanel'
@@ -82,6 +83,8 @@ export function ActorsPage() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [tagging, setTagging] = useState<ActorCard | null>(null)
   const [webFor, setWebFor] = useState<ActorCard | null>(null)
+  // §35.3 — ახალი მსახიობი (TMDB-დან ან ხელით)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setTerm(q.trim()), 350)
@@ -219,6 +222,10 @@ export function ActorsPage() {
               </SelectContent>
             </Select>
             <FilterTrigger activeCount={activeCount} onClick={() => setPanelOpen(true)} />
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" />
+              {t('actors.form.add')}
+            </Button>
           </>
         }
       />
@@ -348,6 +355,16 @@ export function ActorsPage() {
           tags={tagging.tags}
           options={options?.tags ?? []}
           onClose={() => setTagging(null)}
+        />
+      )}
+
+      {creating && (
+        <ActorFormDialog
+          onClose={() => setCreating(false)}
+          onSaved={({ actor }) => {
+            setCreating(false)
+            navigate(`/actors/${actor.id}`)
+          }}
         />
       )}
 

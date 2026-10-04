@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Cake, ExternalLink, Globe, Loader2, MapPin, RefreshCw, Star } from 'lucide-react'
+import { Cake, ExternalLink, Globe, Link2, Loader2, Lock, MapPin, RefreshCw, SquarePen, Star } from 'lucide-react'
 import { resyncActor, type Actor } from '@/api/media'
 import { errorMessage } from '@/lib/errors'
 import { useDateFormat } from '@/lib/dates'
@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
 import { PosterImage } from '@/components/PosterImage'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/feedback'
+import { ActorAttachDialog } from '@/components/actors/ActorAttachDialog'
+import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 
 /* ============================================================
    მსახიობის **hero** — შიდა გვერდის თავი (Tasks §8.1/§8.5).
@@ -47,6 +49,10 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
   const { toast } = useToast()
   const { date: formatDate } = useDateFormat()
   const [expanded, setExpanded] = useState(false)
+  // §35.3 — ხელით შექმნილის რედაქტირება და ჩანაწერებზე მიმაგრება
+  const [editing, setEditing] = useState(false)
+  const [attaching, setAttaching] = useState(false)
+  const editable = !!actor.created_by_me && !!actor.is_private
 
   const resync = useMutation({
     mutationFn: () => resyncActor(actor.id),
@@ -92,6 +98,13 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
               <span className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Star className="size-3.5 text-gold" />
                 {actor.popularity.toFixed(1)}
+              </span>
+            )}
+            {/* §35.3 (Q9) — ხელით შექმნილი, TMDB-ს დაუკავშირებელი: სხვა ანგარიშები მას ვერ ხედავენ */}
+            {actor.is_private && (
+              <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
+                <Lock className="size-3" />
+                {t('actors.private')}
               </span>
             )}
           </div>
@@ -166,27 +179,43 @@ export function ActorHero({ actor, name }: { actor: Actor; name: string }) {
 
           {/* ⚠️ მონაცემის უქონლობა ცალკე მდგომარეობაა და ცხადად ითქმის */}
           {!bio && !actor.birthday && (
-            <p className="mt-3 text-sm text-muted-foreground">{t('actor.noDetails')}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{t(editable ? 'actors.noDetailsManual' : 'actor.noDetails')}</p>
           )}
         </div>
 
-        <div className="shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={resync.isPending || actor.has_tmdb === false}
-            onClick={() => resync.mutate()}
-            title={actor.has_tmdb === false ? t('actor.noTmdbId') : undefined}
-          >
-            {resync.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="size-4" />
-            )}
-            {t('actor.refreshDetails')}
+        <div className="flex shrink-0 flex-col gap-2 sm:items-stretch">
+          {editable && (
+            <Button variant="edit" size="sm" onClick={() => setEditing(true)}>
+              <SquarePen className="size-4" />
+              {t('actions.edit')}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setAttaching(true)}>
+            <Link2 className="size-4" />
+            {t('actors.attach.open')}
           </Button>
+          {/* ⚠️ ხელით შექმნილს TMDB-ის id არ აქვს — განახლების ღილაკი მას არაფერს მისცემდა */}
+          {!editable && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={resync.isPending || actor.has_tmdb === false}
+              onClick={() => resync.mutate()}
+              title={actor.has_tmdb === false ? t('actor.noTmdbId') : undefined}
+            >
+              {resync.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              {t('actor.refreshDetails')}
+            </Button>
+          )}
         </div>
       </div>
+
+      {editing && <ActorFormDialog actor={actor} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} />}
+      {attaching && <ActorAttachDialog actorId={actor.id} name={name} onClose={() => setAttaching(false)} />}
     </header>
   )
 }

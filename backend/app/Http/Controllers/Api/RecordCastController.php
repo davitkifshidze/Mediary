@@ -7,7 +7,7 @@ use App\Http\Resources\CastResource;
 use App\Models\AuditLog;
 use App\Models\CastMember;
 use App\Services\Cast\CastDetacher;
-use App\Services\Media\MediaDownloader;
+use App\Services\Cast\CastResolver;
 use App\Services\Tmdb\TmdbClient;
 use App\Support\CastSync;
 use App\Support\Like;
@@ -154,7 +154,7 @@ class RecordCastController extends Controller
      * სამი ურთიერთგამომრიცხავი შესვლა: არსებული `cast_member_id` ·
      * `tmdb_person_id` (შემოიყვანება) · სრულიად ხელით `name`.
      */
-    public function store(Request $request, string $type, int $id, TmdbClient $tmdb, MediaDownloader $media): JsonResponse
+    public function store(Request $request, string $type, int $id, CastResolver $resolver): JsonResponse
     {
         $record = $this->record($type, $id);
 
@@ -180,7 +180,7 @@ class RecordCastController extends Controller
             return response()->json(['message' => 'cast_limit_reached'], 422);
         }
 
-        $member = $this->resolveMember($data, $tmdb, $media);
+        $member = $resolver->resolve($data);
         if (! $member) {
             return response()->json(['message' => 'cast_member_not_found'], 404);
         }
@@ -452,62 +452,6 @@ class RecordCastController extends Controller
         }
 
         return $titles ? implode(' · ', $titles) : null;
-    }
-
-    /** სამი შესვლიდან ერთი მსახიობი (დუბლის აცილებით) */
-    private function resolveMember(array $data, TmdbClient $tmdb, MediaDownloader $media): ?CastMember
-    {
-        if ($data['cast_member_id'] ?? null) {
-            return CastMember::find($data['cast_member_id']);
-        }
-
-        $tmdbId = $data['tmdb_person_id'] ?? null;
-        $name = trim((string) ($data['name'] ?? ''));
-        $nameKa = trim((string) ($data['name_ka'] ?? ''));
-
-        $existing = CastSync::resolve($tmdbId, ['en' => $name ?: null, 'ka' => $nameKa ?: null]);
-
-        $person = [];
-        if ($tmdbId && $tmdb->configured()) {
-            try {
-                $person = $tmdb->person($tmdbId);
-            } catch (Throwable $e) {
-                report($e);
-            }
-            $name = $name ?: (string) ($person['name'] ?? '');
-        }
-
-        if (! $existing && $name === '') {
-            // ⚠️ სახელის გარეშე ლექსიკონში ცარიელი რიგი არ იქმნება
-            return null;
-        }
-
-        $member = $existing ?: new CastMember;
-
-        if (! $member->exists) {
-            $member->name = $name;
-        }
-        if ($tmdbId && ! $member->tmdb_person_id) {
-            $member->tmdb_person_id = $tmdbId;
-        }
-        if (! $member->gender) {
-            $member->gender = (int) ($data['gender'] ?? $person['gender'] ?? 0) ?: null;
-        }
-
-        // ფოტო TMDB-დან — ⚠️ **გაზიარებული ფაილია და კვოტას არ ხარჯავს** (19.4/B)
-        if ($tmdbId && ! $member->photo_path && ! empty($person['profile_path'])) {
-            if ($photo = $media->profile($person['profile_path'], $tmdbId)) {
-                $member->photo_path = $photo;
-            }
-        }
-
-        $member->save();
-
-        if ($nameKa) {
-            $member->setTranslation('ka', $nameKa);
-        }
-
-        return $member;
     }
 
     /** აუდიტი — `CastDetacher::log()` (⚠️ ერთი ფორმა მიბმისთვისაც და მოხსნისთვისაც) */
