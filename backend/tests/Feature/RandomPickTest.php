@@ -134,19 +134,23 @@ class RandomPickTest extends TestCase
     }
 
     /**
-     * Tasks §17.5 — **`count` რამდენიმე ბარათს აბრუნებს** (1–5), განმეორების გარეშე;
-     * ზღვარზე მეტი ჭერზე იჭრება, ნაკლული სია იმდენია, რამდენიც არის.
+     * Tasks §17.5 → §52.1 — **`count` რამდენიმე ბარათს აბრუნებს** (1–20), განმეორების
+     * გარეშე; ზღვარზე მეტი ჭერზე იჭრება, ნაკლული სია იმდენია, რამდენიც არის.
      */
     public function test_count_returns_a_batch_without_repeats(): void
     {
-        foreach (range(1, 8) as $i) {
+        foreach (range(1, 22) as $i) {
             $this->movie("Film {$i}", 'to_watch');
         }
 
         $ids = $this->getJson('/api/movies?pick=random&count=3')->assertOk()->assertJsonCount(3, 'data')->json('data.*.id');
         $this->assertCount(3, array_unique($ids));
 
-        $this->getJson('/api/movies?pick=random&count=99')->assertOk()->assertJsonCount(5, 'data');
+        $ids = $this->getJson('/api/movies?pick=random&count=10')->assertOk()->assertJsonCount(10, 'data')->json('data.*.id');
+        $this->assertCount(10, array_unique($ids));
+
+        // §52.1 — ჭერი 20-ია (ადრე 5)
+        $this->getJson('/api/movies?pick=random&count=99')->assertOk()->assertJsonCount(20, 'data');
         $this->getJson('/api/movies?pick=random&count=0')->assertOk()->assertJsonCount(1, 'data');
 
         $this->movie('Only', 'watched');

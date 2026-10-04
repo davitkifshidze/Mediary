@@ -15,6 +15,8 @@ import i18n from '@/i18n'
    **ჩუმად** ინახება (`saveModuleSettings`), ბოლო ჩიპი არ იხსნება; „სხვა N"
    ნაჩვენებს `exclude`-ით გამორიცხავს, ამოწურვაზე „თავიდან" ჩანს; „დავიწყოთ"
    `doing` როლის სტატუსს წერს და ბარათი ადგილზე რჩება.
+   Tasks §52 — ნაგულისხმევი რაოდენობა 5-ია, შენახული 10 და ხელით ჩაწერილი
+   (20-მდე) მოქმედებს; გაგორებისას ბარათების ადგილას იმდენივე ჩონჩხია.
    ============================================================ */
 
 const statuses: Status[] = [
@@ -99,6 +101,7 @@ async function mount(overrides: Partial<PickSource> = {}, userSettings: Record<s
     domain: 'movie',
     currentStatus: null,
     filterKey: '{}',
+    shape: 'poster',
     fetch: vi.fn(async () => [record(1, 'Amélie')]),
     setStatus: vi.fn(async () => ({})),
     open: vi.fn(),
@@ -130,7 +133,8 @@ describe('RandomPickDialog', () => {
   it('asks for one record from every todo status by default and excludes what it has shown on "another"', async () => {
     const source = await mount()
 
-    expect(source.fetch).toHaveBeenCalledWith({ count: 1, status: ['to_watch', 'wishlist'], exclude: [] })
+    // §52.1 — არაფერი შენახულა → 5
+    expect(source.fetch).toHaveBeenCalledWith({ count: 5, status: ['to_watch', 'wishlist'], exclude: [] })
     expect(document.body.textContent).toContain('Amélie')
     expect(document.body.textContent).toContain('2001 · ★ 7.4')
 
@@ -139,17 +143,17 @@ describe('RandomPickDialog', () => {
     expect(chip('ვუყურებ')?.getAttribute('aria-pressed')).toBe('false')
 
     ;(source.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
-    await act(async () => button(i18n.t('pick.againN', { count: 1 }))!.click())
+    await act(async () => button(i18n.t('pick.againN', { count: 5 }))!.click())
     await flush()
     await flush()
 
-    expect(source.fetch).toHaveBeenLastCalledWith({ count: 1, status: ['to_watch', 'wishlist'], exclude: [1] })
+    expect(source.fetch).toHaveBeenLastCalledWith({ count: 5, status: ['to_watch', 'wishlist'], exclude: [1] })
     // ამოიწურა — ცარიელი ფილტრისგან განსხვავებული მდგომარეობა, „თავიდან"-ით
     expect(document.body.textContent).toContain(i18n.t('pick.exhaustedTitle'))
 
     await act(async () => button(i18n.t('pick.restart'))!.click())
     await flush()
-    expect(source.fetch).toHaveBeenLastCalledWith({ count: 1, status: ['to_watch', 'wishlist'], exclude: [] })
+    expect(source.fetch).toHaveBeenLastCalledWith({ count: 5, status: ['to_watch', 'wishlist'], exclude: [] })
   })
 
   it('reads the saved count, toggles statuses, saves silently and keeps at least one status', async () => {
@@ -187,5 +191,51 @@ describe('RandomPickDialog', () => {
 
     await act(async () => button(i18n.t('actions.open'))!.click())
     expect(source.open).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
+  })
+
+  it('reads a saved 10 and a typed-in count up to 20 (§52.1)', async () => {
+    const ten = await mount({}, { pick: { count: 10 } })
+    expect(ten.fetch).toHaveBeenCalledWith({ count: 10, status: ['to_watch', 'wishlist'], exclude: [] })
+    expect(document.body.textContent).toContain(i18n.t('pick.againN', { count: 10 }))
+    act(() => root?.unmount())
+    container?.remove()
+
+    // სიაში არ არის (1 · 5 · 10) — „სხვა"-ს ველში ჩანს; 20-ზე მეტი იჭრება
+    const typed = await mount({}, { pick: { count: 15 } })
+    expect(typed.fetch).toHaveBeenCalledWith({ count: 15, status: ['to_watch', 'wishlist'], exclude: [] })
+    expect(document.querySelector<HTMLInputElement>('input[type="number"]')?.value).toBe('15')
+    act(() => root?.unmount())
+    container?.remove()
+
+    const capped = await mount({}, { pick: { count: 99 } })
+    expect(capped.fetch).toHaveBeenCalledWith({ count: 20, status: ['to_watch', 'wishlist'], exclude: [] })
+  })
+
+  it('shows as many skeletons as cards while it rolls, so the window keeps its size (§52.2)', async () => {
+    let release: (list: PickRecord[]) => void = () => {}
+    const pending = () => new Promise<PickRecord[]>((resolve) => (release = resolve))
+    const fetch = vi.fn(pending)
+    await mount({ fetch }, { pick: { count: 5 } })
+
+    // პირველი პასუხის მოლოდინში — ხუთი ჩონჩხი, სპინერის გარეშე
+    expect(document.querySelectorAll('[data-testid="pick-skeleton"]').length).toBe(5)
+    expect(document.querySelector('.animate-spin')).toBeNull()
+
+    await act(async () => release([1, 2, 3, 4, 5].map((id) => record(id, `Film ${id}`))))
+    await flush()
+    expect(document.querySelectorAll('[data-testid="pick-skeleton"]').length).toBe(0)
+    expect(document.body.textContent).toContain('Film 3')
+
+    // „სხვა 5" — ბარათების ადგილას ისევ ხუთი ჩონჩხი, იმავე ბადეში
+    await act(async () => button(i18n.t('pick.againN', { count: 5 }))!.click())
+    await flush()
+    const skeletons = document.querySelectorAll('[data-testid="pick-skeleton"]')
+    expect(skeletons.length).toBe(5)
+    expect(document.body.textContent).not.toContain('Film 3')
+    expect(skeletons[0].parentElement?.className).toContain('auto-fit')
+
+    await act(async () => release([record(6, 'Film 6')]))
+    await flush()
+    expect(document.body.textContent).toContain('Film 6')
   })
 })

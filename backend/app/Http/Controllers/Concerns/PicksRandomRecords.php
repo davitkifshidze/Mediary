@@ -23,16 +23,17 @@ use Illuminate\Http\Request;
  * რამდენიმე ჩანაწერის ასარჩევად ზუსტად ის არის, რის წინააღმდეგაც
  * პაგინაცია დაიწერა.
  *
- * ⚠️ **`count` 1–5-ით იჭრება** — დიალოგის ზღვარია (§17.4); მეტი ბარათი
- * მოდალში არ ეტევა, და ეს სიის მოთხოვნა არ არის.
+ * ⚠️ **`count` 1–20-ით იჭრება** — დიალოგის ზღვარია (Tasks §52.1: „1 · 5 · 10 ·
+ * სხვა", ხელით 20-მდე; ადრე 1–5 იყო); ეს „რამდენი შემომთავაზო"-ა და არა
+ * სიის მოთხოვნა — სიას თავისი გვერდები აქვს.
  *
  * ⚠️ **ცარიელი შედეგი ცარიელი სიაა და არა 404**: „ფილტრში არაფერია"
  * ნორმალური მდგომარეობაა და ეკრანზე `EmptyState`-ად იხატება.
  */
 trait PicksRandomRecords
 {
-    /** @var int დიალოგის ზედა ზღვარი — `NumberPick` 1–5 */
-    protected static int $pickMax = 5;
+    /** @var int დიალოგის ზედა ზღვარი — SPA-ს `PICK_MAX` (`lib/pick.ts`) */
+    protected static int $pickMax = 20;
 
     protected function randomRecords(Request $request, Builder $query, string $idColumn): Collection
     {

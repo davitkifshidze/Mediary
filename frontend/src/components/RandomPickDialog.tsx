@@ -53,14 +53,26 @@ import { StatusBadge } from '@/components/StatusBadge'
    ⚠️ **„დავიწყოთ" სტატუსს `doing` როლით ეძებს და არა გასაღებით** (§6.4);
    თუ ასეთი არ არსებობს, ღილაკი არ იხატება. ბარათი ადგილზე რჩება და
    ახალ სტატუსს აჩვენებს — ხუთბარათიან დიალოგს ერთი დაჭერა არ უნდა ხურავდეს.
+
+   ⚠️ **Tasks §52.2 — გაგორებისას ჩონჩხები და არა სპინერი.** ადრე ბარათები
+   ქრებოდა და `py-12`-იანი სპინერი დგებოდა — ფანჯარა პატარავდებოდა და ისევ
+   იზრდებოდა („ხტუნაობს"). ახლა N ბარათის ადგილას N ჩონჩხია, იმავე ბადეში და
+   იმავე ფორმით (`source.shape` — პასუხამდეც ცნობილია), ე.ი. ფანჯრის ზომა
+   ადგილზე რჩება.
    ============================================================ */
 
-const GRID: Record<number, string> = {
-  1: 'mx-auto max-w-xs',
-  2: 'grid-cols-2',
-  3: 'grid-cols-2 sm:grid-cols-3',
-  4: 'grid-cols-2 sm:grid-cols-4',
-  5: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+/* Tasks §52.1 — **ბადე ნებისმიერ რაოდენობაზე** (ადრე ხელით 1–5-ზე იყო):
+   სვეტი ბარათის სიგანითაა შემოსაზღვრული (`minmax`), `auto-fit` ცარიელ სვეტებს
+   აქრობს და ბარათები ცენტრში დგება — ორი ბარათი ფართო ფანჯარაში აღარ
+   იჭიმება, ოცი კი რიგებად ლაგდება. ერთი ბარათი — ვიწრო ფანჯრის შუაში. */
+function gridClass(shape: PickRecord['shape'], n: number): string {
+  if (n <= 1) return 'mx-auto max-w-xs'
+  return cn(
+    'justify-center',
+    shape === 'wide'
+      ? 'grid-cols-[repeat(auto-fit,minmax(14rem,18rem))]'
+      : 'grid-cols-[repeat(auto-fit,minmax(9.5rem,11.5rem))]',
+  )
 }
 
 export function RandomPickDialog({ source, onClose }: { source: PickSource; onClose: () => void }) {
@@ -183,8 +195,11 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
 
       <div className="mt-4">
         {busy ? (
-          <div className="grid place-items-center py-12">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          // §52.2 — N ჩონჩხი იმავე ბადეში: ფანჯარა ზომას არ იცვლის
+          <div className={cn('grid gap-3', gridClass(source.shape, count))} aria-busy>
+            {Array.from({ length: count }, (_, i) => (
+              <PickSkeleton key={i} shape={source.shape} />
+            ))}
           </div>
         ) : records.length === 0 ? (
           seen.length > 0 ? (
@@ -213,7 +228,7 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
             />
           )
         ) : (
-          <div className={cn('grid gap-3', GRID[Math.min(records.length, count)] ?? GRID[5])}>
+          <div className={cn('grid gap-3', gridClass(source.shape, records.length))}>
             {records.map((record, i) => (
               <PickCard
                 key={record.id}
@@ -237,6 +252,32 @@ export function RandomPickDialog({ source, onClose }: { source: PickSource; onCl
         </Button>
       </ModalFooter>
     </ModalShell>
+  )
+}
+
+/** §52.2 — ბარათის ჩონჩხი: იგივე ჩარჩო, ფოტოს ფორმა და ხაზების რიგი, რაც `PickCard`-ს აქვს */
+function PickSkeleton({ shape }: { shape: PickRecord['shape'] }) {
+  const bar = 'animate-pulse rounded bg-muted motion-reduce:animate-none'
+  return (
+    <div
+      aria-hidden
+      data-testid="pick-skeleton"
+      className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-card"
+    >
+      <div className={cn('w-full', bar, 'rounded-none', shape === 'wide' ? 'aspect-video' : 'aspect-[2/3]')} />
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <div className={cn('h-3.5 w-11/12', bar)} />
+        <div className={cn('h-3.5 w-3/5', bar)} />
+        <div className={cn('h-3 w-2/5', bar)} />
+        <div className={cn('h-3 w-4/5', bar)} />
+        <div className={cn('h-3 w-full', bar)} />
+        <div className={cn('h-3 w-3/4', bar)} />
+        <div className="mt-auto flex gap-2 pt-2">
+          <div className={cn('h-9 w-20', bar)} />
+          <div className={cn('h-9 w-24', bar)} />
+        </div>
+      </div>
+    </div>
   )
 }
 

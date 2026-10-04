@@ -452,6 +452,7 @@ export function LibraryPage({ type = 'movie' }: { type?: MediaType }) {
             domain: type,
             currentStatus: filters.status ?? null,
             filterKey: JSON.stringify(filters),
+            shape: 'poster',
             fetch: async (opts) =>
               (await api.pickRandom(filters, opts)).map((m) => ({
                 id: m.id,

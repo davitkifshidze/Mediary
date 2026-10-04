@@ -17,9 +17,14 @@ import type { Status } from '@/api/types'
 /** `module_user.settings`-ის გასაღები — რამდენი და რომელი სტატუსებიდან (§17.4) */
 export const PICK_SETTING = 'pick'
 
-/** დიალოგის `NumberPick`-ის სია; ჭერი ბაზისაც არის (`PicksRandomRecords::$pickMax`) */
-export const PICK_COUNTS = [1, 2, 3, 4, 5]
-export const PICK_MAX = 5
+/**
+ * Tasks §52.1 — დიალოგის `NumberPick`-ის სია: „1 · 5 · 10 · სხვა" (ხელით —
+ * `PICK_MAX`-მდე); ჭერი ბაზისაც არის (`PicksRandomRecords::$pickMax`).
+ */
+export const PICK_COUNTS = [1, 5, 10]
+export const PICK_MAX = 20
+/** რამდენი, თუ მოდულზე არაფერი შენახულა (ადრე — 1) */
+const PICK_DEFAULT = 5
 
 export interface PickOptions {
   count?: number
@@ -30,7 +35,7 @@ export interface PickOptions {
 }
 
 /** `?pick=random&count=N&status[]=…&exclude[]=…` — ორივე API-კლიენტი ერთსა და იმავეს გზავნის */
-export function pickParams({ count = 1, status = [], exclude = [] }: PickOptions): Record<string, unknown> {
+export function pickParams({ count = PICK_DEFAULT, status = [], exclude = [] }: PickOptions): Record<string, unknown> {
   return {
     pick: 'random',
     count: Math.min(PICK_MAX, Math.max(1, count)),
@@ -48,11 +53,13 @@ export interface PickSettings {
 /** ⚠️ JSON ბლოკი ნებისმიერი იყოს — ცარიელი/ძველი/დაზიანებული ნაგულისხმევს ნიშნავს */
 export function readPickSettings(settings: Record<string, unknown> | undefined): PickSettings {
   const raw = settings?.[PICK_SETTING]
-  if (!raw || typeof raw !== 'object') return { count: 1, statuses: null }
+  if (!raw || typeof raw !== 'object') return { count: PICK_DEFAULT, statuses: null }
 
   const { count, statuses } = raw as Record<string, unknown>
   const n =
-    typeof count === 'number' && Number.isFinite(count) ? Math.min(PICK_MAX, Math.max(1, Math.round(count))) : 1
+    typeof count === 'number' && Number.isFinite(count)
+      ? Math.min(PICK_MAX, Math.max(1, Math.round(count)))
+      : PICK_DEFAULT
   const list = Array.isArray(statuses) ? statuses.filter((x): x is string => typeof x === 'string') : null
 
   return { count: n, statuses: list && list.length ? list : null }
@@ -91,6 +98,8 @@ export interface PickSource {
   currentStatus: string | null
   /** სიის დანარჩენი ფილტრის ანაბეჭდი — query-ის გასაღების ნაწილი */
   filterKey: string
+  /** ბარათის ფორმა — ჩონჩხები (§52.2) მას პასუხამდე ხატავენ */
+  shape: PickRecord['shape']
   fetch: (opts: Required<PickOptions>) => Promise<PickRecord[]>
   setStatus: (id: number, statusKey: string) => Promise<unknown>
   /** „გახსნა" — გვერდი წყვეტს: დეტალის გვერდი (მედია) თუ ფანჯარა (ვიდეო) */

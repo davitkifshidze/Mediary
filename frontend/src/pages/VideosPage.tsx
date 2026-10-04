@@ -696,6 +696,7 @@ export function VideosPage() {
             domain: 'video',
             currentStatus: filters.status ?? null,
             filterKey: JSON.stringify(filters),
+            shape: 'wide',
             fetch: async (opts) => {
               const list = await pickRandomVideos(filters, opts)
               picked.current = Object.fromEntries(list.map((v) => [v.id, v]))
