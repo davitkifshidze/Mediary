@@ -27,6 +27,7 @@ use App\Support\CustomFields;
 use App\Support\CustomModules;
 use App\Support\Like;
 use App\Support\RecordLocks;
+use App\Support\RichText;
 use App\Support\Snippet;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -81,6 +82,13 @@ class GlobalSearch
 
     /** უფრო მოკლე ტერმინი პრაქტიკულად მთელ ბიბლიოთეკას აბრუნებდა — ეს პასუხი არაა */
     public const MIN_TERM = 2;
+
+    /**
+     * Tasks §47 — **Markdown-ის ველები** (აღწერა, ჩანიშვნა): SQL სიტყვებით
+     * ეძებს (`RichText::whereWords` — `**` სიტყვებს შორის ფრაზას აღარ არღვევს),
+     * ნაჭერი კი უბრალო ტექსტიდან იჭრება — ბარათზე `**` და `[..](..)` არ ჩანს.
+     */
+    private const RICH_FIELDS = ['description', 'note'];
 
     /**
      * **რომელი ველი უფრო მნიშვნელოვანია ბარათზე.** ერთ ჩანაწერში ხუთი
@@ -514,9 +522,13 @@ class GlobalSearch
         $like = $this->like($term);
 
         $query->where(function (Builder $w) use ($spec, $like, $term) {
-            foreach ($spec['columns'] ?? [] as $columns) {
+            foreach ($spec['columns'] ?? [] as $field => $columns) {
                 foreach ($columns as $column) {
-                    $w->orWhere($column, 'like', $like);
+                    if (in_array($field, self::RICH_FIELDS, true)) {
+                        $w->orWhere(fn (Builder $q) => RichText::whereWords($q, $column, $term));
+                    } else {
+                        $w->orWhere($column, 'like', $like);
+                    }
                 }
             }
 
@@ -529,7 +541,7 @@ class GlobalSearch
             }
 
             foreach ($spec['relations'] ?? [] as $rel) {
-                $w->orWhereHas($rel['relation'], fn (Builder $r) => $this->relationWhere($r, $rel, $like));
+                $w->orWhereHas($rel['relation'], fn (Builder $r) => $this->relationWhere($r, $rel, $like, $term));
             }
 
             if (isset($spec['custom'])) {
@@ -546,11 +558,18 @@ class GlobalSearch
      * დაშორდებოდა — ეს კი ზუსტად ის შემთხვევაა, როცა ძებნა „პოულობს,
      * მაგრამ ნაჭერს აღარ აჩვენებს"-ად იქცევა.
      */
-    private function relationWhere(Builder|Relation $query, array $rel, string $like): void
+    private function relationWhere(Builder|Relation $query, array $rel, string $like, string $term): void
     {
-        $query->where(function (Builder $q) use ($rel, $like) {
+        // Tasks §47 — ჩანიშვნის/აღწერის სვეტი სიტყვებით (იხ. `RICH_FIELDS`)
+        $rich = array_merge([], ...array_values(array_intersect_key($rel['fields'], array_flip(self::RICH_FIELDS))));
+
+        $query->where(function (Builder $q) use ($rel, $like, $term, $rich) {
             foreach ($this->relationColumns($rel) as $column) {
-                $q->orWhere($column, 'like', $like);
+                if (in_array($column, $rich, true)) {
+                    $q->orWhere(fn (Builder $x) => RichText::whereWords($x, $column, $term));
+                } else {
+                    $q->orWhere($column, 'like', $like);
+                }
             }
 
             // მსახიობის ქართული სახელი თავის ცხრილშია (`cast_member_translations`)
@@ -604,7 +623,7 @@ class GlobalSearch
             if (($rel['eager'] ?? true) === false) {
                 continue;
             }
-            $with[$rel['relation']] = fn ($r) => $this->relationWhere($r, $rel, $like);
+            $with[$rel['relation']] = fn ($r) => $this->relationWhere($r, $rel, $like, $term);
         }
 
         if ($with) {
@@ -645,7 +664,7 @@ class GlobalSearch
 
         foreach ($spec['columns'] ?? [] as $field => $columns) {
             foreach ($columns as $column) {
-                if ($text = Snippet::around($record->getAttribute($column), $term)) {
+                if ($text = $this->snippetOf($field, $record->getAttribute($column), $term)) {
                     $out[] = ['field' => $field, 'text' => $text];
                     break; // ერთი ველი — ერთი ნაჭერი (ka/en ორივეს ჩვენება გამეორებაა)
                 }
@@ -666,7 +685,7 @@ class GlobalSearch
             foreach ($record->getRelation($rel['relation']) as $row) {
                 foreach ($rel['fields'] as $field => $columns) {
                     foreach ($columns as $column) {
-                        if ($text = Snippet::around($row->getAttribute($column), $term)) {
+                        if ($text = $this->snippetOf($field, $row->getAttribute($column), $term)) {
                             // წიგნის ციტატა იმავე ცხრილშია — მას თავისი სახელი ჰქვია
                             $name = ! empty($rel['quote']) && $row->is_quote ? 'quote' : $field;
                             $out[] = ['field' => $name, 'text' => $text];
@@ -684,6 +703,27 @@ class GlobalSearch
         }
 
         return $this->rank($out);
+    }
+
+    /**
+     * Tasks §47 — Markdown-ის ველის ნაჭერი **უბრალო ტექსტიდან**; სიტყვებად
+     * ნაპოვნ ფრაზას (სიტყვები ერთად არ დგას) ნაჭერი პირველი ნაპოვნი
+     * სიტყვის გარშემო აქვს — თორემ ჩანაწერი აუხსნელად გამოჩნდებოდა.
+     */
+    private function snippetOf(string $field, mixed $value, string $term): ?string
+    {
+        if (! in_array($field, self::RICH_FIELDS, true)) {
+            return Snippet::around($value, $term);
+        }
+
+        $plain = RichText::plain(is_string($value) ? $value : null);
+        $snippet = Snippet::around($plain, $term);
+
+        foreach (RichText::words($term) as $word) {
+            $snippet ??= Snippet::around($plain, $word);
+        }
+
+        return $snippet;
     }
 
     /**

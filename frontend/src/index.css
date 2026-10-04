@@ -1092,3 +1092,101 @@
   stroke: var(--primary);
   stroke-opacity: 0.9;
 }
+
+/* ============================================================
+   Tasks §47 — **ფორმატიანი ტექსტი** (Markdown): ჩვენება (`ui/markdown.tsx`)
+   და რედაქტორი (TipTap, `ui/rich-text-editor.tsx`) **ერთი სტილით** — რაც
+   წერისას ჩანს, ის ჩანს ჩანაწერზეც. ⚠️ Tailwind-ის preflight სიებს ნიშანს
+   და სათაურებს ზომას აცლის, ე.ი. აქ ხელით ბრუნდება; ბმული — ხაზგასმის
+   გარეშე (საერთო წესი), ფერით.
+   ============================================================ */
+.fb-markdown {
+  overflow-wrap: anywhere;
+}
+.fb-markdown > * + * {
+  margin-top: 0.75em;
+}
+.fb-markdown :is(h1, h2, h3, h4, h5, h6) {
+  font-size: 1.1em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--foreground);
+}
+.fb-markdown ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.fb-markdown ol {
+  list-style: decimal;
+  padding-left: 1.6em;
+}
+.fb-markdown li + li,
+.fb-markdown li > * + * {
+  margin-top: 0.25em;
+}
+.fb-markdown blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.85em;
+  color: var(--muted-foreground);
+}
+.fb-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--muted);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+.fb-markdown pre {
+  background: var(--muted);
+  border-radius: var(--radius);
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+}
+.fb-markdown pre code {
+  background: none;
+  padding: 0;
+}
+.fb-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.fb-markdown a {
+  color: var(--primary);
+  transition: opacity 150ms;
+}
+.fb-markdown a:hover {
+  opacity: 0.75;
+}
+.fb-markdown strong {
+  font-weight: 600;
+}
+.fb-markdown table {
+  border-collapse: collapse;
+}
+.fb-markdown :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 0.25em 0.5em;
+  text-align: left;
+}
+
+/* რედაქტორი: სიმაღლე `--rt-min`-იდან (რიგები) 60vh-მდე, მერე შიგნით იხვევა;
+   „გაშლისას" ფანჯარას ავსებს. ⚠️ ფოკუსის ნიშანი არ ჩანს (საერთო წესი). */
+.fb-rich-text .fb-rich-text-body {
+  min-height: var(--rt-min, 6rem);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+}
+.fb-rich-text--full .fb-rich-text-body {
+  min-height: 100%;
+  max-height: none;
+  overflow-y: visible;
+}
+.fb-rich-text .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}

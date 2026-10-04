@@ -24,6 +24,7 @@ import {
   uploadPlaceFiles,
 } from '@/api/places'
 import { storageUrl } from '@/lib/api'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
@@ -51,10 +52,11 @@ import {
 } from '@/components/FilterPanel'
 import { RatingBadge } from '@/components/ui/star-rating'
 import { Button } from '@/components/ui/button'
+import { RichText } from '@/components/ui/rich-text'
 import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -74,7 +76,6 @@ import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 
@@ -736,13 +737,13 @@ function PlaceForm({
           </FormField>
 
           <FormField {...fields.field('description')} htmlFor="p-description">
-            <Textarea
+            <RichText
               id="p-description"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               placeholder={fields.placeholder('description')}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </FormField>
         </FormSection>

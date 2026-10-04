@@ -19,6 +19,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { Markdown } from '@/components/ui/markdown'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -216,7 +217,7 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
         />
 
         {course.description && (
-          <p className="whitespace-pre-line text-sm text-muted-foreground">{course.description}</p>
+          <Markdown text={course.description} className="text-sm text-muted-foreground" />
         )}
 
         {/* §29.2 — ბმული ღილაკის ფორმით (`buttonVariants outline`), არა ხელით ნახატი `<a>`;

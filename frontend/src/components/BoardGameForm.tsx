@@ -17,6 +17,7 @@ import {
   type ShopSource,
 } from '@/api/boardGames'
 import { storageUrl } from '@/lib/api'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
@@ -25,10 +26,11 @@ import { useContentLang } from '@/lib/settings'
 import { BoardGameGenreDialog } from '@/components/BoardGameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
+import { RichText } from '@/components/ui/rich-text'
 import { Input } from '@/components/ui/input'
 import { DurationInput } from '@/components/ui/duration-input'
 import { FieldLabel } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import {
   QuickFill,
   QuickFillCandidate,
@@ -39,7 +41,6 @@ import {
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { RatingSelect } from '@/components/ui/rating-select'
@@ -495,12 +496,12 @@ export function BoardGameForm({
           </FormField>
 
           <FormField {...fields.field('description')} htmlFor="bg-desc">
-            <Textarea
+            <RichText
               id="bg-desc"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </FormField>
         </FormSection>

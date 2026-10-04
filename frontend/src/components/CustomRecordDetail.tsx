@@ -34,6 +34,7 @@ import { useFileViewer } from '@/components/FileViewer'
 import { RecordNotes } from '@/components/RecordNotes'
 import { errorMessage } from '@/lib/errors'
 import { useConfirm, useToast } from '@/components/ui/feedback'
+import { Markdown } from '@/components/ui/markdown'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PrivateFileLink } from '@/components/PrivateFile'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
@@ -146,7 +147,7 @@ export function CustomRecordDetail({
 
         {record.description && (
           <DetailSection title={fields.label('description')}>
-            <p className="whitespace-pre-line text-sm leading-relaxed">{record.description}</p>
+            <Markdown text={record.description} className="text-sm leading-relaxed" />
           </DetailSection>
         )}
 

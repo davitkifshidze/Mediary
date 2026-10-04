@@ -11,6 +11,7 @@ use App\Support\ColumnTrash;
 use App\Support\Lang;
 use App\Support\Like;
 use App\Support\Rating;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -258,8 +259,8 @@ class BookController extends Controller
             // ერთი ენა მაინც სავალდებულოა — უსათაურო წიგნი სიაში ვერ იძებნება
             'title_ka' => ['nullable', 'string', 'max:255', 'required_without:title_en'],
             'title_en' => ['nullable', 'string', 'max:255', 'required_without:title_ka'],
-            'description_ka' => ['nullable', 'string', 'max:20000'],
-            'description_en' => ['nullable', 'string', 'max:20000'],
+            'description_ka' => RichText::rules(),
+            'description_en' => RichText::rules(),
 
             'author' => ['nullable', 'string', 'max:255'],
             'publisher' => ['nullable', 'string', 'max:255'],

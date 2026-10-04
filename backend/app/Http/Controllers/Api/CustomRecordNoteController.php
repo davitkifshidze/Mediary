@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CustomRecordNoteResource;
 use App\Models\CustomRecord;
 use App\Models\CustomRecordNote;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /**
@@ -28,7 +29,7 @@ class CustomRecordNoteController extends Controller
     {
         abort_unless($record->module === $type, 404);
 
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $note = $record->notes()->create([
             'user_id' => $request->user()->id,
@@ -43,7 +44,7 @@ class CustomRecordNoteController extends Controller
     {
         abort_unless($note->module === $type, 404);
 
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $note->update($data);
 

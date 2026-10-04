@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookNoteResource;
 use App\Models\Book;
 use App\Models\BookNote;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /**
@@ -50,7 +51,7 @@ class BookNoteController extends Controller
     private function validated(Request $request): array
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['required', 'string', 'max:'.RichText::NOTE_MAX],
             'is_quote' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
         ]);

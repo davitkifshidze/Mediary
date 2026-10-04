@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\GameNoteResource;
 use App\Models\Game;
 use App\Models\GameNote;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /** თამაშის ჩანიშვნები (Tasks §11.1) — საკუთარი ცხრილი `game_notes` */
@@ -18,7 +19,7 @@ class GameNoteController extends Controller
 
     public function store(Request $request, Game $game)
     {
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $note = $game->notes()->create([
             'user_id' => $request->user()->id,
@@ -30,7 +31,7 @@ class GameNoteController extends Controller
 
     public function update(Request $request, GameNote $gameNote)
     {
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $gameNote->update($data);
 

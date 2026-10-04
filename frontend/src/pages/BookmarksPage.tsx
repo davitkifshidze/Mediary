@@ -3,7 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { plainText } from '@/lib/richText'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { Pagination } from '@/components/ui/pagination'
+import { RichText } from '@/components/ui/rich-text'
 import {
   Check,
   ChevronDown,
@@ -77,10 +80,9 @@ import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/ac
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormGrid, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormGrid, FormSection } from '@/components/ui/form-layout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { LinkField } from '@/components/ui/link-field'
-import { Textarea } from '@/components/ui/textarea'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageContainer } from '@/components/ui/page'
@@ -450,7 +452,7 @@ export function BookmarksPage() {
                   }
                   extra={
                     bookmark.description && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{bookmark.description}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{plainText(bookmark.description)}</p>
                     )
                   }
                   tags={bookmark.tags}
@@ -930,13 +932,13 @@ function BookmarkForm({
         <FormGrid>
           {/* ⚠️ §26 — საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
           <FormField {...fields.field('description')} htmlFor="b-desc">
-            <Textarea
+            <RichText
               id="b-desc"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               placeholder={fields.placeholder('description')}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </FormField>
 

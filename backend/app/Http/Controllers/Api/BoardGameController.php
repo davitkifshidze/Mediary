@@ -11,6 +11,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\Rating;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
@@ -222,7 +223,7 @@ class BoardGameController extends Controller
 
         return $request->validate([
             'title' => [$game ? 'sometimes' : 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:20000'],
+            'description' => RichText::rules(),
             'year' => ['nullable', 'integer', 'min:1', 'max:2200'],
 
             'designer' => ['nullable', 'string', 'max:255'],

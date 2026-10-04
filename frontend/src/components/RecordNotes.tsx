@@ -1,15 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { NotebookPen, Plus, Quote, Search, Trash2 } from 'lucide-react'
 import { errorMessage } from '@/lib/errors'
+import { NOTE_TEXT_MAX, plainText } from '@/lib/richText'
 import { highlightParts } from '@/lib/searchResults'
 import { RecordNoteDialog } from '@/components/RecordNoteDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichText } from '@/components/ui/rich-text'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
 
@@ -97,6 +98,7 @@ export function RecordNotes({
   const { toast } = useToast()
   const confirm = useConfirm()
 
+  const addId = useId()
   const [body, setBody] = useState('')
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
@@ -134,12 +136,16 @@ export function RecordNotes({
     onError: fail,
   })
 
+  /* Tasks §47 — ჩანიშვნა Markdown-ია: სიაში, ძებნასა და ხაზგასმაში უბრალო ტექსტია
+     (ძველი ციტატა — `is_quote` — ისედაც უბრალო ტექსტია) */
+  const texts = useMemo(() => new Map(notes.map((n) => [n.id, n.is_quote ? n.body : plainText(n.body)])), [notes])
+
   const term = q.trim()
   const shown = useMemo(() => {
     if (!term) return notes
     const needle = term.toLowerCase()
-    return notes.filter((n) => n.body.toLowerCase().includes(needle))
-  }, [notes, term])
+    return notes.filter((n) => (texts.get(n.id) ?? n.body).toLowerCase().includes(needle))
+  }, [notes, texts, term])
 
   /* ⚠️ **გახსნილი ჩანიშვნა id-ით ინახება და არა ობიექტად**: რედაქტირების
      შემდეგ სია თავიდან იკითხება, ე.ი. ობიექტის ასლი ძველ ტექსტს აჩვენებდა. */
@@ -149,11 +155,14 @@ export function RecordNotes({
     <div>
       {/* ---------- დამატება ---------- */}
       <div className="mb-3 space-y-2">
-        <Textarea
+        <RichText
+          id={addId}
           rows={2}
           placeholder={placeholder}
+          label={t('recordNotes.title')}
+          maxLength={NOTE_TEXT_MAX}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={setBody}
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -224,7 +233,7 @@ export function RecordNotes({
                   note.is_quote && 'italic',
                 )}
               >
-                {highlightParts(note.body, term).map((part, i) =>
+                {highlightParts(texts.get(note.id) ?? note.body, term).map((part, i) =>
                   part.hit ? (
                     <mark key={i} className="rounded-md bg-primary/20 text-foreground">
                       {part.text}

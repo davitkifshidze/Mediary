@@ -6,6 +6,7 @@ import type { ModuleInfo } from '@/api/account'
 import { saveModuleSettings } from '@/api/videos'
 import type { Status } from '@/api/types'
 import { useContentLang } from '@/lib/settings'
+import { plainText } from '@/lib/richText'
 import { useModules } from '@/lib/modules'
 import {
   PICK_COUNTS,
@@ -281,7 +282,7 @@ function PickCard({
         </button>
         {facts && <p className="text-xs text-muted-foreground">{facts}</p>}
         {record.meta.length > 0 && <p className="line-clamp-1 text-xs text-muted-foreground">{record.meta.join(' · ')}</p>}
-        {record.description && <p className="line-clamp-3 text-xs text-muted-foreground">{record.description}</p>}
+        {record.description && <p className="line-clamp-3 text-xs text-muted-foreground">{plainText(record.description)}</p>}
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
           {status && <StatusBadge status={status} />}
           <Button variant="outline" size="sm" onClick={onOpen}>

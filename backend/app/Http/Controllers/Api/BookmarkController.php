@@ -10,6 +10,7 @@ use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -60,7 +61,7 @@ class BookmarkController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
                 ->orWhere('url', 'like', Like::contains($q))
                 ->orWhere('domain', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
@@ -175,7 +176,7 @@ class BookmarkController extends Controller
             // სათაური არასავალდებულოა — ცარიელზე გვერდიდან წამოვა
             'title' => ['nullable', 'string', 'max:255'],
             'url' => [$bookmark ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => RichText::rules(),
             // კატეგორია მხოლოდ **საკუთარი** ლექსიკონიდან
             'category_id' => [
                 ...$must,

@@ -10,6 +10,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
 use App\Support\Rating;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -67,7 +68,7 @@ class PlaceController extends Controller
                 ->orWhere('address', 'like', Like::contains($q))
                 ->orWhere('city', 'like', Like::contains($q))
                 ->orWhere('country', 'like', Like::contains($q))
-                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
 
@@ -211,7 +212,7 @@ class PlaceController extends Controller
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'osm_id' => ['nullable', 'string', 'max:60'],
             'osm_type' => ['nullable', 'string', 'max:20'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => RichText::rules(),
             'category_id' => [
                 ...$must,
                 'integer',

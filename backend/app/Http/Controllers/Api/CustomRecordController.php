@@ -12,6 +12,7 @@ use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\CustomModules;
 use App\Support\Like;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -59,7 +60,7 @@ class CustomRecordController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
                 ->orWhere('url', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
@@ -222,7 +223,7 @@ class CustomRecordController extends Controller
             // სათაური — ბმულის გვერდიდანაც ივსება, ე.ი. ბმულთან ერთად არჩევითია
             'title' => [...($record ? ['sometimes'] : []), 'required_without:url', 'nullable', 'string', 'max:255'],
             'url' => ['nullable', 'string', 'max:1000', 'url'],
-            'description' => ['nullable', 'string', 'max:10000'],
+            'description' => RichText::rules(),
             'status' => [
                 ...($hasStatuses ? $must : ['nullable']),
                 'string',

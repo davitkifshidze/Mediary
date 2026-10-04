@@ -7,6 +7,7 @@ use App\Http\Resources\NoteEntryResource;
 use App\Models\NoteEntry;
 use App\Models\Status;
 use App\Support\Like;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -51,7 +52,7 @@ class NoteEntryController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn ($inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
                 ->orWhere('tags', 'like', Like::contains($q))
                 ->orWhere('links', 'like', Like::contains($q)));
         }
@@ -141,7 +142,7 @@ class NoteEntryController extends Controller
 
         return $request->validate([
             'title' => [$entry ? 'sometimes' : 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:20000'],
+            'description' => RichText::rules(),
             'category_id' => [
                 ...$must, 'integer',
                 Rule::exists('note_categories', 'id')->whereNull('trashed_at')->where('user_id', $userId),

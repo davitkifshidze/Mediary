@@ -20,6 +20,7 @@ import { formatBytes } from '@/lib/utils'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { RatingStars } from '@/components/ui/star-rating'
+import { Markdown } from '@/components/ui/markdown'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { EnumStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -222,7 +223,7 @@ export function PlaceDetail({ place, onClose }: { place: Place; onClose: () => v
         />
 
         {place.description && (
-          <p className="whitespace-pre-line text-sm text-muted-foreground">{place.description}</p>
+          <Markdown text={place.description} className="text-sm text-muted-foreground" />
         )}
 
         {/* Tasks §30 — რუკა მარკერით, მარშრუტი ჩემი მდებარეობიდან, შენახული მარშრუტები;

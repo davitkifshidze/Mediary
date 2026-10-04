@@ -30,6 +30,7 @@ use App\Support\ImportSource;
 use App\Support\MediaDomain;
 use App\Support\Openable;
 use App\Support\PublicDomain;
+use App\Support\RichText;
 use App\Support\ShareDomain;
 use App\Support\StatusDomain;
 use App\Support\StorageFolder;
@@ -292,6 +293,17 @@ class RegistryConsistencyTest extends TestCase
      * აქცევდა და რიცხვი სხვას იტყოდა), „რჩეულს" პლეილისტზე (422), ან სექციას
      * სხვა მოდულის უფლებით დახატავდა.
      */
+    public function test_the_spa_rich_text_limits_mirror_the_backend(): void
+    {
+        /* Tasks §47 — რედაქტორის მთვლელი ზღვარს SPA-ში ითვლის; დაშორებისას
+           „ზღვრამდე" ტექსტი სერვერზე 422-ით დაბრუნდებოდა, ან მთვლელი ტყუილად
+           გააფრთხილებდა. */
+        $source = (string) file_get_contents(base_path('../frontend/src/lib/richText.ts'));
+
+        $this->assertMatchesRegularExpression('/export const RICH_TEXT_MAX = '.RichText::MAX.'\b/', $source);
+        $this->assertMatchesRegularExpression('/export const NOTE_TEXT_MAX = '.RichText::NOTE_MAX.'\b/', $source);
+    }
+
     public function test_the_spa_share_meta_mirrors_the_backend(): void
     {
         $source = (string) file_get_contents(base_path('../frontend/src/lib/shareLinks.ts'));

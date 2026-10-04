@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, ExternalLink } from 'lucide-react'
 import { toggleNoteFavorite, type NoteEntry } from '@/api/notes'
 import { FavoriteButton } from '@/components/ui/favorite-button'
+import { Markdown } from '@/components/ui/markdown'
 import { NoteUploads } from '@/components/NoteUploads'
 import { NoteRemindersButton, NoteRemindersChip, NoteRemindersDialog } from '@/components/NoteRemindersDialog'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -81,7 +82,7 @@ export function NoteDetail({ note, onClose }: { note: NoteEntry; onClose: () => 
         )}
 
         {note.description && (
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{note.description}</p>
+          <Markdown text={note.description} className="text-sm text-muted-foreground" />
         )}
 
         {note.links.length > 0 && (

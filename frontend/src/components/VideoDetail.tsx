@@ -28,6 +28,7 @@ import { usePlayer } from '@/lib/player'
 import { formatDuration } from '@/lib/videoDuration'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Markdown } from '@/components/ui/markdown'
 import { Button } from '@/components/ui/button'
 import { VideoBadges } from '@/components/VideoBadges'
 import { useContentLang } from '@/lib/settings'
@@ -209,7 +210,7 @@ export function VideoDetail({
               </p>
             )}
             {video.description && (
-              <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{video.description}</p>
+              <Markdown text={video.description} className="mt-3 text-sm text-muted-foreground" />
             )}
             {video.tags.length > 0 && (
               <p className="mt-3 flex flex-wrap gap-1">

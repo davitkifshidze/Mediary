@@ -14,6 +14,7 @@ use App\Services\Video\VideoSearch;
 use App\Support\ColumnTrash;
 use App\Support\DuplicateLink;
 use App\Support\Like;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use App\Support\VideoUrl;
@@ -216,7 +217,7 @@ class VideoController extends Controller
             // სათაური არასავალდებულოა — ცარიელზე ბმულიდან წამოვა (K2)
             'title' => ['nullable', 'string', 'max:255'],
             'url' => [$video ? 'sometimes' : 'required', 'string', 'max:1000', 'url'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => RichText::rules(),
             // Q52 — არხი და გამოქვეყნების თარიღი (ვებძებნიდან, oEmbed-იდან ან ხელით)
             'channel' => ['nullable', 'string', 'max:255'],
             'published_at' => ['nullable', 'date'],

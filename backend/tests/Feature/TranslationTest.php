@@ -489,6 +489,27 @@ class TranslationTest extends TestCase
     }
 
     /**
+     * Tasks §47 — აღწერა Markdown-ია: პრომპტი ფორმატისა და მისამართების
+     * შენარჩუნებას ითხოვს (თარგმანშიც და გადამოწმებაშიც).
+     */
+    public function test_the_prompt_keeps_markdown_and_links(): void
+    {
+        $this->gemini();
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => '**სქელი** [ბმული](https://x.dev)']]]]],
+            ]),
+        ]);
+
+        (new Translator)->toGeorgian('**Bold** [link](https://x.dev)');
+        (new Translator)->review('**ცუდი** [ბმული](https://x.dev)', '**Bold** [link](https://x.dev)', 'ka');
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($r) => str_contains($r['contents'][0]['parts'][0]['text'], 'keep the same Markdown syntax and every URL'));
+        $this->assertCount(2, Http::recorded(fn ($r) => str_contains($r['contents'][0]['parts'][0]['text'], 'Markdown syntax')));
+    }
+
+    /**
      * ⚠️ `parts[0]` არ გამოდგება: 3.x მოდელები ფიქრის ბლოკსაც აბრუნებენ
      * (`thought: true`) — მისი წაკითხვა თარგმანის ნაცვლად მსჯელობას შეინახავდა.
      */

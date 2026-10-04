@@ -23,6 +23,7 @@ import {
 import { mediaApi } from '@/api/media'
 import { relockRecord } from '@/api/locks'
 import { lockMenuActions, mediaLockBase } from '@/lib/locks'
+import { plainText } from '@/lib/richText'
 import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { genreName, movieTitle } from '@/lib/display'
@@ -53,7 +54,8 @@ function useMovieRecord(movie: MovieListItem, type: MediaType) {
   const { data: statuses = [] } = useStatuses(type)
   const { detailBase } = mediaOf(type)
   const missing = movie.missing ?? []
-  const desc = lang === 'ka' ? movie.description_ka || movie.description_en : movie.description_en || movie.description_ka
+  // Tasks §47 — ბარათზე აღწერა უბრალო ტექსტია (ფორმატი მხოლოდ დეტალშია)
+  const desc = plainText(lang === 'ka' ? movie.description_ka || movie.description_en : movie.description_en || movie.description_ka)
 
   const inval = () => {
     qc.invalidateQueries({ queryKey: [type] })

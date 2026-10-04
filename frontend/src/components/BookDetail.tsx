@@ -27,6 +27,7 @@ import { RecordGallery } from '@/components/RecordGallery'
 import { ProgressCard, ProgressDialog } from '@/components/BookProgress'
 import { BookQuotes, QuoteDialog } from '@/components/BookQuotes'
 import { Tabs } from '@/components/ui/tabs'
+import { Markdown } from '@/components/ui/markdown'
 import { favoriteAction, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { cn } from '@/lib/utils'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -170,7 +171,7 @@ export function BookDetail({ book, onClose }: { book: Book; onClose: () => void 
           </div>
         </DetailSection>
 
-        {description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>}
+        {description && <Markdown text={description} className="text-sm text-muted-foreground" />}
 
         {links.length > 0 && (
           <DetailSection title={t('books.linksTitle')}>

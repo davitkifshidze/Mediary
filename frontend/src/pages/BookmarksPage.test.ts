@@ -421,7 +421,8 @@ describe('BookmarksPage form (§41)', () => {
 
     expect(mocks.fetchLinkPreview).toHaveBeenCalledWith('https://laravel.com/docs')
     expect((document.getElementById('b-title') as HTMLInputElement).value).toBe('Laravel')
-    expect((document.getElementById('b-desc') as HTMLTextAreaElement).value).toBe('The PHP framework')
+    // Tasks §47 — აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
+    expect(document.getElementById('b-desc')?.textContent).toBe('The PHP framework')
   })
 
   it('a web photo and video picked before saving are sent right after the bookmark is created (§41.3)', async () => {

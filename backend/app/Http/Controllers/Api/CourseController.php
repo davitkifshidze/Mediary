@@ -9,6 +9,7 @@ use App\Services\Links\LinkResolver;
 use App\Services\Storage\StorageMeter;
 use App\Support\ColumnTrash;
 use App\Support\Like;
+use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use App\Support\VideoUrl;
@@ -58,7 +59,7 @@ class CourseController extends Controller
         if ($q = $request->string('q')->toString()) {
             $query->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', Like::contains($q))
-                ->orWhere('description', 'like', Like::contains($q))
+                ->orWhere(fn ($words) => RichText::whereWords($words, 'description', $q)) // §47 — ფორმატის გარეშე
                 ->orWhere('platform', 'like', Like::contains($q))
                 ->orWhere('tags', 'like', Like::contains($q)));
         }
@@ -151,7 +152,7 @@ class CourseController extends Controller
             'title' => [$course ? 'sometimes' : 'required', 'string', 'max:255'],
             // ⚠️ ბმული **არასავალდებულოა**: ოფლაინ კურსსაც მისამართი არ აქვს
             'url' => ['nullable', 'string', 'max:1000', 'url'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => RichText::rules(),
             'category_id' => [
                 ...$must,
                 'integer',

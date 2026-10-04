@@ -27,6 +27,7 @@ import { GameMetaSections } from '@/components/GameMetaCards'
 import { errorMessage } from '@/lib/errors'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
+import { Markdown } from '@/components/ui/markdown'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { RatingStars } from '@/components/ui/star-rating'
@@ -134,7 +135,7 @@ export function GameDetail({ game, onClose }: { game: Game; onClose: () => void 
         <Screenshots game={game} />
 
         {description && (
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{description}</p>
+          <Markdown text={description} className="text-sm text-muted-foreground" />
         )}
 
         {/* ---------- მაღაზიები / ოფიციალური საიტი ---------- */}

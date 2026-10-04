@@ -231,7 +231,8 @@ describe('VideoForm link info (Tasks §44)', () => {
     expect(mocks.fetchVideoMetadata).toHaveBeenCalledWith(META.url, undefined)
     expect(frameImage()?.getAttribute('src')).toBe(META.image_url)
     expect((document.getElementById('v-title') as HTMLInputElement).value).toBe(META.title)
-    expect((document.getElementById('v-desc') as HTMLTextAreaElement).value).toBe(META.description)
+    // Tasks §47 — აღწერა ფორმატიანი რედაქტორია (contenteditable), არა textarea
+    expect(document.getElementById('v-desc')?.textContent).toBe(META.description)
     expect((document.getElementById('v-channel') as HTMLInputElement).value).toBe(META.author)
     // ბარათში აღწერაც ჩანს; yt-dlp არის — „წამოღება ვებიდან" აღარ სჭირდება
     expect(document.body.textContent).toContain(META.description)

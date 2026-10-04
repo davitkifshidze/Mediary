@@ -213,6 +213,27 @@ class GlobalSearchTest extends TestCase
     }
 
     /**
+     * Tasks §47 — აღწერა Markdown-ია: სიტყვებს შორის `**` და ბმულის ფრჩხილი
+     * ფრაზის ძებნას აღარ არღვევს, ნაჭერში კი ფორმატის ნიშნები არ ჩანს.
+     */
+    public function test_a_formatted_description_is_found_and_shown_as_plain_text(): void
+    {
+        $movie = Movie::create(['user_id' => $this->alice->id, 'year' => 2020]);
+        $movie->setTranslation('en', [
+            'title' => 'Choices',
+            'description' => 'A **red pill** and [blue](https://x.dev) one',
+        ]);
+
+        $res = $this->actingAs($this->alice)->getJson('/api/search?q='.urlencode('red pill and blue'))->assertOk();
+
+        $match = collect($res->json('groups.0.items.0.matches'))->firstWhere('field', 'description');
+
+        $this->assertNotNull($match, 'ფორმატიანი აღწერა ფრაზით ვერ მოიძებნა');
+        $this->assertStringContainsString('red pill and blue', $match['text']);
+        $this->assertStringNotContainsString('**', $match['text']);
+    }
+
+    /**
      * ⚠️ **სიტყვის შუაში პოვნაც სავალდებულოა** („ინ" → „ინფორმაცია") და
      * ნაჭერს **მთელი სიტყვა** უნდა შერჩეს — თორემ დამთხვევა კონტექსტის
      * გარეშე რჩება.

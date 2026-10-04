@@ -36,6 +36,8 @@ import {
 } from '@/api/customRecords'
 import type { StatusDomainKey } from '@/api/statuses'
 import { storageUrl } from '@/lib/api'
+import { plainText } from '@/lib/richText'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { customRecordItem, isPlayableRecord, usePlayer } from '@/lib/player'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { videoTypeName as dictionaryName } from '@/lib/display'
@@ -63,12 +65,13 @@ import { PosterUploader } from '@/components/PosterUploader'
 import { TagSelect } from '@/components/TagSelect'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { ActionMenu, ActionMenuClose, actionItemClass } from '@/components/ui/action-menu'
+import { RichText } from '@/components/ui/rich-text'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { favoriteAction, MENU_ICONS, statusActions, type MenuAction } from '@/components/ui/record-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
@@ -79,7 +82,6 @@ import { useRecordLayout } from '@/lib/recordLayout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { cn } from '@/lib/utils'
@@ -461,7 +463,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
                     </>
                   }
                   extra={
-                    record.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{record.description}</p>
+                    record.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{plainText(record.description)}</p>
                   }
                   tags={record.tags}
                   actions={actions}
@@ -863,13 +865,13 @@ function CustomRecordForm({
           </FormField>
 
           <FormField {...fields.field('description')} htmlFor="cr-desc">
-            <Textarea
+            <RichText
               id="cr-desc"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               placeholder={fields.placeholder('description')}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </FormField>
         </FormSection>

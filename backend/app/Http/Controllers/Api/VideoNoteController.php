@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\VideoNoteResource;
 use App\Models\Video;
 use App\Models\VideoNote;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 
 /** ვიდეოს ჩანიშვნები (K3) — საკუთარი ცხრილი `video_notes` */
@@ -18,7 +19,7 @@ class VideoNoteController extends Controller
 
     public function store(Request $request, Video $video)
     {
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $note = $video->notes()->create([
             'user_id' => $request->user()->id,
@@ -30,7 +31,7 @@ class VideoNoteController extends Controller
 
     public function update(Request $request, VideoNote $videoNote)
     {
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:'.RichText::NOTE_MAX]]);
 
         $videoNote->update($data);
 

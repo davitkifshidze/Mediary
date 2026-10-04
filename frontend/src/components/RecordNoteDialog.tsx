@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SquarePen, Trash2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { NOTE_TEXT_MAX } from '@/lib/richText'
 import { useDateFormat } from '@/lib/dates'
 import { UserAvatar } from '@/components/UserAvatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
+import { Markdown } from '@/components/ui/markdown'
+import { RichText } from '@/components/ui/rich-text'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm } from '@/components/ui/feedback'
 import type { RecordNote, RecordNoteInput } from '@/components/RecordNotes'
@@ -97,7 +100,20 @@ export function RecordNoteDialog({
         {/* ---------- სხეული ---------- */}
         {editing ? (
           <div className="space-y-2">
-            <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+            {/* Tasks §47 — ჩანიშვნა ფორმატით; ძველი ციტატა (`is_quote`) უბრალო ტექსტად რჩება */}
+            {note.is_quote ? (
+              <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+            ) : (
+              <RichText
+                id={`record-note-${note.id}`}
+                rows={8}
+                autoFocus
+                label={t('recordNotes.title')}
+                maxLength={NOTE_TEXT_MAX}
+                value={body}
+                onChange={setBody}
+              />
+            )}
           </div>
         ) : (
           <div
@@ -107,7 +123,7 @@ export function RecordNoteDialog({
                 : 'rounded-md border border-border p-3 text-sm'
             }
           >
-            <p className="whitespace-pre-wrap break-words">{note.body}</p>
+            {note.is_quote ? <p className="whitespace-pre-wrap break-words">{note.body}</p> : <Markdown text={note.body} />}
           </div>
         )}
 

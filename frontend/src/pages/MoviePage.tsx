@@ -27,6 +27,7 @@ import { ShareRecordDialog } from '@/components/chat/ShareRecordDialog'
 import { VideoEmbed } from '@/components/VideoEmbed'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { InfoHint, type InfoTone } from '@/components/ui/info-hint'
+import { Markdown } from '@/components/ui/markdown'
 import { pageContainer } from '@/components/ui/page'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -391,9 +392,12 @@ export function MoviePage({ type = 'movie' }: { type?: MediaType }) {
               />
             )}
           </h2>
-          <p className="whitespace-pre-line leading-relaxed text-foreground/90">
-            {description || t('detail.noDescription')}
-          </p>
+          {/* Tasks §47 — აღწერა ფორმატით (Markdown) */}
+          {description ? (
+            <Markdown text={description} className="leading-relaxed text-foreground/90" />
+          ) : (
+            <p className="leading-relaxed text-foreground/90">{t('detail.noDescription')}</p>
+          )}
         </section>
 
         {/* ===== ტრეილერი (Tasks 9) ===== */}

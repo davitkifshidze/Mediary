@@ -5,7 +5,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { Pagination } from '@/components/ui/pagination'
+import { RichText } from '@/components/ui/rich-text'
 import {
   Download,
   ExternalLink,
@@ -77,7 +79,7 @@ import { Switch } from '@/components/ui/switch'
 import { DatePicker } from '@/components/ui/date-picker'
 import { DurationInput } from '@/components/ui/duration-input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -87,7 +89,6 @@ import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfirm, useToast } from '@/components/ui/feedback'
@@ -1087,13 +1088,13 @@ function VideoForm({
           </FormField>
 
           <FormField {...fields.field('description')} htmlFor="v-desc">
-            <Textarea
+            <RichText
               id="v-desc"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               placeholder={fields.placeholder('description')}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </FormField>
         </FormSection>

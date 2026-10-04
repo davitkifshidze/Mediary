@@ -7,6 +7,7 @@ use App\Support\AppTime;
 use App\Support\CustomModules;
 use App\Support\ExportDomain;
 use App\Support\RecordLocks;
+use App\Support\RichText;
 use App\Support\StatusDomain;
 use DateTimeInterface;
 use Generator;
@@ -24,7 +25,9 @@ use Illuminate\Database\Eloquent\Model;
  * და მომხმარებელს ფორმატის არჩევა შიგთავსზე იმოქმედებდა. ერთადერთი
  * განსხვავება **ტიპებია**: CSV-ს ტიპები საერთოდ არ აქვს, ე.ი. მასივი
  * იკვრება სტრიქონად და `true` ხდება `1`. ეს CSV-ის თვისებაა და არა
- * გადაწყვეტილება.
+ * გადაწყვეტილება. ⚠️ Tasks §47 — მეორე განსხვავება: **აღწერა CSV-ში უბრალო
+ * ტექსტია** (`RichText::plain()`), JSON-ში კი Markdown რჩება — ცხრილში `**` და
+ * `[..](..)` ხმაურია, JSON-ის ფაილი კი მონაცემია და ფორმატს არ კარგავს.
  *
  * ⚠️ **პასუხი იდინება (`Generator` + `lazyById`) და არ გროვდება.** 353
  * ფილმის ბიბლიოთეკა პატარაა, 5000 სიმღერისა — აღარ; ხოლო `artisan serve`
@@ -151,8 +154,20 @@ class RecordExporter
         yield "\u{FEFF}".$this->line($fields);
 
         foreach ($this->rows($user, $module) as $row) {
-            yield $this->line(array_map($this->flat(...), $row));
+            yield $this->line(array_map($this->flat(...), $this->plainText($row)));
         }
+    }
+
+    /** Tasks §47 — Markdown-ის ველები (აღწერა) CSV-ის უჯრაში უბრალო ტექსტად */
+    private function plainText(array $row): array
+    {
+        foreach (RichText::FIELDS as $field) {
+            if (is_string($row[$field] ?? null)) {
+                $row[$field] = RichText::plain($row[$field]);
+            }
+        }
+
+        return $row;
     }
 
     /**

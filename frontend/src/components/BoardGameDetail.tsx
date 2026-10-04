@@ -22,6 +22,7 @@ import { errorMessage } from '@/lib/errors'
 import { DetailFacts, DetailHero, DetailPhotos, DetailSection } from '@/components/DetailHero'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { RatingStars } from '@/components/ui/star-rating'
+import { Markdown } from '@/components/ui/markdown'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -124,7 +125,7 @@ export function BoardGameDetail({ game, onClose }: { game: BoardGame; onClose: (
         <Gallery game={game} />
 
         {game.description && (
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{game.description}</p>
+          <Markdown text={game.description} className="text-sm text-muted-foreground" />
         )}
 
         {/* ---------- მაღაზიები ---------- */}

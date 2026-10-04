@@ -28,6 +28,7 @@ import { RecordGallery } from '@/components/RecordGallery'
 import { StatusBadge } from '@/components/StatusBadge'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
+import { Markdown } from '@/components/ui/markdown'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -196,7 +197,7 @@ export function BookmarkDetail({
         </RecordContextMenu>
 
         {bookmark.description && (
-          <p className="whitespace-pre-line text-sm text-muted-foreground">{bookmark.description}</p>
+          <Markdown text={bookmark.description} className="text-sm text-muted-foreground" />
         )}
 
         {bookmark.tags.length > 0 && (

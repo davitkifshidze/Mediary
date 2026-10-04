@@ -12,17 +12,18 @@ import {
   type LookupDraft,
 } from '@/api/media'
 import { useModuleFields } from '@/lib/fields'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { mediaKey, mediaOf, type MediaType } from '@/lib/media'
 import { useSettings } from '@/lib/settings'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { RichText } from '@/components/ui/rich-text'
 import { useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { RatingSelect } from '@/components/ui/rating-select'
 import { DurationInput } from '@/components/ui/duration-input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, MediaRow } from '@/components/ui/form-layout'
+import { FormField, MediaRow } from '@/components/ui/form-layout'
 import {
   QuickFill,
   QuickFillCandidate,
@@ -436,13 +437,13 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
             </FormField>
 
             <FormField {...fields.field('description')} htmlFor="m-desc">
-              <Textarea
+              <RichText
                 id="m-desc"
-                rows={FORM_TEXT_ROWS}
-              autoGrow
+                label={fields.label('description')}
+                maxLength={RICH_TEXT_MAX}
                 value={i18n.language === 'ka' ? form.description_ka : form.description_en}
                 placeholder={fields.placeholder('description')}
-                onChange={(e) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', e.target.value)}
+                onChange={(v) => set(i18n.language === 'ka' ? 'description_ka' : 'description_en', v)}
               />
             </FormField>
           </div>

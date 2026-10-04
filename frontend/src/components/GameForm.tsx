@@ -23,6 +23,7 @@ import {
   type RawgCandidate,
 } from '@/api/games'
 import { storageUrl } from '@/lib/api'
+import { RICH_TEXT_MAX } from '@/lib/richText'
 import { useModuleFields } from '@/lib/fields'
 import { errorMessage, fieldErrors, isApiCode } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
@@ -33,10 +34,11 @@ import { GameFranchiseDialog } from '@/components/GameFranchiseDialog'
 import { GameGenreDialog } from '@/components/GameGenreDialog'
 import { PosterUploader } from '@/components/PosterUploader'
 import { Button } from '@/components/ui/button'
+import { RichText } from '@/components/ui/rich-text'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { FieldLabel } from '@/components/ui/field-label'
-import { FORM_TEXT_ROWS, FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
+import { FormField, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { Chip, ChipRow } from '@/components/ui/chip'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { genreColor, MODE_META, PLATFORM_META, tintStyle, type MetaLook } from '@/lib/gameMeta'
@@ -50,7 +52,6 @@ import {
 import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/feedback'
 import { keyRow, keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { becomesVideo, storeFromUrl, withUrl } from '@/lib/gameLinks'
@@ -525,12 +526,12 @@ export function GameForm({
             label={`${fields.label('description')} · ${t('fields.langEn')}`}
             htmlFor="g-desc-en"
           >
-            <Textarea
+            <RichText
               id="g-desc-en"
-              rows={FORM_TEXT_ROWS}
-              autoGrow
+              label={fields.label('description')}
+              maxLength={RICH_TEXT_MAX}
               value={form.description_en}
-              onChange={(e) => setForm((f) => ({ ...f, description_en: e.target.value }))}
+              onChange={(v) => setForm((f) => ({ ...f, description_en: v }))}
             />
           </FormField>
         </FormSection>

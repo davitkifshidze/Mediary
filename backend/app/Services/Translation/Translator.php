@@ -35,6 +35,14 @@ class Translator
     /** ენის კოდი → სახელი პრომპტისთვის */
     private const NAMES = ['ka' => 'Georgian', 'en' => 'English'];
 
+    /**
+     * Tasks §47 — აღწერები Markdown-ია: სქელი, სიები და ბმულები თარგმანში უნდა
+     * გადარჩეს, მისამართი კი არ ითარგმნება. მოკლე უფორმატო ტექსტზე (სათაური,
+     * ჟანრი) ეს წინადადება არაფერს ცვლის.
+     */
+    private const MARKDOWN = 'If the text uses Markdown (bold, italics, headings, lists, quotes, links), keep the same '
+        .'Markdown syntax and every URL exactly as they are, translating only the words. ';
+
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
     /** სცადოს თუ არა ხელახლა — მხოლოდ დროებით ხარვეზებზე */
@@ -149,7 +157,7 @@ class Translator
         [$target, $source] = $this->names($to);
 
         $prompt = "Translate the following {$source} {$context} into natural {$target}. "
-            ."Keep proper nouns recognisable. Output ONLY the {$target} translation, "
+            .'Keep proper nouns recognisable. '.self::MARKDOWN."Output ONLY the {$target} translation, "
             ."with no notes, quotes or explanations:\n\n".$text;
 
         return $this->ask($prompt, $to, $context, mb_strlen($text));
@@ -184,7 +192,7 @@ class Translator
 
         $prompt = "Below is a {$source} {$context} and an existing {$target} translation of it. "
             .'Check the translation against the original and fix mistranslations, wrong names, '
-            .'grammar and unnatural wording. Do NOT add or remove information, and do NOT rewrite '
+            .'grammar and unnatural wording. '.self::MARKDOWN.'Do NOT add or remove information, and do NOT rewrite '
             ."a translation that is already correct. Output ONLY the final {$target} text — the "
             .'corrected version, or the existing translation unchanged — with no notes, quotes '
             ."or explanations.\n\n{$source} original:\n{$original}\n\n{$target} translation:\n{$text}";

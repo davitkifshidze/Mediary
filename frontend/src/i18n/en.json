@@ -3542,6 +3542,25 @@
     "deleteTitle": "Delete the note",
     "deleteHint": "The note moves to the trash — it can be restored from there."
   },
+  "richText": {
+    "title": "Text",
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "heading": "Heading",
+    "bulletList": "Bulleted list",
+    "orderedList": "Numbered list",
+    "quote": "Quote",
+    "code": "Code",
+    "rule": "Divider",
+    "link": "Link",
+    "linkUrl": "Link address",
+    "linkApply": "Set link",
+    "linkRemove": "Remove link",
+    "expand": "Expand to the full window",
+    "collapse": "Collapse",
+    "counter": "{{used}} / {{max}} characters"
+  },
   "lang": {
     "ka": "ქართული",
     "en": "English"

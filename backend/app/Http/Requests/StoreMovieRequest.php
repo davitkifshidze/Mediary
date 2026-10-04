@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Status;
 use App\Support\PublicDomain;
 use App\Support\Rating;
+use App\Support\RichText;
 use App\Support\UploadLimits;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -38,8 +39,8 @@ class StoreMovieRequest extends FormRequest
             'ge_url' => ['nullable', 'url', 'max:500'],
             // ტრეილერი (Tasks 9) — ხელით ჩასმაც შეიძლება, TMDB-ს არ ველოდებით
             'trailer_url' => ['nullable', 'url', 'max:500'],
-            'description_ka' => ['nullable', 'string'],
-            'description_en' => ['nullable', 'string'],
+            'description_ka' => RichText::rules(), // §47 — აქამდე ზღვარი არ ჰქონდა
+            'description_en' => RichText::rules(),
             'rating' => ['nullable', 'numeric', 'min:0', 'max:10'],
             // Tasks §9 — „ჩემი ქულა" (ვარსკვლავები, 4.6 / 10); TMDB-ის `rating`-ისგან ცალკე
             'my_rating' => Rating::rules(),
