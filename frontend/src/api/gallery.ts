@@ -4,6 +4,7 @@ import type { Status } from './types'
 import { isCustomModule, type CustomModuleKey } from '@/lib/customModules'
 import type { StackPreview } from '@/components/ui/photo-stack'
 import type { MediaType } from '@/lib/media'
+import type { SerpVideo } from './web'
 
 /* ============================================================
    გალერეის მოდული (Tasks 10 → **§8, გალერეა 2.0**).
@@ -925,6 +926,25 @@ export async function saveGalleryVideo(
 ): Promise<{ video: GalleryVideo; duplicate: boolean }> {
   const { data } = await api.post('/gallery/videos', body)
   return data
+}
+
+/**
+ * ვებძებნით ნაპოვნი ვიდეოს შენახვა ჩანაწერის გალერეაში — **ერთი გზა** ძებნის ფანჯრისთვის
+ * და ახალი ბუკმარკის ფორმისთვის, რომელიც ვიდეოს შექმნის შემდეგ ინახავს (Tasks §41.3).
+ */
+export function saveSerpVideo(target: SaveGalleryVideoBody['target'], id: number, video: SerpVideo) {
+  return saveGalleryVideo({
+    target,
+    id,
+    url: video.link,
+    title: video.title,
+    channel: video.channel,
+    duration: video.duration,
+    published_at: video.published,
+    thumbnail_url: video.thumbnail,
+    source_url: video.link,
+    engine: video.engine,
+  })
 }
 
 export async function deleteGalleryVideo(id: number): Promise<void> {

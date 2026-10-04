@@ -21,3 +21,21 @@ export function useBookmarkRefresh(): () => void {
     void qc.invalidateQueries({ queryKey: ['bookmark'] })
   }
 }
+
+/** ვებძებნის სწრაფი ჩიპები (`bookmarks.webChips.*`) — დეტალის ფანჯარაც და ფორმაც (§36.4 → §41.3) */
+export const BOOKMARK_WEB_TERMS = ['product', 'photos', 'logo', 'review'] as const
+
+/**
+ * ვებძებნის საწყისი შეკითხვა — **სათაური + დომენი** (§36.4-ის წესი; §41.3 — ფორმაშიც).
+ * ⚠️ დომენი `www.`-ის გარეშე; გაუმართავი ბმული უბრალოდ გამოიტოვება.
+ */
+export function bookmarkWebQuery(title: string | null | undefined, url: string | null | undefined): string {
+  let domain: string | null = null
+  try {
+    domain = url ? new URL(url.trim()).hostname.replace(/^www\./, '') : null
+  } catch {
+    domain = null
+  }
+
+  return [title?.trim(), domain].filter(Boolean).join(' ')
+}

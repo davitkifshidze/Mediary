@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle, FileText, Loader2, Trash2, Upload, type LucideIcon } from 'lucide-react'
 import type { UploadKind } from '@/api/account'
@@ -36,11 +36,14 @@ export function PendingFilesSection<K extends string>({
   kinds,
   title,
   hint,
+  extra,
 }: {
   pending: PendingUploads<K>
   kinds: PendingKind<K>[]
   title: string
   hint?: string
+  /** Tasks §41.3 — დამატებითი ბლოკი ფაილების ქვემოთ (ბუკმარკის „ვებიდან" — მომლოდინე ფოტოები და ვიდეოები) */
+  extra?: ReactNode
 }) {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -102,6 +105,8 @@ export function PendingFilesSection<K extends string>({
             </div>
           )
         })}
+
+        {extra}
 
         <p className="text-xs text-muted-foreground">{t('uploads.pendingHint')}</p>
       </div>

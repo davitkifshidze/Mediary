@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { updateModuleSettings } from '@/api/account'
 import { searchWebVideos, webSearchStatus, type SerpQuota, type SerpSource, type SerpVideo } from '@/api/web'
-import { saveGalleryVideo, type GalleryParentKind } from '@/api/gallery'
+import { saveSerpVideo, type GalleryParentKind } from '@/api/gallery'
 import { createVideo, fetchVideoTypes } from '@/api/videos'
 import { useAuth } from '@/lib/auth'
 import { useDateFormat } from '@/lib/dates'
@@ -81,21 +81,31 @@ import { WebSearchCost, WebSourcePicker } from '@/components/WebSourcePicker'
    გაქვს"-ად არ გადაიხატება. „გახსნა" ახალ ჩანართშია: ძებნის შედეგები აქ რჩება.
    ============================================================ */
 
+/**
+ * სად მიდის არჩეული ვიდეო: არსებული ჩანაწერის გალერეაში (`id`) — უმალ; ან
+ * **ჯერ შეუქმნელ ჩანაწერზე** (`onPick`, Tasks §41.3) — ფორმა მას „მომლოდინედ"
+ * ინახავს და შექმნის შემდეგ იმავე `saveSerpVideo`-ით აგზავნის.
+ */
+type VideoDestination =
+  | { id: number; onPick?: undefined; picked?: undefined }
+  | { id?: undefined; onPick: (video: SerpVideo) => void; /** უკვე არჩეულის ბმულები — ხელახლა გახსნისას მონიშნულია */ picked?: string[] }
+
 export function WebVideoDialog({
   target,
   id,
+  onPick,
+  picked,
   initialQuery,
   title,
   onClose,
   onSaved,
 }: {
   target: GalleryParentKind | 'cast_member'
-  id: number
   initialQuery: string
   title: string
   onClose: () => void
   onSaved?: () => void
-}) {
+} & VideoDestination) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
   const { toast } = useToast()
@@ -113,7 +123,7 @@ export function WebVideoDialog({
   const [items, setItems] = useState<SerpVideo[]>([])
   const [sources, setSources] = useState<SerpSource[]>([])
   const [quota, setQuota] = useState<SerpQuota | null>(null)
-  const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [saved, setSaved] = useState<Set<string>>(() => new Set(picked ?? []))
   const [searched, setSearched] = useState(false)
   /** §19.4 — რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
   const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
@@ -184,25 +194,23 @@ export function WebVideoDialog({
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
+  /** „გალერეაში შენახვა" — ან უმალ, ან (§41.3) ფორმის მომლოდინე სიაში */
+  const keep = (video: SerpVideo) => {
+    if (!onPick) {
+      save.mutate(video)
+      return
+    }
+    onPick(video)
+    setSaved((cur) => new Set(cur).add(video.link))
+  }
+
   const runSearch = (override?: string[]) => {
     const q = query.trim()
     if (q) search.mutate({ q, engines: override })
   }
 
   const save = useMutation({
-    mutationFn: (video: SerpVideo) =>
-      saveGalleryVideo({
-        target,
-        id,
-        url: video.link,
-        title: video.title,
-        channel: video.channel,
-        duration: video.duration,
-        published_at: video.published,
-        thumbnail_url: video.thumbnail,
-        source_url: video.link,
-        engine: video.engine,
-      }),
+    mutationFn: (video: SerpVideo) => saveSerpVideo(target, id ?? 0, video),
     onSuccess: (result, video) => {
       setSaved((cur) => new Set(cur).add(video.link))
       toast({
@@ -489,7 +497,7 @@ export function WebVideoDialog({
                           size="sm"
                           variant={on ? 'outline' : 'default'}
                           disabled={on || save.isPending}
-                          onClick={() => save.mutate(video)}
+                          onClick={() => keep(video)}
                         >
                           {on ? <Check className="size-3.5" /> : <Play className="size-3.5" />}
                           {on ? t('web.videoSavedShort') : t('web.saveVideo')}

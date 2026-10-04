@@ -128,9 +128,17 @@ const AUTO = 'auto'
 /** Serper ერთ გვერდზე 100-მდე შედეგს აბრუნებს — backend-ის `SerperImages::PER_PAGE` */
 const SERPER_PER_PAGE = 100
 
+/**
+ * სად მიდის მონიშნული: არსებული ჩანაწერი (`id`) — ჩამოტვირთვა უმალ; ან **ჯერ
+ * შეუქმნელი ჩანაწერი** (`onPick`, Tasks §41.3) — ფოტოები ფორმას უბრუნდება და ის
+ * შექმნის შემდეგ იმავე `importWebImages`-ით აგზავნის (ფანჯრის ზუსტად იგივე გზა).
+ */
+type ImageDestination = { id: number; onPick?: undefined } | { id?: undefined; onPick: (images: SerpImage[]) => void }
+
 export function WebImageDialog({
   target,
   id,
+  onPick,
   initialQuery,
   title,
   context,
@@ -138,13 +146,12 @@ export function WebImageDialog({
   onImported,
 }: {
   target: SerpImportTarget
-  id: number
   initialQuery: string
   title: string
   context?: WebImageContext
   onClose: () => void
   onImported?: () => void
-}) {
+} & ImageDestination) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const { can } = useAuth()
@@ -314,21 +321,23 @@ export function WebImageDialog({
   /** Tasks §4.3 — ნაწილებად შემოტანის ერთი პროგრესი (`null` = არ მიმდინარეობს) */
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
+  /** მონიშნული — ხელით არჩეული სამიზნით (§8.4) */
+  const selection = () =>
+    items
+      .filter((i) => picked.has(keyOf(i)))
+      .map((image) => {
+        const manual = overrides[keyOf(image)]
+        return manual && manual !== AUTO ? { ...image, target_id: Number(manual) } : image
+      })
+
   const importing = useMutation({
     mutationFn: () =>
       importWebImages(
         {
           target,
-          id,
+          id: id ?? 0,
           distribute: distribute.length ? distribute : undefined,
-          images: items
-            .filter((i) => picked.has(keyOf(i)))
-            .map((image) => {
-              const manual = overrides[keyOf(image)]
-              return manual && manual !== AUTO
-                ? { ...image, target_id: Number(manual) }
-                : image
-            }),
+          images: selection(),
         },
         (done, total) => setProgress({ done, total }),
       ),
@@ -847,16 +856,31 @@ export function WebImageDialog({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('actions.cancel')}
           </Button>
-          <Button
-            type="button"
-            onClick={() => importing.mutate()}
-            disabled={picked.size === 0 || importing.isPending}
-          >
-            {importing.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            {progress && progress.total > WEB_IMPORT_CHUNK
-              ? t('web.importProgress', { done: progress.done, total: progress.total })
-              : t('web.download', { count: picked.size })}
-          </Button>
+          {onPick ? (
+            /* §41.3 — ჩანაწერი ჯერ არ არსებობს: მონიშნული ფორმას უბრუნდება, ჩამოტვირთვა — შექმნის შემდეგ */
+            <Button
+              type="button"
+              onClick={() => {
+                onPick(selection())
+                onClose()
+              }}
+              disabled={picked.size === 0}
+            >
+              <Plus className="size-4" />
+              {t('web.pick', { count: picked.size })}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => importing.mutate()}
+              disabled={picked.size === 0 || importing.isPending}
+            >
+              {importing.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              {progress && progress.total > WEB_IMPORT_CHUNK
+                ? t('web.importProgress', { done: progress.done, total: progress.total })
+                : t('web.download', { count: picked.size })}
+            </Button>
+          )}
         </ModalFooter>
       </ModalShell>
 

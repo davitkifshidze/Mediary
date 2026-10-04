@@ -23,6 +23,10 @@ import i18n from '@/i18n'
    Tasks §36 — სათაურსა და ფოტოზე დაჭერა **ფანჯარას** ხსნის და არა ბმულს;
    გარე ბმული §29-ის ზოლის „ბმულით" იხსნება და „გახსნის" მთვლელს ზრდის;
    `?open=<id>` ფილტრს მიღმა მდგომ ბუკმარკსაც ხსნის; ფორმას ბმულების სია აქვს.
+
+   Tasks §41 — ფორმა: ბმული თავში (`paste` წამოღებას იწყებს), მარცხნივ ფოტო და
+   მარჯვნივ ბადე, ქვემოთ აღწერა/ტეგები, ბმულები და გალერეა ბარათებად; ახალ
+   ბუკმარკზე ვებიდან არჩეული ფოტო/ვიდეო შექმნისთანავე იგზავნება.
    ============================================================ */
 
 const statuses: Status[] = [
@@ -60,7 +64,15 @@ const mocks = vi.hoisted(() => ({
   fetchBookmarkFiles: vi.fn(),
   markBookmarkVisited: vi.fn(),
   createBookmark: vi.fn(),
+  fetchLinkPreview: vi.fn(),
+  importWebImages: vi.fn(),
+  saveSerpVideo: vi.fn(),
   statuses: { data: [] as unknown[] },
+  categories: [] as unknown[],
+  gallery: false,
+  // §41.3 — ძებნის ფანჯრების სტაბი ამ ორს „არჩევს"
+  webImage: { engine: 'serper', source: 'serper', title: 'Docs logo', original: 'https://img.test/logo.png', thumbnail: 'https://img.test/logo-s.png', link: 'https://laravel.com', domain: 'laravel.com', width: 400, height: 300, engines: ['serper'] },
+  webVideo: { engine: 'youtube', source: 'serpapi', title: 'Laravel in 100 seconds', link: 'https://youtu.be/l100', channel: 'Fireship', duration: 100, views: null, published: null, thumbnail: null, description: null, engines: ['youtube'] },
 }))
 
 vi.mock('@/api/bookmarks', async (original) => ({
@@ -74,6 +86,35 @@ vi.mock('@/api/bookmarks', async (original) => ({
   createBookmark: mocks.createBookmark,
 }))
 
+/* §41.1 — ბმულის ველი (`LinkField`) `POST /links/metadata`-ს ეკითხება */
+vi.mock('@/api/links', async (original) => ({
+  ...(await original<typeof import('@/api/links')>()),
+  fetchLinkPreview: mocks.fetchLinkPreview,
+}))
+/* §41.3 — შექმნის შემდეგ ვებიდან არჩეული იგზავნება */
+vi.mock('@/api/web', async (original) => ({
+  ...(await original<typeof import('@/api/web')>()),
+  importWebImages: mocks.importWebImages,
+}))
+vi.mock('@/api/gallery', async (original) => ({
+  ...(await original<typeof import('@/api/gallery')>()),
+  saveSerpVideo: mocks.saveSerpVideo,
+}))
+/* ძებნის ფანჯრები — სტაბი, რომელიც `onPick`-ს ერთ შედეგს აწვდის (ძებნა თავისი ტესტებითაა დაფარული) */
+vi.mock('@/components/WebImageDialog', async () => {
+  const { createElement } = await import('react')
+  return {
+    WebImageDialog: (props: { onPick?: (images: unknown[]) => void; onClose: () => void }) =>
+      createElement('button', { type: 'button', 'data-testid': 'stub-photo-pick', onClick: () => { props.onPick?.([mocks.webImage]); props.onClose() } }, 'pick'),
+  }
+})
+vi.mock('@/components/WebVideoDialog', async () => {
+  const { createElement } = await import('react')
+  return {
+    WebVideoDialog: (props: { onPick?: (video: unknown) => void; onClose: () => void }) =>
+      createElement('button', { type: 'button', 'data-testid': 'stub-video-pick', onClick: () => { props.onPick?.(mocks.webVideo); props.onClose() } }, 'pick'),
+  }
+})
 /* §28.1 — ფორმა იხსნება: ველების კატალოგი და დამატებითი ველები ცარიელი მოდის */
 vi.mock('@/api/account', async (original) => ({
   ...(await original<typeof import('@/api/account')>()),
@@ -96,7 +137,8 @@ vi.mock('@/lib/modules', async (original) => ({
     mediaModules: [],
     pageModules: [],
     customModules: [],
-    has: () => false,
+    // §41.3 — გალერეის მოდული მხოლოდ იმ ტესტში ირთვება, სადაც ვებიდან არჩევა მოწმდება
+    has: (key: string) => key === 'gallery' && mocks.gallery,
     loading: false,
   }),
 }))
@@ -110,6 +152,9 @@ if (!('ResizeObserver' in globalThis)) {
     disconnect() {}
   }
 }
+
+// §41 — Radix `Select` არჩეულ რიგს ხედში აბრუნებს; jsdom-ს ეს მეთოდი არ აქვს
+if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {}
 
 /* მძიმე მოდულების გათბობა ტესტის ბიუჯეტის გარეთ (DEBT-12-ის წესი) — გვერდი ახლა
    დეტალის ფანჯარასაც და გალერეასაც იწევს */
@@ -126,6 +171,8 @@ afterEach(() => {
   container?.remove()
   root = null
   container = null
+  mocks.gallery = false
+  mocks.categories = []
   vi.clearAllMocks()
 })
 
@@ -138,7 +185,7 @@ async function flush() {
 async function mount(entry = '/bookmarks') {
   mocks.statuses.data = statuses
   mocks.fetchBookmarks.mockResolvedValue({ items: [bookmark], total: 1, lastPage: 1 })
-  mocks.fetchBookmarkCategories.mockResolvedValue([])
+  mocks.fetchBookmarkCategories.mockResolvedValue(mocks.categories)
   mocks.fetchBookmarkFiles.mockResolvedValue([])
   mocks.markBookmarkVisited.mockResolvedValue({ ...bookmark, visit_count: 1 })
   mocks.setBookmarkStatus.mockResolvedValue({ ...bookmark, status: statuses[1] })
@@ -168,6 +215,18 @@ async function mount(entry = '/bookmarks') {
   await flush()
 
   return container
+}
+
+/** Radix `Select`: კლავიატურით გახსნა და რიგის არჩევა */
+async function choose(triggerId: string, label: string) {
+  const trigger = document.getElementById(triggerId)!
+  await act(async () => {
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  })
+  await flush()
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === label)!
+  await act(async () => option.click())
+  await flush()
 }
 
 const menuItem = (label: string) =>
@@ -291,39 +350,117 @@ describe('BookmarksPage row — detail window (§36)', () => {
   })
 })
 
-/* Tasks §28.1 — ფორმა ორ სვეტად: მარცხნივ ბმული/სათაური/აღწერა, მარჯვნივ ფოტო (`fill`, ველების
-   სიმაღლე) კატეგორიისა და სტატუსის გვერდით, ტეგები ქვემოთ */
-describe('BookmarksPage form (§28.1)', () => {
-  it('opens as two columns with the link on the left and the photo beside category and status on the right', async () => {
+/* Tasks §41 — „ბმული ყოველთვის, ყველგან თავშია; მერე მარცხნივ ფოტო და მარჯვნივ ინფუთები,
+   ზოგი ქვევით" — დამატებაც და რედაქტირებაც ერთი განლაგებით */
+describe('BookmarksPage form (§41)', () => {
+  async function openAdd() {
     const el = await mount()
-
     const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === i18n.t('bookmarks.add'))!
     await act(async () => add.click())
     await flush()
+    return document.querySelector<HTMLFormElement>('[data-testid="bookmark-form"]')!
+  }
 
-    const grid = document.querySelector<HTMLElement>('[data-testid="bookmark-form-grid"]')!
-    expect(grid).not.toBeNull()
-    expect(grid.className).toContain('lg:grid-cols-12')
+  it('puts the link first, the photo beside title · classifier · status, description and tags below', async () => {
+    const form = await openAdd()
 
-    const left = grid.querySelector<HTMLElement>('[data-testid="bookmark-form-left"]')!
-    const right = grid.querySelector<HTMLElement>('[data-testid="bookmark-form-right"]')!
-    expect(left.querySelector('#b-url')).not.toBeNull()
-    expect(left.querySelector('#b-title')).not.toBeNull()
-    expect(left.querySelector('#b-desc')).not.toBeNull()
+    // 1) ბმული — ფორმის პირველი ბლოკი, სრულ სიგანეზე
+    expect(form.firstElementChild?.querySelector('#b-url')).not.toBeNull()
 
-    const media = right.querySelector<HTMLElement>('[data-testid="form-media-row"]')!
-    expect(media).not.toBeNull()
-    expect(media.querySelector('input[type="file"]')).not.toBeNull()
-    expect(media.querySelector('#b-category')).not.toBeNull()
-    expect(media.querySelector('#b-status')).not.toBeNull()
-    // ტეგები მედია-რიგის **ქვემოთაა**, სრული სიგანით
-    expect(right.querySelector('#b-tags')).not.toBeNull()
-    expect(media.querySelector('#b-tags')).toBeNull()
+    // 2) მარცხნივ მთავარი ფოტო, მარჯვნივ სათაური, კლასიფიკატორი და სტატუსი
+    const media = form.querySelector<HTMLElement>('[data-testid="form-media-row"]')!
+    expect(media.querySelector('[data-testid="form-media"] input[type="file"]')).not.toBeNull()
+    for (const id of ['#b-title', '#b-category', '#b-status']) expect(media.querySelector(id)).not.toBeNull()
+    // ⚠️ ლეიბლი ჩარჩოს ზემოთაა — ჩარჩო მას (და ქვემოთ მდგარ „ტეგებს") აღარ ფარავს (§38.2)
+    const column = media.querySelector('[data-testid="form-media"]')!
+    expect(column.firstElementChild?.tagName).toBe('LABEL')
+    expect(column.querySelector('[data-testid="form-media-frame"] [data-testid="poster-dropzone"]')).not.toBeNull()
+
+    // 3) აღწერა და ტეგები — ფოტოს რიგის ქვემოთ, სრულ სიგანეზე
+    const desc = form.querySelector('#b-desc')!
+    const tags = form.querySelector('#b-tags')!
+    expect(media.contains(desc)).toBe(false)
+    expect(media.contains(tags)).toBe(false)
+    expect(media.compareDocumentPosition(desc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('extra links and the gallery are separate cards below the fields', async () => {
+    const form = await openAdd()
+
+    const editor = form.querySelector<HTMLElement>('[data-testid="bookmark-links-editor"]')!
+    expect(editor.closest('[data-testid="form-media-row"]')).toBeNull()
+    expect(editor.closest('section')?.className).toContain('rounded-xl')
+
+    const gallery = form.querySelector<HTMLElement>('[data-testid="bookmark-gallery-card"]')!
+    expect(gallery.className).toContain('rounded-xl')
+    expect(gallery.querySelector('[data-testid="pending-files"]')).not.toBeNull()
+    // გალერეის მოდული გამორთულია — „ვებიდან" არ ჩანს
+    expect(gallery.querySelector('[data-testid="pending-web"]')).toBeNull()
+  })
+
+  it('pasting a link fetches the page and fills the empty title and description', async () => {
+    mocks.fetchLinkPreview.mockResolvedValue({
+      kind: 'page', url: 'https://laravel.com/docs', platform: 'web', external_id: null, embed_url: null,
+      title: 'Laravel', description: 'The PHP framework', image_url: 'https://laravel.com/og.png', favicon_url: null,
+      site_name: 'Laravel', domain: 'laravel.com', author: null, duration: null,
+    })
+    await openAdd()
+
+    const input = document.getElementById('b-url') as HTMLInputElement
+    const paste = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(paste, 'clipboardData', { value: { getData: () => 'https://laravel.com/docs' } })
+    await act(async () => {
+      input.dispatchEvent(paste)
+    })
+    await flush()
+
+    expect(mocks.fetchLinkPreview).toHaveBeenCalledWith('https://laravel.com/docs')
+    expect((document.getElementById('b-title') as HTMLInputElement).value).toBe('Laravel')
+    expect((document.getElementById('b-desc') as HTMLTextAreaElement).value).toBe('The PHP framework')
+  })
+
+  it('a web photo and video picked before saving are sent right after the bookmark is created (§41.3)', async () => {
+    mocks.gallery = true
+    mocks.categories = [{ id: 3, key: 'article', name_ka: 'სტატია', name_en: 'Article', icon: null, sort_order: 0 }]
+    mocks.createBookmark.mockResolvedValue({ ...bookmark, id: 42 })
+    mocks.importWebImages.mockResolvedValue({ added: 1, skipped: 0, failed: 0, thumbnails: 0, bytes: 10, quota_exceeded: false })
+    mocks.saveSerpVideo.mockResolvedValue({ video: { id: 9 }, duplicate: false })
+    const form = await openAdd()
+
+    const web = form.querySelector<HTMLElement>('[data-testid="pending-web"]')!
+    const open = (label: string) => [...web.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t(label)))!
+    await act(async () => open('web.searchPhotos').click())
+    await act(async () => (document.querySelector('[data-testid="stub-photo-pick"]') as HTMLButtonElement).click())
+    await act(async () => open('web.searchVideos').click())
+    await act(async () => (document.querySelector('[data-testid="stub-video-pick"]') as HTMLButtonElement).click())
+    await flush()
+
+    expect(web.querySelectorAll('[data-testid="pending-web-images"] li')).toHaveLength(1)
+    expect(web.querySelectorAll('[data-testid="pending-web-videos"] li')).toHaveLength(1)
+    // შექმნამდე არაფერი იგზავნება
+    expect(mocks.importWebImages).not.toHaveBeenCalled()
+
+    const setValue = (el: HTMLInputElement, value: string) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value)
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    await act(async () => setValue(document.getElementById('b-url') as HTMLInputElement, 'https://laravel.com/docs'))
+    await act(async () => setValue(document.getElementById('b-title') as HTMLInputElement, 'Laravel docs'))
+    await choose('b-category', 'სტატია')
+    await choose('b-status', 'მიმდინარე')
+
+    await act(async () => form.requestSubmit())
+    await flush()
+    await flush()
+
+    expect(mocks.createBookmark).toHaveBeenCalledTimes(1)
+    expect(mocks.importWebImages).toHaveBeenCalledWith(expect.objectContaining({ target: 'bookmark', id: 42, images: [mocks.webImage] }))
+    expect(mocks.saveSerpVideo).toHaveBeenCalledWith('bookmark', 42, mocks.webVideo)
   })
 
   /* Tasks §36.3 — დამატებითი ბმულების სია: „ბმულის დამატება" ახალ რიგს ამატებს ტიპით,
      წარწერითა და ბმულის ველით; ფასის ველი მხოლოდ მაღაზიასა და ფასზე ჩანს */
-  it('adds extra link rows below the two columns', async () => {
+  it('adds extra link rows below the fields', async () => {
     const el = await mount()
 
     const add = [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === i18n.t('bookmarks.add'))!
@@ -332,7 +469,7 @@ describe('BookmarksPage form (§28.1)', () => {
 
     const editor = document.querySelector<HTMLElement>('[data-testid="bookmark-links-editor"]')!
     expect(editor).not.toBeNull()
-    expect(editor.closest('[data-testid="bookmark-form-left"], [data-testid="bookmark-form-right"]')).toBeNull()
+    expect(editor.closest('[data-testid="form-media-row"]')).toBeNull()
     expect(editor.querySelectorAll('[data-testid="bookmark-link-row"]')).toHaveLength(0)
 
     const addLink = [...editor.querySelectorAll('button')].find((b) => b.textContent?.trim() === i18n.t('bookmarks.addLink'))!

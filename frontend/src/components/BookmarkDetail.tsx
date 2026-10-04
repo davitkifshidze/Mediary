@@ -12,7 +12,7 @@ import {
   type Bookmark,
 } from '@/api/bookmarks'
 import { storageUrl } from '@/lib/api'
-import { useBookmarkRefresh } from '@/lib/bookmarks'
+import { BOOKMARK_WEB_TERMS, useBookmarkRefresh } from '@/lib/bookmarks'
 import { copyText } from '@/lib/clipboard'
 import { useDateFormat } from '@/lib/dates'
 import { videoTypeName as dictionaryName } from '@/lib/display'
@@ -49,9 +49,6 @@ import { useToast } from '@/components/ui/feedback'
    გალერეა — §22.3-ის ორი საცავი ერთ ხედად: ჩემი ატვირთული (`bookmark_files`)
    და ვებიდან ჩამოტვირთული (`gallery_images`, გალერეის მოდული).
    ============================================================ */
-
-/** ვებძებნის სწრაფი ჩიპები (`bookmarks.webChips.*`) — შინაარსის ენაზე */
-const WEB_TERMS = ['product', 'photos', 'logo', 'review'] as const
 
 export function BookmarkDetail({
   bookmark,
@@ -236,7 +233,7 @@ export function BookmarkDetail({
                 id={bookmark.id}
                 bare
                 query={[bookmark.title, bookmark.domain].filter(Boolean).join(' ')}
-                terms={WEB_TERMS.map((key) => fixedT(`bookmarks.webChips.${key}`))}
+                terms={BOOKMARK_WEB_TERMS.map((key) => fixedT(`bookmarks.webChips.${key}`))}
               />
             </div>
           </DetailSection>

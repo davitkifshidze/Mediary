@@ -128,6 +128,7 @@ export function LinkField({
   onApply,
   placeholder = 'https://…',
   invalid = false,
+  autoFocus,
   className,
   inputClassName,
   'aria-label': ariaLabel,
@@ -141,6 +142,8 @@ export function LinkField({
   onApply?: (preview: LinkPreview) => void
   placeholder?: string
   invalid?: boolean
+  /** ახალი ჩანაწერის ფორმა ბმულით იწყება (ბუკმარკი, §41.1) */
+  autoFocus?: boolean
   className?: string
   inputClassName?: string
   'aria-label'?: string
@@ -160,6 +163,7 @@ export function LinkField({
           type="url"
           inputMode="url"
           aria-label={ariaLabel}
+          autoFocus={autoFocus}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}

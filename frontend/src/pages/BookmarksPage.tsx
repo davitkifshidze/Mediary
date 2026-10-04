@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,7 +23,6 @@ import {
   fetchBookmark,
   fetchBookmarkCategories,
   fetchBookmarks,
-  fetchLinkMetadata,
   markBookmarkVisited,
   setBookmarkStatus,
   toggleBookmarkFavorite,
@@ -35,10 +34,12 @@ import {
   type BookmarkInput,
   type BookmarkLink,
   type BookmarkStatus,
-  type LinkMetadata,
 } from '@/api/bookmarks'
 import { storageUrl } from '@/lib/api'
-import { bookmarkKey, useBookmarkRefresh } from '@/lib/bookmarks'
+import { BOOKMARK_WEB_TERMS, bookmarkKey, bookmarkWebQuery, useBookmarkRefresh } from '@/lib/bookmarks'
+import { NO_PENDING_WEB, sendPendingWeb, type PendingWeb } from '@/lib/pendingWeb'
+import { useModules } from '@/lib/modules'
+import type { LinkPreview } from '@/api/links'
 import { usePendingUploads } from '@/lib/pendingUploads'
 import { keyRows, unkeyRows, type Keyed } from '@/lib/rowKeys'
 import { useModuleFields } from '@/lib/fields'
@@ -53,6 +54,7 @@ import { BookmarkDetail } from '@/components/BookmarkDetail'
 import { BookmarkLinkDialog, BookmarkLinksEditor } from '@/components/BookmarkLinks'
 import { ModuleIcon } from '@/components/ModuleIcon'
 import { PendingFilesSection } from '@/components/PendingFiles'
+import { PendingWebMedia } from '@/components/PendingWebMedia'
 import { RecordActionBar } from '@/components/RecordActionBar'
 import { PosterUploader } from '@/components/PosterUploader'
 import { BookmarkCategoryDialog } from '@/components/BookmarkCategoryDialog'
@@ -74,6 +76,7 @@ import { Input } from '@/components/ui/input'
 import { FieldLabel, joinHints } from '@/components/ui/field-label'
 import { FORM_TEXT_ROWS, FormField, FormFooter, FormGrid, FormSection } from '@/components/ui/form-layout'
 import { QuickFill } from '@/components/ui/quick-fill'
+import { LinkField } from '@/components/ui/link-field'
 import { Textarea } from '@/components/ui/textarea'
 import { useRecordExtras } from '@/lib/customFieldDraft'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -637,6 +640,9 @@ export function BookmarksPage() {
 /** ⚠️ ზოლი `<form>`-ის გარეთაა და ფორმას `form="…"`-ით უშვებს */
 const FORM_ID = 'bookmark-form'
 
+/** §41.1 — დამატებითი ბმულები და გალერეა ცალ-ცალკე ბარათად (`CustomFieldsCard`-ის ჩარჩო) */
+const CARD = 'rounded-xl border border-border bg-card p-4'
+
 function BookmarkForm({
   bookmark,
   allTags,
@@ -652,6 +658,8 @@ function BookmarkForm({
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
+  // §22.2 → §41.3 — ვებძებნის ჩიპები შინაარსის ენაზე (დეტალის ფანჯრის წესი)
+  const fixedT = i18n.getFixedT(lang)
   // §6.4 — სექციები, ბეჯი და ფორმა ერთსა და იმავე ლექსიკონს კითხულობს
   const { data: statuses = [] } = useStatuses('bookmark')
   const { toast } = useToast()
@@ -679,11 +687,9 @@ function BookmarkForm({
   const [thumbPreview, setThumbPreview] = useState<string | null>(storageUrl(bookmark?.image))
   const [removeThumb, setRemoveThumb] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [meta, setMeta] = useState<LinkMetadata | null>(null)
-  const [metaLoading, setMetaLoading] = useState(false)
   const [newCategory, setNewCategory] = useState(false)
-  const lastFetched = useRef<string>(bookmark?.url ?? '')
   const qc = useQueryClient()
+  const { has } = useModules()
   // §26.5 — დამატებითი ველები ახალ ჩანაწერზე; ჩავარდნისას შექმნილი რჩება
   const extras = useRecordExtras('bookmark', bookmark)
   /* Tasks §36.3 — დამატებითი ბმულები; რიგს სტაბილური გასაღები აქვს (`lib/rowKeys.ts`),
@@ -694,31 +700,24 @@ function BookmarkForm({
      აუქმებს — ფანჯარა ღია რჩება, „შენახვა" ხელახლა ცდის. */
   const pending = usePendingUploads<'image'>()
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  /* Tasks §41.3 — ვებიდან არჩეული ფოტოები და ვიდეოები ახალ ბუკმარკზე: შექმნისთანავე
+     იგზავნება, ფანჯრის იგივე გზით (`lib/pendingWeb.ts`) */
+  const [web, setWeb] = useState<PendingWeb>(NO_PENDING_WEB)
 
   /**
-   * ბმულის ჩასმისთანავე ვცდილობთ სათაურის/აღწერის/ფოტოს წამოღებას.
-   * ივსება **მხოლოდ ცარიელი ველები** — ხელით შეყვანილს არ ვაბათილებთ.
+   * ბმულიდან სათაური/აღწერა/ფოტო (`LinkField` — `paste` და `blur`, §15 → §41.1).
+   * `onFound` მხოლოდ **ცარიელ** ველებს ავსებს — ხელით შეყვანილს არ ვაბათილებთ;
+   * ბარათის „ჩასმა" (`overwrite`) შევსებულსაც გადაწერს. ⚠️ ატვირთული ფოტო
+   * (`thumbnail_path`) ამით არ იცვლება — ის `image_url`-ზე უპირატესია.
    */
-  const loadMeta = async (url: string) => {
-    const clean = url.trim()
-    if (!clean || clean === lastFetched.current || !/^https?:\/\//i.test(clean)) return
-    lastFetched.current = clean
-    setMetaLoading(true)
-    try {
-      const m = await fetchLinkMetadata(clean)
-      setMeta(m)
-      setForm((f) => ({
-        ...f,
-        title: f.title || (m.title ?? ''),
-        description: f.description || (m.description ?? ''),
-      }))
-      if (!imageUrl && m.image_url) setImageUrl(m.image_url)
-      if (!faviconUrl && m.favicon_url) setFaviconUrl(m.favicon_url)
-    } catch {
-      // ჩავარდნა ნორმალურია — გვერდი შეიძლება დახურული იყოს; ხელით შევსება რჩება
-    } finally {
-      setMetaLoading(false)
-    }
+  const applyMeta = (preview: LinkPreview, overwrite: boolean) => {
+    setForm((f) => ({
+      ...f,
+      title: overwrite && preview.title ? preview.title : f.title || (preview.title ?? ''),
+      description: overwrite && preview.description ? preview.description : f.description || (preview.description ?? ''),
+    }))
+    if (preview.image_url && (overwrite || !imageUrl)) setImageUrl(preview.image_url)
+    if (preview.favicon_url && (overwrite || !faviconUrl)) setFaviconUrl(preview.favicon_url)
   }
 
   const save = useMutation({
@@ -745,6 +744,22 @@ function BookmarkForm({
 
         if (failed.length) {
           toast({ title: t('uploads.failed', { names: failed.map((f) => f.file.name).join(', ') }), variant: 'error' })
+
+          return
+        }
+      }
+
+      // §41.3 — ვებიდან არჩეული: ჩავარდნილი სიაში რჩება და „შენახვა" ხელახლა ცდის
+      if (web.images.length || web.videos.length) {
+        const { left } = await sendPendingWeb('bookmark', saved.id, web)
+        setWeb(left)
+        qc.invalidateQueries({ queryKey: ['gallery-photos'] })
+        qc.invalidateQueries({ queryKey: ['gallery-videos'] })
+        qc.invalidateQueries({ queryKey: ['gallery-summary'] })
+        qc.invalidateQueries({ queryKey: ['storage'] })
+
+        if (left.images.length || left.videos.length) {
+          toast({ title: t('bookmarks.webFailed', { count: left.images.length + left.videos.length }), variant: 'error' })
 
           return
         }
@@ -815,177 +830,185 @@ function BookmarkForm({
 
   return (
     <ModalShell title={t(bookmark ? 'bookmarks.edit' : 'bookmarks.add')} onClose={onClose} wide>
-      {/* Tasks §28.1 — **ორი სვეტი, სქროლის გარეშე**: მარცხნივ ბმული → სათაური → აღწერა,
-          მარჯვნივ მთავარი ფოტო (§14-ის `fill` — ზუსტად კატეგორიისა და სტატუსის სიმაღლე)
-          და მის გვერდით კატეგორია/სტატუსი, ქვემოთ ტეგები. 5:7 — მარჯვენა სვეტს ფოტოც
-          უჭირავს და ველებიც. ⚠️ ვიწროზე (<lg) სვეტები ერთმანეთს ადგება და ფორმა
-          ძველებურად, ერთ სვეტად იკითხება; ფოტო `sm`-დან ისევ ველების გვერდითაა. */}
-      <form id={FORM_ID} onSubmit={submit} className="mt-4 grid gap-6 lg:grid-cols-12" data-testid="bookmark-form-grid">
-        <div className="space-y-6 lg:col-span-5" data-testid="bookmark-form-left">
-          {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
-              ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
-              ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
-          <QuickFill
-            show={fields.shows('url')}
-            title={fields.label('url')}
-            htmlFor="b-url"
-            required
-            hint={fields.hint('url')}
-            icon={<Link2 className="size-3.5 text-primary" />}
-          >
-            <div className="relative">
-              <Input
-                id="b-url"
-                autoFocus={!bookmark}
-                placeholder="https://example.com/article"
-                value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                onBlur={(e) => loadMeta(e.target.value)}
+      {/* ============================================================
+          Tasks §41 — „ბმული ყოველთვის, ყველგან თავშია — მთელ სიგრძეზე; მერე მარცხნივ
+          ფოტო და მარჯვნივ რამდენიმე როუდ, რამდენიმე სვეტად ინფუთები, და ზოგი ქვევით".
+          1) ბმული — სრულ სიგანეზე (`LinkField`: `paste` + `blur`, ნაპოვნის ბარათი);
+          2) მარცხნივ მთავარი ფოტო (§38-ის `MediaRow`), მარჯვნივ ბადე — სათაური, კლასიფიკატორი ·
+             სტატუსი; 3) სრულ სიგანეზე — აღწერა, ტეგები; 4) დამატებითი ბმულები და გალერეა
+          (ახალზე: ატვირთვა + ვებიდან) — ცალ-ცალკე ბარათებად. დამატებაც და რედაქტირებაც —
+          ერთი განლაგება. ⚠️ ხილვადობა აქ არ არის — ის პროფილზე იმართება (§6.1).
+          ============================================================ */}
+      <form id={FORM_ID} onSubmit={submit} className="mt-4 space-y-6" data-testid="bookmark-form">
+        {/* §26.2 — ბმულიან მოდულში სწრაფი შევსება თვითონ ბმულის ველია.
+            ⚠️ `url` `locked`-ია (§6.5) — ბუკმარკის იდენტობა თვითონ ბმულია;
+            ჩაკეტვის მოხსნა ცხადი ქმედებაა (§4), ამიტომ `shows()` აქაც ისმის. */}
+        <QuickFill
+          show={fields.shows('url')}
+          title={fields.label('url')}
+          htmlFor="b-url"
+          required
+          hint={fields.hint('url')}
+          icon={<Link2 className="size-3.5 text-primary" />}
+        >
+          <div data-testid="bookmark-url">
+            <LinkField
+              id="b-url"
+              autoFocus={!bookmark}
+              placeholder="https://example.com/article"
+              value={form.url}
+              invalid={!!errors.url}
+              onChange={(url) => setForm((f) => ({ ...f, url }))}
+              onFound={(preview) => applyMeta(preview, false)}
+              onApply={(preview) => applyMeta(preview, true)}
+            />
+          </div>
+          {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
+        </QuickFill>
+
+        {/* მარცხნივ მთავარი ფოტო, მარჯვნივ — სათაური, კლასიფიკატორი · სტატუსი */}
+        <FormSection
+          title={t('form.sections.basic')}
+          mediaVariant="wide"
+          mediaLabel={
+            <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
+              {fields.label('thumbnail')}
+            </FieldLabel>
+          }
+          media={
+            fields.shows('thumbnail') && (
+              <PosterUploader
+                fill
+                variant="wide"
+                preview={thumbPreview ?? imageUrl}
+                hint={t('bookmarks.thumbnailHint')}
+                onSelect={(file) => {
+                  setThumbnail(file)
+                  setThumbPreview(URL.createObjectURL(file))
+                  setRemoveThumb(false)
+                }}
+                onClear={() => {
+                  setThumbnail(null)
+                  setThumbPreview(null)
+                  setRemoveThumb(true)
+                }}
               />
-              {metaLoading && (
-                <Loader2 className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            {errors.url && <p className="mt-1 text-xs text-destructive">{errors.url}</p>}
-            {meta?.site_name && <p className="mt-1 text-xs text-muted-foreground">{meta.site_name}</p>}
-          </QuickFill>
+            )
+          }
+        >
+          <FormField {...fields.field('title')} htmlFor="b-title" error={errors.title}>
+            <Input
+              id="b-title"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            />
+          </FormField>
 
-          <FormSection title={t('form.sections.basic')}>
-            <FormField {...fields.field('title')} htmlFor="b-title" error={errors.title}>
-              <Input
-                id="b-title"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              />
-            </FormField>
-
-            {/* ⚠️ §26 — საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
-            <FormField {...fields.field('description')} htmlFor="b-desc">
-              <Textarea
-                id="b-desc"
-                rows={FORM_TEXT_ROWS}
-                autoGrow
-                placeholder={fields.placeholder('description')}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </FormField>
-          </FormSection>
-        </div>
-
-        <div className="space-y-6 lg:col-span-7" data-testid="bookmark-form-right">
-          {/* §26 → §28.1 — მთავარი ფოტო კლასიფიკაციის გვერდითაა: `fill` ყუთს კატეგორიისა და
-              სტატუსის სიმაღლეს აძლევს (§14.1), ტეგები კი ქვემოთ, სრული სიგანით */}
-          <FormSection
-            title={t('form.sections.classification')}
-            mediaVariant="wide"
-            mediaLabel={
-              <FieldLabel required={fields.required('thumbnail')} hint={fields.hint('thumbnail')}>
-                {fields.label('thumbnail')}
-              </FieldLabel>
-            }
-            media={
-              fields.shows('thumbnail') && (
-                <PosterUploader
-                  fill
-                  variant="wide"
-                  preview={thumbPreview ?? imageUrl}
-                  hint={t('bookmarks.thumbnailHint')}
-                  onSelect={(file) => {
-                    setThumbnail(file)
-                    setThumbPreview(URL.createObjectURL(file))
-                    setRemoveThumb(false)
-                  }}
-                  onClear={() => {
-                    setThumbnail(null)
-                    setThumbPreview(null)
-                    setRemoveThumb(true)
-                  }}
-                />
-              )
-            }
-          >
-            {/* კატეგორია — per-user ლექსიკონიდან, გვერდით „ახალი" */}
-            <FormField {...fields.field('category')} htmlFor="b-category" error={errors.category_id}>
-              <div className="flex gap-1">
-                <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                  <SelectTrigger id="b-category" className={errors.category_id ? 'border-destructive' : undefined}>
-                    <SelectValue placeholder={t('validation.choose')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
-                        {dictionaryName(category, lang)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => setNewCategory(true)}
-                  title={t('bookmarkCategories.add')}
-                  aria-label={t('bookmarkCategories.add')}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              </div>
-            </FormField>
-
-            {/* §16.3 — პუნქტები აიქონითა და ფერით (`StatusLabel`) */}
-            <FormField {...fields.field('status')} htmlFor="b-status" error={errors.status}>
-              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
+          {/* კლასიფიკატორი — per-user ლექსიკონიდან, გვერდით „ახალი" */}
+          <FormField size="half" {...fields.field('category')} htmlFor="b-category" error={errors.category_id}>
+            <div className="flex gap-1">
+              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+                <SelectTrigger id="b-category" className={errors.category_id ? 'border-destructive' : undefined}>
                   <SelectValue placeholder={t('validation.choose')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s.id} value={s.key}>
-                      <StatusLabel status={s} />
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={String(category.id)}>
+                      {dictionaryName(category, lang)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </FormField>
-          </FormSection>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => setNewCategory(true)}
+                title={t('bookmarkCategories.add')}
+                aria-label={t('bookmarkCategories.add')}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+          </FormField>
 
-          <FormGrid>
-            <FormField
-              {...fields.field('tags')}
-              hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
-              htmlFor="b-tags"
-            >
-              <TagSelect
-                inputId="b-tags"
-                value={form.tags}
-                options={allTags}
-                onChange={(next) => setForm((f) => ({ ...f, tags: next }))}
-              />
-            </FormField>
-          </FormGrid>
-        </div>
+          {/* §16.3 — პუნქტები აიქონითა და ფერით (`StatusLabel`) */}
+          <FormField size="half" {...fields.field('status')} htmlFor="b-status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+              <SelectTrigger id="b-status" className={errors.status ? 'border-destructive' : undefined}>
+                <SelectValue placeholder={t('validation.choose')} />
+              </SelectTrigger>
+              <SelectContent>
+                {statuses.map((s) => (
+                  <SelectItem key={s.id} value={s.key}>
+                    <StatusLabel status={s} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        </FormSection>
 
-        {/* Tasks §36.3 — დამატებითი ბმულები სრული სიგანით (მაღაზია, ფასი, მიმოხილვა…);
+        {/* სრულ სიგანეზე — აღწერა და ტეგები */}
+        <FormGrid>
+          {/* ⚠️ §26 — საერთო `Textarea` (აქამდე ნედლი `<textarea>` იყო სხვა ჩარჩოთი და ფონით) */}
+          <FormField {...fields.field('description')} htmlFor="b-desc">
+            <Textarea
+              id="b-desc"
+              rows={FORM_TEXT_ROWS}
+              autoGrow
+              placeholder={fields.placeholder('description')}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </FormField>
+
+          <FormField
+            {...fields.field('tags')}
+            hint={joinHints(fields.hint('tags'), t('videos.tagsDedupeHint'))}
+            htmlFor="b-tags"
+          >
+            <TagSelect
+              inputId="b-tags"
+              value={form.tags}
+              options={allTags}
+              onChange={(next) => setForm((f) => ({ ...f, tags: next }))}
+            />
+          </FormField>
+        </FormGrid>
+
+        {/* Tasks §36.3 → §41.1 — დამატებითი ბმულები ცალკე ბარათად (მაღაზია, ფასი, მიმოხილვა…);
             ჩასმისას §15-ის მეტა-მონაცემი წარწერას და favicon-ს ავსებს */}
         <FormSection
           title={t('form.sections.details')}
-          className={cn('lg:col-span-12', !fields.shows('links') && 'hidden')}
+          className={cn(CARD, !fields.shows('links') && 'hidden')}
         >
           <FormField {...fields.field('links')}>
             <BookmarkLinksEditor links={links} onChange={setLinks} errors={errors} />
           </FormField>
         </FormSection>
 
-        {/* §36.4 — ფოტოები ახალ ბუკმარკზე; არსებულს დეტალის ფანჯარაში აქვს */}
+        {/* §36.4 → §41.3 — გალერეა ახალ ბუკმარკზე, ცალკე ბარათად: ატვირთვა და „ვებიდან"
+            (დეტალის ფანჯრის იგივე ძებნა); არსებულს გალერეა დეტალის ფანჯარაში აქვს */}
         {!bookmark && (
-          <div className="lg:col-span-12">
+          <div className={CARD} data-testid="bookmark-gallery-card">
             <PendingFilesSection
               pending={pending}
-              title={t('bookmarks.photosTitle')}
-              hint={t('uploads.pendingHint')}
+              title={t('bookmarks.galleryTitle')}
+              hint={t('bookmarks.galleryHint')}
               kinds={[{ kind: 'image', label: t('bookmarks.photosTitle'), icon: ImageIcon }]}
+              extra={
+                has('gallery') && (
+                  <PendingWebMedia
+                    target="bookmark"
+                    query={bookmarkWebQuery(form.title, form.url)}
+                    terms={BOOKMARK_WEB_TERMS.map((key) => fixedT(`bookmarks.webChips.${key}`))}
+                    value={web}
+                    onChange={setWeb}
+                  />
+                )
+              }
             />
           </div>
         )}
