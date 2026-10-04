@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { ExternalLink, Loader2, Play, Video } from 'lucide-react'
 import { fetchPublicGalleryVideos, type PublicGalleryVideo } from '@/api/publicProfile'
 import type { VideoPlatform } from '@/api/videos'
@@ -9,7 +8,8 @@ import { useContentLang } from '@/lib/settings'
 import { formatDuration } from '@/lib/videoDuration'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ModalShell } from '@/components/ui/modal-shell'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
+import { usePages } from '@/lib/paged'
 import { VideoEmbed } from '@/components/VideoEmbed'
 
 /* ============================================================
@@ -36,16 +36,13 @@ export function PublicVideos({ username }: { username: string }) {
   const lang = useContentLang(i18n.language)
   const [watching, setWatching] = useState<PublicGalleryVideo | null>(null)
 
-  const query = useInfiniteQuery({
+  // Tasks §46 — ნომრები + „მეტის ჩვენება"
+  const query = usePages({
     queryKey: ['public-gallery', username, 'videos'],
-    queryFn: ({ pageParam }) => fetchPublicGalleryVideos(username, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (last) =>
-      last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined,
+    fetchPage: (page) => fetchPublicGalleryVideos(username, page).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
   })
 
-  const videos = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.data), [query.data])
-  const total = query.data?.pages[0]?.meta.total ?? 0
+  const videos = query.items
 
   if (query.isLoading) {
     return (
@@ -134,12 +131,7 @@ export function PublicVideos({ username }: { username: string }) {
         })}
       </ul>
 
-      <ShowMore
-        shown={videos.length}
-        total={total}
-        loading={query.isFetchingNextPage}
-        onMore={() => query.fetchNextPage()}
-      />
+      <Pagination {...query.pagination} />
 
       {watching && (
         <ModalShell title={watching.title ?? watching.url} onClose={() => setWatching(null)} wide>

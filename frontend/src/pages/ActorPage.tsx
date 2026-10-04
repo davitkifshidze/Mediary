@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus } from 'lucide-react'
 import { fetchActor, type Suggestion } from '@/api/media'
 import { ACTORS_KEY } from '@/api/actors'
 import { actorLockBase } from '@/lib/locks'
@@ -11,12 +11,13 @@ import { mediaOf, type MediaType } from '@/lib/media'
 import { tmdbSubtitle, tmdbTitle } from '@/lib/display'
 import { useContentLang, useSettings } from '@/lib/settings'
 import { PageContainer } from '@/components/ui/page'
+import { Pagination } from '@/components/ui/pagination'
+import { useClientPages } from '@/lib/paged'
 import { PosterImage } from '@/components/PosterImage'
 import { MovieGrid } from '@/components/MovieGrid'
 import { ActorGallery } from '@/components/RecordGallery'
 import { ActorHero } from '@/components/ActorHero'
 import { ActorWebPhotos } from '@/components/ActorWebPhotos'
-import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { useQueue } from '@/components/ui/queue'
 import { AddCardHover } from '@/components/AddCardHover'
@@ -39,11 +40,9 @@ function SuggestionSection({
   const lang = useContentLang(i18n.language)
   const { enqueue, isQueued } = useQueue()
   const { detailBase } = mediaOf(mediaType)
-  const [page, setPage] = useState(1)
-  const pages = Math.max(1, Math.ceil(items.length / perPage))
-  // სია შეიძლება შემცირდეს (მაგ. ჩანაწერის დამატების შემდეგ ის შემოთავაზებებიდან ქრება) —
-  // მიმდინარე გვერდი დიაპაზონში ვიჭერთ, თორემ ცარიელი ბადე გამოჩნდება
-  const current = Math.min(page, pages)
+  /* Tasks §46 — ნომრები + „მეტის ჩვენება". სია შეიძლება შემცირდეს (ჩანაწერის დამატების შემდეგ ის
+     შემოთავაზებებიდან ქრება) — დიაპაზონი ბოლო არსებულ გვერდზე ჩამოდის, ცარიელი ბადე არ ჩანს */
+  const pager = useClientPages(items, perPage)
 
   return (
     <section className="mb-10">
@@ -51,7 +50,7 @@ function SuggestionSection({
         {title} <span className="text-muted-foreground">· {items.length}</span>
       </h2>
       <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {items.slice((current - 1) * perPage, current * perPage).map((s) => {
+        {pager.shown.map((s) => {
           const busy = isQueued(s.tmdb_id, mediaType)
           const label = tmdbTitle(s, lang)
           const alt = tmdbSubtitle(s, lang)
@@ -126,19 +125,7 @@ function SuggestionSection({
         })}
       </div>
 
-      {pages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <Button variant="outline" size="sm" disabled={current <= 1} onClick={() => setPage(current - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {current} / {pages}
-          </span>
-          <Button variant="outline" size="sm" disabled={current >= pages} onClick={() => setPage(current + 1)}>
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
+      {pager.pagination.lastPage > 1 && <Pagination {...pager.pagination} />}
     </section>
   )
 }

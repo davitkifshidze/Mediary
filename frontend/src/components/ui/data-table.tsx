@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowUpDown, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
+import { useClientPages } from '@/lib/paged'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
@@ -79,7 +80,6 @@ export function DataTable<T>({
 
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(defaultSort ?? null)
-  const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(initialPageSize)
 
   const filtered = useMemo(() => {
@@ -102,11 +102,10 @@ export function DataTable<T>({
     })
   }, [rows, q, sort, columns, searchOf])
 
-  const lastPage = Math.max(1, Math.ceil(filtered.length / pageSize))
-  // ⚠️ ფილტრის შემდეგ გვერდი შეიძლება სიის გარეთ დარჩეს — მაშინ ცარიელი
-  // ცხრილი დაიხატებოდა და „არაფერი მაქვს"-ად წაიკითხებოდა
-  const current = Math.min(page, lastPage)
-  const shown = filtered.slice((current - 1) * pageSize, current * pageSize)
+  /* Tasks §46 — ნომრები + „მეტის ჩვენება". ⚠️ ფილტრის შემდეგ გვერდი სიის გარეთ არ რჩება
+     (`useClientPages` ბოლო არსებულზე ჩამოდის) — ცარიელი ცხრილი „არაფერი მაქვს"-ად წაიკითხებოდა */
+  const pages = useClientPages(filtered, pageSize)
+  const shown = pages.shown
 
   const toggleSort = (key: string) =>
     setSort((s) =>
@@ -124,7 +123,7 @@ export function DataTable<T>({
               value={q}
               onChange={(e) => {
                 setQ(e.target.value)
-                setPage(1)
+                pages.reset()
               }}
               placeholder={searchPlaceholder ?? t('table.search')}
               className="h-9 pl-8"
@@ -136,7 +135,7 @@ export function DataTable<T>({
           value={String(pageSize)}
           onValueChange={(v) => {
             setPageSize(Number(v))
-            setPage(1)
+            pages.reset()
           }}
         >
           <SelectTrigger className="h-9 w-auto min-w-[6.5rem]">
@@ -221,31 +220,7 @@ export function DataTable<T>({
       </div>
 
       {/* ---------- გვერდები ---------- */}
-      {lastPage > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={current <= 1}
-            onClick={() => setPage(current - 1)}
-            aria-label={t('table.prev')}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {t('audit.pageOf', { page: current, last: lastPage })}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={current >= lastPage}
-            onClick={() => setPage(current + 1)}
-            aria-label={t('table.next')}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
+      {pages.pagination.lastPage > 1 && <Pagination className="mt-3" {...pages.pagination} />}
     </div>
   )
 }

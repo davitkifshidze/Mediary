@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarClock,
   Check,
@@ -40,6 +40,8 @@ import { cardRatings, formatRating } from '@/lib/rating'
 import { shareGenreName, shareMeta, type ShareClassifierKind, type ShareDomainMeta } from '@/lib/shareLinks'
 import { ENUM_STATUS_NS, type EnumStatusDomain } from '@/lib/statuses'
 import { PageContainer } from '@/components/ui/page'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { Input } from '@/components/ui/input'
@@ -140,22 +142,22 @@ export function SharePage() {
     if (share && domain === null && share.sections.length) setDomain(share.sections[0].domain)
   }, [share, domain])
 
-  const list = useInfiniteQuery({
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება" (გაზიარების მისამართი ტოკენია — გვერდი მასში არ იწერება)
+  const list = usePages({
     queryKey: ['public-share-items', token, domain, term, genre],
-    queryFn: ({ pageParam }) =>
+    fetchPage: (page) =>
       fetchPublicShareItems(token, domain as ShareDomainKey, {
-        page: pageParam,
+        page,
+        per_page: LIST_PAGE_SIZE,
         q: term || undefined,
         genre: genre === ALL_GENRES ? undefined : genre,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (last) => (last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined),
+      }).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
     enabled: !!domain,
     refetchOnWindowFocus: false,
   })
 
-  const items = useMemo(() => list.data?.pages.flatMap((p) => p.data) ?? [], [list.data])
-  const firstPage = list.data?.pages[0]
+  const items = list.items
+  const firstPage = list.first
 
   const switchDomain = (next: string) => {
     setDomain(next as ShareDomainKey)
@@ -511,14 +513,7 @@ export function SharePage() {
               />
             )}
 
-            {list.hasNextPage && (
-              <div className="flex justify-center pb-12">
-                <Button variant="outline" onClick={() => list.fetchNextPage()} disabled={list.isFetchingNextPage}>
-                  {list.isFetchingNextPage && <Loader2 className="size-4 animate-spin" />}
-                  {t('actions.loadMore')}
-                </Button>
-              </div>
-            )}
+            <Pagination className="pb-12" {...list.pagination} />
           </>
         )}
       </PageContainer>

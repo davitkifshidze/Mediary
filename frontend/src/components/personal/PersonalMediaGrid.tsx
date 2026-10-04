@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ImagePlus, PenLine } from 'lucide-react'
 import {
   deletePersonalMedia,
@@ -13,7 +13,7 @@ import {
 } from '@/api/personal'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
-import { useListLimit } from '@/lib/paged'
+import { usePages } from '@/lib/paged'
 import { invalidatePersonal, personalPhotoItem } from '@/lib/personal'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -21,8 +21,8 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FormField, FormSection } from '@/components/ui/form-layout'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { PHOTO_PAGE_ALL, PhotoGrid } from '@/components/ui/photo-grid'
-import { ShowMore } from '@/components/ui/show-more'
+import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoGrid } from '@/components/ui/photo-grid'
+import { Pagination } from '@/components/ui/pagination'
 import { GalleryStackSkeleton } from '@/components/gallery/GalleryPhotoGrid'
 import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
 
@@ -36,8 +36,9 @@ import { PersonalMoveDialog } from '@/components/personal/PersonalMoveDialog'
    წარწერა. მესამე ბადის დაწერა ზუსტად ის ასლი იქნებოდა, რომელიც სხვაგვარად
    მოიქცეოდა.
 
-   ⚠️ **გვერდები სერვერისაა** („მეტის ჩვენება" — `useListLimit`), ბადე კი
-   მიღებულს ერთად ხატავს.
+   ⚠️ **გვერდები სერვერისაა** (Tasks §46 — ნომრები + „მეტის ჩვენება", `usePages`), ბადე კი
+   მიღებულს ერთად ხატავს. ⚠️ გვერდზე ფოტოს ბადის ნაგულისხმევი 20-ია და არა სიის 10 —
+   ფოტოს რაოდენობა ცალკე გადაწყვეტილებაა („რამდენი გამოჩნდეს", `PhotoGrid`).
    ============================================================ */
 
 export function PersonalMediaGrid({
@@ -62,19 +63,16 @@ export function PersonalMediaGrid({
   const { toast } = useToast()
   const { date } = useDateFormat()
 
-  const resetKey = JSON.stringify(filters)
-  const { limit, showMore } = useListLimit(resetKey)
   const [moving, setMoving] = useState<number[] | null>(null)
   const [captioning, setCaptioning] = useState<PersonalMedia | null>(null)
 
-  const query = { ...filters, per_page: limit }
-  const mediaQ = useQuery({
-    queryKey: [PERSONAL_KEY, 'media', query],
-    queryFn: () => fetchPersonalMedia(query),
-    placeholderData: (previous) => previous,
+  // ⚠️ ჩადგმული სიაა (ჩანართი, ალბომი) — გვერდი მისამართს არ ეხება
+  const mediaQ = usePages({
+    queryKey: [PERSONAL_KEY, 'media', filters],
+    fetchPage: (page) => fetchPersonalMedia({ ...filters, page, per_page: PHOTO_PAGE_DEFAULT }),
   })
 
-  const media = useMemo(() => mediaQ.data?.items ?? [], [mediaQ.data])
+  const media = mediaQ.items
   const items = useMemo(() => media.map((m) => personalPhotoItem(m, t, date)), [media, t, date])
 
   const favorite = useMutation({
@@ -132,7 +130,7 @@ export function PersonalMediaGrid({
         emptyActions={emptyActions}
       />
 
-      <ShowMore shown={media.length} total={mediaQ.data?.total ?? 0} onMore={showMore} loading={mediaQ.isFetching} />
+      <Pagination {...mediaQ.pagination} />
 
       {moving && <PersonalMoveDialog ids={moving} onClose={() => setMoving(null)} />}
       {captioning && <CaptionDialog media={captioning} onClose={() => setCaptioning(null)} />}

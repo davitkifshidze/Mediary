@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Image as ImageIcon, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
 import {
   PLACE_STATUSES,
@@ -26,7 +26,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
-import { useListLimit } from '@/lib/paged'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
@@ -73,7 +73,7 @@ import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
@@ -155,18 +155,17 @@ export function PlacesPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const { limit, showMore } = useListLimit(JSON.stringify(filters))
-  const query = useQuery({
-    queryKey: ['places', filters, limit],
-    queryFn: () => fetchPlaces({ ...filters, per_page: limit }),
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  const query = usePagedList({
+    queryKey: ['places', filters],
+    fetchPage: (page) => fetchPlaces({ ...filters, page, per_page: LIST_PAGE_SIZE }),
   })
   const categoriesQ = useQuery({ queryKey: ['place-categories'], queryFn: fetchPlaceCategories })
   const countriesQ = useQuery({ queryKey: ['place-countries'], queryFn: fetchPlaceCountries })
 
-  const places = useMemo(() => query.data?.items ?? [], [query.data])
+  const places = query.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
-  const total = query.data?.total ?? 0
+  const total = query.total
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
   const allCountries = useMemo(() => countriesQ.data ?? [], [countriesQ.data])
 
@@ -391,12 +390,7 @@ export function PlacesPage() {
                 })}
               </RecordList>
 
-              <ShowMore
-                shown={places.length}
-                total={total}
-                onMore={showMore}
-                loading={query.isFetching}
-              />
+              <Pagination {...query.pagination} />
             </>
           )}
         </div>

@@ -71,8 +71,14 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class TrashBin
 {
-    /** თითო ჯგუფზე რამდენი რიგი ჩანს */
-    public const PER_GROUP = 50;
+    /**
+     * ჯამურ სიაში თითო ჯგუფის **პირველი გვერდი** (Tasks §46 — გვერდზე 10); დანარჩენი
+     * გვერდები `page()`-დან მოდის. ⚠️ ადრე 50 იყო და 50-ზე მეტი ელემენტი საერთოდ არ ჩანდა.
+     */
+    public const PER_GROUP = 10;
+
+    /** `page()`-ის `per_page`-ის ჭერი */
+    public const PER_PAGE_MAX = 100;
 
     /** ჩანიშვნის სათაურის სიგრძე — ტექსტი თვითონ სათაურია */
     private const EXCERPT = 80;
@@ -160,13 +166,7 @@ final class TrashBin
                 default => 0,
             };
 
-            $rows = (clone $query)->orderByDesc('trashed_at')->orderByDesc('id')->limit(self::PER_GROUP)->get();
-
-            // ⚠️ ეტაპი 5 — სათაური, თანამოსაუბრე და „აღდგება?" ერთი ჩატვირთვით, თითო რიგზე მოთხოვნის გარეშე
-            if ($category === 'message') {
-                $rows->load(['message.hides', 'message.conversation.participants']);
-            }
-
+            $rows = $this->rows($query, $category, 1, self::PER_GROUP);
             $parents = $this->parents($kind, $rows);
             $moduleKey = $this->moduleOf($kind);
             $module = $moduleKey ? $modules->get($moduleKey) : null;
@@ -199,6 +199,51 @@ final class TrashBin
             'bytes' => $bytes,
             'data' => $groups,
         ];
+    }
+
+    /**
+     * **ერთი ჯგუფის გვერდი** (Tasks §46) — ურნის სექცია გვერდებად: ჯამური სია
+     * პირველ გვერდს აბრუნებს (`PER_GROUP`), ესენი — დანარჩენს, იმავე რიგით და
+     * იმავე ფორმით (`item()`). უცნობი ან ამ ანგარიშისთვის დამალული სახე — 404.
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array{current_page: int, last_page: int, per_page: int, total: int}}
+     */
+    public function page(User $user, string $kind, int $page, int $perPage): array
+    {
+        abort_unless(in_array($kind, TrashDomain::kinds(), true) && $this->visible($user, $kind), 404);
+
+        $perPage = min(max($perPage, 1), self::PER_PAGE_MAX);
+        $page = max($page, 1);
+        $query = $this->query($user, $kind);
+        $total = (clone $query)->count();
+
+        $rows = $this->rows($query, TrashDomain::category($kind), $page, $perPage);
+        $parents = $this->parents($kind, $rows);
+        $days = UserSettings::trashDays($user);
+        $recordSizes = $this->recordSizes($user);
+        $locked = array_flip(AlbumLock::hiddenIds());
+
+        return [
+            'data' => $rows->map(fn (Model $row) => $this->item($user, $kind, $row, $parents[$row->getKey()] ?? null, $recordSizes, $locked, $days))->all(),
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => max(1, (int) ceil($total / $perPage)),
+                'per_page' => $perPage,
+                'total' => $total,
+            ],
+        ];
+    }
+
+    /** ჯგუფის რიგები ერთი გვერდით — ახალი ზემოთ; ⚠️ ეტაპი 5 — ჩატის სათაური და „აღდგება?" ერთი ჩატვირთვით */
+    private function rows(Builder $query, ?string $category, int $page, int $perPage): Collection
+    {
+        $rows = (clone $query)->orderByDesc('trashed_at')->orderByDesc('id')->forPage($page, $perPage)->get();
+
+        if ($category === 'message') {
+            $rows->load(['message.hides', 'message.conversation.participants']);
+        }
+
+        return $rows;
     }
 
     /**

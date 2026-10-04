@@ -15,6 +15,7 @@ import {
 import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataColumn } from '@/components/ui/data-table'
+import { Pagination } from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
@@ -250,27 +251,15 @@ export function BackupViewer({ backup, onClose }: { backup: Backup; onClose: () 
 
                 {/* ⚠️ სერვერის გვერდები ცალკეა: `DataTable` **ჩამოტვირთულ**
                     სიაზე მუშაობს, ეს კი ბაზის ცხრილია და ერთ პასუხში არ ჯდება. */}
+                {/* Tasks §46 — სერვერის ნაჭრების ნომრები (ნაჭერში `DataTable` თავის გვერდებს ხატავს) */}
                 {!!rows.data && rows.data.meta.total > rows.data.meta.per_page && (
-                  <div className="mt-3 flex items-center justify-center gap-3">
-                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      ←
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      {t('backups.rowRange', {
-                        from: (page - 1) * rows.data.meta.per_page + 1,
-                        to: Math.min(page * rows.data.meta.per_page, rows.data.meta.total),
-                        total: rows.data.meta.total,
-                      })}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page * rows.data.meta.per_page >= rows.data.meta.total}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      →
-                    </Button>
-                  </div>
+                  <Pagination
+                    className="mt-3"
+                    page={page}
+                    lastPage={Math.ceil(rows.data.meta.total / rows.data.meta.per_page)}
+                    total={rows.data.meta.total}
+                    onPage={setPage}
+                  />
                 )}
               </>
             )}

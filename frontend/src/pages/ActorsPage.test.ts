@@ -112,7 +112,8 @@ describe('ActorsPage', () => {
     expect(tile.textContent).not.toContain(i18n.t('actors.countAnime', { count: 0 }))
     expect(button(i18n.t('actors.gender.male')).textContent).toContain('3')
 
-    expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 40 })
+    // Tasks §46 — გვერდზე 10
+    expect(lastFilters()).toMatchObject({ sort: 'name', page: 1, per_page: 10 })
   })
 
   it('sends the gender cut and a panel filter to the server', async () => {

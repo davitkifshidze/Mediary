@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
   ChevronDown,
@@ -43,7 +43,7 @@ import { errorMessage, fieldErrors } from '@/lib/errors'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
 import { useModules } from '@/lib/modules'
-import { useListLimit } from '@/lib/paged'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
 import { useContentLang } from '@/lib/settings'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
@@ -78,7 +78,7 @@ import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { QuickFill } from '@/components/ui/quick-fill'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { FavoriteButton } from '@/components/ui/favorite-button'
@@ -198,19 +198,18 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const { limit, showMore } = useListLimit(JSON.stringify(filters))
-  const query = useQuery({
-    queryKey: ['custom-records', module.key, filters, limit],
-    queryFn: () => fetchCustomRecords(module.key, { ...filters, per_page: limit }),
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  const query = usePagedList({
+    queryKey: ['custom-records', module.key, filters],
+    fetchPage: (page) => fetchCustomRecords(module.key, { ...filters, page, per_page: LIST_PAGE_SIZE }),
   })
   const categoriesQ = useQuery({
     queryKey: customCategoriesKey(module.key),
     queryFn: () => fetchCustomCategories(module.key),
     enabled: classifies,
   })
-  const records = useMemo(() => query.data?.items ?? [], [query.data])
-  const total = query.data?.total ?? 0
+  const records = query.items
+  const total = query.total
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
 
   /* საიდბარის „დამატება" → `?new=1`; ძებნის შედეგი → `?open=<id>`. ⚠️ ჩანაწერი
@@ -558,7 +557,7 @@ function CustomRecords({ module }: { module: ModuleInfo }) {
             })}
           </RecordList>
 
-          <ShowMore shown={records.length} total={total} onMore={showMore} loading={query.isFetching} />
+          <Pagination {...query.pagination} />
         </div>
 
         <FilterPanel

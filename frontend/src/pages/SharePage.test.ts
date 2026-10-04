@@ -174,7 +174,7 @@ describe('SharePage — ნახვა', () => {
     expect(textOf('Alien')).toContain('უკვე გაქვს')
     expect(textOf('Heat')).toContain('შენს ურნაშია')
     expect(textOf('Ran')).not.toContain('უკვე გაქვს')
-    expect(mocks.fetchPublicShareItems).toHaveBeenCalledWith(TOKEN, 'movie', { page: 1, q: undefined, genre: undefined })
+    expect(mocks.fetchPublicShareItems).toHaveBeenCalledWith(TOKEN, 'movie', { page: 1, per_page: 10, q: undefined, genre: undefined })
   })
 
   it('410 „ვადა გაუვიდა"-ს ამბობს და არა „არ არსებობს"-ს', async () => {
@@ -340,7 +340,7 @@ describe('SharePage — ეტაპი 2-ის სექციები (§40.
     await flush()
     await flush()
 
-    expect(mocks.fetchPublicShareItems).toHaveBeenLastCalledWith(TOKEN, 'song', { page: 1, q: undefined, genre: undefined })
+    expect(mocks.fetchPublicShareItems).toHaveBeenLastCalledWith(TOKEN, 'song', { page: 1, per_page: 10, q: undefined, genre: undefined })
     expect(document.querySelector('[aria-label="რა სტატუსით დაემატოს"]')).toBeNull()
 
     const source = document.querySelector<HTMLAnchorElement>('[data-testid="share-card"] a[aria-label="წყაროზე გახსნა"]')

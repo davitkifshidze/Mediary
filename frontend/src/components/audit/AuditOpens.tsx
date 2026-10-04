@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { fetchAuditLogs, fetchAuditOpens, type AuditFilters, type AuditOpenRow } from '@/api/audit'
 import { useDateFormat } from '@/lib/dates'
-import { Button } from '@/components/ui/button'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 
 /* ============================================================
    **„ვინ რა გახსნა და რამდენჯერ"** (Tasks §43.6).
@@ -19,29 +19,27 @@ import { ModalShell } from '@/components/ui/modal-shell'
    ერთსა და იმავე ჭრილზე დგას, ე.ი. გადართვისას არაფერი „იკარგება".
    ============================================================ */
 
-const PER_PAGE = 25
-
 export function AuditOpens({ filters, moduleName }: { filters: AuditFilters; moduleName: (key: string) => string }) {
   const { t } = useTranslation()
   const fmt = useDateFormat()
-  const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<AuditOpenRow | null>(null)
 
   const opensFilters: AuditFilters = { ...filters, actions: undefined }
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['audit-opens', opensFilters, page],
-    queryFn: () => fetchAuditOpens(opensFilters, page, PER_PAGE),
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"
+  const opens = usePages({
+    queryKey: ['audit-opens', opensFilters],
+    fetchPage: (page) =>
+      fetchAuditOpens(opensFilters, page, LIST_PAGE_SIZE).then((r) => ({ items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
   })
+  const isLoading = opens.isLoading
 
-  const rows = data?.data ?? []
-  const lastPage = data?.meta.last_page ?? 1
+  const rows = opens.items
   const who = (row: AuditOpenRow) => row.user?.username ?? row.user_label ?? t('audit.opens.anonymous')
 
   return (
     <>
-      <p className="mb-3 text-sm text-muted-foreground">{t('audit.opens.total', { count: data?.meta.total ?? 0 })}</p>
+      <p className="mb-3 text-sm text-muted-foreground">{t('audit.opens.total', { count: opens.total })}</p>
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm" data-testid="audit-opens">
@@ -89,17 +87,7 @@ export function AuditOpens({ filters, moduleName }: { filters: AuditFilters; mod
         </table>
       </div>
 
-      {lastPage > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-muted-foreground">{t('audit.pageOf', { page, last: lastPage })}</span>
-          <Button variant="outline" size="sm" disabled={page >= lastPage} onClick={() => setPage((p) => p + 1)}>
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
+      <Pagination className="mt-4" {...opens.pagination} />
 
       {detail && <OpensDetail row={detail} name={who(detail)} onClose={() => setDetail(null)} />}
     </>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Images } from 'lucide-react'
 import type { PublicGalleryGroup } from '@/api/publicProfile'
@@ -7,7 +6,8 @@ import { useContentLang } from '@/lib/settings'
 import { groupSubtitle, groupTitle } from '@/components/public-gallery/groupTitle'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PhotoStack } from '@/components/ui/photo-stack'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 
 /* ============================================================
    **საჯარო ჯგუფების ბადე — დასტები** (Tasks §32.2).
@@ -23,12 +23,10 @@ import { ShowMore } from '@/components/ui/show-more'
    არ უგზავნის, ე.ი. ბლარის ქვეშ არაფერია — devtools-ში მოხსნაც ვერაფერს
    გამოაჩენს.
 
-   ⚠️ **ჯგუფები ნაწილ-ნაწილ იხატება** (`STEP`): ხუთასფილმიან საჯარო
-   პროფილზე ხუთასი დასტა ერთბაშად DOM-ს დაამძიმებდა. სია სერვერიდან
-   სრულად მოდის, ე.ი. „მეტის ჩვენება" აქ ახალ მოთხოვნას არ აგზავნის.
+   ⚠️ **ჯგუფები გვერდებად იხატება** (Tasks §46 — 10 გვერდზე, ნომრები + „მეტის
+   ჩვენება"): ხუთასფილმიან საჯარო პროფილზე ხუთასი დასტა ერთბაშად DOM-ს
+   დაამძიმებდა. სია სერვერიდან სრულად მოდის, ე.ი. გვერდი ახალ მოთხოვნას არ აგზავნის.
    ============================================================ */
-
-const STEP = 60
 
 export function PublicGroupGrid({
   groups,
@@ -47,7 +45,7 @@ export function PublicGroupGrid({
 }) {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  const [shown, setShown] = useState(STEP)
+  const pager = useClientPages(groups, LIST_PAGE_SIZE)
 
   /* ⚠️ ჩონჩხი ლოკალურია და არა მფლობელის `GalleryStackSkeleton`: ის
      `GalleryPhotoGrid`-შია, რომელიც წაშლის მუტაციას, გადატანის ფანჯარას და
@@ -72,7 +70,7 @@ export function PublicGroupGrid({
   return (
     <>
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {groups.slice(0, shown).map((group) => {
+        {pager.shown.map((group) => {
           const key = `${group.kind}:${group.id}`
           const locked = !!group.locked && !group.unlocked
 
@@ -94,7 +92,7 @@ export function PublicGroupGrid({
         })}
       </ul>
 
-      <ShowMore shown={Math.min(shown, groups.length)} total={groups.length} onMore={() => setShown((n) => n + STEP)} />
+      <Pagination {...pager.pagination} />
     </>
   )
 }

@@ -344,7 +344,6 @@
     "back": "Back",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
-    "loadMore": "Load more",
     "open": "Open",
     "openLink": "Open the link",
     "files": "Files",
@@ -671,9 +670,6 @@
     "actorMoviesHint": "Actor page — “More films” section.",
     "actorSeries": "Series suggestions per page",
     "actorSeriesHint": "Actor page — “More series” section.",
-    "libraryPageSize": "Library page size",
-    "libraryPageSizeHint": "Movies and series libraries.",
-    "allOnOnePage": "All",
     "discover": "Discover (TMDB)",
     "discoverHint": "TMDB serves 20 records per page and refuses page numbers above {{max}} — that is a hard API limit, not our setting.",
     "discoverMaxPages": "Max TMDB pages",
@@ -1890,7 +1886,6 @@
     "noPhotosYet": "No photos yet — use “Download photos”.",
     "fetchMore": "Download photos",
     "fetchedCount": "{{count}} photo(s) downloaded",
-    "pageOf": "Page {{page}} / {{last}} · {{total}} total",
     "castTargetTitle": "Which actors",
     "castSearch": "Search actors…",
     "castNone": "No actors found.",
@@ -2792,7 +2787,6 @@
     "subtitle": "Who changed what and when.",
     "total": "{{count}} entries",
     "empty": "Nothing matches this filter.",
-    "pageOf": "Page {{page}} / {{last}}",
     "selectAll": "Select all on this page",
     "protected": "This entry is protected and cannot be deleted",
     "protectedNote": "{{count}} entries will remain — chat deletion records are kept for recovery.",
@@ -2980,9 +2974,7 @@
     "search": "Search…",
     "perPage": "{{count}} per page",
     "rowCount": "Showing {{shown}} / {{total}}",
-    "empty": "Nothing found.",
-    "prev": "Previous page",
-    "next": "Next page"
+    "empty": "Nothing found."
   },
   "web": {
     "allTogether": "All at once",
@@ -3495,7 +3487,6 @@
     "noRows": "This table has no rows.",
     "rowCount": "{{count}} rows",
     "insertCount": "{{count}} INSERTs",
-    "rowRange": "{{from}}–{{to}} of {{total}}",
     "restoreTable": "Restore the table",
     "restoreTableTitle": "Restore the “{{table}}” table",
     "restoreTableHint": "The table is emptied first and refilled from the backup. A safety copy is taken before it runs.",
@@ -4790,5 +4781,12 @@
     "cards": "Cards",
     "grid": "Grid",
     "rows": "Rows"
+  },
+  "pagination": {
+    "label": "Pages",
+    "prev": "Previous page",
+    "next": "Next page",
+    "jump": "Page number",
+    "total": "Total {{count}}"
   }
 }

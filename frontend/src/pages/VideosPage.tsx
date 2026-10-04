@@ -3,9 +3,9 @@ import { StatusLabel } from '@/components/StatusBadge'
 import { statusByKey, statusName, useStatuses } from '@/lib/statuses'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useListLimit } from '@/lib/paged'
-import { ShowMore } from '@/components/ui/show-more'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Download,
   ExternalLink,
@@ -173,18 +173,15 @@ export function VideosPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const { limit, showMore } = useListLimit(JSON.stringify(filters))
-  const query = useQuery({
-    queryKey: ['videos', filters, limit],
-    queryFn: () => fetchVideos({ ...filters, per_page: limit }),
-    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  const query = usePagedList({
+    queryKey: ['videos', filters],
+    fetchPage: (page) => fetchVideos({ ...filters, page, per_page: LIST_PAGE_SIZE }),
   })
   const typesQ = useQuery({ queryKey: ['video-types'], queryFn: fetchVideoTypes })
-  // `?? []` ყოველ რენდერზე ახალ მასივს აბრუნებდა და ქვემოთ useEffect/useMemo-ს ამუშავებდა
-  const videos = useMemo(() => query.data?.items ?? [], [query.data])
+  const videos = query.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
-  const total = query.data?.total ?? 0
+  const total = query.total
   const allTypes = useMemo(() => typesQ.data ?? [], [typesQ.data])
 
   /* §7.2 — დასაკრავი რიგი **გაფილტრული სიაა** და ჩაირთვება რიგრიგობით.
@@ -597,7 +594,7 @@ export function VideosPage() {
             </RecordList>
           )}
 
-          <ShowMore shown={videos.length} total={total} onMore={showMore} loading={query.isFetching} />
+          <Pagination {...query.pagination} />
         </div>
 
         {/* ---------- ფილტრები (5.2) ---------- */}

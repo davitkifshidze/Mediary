@@ -12,7 +12,7 @@ import { PhotoGrid, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { PhotoStack } from '@/components/ui/photo-stack'
 import { contextMenuItems, MENU_ICONS } from '@/components/ui/record-menu'
 import { GalleryStackSkeleton, GallerySkeletonGrid } from '@/components/gallery/GalleryPhotoGrid'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
 
 /* ============================================================
    **სხვა მოდულების ფოტოები** (§8.3/§8.5).
@@ -171,7 +171,8 @@ function ModulePhotos({
       )}
 
       {meta && meta.last_page > 1 && (
-        <Pager page={meta.page} lastPage={meta.last_page} total={meta.total} onChange={setPage} />
+        // Tasks §46 — ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
+        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
       )}
     </section>
   )

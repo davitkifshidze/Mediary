@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, Loader2, Plus, RefreshCw, Search } from 'lucide-react'
+import { Loader2, Plus, RefreshCw, Search } from 'lucide-react'
 import { discover, type DiscoverFilters } from '@/api/media'
 import { mediaOf, type MediaType } from '@/lib/media'
 import type { Genre } from '@/api/types'
 import { ModalShell } from '@/components/ui/modal-shell'
+import { Pagination } from '@/components/ui/pagination'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -326,23 +327,10 @@ export function DiscoverModal({
         )}
       </div>
 
+      {/* Tasks §46 — ნომრები. ⚠️ „მეტის ჩვენება" აქ არაა: TMDB-ის გვერდი ქეშირებულია და „განახლება"
+          მთელ გვერდს ერთ ჩანაწერად ცვლის (`setQueryData`) — დამატებული გვერდები მას დაშორდებოდა */}
       {q.data && q.data.total_pages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {q.data.page} / {q.data.total_pages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= q.data.total_pages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        <Pagination className="mt-4" page={q.data.page} lastPage={q.data.total_pages} total={null} onPage={setPage} />
       )}
     </ModalShell>
   )

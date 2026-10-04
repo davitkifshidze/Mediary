@@ -39,7 +39,8 @@ import { fetchPrivateObjectUrl, usePrivateFileUrl } from '@/components/PrivateFi
 import { useInViewOnce } from '@/lib/inView'
 import { cn, formatBytes } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
+import { useClientPages } from '@/lib/paged'
 import 'yet-another-react-lightbox/styles.css'
 import 'yet-another-react-lightbox/plugins/counter.css'
 import 'yet-another-react-lightbox/plugins/thumbnails.css'
@@ -371,7 +372,6 @@ export function PhotoGrid({
   const [slideVersion, setSlideVersion] = useState(0)
   /** არამართული რეჟიმის საკუთარი მდგომარეობა */
   const [ownSize, setOwnSize] = useState(pageSize ?? PHOTO_PAGE_DEFAULT)
-  const [page, setPage] = useState(1)
 
   /* ⚠️ კითხვის რეჟიმში ჩამწერი მოქმედებები აქვე ქრება — ზოლიც და უჯრაც ამ
      სამს კითხულობს და არა პროპებს (იხ. `readOnly`) */
@@ -382,13 +382,10 @@ export function PhotoGrid({
 
   const controlled = !!onPageSizeChange
   const size = controlled ? (pageSize ?? PHOTO_PAGE_DEFAULT) : ownSize
-  const lastPage = size === PHOTO_PAGE_ALL ? 1 : Math.max(1, Math.ceil(items.length / size))
-
-  // სიის შეცვლაზე (ფილტრი, წაშლა) გვერდი უნდა დაბრუნდეს თავში, თორემ
-  // „მე-4 გვერდი" ცარიელი დარჩება და ბადე უმიზეზოდ ცარიელი გამოჩნდება
-  useEffect(() => {
-    setPage((cur) => Math.min(cur, lastPage))
-  }, [lastPage])
+  /* Tasks §46 — ნომრები + „მეტის ჩვენება" (`useClientPages`); მართულ რეჟიმში სერვერი ჭრის.
+     ⚠️ სიის შემცირებისას (ფილტრი, წაშლა) დიაპაზონი ბოლო არსებულ გვერდზე ჩამოდის — „მე-4
+     გვერდი" ცარიელი აღარ რჩება */
+  const pages = useClientPages(items, controlled ? PHOTO_PAGE_ALL : size)
 
   // ბადის შეცვლაზე მონიშვნა ძველ id-ებზე რჩებოდა და „წაშალე მონიშნულები"
   // უკვე არარსებულს შლიდა
@@ -433,11 +430,7 @@ export function PhotoGrid({
   )
 
   /** ამ გვერდზე დახატული უჯრები — მართულ რეჟიმში სერვერმა უკვე დაჭრა */
-  const shown = useMemo(() => {
-    if (controlled || size === PHOTO_PAGE_ALL) return items
-    const from = (page - 1) * size
-    return items.slice(from, from + size)
-  }, [controlled, items, page, size])
+  const shown = pages.shown
 
   /**
    * გახსნილი ხედის სია — ბადეზე მეტიც შეიძლება იყოს (§3.7).
@@ -645,7 +638,7 @@ export function PhotoGrid({
             value={size}
             total={total ?? items.length}
             onChange={(next) => {
-              setPage(1)
+              pages.reset()
               if (onPageSizeChange) onPageSizeChange(next)
               else setOwnSize(next)
             }}
@@ -715,9 +708,7 @@ export function PhotoGrid({
       )}
 
       {/* გვერდები — მხოლოდ არამართულ რეჟიმში (მართულს სერვერის pager აქვს) */}
-      {!controlled && lastPage > 1 && (
-        <Pager className="mt-4" page={page} lastPage={lastPage} total={items.length} onChange={setPage} />
-      )}
+      {!controlled && pages.pagination.lastPage > 1 && <Pagination className="mt-4" {...pages.pagination} />}
 
       {open != null && (
         <Lightbox

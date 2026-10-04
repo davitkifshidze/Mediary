@@ -37,7 +37,7 @@ vi.mock('@/api/account', () => ({ saveSettings }))
    ცარიელზე პროვაიდერი ერთჯერად მიგრაციას უშვებს (`saveSettings` მაუნთზევე),
    რაც ამ ტესტს ხმაურს შემატებდა. */
 vi.mock('@/lib/auth', () => ({
-  useAuth: () => ({ user: { id: 1, settings: { libraryPageSize: 0 } } }),
+  useAuth: () => ({ user: { id: 1, settings: { discoverPerPage: 20 } } }),
 }))
 
 let root: Root | null = null
@@ -65,7 +65,7 @@ function mount() {
     dirty = settings.dirty
 
     useEffect(() => {
-      change = () => settings.set('libraryPageSize', 42)
+      change = () => settings.set('discoverPerPage', 40)
       // ⚠️ `save()` `Promise<boolean>`-ია (Tasks §1.3) — სინქრონული `act`-ისთვის შედეგი იგნორირდება
       submit = () => void settings.save()
     }, [settings])

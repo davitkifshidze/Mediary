@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { ArrowLeft, Loader2, LockOpen } from 'lucide-react'
 import {
   fetchPublicGalleryPhotos,
@@ -12,7 +11,8 @@ import { isPortraitCategory } from '@/lib/galleryPhoto'
 import { useContentLang } from '@/lib/settings'
 import { Button } from '@/components/ui/button'
 import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
+import { usePages } from '@/lib/paged'
 import { SortPick } from '@/components/gallery/SortPick'
 
 /* ============================================================
@@ -65,29 +65,25 @@ export function PublicPhotoList({
   const [sort, setSort] = useState<GallerySort>('new')
   const [seed] = useState(() => Math.floor(Math.random() * 100000))
 
-  const query = useInfiniteQuery({
+  // Tasks §46 — ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
+  const query = usePages({
     queryKey: ['public-gallery', username, 'photos', filters, sort, sort === 'random' ? seed : 0],
-    queryFn: ({ pageParam }) =>
+    fetchPage: (page) =>
       fetchPublicGalleryPhotos(username, {
         ...filters,
         sort,
         seed: sort === 'random' ? seed : undefined,
-        page: pageParam,
+        page,
         per_page: PER_PAGE,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (last) =>
-      last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined,
+      }).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
   })
 
   /* ⚠️ **დუბლი id-ით იჭრება**: „ახალი" რიგში გვერდებს შორის ახალი ფოტო
      შეიძლება ჩაჯდეს და ერთი და იგივე მეორე გვერდზეც გამოჩნდეს. */
   const photos = useMemo(() => {
     const seen = new Set<number>()
-    return (query.data?.pages ?? []).flatMap((page) =>
-      page.data.filter((photo) => !seen.has(photo.id) && !!seen.add(photo.id)),
-    )
-  }, [query.data])
+    return query.items.filter((photo) => !seen.has(photo.id) && !!seen.add(photo.id))
+  }, [query.items])
 
   const items = useMemo(
     () => photos.map((photo) => toItem(photo, showOwner, lang, t)),
@@ -95,7 +91,7 @@ export function PublicPhotoList({
     [photos, showOwner, lang],
   )
 
-  const first = query.data?.pages[0]
+  const first = query.first
   const total = first?.meta.total ?? 0
   const album = first?.album
   const albumShut = !!album && album.locked && !album.unlocked
@@ -149,12 +145,7 @@ export function PublicPhotoList({
         />
       )}
 
-      <ShowMore
-        shown={photos.length}
-        total={total}
-        loading={query.isFetchingNextPage}
-        onMore={() => query.fetchNextPage()}
-      />
+      <Pagination {...query.pagination} />
     </section>
   )
 }

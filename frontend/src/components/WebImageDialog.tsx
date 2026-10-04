@@ -45,7 +45,8 @@ import { Chip, ChipRow } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
+import { useClientPages } from '@/lib/paged'
 import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
 import { StepSection } from '@/components/ui/step-section'
 import { Label } from '@/components/ui/label'
@@ -175,7 +176,6 @@ export function WebImageDialog({
   const [searched, setSearched] = useState(false)
   /** §19.4 — რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
   const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
-  const [page, setPage] = useState(1)
 
   /** §8.4 — რომელ მსახიობებზე ნაწილდება */
   const [distribute, setDistribute] = useState<number[]>([])
@@ -264,7 +264,7 @@ export function WebImageDialog({
       setOverrides({})
       setResult(null)
       setSearched(true)
-      setPage(1)
+      pager.reset()
       // ⚠️ ხარჯი ცხადად ითქვას — ქეშიდან მოსული ძებნა უფასოა და ესეც უნდა ჩანდეს
       toast({ title: spendLine(data), variant: data.items.length ? 'success' : 'info' })
       qc.invalidateQueries({ queryKey: ['web', 'status'] })
@@ -306,7 +306,7 @@ export function WebImageDialog({
       setSources((cur) => mergeSources(cur, data.sources))
       setQuota(data.quota)
       // ⚠️ ახალი ფოტოები იქ ჩანს, სადაც იწყება — თორემ „კიდევ" ეკრანზე არაფერს ცვლიდა
-      if (pageSize !== PHOTO_PAGE_ALL && merged.length > before) setPage(Math.floor(before / pageSize) + 1)
+      if (pageSize !== PHOTO_PAGE_ALL && merged.length > before) pager.pagination.onPage(Math.floor(before / pageSize) + 1)
 
       toast({
         title: merged.length > before ? t('web.moreFound', { count: merged.length - before }) : t('web.moreNothing'),
@@ -396,10 +396,9 @@ export function WebImageDialog({
   const allPicked = items.length > 0 && picked.size === items.length
 
   /** §19.4 — მიმდინარე გვერდი უკვე ჩამოსული შედეგებიდან (ახალი ძებნის გარეშე) */
-  const lastPage = pageSize === PHOTO_PAGE_ALL ? 1 : Math.max(1, Math.ceil(items.length / pageSize))
-  const current = Math.min(page, lastPage)
-  const shown =
-    pageSize === PHOTO_PAGE_ALL ? items : items.slice((current - 1) * pageSize, current * pageSize)
+  // Tasks §46 — ნომრები + „მეტის ჩვენება" ჩამოსულ შედეგებზე (ახალი ძებნის გარეშე)
+  const pager = useClientPages(items, pageSize)
+  const shown = pager.shown
 
   // „იპოვა, მაგრამ გამოუსადეგარი" — ცალკე მდგომარეობა და ცალკე ტექსტი
   const dropped = useMemo(() => sources.reduce((sum, s) => sum + s.dropped, 0), [sources])
@@ -641,7 +640,7 @@ export function WebImageDialog({
                     total={items.length}
                     onChange={(size) => {
                       setPageSize(size)
-                      setPage(1)
+                      pager.reset()
                     }}
                   />
                   <span className="text-xs text-muted-foreground">{t('web.selected', { count: picked.size })}</span>
@@ -826,8 +825,8 @@ export function WebImageDialog({
               </div>
             )}
 
-            {items.length > 0 && lastPage > 1 && (
-              <Pager className="mt-4" page={current} lastPage={lastPage} total={items.length} onChange={setPage} />
+            {items.length > 0 && pager.pagination.lastPage > 1 && (
+              <Pagination className="mt-4" {...pager.pagination} />
             )}
 
             {/* §19.4 — ახალი ძებნა, ე.ი. ცალკე ღილაკი, რომელიც ფასს თვითონ ამბობს */}

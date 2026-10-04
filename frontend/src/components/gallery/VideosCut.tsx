@@ -24,7 +24,7 @@ import { CutTabs } from '@/components/ui/cut-tabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectFitValue, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -361,7 +361,8 @@ export function VideosCut() {
       )}
 
       {meta && meta.last_page > 1 && (
-        <Pager page={meta.page} lastPage={meta.last_page} total={meta.total} onChange={setPage} />
+        // Tasks §46 — ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
+        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
       )}
 
     </div>

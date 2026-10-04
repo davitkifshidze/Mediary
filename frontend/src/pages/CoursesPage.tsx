@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, ExternalLink, FileText, GraduationCap, Image as ImageIcon, Link2, Loader2, Plus, Search } from 'lucide-react'
 import {
   COURSE_STATUSES,
@@ -24,7 +24,7 @@ import {
 import { storageUrl } from '@/lib/api'
 import { useModuleFields } from '@/lib/fields'
 import { useFilterDraft } from '@/lib/filters'
-import { useListLimit } from '@/lib/paged'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
 import { dedupeTags } from '@/lib/tags'
 import { errorMessage, fieldErrors } from '@/lib/errors'
 import { hiddenPicks, pickErrors } from '@/lib/requiredPicks'
@@ -61,7 +61,7 @@ import { RecordList, RecordView } from '@/components/RecordView'
 import { ViewToggle } from '@/components/ui/view-toggle'
 import { useRecordLayout } from '@/lib/recordLayout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { favoriteAction, MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
@@ -135,17 +135,16 @@ export function CoursesPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const { limit, showMore } = useListLimit(JSON.stringify(filters))
-  const query = useQuery({
-    queryKey: ['courses', filters, limit],
-    queryFn: () => fetchCourses({ ...filters, per_page: limit }),
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  const query = usePagedList({
+    queryKey: ['courses', filters],
+    fetchPage: (page) => fetchCourses({ ...filters, page, per_page: LIST_PAGE_SIZE }),
   })
   const categoriesQ = useQuery({ queryKey: ['course-categories'], queryFn: fetchCourseCategories })
 
-  const courses = useMemo(() => query.data?.items ?? [], [query.data])
+  const courses = query.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
-  const total = query.data?.total ?? 0
+  const total = query.total
   const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -356,12 +355,7 @@ export function CoursesPage() {
                 })}
               </RecordList>
 
-              <ShowMore
-                shown={courses.length}
-                total={total}
-                onMore={showMore}
-                loading={query.isFetching}
-              />
+              <Pagination {...query.pagination} />
             </>
           )}
         </div>

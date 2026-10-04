@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -12,6 +12,8 @@ import { InfoHint } from '@/components/ui/info-hint'
 import { MENU_ICONS, RecordContextMenu, type MenuAction } from '@/components/ui/record-menu'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, useClientPages } from '@/lib/paged'
 import { PageHeader } from '@/components/ui/page-header'
 
 /* ============================================================
@@ -28,6 +30,8 @@ import { PageHeader } from '@/components/ui/page-header'
    სხვადასხვა რიცხვს აჩვენებდა.
    ============================================================ */
 
+const NO_ROWS: MatchRankingRow[] = []
+
 export function PeoplePage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
@@ -40,6 +44,10 @@ export function PeoplePage() {
     // ძებნისას სია არ „ციმციმებს" — ძველი შედეგი რჩება, სანამ ახალი მოვა
     placeholderData: keepPreviousData,
   })
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; ძებნის შეცვლა პირველ გვერდზე აბრუნებს
+  const pager = useClientPages(ranking.data?.items ?? NO_ROWS, LIST_PAGE_SIZE)
+  const { reset } = pager
+  useEffect(() => reset(), [term, reset])
 
   // ჩემი პროფილი დახურულია — ცალკე მდგომარეობაა და არა „ვერავინ მოიძებნა"
   if (isApiCode(ranking.error, 'profile_not_public')) {
@@ -87,10 +95,11 @@ export function PeoplePage() {
       )}
 
       <ul className="space-y-2">
-        {data?.items.map((row) => (
-          <ProfileRow key={row.profile.username} row={row} modules={data.modules} lang={lang} />
-        ))}
+        {data &&
+          pager.shown.map((row) => <ProfileRow key={row.profile.username} row={row} modules={data.modules} lang={lang} />)}
       </ul>
+
+      <Pagination {...pager.pagination} />
 
       {/* ⚠️ ჭერი ცხადად ითქვას — თორემ სია „სრულად" გამოიყურება */}
       {data?.truncated && (

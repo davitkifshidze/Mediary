@@ -35,6 +35,17 @@ class TrashController extends Controller
         return response()->json($this->bin->listing($request->user()));
     }
 
+    /** Tasks §46 — ერთი ჯგუფის გვერდი (`?page=&per_page=`); ჯამური სია პირველს უკვე შეიცავს */
+    public function items(Request $request, string $kind)
+    {
+        return response()->json($this->bin->page(
+            $request->user(),
+            $kind,
+            $request->integer('page', 1),
+            $request->integer('per_page', TrashBin::PER_GROUP),
+        ));
+    }
+
     /**
      * **ვადის გადახედვა** (Tasks §29.6) — `/settings`-ი შენახვამდე ეკითხება,
      * რამდენი წაიშლება მომდევნო ღამით ამ ვადით.

@@ -31,11 +31,14 @@ import {
   deleteFromTrash,
   emptyTrash,
   fetchTrash,
+  fetchTrashItems,
   restoreFromTrash,
   type TrashGroup,
   type TrashItem,
 } from '@/api/trash'
 import { storageUrl } from '@/lib/api'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
+import { Pagination } from '@/components/ui/pagination'
 import { useDateFormat } from '@/lib/dates'
 import { errorMessage } from '@/lib/errors'
 import { LOCKED_PHOTO_PLACEHOLDER } from '@/lib/lockedPhoto'
@@ -270,119 +273,124 @@ export function TrashPage() {
                   {group.kind === 'database_backup' && <InfoHint info={t('trash.backupHint')} />}
                 </header>
 
-                <ul className="grid gap-2">
-                  {group.items.map((item) => {
-                    /* Tasks §7 — მარჯვენა ღილაკი: აღდგენა · (ჩანაცვლება) · (ჩანაწერებით) · — · ახლავე წაშლა */
-                    const actions: MenuAction[] = [
-                      { key: 'restore', label: t('trash.restore'), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item }) },
-                      ...(item.replaceable
-                        ? [{ key: 'replace', label: t('trash.replace'), icon: Replace, disabled: restore.isPending, run: () => restore.mutate({ group, item, replace: true }) }]
-                        : []),
-                      ...(item.offers_records
-                        ? [{ key: 'records', label: t('trash.withRecords', { count: item.count ?? 0 }), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item, records: true }) }]
-                        : []),
-                      { key: 'delete', label: t('trash.deleteNow'), icon: MENU_ICONS.delete, danger: true, separator: true, disabled: remove.isPending, run: () => void removeOne(group, item) },
-                    ]
-                    return (
-                    <RecordContextMenu key={item.id} actions={actions}>
-                    <li
-                      className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background p-3"
-                    >
-                      <Thumb item={item} fallback={group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)} />
-
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{itemTitle(group, item)}</span>
-                        {(item.subtitle ?? itemModule(group, item)) && (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {item.subtitle ?? itemModule(group, item)}
-                          </span>
-                        )}
-                        {item.scope && (
-                          <span className="block text-xs text-muted-foreground">{t(`trash.scope.${item.scope}`)}</span>
-                        )}
-                        {item.when && (
-                          <span className="block text-xs text-muted-foreground">
-                            {t(`trash.when.${group.kind}`, { date: dateTime(item.when) })}
-                          </span>
-                        )}
-                        {item.count !== null && item.count > 0 && group.kind !== 'audit_log' && (
-                          <span className="block text-xs text-muted-foreground">
-                            {group.kind === 'gallery_album'
-                              ? t('trash.albumPhotos', { count: item.count })
-                              : group.kind === 'custom_module'
-                                ? t('trash.moduleRecords', { count: item.count })
-                                : t('trash.recordsMoved', { count: item.count })}
-                          </span>
-                        )}
-                        <Expiry item={item} />
-                        {item.parent?.trashed && (
-                          <span className="block text-xs text-[var(--icon-info)]">
-                            {t('trash.parentTrashed', { name: item.parent.title })}
-                          </span>
-                        )}
-                        {item.blocked && (
-                          <span className="block text-xs text-destructive">{t(`trash.blocked.${item.blocked}`)}</span>
-                        )}
-                      </span>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={restore.isPending || !item.restorable}
-                        onClick={() => restore.mutate({ group, item })}
-                      >
-                        <Undo2 className="size-4" />
-                        {t('trash.restore')}
-                      </Button>
-
-                      {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია (Q21), ჩანაწერების
-                          დაბრუნება — ცალკე, ცხადი არჩევანი */}
-                      {/* ⚠️ ეტაპი 4 — დაკავებულ სვეტში აღდგენა ცხადი „ჩანაცვლებაა":
-                          ახლანდელი ფოტო თვითონ გადავა ურნაში და არაფერი დაიკარგება */}
-                      {item.replaceable && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={restore.isPending}
-                          title={t('trash.replaceHint')}
-                          onClick={() => restore.mutate({ group, item, replace: true })}
+                {/* Tasks §46 — ჯგუფი გვერდებად (10): პირველი ჯამური სიიდანაა, დანარჩენი — `/trash/{kind}/items` */}
+                <TrashGroupPages group={group}>
+                  {(items) => (
+                    <ul className="grid gap-2">
+                      {items.map((item) => {
+                        /* Tasks §7 — მარჯვენა ღილაკი: აღდგენა · (ჩანაცვლება) · (ჩანაწერებით) · — · ახლავე წაშლა */
+                        const actions: MenuAction[] = [
+                          { key: 'restore', label: t('trash.restore'), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item }) },
+                          ...(item.replaceable
+                            ? [{ key: 'replace', label: t('trash.replace'), icon: Replace, disabled: restore.isPending, run: () => restore.mutate({ group, item, replace: true }) }]
+                            : []),
+                          ...(item.offers_records
+                            ? [{ key: 'records', label: t('trash.withRecords', { count: item.count ?? 0 }), icon: Undo2, disabled: restore.isPending || !item.restorable, run: () => restore.mutate({ group, item, records: true }) }]
+                            : []),
+                          { key: 'delete', label: t('trash.deleteNow'), icon: MENU_ICONS.delete, danger: true, separator: true, disabled: remove.isPending, run: () => void removeOne(group, item) },
+                        ]
+                        return (
+                        <RecordContextMenu key={item.id} actions={actions}>
+                        <li
+                          className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background p-3"
                         >
-                          <Replace className="size-4" />
-                          {t('trash.replace')}
-                        </Button>
-                      )}
+                          <Thumb item={item} fallback={group.category === 'record' ? <ModuleIcon name={group.icon} /> : kindIcon(group.kind)} />
 
-                      {item.offers_records && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={restore.isPending || !item.restorable}
-                          onClick={() => restore.mutate({ group, item, records: true })}
-                        >
-                          <Undo2 className="size-4" />
-                          {t('trash.withRecords', { count: item.count ?? 0 })}
-                        </Button>
-                      )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{itemTitle(group, item)}</span>
+                            {(item.subtitle ?? itemModule(group, item)) && (
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {item.subtitle ?? itemModule(group, item)}
+                              </span>
+                            )}
+                            {item.scope && (
+                              <span className="block text-xs text-muted-foreground">{t(`trash.scope.${item.scope}`)}</span>
+                            )}
+                            {item.when && (
+                              <span className="block text-xs text-muted-foreground">
+                                {t(`trash.when.${group.kind}`, { date: dateTime(item.when) })}
+                              </span>
+                            )}
+                            {item.count !== null && item.count > 0 && group.kind !== 'audit_log' && (
+                              <span className="block text-xs text-muted-foreground">
+                                {group.kind === 'gallery_album'
+                                  ? t('trash.albumPhotos', { count: item.count })
+                                  : group.kind === 'custom_module'
+                                    ? t('trash.moduleRecords', { count: item.count })
+                                    : t('trash.recordsMoved', { count: item.count })}
+                              </span>
+                            )}
+                            <Expiry item={item} />
+                            {item.parent?.trashed && (
+                              <span className="block text-xs text-[var(--icon-info)]">
+                                {t('trash.parentTrashed', { name: item.parent.title })}
+                              </span>
+                            )}
+                            {item.blocked && (
+                              <span className="block text-xs text-destructive">{t(`trash.blocked.${item.blocked}`)}</span>
+                            )}
+                          </span>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive"
-                        disabled={remove.isPending}
-                        onClick={() => removeOne(group, item)}
-                      >
-                        <Trash2 className="size-4" />
-                        {t('trash.deleteNow')}
-                      </Button>
-                    </li>
-                    </RecordContextMenu>
-                    )
-                  })}
-                </ul>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={restore.isPending || !item.restorable}
+                            onClick={() => restore.mutate({ group, item })}
+                          >
+                            <Undo2 className="size-4" />
+                            {t('trash.restore')}
+                          </Button>
+
+                          {/* ⚠️ კლასიფიკატორი: „მხოლოდ რიგი" ნაგულისხმევია (Q21), ჩანაწერების
+                              დაბრუნება — ცალკე, ცხადი არჩევანი */}
+                          {/* ⚠️ ეტაპი 4 — დაკავებულ სვეტში აღდგენა ცხადი „ჩანაცვლებაა":
+                              ახლანდელი ფოტო თვითონ გადავა ურნაში და არაფერი დაიკარგება */}
+                          {item.replaceable && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={restore.isPending}
+                              title={t('trash.replaceHint')}
+                              onClick={() => restore.mutate({ group, item, replace: true })}
+                            >
+                              <Replace className="size-4" />
+                              {t('trash.replace')}
+                            </Button>
+                          )}
+
+                          {item.offers_records && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={restore.isPending || !item.restorable}
+                              onClick={() => restore.mutate({ group, item, records: true })}
+                            >
+                              <Undo2 className="size-4" />
+                              {t('trash.withRecords', { count: item.count ?? 0 })}
+                            </Button>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            disabled={remove.isPending}
+                            onClick={() => removeOne(group, item)}
+                          >
+                            <Trash2 className="size-4" />
+                            {t('trash.deleteNow')}
+                          </Button>
+                        </li>
+                        </RecordContextMenu>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </TrashGroupPages>
 
                 {/* ⚠️ სერვერი თითო ჯგუფზე 50 რიგს აბრუნებს — თუ მეტია,
                     ეს ითქმება, თორემ „სულ 120" და თხუთმეტი ხილული რიგი
@@ -476,5 +484,21 @@ function Expiry({ item }: { item: TrashItem }) {
         : t('trash.expiresToday')}
       {item.size > 0 && ` · ${formatBytes(item.size)}`}
     </span>
+  )
+}
+
+/** ჯგუფის გვერდები — ⚠️ ცალკე კომპონენტია, რომ თითო ჯგუფს თავისი გვერდი ჰქონდეს */
+function TrashGroupPages({ group, children }: { group: TrashGroup; children: (items: TrashItem[]) => ReactNode }) {
+  const pages = usePages({
+    queryKey: ['trash', 'items', group.kind],
+    fetchPage: (page) => fetchTrashItems(group.kind, page, LIST_PAGE_SIZE),
+    initial: { items: group.items, total: group.total, lastPage: Math.max(1, Math.ceil(group.total / LIST_PAGE_SIZE)) },
+  })
+
+  return (
+    <>
+      {children(pages.items)}
+      {pages.pagination.lastPage > 1 && <Pagination className="mt-3" {...pages.pagination} />}
+    </>
   )
 }

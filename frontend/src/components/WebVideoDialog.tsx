@@ -32,8 +32,9 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
-import { Pager } from '@/components/ui/pager'
-import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
+import { Pagination } from '@/components/ui/pagination'
+import { useClientPages } from '@/lib/paged'
+import { PHOTO_PAGE_DEFAULT, PhotoPageSizePick } from '@/components/ui/photo-grid'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StepSection } from '@/components/ui/step-section'
 import { useToast } from '@/components/ui/feedback'
@@ -127,7 +128,6 @@ export function WebVideoDialog({
   const [searched, setSearched] = useState(false)
   /** §19.4 — რამდენი ჩანს ერთ გვერდზე (`0` = ყველა) და რომელი გვერდია */
   const [pageSize, setPageSize] = useState(PHOTO_PAGE_DEFAULT)
-  const [page, setPage] = useState(1)
   /** §19.6 — აქვე ვიდეოებში დამატებული: ბმული → ახალი ჩანაწერი */
   const [inVideos, setInVideos] = useState<Record<string, { id: number; title: string | null }>>({})
   /** ამ ფანჯარაში არჩეული ტიპი; `null` = დამახსოვრებული */
@@ -184,7 +184,7 @@ export function WebVideoDialog({
       setSources(data.sources)
       setQuota(data.quota)
       setSearched(true)
-      setPage(1)
+      pager.reset()
       toast({
         title: data.spent > 0 ? t('web.spent', { count: data.spent }) : t('web.fromCache'),
         variant: data.items.length ? 'success' : 'info',
@@ -268,10 +268,9 @@ export function WebVideoDialog({
   const others = available.filter((e) => !selected.includes(e.key))
 
   /** §19.4 — მიმდინარე გვერდი უკვე ჩამოსული შედეგებიდან (ახალი ძებნის გარეშე) */
-  const lastPage = pageSize === PHOTO_PAGE_ALL ? 1 : Math.max(1, Math.ceil(items.length / pageSize))
-  const current = Math.min(page, lastPage)
-  const shown =
-    pageSize === PHOTO_PAGE_ALL ? items : items.slice((current - 1) * pageSize, current * pageSize)
+  // Tasks §46 — ნომრები + „მეტის ჩვენება" ჩამოსულ შედეგებზე (ახალი ძებნის გარეშე)
+  const pager = useClientPages(items, pageSize)
+  const shown = pager.shown
 
   /* ⚠️ **ვიდეოს უფასო წყარო არ არსებობს** — ორივე engine SerpApi-სია, ე.ი.
      გასაღების გარეშე სია ცარიელია და ამას ცხადად ვამბობთ. ⚠️ Tasks §30.6 —
@@ -394,7 +393,7 @@ export function WebVideoDialog({
                 total={items.length}
                 onChange={(size) => {
                   setPageSize(size)
-                  setPage(1)
+                  pager.reset()
                 }}
               />
             ) : null
@@ -551,8 +550,8 @@ export function WebVideoDialog({
             </ul>
           )}
 
-          {items.length > 0 && lastPage > 1 && (
-            <Pager className="mt-4" page={current} lastPage={lastPage} total={items.length} onChange={setPage} />
+          {items.length > 0 && pager.pagination.lastPage > 1 && (
+            <Pagination className="mt-4" {...pager.pagination} />
           )}
         </StepSection>
       </div>

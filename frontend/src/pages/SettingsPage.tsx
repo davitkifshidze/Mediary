@@ -15,7 +15,6 @@ import {
   DATE_FORMAT_OPTIONS,
   DISCOVER_PER_PAGE_OPTIONS,
   GROUP_BY_OPTIONS,
-  LIBRARY_PAGE_SIZE_OPTIONS,
   POSTER_QUALITY_OPTIONS,
   SORT_FIELD_OPTIONS,
   TMDB_MAX_PAGE,
@@ -253,14 +252,6 @@ export function SettingsPage() {
             value={settings.actorSeriesPerPage}
             options={ACTOR_PER_PAGE_OPTIONS}
             onChange={num('actorSeriesPerPage')}
-          />
-        </Row>
-        <Row label={t('settings.libraryPageSize')} hint={t('settings.libraryPageSizeHint')} dirty={isDirty('libraryPageSize')}>
-          <NumberSelect
-            value={settings.libraryPageSize}
-            options={LIBRARY_PAGE_SIZE_OPTIONS}
-            onChange={num('libraryPageSize')}
-            labelOf={(v) => (v === 0 ? t('settings.allOnOnePage') : String(v))}
           />
         </Row>
       </section>

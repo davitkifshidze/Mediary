@@ -9,7 +9,7 @@ import {
 } from '@/api/gallery'
 import { PHOTO_PAGE_ALL, PHOTO_PAGE_DEFAULT } from '@/components/ui/photo-grid'
 import { Button } from '@/components/ui/button'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
 import { GalleryPhotoGrid } from '@/components/gallery/GalleryPhotoGrid'
 import { LockedPhotos } from '@/components/gallery/LockedPhotos'
 import { SortPick } from '@/components/gallery/SortPick'
@@ -171,7 +171,8 @@ export function GroupPhotos({
       )}
 
       {meta && meta.last_page > 1 && (
-        <Pager page={meta.page} lastPage={meta.last_page} total={meta.total} onChange={setPage} />
+        // Tasks §46 — ნომრები; „მეტის ნახვა" ფოტოს ბადეში რაოდენობის არჩევაა
+        <Pagination page={meta.page} lastPage={meta.last_page} total={meta.total} onPage={setPage} />
       )}
     </section>
   )

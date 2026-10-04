@@ -16,6 +16,8 @@ import { storageUrl } from '@/lib/api'
 import { useContentLang } from '@/lib/settings'
 import { cardRatings, formatRating } from '@/lib/rating'
 import { PageContainer } from '@/components/ui/page'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Button } from '@/components/ui/button'
 import { CutTabs } from '@/components/ui/cut-tabs'
 import { ModuleIcon } from '@/components/ModuleIcon'
@@ -55,8 +57,6 @@ export function PublicProfilePage() {
   })
 
   const [domain, setDomain] = useState<PublicDomainKey | null>(null)
-  const [page, setPage] = useState(1)
-  const [items, setItems] = useState<PublicCard[]>([])
   // §16.2 — „ჩანაწერები" vs „დამთხვევები"; მეორე მხოლოდ შესულ სტუმარს აქვს
   const [view, setView] = useState<'records' | 'matches'>('records')
   // Tasks §33 — გახსნილი ფლეილისტი (მისი შიგთავსი და დაკვრა ფანჯარაშია)
@@ -79,29 +79,23 @@ export function PublicProfilePage() {
     }
   }, [profile, domain])
 
-  const itemsQuery = useQuery({
-    queryKey: ['public-profile-items', username, domain, page],
-    queryFn: () => fetchPublicItems(username, domain as PublicDomainKey, page),
-    /* ⚠️ გალერეის ჩანართს **სხვა endpoint** ემსახურება (§7.4) — ბარათების
-       წამოღება იქ არათუ ზედმეტია, „მეტის ჩვენებასაც" ალბომების რიცხვით
-       დახატავდა. */
+  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; ტაბის შეცვლა პირველ გვერდზე აბრუნებს.
+     ⚠️ გალერეის ჩანართს **სხვა endpoint** ემსახურება (§7.4) — ბარათების წამოღება იქ ზედმეტია */
+  const itemsQuery = usePages({
+    queryKey: ['public-profile-items', username, domain],
+    fetchPage: (page) =>
+      fetchPublicItems(username, domain as PublicDomainKey, page, LIST_PAGE_SIZE).then((r) => ({
+        ...r,
+        items: r.data,
+        total: r.meta.total,
+        lastPage: r.meta.last_page,
+      })),
     enabled: !!domain && domain !== 'gallery_album',
   })
-
-  // გვერდები გროვდება („მეტის ჩვენება"), ტაბის შეცვლა კი სიას ანულებს
-  useEffect(() => {
-    if (!itemsQuery.data) return
-    setItems((prev) =>
-      itemsQuery.data.meta.current_page === 1
-        ? itemsQuery.data.data
-        : [...prev, ...itemsQuery.data.data],
-    )
-  }, [itemsQuery.data])
+  const items = itemsQuery.items
 
   const switchDomain = (d: PublicDomainKey) => {
     setDomain(d)
-    setPage(1)
-    setItems([])
   }
 
   /**
@@ -163,7 +157,6 @@ export function PublicProfilePage() {
   const avatar = storageUrl(profile.profile.avatar_path)
   // საკუთარ თავს არ ვედრებით — backend-იც 422 `cannot_match_self`-ს აბრუნებს
   const canMatch = !!user && user.username !== profile.profile.username
-  const hasMore = (itemsQuery.data?.meta.current_page ?? 1) < (itemsQuery.data?.meta.last_page ?? 1)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -308,18 +301,7 @@ export function PublicProfilePage() {
               />
             )}
 
-            {hasMore && domain !== 'gallery_album' && (
-              <div className="flex justify-center pb-12">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={itemsQuery.isFetching}
-                >
-                  {itemsQuery.isFetching && <Loader2 className="size-4 animate-spin" />}
-                  {t('actions.loadMore')}
-                </Button>
-              </div>
-            )}
+            {domain !== 'gallery_album' && <Pagination className="pb-12" {...itemsQuery.pagination} />}
           </>
         )}
       </PageContainer>

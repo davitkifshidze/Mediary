@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useListLimit } from '@/lib/paged'
-import { ShowMore } from '@/components/ui/show-more'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
+import { Pagination } from '@/components/ui/pagination'
 import { Disc3, ExternalLink, Headphones, Link2, ListMusic, Loader2, Music, Play, Plus, Search, Tags } from 'lucide-react'
 import {
   createSong,
@@ -150,17 +150,15 @@ export function SongsPage() {
     sort: sort === 'newest' ? undefined : sort,
   }
 
-  const { limit, showMore } = useListLimit(JSON.stringify(filters))
-  const query = useQuery({
-    queryKey: ['songs', filters, limit],
-    queryFn: () => fetchSongs({ ...filters, per_page: limit }),
-    // „მეტის ჩვენებაზე" ბადე არ უნდა დაიცალოს და თავიდან აეწყოს
-    placeholderData: keepPreviousData,
+  // Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; მიმდინარე გვერდი `?page=`-შია
+  const query = usePagedList({
+    queryKey: ['songs', filters],
+    fetchPage: (page) => fetchSongs({ ...filters, page, per_page: LIST_PAGE_SIZE }),
   })
   const genresQ = useQuery({ queryKey: ['song-genres'], queryFn: fetchSongGenres })
-  const songs = useMemo(() => query.data?.items ?? [], [query.data])
+  const songs = query.items
   /** ⚠️ **გაფილტრული სიის** ჯამი და არა ჩატვირთულის — სათაურიც ამას წერს */
-  const total = query.data?.total ?? 0
+  const total = query.total
   const allGenres = useMemo(() => genresQ.data ?? [], [genresQ.data])
 
   // საიდბარის „დამატება" → `?new=1`
@@ -451,7 +449,7 @@ export function SongsPage() {
             })}
           </RecordList>
 
-          <ShowMore shown={songs.length} total={total} onMore={showMore} loading={query.isFetching} />
+          <Pagination {...query.pagination} />
         </div>
 
         {/* ---------- ფილტრები ---------- */}

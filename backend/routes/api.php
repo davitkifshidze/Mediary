@@ -515,6 +515,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/trash', [TrashController::class, 'index']);
     // Tasks §29.6 — ვადის შეცვლის გადახედვა („მომდევნო ღამით წაიშლება N")
     Route::get('/trash/retention', [TrashController::class, 'retention']);
+    // Tasks §46 — ჯგუფის გვერდები (ჯამური სია მხოლოდ პირველს აბრუნებს)
+    Route::get('/trash/{kind}/items', [TrashController::class, 'items']);
     Route::delete('/trash', [TrashController::class, 'empty']);
     Route::post('/trash/{domain}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id');
     Route::get('/trash/{domain}/{id}/file', [TrashController::class, 'file'])->whereNumber('id');

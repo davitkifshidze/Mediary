@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Drama, Globe, Plus, RefreshCw, Search, Tags, UserMinus } from 'lucide-react'
 import {
   ACTOR_RECORD_STEPS,
@@ -21,7 +21,7 @@ import { RecordLockDialog } from '@/components/locks/RecordLock'
 import { actorName, deptKey } from '@/lib/actors'
 import { errorMessage } from '@/lib/errors'
 import { useFilterDraft } from '@/lib/filters'
-import { useContentLang, useSettings } from '@/lib/settings'
+import { useContentLang } from '@/lib/settings'
 import { ActorFormDialog } from '@/components/actors/ActorFormDialog'
 import { ActorTagsDialog } from '@/components/actors/ActorTagsDialog'
 import { ActorTile } from '@/components/actors/ActorTile'
@@ -34,7 +34,8 @@ import { useConfirm, useToast } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
-import { Pager } from '@/components/ui/pager'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePagedList } from '@/lib/paged'
 import { MENU_ICONS, type MenuAction } from '@/components/ui/record-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -43,14 +44,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
    ყველა „ჩემი" მსახიობი — ვინც ჩემს ფილმზე, სერიალზე ან ანიმეზეა და ვისაც
    ჩემი ფოტო აქვს. ⚠️ ავზი ათასობითაა, ამიტომ ფილტრი, დახარისხება და გვერდები
-   სერვერზეა (`GET /actors`); გვერდის ზომა — `libraryPageSize` (0 = ნაგულისხმევი).
+   სერვერზეა (`GET /actors`); გვერდზე 10 — ნომრები + „მეტის ჩვენება" (§46), გვერდი `?page=`-შია.
 
    ⚠️ სქესი ჭრილებია მთვლელით („ყველა · ქალები · კაცები"), დანარჩენი ფილტრი —
    პანელში (მისამართში ინახება, ბრაუზერის „უკან" მუშაობს). `/gallery/actors`
    რჩება გალერეის ჭრილად — იქ მხოლოდ ფოტოიანები არიან.
    ============================================================ */
-
-const DEFAULT_PAGE_SIZE = 40
 
 interface PanelFilters {
   known_for: string
@@ -68,7 +67,6 @@ const PANEL_KEYS = Object.keys(EMPTY_FILTERS) as (keyof PanelFilters)[]
 export function ActorsPage() {
   const { t, i18n } = useTranslation()
   const lang = useContentLang(i18n.language)
-  const { settings } = useSettings()
   const qc = useQueryClient()
   const { toast } = useToast()
   const confirm = useConfirm()
@@ -85,7 +83,6 @@ export function ActorsPage() {
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState<ActorSort>('name')
-  const [page, setPage] = useState(1)
   const [panelOpen, setPanelOpen] = useState(false)
   const [tagging, setTagging] = useState<ActorCard | null>(null)
   const [webFor, setWebFor] = useState<ActorCard | null>(null)
@@ -99,8 +96,6 @@ export function ActorsPage() {
     return () => clearTimeout(timer)
   }, [q])
 
-  const pageSize = settings.libraryPageSize > 0 ? settings.libraryPageSize : DEFAULT_PAGE_SIZE
-
   const filters: ActorFilters = {
     q: term || undefined,
     gender: gender === 'female' || gender === 'male' ? gender : undefined,
@@ -113,21 +108,17 @@ export function ActorsPage() {
     sort,
     locale: lang === 'ka' ? 'ka' : 'en',
   }
-  const filtersKey = JSON.stringify(filters)
-
-  // ფილტრის/დახარისხების ცვლილებაზე — პირველი გვერდი
-  useEffect(() => setPage(1), [filtersKey, pageSize])
-
-  const query = useQuery({
-    queryKey: [ACTORS_KEY, filters, page, pageSize],
-    queryFn: () => fetchActors({ ...filters, page, per_page: pageSize }),
-    placeholderData: keepPreviousData,
+  // Tasks §46 — ფილტრის/დახარისხების ცვლილება პირველ გვერდზე აბრუნებს (`usePagedList`)
+  const query = usePagedList({
+    queryKey: [ACTORS_KEY, filters],
+    fetchPage: (page) =>
+      fetchActors({ ...filters, page, per_page: LIST_PAGE_SIZE }).then((list) => ({ ...list, lastPage: list.last_page })),
   })
 
-  const items = query.data?.items ?? []
-  const total = query.data?.total ?? 0
-  const facets = query.data?.facets.gender
-  const options = query.data?.options
+  const items = query.items
+  const total = query.total
+  const facets = query.first?.facets.gender
+  const options = query.first?.options
 
   /** მისამართი = მოქმედი ფილტრი; სქესი ჭრილია და ცალკე ინახება */
   const write = (next: PanelFilters, nextGender = gender) => {
@@ -295,9 +286,7 @@ export function ActorsPage() {
                   <ActorTile key={actor.id} actor={actor} actions={actionsFor(actor)} />
                 ))}
               </div>
-              {(query.data?.last_page ?? 1) > 1 && (
-                <Pager page={query.data?.page ?? page} lastPage={query.data?.last_page ?? 1} total={total} onChange={setPage} className="mt-8" />
-              )}
+              <Pagination {...query.pagination} className="mt-8" />
             </>
           )}
         </div>

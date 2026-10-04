@@ -232,11 +232,12 @@ export async function fetchPublicShare(token: string): Promise<PublicShare> {
 export async function fetchPublicShareItems(
   token: string,
   domain: ShareDomainKey,
-  params: { page: number; q?: string; genre?: string },
+  params: { page: number; per_page?: number; q?: string; genre?: string },
 ): Promise<ShareItems> {
   const { data } = await api.get(`/public/shares/${encodeURIComponent(token)}/${domain}`, {
     params: {
       page: params.page,
+      ...(params.per_page ? { per_page: params.per_page } : {}),
       ...(params.q ? { q: params.q } : {}),
       ...(params.genre ? { genre: params.genre } : {}),
     },

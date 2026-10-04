@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ChevronLeft, ChevronRight, Lock, Search, Trash2 } from 'lucide-react'
+import { AlertTriangle, Lock, Search, Trash2 } from 'lucide-react'
 import {
   fetchAuditLogs,
   fetchAuditMeta,
@@ -28,6 +28,8 @@ import { Label } from '@/components/ui/label'
 import { ModalFooter, ModalShell } from '@/components/ui/modal-shell'
 import { PageContainer } from '@/components/ui/page'
 import { PageHeader } from '@/components/ui/page-header'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/feedback'
@@ -58,7 +60,6 @@ import { useToast } from '@/components/ui/feedback'
 
 const CONFIRM_WORD = 'DELETE'
 
-const PER_PAGE = 25
 
 /**
  * მოქმედების ფერი — ლოგი სწრაფად უნდა იკითხებოდეს, არა აიწერებოდეს.
@@ -101,7 +102,6 @@ export function AuditPage() {
   /** გამოყენებული ფილტრი — სია, გეგმა და წაშლა სამივე მასზე დგას */
   const [filters, setFilters] = useState<AuditFilters>({})
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<number[]>([])
   const [diff, setDiff] = useState<AuditEntry | null>(null)
   const [confirming, setConfirming] = useState<'selected' | 'filter' | null>(null)
@@ -124,12 +124,15 @@ export function AuditPage() {
     placeholderData: keepPreviousData,
   })
 
-  const { data: pageData, isLoading } = useQuery({
-    queryKey: ['audit', filters, page],
-    queryFn: () => fetchAuditLogs(filters, page, PER_PAGE),
+  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება". ფილტრი გვერდის მდგომარეობაშია (და არა
+     მისამართში), ამიტომ გვერდიც — `usePages`; ფილტრის შეცვლა პირველ გვერდზე აბრუნებს */
+  const log = usePages({
+    queryKey: ['audit', filters],
+    fetchPage: (page) =>
+      fetchAuditLogs(filters, page, LIST_PAGE_SIZE).then((r) => ({ items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
     enabled: allowed && view === 'log',
-    placeholderData: keepPreviousData,
   })
+  const isLoading = log.isLoading
 
   const { data: plan } = useQuery({
     queryKey: ['audit-plan', filters],
@@ -151,9 +154,8 @@ export function AuditPage() {
     onError: (e) => toast({ title: errorMessage(e), variant: 'error' }),
   })
 
-  const rows = pageData?.data ?? []
-  const total = pageData?.meta.total ?? 0
-  const lastPage = pageData?.meta.last_page ?? 1
+  const rows = log.items
+  const total = log.total
 
   /** მონიშვნა დაცულ რიგებს გვერდს უვლის — ისინი ისედაც არ იშლება */
   const selectableIds = rows.filter((r) => !r.is_protected).map((r) => r.id)
@@ -161,7 +163,6 @@ export function AuditPage() {
 
   const apply = (next: Partial<AuditFilters>) => {
     setFilters((f) => ({ ...f, ...next }))
-    setPage(1)
     setSelected([])
   }
 
@@ -376,24 +377,7 @@ export function AuditPage() {
               </div>
 
               {/* ---------- გვერდები ---------- */}
-              {lastPage > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <span className="text-muted-foreground">
-                    {t('audit.pageOf', { page, last: lastPage })}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= lastPage}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              )}
+              <Pagination className="mt-4" {...log.pagination} />
             </>
           )}
         </>

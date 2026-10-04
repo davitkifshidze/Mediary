@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Globe, Loader2, Lock, Search, TriangleAlert } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Globe, Loader2, Lock, Search, TriangleAlert } from 'lucide-react'
 import {
   PUBLIC_DOMAINS,
   domainModule,
@@ -23,6 +23,8 @@ import { ModuleIcon } from '@/components/ModuleIcon'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InfoHint } from '@/components/ui/info-hint'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
+import { LIST_PAGE_SIZE, usePages } from '@/lib/paged'
 import { Switch } from '@/components/ui/switch'
 import { useConfirm, useToast } from '@/components/ui/feedback'
 import { cn } from '@/lib/utils'
@@ -44,7 +46,6 @@ import { cn } from '@/lib/utils'
    წესი. ორივე მასობრივი მოქმედება დასტურს ითხოვს.
    ============================================================ */
 
-const PER_PAGE = 24
 
 export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const { t, i18n } = useTranslation()
@@ -59,7 +60,6 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [only, setOnly] = useState<'all' | Visibility>('all')
-  const [page, setPage] = useState(1)
   const [picked, setPicked] = useState<number[]>([])
 
   /**
@@ -110,15 +110,14 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
     return module ? moduleName(module, i18n.language) : d
   }
 
-  const listQ = useQuery({
-    queryKey: ['visibility-list', domain, term, only, page],
-    queryFn: () =>
-      fetchVisibilityList(domain as PublicDomainKey, {
-        q: term || undefined,
-        only,
-        page,
-        per_page: PER_PAGE,
-      }),
+  /* Tasks §46 — გვერდზე 10: ნომრები + „მეტის ჩვენება"; დომენის/ძებნის/ჭრილის შეცვლა პირველ
+     გვერდზე აბრუნებს. საჯარო/პირადი რიცხვები ყოველ გვერდს ერთნაირი მოსდევს (`first.meta`) */
+  const listQ = usePages({
+    queryKey: ['visibility-list', domain, term, only],
+    fetchPage: (page) =>
+      fetchVisibilityList(domain as PublicDomainKey, { q: term || undefined, only, page, per_page: LIST_PAGE_SIZE }).then(
+        (r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page }),
+      ),
     enabled: !!domain,
   })
 
@@ -161,7 +160,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   })
 
   const askMany = async (visibility: Visibility, all: boolean) => {
-    const count = all ? (listQ.data?.meta.total ?? 0) : picked.length
+    const count = all ? (listQ.total) : picked.length
     const ok = await confirm({
       title: visibility === 'public' ? t('visibility.bulkPublic') : t('visibility.bulkPrivate'),
       description: t(all ? 'visibility.bulkAllHint' : 'visibility.bulkSelectedHint', {
@@ -177,12 +176,10 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
   const search = (e: React.FormEvent) => {
     e.preventDefault()
     setTerm(q.trim())
-    setPage(1)
   }
 
   const switchDomain = (d: PublicDomainKey) => {
     setDomain(d)
-    setPage(1)
     setPicked([])
     setQ('')
     setTerm('')
@@ -196,8 +193,8 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
     )
   }
 
-  const rows = listQ.data?.data ?? []
-  const meta = listQ.data?.meta
+  const rows = listQ.items
+  const meta = listQ.first?.meta
   const busy = one.isPending || many.isPending
   const canEdit = !!domain && can(domainModule(domain), 'update')
 
@@ -271,7 +268,6 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
           value={only}
           onChange={(key) => {
             setOnly(key as 'all' | 'public' | 'private')
-            setPage(1)
           }}
           size="sm"
           layout="inline"
@@ -361,24 +357,7 @@ export function VisibilityManager({ bare }: { bare?: boolean } = {}) {
       )}
 
       {/* ---------- გვერდები ---------- */}
-      {!!meta && meta.last_page > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-3">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {t('audit.pageOf', { page: meta.page, last: meta.last_page })}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= meta.last_page}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
+      <Pagination className="mt-3" {...listQ.pagination} />
 
       {busy && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -113,6 +113,31 @@ class TrashTest extends TestCase
         $this->assertSame([], $this->actingAs($this->me)->getJson('/api/trash')->json('data'));
     }
 
+    /**
+     * Tasks §46 — ჯამური სია ჯგუფის პირველ გვერდს (10) აბრუნებს, დანარჩენი — `/trash/{kind}/items`:
+     * იგივე რიგი (ახალი ზემოთ), ჯამი და ბოლო გვერდი; უცნობი სახე 404-ია. ⚠️ ადრე 50-ის ზემოთ არაფერი ჩანდა.
+     */
+    public function test_a_trash_group_is_paged_past_the_first_page(): void
+    {
+        foreach (range(1, 23) as $n) {
+            $movie = $this->movie("Gone {$n}");
+            Carbon::setTestNow(now()->addMinute());
+            $this->actingAs($this->me)->deleteJson("/api/movies/{$movie->id}")->assertNoContent();
+        }
+        Carbon::setTestNow();
+
+        $group = $this->actingAs($this->me)->getJson('/api/trash')->assertOk()->json('data.0');
+        $this->assertSame(23, $group['total']);
+        $this->assertCount(10, $group['items']);
+        $this->assertSame('Gone 23', $group['items'][0]['title']);
+
+        $page = $this->actingAs($this->me)->getJson('/api/trash/movie/items?page=3&per_page=10')->assertOk();
+        $page->assertJsonPath('meta.total', 23)->assertJsonPath('meta.last_page', 3)->assertJsonPath('meta.current_page', 3);
+        $this->assertSame(['Gone 3', 'Gone 2', 'Gone 1'], array_column($page->json('data'), 'title'));
+
+        $this->actingAs($this->me)->getJson('/api/trash/nothing/items')->assertNotFound();
+    }
+
     /** კალათიდან წაშლა ნამდვილია — ფაილიც და კვოტაც თავისუფლდება */
     public function test_deleting_from_the_trash_is_permanent(): void
     {

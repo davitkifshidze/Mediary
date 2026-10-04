@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { readPage, type Page } from '@/lib/paged'
 
 /* ============================================================
    ურნა (FEAT-11 → Tasks §29).
@@ -110,6 +111,12 @@ export interface TrashPayload {
 export async function fetchTrash(): Promise<TrashPayload> {
   const res = await api.get('/trash')
   return res.data
+}
+
+/** Tasks §46 — ერთი ჯგუფის გვერდი; ჯამური სია (`fetchTrash`) პირველს უკვე შეიცავს */
+export async function fetchTrashItems(kind: string, page: number, perPage: number): Promise<Page<TrashItem>> {
+  const { data } = await api.get(`/trash/${encodeURIComponent(kind)}/items`, { params: { page, per_page: perPage } })
+  return readPage<TrashItem>(data)
 }
 
 /**

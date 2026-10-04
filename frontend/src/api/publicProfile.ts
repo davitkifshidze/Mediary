@@ -149,10 +149,11 @@ export async function fetchPublicItems(
   username: string,
   domain: PublicDomainKey,
   page = 1,
+  perPage?: number,
 ): Promise<PublicItems> {
   const { data } = await api.get(
     `/public/profiles/${encodeURIComponent(username)}/${domain}`,
-    { params: { page } },
+    { params: { page, ...(perPage ? { per_page: perPage } : {}) } },
   )
   return data
 }

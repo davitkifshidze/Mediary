@@ -17,8 +17,6 @@ export interface Settings {
   /** მსახიობის გვერდი — ცალკე ფილმებზე, ცალკე სერიალებზე (E2) */
   actorMoviesPerPage: number
   actorSeriesPerPage: number
-  /** ბიბლიოთეკის გვერდზე ჩანაწერების რაოდენობა; 0 = ყველა (E2) */
-  libraryPageSize: number
   /** „აღმოაჩინე" — რამდენ გვერდამდე მივყვეთ TMDB-ს (E3). TMDB-ს ლიმიტი 500-ია. */
   discoverMaxPages: number
   /** „აღმოაჩინე" — ჩანაწერი გვერდზე; TMDB თითო გვერდზე 20-ს აბრუნებს, ამიტომ ჯერადი (E3) */
@@ -126,7 +124,6 @@ export type DateFormat = 'ka-GE' | 'en-GB' | 'iso'
 const DEFAULT_SETTINGS: Settings = {
   actorMoviesPerPage: 10,
   actorSeriesPerPage: 10,
-  libraryPageSize: 0,
   discoverMaxPages: 100,
   discoverPerPage: 20,
   syncDelayMs: 200,
@@ -159,7 +156,6 @@ export const PLAYER_MAX_WIDTH_OPTIONS = [480, 560, 640, 720, 800]
 export const TMDB_MAX_PAGE = 500
 
 export const DISCOVER_PER_PAGE_OPTIONS = [20, 40, 60, 80, 100]
-export const LIBRARY_PAGE_SIZE_OPTIONS = [0, 24, 48, 60, 96, 120]
 export const ACTOR_PER_PAGE_OPTIONS = [5, 10, 15, 20, 30, 50]
 export const SYNC_DELAY_OPTIONS = [0, 200, 500, 1000, 2000]
 /* თარგმანის პაუზა — Gemini-ის ლიმიტი TMDB-ისაზე მკაცრია, ე.ი. ჭერიც მაღალია.

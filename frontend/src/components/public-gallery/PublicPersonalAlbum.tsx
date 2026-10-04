@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { Folder, Loader2 } from 'lucide-react'
 import {
   fetchPublicPersonalAlbum,
@@ -13,7 +12,8 @@ import { useDateFormat } from '@/lib/dates'
 import { countLabel } from '@/lib/personal'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PHOTO_PAGE_ALL, PhotoGrid, type PhotoItem } from '@/components/ui/photo-grid'
-import { ShowMore } from '@/components/ui/show-more'
+import { Pagination } from '@/components/ui/pagination'
+import { usePages } from '@/lib/paged'
 
 /* ============================================================
    **პირადი გალერეის საჯარო ალბომი (Tasks §33, Q7).**
@@ -75,17 +75,15 @@ export function PublicPersonalAlbumDialog({
   const { t } = useTranslation()
   const { date } = useDateFormat()
 
-  const query = useInfiniteQuery({
+  // Tasks §46 — ნომრები + „მეტის ჩვენება" (ფოტოს გვერდი — `PER_PAGE`)
+  const query = usePages({
     queryKey: ['public-personal-album', username, card.id],
-    queryFn: ({ pageParam }) => fetchPublicPersonalAlbum(username, card.id, pageParam, PER_PAGE),
-    initialPageParam: 1,
-    getNextPageParam: (last) => (last.meta.current_page < last.meta.last_page ? last.meta.current_page + 1 : undefined),
+    fetchPage: (page) => fetchPublicPersonalAlbum(username, card.id, page, PER_PAGE).then((r) => ({ ...r, items: r.data, total: r.meta.total, lastPage: r.meta.last_page })),
   })
 
-  const media = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.data), [query.data])
+  const media = query.items
   const items = useMemo(() => media.map((m) => toItem(m, t, date)), [media, t, date])
-  const total = query.data?.pages[0]?.meta.total ?? 0
-  const album = query.data?.pages[0]?.album ?? card
+  const album = query.first?.album ?? card
 
   return (
     <ModalShell title={album.title_en || album.title_ka || '—'} onClose={onClose} size="wide">
@@ -99,7 +97,7 @@ export function PublicPersonalAlbumDialog({
         <PhotoGrid readOnly items={items} pageSize={PHOTO_PAGE_ALL} emptyText={t('publicProfile.personalEmpty')} />
       )}
 
-      <ShowMore shown={media.length} total={total} loading={query.isFetchingNextPage} onMore={() => query.fetchNextPage()} />
+      <Pagination {...query.pagination} />
     </ModalShell>
   )
 }
