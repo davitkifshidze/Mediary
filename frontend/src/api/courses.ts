@@ -19,7 +19,8 @@ export const COURSE_STATUSES = ['to_take', 'taking', 'done', 'dropped'] as const
 
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 
-export const COURSE_FILE_KINDS = ['certificate', 'image', 'doc'] as const
+/** ⚠️ სერტიფიკატი (`certificate`) Tasks §55.5-მა მოხსნა — ძველი ფაილები დოკუმენტებშია */
+export const COURSE_FILE_KINDS = ['image', 'doc'] as const
 
 export type CourseFileKind = (typeof COURSE_FILE_KINDS)[number]
 
@@ -85,6 +86,10 @@ export interface CourseInput {
   tags?: string[]
   status?: CourseStatus
   visibility?: 'private' | 'public'
+  /**
+   * Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო (ადრე ფორმა მას აჩვენებდა, მაგრამ არ აგზავნიდა).
+   * `undefined` — არ შეეხო · `null` — მოხსენი · სტრიქონი — ახალი.
+   */
   image_url?: string | null
   /** ატვირთული ესკიზი; მითითების შემთხვევაში multipart-ად იგზავნება */
   thumbnail?: File | null
@@ -101,7 +106,7 @@ function toFormData(input: CourseInput): FormData {
   if (input.category_id != null) fd.append('category_id', String(input.category_id))
   if (input.status) fd.append('status', input.status)
   if (input.visibility) fd.append('visibility', input.visibility)
-  if (input.image_url) fd.append('image_url', input.image_url)
+  if (input.image_url !== undefined) fd.append('image_url', input.image_url ?? '')
   /* Tasks §4.8 — `null` („გაასუფთავე“) ცარიელ სტრიქონად იგზავნება, მხოლოდ
      `undefined` („არ შეეხო“) რჩება გამოტოვებული — თორემ გასუფთავებული ველი
      შენახვის შემდეგ ძველ მნიშვნელობაზე ბრუნდებოდა. */
@@ -164,6 +169,58 @@ export async function toggleCourseFavorite(id: number): Promise<Course> {
 export async function setCourseStatus(id: number, status: CourseStatus): Promise<Course> {
   const { data } = await api.patch(`/courses/${id}/status`, { status })
   return data.data
+}
+
+/* ---------- Tasks §55 — YouTube-ის ფლეილისტი ---------- */
+
+/** ფლეილისტის ერთი ვიდეო — ჩვენებისთვის; ჩანაწერად არ ინახება („გაკვეთილები" დახურულია) */
+export interface CoursePlaylistItem {
+  position: number
+  video_id: string
+  title: string | null
+  /** წამები; წყარომ თუ არ იცის — `null` */
+  duration: number | null
+  thumbnail: string
+  url: string
+  /** backend-ის allowlist-ით ნაშენი (`youtube-nocookie.com`) */
+  embed_url: string
+  published_at: string | null
+}
+
+export interface CoursePlaylist {
+  id: string
+  title: string | null
+  description: string | null
+  channel: string | null
+  thumbnail: string | null
+  count: number
+  /** ცნობილი ხანგრძლივობების ჯამი, წამებში */
+  total_duration: number
+  source: 'youtube_api' | 'ytdlp'
+  fetched_at: string
+  items: CoursePlaylistItem[]
+}
+
+/**
+ * ბმული YouTube-ის ფლეილისტია? (`list=` YouTube-ის ჰოსტზე) — ფანჯარა მოთხოვნას მხოლოდ
+ * მაშინ აგზავნის. ⚠️ სერვერის `VideoUrl`-ის მარტივი სარკეა: საბოლოო პასუხი მაინც მისია
+ * (`playlist: null`), აქ მხოლოდ ზედმეტ მოთხოვნას ვზოგავთ.
+ */
+export function isYoutubePlaylist(url: string | null | undefined): boolean {
+  if (!url) return false
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.replace(/^www\./, '')
+    return ['youtube.com', 'm.youtube.com', 'youtu.be', 'youtube-nocookie.com'].includes(host) && /^[\w-]{12,64}$/.test(parsed.searchParams.get('list') ?? '')
+  } catch {
+    return false
+  }
+}
+
+/** `refresh` — 24-საათიან ქეშს გვერდს უვლის („განახლება") */
+export async function fetchCoursePlaylist(courseId: number, refresh = false): Promise<CoursePlaylist | null> {
+  const { data } = await api.get(`/courses/${courseId}/playlist`, { params: refresh ? { refresh: 1 } : {} })
+  return data.playlist ?? null
 }
 
 /* ---------- ფაილები ---------- */

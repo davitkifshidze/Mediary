@@ -1267,7 +1267,8 @@
     "duty_hours_required": "Enter the hours — a shift without a type needs them.",
     "duty_range_too_long": "The range can’t be longer than 3 years.",
     "nothing_to_change": "Nothing to change — pick a workplace or a type.",
-    "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password."
+    "locked_album_password_required": "To lock a photo, the “Locked photos” album has to be created first — with a password.",
+    "youtube_unavailable": "YouTube is not answering — try again later."
   },
   "fields": {
     "title": "Fields",
@@ -3985,9 +3986,7 @@
     "open": "Open the course",
     "files": "Files",
     "noFiles": "No files.",
-    "certificateHint": "The completion certificate — the thing a course ends with, which is why it has a block of its own rather than sitting among the notes.",
     "fileKinds": {
-      "certificate": "Certificate",
       "image": "Images",
       "doc": "Documents"
     },
@@ -4003,7 +4002,15 @@
     "sort_finished": "By finish date",
     "addPhotos": "Upload photos",
     "photosEmpty": "No photos yet.",
-    "photoDeleteTitle": "Delete the photo?"
+    "photoDeleteTitle": "Delete the photo?",
+    "playlist": {
+      "title": "Videos ({{count}})",
+      "hint": "The list comes from YouTube — with your key or, without one, through yt-dlp — and is kept for 24 hours; “Refresh” fetches it now. Click to play from there to the end, the arrow opens it on YouTube.",
+      "total": "{{duration}} in total",
+      "refresh": "Refresh",
+      "openOnYoutube": "Open on YouTube",
+      "empty": "The playlist has no videos"
+    }
   },
   "places": {
     "title": "Places",

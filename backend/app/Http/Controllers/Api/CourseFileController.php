@@ -11,14 +11,13 @@ use App\Support\SafeMime;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * კურსის ფაილები (FEAT-25) — `certificate` = დამთავრების სერტიფიკატი,
- * `image`/`doc` = თანმხლები.
+ * კურსის ფაილები (FEAT-25) — `image`/`doc` = თანმხლები (ეკრანის ასლი, კონსპექტი).
  *
- * ⚠️ **სერტიფიკატი ცალკე `kind`-ია და არა უბრალოდ „დოკუმენტი"**: სწორედ
- * ის არის, რასაც ტასქი ითხოვს, და ინტერფეისში ის ცალკე ბლოკია — ერთ
- * გროვაში ჩაყრილი კონსპექტებიდან მისი გამორჩევა შეუძლებელი იქნებოდა.
+ * ⚠️ **სერტიფიკატი აღარ არის** (Tasks §55.5, შენი სიტყვები: „არ მჭირდება
+ * სერტიფიკატები") — `kind: certificate` 422-ია, ძველი რიგები `doc`-ად გადავიდა.
  *
  * ⚠️ **MIME სერვერის მხრიდან იკითხება** (`SafeMime::ofUpload()`) და არა
  * კლიენტის განაცხადიდან — SEC-04-ის გაკვეთილი: ატვირთვის header-ი
@@ -38,7 +37,7 @@ class CourseFileController extends Controller
         $kind = $request->input('kind', 'doc');
 
         $data = $request->validate([
-            'kind' => ['required', 'in:certificate,image,doc'],
+            'kind' => ['required', Rule::in(Course::FILE_KINDS)],
             'files' => ['required', 'array', 'max:20'],
             'files.*' => $kind === 'image' ? UploadLimits::rule('image', $request->user()) : UploadLimits::rule('doc', $request->user()),
         ]);

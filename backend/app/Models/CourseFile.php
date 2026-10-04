@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * კურსზე მიმაგრებული ფაილი: `certificate` = დამთავრების სერტიფიკატი,
- * `image`/`doc` = თანმხლები (ეკრანის ასლი, კონსპექტი).
+ * კურსზე მიმაგრებული ფაილი: `image`/`doc` = თანმხლები (ეკრანის ასლი, კონსპექტი).
+ * ⚠️ სერტიფიკატი (`certificate`) Tasks §55.5-მა მოხსნა — ძველი რიგები `doc`-ად გადავიდა.
  *
  * ცხრილი **სექციისაა** (2026-09-03-ის წესი) — უნივერსალური `attachments`
  * აღარ არსებობს. წაშლა დისკიდან და კვოტიდან `StoredFile`-ზეა.

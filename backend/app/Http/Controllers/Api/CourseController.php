@@ -8,8 +8,11 @@ use App\Models\Course;
 use App\Services\Links\LinkResolver;
 use App\Services\Stats\LibraryStats;
 use App\Services\Storage\StorageMeter;
+use App\Services\Video\YouTubePlaylist;
 use App\Support\ColumnTrash;
+use App\Support\CredentialProviders;
 use App\Support\Like;
+use App\Support\MissingCredential;
 use App\Support\RichText;
 use App\Support\StorageFolder;
 use App\Support\UploadLimits;
@@ -93,6 +96,33 @@ class CourseController extends Controller
         $data = $request->validate(['url' => ['required', 'string', 'max:1000', 'url']]);
 
         return response()->json($resolver->resolve($data['url']));
+    }
+
+    /**
+     * **Tasks §55.3 — ფლეილისტის ვიდეოები** კურსის ფანჯრისთვის (ჩვენება; ჩანაწერებად
+     * არ ინახება — „გაკვეთილები" დახურულია). `?refresh=1` — 24-საათიან ქეშს გვერდს
+     * უვლის („განახლება").
+     *
+     * ⚠️ ფლეილისტი არ არის — `{playlist: null}` (200): ეს მდგომარეობაა და არა შეცდომა.
+     * ⚠️ არც გასაღებია და არც `yt-dlp` — 409 `credential_missing` (წყარო YouTube-ია:
+     * „ჩაწერე გასაღები"); ორივე ჩავარდა — 503 `youtube_unavailable`.
+     */
+    public function playlist(Request $request, Course $course, YouTubePlaylist $playlists)
+    {
+        $id = $course->url ? VideoUrl::parse($course->url)['playlist_id'] : null;
+
+        if ($id === null) {
+            return response()->json(['playlist' => null]);
+        }
+        if (! $playlists->available()) {
+            return MissingCredential::response(CredentialProviders::YOUTUBE);
+        }
+
+        $list = $playlists->fetch($id, $request->boolean('refresh'));
+
+        return $list === null
+            ? response()->json(['message' => 'youtube_unavailable'], 503)
+            : response()->json(['playlist' => $list]);
     }
 
     public function store(Request $request)

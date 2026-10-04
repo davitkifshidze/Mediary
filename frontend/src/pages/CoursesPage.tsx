@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, ExternalLink, FileText, GraduationCap, Image as ImageIcon, Link2, Loader2, Plus, Search } from 'lucide-react'
+import { ExternalLink, FileText, GraduationCap, Image as ImageIcon, Link2, Loader2, Plus, Search } from 'lucide-react'
 import {
   COURSE_STATUSES,
   createCourse,
@@ -477,6 +477,9 @@ function CourseForm({
     course?.image ? (storageUrl(course.image) ?? course.image) : null,
   )
   const [removeThumb, setRemoveThumb] = useState(false)
+  /* Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო **იგზავნება** (ადრე მხოლოდ ჩანდა და შენახვისას
+     იკარგებოდა): `undefined` — არ შეგვხებია · `null` — მოხსნილია · სტრიქონი — ახალი */
+  const [imageUrl, setImageUrl] = useState<string | null | undefined>(undefined)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [probing, setProbing] = useState(false)
   const qc = useQueryClient()
@@ -505,7 +508,10 @@ function CourseForm({
         title: f.title || (meta.title ?? ''),
         description: f.description || (meta.description ?? ''),
       }))
-      if (!preview && meta.image_url) setPreview(meta.image_url)
+      if (!preview && meta.image_url) {
+        setPreview(meta.image_url)
+        setImageUrl(meta.image_url)
+      }
     } catch {
       /* ⚠️ ჩუმად: კურსის გვერდი ბოტს ხშირად 403-ს აძლევს და ეს ხელით
          შევსებას არ უნდა უშლიდეს */
@@ -590,6 +596,7 @@ function CourseForm({
       category_id: form.categoryId ? Number(form.categoryId) : null,
       status: form.status as CourseStatus,
       tags,
+      image_url: imageUrl,
       thumbnail,
       remove_thumbnail: removeThumb,
     })
@@ -643,11 +650,14 @@ function CourseForm({
                 onSelect={(file) => {
                   setThumbnail(file)
                   setRemoveThumb(false)
+                  setImageUrl(undefined)
                   setPreview(URL.createObjectURL(file))
                 }}
                 onClear={() => {
                   setThumbnail(null)
                   setRemoveThumb(true)
+                  // §55.4 — ბმულიდან მოსული ფოტოც იხსნება, თორემ შენახვის შემდეგ ისევ ჩნდებოდა
+                  setImageUrl(null)
                   setPreview(null)
                 }}
               />
@@ -726,7 +736,6 @@ function CourseForm({
             title={t('courses.files')}
             hint={t('uploads.pendingHint')}
             kinds={[
-              { kind: 'certificate', label: t('courses.fileKinds.certificate'), icon: Award, limit: 'doc' },
               { kind: 'image', label: t('courses.fileKinds.image'), icon: ImageIcon },
               { kind: 'doc', label: t('courses.fileKinds.doc'), icon: FileText },
             ]}

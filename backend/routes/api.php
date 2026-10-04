@@ -886,8 +886,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
         Route::patch('/courses/{course}/favorite', [CourseController::class, 'toggleFavorite']);
         Route::patch('/courses/{course}/status', [CourseController::class, 'setStatus']);
+        // Tasks §55.3 — YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; `?refresh=1` — ქეშის გარეშე)
+        Route::get('/courses/{course}/playlist', [CourseController::class, 'playlist']);
 
-        /* ფაილები — სერტიფიკატი, ეკრანის ასლი, კონსპექტი */
+        /* ფაილები — ეკრანის ასლი, კონსპექტი (სერტიფიკატი §55.5-მა მოხსნა) */
         Route::get('/courses/{course}/files', [CourseFileController::class, 'index']);
         Route::post('/courses/{course}/files', [CourseFileController::class, 'store']);
         Route::delete('/course-files/{courseFile}', [CourseFileController::class, 'destroy']);

@@ -8,6 +8,12 @@ namespace App\Support;
  * ⚠️ უსაფრთხოება: **თვითნებური HTML/embed კოდი არასდროს ინახება**. ვიღებთ მხოლოდ URL-ს,
  * ვცნობთ პლატფორმას allowlist-ით და embed-ს ჩვენ ვაწყობთ. უცნობი წყარო embed-ის გარეშე
  * რჩება (მხოლოდ გარე ბმული) — ე.ი. iframe-ში მხოლოდ ნდობის სიაში მყოფი ჰოსტი ხვდება.
+ *
+ * ⚠️ **Tasks §55.1 — YouTube-ის ფლეილისტი** (`list=`): `playlist_id` ყველა პასუხშია
+ * (`null` — ფლეილისტი არ არის). `watch?v=…&list=…` ვიდეოდ რჩება და ფლეილისტსაც
+ * ატარებს; `playlist?list=…` (ვიდეოს გარეშე) ადრე „სხვად" (`other`) იცნობოდა — Open
+ * Graph-ს YouTube ბოტს თანხმობის გვერდს აძლევს, ე.ი. სათაური და ფოტო არ მოდიოდა.
+ * ახლა ის YouTube-ია `external_id`-ის გარეშე, ჩაშენება — `videoseries?list=`.
  */
 class VideoUrl
 {
@@ -18,14 +24,17 @@ class VideoUrl
         'geo.dailymotion.com',
     ];
 
+    private const YOUTUBE_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'm.youtube.com'];
+
     /**
-     * @return array{platform: string, external_id: ?string, embed_url: ?string, thumbnail_url: ?string}
+     * @return array{platform: string, external_id: ?string, embed_url: ?string, thumbnail_url: ?string, playlist_id: ?string}
      */
     public static function parse(string $url): array
     {
         $url = trim($url);
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $host = preg_replace('/^www\./', '', $host) ?: '';
+        $playlist = self::youtubePlaylistId($url, $host);
 
         if ($id = self::youtubeId($url, $host)) {
             return [
@@ -34,6 +43,18 @@ class VideoUrl
                 // nocookie დომენი — ნაკლები ტრეკინგი, იგივე ფუნქციონალი
                 'embed_url' => "https://www.youtube-nocookie.com/embed/{$id}",
                 'thumbnail_url' => "https://i.ytimg.com/vi/{$id}/hqdefault.jpg",
+                'playlist_id' => $playlist,
+            ];
+        }
+
+        // §55.1 — მხოლოდ ფლეილისტი: ესკიზი წყაროდან მოდის (`YouTubePlaylist`), აქ არ ვიცით
+        if ($playlist !== null) {
+            return [
+                'platform' => 'youtube',
+                'external_id' => null,
+                'embed_url' => "https://www.youtube-nocookie.com/embed/videoseries?list={$playlist}",
+                'thumbnail_url' => null,
+                'playlist_id' => $playlist,
             ];
         }
 
@@ -44,6 +65,7 @@ class VideoUrl
                     'external_id' => $m[1],
                     'embed_url' => "https://player.vimeo.com/video/{$m[1]}",
                     'thumbnail_url' => null,
+                    'playlist_id' => null,
                 ];
             }
         }
@@ -56,21 +78,22 @@ class VideoUrl
                     'external_id' => $m[1],
                     'embed_url' => "https://geo.dailymotion.com/player.html?video={$m[1]}",
                     'thumbnail_url' => "https://www.dailymotion.com/thumbnail/video/{$m[1]}",
+                    'playlist_id' => null,
                 ];
             }
         }
 
         // პირდაპირი ფაილი — <video> ტეგით ჩაირთვება, iframe არ სჭირდება
         if (preg_match('~\.(mp4|webm|ogg|ogv|m4v)(\?|$)~i', $url)) {
-            return ['platform' => 'file', 'external_id' => null, 'embed_url' => null, 'thumbnail_url' => null];
+            return ['platform' => 'file', 'external_id' => null, 'embed_url' => null, 'thumbnail_url' => null, 'playlist_id' => null];
         }
 
-        return ['platform' => 'other', 'external_id' => null, 'embed_url' => null, 'thumbnail_url' => null];
+        return ['platform' => 'other', 'external_id' => null, 'embed_url' => null, 'thumbnail_url' => null, 'playlist_id' => null];
     }
 
     private static function youtubeId(string $url, string $host): ?string
     {
-        if (! in_array($host, ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'm.youtube.com'], true)) {
+        if (! in_array($host, self::YOUTUBE_HOSTS, true)) {
             return null;
         }
 
@@ -79,6 +102,7 @@ class VideoUrl
 
         $id = match (true) {
             $host === 'youtu.be' => ltrim($path, '/'),
+            str_starts_with($path, '/embed/videoseries') => null,
             str_starts_with($path, '/embed/') => substr($path, 7),
             str_starts_with($path, '/shorts/') => substr($path, 8),
             str_starts_with($path, '/live/') => substr($path, 6),
@@ -88,5 +112,22 @@ class VideoUrl
         $id = is_string($id) ? trim($id, '/') : null;
 
         return $id && preg_match('/^[A-Za-z0-9_-]{6,20}$/', $id) ? $id : null;
+    }
+
+    /**
+     * §55.1 — `list=` YouTube-ის ბმულიდან. ⚠️ მოკლე სისტემური სიები („WL" — მოგვიანებით
+     * სანახავი, „LL" — მოწონებული) პირადია და API-ით არ იკითხება — 12 სიმბოლოზე
+     * მოკლე `null`-ია; ფორმა ID-ის ასოებითაც მოწმდება (ბმული გარედან მოდის).
+     */
+    private static function youtubePlaylistId(string $url, string $host): ?string
+    {
+        if (! in_array($host, self::YOUTUBE_HOSTS, true)) {
+            return null;
+        }
+
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        $list = $query['list'] ?? null;
+
+        return is_string($list) && preg_match('/^[A-Za-z0-9_-]{12,64}$/', $list) ? $list : null;
     }
 }

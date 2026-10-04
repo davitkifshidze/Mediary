@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, ExternalLink, FileText, GraduationCap, Image as ImageIcon, Loader2, Upload } from 'lucide-react'
+import { ExternalLink, FileText, GraduationCap, Image as ImageIcon, Loader2, Upload, type LucideIcon } from 'lucide-react'
 import {
-  COURSE_FILE_KINDS,
   deleteCourseFile,
   fetchCourseFiles,
+  isYoutubePlaylist,
   uploadCourseFiles,
   type Course,
   type CourseFile,
@@ -16,6 +16,7 @@ import { useRecordOpen } from '@/lib/audit'
 import { storageUrl } from '@/lib/api'
 import { errorMessage } from '@/lib/errors'
 import { formatBytes } from '@/lib/utils'
+import { CoursePlaylistSection } from '@/components/CoursePlaylist'
 import { FileViewer, type ViewableFile } from '@/components/FileViewer'
 import { VisibilityBadge } from '@/components/VisibilityToggle'
 import { Badge } from '@/components/ui/badge'
@@ -36,16 +37,15 @@ import { cn } from '@/lib/utils'
 /**
  * **კურსის ბარათი (FEAT-25).**
  *
- * ⚠️ **სერტიფიკატი ცალკე ბლოკია და არა „კიდევ ერთი დოკუმენტი".** ის არის
- * ის, რისთვისაც კურსი მთავრდება — ერთ გროვაში ჩაყრილი კონსპექტებიდან
- * მისი გამორჩევა შეუძლებელი იქნებოდა.
+ * ⚠️ **Tasks §55** — YouTube-ის ფლეილისტის ბმულზე „ვიდეოები (N)" (`CoursePlaylistSection`);
+ * **სერტიფიკატი აღარ არის** (შენი სიტყვები: „არ მჭირდება სერტიფიკატები") — ძველი
+ * სერტიფიკატი დოკუმენტებში ჩანს (მიგრაცია `kind`-ს `doc`-ად ცვლის).
  *
  * ⚠️ **ფაილი `FileViewer`-ით იხსნება** — ერთი მნახველი მთელ აპზე; ცალკე
  * `<a target="_blank">` ვერც PDF-ს აჩვენებდა ისე, როგორც უნდა, და ვერც
  * წაშლას შესთავაზებდა იმავე ფანჯარაში.
  */
-const KIND_ICON: Record<CourseFileKind, typeof Award> = {
-  certificate: Award,
+const KIND_ICON: Record<CourseFileKind, LucideIcon> = {
   image: ImageIcon,
   doc: FileText,
 }
@@ -107,7 +107,6 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
         key={kind}
         icon={<Icon className="size-4 text-muted-foreground" />}
         title={t(`courses.fileKinds.${kind}`)}
-        hint={kind === 'certificate' ? t('courses.certificateHint') : undefined}
         action={
           <>
             <Button
@@ -234,12 +233,11 @@ export function CourseDetail({ course, onClose }: { course: Course; onClose: () 
           </a>
         )}
 
-        {/* სერტიფიკატი და დოკუმენტები — ფოტოები ზემოთაა (§26.4) */}
-        {filesQ.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('api.loading')}</p>
-        ) : (
-          <div className="space-y-5">{COURSE_FILE_KINDS.filter((kind) => kind !== 'image').map(section)}</div>
-        )}
+        {/* §55.3 — YouTube-ის ფლეილისტის ვიდეოები (ჩვენება; დაკვრა — რიგად, მოტივტივე ჩარჩოში) */}
+        {isYoutubePlaylist(course.url) && <CoursePlaylistSection course={course} />}
+
+        {/* დოკუმენტები — ფოტოები ზემოთაა (§26.4); სერტიფიკატი §55.5-მა მოხსნა */}
+        {filesQ.isLoading ? <p className="text-sm text-muted-foreground">{t('api.loading')}</p> : section('doc')}
       </div>
 
       {viewing && (

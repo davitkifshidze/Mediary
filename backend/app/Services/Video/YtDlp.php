@@ -128,6 +128,61 @@ class YtDlp
     }
 
     /**
+     * **ფლეილისტი გასაღების გარეშე** (Tasks §55.2) — `-J --flat-playlist`: სიის სათაური,
+     * აღწერა, არხი და თითო ვიდეო (id, სათაური, ხანგრძლივობა) **ერთი გაშვებით**, ვიდეოების
+     * ცალ-ცალკე გახსნის გარეშე. ⚠️ ჩავარდნა — `null` (იგივე წესი, რაც `info()`-ს აქვს).
+     *
+     * @return array{title: ?string, description: ?string, channel: ?string, thumbnail: ?string,
+     *               entries: list<array{id: string, title: ?string, duration: ?int}>}|null
+     */
+    public function playlist(string $url): ?array
+    {
+        $binary = $this->binary();
+        if (! $binary) {
+            return null;
+        }
+
+        $process = new Process([$binary, '-J', '--flat-playlist', '--no-warnings', '--', $url], null, ProcessEnv::for());
+        $process->setTimeout((int) config('mediary.ytdlp.playlist_timeout', 60));
+
+        try {
+            $process->run();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $json = $process->isSuccessful() ? json_decode($process->getOutput(), true) : null;
+        if (! is_array($json) || ! is_array($json['entries'] ?? null)) {
+            return null;
+        }
+
+        $text = fn (mixed $v) => is_string($v) && trim($v) !== '' ? trim($v) : null;
+        // უდიდესი ესკიზი სიის ბოლოშია
+        $thumbs = array_values(array_filter((array) ($json['thumbnails'] ?? []), fn ($t) => is_array($t) && is_string($t['url'] ?? null)));
+
+        $entries = [];
+        foreach ($json['entries'] as $entry) {
+            $id = is_array($entry) ? ($entry['id'] ?? null) : null;
+            if (! is_string($id) || ! preg_match('/^[A-Za-z0-9_-]{6,20}$/', $id)) {
+                continue;
+            }
+            $entries[] = [
+                'id' => $id,
+                'title' => $text($entry['title'] ?? null),
+                'duration' => is_numeric($entry['duration'] ?? null) ? (int) round((float) $entry['duration']) : null,
+            ];
+        }
+
+        return [
+            'title' => $text($json['title'] ?? null),
+            'description' => $text($json['description'] ?? null),
+            'channel' => $text($json['channel'] ?? null) ?? $text($json['uploader'] ?? null),
+            'thumbnail' => $thumbs ? $thumbs[count($thumbs) - 1]['url'] : null,
+            'entries' => $entries,
+        ];
+    }
+
+    /**
      * ჩამოწერამდე: სათაური და **სავარაუდო ზომა**.
      *
      * ⚠️ ეს არის ერთადერთი გზა, კვოტა ჩამოწერამდე შევამოწმოთ. სავარაუდოა

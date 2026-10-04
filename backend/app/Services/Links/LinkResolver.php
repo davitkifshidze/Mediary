@@ -4,6 +4,7 @@ namespace App\Services\Links;
 
 use App\Services\Bookmarks\LinkMetadata;
 use App\Services\Video\VideoMetadata;
+use App\Services\Video\YouTubePlaylist;
 use App\Support\VideoUrl;
 use Illuminate\Support\Facades\Cache;
 
@@ -30,6 +31,11 @@ use Illuminate\Support\Facades\Cache;
  * სამი სხვადასხვა პასუხი იყო). ვიდეოზე ტეგები და თარიღიც მოდის (`VideoMetadata`).
  * ⚠️ **აღწერა 5 000 სიმბოლომდე** (§44.4; ადრე ყოველი სტრიქონი 500-ზე იჭრებოდა) —
  * ვიდეოს/ბუკმარკის/ადგილის/კურსის შენახვის ზღვარი; სათაური — 500.
+ *
+ * ⚠️ **Tasks §55.4 — YouTube-ის ფლეილისტი** (`playlist?list=…`, ვიდეოს გარეშე): სათაური,
+ * აღწერა, არხი და ესკიზი `YouTubePlaylist`-იდან (`kind: playlist`); oEmbed-ს აღწერა არ
+ * აქვს, გვერდის Open Graph-ს კი YouTube ბოტს თანხმობის ეკრანს აძლევს. სია იმავე 24-
+ * საათიან ქეშშია, რომელსაც კურსის ფანჯარა კითხულობს.
  */
 class LinkResolver
 {
@@ -43,6 +49,7 @@ class LinkResolver
     public function __construct(
         private readonly VideoMetadata $videos,
         private readonly LinkMetadata $pages,
+        private readonly YouTubePlaylist $playlists,
     ) {}
 
     /**
@@ -55,8 +62,9 @@ class LinkResolver
     {
         $url = trim($url);
 
-        // ⚠️ გასაღების ვერსია — §44-მდე ქეშირებულ პასუხს ტეგები და თარიღი აკლდა
-        $meta = Cache::remember('link-meta:v2:'.sha1($url), now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
+        // ⚠️ გასაღების ვერსია — §44-მდე ქეშირებულ პასუხს ტეგები და თარიღი აკლდა, §55-მდე
+        // ფლეილისტზე YouTube-ის თანხმობის გვერდი იყო ქეშირებული
+        $meta = Cache::remember('link-meta:v3:'.sha1($url), now()->addMinutes(self::CACHE_MINUTES), fn () => $this->lookup($url));
 
         if (is_string($meta['description']) && mb_strlen($meta['description']) > self::DESCRIPTION_MAX) {
             $meta['description'] = mb_substr($meta['description'], 0, self::DESCRIPTION_MAX);
@@ -87,6 +95,23 @@ class LinkResolver
             'published_at' => null,
             'tags' => [],
         ];
+
+        // §55.4 — მხოლოდ ფლეილისტი (ვიდეოს გარეშე); წყარომ არ უპასუხა — oEmbed-ზე გადადის
+        if ($parsed['playlist_id'] !== null && $parsed['external_id'] === null && $this->playlists->available()) {
+            $list = $this->playlists->fetch($parsed['playlist_id']);
+            if ($list !== null) {
+                return [
+                    ...$out,
+                    'kind' => 'playlist',
+                    'title' => $list['title'],
+                    'description' => $list['description'],
+                    'image_url' => $list['thumbnail'] ?? $out['image_url'],
+                    'site_name' => 'YouTube',
+                    'author' => $list['channel'],
+                    'duration' => $list['total_duration'] ?: null,
+                ];
+            }
+        }
 
         if ($isVideo) {
             $meta = $this->videos->fetch($url);

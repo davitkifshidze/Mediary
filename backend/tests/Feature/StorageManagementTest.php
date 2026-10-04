@@ -761,14 +761,14 @@ class StorageManagementTest extends TestCase
         $game = Game::create(['user_id' => $u->id, 'title_en' => 'g', 'cover_path' => 'games/covers/g.jpg', 'cover_source' => 'upload']);
         $game->files()->create(['user_id' => $u->id, 'kind' => 'doc', 'path' => 'games/files/docs/g.pdf', 'size' => 32]);
 
-        // FEAT-25 — კურსი: ესკიზი + სერტიფიკატი
+        // FEAT-25 — კურსი: ესკიზი + დოკუმენტი (სერტიფიკატი §55.5-მა მოხსნა)
         $course = Course::create([
             'user_id' => $u->id, 'title' => 'c',
             'thumbnail_path' => 'courses/thumbnails/c.jpg',
         ]);
         $course->files()->create([
-            'user_id' => $u->id, 'kind' => 'certificate',
-            'path' => 'courses/files/certificates/c.pdf', 'original_name' => 'c.pdf', 'size' => 48,
+            'user_id' => $u->id, 'kind' => 'doc',
+            'path' => 'courses/files/docs/c.pdf', 'original_name' => 'c.pdf', 'size' => 48,
         ]);
 
         // FEAT-26 — ადგილი: ფოტო + მიმაგრებული ფაილი

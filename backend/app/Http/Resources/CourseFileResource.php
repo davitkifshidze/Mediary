@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-/** კურსზე მიმაგრებული ფაილი — `certificate` · `image` · `doc` */
+/** კურსზე მიმაგრებული ფაილი — `image` · `doc` (სერტიფიკატი §55.5-მა მოხსნა) */
 class CourseFileResource extends JsonResource
 {
     public function toArray(Request $request): array

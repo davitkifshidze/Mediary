@@ -15,6 +15,7 @@ import i18n from '@/i18n'
    კონტროლი ერთი სიმაღლისაა (h-9), ბმულის სლოტი უბმულო კურსზეც ადგილზეა
    (უხილავი), ფაილების ღილაკს რიცხვი აქვს, პლატფორმა ჰოსტის ნაცვლად
    ბრენდის სახელით წერია („YouTube“, არა „youtube.com“).
+   Tasks §55.4 — ბმულიდან ნაპოვნი ფოტო შენახვისას **იგზავნება** (`image_url`).
    ============================================================ */
 
 function course(id: number, over: Partial<Course> = {}): Course {
@@ -45,6 +46,8 @@ const mocks = vi.hoisted(() => ({
   fetchCourses: vi.fn(),
   fetchCourseCategories: vi.fn(),
   setCourseStatus: vi.fn(),
+  fetchCourseMetadata: vi.fn(),
+  updateCourse: vi.fn(),
 }))
 
 vi.mock('@/api/courses', async (original) => ({
@@ -52,6 +55,15 @@ vi.mock('@/api/courses', async (original) => ({
   fetchCourses: mocks.fetchCourses,
   fetchCourseCategories: mocks.fetchCourseCategories,
   setCourseStatus: mocks.setCourseStatus,
+  fetchCourseMetadata: mocks.fetchCourseMetadata,
+  updateCourse: mocks.updateCourse,
+}))
+
+vi.mock('@/api/account', async (original) => ({
+  ...(await original<typeof import('@/api/account')>()),
+  fetchModuleFields: async () => [],
+  fetchCustomFields: async () => [],
+  fetchCustomFieldValues: async () => ({}),
 }))
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -89,9 +101,9 @@ async function flush() {
   })
 }
 
-async function mount() {
-  mocks.fetchCourses.mockResolvedValue({ items, total: items.length, lastPage: 1 })
-  mocks.fetchCourseCategories.mockResolvedValue([])
+async function mount(list: Course[] = items, categories: unknown[] = []) {
+  mocks.fetchCourses.mockResolvedValue({ items: list, total: list.length, lastPage: 1 })
+  mocks.fetchCourseCategories.mockResolvedValue(categories)
   mocks.setCourseStatus.mockResolvedValue({ ...items[0], status: 'done' })
 
   const { CoursesPage } = await import('@/pages/CoursesPage')
@@ -167,5 +179,47 @@ describe('CoursesPage row (§29.1)', () => {
     await flush()
 
     expect(mocks.setCourseStatus).toHaveBeenCalledWith(1, 'done')
+  })
+})
+
+describe('CoursesPage form (§55.4)', () => {
+  it('sends the photo the link probe found — before, the form showed it and dropped it on save', async () => {
+    const category = { id: 5, key: 'dev', name_ka: 'პროგრამირება', name_en: 'Dev', icon: null, sort_order: 0 }
+    const subject = course(1, { url: null, platform: null, category_id: 5, category })
+    mocks.fetchCourseMetadata.mockResolvedValue({
+      title: 'Laravel from scratch',
+      description: 'Thirty lessons.',
+      image_url: 'https://i.ytimg.com/vi/aaaaaaaaaa1/hqdefault.jpg',
+      favicon_url: null,
+      site_name: 'YouTube',
+      domain: 'youtube.com',
+    })
+    mocks.updateCourse.mockResolvedValue(subject)
+    await mount([subject], [category])
+
+    const edit = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="record-actions"] button')].find((b) =>
+      b.textContent?.includes(i18n.t('actions.edit')),
+    )!
+    await act(async () => edit.click())
+    await flush()
+
+    const url = document.querySelector<HTMLInputElement>('#c-url')!
+    const link = 'https://www.youtube.com/playlist?list=PLillGF-RfqbbiTGgA77tGO426V3hRF9iE'
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(url, link)
+      url.dispatchEvent(new Event('input', { bubbles: true }))
+      url.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    })
+    await flush()
+    expect(mocks.fetchCourseMetadata).toHaveBeenCalledWith(link)
+
+    const form = document.querySelector<HTMLFormElement>('form')!
+    await act(async () => form.requestSubmit())
+    await flush()
+
+    expect(mocks.updateCourse).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ url: link, image_url: 'https://i.ytimg.com/vi/aaaaaaaaaa1/hqdefault.jpg', description: 'Thirty lessons.' }),
+    )
   })
 })

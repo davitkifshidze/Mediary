@@ -219,8 +219,9 @@ class ModulesSeeder extends Seeder
                 'key' => 'course',
                 'name_ka' => 'კურსები',
                 'name_en' => 'Courses',
-                'description_ka' => 'ონლაინ-კურსები — გაკვეთილების პროგრესი, სერტიფიკატი და კატეგორიები.',
-                'description_en' => 'Online courses — lesson progress, the certificate and categories.',
+                // Tasks §55.5 — სერტიფიკატი და გაკვეთილები აღარ არის; ფლეილისტის ვიდეოები ჩანს
+                'description_ka' => 'ონლაინ-კურსები — ბმული, YouTube-ის ფლეილისტის ვიდეოები, ფაილები და კატეგორიები.',
+                'description_en' => 'Online courses — the link, YouTube playlist videos, files and categories.',
                 'icon' => 'GraduationCap',
                 'route_base' => '/courses',
                 'api_base' => '/courses',

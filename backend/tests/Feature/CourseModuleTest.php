@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\Module;
 use App\Models\User;
 use App\Services\Storage\StorageMeter;
 use Database\Seeders\ModulesSeeder;
@@ -173,18 +174,18 @@ class CourseModuleTest extends TestCase
     }
 
     /**
-     * **სერტიფიკატი ცალკე `kind`-ია და წაშლა კვოტას ათავისუფლებს.**
+     * **ფაილის ატვირთვა და წაშლა კვოტას ათავისუფლებს.**
      */
-    public function test_a_certificate_is_uploaded_and_released_with_the_course(): void
+    public function test_a_document_is_uploaded_and_released_with_the_course(): void
     {
         Storage::fake('public');
 
         $id = $this->postJson('/api/courses', $this->payload())->json('data.id');
 
         $this->postJson("/api/courses/{$id}/files", [
-            'kind' => 'certificate',
-            'files' => [UploadedFile::fake()->create('cert.pdf', 40, 'application/pdf')],
-        ])->assertStatus(201)->assertJsonPath('data.0.kind', 'certificate');
+            'kind' => 'doc',
+            'files' => [UploadedFile::fake()->create('notes.pdf', 40, 'application/pdf')],
+        ])->assertStatus(201)->assertJsonPath('data.0.kind', 'doc');
 
         $used = (int) $this->user->fresh()->storage_used_bytes;
         $this->assertGreaterThan(0, $used);
@@ -196,6 +197,38 @@ class CourseModuleTest extends TestCase
 
         $this->assertSame(0, (int) $this->user->fresh()->storage_used_bytes);
         $this->assertDatabaseCount('course_files', 0);
+    }
+
+    /**
+     * Tasks §55.5 — **სერტიფიკატი აღარ არის**: ახალი `kind: certificate` 422-ია, ძველი
+     * რიგი მიგრაციით დოკუმენტად (`doc`) გადადის — ფაილი ადგილზე რჩება; მოდულის აღწერა
+     * სერტიფიკატს აღარ ახსენებს.
+     */
+    public function test_a_certificate_is_no_longer_a_file_kind(): void
+    {
+        Storage::fake('public');
+
+        $id = $this->postJson('/api/courses', $this->payload())->json('data.id');
+
+        $this->postJson("/api/courses/{$id}/files", [
+            'kind' => 'certificate',
+            'files' => [UploadedFile::fake()->create('cert.pdf', 40, 'application/pdf')],
+        ])->assertStatus(422)->assertJsonValidationErrors('kind');
+
+        $old = Course::findOrFail($id)->files()->create([
+            'user_id' => $this->user->id, 'kind' => 'certificate',
+            'path' => 'courses/files/certificates/old.pdf', 'original_name' => 'old.pdf', 'size' => 10,
+        ]);
+
+        (require database_path('migrations/2026_10_05_000001_drop_course_certificates.php'))->up();
+
+        $this->assertSame('doc', $old->fresh()->kind);
+        $this->assertSame('courses/files/certificates/old.pdf', $old->fresh()->path);
+        $this->getJson("/api/courses/{$id}/files")->assertOk()->assertJsonPath('data.0.kind', 'doc');
+
+        $module = Module::where('key', 'course')->firstOrFail();
+        $this->assertStringNotContainsString('სერტიფიკატ', (string) $module->description_ka);
+        $this->assertStringNotContainsString('certificate', (string) $module->description_en);
     }
 
     /** `DELETE /courses/{id}` კალათაში აგზავნის და არაფერს ათავისუფლებს (FEAT-11) */

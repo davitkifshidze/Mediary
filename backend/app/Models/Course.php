@@ -42,8 +42,8 @@ class Course extends Model
     /** ⚠️ ოთხი და არა სამი: „მივატოვე" ცალკე ფაქტია და არა „დასრულებული" */
     public const STATUSES = ['to_take', 'taking', 'done', 'dropped'];
 
-    /** ფაილის სახეები — სერტიფიკატი სწორედ ისაა, რასაც ტასქი ითხოვს */
-    public const FILE_KINDS = ['certificate', 'image', 'doc'];
+    /** ფაილის სახეები — ⚠️ სერტიფიკატი (`certificate`) Tasks §55.5-მა მოხსნა */
+    public const FILE_KINDS = ['image', 'doc'];
 
     protected $guarded = ['id'];
 

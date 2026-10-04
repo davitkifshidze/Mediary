@@ -29,7 +29,7 @@ namespace App\Support;
  *   bookmarks/thumbnails   — `bookmarks.thumbnail_path` (Tasks §18)
  *   bookmarks/files/images — `bookmark_files.path` (Tasks §36.4 — ჩემი ფოტოები)
  *   courses/thumbnails     — `courses.thumbnail_path` (FEAT-25)
- *   courses/files/*        — `course_files.path` (`certificate`/`image`/`doc`)
+ *   courses/files/*        — `course_files.path` (`image`/`doc`; ძველი სერტიფიკატები — `certificates/`)
  *   {მოდულის ფესვი}/fields — `<module>_field_values.value_path` (§6 ფაზა 4b)
  *   gallery/images         — `gallery_images` (polymorphic — Tasks 10)
  *   chat/files/{images,videos,docs} — `messages.attachment_path` (§16.3, **პრივატული**)
@@ -98,9 +98,6 @@ final class StorageFolder
 
     /** FEAT-25 — კურსის ესკიზი (og:image დაშორებული რჩება, ბუკმარკის წესი) */
     public const COURSE_THUMBNAILS = 'courses/thumbnails';
-
-    /** სერტიფიკატს ცალკე საქაღალდე აქვს — ის ცალკე `kind`-ია და ცალკე ბლოკიც */
-    public const COURSE_CERTIFICATES = 'courses/files/certificates';
 
     public const COURSE_IMAGES = 'courses/files/images';
 
@@ -346,7 +343,6 @@ final class StorageFolder
     public static function courseFiles(string $kind): string
     {
         return match ($kind) {
-            'certificate' => self::COURSE_CERTIFICATES,
             'image' => self::COURSE_IMAGES,
             default => self::COURSE_DOCS,
         };
