@@ -377,10 +377,22 @@ export interface Candidate {
   poster: string | null
 }
 
-/** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) */
-export async function lookupCandidates(input: LookupInput, type: MediaType = 'movie'): Promise<Candidate[]> {
+/** Tasks §50 — ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში …): გადასვლის მინიშნება */
+export interface TypeSuggest {
+  type: MediaType
+  tmdb_id: number
+  title: string
+  year: number | null
+  poster: string | null
+}
+
+/** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) + §50-ის მინიშნება */
+export async function lookupCandidates(
+  input: LookupInput,
+  type: MediaType = 'movie',
+): Promise<{ list: Candidate[]; suggest: TypeSuggest | null }> {
   const { data } = await api.post('/lookup/candidates', { ...input, type })
-  return data.data
+  return { list: data.data, suggest: data.suggest ?? null }
 }
 
 /** კონკრეტული ერთეულის სრული დრაფტი (tmdb_id ან ლინკი/სახელი) */

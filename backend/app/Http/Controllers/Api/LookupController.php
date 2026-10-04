@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Enrichment\MediaTypeHint;
 use App\Support\CredentialProviders;
 use App\Support\MediaDomain;
 use App\Support\MissingCredential;
@@ -24,8 +25,14 @@ class LookupController extends Controller
         return MediaDomain::enricher($request->string('type')->toString());
     }
 
-    /** ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად) */
-    public function candidates(Request $request)
+    /**
+     * ლინკი/IMDb/სახელი → კანდიდატების სია (ასარჩევად).
+     *
+     * Tasks §50 — `suggest`: ნაპოვნი სხვა ტიპისაა (სერიალი ფილმის ფორმაში,
+     * ფილმი სერიალისაში, იაპონური ანიმაცია — ანიმე) → ფორმა გადასვლას
+     * შესთავაზებს და იქ შევსებული დახვდება (`?tmdb=`).
+     */
+    public function candidates(Request $request, MediaTypeHint $hints)
     {
         $data = $request->validate([
             'type' => ['nullable', MediaDomain::rule()],
@@ -54,7 +61,16 @@ class LookupController extends Controller
             return response()->json(['message' => 'tmdb_error'], 502);
         }
 
-        return response()->json(['data' => $list]);
+        /* ⚠️ მინიშნების ჩავარდნა სიას არ აფუჭებს — ის დამატებითი ცოდნაა და
+           არა ძებნის ნაწილი; მიზეზი `sources.log`-შია */
+        $suggest = null;
+        try {
+            $suggest = $hints->suggest($request->string('type')->toString() ?: 'movie', $data);
+        } catch (Throwable $e) {
+            SourceLog::threw('tmdb', $e);
+        }
+
+        return response()->json(['data' => $list, 'suggest' => $suggest]);
     }
 
     /** კონკრეტული ერთეულის სრული დრაფტი (tmdb_id ან ლინკი/IMDb/სახელი) */

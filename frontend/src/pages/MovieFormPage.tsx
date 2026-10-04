@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, RefreshCw } from 'lucide-react'
 import {
   fetchGenres,
   lookupCandidates,
@@ -10,6 +10,7 @@ import {
   mediaApi,
   type Candidate,
   type LookupDraft,
+  type TypeSuggest,
 } from '@/api/media'
 import { useModuleFields } from '@/lib/fields'
 import { RICH_TEXT_MAX } from '@/lib/richText'
@@ -80,6 +81,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   const { id } = useParams()
   const editing = Boolean(id)
   const nav = useNavigate()
+  const [params] = useSearchParams()
   const qc = useQueryClient()
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
@@ -102,6 +104,8 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   // Tasks §30.6 — ჩემი TMDB-ის გასაღები არ მაქვს (≠ „ვერ მოიძებნა" და ≠ „წყარო არ პასუხობს")
   const [lookupNoKey, setLookupNoKey] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  /** Tasks §50 — ნაპოვნი სხვა ტიპისაა: „სერიალებში გადასვლა" / „მაინც ფილმად" */
+  const [suggest, setSuggest] = useState<TypeSuggest | null>(null)
 
   // §6 — რომელი არჩევითი ველი ჩანს ამ დომენზე (ლიმიტი per-module-ია)
   const fields = useModuleFields(type)
@@ -218,6 +222,7 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   })
 
   const candidatesMut = useMutation({
+    onMutate: () => setSuggest(null),
     mutationFn: () => {
       const v = lookupInput.trim()
       const year = form.year ? Number(form.year) : undefined
@@ -228,15 +233,18 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           : { query: v, year }
       return lookupCandidates(payload, type)
     },
-    onSuccess: (list) => {
+    onSuccess: ({ list, suggest: hint }) => {
       setLookupErr(null)
       setLookupNoKey(false)
+      setSuggest(hint)
       if (!list.length) {
         setCandidates([])
-        setLookupErr(tm('lookupNotFound'))
+        // §50 — აქ ვერ მოიძებნა, სხვა ტიპში კი მოიძებნა: მინიშნება თვითონ ხსნის
+        if (!hint) setLookupErr(tm('lookupNotFound'))
         return
       }
-      if (list.length === 1) {
+      // ⚠️ §50 — მინიშნებისას ერთი კანდიდატიც თავისით არ ირჩევა: ჯერ ტიპი წყდება
+      if (list.length === 1 && !hint) {
         setCandidates([])
         pickMut.mutate(list[0].tmdb_id)
         return
@@ -247,6 +255,18 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
   })
 
   const lookupBusy = candidatesMut.isPending || pickMut.isPending
+
+  /* Tasks §50 — `?tmdb=<id>` (სხვა ფორმის „…ში გადასვლა") ახალ ფორმას თავისით
+     ავსებს. ⚠️ ჟანრების სიას ელოდება — შევსება ჟანრებს სახელით უთანადებს
+     (`fillFromDraft`), ადრე მოსული დრაფტი მათ დაკარგავდა; ⚠️ ერთხელ — ref-ით. */
+  const prefill = editing ? null : Number(params.get('tmdb')) || null
+  const prefilled = useRef(false)
+  useEffect(() => {
+    if (!prefill || prefilled.current || !genresQ.data) return
+    prefilled.current = true
+    pickMut.mutate(prefill)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill, genresQ.data])
 
   /* ⚠️ **დამალულ ველზე წითელი ტექსტი არავის უნახავს** (Tasks §4.1): ბლოკი
      `hidden`-ითაა, ე.ი. შეცდომა DOM-შია და ეკრანზე არა — ღილაკი „შენახვა"
@@ -386,6 +406,34 @@ export function MovieFormPage({ type = 'movie' }: { type?: MediaType }) {
           />
           {lookupErr && <QuickFillMessage tone="error">{lookupErr}</QuickFillMessage>}
           {lookupNoKey && <CredentialMissingNotice provider="tmdb" />}
+
+          {/* Tasks §50 — „„ბრეკინგ ბედი" სერიალია — სერიალებში დავამატო?"
+              გადასვლისას იქ ფორმა შევსებული ხვდება (`?tmdb=`). ⚠️ `type="button"` —
+              ფორმის შიგნითაა, თორემ „შენახვას" გაუშვებდა. */}
+          {suggest && (
+            <div
+              data-testid="type-suggest"
+              className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2.5"
+            >
+              {suggest.poster && <img src={suggest.poster} alt="" className="h-12 w-8 shrink-0 rounded object-cover" />}
+              <p className="min-w-0 flex-1 text-sm">
+                {t(`lookupHint.${suggest.type}`, { title: suggest.year ? `${suggest.title} (${suggest.year})` : suggest.title })}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => nav(`${mediaOf(suggest.type).detailBase}/new?tmdb=${suggest.tmdb_id}`)}
+                >
+                  <ArrowRight className="size-3.5" />
+                  {t(`lookupHint.go.${suggest.type}`)}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setSuggest(null)}>
+                  {t(`lookupHint.stay.${type}`)}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {candidates.length > 0 && (
             <QuickFillResults label={tm('lookupPick')}>

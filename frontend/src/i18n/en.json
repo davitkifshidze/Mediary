@@ -520,6 +520,21 @@
       "media": "Media"
     }
   },
+  "lookupHint": {
+    "movie": "“{{title}}” is a movie — add it to movies?",
+    "series": "“{{title}}” is a series — add it to series?",
+    "anime": "“{{title}}” is anime — add it to anime?",
+    "go": {
+      "movie": "Go to movies",
+      "series": "Go to series",
+      "anime": "Go to anime"
+    },
+    "stay": {
+      "movie": "Keep it as a movie",
+      "series": "Keep it as a series",
+      "anime": "Keep it as anime"
+    }
+  },
   "rating": {
     "tmdbAverage": "TMDB average",
     "manual": "Type a score — e.g. 7.5",

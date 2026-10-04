@@ -272,12 +272,114 @@ class TmdbEndpointsTest extends TestCase
                     ['id' => 603, 'title' => 'The Matrix', 'release_date' => '1999-03-30', 'poster_path' => '/a.jpg'],
                 ],
             ]),
+            // §50 — სახელი ტიპის მინიშნებისთვის `/search/multi`-შიც მოწმდება
+            'api.themoviedb.org/3/search/multi*' => Http::response([
+                'results' => [['id' => 603, 'media_type' => 'movie', 'title' => 'The Matrix', 'release_date' => '1999-03-30']],
+            ]),
         ]);
 
         $this->actingAs($this->user)
             ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'matrix'])
             ->assertOk()
-            ->assertJsonPath('data.0.tmdb_id', 603);
+            ->assertJsonPath('data.0.tmdb_id', 603)
+            // ფილმის ფორმაში ნაპოვნი ფილმი — მინიშნება არ არის
+            ->assertJsonPath('suggest', null);
+    }
+
+    /* ---------- Tasks §50 — ნაპოვნი სხვა ტიპისაა ---------- */
+
+    private const BREAKING_BAD = ['id' => 1396, 'name' => 'Breaking Bad', 'first_air_date' => '2008-01-20', 'poster_path' => '/bb.jpg', 'genre_ids' => [18], 'origin_country' => ['US']];
+
+    /** სერიალის IMDb id ფილმის ფორმაში — ფილმი ვერ მოიძებნა, მაგრამ სერიალი მოიძებნა */
+    public function test_a_series_imdb_in_the_movie_form_suggests_the_series(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/3/find/*' => Http::response(['movie_results' => [], 'tv_results' => [self::BREAKING_BAD]]),
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'movie', 'imdb' => 'tt0903747'])
+            ->assertOk()
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('suggest', [
+                'type' => 'series',
+                'tmdb_id' => 1396,
+                'title' => 'Breaking Bad',
+                'year' => 2008,
+                'poster' => 'https://image.tmdb.org/t/p/w185/bb.jpg',
+            ]);
+    }
+
+    /** სახელი: `/search/multi`-ის პირველი ფილმი/სერიალი წყვეტს; ადამიანი გამოტოვდება, ფილმების სია რჩება */
+    public function test_a_name_whose_best_match_is_a_series_suggests_it_and_keeps_the_movies(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/3/search/movie*' => Http::response([
+                'results' => [['id' => 9, 'title' => 'Breaking Bad: The Movie', 'release_date' => '2019-10-11']],
+            ]),
+            'api.themoviedb.org/3/search/multi*' => Http::response([
+                'results' => [
+                    ['id' => 17419, 'media_type' => 'person', 'name' => 'Bryan Cranston'],
+                    ['media_type' => 'tv'] + self::BREAKING_BAD,
+                    ['id' => 9, 'media_type' => 'movie', 'title' => 'Breaking Bad: The Movie'],
+                ],
+            ]),
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'breaking bad'])
+            ->assertOk()
+            ->assertJsonPath('data.0.tmdb_id', 9)
+            ->assertJsonPath('suggest.type', 'series')
+            ->assertJsonPath('suggest.tmdb_id', 1396);
+    }
+
+    /** პირიქით — ფილმის TMDB-ის ბმული სერიალის ფორმაში */
+    public function test_a_movie_link_in_the_series_form_suggests_the_movie(): void
+    {
+        $this->fakeTmdb(['api.themoviedb.org/3/search/tv*' => Http::response(['results' => []])]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'series', 'url' => 'https://www.themoviedb.org/movie/603-the-matrix'])
+            ->assertOk()
+            ->assertJsonPath('suggest.type', 'movie')
+            ->assertJsonPath('suggest.tmdb_id', 603)
+            ->assertJsonPath('suggest.title', 'The Matrix');
+    }
+
+    /** 50.3 — იაპონური ანიმაცია სერიალის ფორმაში ანიმეს გვთავაზობს; ანიმეს ფორმაში — არაფერს */
+    public function test_japanese_animation_suggests_anime(): void
+    {
+        $frieren = ['id' => 209867, 'name' => 'Frieren', 'first_air_date' => '2023-09-29', 'genre_ids' => [16, 10765], 'origin_country' => ['JP']];
+        Http::fake([
+            'api.themoviedb.org/3/search/tv*' => Http::response(['results' => [$frieren]]),
+            'api.themoviedb.org/3/search/multi*' => Http::response(['results' => [['media_type' => 'tv'] + $frieren]]),
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'series', 'query' => 'frieren'])
+            ->assertOk()
+            ->assertJsonPath('suggest.type', 'anime');
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'anime', 'query' => 'frieren'])
+            ->assertOk()
+            ->assertJsonPath('suggest', null);
+    }
+
+    /** ⚠️ მინიშნების ჩავარდნა (`/search/multi` 500) სიას არ აფუჭებს */
+    public function test_a_failing_hint_never_breaks_the_pick_list(): void
+    {
+        Http::fake([
+            'api.themoviedb.org/3/search/movie*' => Http::response(['results' => [['id' => 603, 'title' => 'The Matrix']]]),
+            'api.themoviedb.org/3/search/multi*' => Http::response([], 500),
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/lookup/candidates', ['type' => 'movie', 'query' => 'matrix'])
+            ->assertOk()
+            ->assertJsonPath('data.0.tmdb_id', 603)
+            ->assertJsonPath('suggest', null);
     }
 
     /** ⚠️ ცარიელი მოთხოვნა **მანქანური კოდია** და არა ცარიელი სია */

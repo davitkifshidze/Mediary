@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { credentialShortName } from '@/lib/credentials'
@@ -181,7 +181,10 @@ describe('MovieFormPage — quick fill', () => {
   })
 
   it('keeps the domain wording when the picked draft is not found', async () => {
-    mocks.lookupCandidates.mockResolvedValue([{ tmdb_id: 7, title_en: 'Alien', year: 1979, rating: 8.5, poster: null }])
+    mocks.lookupCandidates.mockResolvedValue({
+      list: [{ tmdb_id: 7, title_en: 'Alien', year: 1979, rating: 8.5, poster: null }],
+      suggest: null,
+    })
     mocks.lookupDraft.mockRejectedValue(apiError(404, { message: 'tmdb_not_found' }))
 
     const el = await mount()
@@ -231,5 +234,124 @@ describe('MovieFormPage — sync on the edit form', () => {
         variant: 'error',
       }),
     )
+  })
+})
+
+/* ============================================================
+   Tasks §50 — ფილმის ფორმა სერიალს ცნობს: „სერიალებში გადასვლა" და იქ
+   შევსებული ფორმა (`?tmdb=`); „მაინც ფილმად" მინიშნებას მალავს.
+   ============================================================ */
+describe('MovieFormPage — another type found (§50)', () => {
+  const SERIES = { type: 'series' as const, tmdb_id: 1396, title: 'Breaking Bad', year: 2008, poster: null }
+  let location = ''
+
+  function Where() {
+    const at = useLocation()
+    location = at.pathname + at.search
+    return null
+  }
+
+  /** ფორმა ორივე ტიპზე + მისამართის მზვერავი (გადასვლა სხვა ფორმაზე) */
+  async function mountAt(path: string) {
+    mocks.fetchGenres.mockResolvedValue([])
+    mocks.fetchModuleFields.mockResolvedValue([])
+    mocks.fetchCustomFields.mockResolvedValue([])
+    mocks.fetchCustomFieldValues.mockResolvedValue({})
+    const { MovieFormPage } = await import('@/pages/MovieFormPage')
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await act(async () => {
+      root!.render(
+        h(
+          MemoryRouter,
+          { initialEntries: [path] },
+          h(
+            QueryClientProvider,
+            { client: qc },
+            h(
+              TooltipProvider,
+              null,
+              h(Where),
+              h(
+                Routes,
+                null,
+                h(Route, { path: '/movies/new', element: h(MovieFormPage, { type: 'movie' }) }),
+                h(Route, { path: '/series/new', element: h(MovieFormPage, { type: 'series' }) }),
+              ),
+            ),
+          ),
+        ),
+      )
+    })
+    await flush()
+    await flush()
+    return container
+  }
+
+  const button = (el: HTMLElement, key: string) =>
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.includes(i18n.t(key))) as HTMLButtonElement | undefined
+
+  it('a series found from the movie form offers to move there — instead of "not found"', async () => {
+    mocks.lookupCandidates.mockResolvedValue({ list: [], suggest: SERIES })
+
+    const el = await mountAt('/movies/new')
+    await search(el, 'tt0903747')
+
+    expect(el.querySelector('[data-testid="type-suggest"]')?.textContent).toContain(
+      i18n.t('lookupHint.series', { title: 'Breaking Bad (2008)' }),
+    )
+    expect(el.textContent).not.toContain(i18n.t('form.lookupNotFound'))
+    expect(button(el, 'lookupHint.stay.movie')).toBeTruthy()
+
+    await act(async () => button(el, 'lookupHint.go.series')!.click())
+    await flush()
+    expect(location).toBe('/series/new?tmdb=1396')
+    // ⚠️ ფორმის შიგნითაა — „შენახვა" არ უნდა გაეშვას
+    expect(mocks.api.create).not.toHaveBeenCalled()
+  })
+
+  it('"keep it as a movie" hides the hint and leaves the candidates to pick', async () => {
+    mocks.lookupCandidates.mockResolvedValue({
+      list: [{ tmdb_id: 9, title_en: 'Breaking Bad: The Movie', year: 2019, rating: 7, poster: null }],
+      suggest: SERIES,
+    })
+
+    const el = await mountAt('/movies/new')
+    await search(el, 'breaking bad')
+
+    // მინიშნებისას ერთი კანდიდატიც თავისით არ ირჩევა
+    expect(mocks.lookupDraft).not.toHaveBeenCalled()
+    expect(el.textContent).toContain('Breaking Bad: The Movie')
+
+    await act(async () => button(el, 'lookupHint.stay.movie')!.click())
+    expect(el.querySelector('[data-testid="type-suggest"]')).toBeNull()
+    expect(el.textContent).toContain('Breaking Bad: The Movie')
+  })
+
+  it('?tmdb= fills a new series form by itself', async () => {
+    mocks.lookupDraft.mockResolvedValue({
+      tmdb_id: 1396,
+      imdb_id: 'tt0903747',
+      title_en: 'Breaking Bad',
+      title_ka: 'ბრეკინგ ბედი',
+      year: 2008,
+      rating: 8.9,
+      description_en: 'A teacher turns to crime.',
+      description_ka: null,
+      genres: [],
+      poster: null,
+      cast: [],
+    })
+
+    const el = await mountAt('/series/new?tmdb=1396')
+    await flush()
+
+    expect(mocks.lookupDraft).toHaveBeenCalledWith({ tmdb_id: 1396 }, 'series')
+    expect(mocks.lookupDraft).toHaveBeenCalledTimes(1)
+    // სათაურის ველი ინტერფეისის ენისაა (ka → `title_ka`)
+    const title = el.querySelector<HTMLInputElement>('#m-title')
+    expect(title?.value).toBe(i18n.language === 'ka' ? 'ბრეკინგ ბედი' : 'Breaking Bad')
   })
 })

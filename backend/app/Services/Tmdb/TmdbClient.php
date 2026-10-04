@@ -72,6 +72,18 @@ class TmdbClient
         return $res->json();
     }
 
+    /** Tasks §50 — `/find`-ის სრული პასუხი: ფილმიც (`movie_results`) და სერიალიც (`tv_results`) */
+    public function find(string $imdb): array
+    {
+        return $this->get("/find/{$imdb}", ['external_source' => 'imdb_id']);
+    }
+
+    /** Tasks §50 — ფილმი, სერიალი და ადამიანი ერთ სიაში (`media_type`), TMDB-ის რელევანტურობით */
+    public function searchMulti(string $query): array
+    {
+        return $this->get('/search/multi', ['query' => $query, 'include_adult' => 'false'])['results'] ?? [];
+    }
+
     /** IMDb ID-ით TMDB movie id (ან null) */
     public function findByImdb(string $imdb): ?int
     {
