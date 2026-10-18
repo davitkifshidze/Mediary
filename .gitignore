@@ -27,15 +27,11 @@ Thumbs.db
 # ignores them). A fresh clone re-downloads posters/cast photos from TMDB via
 # /sync (or `php artisan media:redownload`).
 
-# ── Database dumps — never commit (Tasks SEC-01) ──
+# ── Database dumps — never commit ──
 # A dump carries bcrypt hashes, remember tokens, live session ids, private chat
 # and API tokens. Keep it local; move a library between machines with /backups.
 *.sql
 *.sql.gz
-
-# ── dev-სკრიპტის ლოგები (start-dev.sh ორივეს რეპოს root-ში წერს) ──
-/backend.log
-/frontend.log
 
 # ── graphify generated knowledge graph (regenerate with /graphify) ──
 /graphify-out/
